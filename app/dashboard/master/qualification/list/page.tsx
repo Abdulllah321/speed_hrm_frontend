@@ -34,9 +34,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Search, Printer, Download } from "lucide-react";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Search,
+  Printer,
+  Download,
+} from "lucide-react";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
 interface Qualification {
   id: number;
@@ -50,7 +59,6 @@ interface Qualification {
   createdAt: string;
   updatedAt: string;
 }
-
 export default function QualificationListPage() {
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +68,8 @@ export default function QualificationListPage() {
 
   // Edit dialog
   const [editDialog, setEditDialog] = useState(false);
-  const [editingQualification, setEditingQualification] = useState<Qualification | null>(null);
+  const [editingQualification, setEditingQualification] =
+    useState<Qualification | null>(null);
   const [editData, setEditData] = useState({
     instituteName: "",
     qualification: "",
@@ -71,7 +80,8 @@ export default function QualificationListPage() {
 
   // Delete dialog
   const [deleteDialog, setDeleteDialog] = useState(false);
-  const [deletingQualification, setDeletingQualification] = useState<Qualification | null>(null);
+  const [deletingQualification, setDeletingQualification] =
+    useState<Qualification | null>(null);
 
   const fetchQualifications = async () => {
     try {
@@ -146,11 +156,14 @@ export default function QualificationListPage() {
 
     startTransition(async () => {
       try {
-        const res = await fetch(`${API_BASE}/qualifications/${editingQualification.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(editData),
-        });
+        const res = await fetch(
+          `${API_BASE}/qualifications/${editingQualification.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(editData),
+          }
+        );
         const data = await res.json();
         if (data.status) {
           toast.success(data.message || "Qualification updated successfully");
@@ -175,9 +188,12 @@ export default function QualificationListPage() {
 
     startTransition(async () => {
       try {
-        const res = await fetch(`${API_BASE}/qualifications/${deletingQualification.id}`, {
-          method: "DELETE",
-        });
+        const res = await fetch(
+          `${API_BASE}/qualifications/${deletingQualification.id}`,
+          {
+            method: "DELETE",
+          }
+        );
         const data = await res.json();
         if (data.status) {
           toast.success(data.message || "Qualification deleted successfully");
@@ -248,7 +264,16 @@ export default function QualificationListPage() {
   };
 
   const handleExportCSV = () => {
-    const headers = ["S.No", "Institute Name", "Qualification", "Country", "City", "Sub Department", "Created By", "Status"];
+    const headers = [
+      "S.No",
+      "Institute Name",
+      "Qualification",
+      "Country",
+      "City",
+      "Sub Department",
+      "Created By",
+      "Status",
+    ];
     const rows = filteredQualifications.map((q, i) => [
       i + 1,
       q.instituteName,
@@ -268,7 +293,9 @@ export default function QualificationListPage() {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `qualifications_${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = `qualifications_${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
     link.click();
     toast.success("CSV exported successfully");
   };
@@ -278,7 +305,9 @@ export default function QualificationListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Qualifications</h2>
-          <p className="text-muted-foreground">Manage qualifications for your organization</p>
+          <p className="text-muted-foreground">
+            Manage qualifications for your organization
+          </p>
         </div>
         <Link href="/dashboard/master/qualification/add">
           <Button>
@@ -302,10 +331,20 @@ export default function QualificationListPage() {
                   className="pl-9"
                 />
               </div>
-              <Button variant="outline" size="icon" onClick={handlePrint} title="Print">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePrint}
+                title="Print"
+              >
                 <Printer className="h-4 w-4" />
               </Button>
-              <Button variant="outline" size="icon" onClick={handleExportCSV} title="Export CSV">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleExportCSV}
+                title="Export CSV"
+              >
                 <Download className="h-4 w-4" />
               </Button>
             </div>
@@ -341,7 +380,10 @@ export default function QualificationListPage() {
                   {filteredQualifications.map((qual, index) => (
                     <TableRow key={qual.id}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={qual.instituteName}>
+                      <TableCell
+                        className="max-w-[200px] truncate"
+                        title={qual.instituteName}
+                      >
                         {qual.instituteName}
                       </TableCell>
                       <TableCell>{qual.qualification}</TableCell>
@@ -349,7 +391,11 @@ export default function QualificationListPage() {
                       <TableCell>{qual.city}</TableCell>
                       <TableCell>{qual.subDepartment}</TableCell>
                       <TableCell>
-                        <Badge variant={qual.status === "inactive" ? "secondary" : "default"}>
+                        <Badge
+                          variant={
+                            qual.status === "inactive" ? "secondary" : "default"
+                          }
+                        >
                           {qual.status || "Active"}
                         </Badge>
                       </TableCell>
@@ -387,14 +433,18 @@ export default function QualificationListPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Qualification</DialogTitle>
-            <DialogDescription>Update the qualification details</DialogDescription>
+            <DialogDescription>
+              Update the qualification details
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Institute Name</Label>
               <Input
                 value={editData.instituteName}
-                onChange={(e) => setEditData({ ...editData, instituteName: e.target.value })}
+                onChange={(e) =>
+                  setEditData({ ...editData, instituteName: e.target.value })
+                }
                 disabled={isPending}
               />
             </div>
@@ -402,7 +452,9 @@ export default function QualificationListPage() {
               <Label>Qualification</Label>
               <Input
                 value={editData.qualification}
-                onChange={(e) => setEditData({ ...editData, qualification: e.target.value })}
+                onChange={(e) =>
+                  setEditData({ ...editData, qualification: e.target.value })
+                }
                 disabled={isPending}
               />
             </div>
@@ -411,7 +463,9 @@ export default function QualificationListPage() {
                 <Label>Country</Label>
                 <Input
                   value={editData.country}
-                  onChange={(e) => setEditData({ ...editData, country: e.target.value })}
+                  onChange={(e) =>
+                    setEditData({ ...editData, country: e.target.value })
+                  }
                   disabled={isPending}
                 />
               </div>
@@ -419,7 +473,9 @@ export default function QualificationListPage() {
                 <Label>City</Label>
                 <Input
                   value={editData.city}
-                  onChange={(e) => setEditData({ ...editData, city: e.target.value })}
+                  onChange={(e) =>
+                    setEditData({ ...editData, city: e.target.value })
+                  }
                   disabled={isPending}
                 />
               </div>
@@ -428,7 +484,9 @@ export default function QualificationListPage() {
               <Label>Sub Department</Label>
               <Input
                 value={editData.subDepartment}
-                onChange={(e) => setEditData({ ...editData, subDepartment: e.target.value })}
+                onChange={(e) =>
+                  setEditData({ ...editData, subDepartment: e.target.value })
+                }
                 disabled={isPending}
               />
             </div>
@@ -451,8 +509,10 @@ export default function QualificationListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Qualification</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deletingQualification?.qualification}&quot; from{" "}
-              {deletingQualification?.instituteName}? This action cannot be undone.
+              Are you sure you want to delete &quot;
+              {deletingQualification?.qualification}&quot; from{" "}
+              {deletingQualification?.instituteName}? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -471,4 +531,3 @@ export default function QualificationListPage() {
     </div>
   );
 }
-

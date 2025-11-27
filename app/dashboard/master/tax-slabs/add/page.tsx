@@ -1,96 +1,83 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar } from "@/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { createTaxSlabs } from "@/lib/actions/tax-slab";
 import { toast } from "sonner";
-import { ArrowLeft, CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 
-type TaxEntry = {
+interface TaxSlabRow {
   id: number;
-  taxName: string;
-  salaryFrom: string;
-  salaryTo: string;
-  percentage: string;
-  amountPerYear: string;
-  monthYear: Date | undefined;
-};
+  name: string;
+  minAmount: string;
+  maxAmount: string;
+  rate: string;
+}
 
-export default function AddTaxPage() {
-  const [taxes, setTaxes] = useState<TaxEntry[]>([
-    {
-      id: 1,
-      taxName: "",
-      salaryFrom: "",
-      salaryTo: "",
-      percentage: "",
-      amountPerYear: "",
-      monthYear: undefined,
-    },
+export default function AddTaxSlabPage() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [taxSlabs, setTaxSlabs] = useState<TaxSlabRow[]>([
+    { id: 1, name: "", minAmount: "", maxAmount: "", rate: "" },
   ]);
 
-  const addMoreTax = () => {
-    setTaxes([
-      ...taxes,
-      {
-        id: Date.now(),
-        taxName: "",
-        salaryFrom: "",
-        salaryTo: "",
-        percentage: "",
-        amountPerYear: "",
-        monthYear: undefined,
-      },
+  const addRow = () => {
+    setTaxSlabs([
+      ...taxSlabs,
+      { id: Date.now(), name: "", minAmount: "", maxAmount: "", rate: "" },
     ]);
   };
 
-  const removeTax = (id: number) => {
-    if (taxes.length > 1) {
-      setTaxes(taxes.filter((t) => t.id !== id));
-    }
+  const removeRow = (id: number) => {
+    if (taxSlabs.length > 1) setTaxSlabs(taxSlabs.filter((t) => t.id !== id));
   };
 
-  const updateTax = (id: number, field: keyof TaxEntry, value: string | Date | undefined) => {
-    setTaxes(taxes.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
+  const updateField = (id: number, field: keyof TaxSlabRow, value: string) => {
+    setTaxSlabs(
+      taxSlabs.map((t) => (t.id === id ? { ...t, [field]: value } : t))
+    );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validTaxes = taxes.filter((t) => t.taxName && t.salaryFrom && t.salaryTo && t.percentage);
-    if (validTaxes.length === 0) {
-      toast.error("Please fill all required fields");
+    const items = taxSlabs
+      .filter((t) => t.name.trim() && t.minAmount && t.maxAmount && t.rate)
+      .map((t) => ({
+        name: t.name.trim(),
+        minAmount: parseFloat(t.minAmount),
+        maxAmount: parseFloat(t.maxAmount),
+        rate: parseFloat(t.rate),
+      }));
+
+    if (items.length === 0) {
+      toast.error("Please fill in all required fields");
       return;
     }
-    toast.success(`${validTaxes.length} tax(es) created successfully`);
-  };
 
-  const handleClear = () => {
-    setTaxes([
-      {
-        id: 1,
-        taxName: "",
-        salaryFrom: "",
-        salaryTo: "",
-        percentage: "",
-        amountPerYear: "",
-        monthYear: undefined,
-      },
-    ]);
+    startTransition(async () => {
+      const result = await createTaxSlabs(items);
+      if (result.status) {
+        toast.success(result.message);
+        router.push("/dashboard/master/tax-slabs/list");
+      } else {
+        toast.error(result.message);
+      }
+    });
   };
 
   return (
-    <div className="w-full px-10">
+    <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <Link href="/dashboard/master/tax-slabs/list">
           <Button variant="ghost" size="sm">
@@ -102,125 +89,106 @@ export default function AddTaxPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Create Taxes Form</CardTitle>
+          <CardTitle>Add Tax Slabs</CardTitle>
+          <CardDescription>Create one or more tax slabs</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {taxes.map((tax, index) => (
-              <div key={tax.id} className="relative border rounded-lg p-4 space-y-4">
-                {taxes.length > 1 && (
+            {taxSlabs.map((ts, index) => (
+              <div key={ts.id} className="space-y-4 border rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <Label className="text-base font-medium">
+                    Tax Slab {index + 1}
+                  </Label>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute top-2 right-2 h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => removeTax(tax.id)}
+                    onClick={() => removeRow(ts.id)}
+                    disabled={taxSlabs.length === 1 || isPending}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>
-                      Tax Name <span className="text-destructive">*</span>
-                    </Label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2 col-span-2">
+                    <Label>Name *</Label>
                     <Input
-                      value={tax.taxName}
-                      onChange={(e) => updateTax(tax.id, "taxName", e.target.value)}
-                      placeholder="Enter tax name"
+                      placeholder="Tax slab name"
+                      value={ts.name}
+                      onChange={(e) =>
+                        updateField(ts.id, "name", e.target.value)
+                      }
+                      disabled={isPending}
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label>
-                      Monthly Salary Range From <span className="text-destructive">*</span>
-                    </Label>
+                    <Label>Min Amount *</Label>
                     <Input
                       type="number"
-                      value={tax.salaryFrom}
-                      onChange={(e) => updateTax(tax.id, "salaryFrom", e.target.value)}
-                      placeholder="e.g., 50000"
+                      placeholder="0"
+                      value={ts.minAmount}
+                      onChange={(e) =>
+                        updateField(ts.id, "minAmount", e.target.value)
+                      }
+                      disabled={isPending}
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label>
-                      Monthly Salary Range To <span className="text-destructive">*</span>
-                    </Label>
+                    <Label>Max Amount *</Label>
                     <Input
                       type="number"
-                      value={tax.salaryTo}
-                      onChange={(e) => updateTax(tax.id, "salaryTo", e.target.value)}
-                      placeholder="e.g., 100000"
+                      placeholder="50000"
+                      value={ts.maxAmount}
+                      onChange={(e) =>
+                        updateField(ts.id, "maxAmount", e.target.value)
+                      }
+                      disabled={isPending}
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>
-                      Percentage of Tax <span className="text-destructive">*</span>
-                    </Label>
+                  <div className="space-y-2 col-span-2">
+                    <Label>Rate (%) *</Label>
                     <Input
                       type="number"
                       step="0.01"
-                      value={tax.percentage}
-                      onChange={(e) => updateTax(tax.id, "percentage", e.target.value)}
-                      placeholder="e.g., 5.5"
+                      placeholder="5"
+                      value={ts.rate}
+                      onChange={(e) =>
+                        updateField(ts.id, "rate", e.target.value)
+                      }
+                      disabled={isPending}
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Tax Amount Per Year</Label>
-                    <Input
-                      type="number"
-                      value={tax.amountPerYear}
-                      onChange={(e) => updateTax(tax.id, "amountPerYear", e.target.value)}
-                      placeholder="Enter amount"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>
-                      Tax Month & Year <span className="text-destructive">*</span>
-                    </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !tax.monthYear && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {tax.monthYear ? format(tax.monthYear, "MMMM yyyy") : "Select month & year"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={tax.monthYear}
-                          onSelect={(date) => updateTax(tax.id, "monthYear", date)}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
                   </div>
                 </div>
               </div>
             ))}
-
-            <div className="flex flex-wrap gap-2 pt-4 justify-center sm:justify-end">
-              <Button type="button" variant="default" onClick={addMoreTax} className="w-full sm:w-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Add More Taxes
-              </Button>
-              <Button type="submit" className="bg-green-600 hover:bg-green-700 w-full sm:w-auto">
-                Submit
-              </Button>
-              <Button type="button" variant="secondary" onClick={handleClear} className="w-full sm:w-auto">
-                Clear
-              </Button>
+            <div className="flex gap-2 justify-between">
+              <div className="flex gap-2">
+                <Button type="submit" disabled={isPending}>
+                  {isPending && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
+                  Create{" "}
+                  {taxSlabs.length > 1
+                    ? `${taxSlabs.length} Tax Slabs`
+                    : "Tax Slab"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                >
+                  Cancel
+                </Button>
+              </div>
+              <button
+                type="button"
+                onClick={addRow}
+                disabled={isPending}
+                className="text-sm text-primary hover:underline disabled:opacity-50"
+              >
+                + Add more
+              </button>
             </div>
           </form>
         </CardContent>
@@ -228,4 +196,3 @@ export default function AddTaxPage() {
     </div>
   );
 }
-
