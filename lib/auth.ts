@@ -246,3 +246,39 @@ export async function hasPermission(permission: string): Promise<boolean> {
   return user.permissions.includes(permission);
 }
 
+// Check session validity
+export async function checkSession(): Promise<{ valid: boolean }> {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("accessToken")?.value;
+
+  if (!accessToken) {
+    return { valid: false };
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/check-session`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (res.status === 401) {
+      // Try to refresh
+      const refreshed = await refreshAccessToken();
+      if (!refreshed) {
+        // Clear cookies on failed refresh
+        cookieStore.delete("accessToken");
+        cookieStore.delete("refreshToken");
+        cookieStore.delete("userRole");
+        cookieStore.delete("user");
+        return { valid: false };
+      }
+      return { valid: true };
+    }
+
+    const data = await res.json();
+    return { valid: data.status && data.valid };
+  } catch (error) {
+    console.error("Session check error:", error);
+    return { valid: false };
+  }
+}
+
