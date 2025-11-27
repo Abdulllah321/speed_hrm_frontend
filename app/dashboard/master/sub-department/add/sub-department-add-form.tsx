@@ -39,7 +39,7 @@ export function SubDepartmentAddForm({ departments }: SubDepartmentAddFormProps)
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="w-full px-10">
       <div className="mb-6">
         <Link href="/dashboard/master/sub-department/list">
           <Button variant="ghost" size="sm">
@@ -59,7 +59,7 @@ export function SubDepartmentAddForm({ departments }: SubDepartmentAddFormProps)
             <div className="space-y-2">
               <Label htmlFor="departmentId">Department</Label>
               <Select name="departmentId" required>
-                <SelectTrigger>
+                <SelectTrigger className="w-full min-w-[280px]">
                   <SelectValue placeholder="Select a department" />
                 </SelectTrigger>
                 <SelectContent>

@@ -66,7 +66,7 @@ export default function AddDesignationPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="w-full px-10">
       <div className="mb-6">
         <Link href="/dashboard/master/designation/list">
           <Button variant="ghost" size="sm">

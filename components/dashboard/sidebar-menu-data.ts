@@ -25,86 +25,152 @@ export type MenuItem = {
 };
 
 export const masterMenuData: MenuItem[] = [
-  { title: "Department", children: [
-    { title: "Add", href: "/dashboard/master/department/add" },
-    { title: "List", href: "/dashboard/master/department/list" },
-  ]},
-  { title: "Sub Department", children: [
-    { title: "Add", href: "/dashboard/master/sub-department/add" },
-    { title: "List", href: "/dashboard/master/sub-department/list" },
-  ]},
-  { title: "Designation", children: [
-    { title: "Add", href: "/dashboard/master/designation/add" },
-    { title: "List", href: "/dashboard/master/designation/list" },
-  ]},
-  { title: "Job Type", children: [
-    { title: "Add", href: "/dashboard/master/job-type/add" },
-    { title: "List", href: "/dashboard/master/job-type/list" },
-  ]},
-  { title: "Marital Status", children: [
-    { title: "Add", href: "/dashboard/master/marital-status/add" },
-    { title: "List", href: "/dashboard/master/marital-status/list" },
-  ]},
-  { title: "Degree Type", children: [
-    { title: "Add", href: "/dashboard/master/degree-type/add" },
-    { title: "List", href: "/dashboard/master/degree-type/list" },
-  ]},
-  { title: "Qualification", children: [
-    { title: "Add", href: "/dashboard/master/qualification/add" },
-    { title: "List", href: "/dashboard/master/qualification/list" },
-  ]},
-  { title: "City", children: [
-    { title: "Add", href: "/dashboard/master/city/add" },
-    { title: "List", href: "/dashboard/master/city/list" },
-  ]},
-  { title: "Location / Branch", children: [
-    { title: "Add", href: "/dashboard/master/location/add" },
-    { title: "List", href: "/dashboard/master/location/list" },
-  ]},
-  { title: "Allowance Heads", children: [
-    { title: "Add", href: "/dashboard/master/allowance-heads/add" },
-    { title: "List", href: "/dashboard/master/allowance-heads/list" },
-  ]},
-  { title: "Deduction Heads", children: [
-    { title: "Add", href: "/dashboard/master/deduction-heads/add" },
-    { title: "List", href: "/dashboard/master/deduction-heads/list" },
-  ]},
-  { title: "Loan Types", children: [
-    { title: "Add", href: "/dashboard/master/loan-types/add" },
-    { title: "List", href: "/dashboard/master/loan-types/list" },
-  ]},
-  { title: "Leave Types", children: [
-    { title: "Add", href: "/dashboard/master/leave-types/add" },
-    { title: "List", href: "/dashboard/master/leave-types/list" },
-  ]},
-  { title: "Leaves Policy", children: [
-    { title: "Add", href: "/dashboard/master/leaves-policy/add" },
-    { title: "List", href: "/dashboard/master/leaves-policy/list" },
-  ]},
-  { title: "Equipment", children: [
-    { title: "Add", href: "/dashboard/master/equipment/add" },
-    { title: "List", href: "/dashboard/master/equipment/list" },
-  ]},
-  { title: "Salary Breakup", children: [
-    { title: "Add", href: "/dashboard/master/salary-breakup/add" },
-    { title: "List", href: "/dashboard/master/salary-breakup/list" },
-  ]},
-  { title: "EOBI", children: [
-    { title: "Add", href: "/dashboard/master/eobi/add" },
-    { title: "List", href: "/dashboard/master/eobi/list" },
-  ]},
-  { title: "Tax Slabs", children: [
-    { title: "Add", href: "/dashboard/master/tax-slabs/add" },
-    { title: "List", href: "/dashboard/master/tax-slabs/list" },
-  ]},
-  { title: "Bonus Types", children: [
-    { title: "Add", href: "/dashboard/master/bonus-types/add" },
-    { title: "List", href: "/dashboard/master/bonus-types/list" },
-  ]},
-  { title: "Multi-level Approval", children: [
-    { title: "Add", href: "/dashboard/master/approval-settings/add" },
-    { title: "List", href: "/dashboard/master/approval-settings/list" },
-  ]},
+  {
+    title: "Department",
+    children: [
+      { title: "Add", href: "/dashboard/master/department/add" },
+      { title: "View", href: "/dashboard/master/department/list" },
+    ],
+  },
+  {
+    title: "Sub Department",
+    children: [
+      { title: "Add", href: "/dashboard/master/sub-department/add" },
+      { title: "View", href: "/dashboard/master/sub-department/list" },
+    ],
+  },
+  {
+    title: "Designation",
+    children: [
+      { title: "Add", href: "/dashboard/master/designation/add" },
+      { title: "View", href: "/dashboard/master/designation/list" },
+    ],
+  },
+  {
+    title: "Job Type",
+    children: [
+      { title: "Add", href: "/dashboard/master/job-type/add" },
+      { title: "View", href: "/dashboard/master/job-type/list" },
+    ],
+  },
+  {
+    title: "Marital Status",
+    children: [
+      { title: "Add", href: "/dashboard/master/marital-status/add" },
+      { title: "View", href: "/dashboard/master/marital-status/list" },
+    ],
+  },
+
+  {
+    title: "Qualification",
+    children: [
+      { title: "Add", href: "/dashboard/master/qualification/add" },
+      { title: "View", href: "/dashboard/master/qualification/list" },
+    ],
+  },
+  {
+    title: "City",
+    children: [
+      { title: "Add", href: "/dashboard/master/city/add" },
+      { title: "View", href: "/dashboard/master/city/list" },
+    ],
+  },
+  {
+    title: "Location / Branch",
+    children: [
+      { title: "Add", href: "/dashboard/master/location/add" },
+      { title: "View", href: "/dashboard/master/location/list" },
+      {
+        title: "Add Allowance",
+        href: "/dashboard/master/location/add-allowance",
+      },
+      {
+        title: "View Allowance",
+        href: "/dashboard/master/location/list-allowance",
+      },
+    ],
+  },
+  {
+    title: "Allowance Heads",
+    children: [
+      { title: "Add", href: "/dashboard/master/allowance-heads/add" },
+      { title: "View", href: "/dashboard/master/allowance-heads/list" },
+    ],
+  },
+  {
+    title: "Deduction Heads",
+    children: [
+      { title: "Add", href: "/dashboard/master/deduction-heads/add" },
+      { title: "View", href: "/dashboard/master/deduction-heads/list" },
+    ],
+  },
+  {
+    title: "Loan Types",
+    children: [
+      { title: "Add", href: "/dashboard/master/loan-types/add" },
+      { title: "View", href: "/dashboard/master/loan-types/list" },
+    ],
+  },
+  {
+    title: "Leave Types",
+    children: [
+      { title: "Add", href: "/dashboard/master/leave-types/add" },
+      { title: "View", href: "/dashboard/master/leave-types/list" },
+    ],
+  },
+  {
+    title: "Leaves Policy",
+    children: [
+      { title: "Add", href: "/dashboard/master/leaves-policy/add" },
+      { title: "View", href: "/dashboard/master/leaves-policy/list" },
+      {
+        title: "Add Manual Leaves",
+        href: "/dashboard/master/leaves-policy/manual-leaves",
+      },
+    ],
+  },
+  {
+    title: "Equipment",
+    children: [
+      { title: "Add", href: "/dashboard/master/equipment/add" },
+      { title: "View", href: "/dashboard/master/equipment/list" },
+    ],
+  },
+  {
+    title: "Salary Breakup",
+    children: [
+      { title: "Add", href: "/dashboard/master/salary-breakup/add" },
+      { title: "View", href: "/dashboard/master/salary-breakup/list" },
+    ],
+  },
+  {
+    title: "EOBI",
+    children: [
+      { title: "Add", href: "/dashboard/master/eobi/add" },
+      { title: "View", href: "/dashboard/master/eobi/list" },
+    ],
+  },
+  {
+    title: "Tax Slabs",
+    children: [
+      { title: "Add", href: "/dashboard/master/tax-slabs/add" },
+      { title: "View", href: "/dashboard/master/tax-slabs/list" },
+    ],
+  },
+  {
+    title: "Bonus Types",
+    children: [
+      { title: "Add", href: "/dashboard/master/bonus-types/add" },
+      { title: "View", href: "/dashboard/master/bonus-types/list" },
+    ],
+  },
+  {
+    title: "Multi-level Approval",
+    children: [
+      { title: "Add", href: "/dashboard/master/approval-settings/add" },
+      { title: "View", href: "/dashboard/master/approval-settings/list" },
+    ],
+  },
 ];
 
 export const menuData: MenuItem[] = [
@@ -139,7 +205,7 @@ export const menuData: MenuItem[] = [
       },
     ],
   },
-  
+
   {
     title: "Attendance Setup",
     icon: Clock,
@@ -153,8 +219,14 @@ export const menuData: MenuItem[] = [
           { title: "Requests", href: "/dashboard/attendance/requests" },
           { title: "Request List", href: "/dashboard/attendance/request-list" },
           { title: "Exemptions", href: "/dashboard/attendance/exemptions" },
-          { title: "Exemptions List", href: "/dashboard/attendance/exemptions-list" },
-          { title: "Request Forwarding", href: "/dashboard/attendance/request-forwarding" },
+          {
+            title: "Exemptions List",
+            href: "/dashboard/attendance/exemptions-list",
+          },
+          {
+            title: "Request Forwarding",
+            href: "/dashboard/attendance/request-forwarding",
+          },
         ],
       },
       {
@@ -228,7 +300,10 @@ export const menuData: MenuItem[] = [
           { title: "Create", href: "/dashboard/load-requests/create" },
           { title: "View", href: "/dashboard/load-requests/view" },
           { title: "View Requests", href: "/dashboard/load-requests/requests" },
-          { title: "Request Forwarding", href: "/dashboard/load-requests/forwarding" },
+          {
+            title: "Request Forwarding",
+            href: "/dashboard/load-requests/forwarding",
+          },
         ],
       },
       {
@@ -257,7 +332,10 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/dashboard/overtime/create" },
           { title: "List", href: "/dashboard/overtime/list" },
-          { title: "Request Forwarding", href: "/dashboard/overtime/forwarding" },
+          {
+            title: "Request Forwarding",
+            href: "/dashboard/overtime/forwarding",
+          },
         ],
       },
       {
@@ -266,7 +344,10 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/dashboard/leave-encashment/create" },
           { title: "List", href: "/dashboard/leave-encashment/list" },
-          { title: "Request Forwarding", href: "/dashboard/leave-encashment/forwarding" },
+          {
+            title: "Request Forwarding",
+            href: "/dashboard/leave-encashment/forwarding",
+          },
         ],
       },
       {
@@ -282,8 +363,14 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create PF", href: "/dashboard/pf-employee/create" },
           { title: "View PF", href: "/dashboard/pf-employee/view" },
-          { title: "Create Withdraw", href: "/dashboard/pf-employee/withdraw-create" },
-          { title: "View Withdraw", href: "/dashboard/pf-employee/withdraw-view" },
+          {
+            title: "Create Withdraw",
+            href: "/dashboard/pf-employee/withdraw-create",
+          },
+          {
+            title: "View Withdraw",
+            href: "/dashboard/pf-employee/withdraw-view",
+          },
           { title: "View Report", href: "/dashboard/pf-employee/report" },
           { title: "View Ledger", href: "/dashboard/pf-employee/ledger" },
         ],
@@ -308,7 +395,10 @@ export const menuData: MenuItem[] = [
         title: "Salary Sheet",
         icon: Receipt,
         children: [
-          { title: "Tax Certificate", href: "/dashboard/salary-sheet/tax-certificate" },
+          {
+            title: "Tax Certificate",
+            href: "/dashboard/salary-sheet/tax-certificate",
+          },
         ],
       },
       {
@@ -350,10 +440,15 @@ export const menuData: MenuItem[] = [
   },
 ];
 
-export function flattenMenu(items: MenuItem[], parentPath = ""): { title: string; href: string; path: string }[] {
+export function flattenMenu(
+  items: MenuItem[],
+  parentPath = ""
+): { title: string; href: string; path: string }[] {
   const result: { title: string; href: string; path: string }[] = [];
   for (const item of items) {
-    const currentPath = parentPath ? `${parentPath} > ${item.title}` : item.title;
+    const currentPath = parentPath
+      ? `${parentPath} > ${item.title}`
+      : item.title;
     if (item.href) {
       result.push({ title: item.title, href: item.href, path: currentPath });
     }
@@ -363,4 +458,3 @@ export function flattenMenu(items: MenuItem[], parentPath = ""): { title: string
   }
   return result;
 }
-

@@ -191,7 +191,7 @@ export function SubDepartmentList({ initialSubDepartments, departments }: SubDep
               <div className="space-y-2">
                 <Label htmlFor="edit-department">Department</Label>
                 <Select name="departmentId" defaultValue={editingSubDept?.departmentId.toString()}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full min-w-[280px]">
                     <SelectValue placeholder="Select a department" />
                   </SelectTrigger>
                   <SelectContent>
