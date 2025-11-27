@@ -11,7 +11,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { checkSession } from "@/lib/auth";
 
 const CHECK_INTERVAL = 60 * 1000; // Check every 60 seconds
 
@@ -20,9 +19,14 @@ export function SessionChecker() {
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const performCheck = useCallback(async () => {
-    const result = await checkSession();
-    if (!result.valid) {
-      setSessionExpired(true);
+    try {
+      const res = await fetch("/api/auth/check-session");
+      const data = await res.json();
+      if (!data.valid) {
+        setSessionExpired(true);
+      }
+    } catch (error) {
+      console.error("Session check failed:", error);
     }
   }, []);
 
