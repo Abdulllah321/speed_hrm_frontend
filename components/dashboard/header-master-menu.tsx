@@ -22,7 +22,7 @@ import { Database, ChevronRight, Search } from "lucide-react";
 import { masterMenuData, MenuItem } from "./sidebar-menu-data";
 import { cn } from "@/lib/utils";
 
-function MasterMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
+function MasterMenuItem({ item, pathname, onNavigate }: { item: MenuItem; pathname: string; onNavigate: () => void }) {
   const hasChildren = item.children && item.children.length > 0;
   const isChildActive = item.children?.some((child) => child.href === pathname);
 
@@ -39,6 +39,7 @@ function MasterMenuItem({ item, pathname }: { item: MenuItem; pathname: string }
               <Link
                 key={child.href}
                 href={child.href || "#"}
+                onClick={onNavigate}
                 className={cn(
                   "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
                   pathname === child.href && "bg-accent text-accent-foreground font-medium"
@@ -56,6 +57,7 @@ function MasterMenuItem({ item, pathname }: { item: MenuItem; pathname: string }
   return (
     <Link
       href={item.href || "#"}
+      onClick={onNavigate}
       className={cn(
         "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
         pathname === item.href && "bg-accent text-accent-foreground font-medium"
@@ -70,6 +72,7 @@ function MasterMenuItem({ item, pathname }: { item: MenuItem; pathname: string }
 export function HeaderMasterMenu() {
   const pathname = usePathname();
   const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
 
   const filteredMenu = useMemo(() => {
     if (!search) return masterMenuData;
@@ -84,7 +87,7 @@ export function HeaderMasterMenu() {
   }, [search]);
 
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button variant="ghost" size="icon">
           <Database className="h-5 w-5" />
@@ -114,7 +117,7 @@ export function HeaderMasterMenu() {
               </p>
             ) : (
               filteredMenu.map((item) => (
-                <MasterMenuItem key={item.title} item={item} pathname={pathname} />
+                <MasterMenuItem key={item.title} item={item} pathname={pathname} onNavigate={() => setOpen(false)} />
               ))
             )}
           </div>

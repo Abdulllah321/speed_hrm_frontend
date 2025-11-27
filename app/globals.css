@@ -180,7 +180,7 @@ body {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground transition-all duration-300;
+    @apply bg-background text-foreground;
   }
 }
 
