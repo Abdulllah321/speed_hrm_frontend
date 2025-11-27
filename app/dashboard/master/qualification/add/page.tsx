@@ -265,7 +265,7 @@ export default function AddQualificationPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="w-full px-10">
       <div className="mb-6">
         <Link href="/dashboard/master/qualification/list">
           <Button variant="ghost" size="sm">
@@ -309,7 +309,7 @@ export default function AddQualificationPage() {
                       onValueChange={(value) => updateField(qual.id, "instituteName", value)}
                       disabled={isPending}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full min-w-[280px]">
                         <SelectValue placeholder="Select institute" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60">
