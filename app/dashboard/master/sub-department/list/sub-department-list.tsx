@@ -1,18 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useEffect, useState, useTransition } from "react";
+import DataTable, { FilterConfig } from "@/components/common/data-table";
+import { columns, setDepartmentsStore, SubDepartmentRow } from "./columns";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Department,
+  SubDepartment,
+  deleteSubDepartments,
+  updateSubDepartments,
+} from "@/lib/actions/department";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -22,65 +20,49 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Department, SubDepartment, updateSubDepartment, deleteSubDepartment } from "@/lib/actions/department";
-import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Search } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 interface SubDepartmentListProps {
   initialSubDepartments: SubDepartment[];
   departments: Department[];
+  newItemId?: string;
 }
 
-export function SubDepartmentList({ initialSubDepartments, departments }: SubDepartmentListProps) {
+export function SubDepartmentList({
+  initialSubDepartments,
+  departments,
+  newItemId,
+}: SubDepartmentListProps) {
   const router = useRouter();
-  const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [editRows, setEditRows] = useState<
+    { id: string; name: string; departmentId: string }[]
+  >([]);
 
-  // Edit dialog
-  const [editDialog, setEditDialog] = useState(false);
-  const [editingSubDept, setEditingSubDept] = useState<SubDepartment | null>(null);
+  // Set departments for use in row actions
+  useEffect(() => {
+    setDepartmentsStore(departments);
+  }, [departments]);
 
-  // Delete dialog
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [deletingSubDept, setDeletingSubDept] = useState<SubDepartment | null>(null);
-
-  const filteredSubDepartments = initialSubDepartments.filter(
-    (subDept) =>
-      subDept.name.toLowerCase().includes(search.toLowerCase()) ||
-      subDept.department?.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const handleEdit = (subDept: SubDepartment) => {
-    setEditingSubDept(subDept);
-    setEditDialog(true);
+  const handleToggle = () => {
+    router.push("/dashboard/master/sub-department/add");
   };
 
-  const handleEditSubmit = async (formData: FormData) => {
-    if (!editingSubDept) return;
-
+  const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
-      const result = await updateSubDepartment(editingSubDept.id, formData);
+      const result = await deleteSubDepartments(ids);
       if (result.status) {
         toast.success(result.message);
-        setEditDialog(false);
         router.refresh();
       } else {
         toast.error(result.message);
@@ -88,168 +70,143 @@ export function SubDepartmentList({ initialSubDepartments, departments }: SubDep
     });
   };
 
-  const handleDelete = (subDept: SubDepartment) => {
-    setDeletingSubDept(subDept);
-    setDeleteDialog(true);
+  const handleBulkEdit = (items: SubDepartmentRow[]) => {
+    setEditRows(
+      items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        departmentId: item.departmentId,
+      }))
+    );
+    setBulkEditOpen(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deletingSubDept) return;
+  const updateEditRow = (
+    id: string,
+    field: "name" | "departmentId",
+    value: string
+  ) => {
+    setEditRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
+  };
+  
+
+  const handleBulkEditSubmit = async () => {
+    const validRows = editRows.filter((r) => r.name.trim() && r.departmentId);
+    if (validRows.length === 0) {
+      toast.error("Please fill in all fields");
+      return;
+    }
 
     startTransition(async () => {
-      const result = await deleteSubDepartment(deletingSubDept.id);
+      const result = await updateSubDepartments(validRows);
       if (result.status) {
         toast.success(result.message);
-        setDeleteDialog(false);
+        setBulkEditOpen(false);
         router.refresh();
       } else {
         toast.error(result.message);
       }
     });
+  };
+
+  // Transform data to include string id for DataTable
+  const data: SubDepartmentRow[] = initialSubDepartments.map((subDept) => ({
+    ...subDept,
+    id: subDept.id.toString(),
+  }));
+
+  // Build filter options from departments
+  const departmentFilter: FilterConfig = {
+    key: "departmentName",
+    label: "Department",
+    options: departments.map((dept) => ({
+      label: dept.name,
+      value: dept.name,
+    })),
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Sub-Departments</h2>
-          <p className="text-muted-foreground">Manage sub-departments under departments</p>
-        </div>
-        <Link href="/dashboard/master/sub-department/add">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Sub-Department
-          </Button>
-        </Link>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Sub-Departments</h2>
+        <p className="text-muted-foreground">
+          Manage sub-departments under departments
+        </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Sub-Department List</CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search sub-departments..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredSubDepartments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {search ? "No sub-departments found matching your search" : "No sub-departments found. Create one to get started."}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredSubDepartments.map((subDept, index) => (
-                  <TableRow key={subDept.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>{subDept.name}</TableCell>
-                    <TableCell>{subDept.department?.name}</TableCell>
-                    <TableCell>{new Date(subDept.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(subDept)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(subDept)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <DataTable<SubDepartmentRow>
+        columns={columns}
+        data={data}
+        actionText="Add Sub-Department"
+        toggleAction={handleToggle}
+        newItemId={newItemId}
+        searchFields={[
+          { key: "name", label: "Name" },
+          { key: "departmentName", label: "Department" },
+        ]}
+        filters={[departmentFilter]}
+        onMultiDelete={handleMultiDelete}
+        onBulkEdit={handleBulkEdit}
+      />
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent>
+      {/* Bulk Edit Dialog */}
+      <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Edit Sub-Department</DialogTitle>
-            <DialogDescription>Update the sub-department details</DialogDescription>
+            <DialogTitle>Edit Sub-Departments</DialogTitle>
+            <DialogDescription>
+              Update {editRows.length} sub-department(s)
+            </DialogDescription>
           </DialogHeader>
-          <form action={handleEditSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-department">Department</Label>
-                <Select name="departmentId" defaultValue={editingSubDept?.departmentId.toString()}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a department" />
+          <div className="space-y-3 max-h-[400px] overflow-y-auto py-4">
+            {editRows.map((row, index) => (
+              <div key={row.id} className="flex gap-2">
+                <Select
+                  value={row.departmentId}
+                  onValueChange={(value) =>
+                    updateEditRow(row.id, "departmentId", value)
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger className="w-1/3">
+                    <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
                     {departments.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                      <SelectItem key={dept.id} value={dept.id}>
                         {dept.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Sub-Department Name</Label>
                 <Input
-                  id="edit-name"
-                  name="name"
-                  defaultValue={editingSubDept?.name}
+                  placeholder={`Sub-department ${index + 1}`}
+                  value={row.name}
+                  onChange={(e) => updateEditRow(row.id, "name", e.target.value)}
                   disabled={isPending}
-                  required
+                  className="flex-1"
                 />
+
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkEditOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleBulkEditSubmit} disabled={isPending}>
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Dialog */}
-      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Sub-Department</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deletingSubDept?.name}&quot;? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm} 
-              disabled={isPending} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
-

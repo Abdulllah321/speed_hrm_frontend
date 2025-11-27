@@ -1,18 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, useTransition } from "react";
+import DataTable from "@/components/common/data-table";
+import { columns, DepartmentRow } from "./columns";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Department,
+  deleteDepartments,
+  updateDepartments,
+} from "@/lib/actions/department";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -21,56 +18,33 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Department, updateDepartment, deleteDepartment } from "@/lib/actions/department";
-import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Loader2, Trash2 } from "lucide-react";
 
 interface DepartmentListProps {
   initialDepartments: Department[];
+  newItemId?: string;
 }
 
-export function DepartmentList({ initialDepartments }: DepartmentListProps) {
+export function DepartmentList({
+  initialDepartments,
+  newItemId,
+}: DepartmentListProps) {
   const router = useRouter();
-  const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
 
-  // Edit dialog
-  const [editDialog, setEditDialog] = useState(false);
-  const [editingDept, setEditingDept] = useState<Department | null>(null);
-
-  // Delete dialog
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [deletingDept, setDeletingDept] = useState<Department | null>(null);
-
-  const filteredDepartments = initialDepartments.filter((dept) =>
-    dept.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const handleEdit = (dept: Department) => {
-    setEditingDept(dept);
-    setEditDialog(true);
+  const handleToggle = () => {
+    router.push("/dashboard/master/department/add");
   };
 
-  const handleEditSubmit = async (formData: FormData) => {
-    if (!editingDept) return;
-
+  const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
-      const result = await updateDepartment(editingDept.id, formData);
+      const result = await deleteDepartments(ids);
       if (result.status) {
         toast.success(result.message);
-        setEditDialog(false);
         router.refresh();
       } else {
         toast.error(result.message);
@@ -78,153 +52,110 @@ export function DepartmentList({ initialDepartments }: DepartmentListProps) {
     });
   };
 
-  const handleDelete = (dept: Department) => {
-    setDeletingDept(dept);
-    setDeleteDialog(true);
+  const handleBulkEdit = (items: DepartmentRow[]) => {
+    setEditRows(
+      items.map((item) => ({
+        id: item.id,
+        name: item.name,
+      }))
+    );
+    setBulkEditOpen(true);
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deletingDept) return;
+  const updateEditRow = (id: string, value: string) => {
+    setEditRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, name: value } : r))
+    );
+  };
+
+  const removeEditRow = (id: string) => {
+    if (editRows.length > 1) {
+      setEditRows((rows) => rows.filter((r) => r.id !== id));
+    }
+  };
+
+  const handleBulkEditSubmit = async () => {
+    const validRows = editRows.filter((r) => r.name.trim());
+    if (validRows.length === 0) {
+      toast.error("Please fill in all fields");
+      return;
+    }
 
     startTransition(async () => {
-      const result = await deleteDepartment(deletingDept.id);
+      const result = await updateDepartments(validRows);
       if (result.status) {
         toast.success(result.message);
-        setDeleteDialog(false);
+        setBulkEditOpen(false);
         router.refresh();
       } else {
         toast.error(result.message);
       }
     });
   };
+
+  // Transform data to include string id for DataTable
+  const data: DepartmentRow[] = initialDepartments.map((dept) => ({
+    ...dept,
+    id: dept.id.toString(),
+  }));
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Departments</h2>
-          <p className="text-muted-foreground">Manage your organization departments</p>
-        </div>
-        <Link href="/dashboard/master/department/add">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Department
-          </Button>
-        </Link>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Departments</h2>
+        <p className="text-muted-foreground">
+          Manage your organization departments
+        </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Department List</CardTitle>
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search departments..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredDepartments.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {search ? "No departments found matching your search" : "No departments found. Create one to get started."}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Sub-departments</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDepartments.map((dept, index) => (
-                  <TableRow key={dept.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>{dept.name}</TableCell>
-                    <TableCell>{dept.subDepartments?.length || 0}</TableCell>
-                    <TableCell>{new Date(dept.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(dept)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(dept)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <DataTable<DepartmentRow>
+        columns={columns}
+        data={data}
+        actionText="Add Department"
+        toggleAction={handleToggle}
+        newItemId={newItemId}
+        searchFields={[{ key: "name", label: "Name" }]}
+        onMultiDelete={handleMultiDelete}
+        onBulkEdit={handleBulkEdit}
+      />
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent>
+      {/* Bulk Edit Dialog */}
+      <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Edit Department</DialogTitle>
-            <DialogDescription>Update the department name</DialogDescription>
+            <DialogTitle>Edit Departments</DialogTitle>
+            <DialogDescription>
+              Update {editRows.length} department(s)
+            </DialogDescription>
           </DialogHeader>
-          <form action={handleEditSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Department Name</Label>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto py-4">
+            {editRows.map((row, index) => (
+              <div key={row.id} className="flex gap-2">
                 <Input
-                  id="edit-name"
-                  name="name"
-                  defaultValue={editingDept?.name}
+                  placeholder={`Department ${index + 1}`}
+                  value={row.name}
+                  onChange={(e) => updateEditRow(row.id, e.target.value)}
                   disabled={isPending}
-                  required
+                  className="flex-1"
                 />
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkEditOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleBulkEditSubmit} disabled={isPending}>
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Delete Dialog */}
-      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Department</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deletingDept?.name}&quot;? This will also delete all sub-departments under it. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleDeleteConfirm} 
-              disabled={isPending} 
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
-

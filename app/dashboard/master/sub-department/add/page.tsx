@@ -1,8 +1,18 @@
 import { getDepartments } from "@/lib/actions/department";
 import { SubDepartmentAddForm } from "./sub-department-add-form";
 
-export default async function AddSubDepartmentPage() {
+export default async function AddSubDepartmentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ departmentId?: string }>;
+}) {
+  const { departmentId } = await searchParams;
   const { data: departments } = await getDepartments();
 
-  return <SubDepartmentAddForm departments={departments || []} />;
+  return (
+    <SubDepartmentAddForm
+      departments={departments || []}
+      defaultDepartmentId={departmentId}
+    />
+  );
 }

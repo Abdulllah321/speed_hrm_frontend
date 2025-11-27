@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
 
 export interface Department {
-  id: number;
+  id: string;
   name: string;
   createdAt: string;
   updatedAt: string;
@@ -13,9 +13,9 @@ export interface Department {
 }
 
 export interface SubDepartment {
-  id: number;
+  id: string;
   name: string;
-  departmentId: number;
+  departmentId: string;
   department?: Department;
   createdAt: string;
   updatedAt: string;
@@ -34,7 +34,7 @@ export async function getDepartments(): Promise<{ status: boolean; data: Departm
   }
 }
 
-export async function getDepartmentById(id: number): Promise<{ status: boolean; data: Department | null }> {
+export async function getDepartmentById(id: string): Promise<{ status: boolean; data: Department | null }> {
   try {
     const res = await fetch(`${API_BASE}/departments/${id}`, {
       cache: "no-store",
@@ -71,7 +71,30 @@ export async function createDepartment(formData: FormData): Promise<{ status: bo
   }
 }
 
-export async function updateDepartment(id: number, formData: FormData): Promise<{ status: boolean; message: string; data?: Department }> {
+export async function createDepartments(names: string[]): Promise<{ status: boolean; message: string; data?: Department[] }> {
+  if (!names.length) {
+    return { status: false, message: "At least one name is required" };
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/departments/bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ names }),
+    });
+    const data = await res.json();
+    
+    if (data.status) {
+      revalidatePath("/dashboard/master/department");
+    }
+    
+    return data;
+  } catch (error) {
+    return { status: false, message: "Failed to create departments" };
+  }
+}
+
+export async function updateDepartment(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: Department }> {
   const name = formData.get("name") as string;
   
   if (!name?.trim()) {
@@ -96,7 +119,7 @@ export async function updateDepartment(id: number, formData: FormData): Promise<
   }
 }
 
-export async function deleteDepartment(id: number): Promise<{ status: boolean; message: string }> {
+export async function deleteDepartment(id: string): Promise<{ status: boolean; message: string }> {
   try {
     const res = await fetch(`${API_BASE}/departments/${id}`, {
       method: "DELETE",
@@ -113,6 +136,54 @@ export async function deleteDepartment(id: number): Promise<{ status: boolean; m
   }
 }
 
+export async function deleteDepartments(ids: string[]): Promise<{ status: boolean; message: string }> {
+  if (!ids.length) {
+    return { status: false, message: "No items to delete" };
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/departments/bulk`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const data = await res.json();
+
+    if (data.status) {
+      revalidatePath("/dashboard/master/department");
+    }
+
+    return data;
+  } catch (error) {
+    return { status: false, message: "Failed to delete departments" };
+  }
+}
+
+export async function updateDepartments(
+  items: { id: string; name: string }[]
+): Promise<{ status: boolean; message: string }> {
+  if (!items.length) {
+    return { status: false, message: "No items to update" };
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/departments/bulk`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+    const data = await res.json();
+
+    if (data.status) {
+      revalidatePath("/dashboard/master/department");
+    }
+
+    return data;
+  } catch (error) {
+    return { status: false, message: "Failed to update departments" };
+  }
+}
+
 // Sub-Department Actions
 export async function getSubDepartments(): Promise<{ status: boolean; data: SubDepartment[] }> {
   try {
@@ -126,7 +197,7 @@ export async function getSubDepartments(): Promise<{ status: boolean; data: SubD
   }
 }
 
-export async function getSubDepartmentsByDepartment(departmentId: number): Promise<{ status: boolean; data: SubDepartment[] }> {
+export async function getSubDepartmentsByDepartment(departmentId: string): Promise<{ status: boolean; data: SubDepartment[] }> {
   try {
     const res = await fetch(`${API_BASE}/sub-departments/department/${departmentId}`, {
       cache: "no-store",
@@ -153,7 +224,7 @@ export async function createSubDepartment(formData: FormData): Promise<{ status:
     const res = await fetch(`${API_BASE}/sub-departments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, departmentId: parseInt(departmentId) }),
+      body: JSON.stringify({ name, departmentId }),
     });
     const data = await res.json();
     
@@ -167,7 +238,32 @@ export async function createSubDepartment(formData: FormData): Promise<{ status:
   }
 }
 
-export async function updateSubDepartment(id: number, formData: FormData): Promise<{ status: boolean; message: string; data?: SubDepartment }> {
+export async function createSubDepartments(
+  items: { name: string; departmentId: string }[]
+): Promise<{ status: boolean; message: string; data?: SubDepartment[] }> {
+  if (!items.length) {
+    return { status: false, message: "At least one sub-department is required" };
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+    const data = await res.json();
+
+    if (data.status) {
+      revalidatePath("/dashboard/master/sub-department");
+    }
+
+    return data;
+  } catch (error) {
+    return { status: false, message: "Failed to create sub-departments" };
+  }
+}
+
+export async function updateSubDepartment(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: SubDepartment }> {
   const name = formData.get("name") as string;
   const departmentId = formData.get("departmentId") as string;
   
@@ -179,7 +275,7 @@ export async function updateSubDepartment(id: number, formData: FormData): Promi
     const res = await fetch(`${API_BASE}/sub-departments/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, departmentId: departmentId ? parseInt(departmentId) : undefined }),
+      body: JSON.stringify({ name, departmentId: departmentId || undefined }),
     });
     const data = await res.json();
     
@@ -193,7 +289,7 @@ export async function updateSubDepartment(id: number, formData: FormData): Promi
   }
 }
 
-export async function deleteSubDepartment(id: number): Promise<{ status: boolean; message: string }> {
+export async function deleteSubDepartment(id: string): Promise<{ status: boolean; message: string }> {
   try {
     const res = await fetch(`${API_BASE}/sub-departments/${id}`, {
       method: "DELETE",
@@ -207,6 +303,54 @@ export async function deleteSubDepartment(id: number): Promise<{ status: boolean
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete sub-department" };
+  }
+}
+
+export async function deleteSubDepartments(ids: string[]): Promise<{ status: boolean; message: string }> {
+  if (!ids.length) {
+    return { status: false, message: "No items to delete" };
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    const data = await res.json();
+
+    if (data.status) {
+      revalidatePath("/dashboard/master/sub-department");
+    }
+
+    return data;
+  } catch (error) {
+    return { status: false, message: "Failed to delete sub-departments" };
+  }
+}
+
+export async function updateSubDepartments(
+  items: { id: string; name: string; departmentId: string }[]
+): Promise<{ status: boolean; message: string }> {
+  if (!items.length) {
+    return { status: false, message: "No items to update" };
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items }),
+    });
+    const data = await res.json();
+
+    if (data.status) {
+      revalidatePath("/dashboard/master/sub-department");
+    }
+
+    return data;
+  } catch (error) {
+    return { status: false, message: "Failed to update sub-departments" };
   }
 }
 

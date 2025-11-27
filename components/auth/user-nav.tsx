@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,22 +12,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, Shield, History, Key } from "lucide-react";
+import { User, Settings, LogOut, Shield, History } from "lucide-react";
+import Link from "next/link";
 
-export function HeaderUserMenu() {
-  const { user, logout, isAdmin, loading } = useAuth();
+export function UserNav() {
+  const { user, logout, isAdmin } = useAuth();
 
-  if (loading || !user) {
-    return (
-      <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-        <Avatar className="h-9 w-9">
-          <AvatarFallback>
-            <User className="h-4 w-4" />
-          </AvatarFallback>
-        </Avatar>
-      </Button>
-    );
-  }
+  if (!user) return null;
 
   const initials = `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
 
@@ -37,40 +27,46 @@ export function HeaderUserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-sm font-medium">
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-sm">
               {initials}
             </AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
-            <p className="text-xs text-muted-foreground">{user.email}</p>
+            <p className="text-sm font-medium leading-none">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user.email}
+            </p>
             {user.role && (
-              <p className="text-xs text-blue-500 capitalize">{user.role.replace("_", " ")}</p>
+              <p className="text-xs leading-none text-blue-500 capitalize mt-1">
+                {user.role.replace("_", " ")}
+              </p>
             )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings/profile">
+            <Link href="/dashboard/profile">
               <User className="mr-2 h-4 w-4" />
               Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings/password">
-              <Key className="mr-2 h-4 w-4" />
-              Change Password
+            <Link href="/dashboard/settings">
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings/sessions">
+            <Link href="/dashboard/login-history">
               <History className="mr-2 h-4 w-4" />
-              Active Sessions
+              Login History
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
@@ -84,17 +80,11 @@ export function HeaderUserMenu() {
                   Activity Logs
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/admin/users">
-                  <Settings className="mr-2 h-4 w-4" />
-                  User Management
-                </Link>
-              </DropdownMenuItem>
             </DropdownMenuGroup>
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+        <DropdownMenuItem onClick={logout} className="text-red-500 focus:text-red-500">
           <LogOut className="mr-2 h-4 w-4" />
           Log out
         </DropdownMenuItem>
@@ -102,3 +92,4 @@ export function HeaderUserMenu() {
     </DropdownMenu>
   );
 }
+

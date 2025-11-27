@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,22 +13,48 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Department, createSubDepartment } from "@/lib/actions/department";
+import { Department, createSubDepartments } from "@/lib/actions/department";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface SubDepartmentAddFormProps {
   departments: Department[];
+  defaultDepartmentId?: string;
 }
 
-export function SubDepartmentAddForm({ departments }: SubDepartmentAddFormProps) {
+export function SubDepartmentAddForm({ departments, defaultDepartmentId }: SubDepartmentAddFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [rows, setRows] = useState([{ id: 1, name: "", departmentId: defaultDepartmentId || "" }]);
 
-  const handleSubmit = async (formData: FormData) => {
+  const addRow = () => {
+    setRows([...rows, { id: Date.now(), name: "", departmentId: "" }]);
+  };
+
+  const removeRow = (id: number) => {
+    if (rows.length > 1) {
+      setRows(rows.filter((r) => r.id !== id));
+    }
+  };
+
+  const updateRow = (id: number, field: "name" | "departmentId", value: string) => {
+    setRows(rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const validRows = rows.filter((r) => r.name.trim() && r.departmentId);
+
+    if (validRows.length === 0) {
+      toast.error("Please enter at least one sub-department with a department selected");
+      return;
+    }
+
     startTransition(async () => {
-      const result = await createSubDepartment(formData);
+      const result = await createSubDepartments(
+        validRows.map((r) => ({ name: r.name.trim(), departmentId: r.departmentId }))
+      );
       if (result.status) {
         toast.success(result.message);
         router.push("/dashboard/master/sub-department/list");
@@ -39,7 +65,7 @@ export function SubDepartmentAddForm({ departments }: SubDepartmentAddFormProps)
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <div className="mb-6">
         <Link href="/dashboard/master/sub-department/list">
           <Button variant="ghost" size="sm">
@@ -51,49 +77,73 @@ export function SubDepartmentAddForm({ departments }: SubDepartmentAddFormProps)
 
       <Card>
         <CardHeader>
-          <CardTitle>Add Sub-Department</CardTitle>
-          <CardDescription>Create a new sub-department under a department</CardDescription>
+          <CardTitle>Add Sub-Departments</CardTitle>
+          <CardDescription>Create one or more sub-departments under departments</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="departmentId">Department</Label>
-              <Select name="departmentId" required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id.toString()}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-3">
+              <Label>Sub-Departments</Label>
+              {rows.map((row, index) => (
+                <div key={row.id} className="flex gap-2">
+                  <Select
+                    value={row.departmentId}
+                    onValueChange={(value) => updateRow(row.id, "departmentId", value)}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger className="w-1/3">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.id}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder={`Sub-department ${index + 1}`}
+                    value={row.name}
+                    onChange={(e) => updateRow(row.id, "name", e.target.value)}
+                    disabled={isPending}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeRow(row.id)}
+                    disabled={rows.length === 1 || isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+             
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="name">Sub-Department Name</Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="Enter sub-department name"
-                disabled={isPending}
-                required
-              />
-            </div>
+              <div className="flex gap-2 justify-between">
             <div className="flex gap-2">
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Create Sub-Department
+                Create {rows.length > 1 ? `${rows.length} Sub-Departments` : "Sub-Department"}
               </Button>
               <Button type="button" variant="outline" onClick={() => router.back()}>
                 Cancel
               </Button>
             </div>
+            <button
+                type="button"
+                onClick={addRow}
+                disabled={isPending}
+                className="text-sm text-primary hover:underline disabled:opacity-50"
+              >
+                + Add more
+              </button>
+              </div>
           </form>
         </CardContent>
       </Card>
     </div>
   );
 }
-
