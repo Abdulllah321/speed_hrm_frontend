@@ -49,13 +49,14 @@ type LocationAllowance = {
   employeeName: string;
   station: string;
   amount: number;
+  createdBy: string;
   status: "Active" | "Inactive";
 };
 
 const mockData: LocationAllowance[] = [
-  { id: 1, empId: "EMP001", employeeName: "John Doe", station: "IN Station", amount: 5000, status: "Active" },
-  { id: 2, empId: "EMP002", employeeName: "Jane Smith", station: "OUT Station", amount: 8000, status: "Active" },
-  { id: 3, empId: "EMP003", employeeName: "Mike Johnson", station: "IN Station Food/Fuel", amount: 3000, status: "Inactive" },
+  { id: 1, empId: "EMP001", employeeName: "John Doe", station: "IN Station", amount: 5000, createdBy: "Admin", status: "Active" },
+  { id: 2, empId: "EMP002", employeeName: "Jane Smith", station: "OUT Station", amount: 8000, createdBy: "Admin", status: "Active" },
+  { id: 3, empId: "EMP003", employeeName: "Mike Johnson", station: "IN Station Food/Fuel", amount: 3000, createdBy: "HR Manager", status: "Inactive" },
 ];
 
 export default function LocationAllowanceListPage() {
@@ -109,8 +110,8 @@ export default function LocationAllowanceListPage() {
 
   const handleExportCSV = () => {
     const csv = [
-      ["S.No", "Emp ID", "Employee Name", "Station", "Amount", "Status"],
-      ...filtered.map((item, i) => [i + 1, item.empId, item.employeeName, item.station, item.amount, item.status]),
+      ["S.No", "Emp ID", "Employee Name", "Station", "Amount", "Created By", "Status"],
+      ...filtered.map((item, i) => [i + 1, item.empId, item.employeeName, item.station, item.amount, item.createdBy, item.status]),
     ]
       .map((row) => row.join(","))
       .join("\n");
@@ -174,6 +175,7 @@ export default function LocationAllowanceListPage() {
                 <TableHead>Employee Name</TableHead>
                 <TableHead>Station</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead>Created By</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -186,6 +188,7 @@ export default function LocationAllowanceListPage() {
                   <TableCell>{item.employeeName}</TableCell>
                   <TableCell>{item.station}</TableCell>
                   <TableCell>{item.amount.toLocaleString()}</TableCell>
+                  <TableCell>{item.createdBy}</TableCell>
                   <TableCell>
                     <Badge variant={item.status === "Active" ? "default" : "secondary"}>
                       {item.status}

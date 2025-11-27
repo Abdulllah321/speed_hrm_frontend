@@ -78,6 +78,13 @@ export const columns: ColumnDef<DepartmentRow>[] = [
     cell: ({ row }) => row.original.subDepartments?.length || 0,
   },
   {
+    header: "Created By",
+    accessorKey: "createdBy",
+    size: 150,
+    enableSorting: true,
+    cell: ({ row }) => row.original.createdBy || "—",
+  },
+  {
     header: "Created At",
     accessorKey: "createdAt",
     size: 150,

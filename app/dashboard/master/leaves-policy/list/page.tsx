@@ -41,6 +41,7 @@ type LeavePolicy = {
   name: string;
   monthYearFrom: string;
   monthYearTill: string;
+  createdBy: string;
   status: "Active" | "Inactive";
   fullDayRate: number;
   halfDayRate: number;
@@ -48,9 +49,9 @@ type LeavePolicy = {
 };
 
 const mockData: LeavePolicy[] = [
-  { id: 1, name: "Standard Policy 2024", monthYearFrom: "Jan 2024", monthYearTill: "Dec 2024", status: "Active", fullDayRate: 1, halfDayRate: 0.5, shortLeaveRate: 0.25 },
-  { id: 2, name: "Probation Policy", monthYearFrom: "Jan 2024", monthYearTill: "Jun 2024", status: "Active", fullDayRate: 1.5, halfDayRate: 0.75, shortLeaveRate: 0.5 },
-  { id: 3, name: "Senior Staff Policy", monthYearFrom: "Jan 2024", monthYearTill: "Dec 2024", status: "Inactive", fullDayRate: 1, halfDayRate: 0.5, shortLeaveRate: 0.25 },
+  { id: 1, name: "Standard Policy 2024", monthYearFrom: "Jan 2024", monthYearTill: "Dec 2024", createdBy: "Admin", status: "Active", fullDayRate: 1, halfDayRate: 0.5, shortLeaveRate: 0.25 },
+  { id: 2, name: "Probation Policy", monthYearFrom: "Jan 2024", monthYearTill: "Jun 2024", createdBy: "Admin", status: "Active", fullDayRate: 1.5, halfDayRate: 0.75, shortLeaveRate: 0.5 },
+  { id: 3, name: "Senior Staff Policy", monthYearFrom: "Jan 2024", monthYearTill: "Dec 2024", createdBy: "HR Manager", status: "Inactive", fullDayRate: 1, halfDayRate: 0.5, shortLeaveRate: 0.25 },
 ];
 
 export default function LeavesPolicyListPage() {
@@ -109,8 +110,8 @@ export default function LeavesPolicyListPage() {
 
   const handleExportCSV = () => {
     const csv = [
-      ["Id", "Leave Policy Name", "Policy Month/Year From", "Policy Month/Year Till", "Status"],
-      ...filtered.map((item) => [item.id, item.name, item.monthYearFrom, item.monthYearTill, item.status]),
+      ["Id", "Leave Policy Name", "Policy Month/Year From", "Policy Month/Year Till", "Created By", "Status"],
+      ...filtered.map((item) => [item.id, item.name, item.monthYearFrom, item.monthYearTill, item.createdBy, item.status]),
     ]
       .map((row) => row.join(","))
       .join("\n");
@@ -173,6 +174,7 @@ export default function LeavesPolicyListPage() {
                 <TableHead>Leave Policy Name</TableHead>
                 <TableHead>Policy Month/Year From</TableHead>
                 <TableHead>Policy Month/Year Till</TableHead>
+                <TableHead>Created By</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Action</TableHead>
               </TableRow>
@@ -184,6 +186,7 @@ export default function LeavesPolicyListPage() {
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{item.monthYearFrom}</TableCell>
                   <TableCell>{item.monthYearTill}</TableCell>
+                  <TableCell>{item.createdBy}</TableCell>
                   <TableCell>
                     <Badge variant={item.status === "Active" ? "default" : "secondary"}>
                       {item.status}

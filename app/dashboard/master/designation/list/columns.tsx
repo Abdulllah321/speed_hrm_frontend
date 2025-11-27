@@ -2,8 +2,8 @@
 
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { HighlightText } from "@/components/common/data-table";
 import { Button } from "@/components/ui/button";
+import { HighlightText } from "@/components/common/data-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,35 +28,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import {
-  Department,
-  SubDepartment,
-  updateSubDepartment,
-  deleteSubDepartment,
-} from "@/lib/actions/department";
+import { Designation, updateDesignation, deleteDesignation } from "@/lib/actions/designation";
 
-export type SubDepartmentRow = SubDepartment & { id: string };
+export type DesignationRow = Designation & { id: string };
 
-// Store departments for use in RowActions
-let departmentsStore: Department[] = [];
-export const setDepartmentsStore = (departments: Department[]) => {
-  departmentsStore = departments;
-};
-
-export const columns: ColumnDef<SubDepartmentRow>[] = [
+export const columns: ColumnDef<DesignationRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -83,17 +65,9 @@ export const columns: ColumnDef<SubDepartmentRow>[] = [
   {
     header: "Name",
     accessorKey: "name",
-    size: 200,
+    size: 250,
     enableSorting: true,
     cell: ({ row }) => <HighlightText text={row.original.name} />,
-  },
-  {
-    header: "Department",
-    accessorKey: "departmentName",
-    accessorFn: (row) => row.department?.name || "—",
-    size: 200,
-    enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.department?.name || "—"} />,
   },
   {
     header: "Created By",
@@ -119,11 +93,11 @@ export const columns: ColumnDef<SubDepartmentRow>[] = [
 ];
 
 type RowActionsProps = {
-  row: Row<SubDepartmentRow>;
+  row: Row<DesignationRow>;
 };
 
 function RowActions({ row }: RowActionsProps) {
-  const subDept = row.original;
+  const item = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
@@ -131,7 +105,7 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {
-      const result = await updateSubDepartment(subDept.id, formData);
+      const result = await updateDesignation(item.id, formData);
       if (result.status) {
         toast.success(result.message);
         setEditDialog(false);
@@ -144,7 +118,7 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
-      const result = await deleteSubDepartment(subDept.id);
+      const result = await deleteDesignation(item.id);
       if (result.status) {
         toast.success(result.message);
         setDeleteDialog(false);
@@ -189,32 +163,17 @@ function RowActions({ row }: RowActionsProps) {
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Sub-Department</DialogTitle>
-            <DialogDescription>Update the sub-department details</DialogDescription>
+            <DialogTitle>Edit Designation</DialogTitle>
+            <DialogDescription>Update the designation name</DialogDescription>
           </DialogHeader>
           <form action={handleEditSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-department">Department</Label>
-                <Select name="departmentId" defaultValue={subDept.departmentId.toString()}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departmentsStore.map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id.toString()}>
-                        {dept.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Sub-Department Name</Label>
+                <Label htmlFor="edit-name">Designation Name</Label>
                 <Input
                   id="edit-name"
                   name="name"
-                  defaultValue={subDept.name}
+                  defaultValue={item.name}
                   disabled={isPending}
                   required
                 />
@@ -237,9 +196,9 @@ function RowActions({ row }: RowActionsProps) {
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Sub-Department</AlertDialogTitle>
+            <AlertDialogTitle>Delete Designation</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{subDept.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{item.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
