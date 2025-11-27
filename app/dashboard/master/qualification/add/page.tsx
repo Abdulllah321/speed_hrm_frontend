@@ -12,7 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Plus, X } from "lucide-react";
 import Link from "next/link";
@@ -30,7 +36,10 @@ const institutes = [
   { id: 10, name: "Bahauddin Zakariya University" },
   { id: 11, name: "Bahria University" },
   { id: 12, name: "Balochistan University of Engineering and Technology" },
-  { id: 13, name: "Balochistan University of Information Technology, Engineering and Management Sciences" },
+  {
+    id: 13,
+    name: "Balochistan University of Information Technology, Engineering and Management Sciences",
+  },
   { id: 14, name: "Baqai Medical University" },
   { id: 15, name: "Beaconhouse National University" },
   { id: 16, name: "Benazir Bhutto Shaheed University Lyari" },
@@ -44,12 +53,18 @@ const institutes = [
   { id: 24, name: "DOW University of Health Sciences" },
   { id: 25, name: "FATA University" },
   { id: 26, name: "Fatima Jinnah Women University" },
-  { id: 27, name: "Federal Urdu University of Arts, Sciences and Technology Islamabad" },
+  {
+    id: 27,
+    name: "Federal Urdu University of Arts, Sciences and Technology Islamabad",
+  },
   { id: 28, name: "Forman Christian College" },
   { id: 29, name: "Foundation University Islamabad" },
   { id: 30, name: "Gandhara University" },
   { id: 31, name: "Ghazi University" },
-  { id: 32, name: "Ghulam Ishaq Khan Institute of Engineering Sciences and Technology" },
+  {
+    id: 32,
+    name: "Ghulam Ishaq Khan Institute of Engineering Sciences and Technology",
+  },
   { id: 33, name: "GIFT University" },
   { id: 34, name: "Global Institute" },
   { id: 35, name: "Gomal University" },
@@ -84,7 +99,10 @@ const institutes = [
   { id: 64, name: "Karachi School for Business and Leadership" },
   { id: 65, name: "Karakurum International University" },
   { id: 66, name: "KASB Institute of Technology" },
-  { id: 67, name: "Khawaja Freed University of Engineering and Information Technology" },
+  {
+    id: 67,
+    name: "Khawaja Freed University of Engineering and Information Technology",
+  },
   { id: 68, name: "Khushal Khan Khattak University" },
   { id: 69, name: "Khyber Medical University" },
   { id: 70, name: "Khyber Pakhtunkhwa Agricultural University" },
@@ -96,7 +114,10 @@ const institutes = [
   { id: 76, name: "Lahore Leads University" },
   { id: 77, name: "Lahore School of Economics" },
   { id: 78, name: "Lahore University of Management Sciences" },
-  { id: 79, name: "Lasbela University of Agriculture, Water and Marine Sciences" },
+  {
+    id: 79,
+    name: "Lasbela University of Agriculture, Water and Marine Sciences",
+  },
   { id: 80, name: "Liaquat University of Medical and Health Sciences" },
   { id: 81, name: "Mehran University of Engineering and Technology" },
   { id: 82, name: "Minhaj University" },
@@ -120,12 +141,18 @@ const institutes = [
   { id: 100, name: "Pakistan Institute of Development Economics" },
   { id: 101, name: "Pakistan Institute of Engineering and Applied Sciences" },
   { id: 102, name: "Pakistan Institute of Fashion and Design" },
-  { id: 103, name: "Peoples University of Medical and Health Sciences for Women" },
+  {
+    id: 103,
+    name: "Peoples University of Medical and Health Sciences for Women",
+  },
   { id: 104, name: "PIMSAT Institute of Higher Education" },
   { id: 105, name: "Pir Mehr Ali Shah Arid Agriculture University" },
   { id: 106, name: "Preston University" },
   { id: 107, name: "Qarshi University" },
-  { id: 108, name: "Quaid-e-Awam University of Engineering, Science and Technology" },
+  {
+    id: 108,
+    name: "Quaid-e-Awam University of Engineering, Science and Technology",
+  },
   { id: 109, name: "Quaid-i-Azam University" },
   { id: 110, name: "Qurtaba University" },
   { id: 111, name: "Riphah International University" },
@@ -137,7 +164,10 @@ const institutes = [
   { id: 117, name: "Shaheed Benazir Bhutto University Shaheed Benazirabad" },
   { id: 118, name: "Shaheed Benazir Bhutto Women University" },
   { id: 119, name: "Shaheed Mohtarma Benazir Bhutto Medical University" },
-  { id: 120, name: "Shaheed Zulfiqar Ali Bhutto Institute of Science and Technology" },
+  {
+    id: 120,
+    name: "Shaheed Zulfiqar Ali Bhutto Institute of Science and Technology",
+  },
   { id: 121, name: "Shaheed Zulfiqar Ali Bhutto University of Law" },
   { id: 122, name: "Shifa Tameer-e-Millat University" },
   { id: 123, name: "Sindh Agriculture University" },
@@ -146,7 +176,10 @@ const institutes = [
   { id: 126, name: "Sukkur Institute of Business Administration" },
   { id: 127, name: "Superior Group of Colleges" },
   { id: 128, name: "Textile Institute of Pakistan" },
-  { id: 129, name: "The Government Sadiq College Women University, Bahawalpur" },
+  {
+    id: 129,
+    name: "The Government Sadiq College Women University, Bahawalpur",
+  },
   { id: 130, name: "The Institute of Management Sciences" },
   { id: 131, name: "The Islamia University of Bahawalpur" },
   { id: 132, name: "The University of Faisalabad" },
@@ -197,13 +230,27 @@ export default function AddQualificationPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [qualifications, setQualifications] = useState<QualificationEntry[]>([
-    { id: 1, instituteName: "", qualification: "", country: "", city: "", subDepartment: "" },
+    {
+      id: 1,
+      instituteName: "",
+      qualification: "",
+      country: "",
+      city: "",
+      subDepartment: "",
+    },
   ]);
 
   const addMoreField = () => {
     setQualifications([
       ...qualifications,
-      { id: Date.now(), instituteName: "", qualification: "", country: "", city: "", subDepartment: "" },
+      {
+        id: Date.now(),
+        instituteName: "",
+        qualification: "",
+        country: "",
+        city: "",
+        subDepartment: "",
+      },
     ]);
   };
 
@@ -213,13 +260,26 @@ export default function AddQualificationPage() {
     }
   };
 
-  const updateField = (id: number, field: keyof QualificationEntry, value: string) => {
-    setQualifications(qualifications.map((q) => (q.id === id ? { ...q, [field]: value } : q)));
+  const updateField = (
+    id: number,
+    field: keyof QualificationEntry,
+    value: string
+  ) => {
+    setQualifications(
+      qualifications.map((q) => (q.id === id ? { ...q, [field]: value } : q))
+    );
   };
 
   const clearForm = () => {
     setQualifications([
-      { id: 1, instituteName: "", qualification: "", country: "", city: "", subDepartment: "" },
+      {
+        id: 1,
+        instituteName: "",
+        qualification: "",
+        country: "",
+        city: "",
+        subDepartment: "",
+      },
     ]);
   };
 
@@ -238,12 +298,17 @@ export default function AddQualificationPage() {
       try {
         for (const qual of validQualifications) {
           const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api"}/qualifications`,
+            `${
+              process.env.NEXT_PUBLIC_API_BASE_URL ||
+              "http://localhost:8080/api"
+            }/qualifications`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                instituteName: institutes.find((i) => i.id.toString() === qual.instituteName)?.name,
+                instituteName: institutes.find(
+                  (i) => i.id.toString() === qual.instituteName
+                )?.name,
                 qualification: qual.qualification,
                 country: qual.country,
                 city: qual.city,
@@ -256,7 +321,9 @@ export default function AddQualificationPage() {
             throw new Error(data.message || "Failed to create qualification");
           }
         }
-        toast.success(`${validQualifications.length} qualification(s) created successfully`);
+        toast.success(
+          `${validQualifications.length} qualification(s) created successfully`
+        );
         router.push("/dashboard/master/qualification/list");
       } catch (error: any) {
         toast.error(error.message || "Failed to create qualification");
@@ -278,12 +345,17 @@ export default function AddQualificationPage() {
       <Card>
         <CardHeader>
           <CardTitle>Add Qualification</CardTitle>
-          <CardDescription>Create new qualification(s) for your organization</CardDescription>
+          <CardDescription>
+            Create new qualification(s) for your organization
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {qualifications.map((qual, index) => (
-              <div key={qual.id} className="p-4 border rounded-lg space-y-4 relative">
+              <div
+                key={qual.id}
+                className="p-4 border rounded-lg space-y-4 relative"
+              >
                 {qualifications.length > 1 && (
                   <Button
                     type="button"
@@ -306,7 +378,9 @@ export default function AddQualificationPage() {
                     <Label>Institute Name</Label>
                     <Select
                       value={qual.instituteName}
-                      onValueChange={(value) => updateField(qual.id, "instituteName", value)}
+                      onValueChange={(value) =>
+                        updateField(qual.id, "instituteName", value)
+                      }
                       disabled={isPending}
                     >
                       <SelectTrigger className="w-full min-w-[280px]">
@@ -327,7 +401,9 @@ export default function AddQualificationPage() {
                     <Input
                       placeholder="e.g., BS Computer Science"
                       value={qual.qualification}
-                      onChange={(e) => updateField(qual.id, "qualification", e.target.value)}
+                      onChange={(e) =>
+                        updateField(qual.id, "qualification", e.target.value)
+                      }
                       disabled={isPending}
                     />
                   </div>
@@ -337,7 +413,9 @@ export default function AddQualificationPage() {
                     <Input
                       placeholder="Enter country"
                       value={qual.country}
-                      onChange={(e) => updateField(qual.id, "country", e.target.value)}
+                      onChange={(e) =>
+                        updateField(qual.id, "country", e.target.value)
+                      }
                       disabled={isPending}
                     />
                   </div>
@@ -347,7 +425,9 @@ export default function AddQualificationPage() {
                     <Input
                       placeholder="Enter city"
                       value={qual.city}
-                      onChange={(e) => updateField(qual.id, "city", e.target.value)}
+                      onChange={(e) =>
+                        updateField(qual.id, "city", e.target.value)
+                      }
                       disabled={isPending}
                     />
                   </div>
@@ -357,7 +437,9 @@ export default function AddQualificationPage() {
                     <Input
                       placeholder="Enter sub department"
                       value={qual.subDepartment}
-                      onChange={(e) => updateField(qual.id, "subDepartment", e.target.value)}
+                      onChange={(e) =>
+                        updateField(qual.id, "subDepartment", e.target.value)
+                      }
                       disabled={isPending}
                     />
                   </div>
@@ -381,10 +463,19 @@ export default function AddQualificationPage() {
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Submit
               </Button>
-              <Button type="button" variant="outline" onClick={clearForm} disabled={isPending}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={clearForm}
+                disabled={isPending}
+              >
                 Clear Form
               </Button>
-              <Button type="button" variant="ghost" onClick={() => router.back()}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => router.back()}
+              >
                 Cancel
               </Button>
             </div>
@@ -394,4 +485,3 @@ export default function AddQualificationPage() {
     </div>
   );
 }
-
