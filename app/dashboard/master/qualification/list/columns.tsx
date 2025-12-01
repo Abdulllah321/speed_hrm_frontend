@@ -3,6 +3,7 @@
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { HighlightText } from "@/components/common/data-table";
 import {
   DropdownMenu,
@@ -28,23 +29,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Autocomplete } from "@/components/ui/autocomplete";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { City, Country, State, updateCity, deleteCity, getStatesByCountry } from "@/lib/actions/city";
+import {
+  Qualification,
+  updateQualification,
+  deleteQualification,
+} from "@/lib/actions/qualification";
 
-export type CityRow = City & { id: string };
+export type QualificationRow = Qualification & { id: string };
 
-let countriesStore: Country[] = [];
-export const setCountriesStore = (countries: Country[]) => {
-  countriesStore = countries;
-};
-
-export const columns: ColumnDef<CityRow>[] = [
+export const columns: ColumnDef<QualificationRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -69,33 +68,57 @@ export const columns: ColumnDef<CityRow>[] = [
     size: 28,
   },
   {
-    header: "Name",
-    accessorKey: "name",
+    header: "Institute Name",
+    accessorKey: "instituteName",
+    size: 250,
+    enableSorting: true,
+    cell: ({ row }) => (
+      <HighlightText
+        text={row.original.instituteName}
+        className="max-w-[200px] truncate"
+      />
+    ),
+  },
+  {
+    header: "Qualification",
+    accessorKey: "qualification",
     size: 200,
     enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.name} />,
+    cell: ({ row }) => <HighlightText text={row.original.qualification} />,
   },
   {
     header: "Country",
-    accessorKey: "countryName",
-    accessorFn: (row) => row.country?.name || "—",
+    accessorKey: "country",
     size: 150,
     enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.country?.name || "—"} />,
+    cell: ({ row }) => <HighlightText text={row.original.country} />,
   },
   {
-    header: "State",
-    accessorKey: "stateName",
-    accessorFn: (row) => row.state?.name || "—",
+    header: "City",
+    accessorKey: "city",
     size: 150,
     enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.state?.name || "—"} />,
+    cell: ({ row }) => <HighlightText text={row.original.city} />,
+  },
+  {
+    header: "Status",
+    accessorKey: "status",
+    size: 100,
+    enableSorting: true,
+    cell: ({ row }) => (
+      <Badge
+        variant={row.original.status === "inactive" ? "secondary" : "default"}
+      >
+        {row.original.status || "active"}
+      </Badge>
+    ),
   },
   {
     header: "Created At",
     accessorKey: "createdAt",
     size: 150,
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    cell: ({ row }) =>
+      new Date(row.original.createdAt).toLocaleDateString(),
     enableSorting: true,
   },
   {
@@ -108,53 +131,36 @@ export const columns: ColumnDef<CityRow>[] = [
 ];
 
 type RowActionsProps = {
-  row: Row<CityRow>;
+  row: Row<QualificationRow>;
 };
 
 function RowActions({ row }: RowActionsProps) {
-  const city = row.original;
+  const qual = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
-  const [countryId, setCountryId] = useState(city.countryId);
-  const [stateId, setStateId] = useState(city.stateId);
-  const [states, setStates] = useState<State[]>([]);
-  const [loadingStates, setLoadingStates] = useState(false);
+  const [editData, setEditData] = useState({
+    instituteName: qual.instituteName,
+    qualification: qual.qualification,
+    country: qual.country,
+    city: qual.city,
+    status: qual.status,
+  });
 
-  useEffect(() => {
-    if (editDialog && countryId) {
-      loadStates(countryId);
+  const handleEditSubmit = async () => {
+    if (
+      !editData.instituteName.trim() ||
+      !editData.qualification.trim() ||
+      !editData.country.trim() ||
+      !editData.city.trim()
+    ) {
+      toast.error("Please fill in all required fields");
+      return;
     }
-  }, [editDialog, countryId]);
 
-  const loadStates = async (countryId: string) => {
-    setLoadingStates(true);
-    try {
-      const result = await getStatesByCountry(countryId);
-      if (result.status && result.data) {
-        setStates(result.data);
-      }
-    } catch (error) {
-      console.error("Error loading states:", error);
-    } finally {
-      setLoadingStates(false);
-    }
-  };
-
-  const handleCountryChange = async (value: string) => {
-    setCountryId(value);
-    setStateId(""); // Reset state when country changes
-    if (value) {
-      await loadStates(value);
-    } else {
-      setStates([]);
-    }
-  };
-
-  const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {
-      const result = await updateCity(city.id, formData);
+      const result = await updateQualification(qual.id, editData);
       if (result.status) {
         toast.success(result.message);
         setEditDialog(false);
@@ -167,7 +173,7 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
-      const result = await deleteCity(city.id);
+      const result = await deleteQualification(qual.id);
       if (result.status) {
         toast.success(result.message);
         setDeleteDialog(false);
@@ -183,20 +189,18 @@ function RowActions({ row }: RowActionsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex justify-end">
-            <Button size="icon" variant="ghost" className="shadow-none" aria-label="Actions">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="shadow-none"
+              aria-label="Actions"
+            >
               <EllipsisIcon size={16} />
             </Button>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => {
-            setEditDialog(true);
-            setCountryId(city.countryId);
-            setStateId(city.stateId);
-            if (city.countryId) {
-              loadStates(city.countryId);
-            }
-          }}>
+          <DropdownMenuItem onClick={() => setEditDialog(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
           </DropdownMenuItem>
@@ -212,60 +216,74 @@ function RowActions({ row }: RowActionsProps) {
 
       {/* Edit Dialog */}
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit City</DialogTitle>
-            <DialogDescription>Update the city details</DialogDescription>
+            <DialogTitle>Edit Qualification</DialogTitle>
+            <DialogDescription>
+              Update the qualification details
+            </DialogDescription>
           </DialogHeader>
-          <form action={handleEditSubmit}>
-            <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Institute Name</Label>
+              <Input
+                value={editData.instituteName}
+                onChange={(e) =>
+                  setEditData({ ...editData, instituteName: e.target.value })
+                }
+                disabled={isPending}
+                placeholder="Institute name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Qualification</Label>
+              <Input
+                value={editData.qualification}
+                onChange={(e) =>
+                  setEditData({ ...editData, qualification: e.target.value })
+                }
+                disabled={isPending}
+                placeholder="Qualification"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Country</Label>
-                <Autocomplete
-                  options={countriesStore.map((c) => ({
-                    value: c.id,
-                    label: c.nicename || c.name,
-                  }))}
-                  value={countryId}
-                  onValueChange={handleCountryChange}
-                  placeholder="Select country..."
-                  searchPlaceholder="Search country..."
+                <Input
+                  value={editData.country}
+                  onChange={(e) =>
+                    setEditData({ ...editData, country: e.target.value })
+                  }
                   disabled={isPending}
+                  placeholder="Country"
                 />
-                <input type="hidden" name="countryId" value={countryId} />
               </div>
               <div className="space-y-2">
-                <Label>State</Label>
-                <Autocomplete
-                  options={states.map((s) => ({
-                    value: s.id,
-                    label: s.name,
-                  }))}
-                  value={stateId}
-                  onValueChange={setStateId}
-                  placeholder="Select state..."
-                  searchPlaceholder="Search state..."
-                  disabled={isPending || !countryId}
-                  isLoading={loadingStates}
-                  emptyMessage={!countryId ? "Please select a country first" : "No states found"}
+                <Label>City</Label>
+                <Input
+                  value={editData.city}
+                  onChange={(e) =>
+                    setEditData({ ...editData, city: e.target.value })
+                  }
+                  disabled={isPending}
+                  placeholder="City"
                 />
-                <input type="hidden" name="stateId" value={stateId} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">City Name</Label>
-                <Input id="edit-name" name="name" defaultValue={city.name} disabled={isPending} required />
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialog(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={isPending}>
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -273,9 +291,10 @@ function RowActions({ row }: RowActionsProps) {
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete City</AlertDialogTitle>
+            <AlertDialogTitle>Delete Qualification</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{city.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{qual.qualification}&quot;
+              from {qual.instituteName}? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -9,7 +9,10 @@ export interface Designation {
   id: string;
   name: string;
   status: string;
-  createdBy?: string;
+  createdBy?: {
+    firstName: string;
+    lastName: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -17,8 +20,13 @@ export interface Designation {
 // Designation Actions
 export async function getDesignations(): Promise<{ status: boolean; data: Designation[] }> {
   try {
+    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/designations`, {
       cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      }
     });
     return res.json();
   } catch (error) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ const CHECK_INTERVAL = 60 * 1000; // Check every 60 seconds
 
 export function SessionChecker() {
   const router = useRouter();
+  const pathname = usePathname();
   const [sessionExpired, setSessionExpired] = useState(false);
 
   const performCheck = useCallback(async () => {
@@ -50,7 +51,8 @@ export function SessionChecker() {
   }, [performCheck]);
 
   const handleLogin = () => {
-    router.push("/login");
+    const callbackUrl = encodeURIComponent(pathname || "/dashboard");
+    router.push(`/login?callbackUrl=${callbackUrl}`);
   };
 
   return (

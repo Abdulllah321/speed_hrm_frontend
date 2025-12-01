@@ -1,17 +1,17 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { getAccessToken } from '../auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 
 async function getAuthHeaders() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('accessToken')?.value;
+  const token = await getAccessToken();
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token && { Authorization: `Bearer ${token}` }),
   };
 }
+
 
 export interface Branch {
   id: string;
@@ -29,79 +29,173 @@ export interface Branch {
 }
 
 // Get all branches
-export async function getBranches(): Promise<{ status: boolean; data: Branch[]; message?: string }> {
-  const res = await fetch(`${API_URL}/api/branches`, {
-    headers: await getAuthHeaders(),
-    cache: 'no-store',
-  });
-  return res.json();
+export async function getBranches(): Promise<{ status: boolean; data?: Branch[]; message?: string }> {
+  try {   
+    const res = await fetch(`${API_URL}/branches`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch branches' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching branches:', error);
+    return { 
+      status: false, 
+      message: error instanceof Error ? error.message : 'Failed to fetch branches. Please check your connection.' 
+    };
+  }
 }
 
 // Get branch by id
-export async function getBranchById(id: string): Promise<{ status: boolean; data: Branch; message?: string }> {
-  const res = await fetch(`${API_URL}/api/branches/${id}`, {
-    headers: await getAuthHeaders(),
-    cache: 'no-store',
-  });
-  return res.json();
+export async function getBranchById(id: string): Promise<{ status: boolean; data?: Branch; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/branches/${id}`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch branch' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching branch:', error);
+    return { 
+      status: false, 
+      message: error instanceof Error ? error.message : 'Failed to fetch branch' 
+    };
+  }
 }
 
 // Create branch
 export async function createBranch(data: { name: string; address?: string; cityId?: string; status?: string }): Promise<{ status: boolean; data?: Branch; message?: string }> {
-  const res = await fetch(`${API_URL}/api/branches`, {
-    method: 'POST',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/branches`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to create branch' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Error creating branch:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to create branch' };
+  }
 }
 
 // Create branches bulk
 export async function createBranchesBulk(items: { name: string; address?: string; cityId?: string; status?: string }[]): Promise<{ status: boolean; message?: string }> {
-  const res = await fetch(`${API_URL}/api/branches/bulk`, {
-    method: 'POST',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify({ items }),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/branches/bulk`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ items }),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to create branches' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Error creating branches:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to create branches' };
+  }
 }
 
 // Update branch
 export async function updateBranch(id: string, data: { name: string; address?: string; cityId?: string; status?: string }): Promise<{ status: boolean; data?: Branch; message?: string }> {
-  const res = await fetch(`${API_URL}/api/branches/${id}`, {
-    method: 'PUT',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/branches/${id}`, {
+      method: 'PUT',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to update branch' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Error updating branch:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to update branch' };
+  }
 }
 
 // Update branches bulk
 export async function updateBranchesBulk(items: { id: string; name: string; address?: string; cityId?: string; status?: string }[]): Promise<{ status: boolean; message?: string }> {
-  const res = await fetch(`${API_URL}/api/branches/bulk`, {
-    method: 'PUT',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify({ items }),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/branches/bulk`, {
+      method: 'PUT',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ items }),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to update branches' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Error updating branches:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to update branches' };
+  }
 }
 
 // Delete branch
 export async function deleteBranch(id: string): Promise<{ status: boolean; message?: string }> {
-  const res = await fetch(`${API_URL}/api/branches/${id}`, {
-    method: 'DELETE',
-    headers: await getAuthHeaders(),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/branches/${id}`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to delete branch' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Error deleting branch:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to delete branch' };
+  }
 }
 
 // Delete branches bulk
 export async function deleteBranches(ids: string[]): Promise<{ status: boolean; message?: string }> {
-  const res = await fetch(`${API_URL}/api/branches/bulk`, {
-    method: 'DELETE',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify({ ids }),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_URL}/branches/bulk`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ ids }),
+    });
+    
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to delete branches' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Error deleting branches:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to delete branches' };
+  }
 }
 

@@ -3,6 +3,7 @@
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { HighlightText } from "@/components/common/data-table";
 import {
   DropdownMenu,
@@ -34,11 +35,11 @@ import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Designation, updateDesignation, deleteDesignation } from "@/lib/actions/designation";
+import { Institute, updateInstitute, deleteInstitute } from "@/lib/actions/institute";
 
-export type DesignationRow = Designation & { id: string };
+export type InstituteRow = Institute & { id: string };
 
-export const columns: ColumnDef<DesignationRow>[] = [
+export const columns: ColumnDef<InstituteRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -70,17 +71,24 @@ export const columns: ColumnDef<DesignationRow>[] = [
     cell: ({ row }) => <HighlightText text={row.original.name} />,
   },
   {
-    header: "Created By",
-    accessorKey: "createdBy",
-    size: 150,
+    header: "Status",
+    accessorKey: "status",
+    size: 100,
     enableSorting: true,
-    cell: ({ row }) => row.original.createdBy?.firstName + " " + row.original.createdBy?.lastName || "—",
+    cell: ({ row }) => (
+      <Badge
+        variant={row.original.status === "inactive" ? "secondary" : "default"}
+      >
+        {row.original.status || "active"}
+      </Badge>
+    ),
   },
   {
     header: "Created At",
     accessorKey: "createdAt",
     size: 150,
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    cell: ({ row }) =>
+      new Date(row.original.createdAt).toLocaleDateString(),
     enableSorting: true,
   },
   {
@@ -93,19 +101,28 @@ export const columns: ColumnDef<DesignationRow>[] = [
 ];
 
 type RowActionsProps = {
-  row: Row<DesignationRow>;
+  row: Row<InstituteRow>;
 };
 
 function RowActions({ row }: RowActionsProps) {
-  const item = row.original;
+  const inst = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [editData, setEditData] = useState({
+    name: inst.name,
+    status: inst.status,
+  });
 
-  const handleEditSubmit = async (formData: FormData) => {
+  const handleEditSubmit = async () => {
+    if (!editData.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+
     startTransition(async () => {
-      const result = await updateDesignation(item.id, formData);
+      const result = await updateInstitute(inst.id, editData);
       if (result.status) {
         toast.success(result.message);
         setEditDialog(false);
@@ -118,7 +135,7 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
-      const result = await deleteDesignation(item.id);
+      const result = await deleteInstitute(inst.id);
       if (result.status) {
         toast.success(result.message);
         setDeleteDialog(false);
@@ -163,32 +180,35 @@ function RowActions({ row }: RowActionsProps) {
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Designation</DialogTitle>
-            <DialogDescription>Update the designation name</DialogDescription>
+            <DialogTitle>Edit Institute</DialogTitle>
+            <DialogDescription>Update the institute name</DialogDescription>
           </DialogHeader>
-          <form action={handleEditSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Designation Name</Label>
-                <Input
-                  id="edit-name"
-                  name="name"
-                  defaultValue={item.name}
-                  disabled={isPending}
-                  required
-                />
-              </div>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Institute Name</Label>
+              <Input
+                value={editData.name}
+                onChange={(e) =>
+                  setEditData({ ...editData, name: e.target.value })
+                }
+                disabled={isPending}
+                placeholder="Institute name"
+              />
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialog(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleEditSubmit} disabled={isPending}>
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -196,9 +216,9 @@ function RowActions({ row }: RowActionsProps) {
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Designation</AlertDialogTitle>
+            <AlertDialogTitle>Delete Institute</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{item.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{inst.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

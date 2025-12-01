@@ -1,19 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Country, createCities } from "@/lib/actions/city";
+import { Country, State, createCities, getStatesByCountry } from "@/lib/actions/city";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -27,29 +21,120 @@ export function CityAddForm({ countries, defaultCountryId }: CityAddFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState([
-    { id: 1, name: "", countryId: defaultCountryId || "", lat: "", lng: "" },
+    { id: 1, name: "", countryId: defaultCountryId || "", stateId: "" },
   ]);
+  const [statesMap, setStatesMap] = useState<Map<string, State[]>>(new Map());
+  const [loadingStates, setLoadingStates] = useState<Map<string, boolean>>(new Map());
 
-  const addRow = () => {
-    setRows([...rows, { id: Date.now(), name: "", countryId: defaultCountryId || "", lat: "", lng: "" }]);
-  };
+  const addRow = useCallback(() => {
+    setRows((prevRows) => {
+      const lastRow = prevRows[prevRows.length - 1];
+      const newRowId = Date.now();
+      const newRow = {
+        id: newRowId,
+        name: "",
+        countryId: lastRow?.countryId || defaultCountryId || "",
+        stateId: lastRow?.stateId || "",
+      };
+      
+      // If the new row has a country, ensure states are loaded
+      if (newRow.countryId) {
+        setStatesMap((prevStatesMap) => {
+          if (!prevStatesMap.has(newRow.countryId)) {
+            // Load states asynchronously
+            setLoadingStates((prev) => new Map(prev).set(newRow.countryId, true));
+            getStatesByCountry(newRow.countryId)
+              .then((result) => {
+                if (result.status && result.data) {
+                  setStatesMap((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(newRow.countryId, result.data!);
+                    return newMap;
+                  });
+                }
+              })
+              .catch((error) => {
+                console.error("Error loading states:", error);
+                toast.error("Failed to load states");
+              })
+              .finally(() => {
+                setLoadingStates((prev) => {
+                  const newMap = new Map(prev);
+                  newMap.set(newRow.countryId, false);
+                  return newMap;
+                });
+              });
+          }
+          return prevStatesMap;
+        });
+      }
+      
+      return [...prevRows, newRow];
+    });
+  }, [defaultCountryId]);
 
-  const removeRow = (id: number) => {
-    if (rows.length > 1) {
-      setRows(rows.filter((r) => r.id !== id));
+
+  // Load states when country changes
+  const handleCountryChange = async (rowId: number, countryId: string) => {
+    updateRow(rowId, "countryId", countryId);
+    updateRow(rowId, "stateId", ""); // Reset state when country changes
+    console.log("countryId", countryId);
+    console.log("rowId", rowId);
+    console.log(statesMap)
+    if (!countryId) {
+      return;
+    }
+
+    // Check if states are already loaded
+    if (statesMap.has(countryId)) {
+      return;
+    }
+
+    // Set loading state
+    setLoadingStates(prev => new Map(prev).set(countryId, true));
+
+    try {
+      const result = await getStatesByCountry(countryId);
+      if (result.status && result.data) {
+        setStatesMap(prev => new Map(prev).set(countryId, result.data!));
+      }
+    } catch (error) {
+      console.error("Error loading states:", error);
+      toast.error("Failed to load states");
+    } finally {
+      setLoadingStates(prev => new Map(prev).set(countryId, false));
     }
   };
 
+  const getStateOptions = (countryId: string) => {
+    const states = statesMap.get(countryId) || [];
+    return states.map((state) => ({
+      value: state.id,
+      label: state.name,
+    }));
+  };
+
+  const removeRow = (id: number) => {
+    setRows((prevRows) => {
+      if (prevRows.length > 1) {
+        return prevRows.filter((r) => r.id !== id);
+      }
+      return prevRows;
+    });
+  };
+
   const updateRow = (id: number, field: string, value: string) => {
-    setRows(rows.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
+    setRows((prevRows) =>
+      prevRows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validRows = rows.filter((r) => r.name.trim() && r.countryId);
+    const validRows = rows.filter((r) => r.name.trim() && r.countryId && r.stateId);
 
     if (validRows.length === 0) {
-      toast.error("Please enter at least one city with a country selected");
+      toast.error("Please enter at least one city with country and state selected");
       return;
     }
 
@@ -58,8 +143,7 @@ export function CityAddForm({ countries, defaultCountryId }: CityAddFormProps) {
         validRows.map((r) => ({
           name: r.name.trim(),
           countryId: r.countryId,
-          lat: r.lat ? parseFloat(r.lat) : undefined,
-          lng: r.lng ? parseFloat(r.lng) : undefined,
+          stateId: r.stateId,
         }))
       );
       if (result.status) {
@@ -85,66 +169,63 @@ export function CityAddForm({ countries, defaultCountryId }: CityAddFormProps) {
       <Card>
         <CardHeader>
           <CardTitle>Add Cities</CardTitle>
-          <CardDescription>Create one or more cities with coordinates</CardDescription>
+          <CardDescription>
+            Create one or more cities with coordinates.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
               <Label>Cities</Label>
-              {rows.map((row, index) => (
-                <div key={row.id} className="flex gap-2 items-end">
-                  <Select
-                    value={row.countryId}
-                    onValueChange={(value) => updateRow(row.id, "countryId", value)}
-                    disabled={isPending}
-                  >
-                    <SelectTrigger className="w-[150px]">
-                      <SelectValue placeholder="Country" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {countries.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder={`City ${index + 1}`}
-                    value={row.name}
-                    onChange={(e) => updateRow(row.id, "name", e.target.value)}
-                    disabled={isPending}
-                    className="flex-1"
-                  />
-                  <Input
-                    placeholder="Latitude"
-                    type="number"
-                    step="any"
-                    value={row.lat}
-                    onChange={(e) => updateRow(row.id, "lat", e.target.value)}
-                    disabled={isPending}
-                    className="w-28"
-                  />
-                  <Input
-                    placeholder="Longitude"
-                    type="number"
-                    step="any"
-                    value={row.lng}
-                    onChange={(e) => updateRow(row.id, "lng", e.target.value)}
-                    disabled={isPending}
-                    className="w-28"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeRow(row.id)}
-                    disabled={rows.length === 1 || isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+              {rows.map((row, index) => {
+                const stateOptions = getStateOptions(row.countryId);
+                const isLoadingStates = row.countryId ? loadingStates.get(row.countryId) || false : false;
+                const countryOptions = countries.map((c) => ({
+                  value: c.id,
+                  label: c.nicename || c.name || "Unknown",
+                }));
+                return (
+                  <div key={row.id} className="flex gap-2 items-end">
+                    <Autocomplete
+                      options={countryOptions}
+                      value={row.countryId}
+                      onValueChange={(value) => handleCountryChange(row.id, value)}
+                      placeholder="Select country..."
+                      searchPlaceholder="Search country..."
+                      disabled={isPending}
+                      emptyMessage={countries.length === 0 ? "No countries available" : "No countries found"}
+                      className="w-[180px]"
+                    />
+                    <Autocomplete
+                      options={stateOptions}
+                      value={row.stateId}
+                      onValueChange={(value) => updateRow(row.id, "stateId", value)}
+                      placeholder="Select state..."
+                      searchPlaceholder="Search state..."
+                      disabled={isPending || !row.countryId}
+                      isLoading={isLoadingStates}
+                      emptyMessage={!row.countryId ? "Please select a country first" : "No states found"}
+                      className="w-[180px]"
+                    />
+                    <Input
+                      placeholder={`City ${index + 1}`}
+                      value={row.name}
+                      onChange={(e) => updateRow(row.id, "name", e.target.value)}
+                      disabled={isPending}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeRow(row.id)}
+                      disabled={rows.length === 1 || isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
             </div>
             <div className="flex gap-2 justify-between">
               <div className="flex gap-2">
@@ -161,8 +242,9 @@ export function CityAddForm({ countries, defaultCountryId }: CityAddFormProps) {
                 onClick={addRow}
                 disabled={isPending}
                 className="text-sm text-primary hover:underline disabled:opacity-50"
+                title="Add new row (Ctrl+Enter or Alt+N)"
               >
-                + Add more
+                + Add more 
               </button>
             </div>
           </form>

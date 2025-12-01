@@ -40,6 +40,13 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
+    title: "Institute",
+    children: [
+      { title: "Add", href: "/dashboard/master/institute/add" },
+      { title: "View", href: "/dashboard/master/institute/list" },
+    ],
+  },
+  {
     title: "Designation",
     children: [
       { title: "Add", href: "/dashboard/master/designation/add" },

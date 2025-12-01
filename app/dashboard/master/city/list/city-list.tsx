@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import DataTable, { FilterConfig } from "@/components/common/data-table";
 import { columns, setCountriesStore, CityRow } from "./columns";
-import { City, Country, deleteCities, updateCities } from "@/lib/actions/city";
+import { City, Country, State, deleteCities, updateCities, getStatesByCountry } from "@/lib/actions/city";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -14,13 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2 } from "lucide-react";
@@ -36,8 +30,10 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<
-    { id: string; name: string; countryId: string; lat?: number; lng?: number }[]
+    { id: string; name: string; countryId: string; stateId: string }[]
   >([]);
+  const [statesMap, setStatesMap] = useState<Map<string, State[]>>(new Map());
+  const [loadingStates, setLoadingStates] = useState<Map<string, boolean>>(new Map());
 
   useEffect(() => {
     setCountriesStore(countries);
@@ -59,20 +55,74 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
     });
   };
 
-  const handleBulkEdit = (items: CityRow[]) => {
-    setEditRows(
-      items.map((item) => ({
-        id: item.id,
-        name: item.name,
-        countryId: item.countryId,
-        lat: item.lat,
-        lng: item.lng,
-      }))
-    );
+  const handleBulkEdit = async (items: CityRow[]) => {
+    const editRowsData = items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      countryId: item.countryId,
+      stateId: item.stateId,
+    }));
+    setEditRows(editRowsData);
+    
+    // Load states for all unique countries
+    const uniqueCountryIds = [...new Set(editRowsData.map(r => r.countryId).filter(Boolean))];
+    for (const countryId of uniqueCountryIds) {
+      if (!statesMap.has(countryId)) {
+        setLoadingStates(prev => new Map(prev).set(countryId, true));
+        try {
+          const result = await getStatesByCountry(countryId);
+          if (result.status && result.data) {
+            setStatesMap(prev => new Map(prev).set(countryId, result.data!));
+          }
+        } catch (error) {
+          console.error("Error loading states:", error);
+        } finally {
+          setLoadingStates(prev => new Map(prev).set(countryId, false));
+        }
+      }
+    }
+    
     setBulkEditOpen(true);
   };
 
-  const updateEditRow = (id: string, field: string, value: string | number | undefined) => {
+  const handleCountryChangeInEdit = async (rowId: string, countryId: string) => {
+    updateEditRow(rowId, "countryId", countryId);
+    updateEditRow(rowId, "stateId", ""); // Reset state when country changes
+    
+    if (!countryId) {
+      return;
+    }
+
+    // Check if states are already loaded
+    if (statesMap.has(countryId)) {
+      return;
+    }
+
+    // Set loading state
+    setLoadingStates(prev => new Map(prev).set(countryId, true));
+
+    try {
+      const result = await getStatesByCountry(countryId);
+      if (result.status && result.data) {
+        setStatesMap(prev => new Map(prev).set(countryId, result.data!));
+      }
+    } catch (error) {
+      console.error("Error loading states:", error);
+      toast.error("Failed to load states");
+    } finally {
+      setLoadingStates(prev => new Map(prev).set(countryId, false));
+    }
+  };
+
+  const getStateOptions = (countryId: string) => {
+    const states = statesMap.get(countryId) || [];
+    return states.map((state) => ({
+      value: state.id,
+      label: state.name,
+    }));
+  };
+
+  const updateEditRow = (id: string, field: string, value: string) => {
     setEditRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
@@ -85,7 +135,7 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
   };
 
   const handleBulkEditSubmit = async () => {
-    const validRows = editRows.filter((r) => r.name.trim() && r.countryId);
+    const validRows = editRows.filter((r) => r.name.trim() && r.countryId && r.stateId);
     if (validRows.length === 0) {
       toast.error("Please fill in all required fields");
       return;
@@ -130,6 +180,7 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
         searchFields={[
           { key: "name", label: "Name" },
           { key: "countryName", label: "Country" },
+          { key: "stateName", label: "State" },
         ]}
         filters={[countryFilter]}
         onMultiDelete={handleMultiDelete}
@@ -144,60 +195,53 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
             <DialogDescription>Update {editRows.length} city(ies)</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 max-h-[400px] overflow-y-auto py-4">
-            {editRows.map((row, index) => (
-              <div key={row.id} className="flex gap-2 items-end">
-                <Select
-                  value={row.countryId}
-                  onValueChange={(value) => updateEditRow(row.id, "countryId", value)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countries.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder={`City ${index + 1}`}
-                  value={row.name}
-                  onChange={(e) => updateEditRow(row.id, "name", e.target.value)}
-                  disabled={isPending}
-                  className="flex-1"
-                />
-                <Input
-                  placeholder="Lat"
-                  type="number"
-                  step="any"
-                  value={row.lat || ""}
-                  onChange={(e) => updateEditRow(row.id, "lat", e.target.value ? parseFloat(e.target.value) : undefined)}
-                  disabled={isPending}
-                  className="w-24"
-                />
-                <Input
-                  placeholder="Lng"
-                  type="number"
-                  step="any"
-                  value={row.lng || ""}
-                  onChange={(e) => updateEditRow(row.id, "lng", e.target.value ? parseFloat(e.target.value) : undefined)}
-                  disabled={isPending}
-                  className="w-24"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeEditRow(row.id)}
-                  disabled={editRows.length === 1 || isPending}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+            {editRows.map((row, index) => {
+              const stateOptions = getStateOptions(row.countryId);
+              const isLoadingStates = row.countryId ? loadingStates.get(row.countryId) || false : false;
+              return (
+                <div key={row.id} className="flex gap-2 items-end">
+                  <Autocomplete
+                    options={countries.map((c) => ({
+                      value: c.id,
+                      label: c.nicename || c.name,
+                    }))}
+                    value={row.countryId}
+                    onValueChange={(value) => handleCountryChangeInEdit(row.id, value)}
+                    placeholder="Select country..."
+                    searchPlaceholder="Search country..."
+                    disabled={isPending}
+                    className="w-[180px]"
+                  />
+                  <Autocomplete
+                    options={stateOptions}
+                    value={row.stateId}
+                    onValueChange={(value) => updateEditRow(row.id, "stateId", value)}
+                    placeholder="Select state..."
+                    searchPlaceholder="Search state..."
+                    disabled={isPending || !row.countryId}
+                    isLoading={isLoadingStates}
+                    emptyMessage={!row.countryId ? "Please select a country first" : "No states found"}
+                    className="w-[180px]"
+                  />
+                  <Input
+                    placeholder={`City ${index + 1}`}
+                    value={row.name}
+                    onChange={(e) => updateEditRow(row.id, "name", e.target.value)}
+                    disabled={isPending}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeEditRow(row.id)}
+                    disabled={editRows.length === 1 || isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBulkEditOpen(false)} disabled={isPending}>

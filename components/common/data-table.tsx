@@ -85,6 +85,7 @@ import {
   PaginationContent,
   PaginationItem,
 } from "@/components/ui/pagination";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import {
   Select,
   SelectContent,
@@ -285,24 +286,19 @@ export default function DataTable<TData extends DataTableRow>({
           )}
             {/* Filter dropdowns */}
             {filters?.map((filter) => (
-            <Select
-              key={filter.key}
-              value={activeFilters[filter.key] || "all"}
-              onValueChange={(value) => handleFilterChange(filter.key, value)}
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder={filter.label} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All {filter.label}</SelectItem>
-                {filter.options.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ))}
+              <Autocomplete
+                key={filter.key}
+                options={[
+                  { value: "all", label: `All ${filter.label}` },
+                  ...filter.options,
+                ]}
+                value={activeFilters[filter.key] || "all"}
+                onValueChange={(value) => handleFilterChange(filter.key, value)}
+                placeholder={`Select ${filter.label}`}
+                searchPlaceholder={`Search ${filter.label}...`}
+                className="w-[150px]"
+              />
+            ))}
 
         </div>
         {isMobile && <Separator />}

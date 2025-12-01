@@ -1,38 +1,39 @@
-import { getDepartments } from "@/lib/actions/department";
-import { DepartmentList } from "./department-list";
+import { getInstitutes } from "@/lib/actions/institute";
+import { InstituteList } from "./institute-list";
 import { ListError } from "@/components/dashboard/list-error";
 
-export default async function DepartmentListPage({
+export default async function InstituteListPage({
   searchParams,
 }: {
   searchParams: Promise<{ newItemId?: string }>;
 }) {
   try {
     const { newItemId } = await searchParams;
-    const result = await getDepartments();
+    const result = await getInstitutes();
 
     if (!result.status || !result.data) {
       return (
         <ListError
-          title="Failed to load departments"
-          message={result.message || "Unable to fetch departments. Please check your connection and try again."}
+          title="Failed to load institutes"
+          message={result.message || "Unable to fetch institutes. Please check your connection and try again."}
         />
       );
     }
 
     return (
-      <DepartmentList
-        initialDepartments={result.data || []}
+      <InstituteList
+        initialInstitutes={result.data || []}
         newItemId={newItemId}
       />
     );
   } catch (error) {
-    console.error("Error in DepartmentListPage:", error);
+    console.error("Error in InstituteListPage:", error);
     return (
       <ListError
-        title="Failed to load departments"
+        title="Failed to load institutes"
         message={error instanceof Error ? error.message : "An unexpected error occurred. Please try again."}
       />
     );
   }
 }
+

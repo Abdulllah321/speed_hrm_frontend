@@ -50,7 +50,7 @@ export async function login(formData: FormData): Promise<{ status: boolean; mess
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 15 * 60, // 15 minutes (matches JWT expiry)
+        maxAge: 2 * 60 * 60, // 2 hours (matches JWT expiry)
         path: "/",
       });
 
@@ -58,7 +58,7 @@ export async function login(formData: FormData): Promise<{ status: boolean; mess
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 24 * 60 * 60, // 1 day session
+        maxAge: 7 * 24 * 60 * 60, // 7 days session
         path: "/",
       });
 
@@ -67,7 +67,7 @@ export async function login(formData: FormData): Promise<{ status: boolean; mess
         httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 24 * 60 * 60, // 1 day
+        maxAge: 7 * 24 * 60 * 60, // 7 days
         path: "/",
       });
 
@@ -82,7 +82,7 @@ export async function login(formData: FormData): Promise<{ status: boolean; mess
         httpOnly: false,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 24 * 60 * 60, // 1 day
+        maxAge: 7 * 24 * 60 * 60, // 7 days
         path: "/",
       });
 
@@ -173,7 +173,7 @@ export async function refreshAccessToken(): Promise<boolean> {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 24 * 60 * 60, // 1 day
+        maxAge: 7 * 24 * 60 * 60, // 7 days
         path: "/",
       });
 

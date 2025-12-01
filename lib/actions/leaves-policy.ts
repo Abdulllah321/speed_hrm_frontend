@@ -24,7 +24,24 @@ export interface LeavesPolicy {
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
+<<<<<<< HEAD
   leaveTypes?: LeavesPolicyLeaveType[];
+=======
+  items?: LeavesPolicyItem[];
+}
+
+export interface LeavesPolicyItem {
+  id: string;
+  leavesPolicyId: string;
+  leaveTypeId: string;
+  leaveType?: {
+    id: string;
+    name: string;
+  };
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+>>>>>>> 4dbf066d258ebcd17284862de533341e92eae857
 }
 
 export async function getLeavesPolicies(): Promise<{ status: boolean; data: LeavesPolicy[] }> {
@@ -41,6 +58,7 @@ export async function getLeavesPolicies(): Promise<{ status: boolean; data: Leav
   }
 }
 
+<<<<<<< HEAD
 export async function getLeavesPolicyById(id: string): Promise<{ status: boolean; data: LeavesPolicy | null }> {
   try {
     const token = await getAccessToken();
@@ -65,8 +83,27 @@ export async function createLeavesPolicy(data: {
   shortLeaveDeductionRate?: number;
   leaveTypes?: { leaveTypeId: string; numberOfLeaves: number }[];
 }): Promise<{ status: boolean; message: string; data?: LeavesPolicy }> {
+=======
+export async function createLeavesPolicy(
+  data: {
+    name: string;
+    dateFrom: Date;
+    dateTill: Date;
+    fullDayDeductionRate: number;
+    halfDayDeductionRate: number;
+    shortLeaveDeductionRate: number;
+    items: { leaveTypeId: string; quantity: number }[];
+  }
+): Promise<{ status: boolean; message: string; data?: LeavesPolicy }> {
+>>>>>>> 4dbf066d258ebcd17284862de533341e92eae857
   if (!data.name?.trim()) {
     return { status: false, message: "Name is required" };
+  }
+  if (!data.dateFrom || !data.dateTill) {
+    return { status: false, message: "Date from and date till are required" };
+  }
+  if (!data.items || data.items.length === 0) {
+    return { status: false, message: "At least one leave type is required" };
   }
   try {
     const token = await getAccessToken();
@@ -76,7 +113,19 @@ export async function createLeavesPolicy(data: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
+<<<<<<< HEAD
       body: JSON.stringify(data),
+=======
+      body: JSON.stringify({
+        name: data.name.trim(),
+        dateFrom: data.dateFrom.toISOString(),
+        dateTill: data.dateTill.toISOString(),
+        fullDayDeductionRate: data.fullDayDeductionRate,
+        halfDayDeductionRate: data.halfDayDeductionRate,
+        shortLeaveDeductionRate: data.shortLeaveDeductionRate,
+        items: data.items,
+      }),
+>>>>>>> 4dbf066d258ebcd17284862de533341e92eae857
     });
     const result = await res.json();
     if (result.status) revalidatePath("/dashboard/master/leaves-policy");

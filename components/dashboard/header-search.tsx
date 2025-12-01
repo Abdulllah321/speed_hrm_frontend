@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/command";
 import { menuData, masterMenuData, flattenMenu } from "./sidebar-menu-data";
 
-export function HeaderSearch() {
+interface HeaderSearchProps {
+  onNavigate?: () => void;
+}
+
+export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const router = useRouter();
@@ -38,7 +42,7 @@ export function HeaderSearch() {
   }, [search, flatMasterMenu]);
 
   return (
-    <div className="relative w-64">
+    <div className="relative w-full max-w-xs lg:max-w-sm">
       <Command className="rounded-lg border bg-background">
         <CommandInput
           placeholder="Search navigation..."
@@ -46,7 +50,7 @@ export function HeaderSearch() {
           onValueChange={setSearch}
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
-          className="h-9"
+          className="h-9 text-sm"
         />
         <CommandList 
           className={`absolute top-full left-0 right-0 mt-1 rounded-md border bg-popover shadow-md z-50 transition-all duration-200 ease-out origin-top ${
@@ -66,6 +70,7 @@ export function HeaderSearch() {
                     router.push(item.href);
                     setOpen(false);
                     setSearch("");
+                    onNavigate?.();
                   }}
                 >
                   <div className="flex flex-col">
@@ -86,6 +91,7 @@ export function HeaderSearch() {
                     router.push(item.href);
                     setOpen(false);
                     setSearch("");
+                    onNavigate?.();
                   }}
                 >
                   <div className="flex flex-col">

@@ -2,9 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useFieldArray, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,6 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createBranch, createBranchesBulk } from "@/lib/actions/branch";
@@ -26,161 +37,227 @@ interface BranchAddFormProps {
   cities: City[];
 }
 
-interface BranchRow {
-  name: string;
-  address: string;
-  cityId: string;
-  status: string;
-}
+// Zod schema for branch validation
+const branchSchema = z.object({
+  branches: z
+    .array(
+      z.object({
+        name: z.string().min(1, "Branch name is required").trim(),
+        address: z.string().optional(),
+        cityId: z.string().min(1, "City is required"),
+        status: z.enum(["active", "inactive"], {
+          message: "Status is required",
+        }),
+      })
+    )
+    .min(1, "At least one branch is required"),
+});
+
+type BranchFormValues = z.infer<typeof branchSchema>;
 
 export function BranchAddForm({ cities }: BranchAddFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const defaultCityId = searchParams.get("cityId") || "";
   const [isPending, startTransition] = useTransition();
-  const [rows, setRows] = useState<BranchRow[]>([
-    { name: "", address: "", cityId: defaultCityId, status: "active" },
-  ]);
 
-  const addRow = () => {
-    setRows([...rows, { name: "", address: "", cityId: defaultCityId, status: "active" }]);
-  };
+  const form = useForm<BranchFormValues>({
+    resolver: zodResolver(branchSchema),
+    defaultValues: {
+      branches: [
+        {
+          name: "",
+          address: "",
+          cityId: defaultCityId,
+          status: "active" as const,
+        },
+      ],
+    },
+  });
 
-  const removeRow = (index: number) => {
-    if (rows.length > 1) {
-      setRows(rows.filter((_, i) => i !== index));
-    }
-  };
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "branches",
+  });
 
-  const updateRow = (index: number, field: keyof BranchRow, value: string) => {
-    const newRows = [...rows];
-    newRows[index] = { ...newRows[index], [field]: value };
-    setRows(newRows);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const validRows = rows.filter((r) => r.name.trim());
-    if (validRows.length === 0) {
-      toast.error("Please enter at least one branch name");
-      return;
-    }
-
+  const onSubmit = async (data: BranchFormValues) => {
     startTransition(async () => {
-      let result;
-      if (validRows.length === 1) {
-        result = await createBranch(validRows[0]);
-      } else {
-        result = await createBranchesBulk(validRows);
-      }
-      if (result.status) {
-        toast.success(result.message);
-        const newId = "data" in result && result.data && "id" in result.data ? result.data.id : undefined;
-        router.push(`/dashboard/master/branch/list${newId ? `?newItemId=${newId}` : ""}`);
-      } else {
-        toast.error(result.message);
+      try {
+        const branches = data.branches.map((branch) => ({
+          name: branch.name.trim(),
+          address: branch.address?.trim() || undefined,
+          cityId: branch.cityId || undefined,
+          status: branch.status,
+        }));
+
+        if (branches.length === 1) {
+          const result = await createBranch(branches[0]);
+          console.log(result);
+          if (result.status) {
+            toast.success(result.message || "Branch created successfully");
+            const newId = result.data?.id;
+            router.push(`/dashboard/master/branch/list${newId ? `?newItemId=${newId}` : ""}`);
+          } else {
+            toast.error(result.message || "Failed to create branch");
+          }
+        } else {
+          const result = await createBranchesBulk(branches);
+          console.log(result);
+          if (result.status) {
+            toast.success(result.message || "Branches created successfully");
+            router.push("/dashboard/master/branch/list");
+          } else {
+            toast.error(result.message || "Failed to create branches");
+          }
+        }
+      } catch (error) {
+        console.error("Error creating branch:", error);
+        toast.error("An unexpected error occurred. Please try again.");
       }
     });
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Add Branch</h2>
         <p className="text-muted-foreground">Create new location branches</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-3">
-          {rows.map((row, index) => (
-            <div key={index} className="flex gap-2 items-end">
-              <div className="flex-1 space-y-1">
-                {index === 0 && <Label>Name</Label>}
-                <Input
-                  placeholder={`Branch ${index + 1}`}
-                  value={row.name}
-                  onChange={(e) => updateRow(index, "name", e.target.value)}
-                  disabled={isPending}
-                  required
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-3">
+            {fields.map((field, index) => (
+              <div key={field.id} className="flex gap-2 items-end">
+                <FormField
+                  control={form.control}
+                  name={`branches.${index}.name`}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      {index === 0 && <FormLabel>Name</FormLabel>}
+                      <FormControl>
+                        <Input
+                          placeholder={`Branch ${index + 1}`}
+                          disabled={isPending}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="flex-1 space-y-1">
-                {index === 0 && <Label>Address</Label>}
-                <Input
-                  placeholder="Address"
-                  value={row.address}
-                  onChange={(e) => updateRow(index, "address", e.target.value)}
-                  disabled={isPending}
+                <FormField
+                  control={form.control}
+                  name={`branches.${index}.address`}
+                  render={({ field }) => (
+                    <FormItem className="flex-1">
+                      {index === 0 && <FormLabel>Address</FormLabel>}
+                      <FormControl>
+                        <Input
+                          placeholder="Address"
+                          disabled={isPending}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-              </div>
-              <div className="w-[150px] space-y-1">
-                {index === 0 && <Label>City</Label>}
-                <Select
-                  value={row.cityId}
-                  onValueChange={(value) => updateRow(index, "cityId", value)}
-                  disabled={isPending}
+                <FormField
+                  control={form.control}
+                  name={`branches.${index}.cityId`}
+                  render={({ field }) => (
+                    <FormItem className="w-[200px]">
+                      {index === 0 && <FormLabel>City</FormLabel>}
+                      <FormControl>
+                        <Autocomplete
+                          options={cities.map((city) => ({
+                            value: city.id,
+                            label: `${city.name}${city.country ? ` (${city.country.name})` : ""}`,
+                          }))}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select city..."
+                          searchPlaceholder="Search city..."
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name={`branches.${index}.status`}
+                  render={({ field }) => (
+                    <FormItem className="w-[110px]">
+                      {index === 0 && <FormLabel>Status</FormLabel>}
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                        disabled={isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => remove(index)}
+                  disabled={fields.length === 1 || isPending}
+                  className="mb-0"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="City" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map((city) => (
-                      <SelectItem key={city.id} value={city.id}>
-                        {city.name} {city.country ? `(${city.country.name})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
-              <div className="w-[110px] space-y-1">
-                {index === 0 && <Label>Status</Label>}
-                <Select
-                  value={row.status}
-                  onValueChange={(value) => updateRow(index, "status", value)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 justify-between">
+            <div className="flex gap-2">
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save {fields.length > 1 ? `(${fields.length})` : ""}
+              </Button>
               <Button
                 type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeRow(index)}
-                disabled={rows.length === 1 || isPending}
+                variant="outline"
+                onClick={() => router.push("/dashboard/master/branch/list")}
+                disabled={isPending}
               >
-                <Trash2 className="h-4 w-4" />
+                Cancel
               </Button>
             </div>
-          ))}
-        </div>
-
-        <Button type="button" variant="outline" onClick={addRow} disabled={isPending}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Another
-        </Button>
-
-        <div className="flex gap-2">
-          <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save {rows.length > 1 ? `(${rows.length})` : ""}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push("/dashboard/master/branch/list")}
-            disabled={isPending}
-          >
-            Cancel
-          </Button>
-        </div>
-      </form>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                append({
+                  name: "",
+                  address: "",
+                  cityId: defaultCityId,
+                  status: "active" as const,
+                })
+              }
+              disabled={isPending}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Another
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 }
