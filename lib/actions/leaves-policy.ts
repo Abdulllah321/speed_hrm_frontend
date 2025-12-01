@@ -5,14 +5,26 @@ import { getAccessToken } from "@/lib/auth";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
 
+export interface LeavesPolicyLeaveType {
+  leaveTypeId: string;
+  leaveTypeName: string;
+  numberOfLeaves: number;
+}
+
 export interface LeavesPolicy {
   id: string;
   name: string;
   details?: string;
+  policyDateFrom?: string;
+  policyDateTill?: string;
+  fullDayDeductionRate?: number;
+  halfDayDeductionRate?: number;
+  shortLeaveDeductionRate?: number;
   status: string;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
+  leaveTypes?: LeavesPolicyLeaveType[];
 }
 
 export async function getLeavesPolicies(): Promise<{ status: boolean; data: LeavesPolicy[] }> {
@@ -29,10 +41,31 @@ export async function getLeavesPolicies(): Promise<{ status: boolean; data: Leav
   }
 }
 
-export async function createLeavesPolicy(formData: FormData): Promise<{ status: boolean; message: string; data?: LeavesPolicy }> {
-  const name = formData.get("name") as string;
-  const details = formData.get("details") as string;
-  if (!name?.trim()) {
+export async function getLeavesPolicyById(id: string): Promise<{ status: boolean; data: LeavesPolicy | null }> {
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`${API_BASE}/leaves-policies/${id}`, {
+      cache: "no-store",
+      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    });
+    return res.json();
+  } catch (error) {
+    console.error("Failed to fetch leave policy:", error);
+    return { status: false, data: null };
+  }
+}
+
+export async function createLeavesPolicy(data: {
+  name: string;
+  details?: string;
+  policyDateFrom?: string;
+  policyDateTill?: string;
+  fullDayDeductionRate?: number;
+  halfDayDeductionRate?: number;
+  shortLeaveDeductionRate?: number;
+  leaveTypes?: { leaveTypeId: string; numberOfLeaves: number }[];
+}): Promise<{ status: boolean; message: string; data?: LeavesPolicy }> {
+  if (!data.name?.trim()) {
     return { status: false, message: "Name is required" };
   }
   try {
@@ -43,11 +76,11 @@ export async function createLeavesPolicy(formData: FormData): Promise<{ status: 
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name, details }),
+      body: JSON.stringify(data),
     });
-    const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leaves-policy");
-    return data;
+    const result = await res.json();
+    if (result.status) revalidatePath("/dashboard/master/leaves-policy");
+    return result;
   } catch (error) {
     return { status: false, message: "Failed to create leave policy" };
   }
@@ -75,10 +108,17 @@ export async function createLeavesPolicies(
   }
 }
 
-export async function updateLeavesPolicy(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: LeavesPolicy }> {
-  const name = formData.get("name") as string;
-  const details = formData.get("details") as string;
-  if (!name?.trim()) return { status: false, message: "Name is required" };
+export async function updateLeavesPolicy(id: string, data: {
+  name: string;
+  details?: string;
+  policyDateFrom?: string;
+  policyDateTill?: string;
+  fullDayDeductionRate?: number;
+  halfDayDeductionRate?: number;
+  shortLeaveDeductionRate?: number;
+  leaveTypes?: { leaveTypeId: string; numberOfLeaves: number }[];
+}): Promise<{ status: boolean; message: string; data?: LeavesPolicy }> {
+  if (!data.name?.trim()) return { status: false, message: "Name is required" };
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/leaves-policies/${id}`, {
@@ -87,11 +127,11 @@ export async function updateLeavesPolicy(id: string, formData: FormData): Promis
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name, details }),
+      body: JSON.stringify(data),
     });
-    const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leaves-policy");
-    return data;
+    const result = await res.json();
+    if (result.status) revalidatePath("/dashboard/master/leaves-policy");
+    return result;
   } catch (error) {
     return { status: false, message: "Failed to update leave policy" };
   }

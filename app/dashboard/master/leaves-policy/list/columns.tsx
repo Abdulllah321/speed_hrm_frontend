@@ -20,22 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
+import { EllipsisIcon, Loader2, Pencil, Trash2, Eye } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { LeavesPolicy, updateLeavesPolicy, deleteLeavesPolicy } from "@/lib/actions/leaves-policy";
+import { LeavesPolicy, deleteLeavesPolicy } from "@/lib/actions/leaves-policy";
 
 export type LeavesPolicyRow = LeavesPolicy & { id: string };
 
@@ -57,6 +46,20 @@ export const columns: ColumnDef<LeavesPolicyRow>[] = [
     size: 28,
   },
   { header: "Name", accessorKey: "name", size: 250, enableSorting: true, cell: ({ row }) => <HighlightText text={row.original.name} /> },
+  { 
+    header: "Policy Date From", 
+    accessorKey: "policyDateFrom", 
+    size: 150, 
+    cell: ({ row }) => row.original.policyDateFrom ? new Date(row.original.policyDateFrom).toLocaleDateString() : "—",
+    enableSorting: true 
+  },
+  { 
+    header: "Policy Date Till", 
+    accessorKey: "policyDateTill", 
+    size: 150, 
+    cell: ({ row }) => row.original.policyDateTill ? new Date(row.original.policyDateTill).toLocaleDateString() : "—",
+    enableSorting: true 
+  },
   { header: "Details", accessorKey: "details", size: 200, cell: ({ row }) => row.original.details || "—" },
   { header: "Created By", accessorKey: "createdBy", size: 150, enableSorting: true, cell: ({ row }) => row.original.createdBy || "—" },
   { header: "Created At", accessorKey: "createdAt", size: 150, cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(), enableSorting: true },
@@ -67,16 +70,7 @@ function RowActions({ row }: { row: Row<LeavesPolicyRow> }) {
   const lp = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
-
-  const handleEditSubmit = async (formData: FormData) => {
-    startTransition(async () => {
-      const result = await updateLeavesPolicy(lp.id, formData);
-      if (result.status) { toast.success(result.message); setEditDialog(false); router.refresh(); }
-      else toast.error(result.message);
-    });
-  };
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
@@ -95,26 +89,11 @@ function RowActions({ row }: { row: Row<LeavesPolicyRow> }) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}><Pencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/master/leaves-policy/view/${lp.id}`)}><Eye className="h-4 w-4 mr-2" />View</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/dashboard/master/leaves-policy/edit/${lp.id}`)}><Pencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
           <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit Leave Policy</DialogTitle><DialogDescription>Update the leave policy details</DialogDescription></DialogHeader>
-          <form action={handleEditSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2"><Label>Policy Name</Label><Input name="name" defaultValue={lp.name} disabled={isPending} required /></div>
-              <div className="space-y-2"><Label>Details (Optional)</Label><Textarea name="details" defaultValue={lp.details || ""} disabled={isPending} rows={3} /></div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>Cancel</Button>
-              <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Save Changes</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>

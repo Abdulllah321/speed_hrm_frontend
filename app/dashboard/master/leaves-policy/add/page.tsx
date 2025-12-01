@@ -1,11 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -13,45 +12,122 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { createLeavesPolicies } from "@/lib/actions/leaves-policy";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createLeavesPolicy } from "@/lib/actions/leaves-policy";
+import { getLeaveTypes, LeaveType } from "@/lib/actions/leave-type";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Loader2, Trash2, Plus } from "lucide-react";
 import Link from "next/link";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+
+interface LeaveTypeRow {
+  id: number;
+  leaveTypeId: string;
+  numberOfLeaves: string;
+}
 
 export default function AddLeavesPolicyPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [policies, setPolicies] = useState([{ id: 1, name: "", details: "" }]);
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>([]);
+  const [name, setName] = useState("");
+  const [details, setDetails] = useState("");
+  const [policyDateFrom, setPolicyDateFrom] = useState<Date | undefined>();
+  const [policyDateTill, setPolicyDateTill] = useState<Date | undefined>();
+  const [fullDayDeductionRate, setFullDayDeductionRate] = useState("1");
+  const [halfDayDeductionRate, setHalfDayDeductionRate] = useState("0.5");
+  const [shortLeaveDeductionRate, setShortLeaveDeductionRate] =
+    useState("0.25");
+  const [leaveTypeRows, setLeaveTypeRows] = useState<LeaveTypeRow[]>([
+    { id: 1, leaveTypeId: "", numberOfLeaves: "" },
+  ]);
 
-  const addRow = () => {
-    setPolicies([...policies, { id: Date.now(), name: "", details: "" }]);
+  useEffect(() => {
+    getLeaveTypes().then((res) => {
+      if (res.status && res.data) {
+        setLeaveTypes(res.data);
+      }
+    });
+  }, []);
+
+  const addLeaveTypeRow = () => {
+    setLeaveTypeRows([
+      ...leaveTypeRows,
+      { id: Date.now(), leaveTypeId: "", numberOfLeaves: "" },
+    ]);
   };
 
-  const removeRow = (id: number) => {
-    if (policies.length > 1) {
-      setPolicies(policies.filter((p) => p.id !== id));
+  const removeLeaveTypeRow = (id: number) => {
+    if (leaveTypeRows.length > 1) {
+      setLeaveTypeRows(leaveTypeRows.filter((r) => r.id !== id));
     }
   };
 
-  const updateField = (id: number, field: "name" | "details", value: string) => {
-    setPolicies(
-      policies.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+  const updateLeaveTypeRow = (
+    id: number,
+    field: "leaveTypeId" | "numberOfLeaves",
+    value: string
+  ) => {
+    setLeaveTypeRows(
+      leaveTypeRows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const items = policies
-      .map((p) => ({ name: p.name.trim(), details: p.details.trim() || undefined }))
-      .filter((p) => p.name);
 
-    if (items.length === 0) {
-      toast.error("Please enter at least one policy name");
+    if (!name.trim()) {
+      toast.error("Leaves Policy Name is required");
+      return;
+    }
+
+    if (!policyDateFrom) {
+      toast.error("Policy Date from is required");
+      return;
+    }
+
+    if (!policyDateTill) {
+      toast.error("Policy Date till is required");
+      return;
+    }
+
+    const validLeaveTypes = leaveTypeRows.filter(
+      (r) => r.leaveTypeId && r.numberOfLeaves
+    );
+
+    if (validLeaveTypes.length === 0) {
+      toast.error("Please add at least one leave type");
       return;
     }
 
     startTransition(async () => {
-      const result = await createLeavesPolicies(items);
+      const result = await createLeavesPolicy({
+        name: name.trim(),
+        details: details.trim() || undefined,
+        policyDateFrom: policyDateFrom.toISOString(),
+        policyDateTill: policyDateTill.toISOString(),
+        fullDayDeductionRate: parseFloat(fullDayDeductionRate),
+        halfDayDeductionRate: parseFloat(halfDayDeductionRate),
+        shortLeaveDeductionRate: parseFloat(shortLeaveDeductionRate),
+        leaveTypes: validLeaveTypes.map((r) => ({
+          leaveTypeId: r.leaveTypeId,
+          numberOfLeaves: parseInt(r.numberOfLeaves) || 0,
+        })),
+      });
+
       if (result.status) {
         toast.success(result.message);
         router.push("/dashboard/master/leaves-policy/list");
@@ -61,8 +137,27 @@ export default function AddLeavesPolicyPage() {
     });
   };
 
+  const handleClear = () => {
+    setName("");
+    setDetails("");
+    setPolicyDateFrom(undefined);
+    setPolicyDateTill(undefined);
+    setFullDayDeductionRate("1");
+    setHalfDayDeductionRate("0.5");
+    setShortLeaveDeductionRate("0.25");
+    setLeaveTypeRows([{ id: 1, leaveTypeId: "", numberOfLeaves: "" }]);
+  };
+
+  const deductionRateOptions = [
+    { value: "0.25", label: "0.25 (Day)" },
+    { value: "0.5", label: "0.5 (Day)" },
+    { value: "1", label: "1 (Day)" },
+    { value: "1.5", label: "1.5 (Day)" },
+    { value: "2", label: "2 (Day)" },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-6xl mx-auto">
       <div className="mb-6">
         <Link href="/dashboard/master/leaves-policy/list">
           <Button variant="ghost" size="sm">
@@ -74,79 +169,265 @@ export default function AddLeavesPolicyPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Add Leave Policies</CardTitle>
+          <CardTitle>Create Leaves Policy Form</CardTitle>
           <CardDescription>
-            Create one or more leave policies for your organization
+            Define leave policies with dates, deduction rates, and leave types
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {policies.map((policy, index) => (
-              <div key={policy.id} className="space-y-4 border rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <Label className="text-base font-medium">
-                    Policy {index + 1}
-                  </Label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeRow(policy.id)}
-                    disabled={policies.length === 1 || isPending}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Policy Name *</Label>
-                    <Input
-                      placeholder="Policy name"
-                      value={policy.name}
-                      onChange={(e) => updateField(policy.id, "name", e.target.value)}
-                      disabled={isPending}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Details (Optional)</Label>
-                    <Textarea
-                      placeholder="Policy details"
-                      value={policy.details}
-                      onChange={(e) => updateField(policy.id, "details", e.target.value)}
-                      disabled={isPending}
-                      rows={3}
-                    />
-                  </div>
-                </div>
+            {/* Policy Name and Dates */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Leaves Policy Name *</Label>
+                <Input
+                  placeholder="Policy name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isPending}
+                  required
+                />
               </div>
-            ))}
-            <div className="flex gap-2 justify-between">
-              <div className="flex gap-2">
-                <Button type="submit" disabled={isPending}>
-                  {isPending && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
-                  Create{" "}
-                  {policies.length > 1
-                    ? `${policies.length} Policies`
-                    : "Policy"}
-                </Button>
+              <div className="space-y-2">
+                <Label>Policy Date from *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !policyDateFrom && "text-muted-foreground"
+                      )}
+                      disabled={isPending}
+                      type="button"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {policyDateFrom ? (
+                        format(policyDateFrom, "MM/dd/yyyy")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={policyDateFrom}
+                      onSelect={setPolicyDateFrom}
+                      disabled={isPending}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Policy Date till *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !policyDateTill && "text-muted-foreground"
+                      )}
+                      disabled={isPending}
+                      type="button"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {policyDateTill ? (
+                        format(policyDateTill, "MM/dd/yyyy")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={policyDateTill}
+                      onSelect={setPolicyDateTill}
+                      disabled={isPending}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            {/* Deduction Rates */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Full Day Deduction Rate *</Label>
+                <Select
+                  value={fullDayDeductionRate}
+                  onValueChange={setFullDayDeductionRate}
+                  disabled={isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select rate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deductionRateOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Half Day Deduction Rate *</Label>
+                <Select
+                  value={halfDayDeductionRate}
+                  onValueChange={setHalfDayDeductionRate}
+                  disabled={isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select rate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deductionRateOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Short Leave Deduction Rate *</Label>
+                <Select
+                  value={shortLeaveDeductionRate}
+                  onValueChange={setShortLeaveDeductionRate}
+                  disabled={isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select rate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {deductionRateOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Leave Types */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label className="text-base font-medium">Leave Types *</Label>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  size="sm"
+                  onClick={addLeaveTypeRow}
+                  disabled={isPending}
                 >
-                  Cancel
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add More Leaves Type
                 </Button>
               </div>
-              <button
-                type="button"
-                onClick={addRow}
+              <div className="space-y-3">
+                {leaveTypeRows.map((row, index) => (
+                  <div
+                    key={row.id}
+                    className="grid grid-cols-12 gap-4 items-start"
+                  >
+                    <div className="col-span-5 space-y-2">
+                      <Label>Leaves Type *</Label>
+                      <Select
+                        value={row.leaveTypeId}
+                        onValueChange={(value) =>
+                          updateLeaveTypeRow(row.id, "leaveTypeId", value)
+                        }
+                        disabled={isPending}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select leave type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {leaveTypes.map((lt) => (
+                            <SelectItem key={lt.id} value={lt.id}>
+                              {lt.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-5 space-y-2">
+                      <Label>No. of Leaves *</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="Number of leaves"
+                        value={row.numberOfLeaves}
+                        onChange={(e) =>
+                          updateLeaveTypeRow(
+                            row.id,
+                            "numberOfLeaves",
+                            e.target.value
+                          )
+                        }
+                        disabled={isPending}
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2 flex justify-center items-start pt-8">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeLeaveTypeRow(row.id)}
+                        disabled={leaveTypeRows.length === 1 || isPending}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Details (Optional) */}
+            <div className="space-y-2">
+              <Label>Details (Optional)</Label>
+              <Input
+                placeholder="Additional details"
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
                 disabled={isPending}
-                className="text-sm text-primary hover:underline disabled:opacity-50"
+              />
+            </div>
+
+            {/* Total */}
+            <div className="space-y-2">
+              <Label className="font-semibold">Total</Label>
+              <Input
+                type="number"
+                value={leaveTypeRows.reduce((sum, row) => {
+                  const num = parseInt(row.numberOfLeaves) || 0;
+                  return sum + num;
+                }, 0)}
+                disabled
+                className="font-semibold bg-muted"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClear}
+                disabled={isPending}
               >
-                + Add more
-              </button>
+                Clear Form
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Submit
+              </Button>
             </div>
           </form>
         </CardContent>
