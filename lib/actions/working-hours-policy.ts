@@ -33,6 +33,31 @@ export interface WorkingHoursPolicy {
   shortDayDeductionAmount?: number | null;
   overtimeRate?: number | null;
   gazzetedOvertimeRate?: number | null;
+  dayOverrides?: 
+    | Array<{
+        days: string[];
+        enabled: boolean;
+        overrideHours: boolean;
+        startTime: string;
+        endTime: string;
+        overrideBreak: boolean;
+        startBreakTime: string;
+        endBreakTime: string;
+        dayType: "full" | "half" | "custom";
+      }>
+    | {
+        [key: string]: {
+          enabled: boolean;
+          overrideHours: boolean;
+          startTime: string;
+          endTime: string;
+          overrideBreak: boolean;
+          startBreakTime: string;
+          endBreakTime: string;
+          dayType: "full" | "half" | "custom";
+        };
+      }
+    | null;
   status: string;
   createdBy?: string;
   createdAt: string;
@@ -107,6 +132,31 @@ export async function createWorkingHoursPolicy(data: {
   overtimeRate?: number | null;
   gazzetedOvertimeRate?: number | null;
   status?: string;
+  dayOverrides?: 
+    | Array<{
+        days: string[];
+        enabled: boolean;
+        overrideHours: boolean;
+        startTime: string;
+        endTime: string;
+        overrideBreak: boolean;
+        startBreakTime: string;
+        endBreakTime: string;
+        dayType: "full" | "half" | "custom";
+      }>
+    | {
+        [key: string]: {
+          enabled: boolean;
+          overrideHours: boolean;
+          startTime: string;
+          endTime: string;
+          overrideBreak: boolean;
+          startBreakTime: string;
+          endBreakTime: string;
+          dayType: "full" | "half" | "custom";
+        };
+      }
+    | null;
 }): Promise<{ status: boolean; data?: WorkingHoursPolicy; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/working-hours-policies`, {
@@ -149,6 +199,31 @@ export async function updateWorkingHoursPolicy(id: string, data: {
   overtimeRate?: number | null;
   gazzetedOvertimeRate?: number | null;
   status?: string;
+  dayOverrides?: 
+    | Array<{
+        days: string[];
+        enabled: boolean;
+        overrideHours: boolean;
+        startTime: string;
+        endTime: string;
+        overrideBreak: boolean;
+        startBreakTime: string;
+        endBreakTime: string;
+        dayType: "full" | "half" | "custom";
+      }>
+    | {
+        [key: string]: {
+          enabled: boolean;
+          overrideHours: boolean;
+          startTime: string;
+          endTime: string;
+          overrideBreak: boolean;
+          startBreakTime: string;
+          endBreakTime: string;
+          dayType: "full" | "half" | "custom";
+        };
+      }
+    | null;
 }): Promise<{ status: boolean; data?: WorkingHoursPolicy; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/working-hours-policies/${id}`, {

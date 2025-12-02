@@ -25,10 +25,18 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { ArrowLeft, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, Clock, Loader2, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { createWorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function CreateWorkingHoursPolicyPage() {
   const router = useRouter();
@@ -66,7 +74,103 @@ export default function CreateWorkingHoursPolicyPage() {
   const [overtimeRate, setOvertimeRate] = useState("");
   const [gazzetedOvertimeRate, setGazzetedOvertimeRate] = useState("");
 
+  // Day-wise Overrides
+  const [dayOverrides, setDayOverrides] = useState<{
+    [key: string]: {
+      enabled: boolean;
+      overrideHours: boolean;
+      startTime: string;
+      endTime: string;
+      overrideBreak: boolean;
+      startBreakTime: string;
+      endBreakTime: string;
+      dayType: "full" | "half" | "custom";
+    };
+  }>({
+    monday: {
+      enabled: true,
+      overrideHours: false,
+      startTime: "",
+      endTime: "",
+      overrideBreak: false,
+      startBreakTime: "",
+      endBreakTime: "",
+      dayType: "full",
+    },
+    tuesday: {
+      enabled: true,
+      overrideHours: false,
+      startTime: "",
+      endTime: "",
+      overrideBreak: false,
+      startBreakTime: "",
+      endBreakTime: "",
+      dayType: "full",
+    },
+    wednesday: {
+      enabled: true,
+      overrideHours: false,
+      startTime: "",
+      endTime: "",
+      overrideBreak: false,
+      startBreakTime: "",
+      endBreakTime: "",
+      dayType: "full",
+    },
+    thursday: {
+      enabled: true,
+      overrideHours: false,
+      startTime: "",
+      endTime: "",
+      overrideBreak: false,
+      startBreakTime: "",
+      endBreakTime: "",
+      dayType: "full",
+    },
+    friday: {
+      enabled: true,
+      overrideHours: false,
+      startTime: "",
+      endTime: "",
+      overrideBreak: false,
+      startBreakTime: "",
+      endBreakTime: "",
+      dayType: "full",
+    },
+    saturday: {
+      enabled: false,
+      overrideHours: false,
+      startTime: "",
+      endTime: "",
+      overrideBreak: false,
+      startBreakTime: "",
+      endBreakTime: "",
+      dayType: "full",
+    },
+    sunday: {
+      enabled: false,
+      overrideHours: false,
+      startTime: "",
+      endTime: "",
+      overrideBreak: false,
+      startBreakTime: "",
+      endBreakTime: "",
+      dayType: "full",
+    },
+  });
+
+  const daysOfWeek = [
+    { key: "monday", label: "Monday" },
+    { key: "tuesday", label: "Tuesday" },
+    { key: "wednesday", label: "Wednesday" },
+    { key: "thursday", label: "Thursday" },
+    { key: "friday", label: "Friday" },
+    { key: "saturday", label: "Saturday" },
+    { key: "sunday", label: "Sunday" },
+  ];
+
   const overtimeRateOptions = [
+    { value: "0", label: "None" },
     { value: "0.5", label: "x0.5" },
     { value: "1", label: "x1" },
     { value: "1.5", label: "x1.5" },
@@ -82,11 +186,145 @@ export default function CreateWorkingHoursPolicyPage() {
     return shortDayUnit === "hours" ? value * 60 : value;
   };
 
+  // Helper function to create a config key for grouping
+  const getDayConfigKey = (dayData: {
+    enabled: boolean;
+    overrideHours: boolean;
+    startTime: string;
+    endTime: string;
+    overrideBreak: boolean;
+    startBreakTime: string;
+    endBreakTime: string;
+    dayType: "full" | "half" | "custom";
+  }): string => {
+    return JSON.stringify({
+      enabled: dayData.enabled,
+      overrideHours: dayData.overrideHours,
+      startTime: dayData.startTime,
+      endTime: dayData.endTime,
+      overrideBreak: dayData.overrideBreak,
+      startBreakTime: dayData.startBreakTime,
+      endBreakTime: dayData.endBreakTime,
+      dayType: dayData.dayType,
+    });
+  };
+
+  // Group days with the same configuration
+  const groupDayOverrides = () => {
+    const groups: {
+      days: string[];
+      enabled: boolean;
+      overrideHours: boolean;
+      startTime: string;
+      endTime: string;
+      overrideBreak: boolean;
+      startBreakTime: string;
+      endBreakTime: string;
+      dayType: "full" | "half" | "custom";
+    }[] = [];
+
+    const configMap = new Map<string, string[]>();
+
+    // Group days by their configuration
+    daysOfWeek.forEach((day) => {
+      const dayData = dayOverrides[day.key];
+      const configKey = getDayConfigKey(dayData);
+
+      if (!configMap.has(configKey)) {
+        configMap.set(configKey, []);
+      }
+      configMap.get(configKey)!.push(day.key);
+    });
+
+    // Create groups from the map
+    configMap.forEach((days, configKey) => {
+      const firstDay = days[0];
+      const dayData = dayOverrides[firstDay];
+      groups.push({
+        days,
+        enabled: dayData.enabled,
+        overrideHours: dayData.overrideHours,
+        startTime: dayData.startTime,
+        endTime: dayData.endTime,
+        overrideBreak: dayData.overrideBreak,
+        startBreakTime: dayData.startBreakTime,
+        endBreakTime: dayData.endBreakTime,
+        dayType: dayData.dayType,
+      });
+    });
+
+    return groups;
+  };
+
+  // Format day group label (e.g., "Mon-Thu" or "Friday")
+  const formatDayGroupLabel = (days: string[]): string => {
+    if (days.length === 1) {
+      return daysOfWeek.find((d) => d.key === days[0])?.label || days[0];
+    }
+
+    const dayIndices = days
+      .map((day) => daysOfWeek.findIndex((d) => d.key === day))
+      .sort((a, b) => a - b);
+
+    // Check if days are consecutive
+    const isConsecutive = dayIndices.every(
+      (idx, i) => i === 0 || idx === dayIndices[i - 1] + 1
+    );
+
+    if (isConsecutive && dayIndices.length > 1) {
+      const firstDay = daysOfWeek[dayIndices[0]].label;
+      const lastDay = daysOfWeek[dayIndices[dayIndices.length - 1]].label;
+      return `${firstDay.substring(0, 3)}-${lastDay.substring(0, 3)}`;
+    }
+
+    // Non-consecutive days
+    return days
+      .map((day) =>
+        daysOfWeek.find((d) => d.key === day)?.label.substring(0, 3)
+      )
+      .join(", ");
+  };
+
   // Time picker helper functions
   const formatTimeForDisplay = (time: string): string => {
     if (!time) return "--:--";
     const [hours, minutes] = time.split(":");
-    return `${hours}:${minutes}`;
+    const hour24 = parseInt(hours, 10);
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+    const ampm = hour24 >= 12 ? "PM" : "AM";
+    return `${hour12.toString().padStart(2, "0")}:${minutes} ${ampm}`;
+  };
+
+  // Convert 24-hour to 12-hour format
+  const convert24To12 = (
+    time24: string
+  ): { hour: string; minute: string; ampm: string } => {
+    if (!time24) return { hour: "", minute: "", ampm: "AM" };
+    const [h, m] = time24.split(":");
+    const hour24 = parseInt(h, 10);
+    const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+    const ampm = hour24 >= 12 ? "PM" : "AM";
+    return {
+      hour: hour12.toString().padStart(2, "0"),
+      minute: m || "00",
+      ampm,
+    };
+  };
+
+  // Convert 12-hour to 24-hour format
+  const convert12To24 = (
+    hour12: string,
+    minute: string,
+    ampm: string
+  ): string => {
+    if (!hour12 || !minute) return "";
+    let hour24 = parseInt(hour12, 10);
+    if (ampm === "PM" && hour24 !== 12) {
+      hour24 += 12;
+    } else if (ampm === "AM" && hour24 === 12) {
+      hour24 = 0;
+    }
+    return `${hour24.toString().padStart(2, "0")}:${minute.padStart(2, "0")}`;
   };
 
   const TimePicker = ({
@@ -99,45 +337,53 @@ export default function CreateWorkingHoursPolicyPage() {
     disabled?: boolean;
   }) => {
     const [open, setOpen] = useState(false);
-    const currentHours = value ? value.split(":")[0] : "";
-    const currentMinutes = value ? value.split(":")[1] : "";
-    const [hours, setHours] = useState(currentHours);
-    const [minutes, setMinutes] = useState(currentMinutes);
+    const time12 = convert24To12(value);
+    const [hours, setHours] = useState(time12.hour);
+    const [minutes, setMinutes] = useState(time12.minute);
+    const [ampm, setAmpm] = useState<"AM" | "PM">(time12.ampm as "AM" | "PM");
 
     // Update local state when value prop changes
     useEffect(() => {
-      if (value) {
-        const [h, m] = value.split(":");
-        setHours(h || "");
-        setMinutes(m || "");
-      } else {
-        setHours("");
-        setMinutes("");
-      }
+      const time12 = convert24To12(value);
+      setHours(time12.hour);
+      setMinutes(time12.minute);
+      setAmpm(time12.ampm as "AM" | "PM");
     }, [value]);
 
     const handleHourChange = (h: string) => {
       setHours(h);
       if (h && minutes) {
-        onChange(`${h.padStart(2, "0")}:${minutes.padStart(2, "0")}`);
+        const time24 = convert12To24(h, minutes, ampm);
+        onChange(time24);
       } else if (h && !minutes) {
         setMinutes("00");
-        onChange(`${h.padStart(2, "0")}:00`);
+        const time24 = convert12To24(h, "00", ampm);
+        onChange(time24);
       }
     };
 
     const handleMinuteChange = (m: string) => {
       setMinutes(m);
       if (hours && m) {
-        onChange(`${hours.padStart(2, "0")}:${m.padStart(2, "0")}`);
+        const time24 = convert12To24(hours, m, ampm);
+        onChange(time24);
       } else if (!hours && m) {
-        setHours("00");
-        onChange(`00:${m.padStart(2, "0")}`);
+        setHours("12");
+        const time24 = convert12To24("12", m, ampm);
+        onChange(time24);
       }
     };
 
-    const hourOptions = Array.from({ length: 24 }, (_, i) =>
-      i.toString().padStart(2, "0")
+    const handleAmpmChange = (value: "AM" | "PM") => {
+      setAmpm(value);
+      if (hours && minutes) {
+        const time24 = convert12To24(hours, minutes, value);
+        onChange(time24);
+      }
+    };
+
+    const hourOptions = Array.from({ length: 12 }, (_, i) =>
+      (i + 1).toString().padStart(2, "0")
     );
     const minuteOptions = Array.from({ length: 60 }, (_, i) =>
       i.toString().padStart(2, "0")
@@ -200,16 +446,22 @@ export default function CreateWorkingHoursPolicyPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="flex justify-end mt-4">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setOpen(false)}
-            >
-              Done
-            </Button>
+            <div className="space-y-2">
+              <Label className="text-xs">Period</Label>
+              <Select
+                value={ampm}
+                onValueChange={handleAmpmChange}
+                disabled={disabled}
+              >
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AM">AM</SelectItem>
+                  <SelectItem value="PM">PM</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </PopoverContent>
       </Popover>
@@ -224,6 +476,7 @@ export default function CreateWorkingHoursPolicyPage() {
       return;
     }
 
+    // Validate default working hours
     if (!startWorkingHours) {
       toast.error("Start Working Hours Time is required");
       return;
@@ -232,6 +485,28 @@ export default function CreateWorkingHoursPolicyPage() {
     if (!endWorkingHours) {
       toast.error("End Working Hours Time is required");
       return;
+    }
+
+    // Validate day overrides
+    const enabledDays = Object.entries(dayOverrides).filter(
+      ([_, day]) => day.enabled
+    );
+
+    if (enabledDays.length === 0) {
+      toast.error("At least one day must be enabled");
+      return;
+    }
+
+    // Validate days that override hours
+    for (const [dayKey, day] of enabledDays) {
+      if (day.overrideHours && (!day.startTime || !day.endTime)) {
+        toast.error(
+          `Please set start and end times for ${
+            daysOfWeek.find((d) => d.key === dayKey)?.label
+          } or uncheck "Override Hours"`
+        );
+        return;
+      }
     }
 
     const shortDayMins = calculateShortDayMins();
@@ -266,10 +541,13 @@ export default function CreateWorkingHoursPolicyPage() {
       shortDayDeductionAmount: shortDayDeductionAmount
         ? parseFloat(shortDayDeductionAmount)
         : null,
-      overtimeRate: overtimeRate ? parseFloat(overtimeRate) : null,
-      gazzetedOvertimeRate: gazzetedOvertimeRate
-        ? parseFloat(gazzetedOvertimeRate)
-        : null,
+      overtimeRate:
+        overtimeRate && overtimeRate !== "0" ? parseFloat(overtimeRate) : null,
+      gazzetedOvertimeRate:
+        gazzetedOvertimeRate && gazzetedOvertimeRate !== "0"
+          ? parseFloat(gazzetedOvertimeRate)
+          : null,
+      dayOverrides: groupDayOverrides(),
     };
 
     startTransition(async () => {
@@ -306,6 +584,78 @@ export default function CreateWorkingHoursPolicyPage() {
     setShortDayDeductionAmount("");
     setOvertimeRate("");
     setGazzetedOvertimeRate("");
+    setDayOverrides({
+      monday: {
+        enabled: true,
+        overrideHours: false,
+        startTime: "",
+        endTime: "",
+        overrideBreak: false,
+        startBreakTime: "",
+        endBreakTime: "",
+        dayType: "full",
+      },
+      tuesday: {
+        enabled: true,
+        overrideHours: false,
+        startTime: "",
+        endTime: "",
+        overrideBreak: false,
+        startBreakTime: "",
+        endBreakTime: "",
+        dayType: "full",
+      },
+      wednesday: {
+        enabled: true,
+        overrideHours: false,
+        startTime: "",
+        endTime: "",
+        overrideBreak: false,
+        startBreakTime: "",
+        endBreakTime: "",
+        dayType: "full",
+      },
+      thursday: {
+        enabled: true,
+        overrideHours: false,
+        startTime: "",
+        endTime: "",
+        overrideBreak: false,
+        startBreakTime: "",
+        endBreakTime: "",
+        dayType: "full",
+      },
+      friday: {
+        enabled: true,
+        overrideHours: false,
+        startTime: "",
+        endTime: "",
+        overrideBreak: false,
+        startBreakTime: "",
+        endBreakTime: "",
+        dayType: "full",
+      },
+      saturday: {
+        enabled: false,
+        overrideHours: false,
+        startTime: "",
+        endTime: "",
+        overrideBreak: false,
+        startBreakTime: "",
+        endBreakTime: "",
+        dayType: "full",
+      },
+      sunday: {
+        enabled: false,
+        overrideHours: false,
+        startTime: "",
+        endTime: "",
+        overrideBreak: false,
+        startBreakTime: "",
+        endBreakTime: "",
+        dayType: "full",
+      },
+    });
   };
 
   return (
@@ -331,7 +681,12 @@ export default function CreateWorkingHoursPolicyPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Working Hours Details Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Working Hours Details</h3>
+              <h3 className="text-lg font-semibold">Default Working Hours</h3>
+              <p className="text-sm text-muted-foreground">
+                Set default working hours that will apply to all days. You can
+                override specific days in the "Day-wise Overrides" section
+                below.
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>
@@ -348,7 +703,7 @@ export default function CreateWorkingHoursPolicyPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    Start Working Hours Time (Hour){" "}
+                    Default Start Working Hours{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <TimePicker
@@ -359,12 +714,28 @@ export default function CreateWorkingHoursPolicyPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    End Working Hours Time (Hour){" "}
+                    Default End Working Hours{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <TimePicker
                     value={endWorkingHours}
                     onChange={setEndWorkingHours}
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Default Start Break Time</Label>
+                  <TimePicker
+                    value={startBreakTime}
+                    onChange={setStartBreakTime}
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Default End Break Time</Label>
+                  <TimePicker
+                    value={endBreakTime}
+                    onChange={setEndBreakTime}
                     disabled={isPending}
                   />
                 </div>
@@ -402,22 +773,6 @@ export default function CreateWorkingHoursPolicyPage() {
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label>Start Break Time</Label>
-                  <TimePicker
-                    value={startBreakTime}
-                    onChange={setStartBreakTime}
-                    disabled={isPending}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>End Break Time</Label>
-                  <TimePicker
-                    value={endBreakTime}
-                    onChange={setEndBreakTime}
-                    disabled={isPending}
-                  />
-                </div>
-                <div className="space-y-2">
                   <Label>Half Day Start Time</Label>
                   <TimePicker
                     value={halfDayStartTime}
@@ -436,6 +791,294 @@ export default function CreateWorkingHoursPolicyPage() {
               </div>
             </div>
 
+            {/* Day-wise Overrides Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Day-wise Overrides</h3>
+              <p className="text-sm text-muted-foreground">
+                Override default settings for specific days. Enable/disable
+                days, override hours or break times individually. Days with the
+                same configuration will be automatically grouped together when
+                saved.
+              </p>
+
+              {/* Preview of grouped configuration */}
+              <div className="p-4 border rounded-lg bg-muted/50">
+                <h4 className="text-sm font-semibold mb-2">
+                  Preview: How days will be grouped
+                </h4>
+                <div className="space-y-2 text-xs">
+                  {(() => {
+                    const groups = groupDayOverrides();
+                    if (groups.length === 0)
+                      return (
+                        <p className="text-muted-foreground">
+                          No days configured
+                        </p>
+                      );
+                    return groups.map((group, idx) => {
+                      const groupLabel = formatDayGroupLabel(group.days);
+                      return (
+                        <div key={idx} className="flex items-center gap-2">
+                          <Badge
+                            variant={group.enabled ? "default" : "secondary"}
+                            className="text-xs"
+                          >
+                            {groupLabel}
+                            {!group.enabled && " (Off Day)"}
+                          </Badge>
+                          {group.enabled && (
+                            <span className="text-muted-foreground">
+                              {group.overrideHours
+                                ? `${formatTimeForDisplay(
+                                    group.startTime
+                                  )} - ${formatTimeForDisplay(group.endTime)}`
+                                : "Default hours"}
+                              {group.overrideBreak && " [Custom Break]"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              <Accordion type="multiple" className="w-full">
+                {daysOfWeek.map((day) => {
+                  const dayData = dayOverrides[day.key];
+                  const effectiveStartTime = dayData.overrideHours
+                    ? dayData.startTime
+                    : startWorkingHours;
+                  const effectiveEndTime = dayData.overrideHours
+                    ? dayData.endTime
+                    : endWorkingHours;
+                  const effectiveStartBreak = dayData.overrideBreak
+                    ? dayData.startBreakTime
+                    : startBreakTime;
+                  const effectiveEndBreak = dayData.overrideBreak
+                    ? dayData.endBreakTime
+                    : endBreakTime;
+
+                  return (
+                    <AccordionItem key={day.key} value={day.key}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3 w-full pr-4">
+                          <Checkbox
+                            checked={dayData.enabled}
+                            onCheckedChange={(checked) => {
+                              setDayOverrides((prev) => ({
+                                ...prev,
+                                [day.key]: {
+                                  ...prev[day.key],
+                                  enabled: checked === true,
+                                },
+                              }));
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            disabled={isPending}
+                          />
+                          <span
+                            className={cn(
+                              "font-medium",
+                              !dayData.enabled && "text-muted-foreground"
+                            )}
+                          >
+                            {day.label}
+                          </span>
+                          {dayData.enabled && (
+                            <span className="text-xs text-muted-foreground ml-auto">
+                              {effectiveStartTime && effectiveEndTime
+                                ? `${formatTimeForDisplay(
+                                    effectiveStartTime
+                                  )} - ${formatTimeForDisplay(
+                                    effectiveEndTime
+                                  )}`
+                                : "Using default"}
+                              {dayData.overrideHours && " (Custom)"}
+                              {dayData.overrideBreak && " [Break Override]"}
+                            </span>
+                          )}
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-4 pt-2 pl-7">
+                          <div className="flex items-center gap-2 pb-2 border-b">
+                            <Checkbox
+                              id={`${day.key}-override-hours`}
+                              checked={dayData.overrideHours}
+                              onCheckedChange={(checked) => {
+                                setDayOverrides((prev) => ({
+                                  ...prev,
+                                  [day.key]: {
+                                    ...prev[day.key],
+                                    overrideHours: checked === true,
+                                    startTime: checked
+                                      ? prev[day.key].startTime
+                                      : "",
+                                    endTime: checked
+                                      ? prev[day.key].endTime
+                                      : "",
+                                  },
+                                }));
+                              }}
+                              disabled={isPending || !dayData.enabled}
+                            />
+                            <Label
+                              htmlFor={`${day.key}-override-hours`}
+                              className="text-sm font-normal cursor-pointer"
+                            >
+                              Override Working Hours (Use custom times instead
+                              of default)
+                            </Label>
+                          </div>
+
+                          {dayData.overrideHours && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>
+                                  Start Time{" "}
+                                  <span className="text-destructive">*</span>
+                                </Label>
+                                <TimePicker
+                                  value={dayData.startTime}
+                                  onChange={(value) => {
+                                    setDayOverrides((prev) => ({
+                                      ...prev,
+                                      [day.key]: {
+                                        ...prev[day.key],
+                                        startTime: value,
+                                      },
+                                    }));
+                                  }}
+                                  disabled={isPending || !dayData.enabled}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>
+                                  End Time{" "}
+                                  <span className="text-destructive">*</span>
+                                </Label>
+                                <TimePicker
+                                  value={dayData.endTime}
+                                  onChange={(value) => {
+                                    setDayOverrides((prev) => ({
+                                      ...prev,
+                                      [day.key]: {
+                                        ...prev[day.key],
+                                        endTime: value,
+                                      },
+                                    }));
+                                  }}
+                                  disabled={isPending || !dayData.enabled}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center gap-2 pt-2 border-t">
+                            <Checkbox
+                              id={`${day.key}-override-break`}
+                              checked={dayData.overrideBreak}
+                              onCheckedChange={(checked) => {
+                                setDayOverrides((prev) => ({
+                                  ...prev,
+                                  [day.key]: {
+                                    ...prev[day.key],
+                                    overrideBreak: checked === true,
+                                    startBreakTime: checked
+                                      ? prev[day.key].startBreakTime
+                                      : "",
+                                    endBreakTime: checked
+                                      ? prev[day.key].endBreakTime
+                                      : "",
+                                  },
+                                }));
+                              }}
+                              disabled={isPending || !dayData.enabled}
+                            />
+                            <Label
+                              htmlFor={`${day.key}-override-break`}
+                              className="text-sm font-normal cursor-pointer"
+                            >
+                              Override Break Times (Use custom break times
+                              instead of default)
+                            </Label>
+                          </div>
+
+                          {dayData.overrideBreak && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label>Start Break Time</Label>
+                                <TimePicker
+                                  value={dayData.startBreakTime}
+                                  onChange={(value) => {
+                                    setDayOverrides((prev) => ({
+                                      ...prev,
+                                      [day.key]: {
+                                        ...prev[day.key],
+                                        startBreakTime: value,
+                                      },
+                                    }));
+                                  }}
+                                  disabled={isPending || !dayData.enabled}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <Label>End Break Time</Label>
+                                <TimePicker
+                                  value={dayData.endBreakTime}
+                                  onChange={(value) => {
+                                    setDayOverrides((prev) => ({
+                                      ...prev,
+                                      [day.key]: {
+                                        ...prev[day.key],
+                                        endBreakTime: value,
+                                      },
+                                    }));
+                                  }}
+                                  disabled={isPending || !dayData.enabled}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="space-y-2 pt-2 border-t">
+                            <Label>Day Type</Label>
+                            <Select
+                              value={dayData.dayType}
+                              onValueChange={(
+                                value: "full" | "half" | "custom"
+                              ) => {
+                                setDayOverrides((prev) => ({
+                                  ...prev,
+                                  [day.key]: {
+                                    ...prev[day.key],
+                                    dayType: value,
+                                  },
+                                }));
+                              }}
+                              disabled={isPending || !dayData.enabled}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="full">Full Day</SelectItem>
+                                <SelectItem value="half">Half Day</SelectItem>
+                                <SelectItem value="custom">
+                                  Custom Hours
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </div>
+
             {/* Deductions For Late/Half/Short-Day Section */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">
@@ -449,7 +1092,7 @@ export default function CreateWorkingHoursPolicyPage() {
                   <Select
                     value={lateDeductionType || undefined}
                     onValueChange={(value) => {
-                      if (value === "__clear__") {
+                      if (value === "__none__") {
                         setLateDeductionType("");
                         setLateDeductionPercent("");
                         setApplyDeductionAfterLates("");
@@ -463,14 +1106,12 @@ export default function CreateWorkingHoursPolicyPage() {
                       <SelectValue placeholder="Select Deduction Type" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">
+                        Select Deduction Type
+                      </SelectItem>
                       <SelectItem value="percentage">
                         Deduct as Percentage
                       </SelectItem>
-                      {lateDeductionType && (
-                        <SelectItem value="__clear__">
-                          Clear Selection
-                        </SelectItem>
-                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -513,7 +1154,7 @@ export default function CreateWorkingHoursPolicyPage() {
                   <Select
                     value={halfDayDeductionType || undefined}
                     onValueChange={(value) => {
-                      if (value === "__clear__") {
+                      if (value === "__none__") {
                         setHalfDayDeductionType("");
                         setHalfDayDeductionAmount("");
                         setApplyDeductionAfterHalfDays("");
@@ -527,14 +1168,12 @@ export default function CreateWorkingHoursPolicyPage() {
                       <SelectValue placeholder="Select Deduction Type" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">
+                        Select Deduction Type
+                      </SelectItem>
                       <SelectItem value="percentage">
                         Deduct as Percentage
                       </SelectItem>
-                      {halfDayDeductionType && (
-                        <SelectItem value="__clear__">
-                          Clear Selection
-                        </SelectItem>
-                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -577,7 +1216,7 @@ export default function CreateWorkingHoursPolicyPage() {
                   <Select
                     value={shortDayDeductionType || undefined}
                     onValueChange={(value) => {
-                      if (value === "__clear__") {
+                      if (value === "__none__") {
                         setShortDayDeductionType("");
                         setShortDayDeductionAmount("");
                         setApplyDeductionAfterShortDays("");
@@ -591,14 +1230,12 @@ export default function CreateWorkingHoursPolicyPage() {
                       <SelectValue placeholder="Select Deduction Type" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__none__">
+                        Select Deduction Type
+                      </SelectItem>
                       <SelectItem value="percentage">
                         Deduct as Percentage
                       </SelectItem>
-                      {shortDayDeductionType && (
-                        <SelectItem value="__clear__">
-                          Clear Selection
-                        </SelectItem>
-                      )}
                     </SelectContent>
                   </Select>
                 </div>

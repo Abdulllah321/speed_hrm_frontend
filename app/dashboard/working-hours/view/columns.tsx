@@ -43,12 +43,19 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { EllipsisIcon, Loader2, Pencil, Trash2, Clock } from "lucide-react";
+import { EllipsisIcon, Loader2, Pencil, Trash2, Clock, Eye } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { WorkingHoursPolicy, updateWorkingHoursPolicy, deleteWorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
+import { WorkingHoursPolicy, updateWorkingHoursPolicy, deleteWorkingHoursPolicy, getWorkingHoursPolicyById } from "@/lib/actions/working-hours-policy";
 import { cn } from "@/lib/utils";
+import { Separator } from "@/components/ui/separator";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export type WorkingHoursPolicyRow = WorkingHoursPolicy & { id: string; sno?: number };
 
@@ -165,6 +172,221 @@ type RowActionsProps = {
   row: Row<WorkingHoursPolicyRow>;
 };
 
+// Time picker helper functions
+const formatTimeForDisplay = (time: string, showNA: boolean = false): string => {
+  if (!time) return showNA ? "N/A" : "--:--";
+  const [hours, minutes] = time.split(":");
+  const hour24 = parseInt(hours, 10);
+  const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+  const ampm = hour24 >= 12 ? "PM" : "AM";
+  return `${hour12.toString().padStart(2, "0")}:${minutes} ${ampm}`;
+};
+
+// Convert 24-hour to 12-hour format
+const convert24To12 = (
+  time24: string
+): { hour: string; minute: string; ampm: string } => {
+  if (!time24) return { hour: "", minute: "", ampm: "AM" };
+  const [h, m] = time24.split(":");
+  const hour24 = parseInt(h, 10);
+  const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+  const ampm = hour24 >= 12 ? "PM" : "AM";
+  return {
+    hour: hour12.toString().padStart(2, "0"),
+    minute: m || "00",
+    ampm,
+  };
+};
+
+// Convert 12-hour to 24-hour format
+const convert12To24 = (
+  hour12: string,
+  minute: string,
+  ampm: string
+): string => {
+  if (!hour12 || !minute) return "";
+  let hour24 = parseInt(hour12, 10);
+  if (ampm === "PM" && hour24 !== 12) {
+    hour24 += 12;
+  } else if (ampm === "AM" && hour24 === 12) {
+    hour24 = 0;
+  }
+  return `${hour24.toString().padStart(2, "0")}:${minute.padStart(2, "0")}`;
+};
+
+// Convert grouped dayOverrides to individual day format for editing
+const convertGroupedToIndividual = (
+  dayOverrides: WorkingHoursPolicy["dayOverrides"]
+): {
+  [key: string]: {
+    enabled: boolean;
+    overrideHours: boolean;
+    startTime: string;
+    endTime: string;
+    overrideBreak: boolean;
+    startBreakTime: string;
+    endBreakTime: string;
+    dayType: "full" | "half" | "custom";
+  };
+} => {
+  if (!dayOverrides) {
+    return {
+      monday: { enabled: true, overrideHours: false, startTime: "", endTime: "", overrideBreak: false, startBreakTime: "", endBreakTime: "", dayType: "full" },
+      tuesday: { enabled: true, overrideHours: false, startTime: "", endTime: "", overrideBreak: false, startBreakTime: "", endBreakTime: "", dayType: "full" },
+      wednesday: { enabled: true, overrideHours: false, startTime: "", endTime: "", overrideBreak: false, startBreakTime: "", endBreakTime: "", dayType: "full" },
+      thursday: { enabled: true, overrideHours: false, startTime: "", endTime: "", overrideBreak: false, startBreakTime: "", endBreakTime: "", dayType: "full" },
+      friday: { enabled: true, overrideHours: false, startTime: "", endTime: "", overrideBreak: false, startBreakTime: "", endBreakTime: "", dayType: "full" },
+      saturday: { enabled: false, overrideHours: false, startTime: "", endTime: "", overrideBreak: false, startBreakTime: "", endBreakTime: "", dayType: "full" },
+      sunday: { enabled: false, overrideHours: false, startTime: "", endTime: "", overrideBreak: false, startBreakTime: "", endBreakTime: "", dayType: "full" },
+    };
+  }
+
+  // If it's already in individual format (object), return as is
+  if (!Array.isArray(dayOverrides)) {
+    return dayOverrides;
+  }
+
+  // Convert grouped array to individual format
+  const result: {
+    [key: string]: {
+      enabled: boolean;
+      overrideHours: boolean;
+      startTime: string;
+      endTime: string;
+      overrideBreak: boolean;
+      startBreakTime: string;
+      endBreakTime: string;
+      dayType: "full" | "half" | "custom";
+    };
+  } = {};
+
+  dayOverrides.forEach((group) => {
+    group.days.forEach((dayKey) => {
+      result[dayKey] = {
+        enabled: group.enabled,
+        overrideHours: group.overrideHours,
+        startTime: group.startTime || "",
+        endTime: group.endTime || "",
+        overrideBreak: group.overrideBreak,
+        startBreakTime: group.startBreakTime || "",
+        endBreakTime: group.endBreakTime || "",
+        dayType: group.dayType,
+      };
+    });
+  });
+
+  return result;
+};
+
+// Format day group label (e.g., "Mon-Thu" or "Friday")
+const formatDayGroupLabel = (days: string[], daysOfWeek: { key: string; label: string }[]): string => {
+  if (days.length === 1) {
+    return daysOfWeek.find((d) => d.key === days[0])?.label || days[0];
+  }
+  
+  const dayIndices = days.map((day) => 
+    daysOfWeek.findIndex((d) => d.key === day)
+  ).sort((a, b) => a - b);
+  
+  // Check if days are consecutive
+  const isConsecutive = dayIndices.every((idx, i) => 
+    i === 0 || idx === dayIndices[i - 1] + 1
+  );
+  
+  if (isConsecutive && dayIndices.length > 1) {
+    const firstDay = daysOfWeek[dayIndices[0]].label;
+    const lastDay = daysOfWeek[dayIndices[dayIndices.length - 1]].label;
+    return `${firstDay.substring(0, 3)}-${lastDay.substring(0, 3)}`;
+  }
+  
+  // Non-consecutive days
+  return days
+    .map((day) => daysOfWeek.find((d) => d.key === day)?.label.substring(0, 3))
+    .join(", ");
+};
+
+// Group days with the same configuration
+const groupDayOverrides = (
+  dayOverrides: {
+    [key: string]: {
+      enabled: boolean;
+      overrideHours: boolean;
+      startTime: string;
+      endTime: string;
+      overrideBreak: boolean;
+      startBreakTime: string;
+      endBreakTime: string;
+      dayType: "full" | "half" | "custom";
+    };
+  },
+  daysOfWeek: { key: string; label: string }[]
+): Array<{
+  days: string[];
+  enabled: boolean;
+  overrideHours: boolean;
+  startTime: string;
+  endTime: string;
+  overrideBreak: boolean;
+  startBreakTime: string;
+  endBreakTime: string;
+  dayType: "full" | "half" | "custom";
+}> => {
+  const groups: Array<{
+    days: string[];
+    enabled: boolean;
+    overrideHours: boolean;
+    startTime: string;
+    endTime: string;
+    overrideBreak: boolean;
+    startBreakTime: string;
+    endBreakTime: string;
+    dayType: "full" | "half" | "custom";
+  }> = [];
+
+  const configMap = new Map<string, string[]>();
+
+  // Group days by their configuration
+  daysOfWeek.forEach((day) => {
+    const dayData = dayOverrides[day.key];
+    if (!dayData) return;
+    
+    const configKey = JSON.stringify({
+      enabled: dayData.enabled,
+      overrideHours: dayData.overrideHours,
+      startTime: dayData.startTime,
+      endTime: dayData.endTime,
+      overrideBreak: dayData.overrideBreak,
+      startBreakTime: dayData.startBreakTime,
+      endBreakTime: dayData.endBreakTime,
+      dayType: dayData.dayType,
+    });
+    
+    if (!configMap.has(configKey)) {
+      configMap.set(configKey, []);
+    }
+    configMap.get(configKey)!.push(day.key);
+  });
+
+  // Create groups from the map
+  configMap.forEach((days, configKey) => {
+    const firstDay = days[0];
+    const dayData = dayOverrides[firstDay];
+    groups.push({
+      days,
+      enabled: dayData.enabled,
+      overrideHours: dayData.overrideHours,
+      startTime: dayData.startTime,
+      endTime: dayData.endTime,
+      overrideBreak: dayData.overrideBreak,
+      startBreakTime: dayData.startBreakTime,
+      endBreakTime: dayData.endBreakTime,
+      dayType: dayData.dayType,
+    });
+  });
+
+  return groups;
+};
+
 const TimePicker = ({
   value,
   onChange,
@@ -175,54 +397,57 @@ const TimePicker = ({
   disabled?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
-  const currentHours = value ? value.split(":")[0] : "";
-  const currentMinutes = value ? value.split(":")[1] : "";
-  const [hours, setHours] = useState(currentHours);
-  const [minutes, setMinutes] = useState(currentMinutes);
+  const time12 = convert24To12(value);
+  const [hours, setHours] = useState(time12.hour);
+  const [minutes, setMinutes] = useState(time12.minute);
+  const [ampm, setAmpm] = useState<"AM" | "PM">(time12.ampm as "AM" | "PM");
 
+  // Update local state when value prop changes
   useEffect(() => {
-    if (value) {
-      const [h, m] = value.split(":");
-      setHours(h || "");
-      setMinutes(m || "");
-    } else {
-      setHours("");
-      setMinutes("");
-    }
+    const time12 = convert24To12(value);
+    setHours(time12.hour);
+    setMinutes(time12.minute);
+    setAmpm(time12.ampm as "AM" | "PM");
   }, [value]);
 
   const handleHourChange = (h: string) => {
     setHours(h);
     if (h && minutes) {
-      onChange(`${h.padStart(2, "0")}:${minutes.padStart(2, "0")}`);
+      const time24 = convert12To24(h, minutes, ampm);
+      onChange(time24);
     } else if (h && !minutes) {
       setMinutes("00");
-      onChange(`${h.padStart(2, "0")}:00`);
+      const time24 = convert12To24(h, "00", ampm);
+      onChange(time24);
     }
   };
 
   const handleMinuteChange = (m: string) => {
     setMinutes(m);
     if (hours && m) {
-      onChange(`${hours.padStart(2, "0")}:${m.padStart(2, "0")}`);
+      const time24 = convert12To24(hours, m, ampm);
+      onChange(time24);
     } else if (!hours && m) {
-      setHours("00");
-      onChange(`00:${m.padStart(2, "0")}`);
+      setHours("12");
+      const time24 = convert12To24("12", m, ampm);
+      onChange(time24);
     }
   };
 
-  const hourOptions = Array.from({ length: 24 }, (_, i) =>
-    i.toString().padStart(2, "0")
+  const handleAmpmChange = (value: "AM" | "PM") => {
+    setAmpm(value);
+    if (hours && minutes) {
+      const time24 = convert12To24(hours, minutes, value);
+      onChange(time24);
+    }
+  };
+
+  const hourOptions = Array.from({ length: 12 }, (_, i) =>
+    (i + 1).toString().padStart(2, "0")
   );
   const minuteOptions = Array.from({ length: 60 }, (_, i) =>
     i.toString().padStart(2, "0")
   );
-
-  const formatTimeForDisplay = (time: string): string => {
-    if (!time) return "--:--";
-    const [h, m] = time.split(":");
-    return `${h}:${m}`;
-  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -281,16 +506,22 @@ const TimePicker = ({
               </SelectContent>
             </Select>
           </div>
-        </div>
-        <div className="flex justify-end mt-4">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setOpen(false)}
-          >
-            Done
-          </Button>
+          <div className="space-y-2">
+            <Label className="text-xs">Period</Label>
+            <Select
+              value={ampm}
+              onValueChange={handleAmpmChange}
+              disabled={disabled}
+            >
+              <SelectTrigger className="w-20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="AM">AM</SelectItem>
+                <SelectItem value="PM">PM</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -303,7 +534,24 @@ function RowActions({ row }: RowActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [viewDialog, setViewDialog] = useState(false);
+  const [viewPolicy, setViewPolicy] = useState<WorkingHoursPolicy | null>(null);
+  const [loadingView, setLoadingView] = useState(false);
   
+  const daysOfWeek = [
+    { key: "monday", label: "Monday" },
+    { key: "tuesday", label: "Tuesday" },
+    { key: "wednesday", label: "Wednesday" },
+    { key: "thursday", label: "Thursday" },
+    { key: "friday", label: "Friday" },
+    { key: "saturday", label: "Saturday" },
+    { key: "sunday", label: "Sunday" },
+  ];
+
+  const initializeDayOverrides = () => {
+    return convertGroupedToIndividual(policy.dayOverrides);
+  };
+
   const [editData, setEditData] = useState({
     name: policy.name,
     startWorkingHours: policy.startWorkingHours,
@@ -326,6 +574,7 @@ function RowActions({ row }: RowActionsProps) {
     overtimeRate: policy.overtimeRate?.toString() || "",
     gazzetedOvertimeRate: policy.gazzetedOvertimeRate?.toString() || "",
     status: policy.status,
+    dayOverrides: initializeDayOverrides(),
   });
 
   useEffect(() => {
@@ -354,6 +603,7 @@ function RowActions({ row }: RowActionsProps) {
   };
 
   const overtimeRateOptions = [
+    { value: "0", label: "None" },
     { value: "0.5", label: "x0.5" },
     { value: "1", label: "x1" },
     { value: "1.5", label: "x1.5" },
@@ -375,6 +625,27 @@ function RowActions({ row }: RowActionsProps) {
 
     const shortDayMins = calculateShortDayMins();
 
+    // Validate day overrides
+    const enabledDays = Object.entries(editData.dayOverrides).filter(
+      ([_, day]) => day.enabled
+    );
+
+    if (enabledDays.length === 0) {
+      toast.error("At least one day must be enabled");
+      return;
+    }
+
+    for (const [dayKey, day] of enabledDays) {
+      if (day.overrideHours && (!day.startTime || !day.endTime)) {
+        toast.error(
+          `Please set start and end times for ${
+            daysOfWeek.find((d) => d.key === dayKey)?.label
+          } or uncheck "Override Hours"`
+        );
+        return;
+      }
+    }
+
     startTransition(async () => {
       const result = await updateWorkingHoursPolicy(policy.id, {
         name: editData.name.trim(),
@@ -394,9 +665,10 @@ function RowActions({ row }: RowActionsProps) {
         shortDayDeductionType: editData.shortDayDeductionType || null,
         applyDeductionAfterShortDays: editData.applyDeductionAfterShortDays ? parseInt(editData.applyDeductionAfterShortDays) : null,
         shortDayDeductionAmount: editData.shortDayDeductionAmount ? parseFloat(editData.shortDayDeductionAmount) : null,
-        overtimeRate: editData.overtimeRate ? parseFloat(editData.overtimeRate) : null,
-        gazzetedOvertimeRate: editData.gazzetedOvertimeRate ? parseFloat(editData.gazzetedOvertimeRate) : null,
+        overtimeRate: editData.overtimeRate && editData.overtimeRate !== "0" ? parseFloat(editData.overtimeRate) : null,
+        gazzetedOvertimeRate: editData.gazzetedOvertimeRate && editData.gazzetedOvertimeRate !== "0" ? parseFloat(editData.gazzetedOvertimeRate) : null,
         status: editData.status,
+        dayOverrides: groupDayOverrides(editData.dayOverrides, daysOfWeek),
       });
       if (result.status) {
         toast.success(result.message || "Working hours policy updated successfully");
@@ -421,6 +693,26 @@ function RowActions({ row }: RowActionsProps) {
     });
   };
 
+  const handleView = async () => {
+    setViewDialog(true);
+    setLoadingView(true);
+    try {
+      const result = await getWorkingHoursPolicyById(policy.id);
+      if (result.status && result.data) {
+        setViewPolicy(result.data);
+      } else {
+        toast.error(result.message || "Failed to load policy details");
+        setViewDialog(false);
+      }
+    } catch (error) {
+      toast.error("Failed to load policy details");
+      setViewDialog(false);
+    } finally {
+      setLoadingView(false);
+    }
+  };
+
+
   return (
     <>
       <DropdownMenu>
@@ -437,6 +729,10 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handleView}>
+            <Eye className="h-4 w-4 mr-2" />
+            View
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setEditDialog(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
@@ -461,12 +757,19 @@ function RowActions({ row }: RowActionsProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {/* Working Hours Details */}
+            {/* Default Working Hours */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Working Hours Details</h3>
+              <h3 className="text-lg font-semibold">Default Working Hours</h3>
+              <p className="text-sm text-muted-foreground">
+                Set default working hours that will apply to all days. You can
+                override specific days in the "Day-wise Overrides" section below.
+              </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Policy Name *</Label>
+                  <Label>
+                    Working Hours Policy Name{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={editData.name}
                     onChange={(e) =>
@@ -477,7 +780,10 @@ function RowActions({ row }: RowActionsProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Start Working Hours Time *</Label>
+                  <Label>
+                    Default Start Working Hours{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <TimePicker
                     value={editData.startWorkingHours}
                     onChange={(value) =>
@@ -487,11 +793,34 @@ function RowActions({ row }: RowActionsProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>End Working Hours Time *</Label>
+                  <Label>
+                    Default End Working Hours{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
                   <TimePicker
                     value={editData.endWorkingHours}
                     onChange={(value) =>
                       setEditData({ ...editData, endWorkingHours: value })
+                    }
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Default Start Break Time</Label>
+                  <TimePicker
+                    value={editData.startBreakTime}
+                    onChange={(value) =>
+                      setEditData({ ...editData, startBreakTime: value })
+                    }
+                    disabled={isPending}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Default End Break Time</Label>
+                  <TimePicker
+                    value={editData.endBreakTime}
+                    onChange={(value) =>
+                      setEditData({ ...editData, endBreakTime: value })
                     }
                     disabled={isPending}
                   />
@@ -567,6 +896,254 @@ function RowActions({ row }: RowActionsProps) {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Day-wise Overrides */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Day-wise Overrides</h3>
+              <p className="text-sm text-muted-foreground">
+                Configure working hours for specific days. Days with the same
+                configuration will be grouped together automatically.
+              </p>
+              <Accordion type="multiple" className="w-full">
+                {(() => {
+                  const groups = groupDayOverrides(editData.dayOverrides, daysOfWeek);
+                  return groups.map((group, groupIndex) => {
+                    const groupKey = `edit-group-${groupIndex}`;
+                    const groupLabel = formatDayGroupLabel(group.days, daysOfWeek);
+                    return (
+                      <AccordionItem key={groupKey} value={groupKey}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex items-center gap-3 w-full pr-4">
+                            <Checkbox
+                              checked={group.enabled}
+                              onCheckedChange={(checked) => {
+                                setEditData((prev) => {
+                                  const updated = { ...prev };
+                                  group.days.forEach((dayKey) => {
+                                    updated.dayOverrides[dayKey] = {
+                                      ...updated.dayOverrides[dayKey],
+                                      enabled: checked === true,
+                                    };
+                                  });
+                                  return updated;
+                                });
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={isPending}
+                            />
+                            <span
+                              className={cn(
+                                "font-medium",
+                                !group.enabled && "text-muted-foreground"
+                              )}
+                            >
+                              {groupLabel}
+                              {!group.enabled && " (Off Day)"}
+                            </span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-4 pt-2 pl-7">
+                            <div className="mb-2">
+                              <p className="text-xs text-muted-foreground">
+                                Applies to:{" "}
+                                {group.days
+                                  .map(
+                                    (dayKey) =>
+                                      daysOfWeek.find((d) => d.key === dayKey)
+                                        ?.label
+                                  )
+                                  .join(", ")}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                              <Checkbox
+                                id={`edit-${groupKey}-override-hours`}
+                                checked={group.overrideHours}
+                                onCheckedChange={(checked) => {
+                                  setEditData((prev) => {
+                                    const updated = { ...prev };
+                                    group.days.forEach((dayKey) => {
+                                      updated.dayOverrides[dayKey] = {
+                                        ...updated.dayOverrides[dayKey],
+                                        overrideHours: checked === true,
+                                        startTime: checked
+                                          ? group.startTime
+                                          : "",
+                                        endTime: checked ? group.endTime : "",
+                                      };
+                                    });
+                                    return updated;
+                                  });
+                                }}
+                                disabled={isPending || !group.enabled}
+                              />
+                              <Label
+                                htmlFor={`edit-${groupKey}-override-hours`}
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                Override Working Hours
+                              </Label>
+                            </div>
+
+                            {group.overrideHours && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label>
+                                    Start Time <span className="text-destructive">*</span>
+                                  </Label>
+                                  <TimePicker
+                                    value={group.startTime}
+                                    onChange={(value) => {
+                                      setEditData((prev) => {
+                                        const updated = { ...prev };
+                                        group.days.forEach((dayKey) => {
+                                          updated.dayOverrides[dayKey] = {
+                                            ...updated.dayOverrides[dayKey],
+                                            startTime: value,
+                                          };
+                                        });
+                                        return updated;
+                                      });
+                                    }}
+                                    disabled={isPending || !group.enabled}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>
+                                    End Time <span className="text-destructive">*</span>
+                                  </Label>
+                                  <TimePicker
+                                    value={group.endTime}
+                                    onChange={(value) => {
+                                      setEditData((prev) => {
+                                        const updated = { ...prev };
+                                        group.days.forEach((dayKey) => {
+                                          updated.dayOverrides[dayKey] = {
+                                            ...updated.dayOverrides[dayKey],
+                                            endTime: value,
+                                          };
+                                        });
+                                        return updated;
+                                      });
+                                    }}
+                                    disabled={isPending || !group.enabled}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-2 pt-2 border-t">
+                              <Checkbox
+                                id={`edit-${groupKey}-override-break`}
+                                checked={group.overrideBreak}
+                                onCheckedChange={(checked) => {
+                                  setEditData((prev) => {
+                                    const updated = { ...prev };
+                                    group.days.forEach((dayKey) => {
+                                      updated.dayOverrides[dayKey] = {
+                                        ...updated.dayOverrides[dayKey],
+                                        overrideBreak: checked === true,
+                                        startBreakTime: checked
+                                          ? group.startBreakTime
+                                          : "",
+                                        endBreakTime: checked
+                                          ? group.endBreakTime
+                                          : "",
+                                      };
+                                    });
+                                    return updated;
+                                  });
+                                }}
+                                disabled={isPending || !group.enabled}
+                              />
+                              <Label
+                                htmlFor={`edit-${groupKey}-override-break`}
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                Override Break Times
+                              </Label>
+                            </div>
+
+                            {group.overrideBreak && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label>Start Break Time</Label>
+                                  <TimePicker
+                                    value={group.startBreakTime}
+                                    onChange={(value) => {
+                                      setEditData((prev) => {
+                                        const updated = { ...prev };
+                                        group.days.forEach((dayKey) => {
+                                          updated.dayOverrides[dayKey] = {
+                                            ...updated.dayOverrides[dayKey],
+                                            startBreakTime: value,
+                                          };
+                                        });
+                                        return updated;
+                                      });
+                                    }}
+                                    disabled={isPending || !group.enabled}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>End Break Time</Label>
+                                  <TimePicker
+                                    value={group.endBreakTime}
+                                    onChange={(value) => {
+                                      setEditData((prev) => {
+                                        const updated = { ...prev };
+                                        group.days.forEach((dayKey) => {
+                                          updated.dayOverrides[dayKey] = {
+                                            ...updated.dayOverrides[dayKey],
+                                            endBreakTime: value,
+                                          };
+                                        });
+                                        return updated;
+                                      });
+                                    }}
+                                    disabled={isPending || !group.enabled}
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="space-y-2 pt-2 border-t">
+                              <Label>Day Type</Label>
+                              <Select
+                                value={group.dayType}
+                                onValueChange={(value: "full" | "half" | "custom") => {
+                                  setEditData((prev) => {
+                                    const updated = { ...prev };
+                                    group.days.forEach((dayKey) => {
+                                      updated.dayOverrides[dayKey] = {
+                                        ...updated.dayOverrides[dayKey],
+                                        dayType: value,
+                                      };
+                                    });
+                                    return updated;
+                                  });
+                                }}
+                                disabled={isPending || !group.enabled}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="full">Full Day</SelectItem>
+                                  <SelectItem value="half">Half Day</SelectItem>
+                                  <SelectItem value="custom">Custom Hours</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  });
+                })()}
+              </Accordion>
             </div>
 
             {/* Deductions */}
@@ -822,6 +1399,308 @@ function RowActions({ row }: RowActionsProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Dialog */}
+      <Dialog open={viewDialog} onOpenChange={setViewDialog}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>View Working Hours Policy</DialogTitle>
+            <DialogDescription>
+              Complete details of the working hours policy
+            </DialogDescription>
+          </DialogHeader>
+          {loadingView ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </div>
+          ) : viewPolicy ? (
+            <div className="space-y-6 py-4">
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Basic Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Policy Name</Label>
+                    <p className="font-medium">{viewPolicy.name}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Status</Label>
+                    <div>
+                      <Badge variant={viewPolicy.status === "inactive" ? "secondary" : "default"}>
+                        {viewPolicy.status || "active"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Created By</Label>
+                    <p className="font-medium">{viewPolicy.createdBy || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Created At</Label>
+                    <p className="font-medium">
+                      {new Date(viewPolicy.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Default Working Hours */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Default Working Hours</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Start Time</Label>
+                    <p className="font-medium">{formatTimeForDisplay(viewPolicy.startWorkingHours, true)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">End Time</Label>
+                    <p className="font-medium">{formatTimeForDisplay(viewPolicy.endWorkingHours, true)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Start Break Time</Label>
+                    <p className="font-medium">{formatTimeForDisplay(viewPolicy.startBreakTime || "", true)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">End Break Time</Label>
+                    <p className="font-medium">{formatTimeForDisplay(viewPolicy.endBreakTime || "", true)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Short Day Minutes</Label>
+                    <p className="font-medium">{viewPolicy.shortDayMins || "N/A"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Half Day Start Time</Label>
+                    <p className="font-medium">{formatTimeForDisplay(viewPolicy.halfDayStartTime || "", true)}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Late Start Time</Label>
+                    <p className="font-medium">{formatTimeForDisplay(viewPolicy.lateStartTime || "", true)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Day-wise Overrides */}
+              <Separator />
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Day-wise Overrides</h3>
+                {viewPolicy.dayOverrides ? (
+                  <div className="space-y-3">
+                    {(() => {
+                      // Convert to grouped format if needed
+                      const individualFormat = convertGroupedToIndividual(viewPolicy.dayOverrides);
+                      const groups = groupDayOverrides(individualFormat, daysOfWeek);
+                      
+                      return groups.map((group, index) => {
+                        const groupLabel = formatDayGroupLabel(group.days, daysOfWeek);
+                        const effectiveStartTime = group.overrideHours
+                          ? group.startTime
+                          : viewPolicy.startWorkingHours;
+                        const effectiveEndTime = group.overrideHours
+                          ? group.endTime
+                          : viewPolicy.endWorkingHours;
+                        const effectiveStartBreak = group.overrideBreak
+                          ? group.startBreakTime
+                          : viewPolicy.startBreakTime;
+                        const effectiveEndBreak = group.overrideBreak
+                          ? group.endBreakTime
+                          : viewPolicy.endBreakTime;
+
+                        return (
+                          <div
+                            key={`group-${index}`}
+                            className={cn(
+                              "p-4 border rounded-lg",
+                              !group.enabled && "opacity-50"
+                            )}
+                          >
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <h4 className="font-medium">
+                                  {groupLabel}
+                                  {!group.enabled && " (Off Day)"}
+                                </h4>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Applies to: {group.days.map(dayKey => daysOfWeek.find(d => d.key === dayKey)?.label).join(", ")}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                {!group.enabled && (
+                                  <Badge variant="secondary">Off Day</Badge>
+                                )}
+                                {group.enabled && group.overrideHours && (
+                                  <Badge variant="outline">Custom Hours</Badge>
+                                )}
+                                {group.enabled && group.overrideBreak && (
+                                  <Badge variant="outline">Custom Break</Badge>
+                                )}
+                                {group.enabled && (
+                                  <Badge variant="outline">
+                                    {group.dayType === "full"
+                                      ? "Full Day"
+                                      : group.dayType === "half"
+                                      ? "Half Day"
+                                      : "Custom"}
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            {group.enabled && (
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                <div>
+                                  <Label className="text-xs text-muted-foreground">Working Hours</Label>
+                                  <p className="font-medium">
+                                    {formatTimeForDisplay(effectiveStartTime, true)} - {formatTimeForDisplay(effectiveEndTime, true)}
+                                  </p>
+                                </div>
+                                {(effectiveStartBreak || effectiveEndBreak) && (
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">Break Time</Label>
+                                    <p className="font-medium">
+                                      {formatTimeForDisplay(effectiveStartBreak || "", true)} - {formatTimeForDisplay(effectiveEndBreak || "", true)}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                ) : (
+                  <div className="p-4 border rounded-lg">
+                    <p className="text-sm text-muted-foreground">
+                      No day-wise overrides configured. All days use default working hours.
+                    </p>
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm font-medium">Default Schedule:</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Working Hours</Label>
+                          <p className="font-medium">
+                            {formatTimeForDisplay(viewPolicy.startWorkingHours, true)} - {formatTimeForDisplay(viewPolicy.endWorkingHours, true)}
+                          </p>
+                        </div>
+                        {(viewPolicy.startBreakTime || viewPolicy.endBreakTime) && (
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Break Time</Label>
+                            <p className="font-medium">
+                              {formatTimeForDisplay(viewPolicy.startBreakTime || "", true)} - {formatTimeForDisplay(viewPolicy.endBreakTime || "", true)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Deductions */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Deductions</h3>
+                {viewPolicy.lateDeductionType && (
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-3">Late Deduction</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Type</Label>
+                        <p className="font-medium capitalize">{viewPolicy.lateDeductionType}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Apply After</Label>
+                        <p className="font-medium">
+                          {viewPolicy.applyDeductionAfterLates} Late{viewPolicy.applyDeductionAfterLates !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Percentage</Label>
+                        <p className="font-medium">{viewPolicy.lateDeductionPercent}%</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {viewPolicy.halfDayDeductionType && (
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-3">Half-Day Deduction</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Type</Label>
+                        <p className="font-medium capitalize">{viewPolicy.halfDayDeductionType}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Apply After</Label>
+                        <p className="font-medium">
+                          {viewPolicy.applyDeductionAfterHalfDays} Half-Day{viewPolicy.applyDeductionAfterHalfDays !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Amount</Label>
+                        <p className="font-medium">{viewPolicy.halfDayDeductionAmount}%</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {viewPolicy.shortDayDeductionType && (
+                  <div className="p-4 border rounded-lg">
+                    <h4 className="font-medium mb-3">Short-Day Deduction</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Type</Label>
+                        <p className="font-medium capitalize">{viewPolicy.shortDayDeductionType}</p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Apply After</Label>
+                        <p className="font-medium">
+                          {viewPolicy.applyDeductionAfterShortDays} Short-Day{viewPolicy.applyDeductionAfterShortDays !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Amount</Label>
+                        <p className="font-medium">{viewPolicy.shortDayDeductionAmount}%</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!viewPolicy.lateDeductionType &&
+                  !viewPolicy.halfDayDeductionType &&
+                  !viewPolicy.shortDayDeductionType && (
+                    <p className="text-sm text-muted-foreground">No deductions configured</p>
+                  )}
+              </div>
+
+              <Separator />
+
+              {/* Overtime Rates */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Overtime Rates</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Overtime Rate</Label>
+                    <p className="font-medium">
+                      {viewPolicy.overtimeRate ? `x${viewPolicy.overtimeRate}` : "None"}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Gazzeted Overtime Rate</Label>
+                    <p className="font-medium">
+                      {viewPolicy.gazzetedOvertimeRate ? `x${viewPolicy.gazzetedOvertimeRate}` : "None"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDialog(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
