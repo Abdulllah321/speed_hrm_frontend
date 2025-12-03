@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,11 +60,14 @@ import {
   getLeavesPolicies,
   type LeavesPolicy,
 } from "@/lib/actions/leaves-policy";
-import { createEmployee } from "@/lib/actions/employee";
+import { getEmployeeById, updateEmployee } from "@/lib/actions/employee";
 
-export default function CreateEmployeePage() {
+export default function EditEmployeePage() {
+  const params = useParams();
   const router = useRouter();
+  const employeeId = params.id as string;
   const [isPending, startTransition] = useTransition();
+  const [loadingEmployee, setLoadingEmployee] = useState(true);
 
   // Dropdown data
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -183,24 +186,126 @@ export default function CreateEmployeePage() {
     eobi: null,
   });
 
-  // CNIC formatting function - Format: 12345-1234567-1 (5 digits - 7 digits - 1 digit)
+  // CNIC formatting function
   const formatCNIC = (value: string): string => {
-    // Remove all non-digits
     const digits = value.replace(/\D/g, "");
-
     if (digits.length <= 5) {
       return digits;
     } else if (digits.length <= 12) {
-      // After 5 digits, add first dash and show remaining digits
       return `${digits.slice(0, 5)}-${digits.slice(5)}`;
     } else {
-      // After 12 digits, add second dash and show only 1 more digit (total 13)
       return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(
         12,
         13
       )}`;
     }
   };
+
+  // Format date for input field
+  const formatDateForInput = (date: string | null | undefined): string => {
+    if (!date) return "";
+    try {
+      return new Date(date).toISOString().split("T")[0];
+    } catch {
+      return "";
+    }
+  };
+
+  // Load employee data
+  useEffect(() => {
+    const fetchEmployee = async () => {
+      if (!employeeId) return;
+      try {
+        setLoadingEmployee(true);
+        const [result, equipmentsResult] = await Promise.all([
+          getEmployeeById(employeeId),
+          getEquipments(),
+        ]);
+        
+        if (result.status && result.data) {
+          const emp = result.data;
+          
+          // Map boolean equipment fields back to equipment IDs
+          let selectedEquipmentIds: string[] = [];
+          if (equipmentsResult.status && equipmentsResult.data) {
+            const equipmentList = equipmentsResult.data;
+            equipmentList.forEach((equipment) => {
+              const name = equipment.name.toLowerCase();
+              if (
+                (emp.laptop && name.includes('laptop')) ||
+                (emp.card && (name.includes('card') || name.includes('id card'))) ||
+                (emp.mobileSim && (name.includes('sim') || name.includes('mobile sim'))) ||
+                (emp.key && (name.includes('key') || name.includes('keys'))) ||
+                (emp.tools && name.includes('tool'))
+              ) {
+                selectedEquipmentIds.push(equipment.id);
+              }
+            });
+          }
+          
+          setFormData({
+            employeeId: emp.employeeId || "",
+            employeeName: emp.employeeName || "",
+            fatherHusbandName: emp.fatherHusbandName || "",
+            department: emp.department || "",
+            subDepartment: emp.subDepartment || "",
+            employeeGrade: emp.employeeGrade || "",
+            attendanceId: emp.attendanceId || "",
+            designation: emp.designation || "",
+            maritalStatus: emp.maritalStatus || "",
+            employmentStatus: emp.employmentStatus || "",
+            probationExpiryDate: formatDateForInput(emp.probationExpiryDate),
+            cnicNumber: formatCNIC(emp.cnicNumber || ""),
+            cnicExpiryDate: formatDateForInput(emp.cnicExpiryDate),
+            lifetimeCnic: emp.lifetimeCnic || false,
+            joiningDate: formatDateForInput(emp.joiningDate),
+            dateOfBirth: formatDateForInput(emp.dateOfBirth),
+            nationality: emp.nationality || "",
+            gender: emp.gender || "",
+            contactNumber: emp.contactNumber || "",
+            emergencyContactNumber: emp.emergencyContactNumber || "",
+            emergencyContactPersonName: emp.emergencyContactPerson || "",
+            personalEmail: emp.personalEmail || "",
+            officialEmail: emp.officialEmail || "",
+            country: emp.country || "Pakistan",
+            state: (emp as any).province || emp.province || "",
+            city: emp.city || "",
+            employeeSalary: String(emp.employeeSalary || ""),
+            eobi: emp.eobi || false,
+            eobiNumber: emp.eobiNumber || "",
+            providentFund: emp.providentFund || false,
+            overtimeApplicable: emp.overtimeApplicable || false,
+            daysOff: emp.daysOff || "",
+            reportingManager: emp.reportingManager || "",
+            workingHoursPolicy: emp.workingHoursPolicy || "",
+            branch: emp.branch || "",
+            leavesPolicy: emp.leavesPolicy || "",
+            allowRemoteAttendance: emp.allowRemoteAttendance || false,
+            currentAddress: emp.currentAddress || "",
+            permanentAddress: emp.permanentAddress || "",
+            bankName: emp.bankName || "",
+            accountNumber: emp.accountNumber || "",
+            accountTitle: emp.accountTitle || "",
+            selectedEquipments: selectedEquipmentIds,
+            accountType: emp.accountType || "",
+            password: "",
+            roles: emp.roles || "",
+          });
+        } else {
+          toast.error(result.message || "Failed to load employee");
+          router.push("/dashboard/employee/list");
+        }
+      } catch (error) {
+        console.error("Error fetching employee:", error);
+        toast.error("Failed to load employee");
+        router.push("/dashboard/employee/list");
+      } finally {
+        setLoadingEmployee(false);
+      }
+    };
+
+    fetchEmployee();
+  }, [employeeId, router]);
 
   // Fetch dropdown data
   useEffect(() => {
@@ -311,7 +416,6 @@ export default function CreateEmployeePage() {
     fetchCities();
   }, [formData.state]);
 
-  // Handle profile pic upload
   const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -356,65 +460,64 @@ export default function CreateEmployeePage() {
 
     startTransition(async () => {
       try {
-        const result = await createEmployee({
+        const result = await updateEmployee(employeeId, {
           employeeId: formData.employeeId,
           employeeName: formData.employeeName,
           fatherHusbandName: formData.fatherHusbandName,
           department: formData.department,
-          subDepartment: formData.subDepartment || undefined,
+          subDepartment: formData.subDepartment || null,
           employeeGrade: formData.employeeGrade,
           attendanceId: formData.attendanceId,
           designation: formData.designation,
           maritalStatus: formData.maritalStatus,
           employmentStatus: formData.employmentStatus,
-          probationExpiryDate: formData.probationExpiryDate || undefined,
-          cnicNumber: formData.cnicNumber,
-          cnicExpiryDate: formData.cnicExpiryDate || undefined,
+          probationExpiryDate: formData.probationExpiryDate || null,
+          cnicNumber: formData.cnicNumber.replace(/-/g, ""),
+          cnicExpiryDate: formData.cnicExpiryDate || null,
           lifetimeCnic: formData.lifetimeCnic,
           joiningDate: formData.joiningDate,
           dateOfBirth: formData.dateOfBirth,
           nationality: formData.nationality,
           gender: formData.gender,
           contactNumber: formData.contactNumber,
-          emergencyContactNumber: formData.emergencyContactNumber || undefined,
-          emergencyContactPersonName:
-            formData.emergencyContactPersonName || undefined,
-          personalEmail: formData.personalEmail || undefined,
+          emergencyContactNumber: formData.emergencyContactNumber || null,
+          emergencyContactPerson: formData.emergencyContactPersonName || null,
+          personalEmail: formData.personalEmail || null,
           officialEmail: formData.officialEmail,
           country: formData.country,
-          state: formData.state,
+          province: formData.state,
           city: formData.city,
-          employeeSalary: formData.employeeSalary,
+          employeeSalary: parseFloat(formData.employeeSalary) || 0,
           eobi: formData.eobi,
-          eobiNumber: formData.eobiNumber || undefined,
+          eobiNumber: formData.eobiNumber || null,
           providentFund: formData.providentFund,
           overtimeApplicable: formData.overtimeApplicable,
-          daysOff: formData.daysOff || undefined,
+          daysOff: formData.daysOff || null,
           reportingManager: formData.reportingManager,
           workingHoursPolicy: formData.workingHoursPolicy,
           branch: formData.branch,
           leavesPolicy: formData.leavesPolicy,
           allowRemoteAttendance: formData.allowRemoteAttendance,
-          currentAddress: formData.currentAddress || undefined,
-          permanentAddress: formData.permanentAddress || undefined,
+          currentAddress: formData.currentAddress || null,
+          permanentAddress: formData.permanentAddress || null,
           bankName: formData.bankName,
           accountNumber: formData.accountNumber,
           accountTitle: formData.accountTitle,
           selectedEquipments: formData.selectedEquipments,
-          accountType: formData.accountType || undefined,
-          password: formData.password || undefined,
-          roles: formData.roles || undefined,
-        });
+          accountType: formData.accountType || null,
+          password: formData.password || null,
+          roles: formData.roles || null,
+        } as any);
 
         if (result.status) {
-          toast.success(result.message || "Employee created successfully");
+          toast.success(result.message || "Employee updated successfully");
           router.push("/dashboard/employee/list");
         } else {
-          toast.error(result.message || "Failed to create employee");
+          toast.error(result.message || "Failed to update employee");
         }
       } catch (error) {
-        console.error("Error creating employee:", error);
-        toast.error("Failed to create employee");
+        console.error("Error updating employee:", error);
+        toast.error("Failed to update employee");
       }
     });
   };
@@ -456,6 +559,14 @@ export default function CreateEmployeePage() {
     </div>
   );
 
+  if (loadingEmployee) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className=" max-w-[90%] mx-auto pb-10">
       <div className="mb-6">
@@ -468,6 +579,7 @@ export default function CreateEmployeePage() {
       </div>
       <div className="border rounded-xl p-4 ">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Same form structure as create page - I'll include the key sections */}
           {/* Profile Picture Upload */}
           <Card>
             <CardHeader>
@@ -513,13 +625,13 @@ export default function CreateEmployeePage() {
             </CardContent>
           </Card>
 
-          {/* Basic Information */}
+          {/* Basic Information - Same as create page but with pre-filled values */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-semibold">
                 Basic Information
               </CardTitle>
-              <CardDescription>Enter employee's basic details</CardDescription>
+              <CardDescription>Update employee's basic details</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div className="space-y-2">
@@ -1321,6 +1433,7 @@ export default function CreateEmployeePage() {
                     value={formData.password}
                     onChange={(e) => updateField("password", e.target.value)}
                     disabled={isPending}
+                    placeholder="Leave blank to keep current password"
                   />
                   <Button
                     type="button"
@@ -1359,7 +1472,7 @@ export default function CreateEmployeePage() {
           <div className="flex gap-2 justify-center bottom-4 bg-background p-4  rounded-lg shadow-lg">
             <Button type="submit" disabled={isPending} className="flex-1">
               {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create Employee
+              Update Employee
             </Button>
             <Button
               type="button"
@@ -1374,3 +1487,4 @@ export default function CreateEmployeePage() {
     </div>
   );
 }
+

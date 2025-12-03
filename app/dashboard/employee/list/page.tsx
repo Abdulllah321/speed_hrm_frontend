@@ -44,23 +44,11 @@ import {
   History,
   UserX,
 } from "lucide-react";
-
-interface Employee {
-  id: number;
-  employeeId: string;
-  employeeName: string;
-  department: string;
-  designation: string;
-  contactNumber: string;
-  officialEmail: string;
-  bankName: string;
-  accountNumber: string;
-  currentAddress: string;
-  city: string;
-  salary: number;
-  status: "active" | "inactive";
-  joiningDate: string;
-}
+import {
+  getEmployees,
+  deleteEmployee,
+  type Employee,
+} from "@/lib/actions/employee";
 
 export default function EmployeeListPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -70,52 +58,38 @@ export default function EmployeeListPage() {
   const tableRef = useRef<HTMLTableElement>(null);
 
   const [deleteDialog, setDeleteDialog] = useState(false);
-  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
+    null
+  );
 
   useEffect(() => {
-    // Sample data
-    setEmployees([
-      {
-        id: 1,
-        employeeId: "EMP001",
-        employeeName: "Ahmed Khan",
-        department: "IT",
-        designation: "Software Engineer",
-        contactNumber: "0300-1234567",
-        officialEmail: "ahmed@company.com",
-        bankName: "HBL",
-        accountNumber: "1234567890",
-        currentAddress: "House 123, Street 5",
-        city: "Islamabad",
-        salary: 150000,
-        status: "active",
-        joiningDate: "2023-01-15",
-      },
-      {
-        id: 2,
-        employeeId: "EMP002",
-        employeeName: "Sara Ali",
-        department: "HR",
-        designation: "HR Manager",
-        contactNumber: "0321-9876543",
-        officialEmail: "sara@company.com",
-        bankName: "MCB",
-        accountNumber: "0987654321",
-        currentAddress: "Flat 45, Block B",
-        city: "Lahore",
-        salary: 180000,
-        status: "active",
-        joiningDate: "2022-06-20",
-      },
-    ]);
-    setLoading(false);
+    const fetchEmployees = async () => {
+      try {
+        setLoading(true);
+        const result = await getEmployees();
+        if (result.status && result.data) {
+          setEmployees(result.data);
+        } else {
+          toast.error(result.message || "Failed to fetch employees");
+          setEmployees([]);
+        }
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+        toast.error("Failed to fetch employees");
+        setEmployees([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployees();
   }, []);
 
   const filteredEmployees = employees.filter(
     (e) =>
       e.employeeName.toLowerCase().includes(search.toLowerCase()) ||
       e.employeeId.toLowerCase().includes(search.toLowerCase()) ||
-      e.department.toLowerCase().includes(search.toLowerCase())
+      (e.department?.toLowerCase() || "").includes(search.toLowerCase())
   );
 
   const handleDelete = (employee: Employee) => {
@@ -126,13 +100,24 @@ export default function EmployeeListPage() {
   const handleDeleteConfirm = async () => {
     if (!deletingEmployee) return;
     startTransition(async () => {
-      setEmployees(employees.filter((e) => e.id !== deletingEmployee.id));
-      toast.success("Employee deleted successfully");
-      setDeleteDialog(false);
+      try {
+        const result = await deleteEmployee(deletingEmployee.id);
+        if (result.status) {
+          setEmployees(employees.filter((e) => e.id !== deletingEmployee.id));
+          toast.success(result.message || "Employee deleted successfully");
+          setDeleteDialog(false);
+        } else {
+          toast.error(result.message || "Failed to delete employee");
+        }
+      } catch (error) {
+        console.error("Error deleting employee:", error);
+        toast.error("Failed to delete employee");
+      }
     });
   };
 
   const handleToggleStatus = (employee: Employee) => {
+    // TODO: Implement API call to update employee status
     setEmployees(
       employees.map((e) =>
         e.id === employee.id
@@ -140,7 +125,9 @@ export default function EmployeeListPage() {
           : e
       )
     );
-    toast.success(`Employee ${employee.status === "active" ? "deactivated" : "activated"}`);
+    toast.success(
+      `Employee ${employee.status === "active" ? "deactivated" : "activated"}`
+    );
   };
 
   const handlePrint = () => {
@@ -151,16 +138,58 @@ export default function EmployeeListPage() {
       <style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;text-align:left}th{background:#f4f4f4}h1{text-align:center}</style>
       </head><body><h1>Employee List</h1>
       <table><thead><tr><th>S.No</th><th>Emp ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Contact</th><th>Bank</th><th>Salary</th><th>Status</th></tr></thead>
-      <tbody>${filteredEmployees.map((e, i) => `<tr><td>${i + 1}</td><td>${e.employeeId}</td><td>${e.employeeName}</td><td>${e.department}</td><td>${e.designation}</td><td>${e.contactNumber}</td><td>${e.bankName}</td><td>${e.salary.toLocaleString()}</td><td>${e.status}</td></tr>`).join("")}</tbody></table></body></html>
+      <tbody>${filteredEmployees
+        .map(
+          (e, i) =>
+            `<tr><td>${i + 1}</td><td>${e.employeeId}</td><td>${
+              e.employeeName
+            }</td><td>${(e as any).departmentName || e.department}</td><td>${
+              (e as any).designationName || e.designation
+            }</td><td>${e.contactNumber}</td><td>${e.bankName}</td><td>${Number(
+              e.employeeSalary
+            ).toLocaleString()}</td><td>${e.status}</td></tr>`
+        )
+        .join("")}</tbody></table></body></html>
     `);
     printWindow.document.close();
     printWindow.print();
   };
 
   const handleExportCSV = () => {
-    const headers = ["S.No", "Emp ID", "Name", "Department", "Designation", "Contact", "Email", "Bank", "Account", "Address", "City", "Salary", "Status"];
-    const rows = filteredEmployees.map((e, i) => [i + 1, e.employeeId, e.employeeName, e.department, e.designation, e.contactNumber, e.officialEmail, e.bankName, e.accountNumber, e.currentAddress, e.city, e.salary, e.status]);
-    const csv = [headers.join(","), ...rows.map((r) => r.map((c) => `"${c}"`).join(","))].join("\n");
+    const headers = [
+      "S.No",
+      "Emp ID",
+      "Name",
+      "Department",
+      "Designation",
+      "Contact",
+      "Email",
+      "Bank",
+      "Account",
+      "Address",
+      "City",
+      "Salary",
+      "Status",
+    ];
+    const rows = filteredEmployees.map((e, i) => [
+      i + 1,
+      e.employeeId,
+      e.employeeName,
+      e.department || "N/A",
+      e.designation || "N/A",
+      e.contactNumber,
+      e.officialEmail,
+      e.bankName || "N/A",
+      e.accountNumber || "N/A",
+      e.currentAddress || "N/A",
+      e.city || "N/A",
+      Number(e.employeeSalary),
+      e.status,
+    ]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => r.map((c) => `"${c}"`).join(",")),
+    ].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -191,28 +220,53 @@ export default function EmployeeListPage() {
             <div className="flex items-center gap-2">
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+                <Input
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9"
+                />
               </div>
-              <Button variant="outline" size="icon" onClick={handlePrint} title="Print"><Printer className="h-4 w-4" /></Button>
-              <Button variant="outline" size="icon" onClick={handleExportCSV} title="Export CSV"><Download className="h-4 w-4" /></Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePrint}
+                title="Print"
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleExportCSV}
+                title="Export CSV"
+              >
+                <Download className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
           ) : filteredEmployees.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">{search ? "No employees found" : "No employees. Create one to get started."}</div>
+            <div className="text-center py-8 text-muted-foreground">
+              {search
+                ? "No employees found"
+                : "No employees. Create one to get started."}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table ref={tableRef}>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-14">S.No</TableHead>
-                    <TableHead>Emp Details</TableHead>
+                    <TableHead>Employee Details</TableHead>
                     <TableHead>Bank Details</TableHead>
                     <TableHead>Address</TableHead>
-                    <TableHead>Salary</TableHead>
+                    <TableHead>Employee Salary</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
@@ -224,45 +278,93 @@ export default function EmployeeListPage() {
                       <TableCell>
                         <div className="space-y-1">
                           <div className="font-medium">{emp.employeeName}</div>
-                          <div className="text-xs text-muted-foreground">{emp.employeeId}</div>
-                          <div className="text-xs text-muted-foreground">{emp.department} • {emp.designation}</div>
-                          <div className="text-xs text-muted-foreground">{emp.contactNumber}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {emp.employeeId}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {(emp as any).departmentName ||
+                              emp.department ||
+                              "N/A"}{" "}
+                            •{" "}
+                            {(emp as any).designationName ||
+                              emp.designation ||
+                              "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {emp.contactNumber}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
-                          <div className="text-sm">{emp.bankName}</div>
-                          <div className="text-xs text-muted-foreground">{emp.accountNumber}</div>
+                          <div className="text-sm">{emp.bankName || "N/A"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {emp.accountNumber || "N/A"}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1 max-w-[200px]">
-                          <div className="text-sm truncate">{emp.currentAddress}</div>
-                          <div className="text-xs text-muted-foreground">{emp.city}</div>
+                          <div className="text-sm truncate">
+                            {emp.currentAddress || "N/A"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {(emp as any).cityName || emp.city || "N/A"}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">PKR {emp.salary.toLocaleString()}</div>
+                        <div className="font-medium">
+                          PKR {Number(emp.employeeSalary).toLocaleString()}
+                        </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={emp.status === "active" ? "default" : "secondary"}>
+                        <Badge
+                          variant={
+                            emp.status === "active" ? "default" : "secondary"
+                          }
+                        >
                           {emp.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem><History className="h-4 w-4 mr-2" />View Log</DropdownMenuItem>
-                            <DropdownMenuItem><Eye className="h-4 w-4 mr-2" />View</DropdownMenuItem>
-                            <DropdownMenuItem><Pencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleToggleStatus(emp)}>
-                              <UserX className="h-4 w-4 mr-2" />{emp.status === "active" ? "Deactivate" : "Activate"}
+                            <DropdownMenuItem>
+                              <History className="h-4 w-4 mr-2" />
+                              View Log
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(emp)} className="text-destructive">
-                              <Trash2 className="h-4 w-4 mr-2" />Delete
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/employee/view/${emp.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/employee/edit/${emp.id}`}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleToggleStatus(emp)}
+                            >
+                              <UserX className="h-4 w-4 mr-2" />
+                              {emp.status === "active"
+                                ? "Deactivate"
+                                : "Activate"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(emp)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -281,13 +383,20 @@ export default function EmployeeListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Employee</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{deletingEmployee?.employeeName}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;
+              {deletingEmployee?.employeeName}&quot;? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteConfirm} disabled={isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Delete
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -295,4 +404,3 @@ export default function EmployeeListPage() {
     </div>
   );
 }
-
