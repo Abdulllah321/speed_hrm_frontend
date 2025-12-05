@@ -2,6 +2,16 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
+
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { format } from "date-fns"
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +35,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Upload, Key, X, User } from "lucide-react";
 import Link from "next/link";
+import { FileUpload } from "@/components/ui/file-upload";
 import {
   getDepartments,
   getSubDepartmentsByDepartment,
@@ -62,9 +73,347 @@ import {
 } from "@/lib/actions/leaves-policy";
 import { createEmployee } from "@/lib/actions/employee";
 
+// CNIC validation regex
+const cnicRegex = /^\d{5}-\d{7}-\d{1}$/;
+const validateCNIC = (value: string) => {
+  return cnicRegex.test(value);
+};
+
+// Email validation regex
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Account number validation regex
+const accountNumberRegex = /^\d{7,26}$/;
+
+// Zod Validation Schema
+const employeeFormSchema = z.object({
+  // Basic Information
+  employeeId: z
+    .string()
+    .min(1, "Employee ID is required")
+    .min(5, "Employee ID must be at least 5 characters")
+    .max(20, "Employee ID must not exceed 20 characters"),
+  
+  employeeName: z
+    .string()
+    .min(1, "Employee Name is required")
+    .min(3, "Employee Name must be at least 3 characters")
+    .max(100, "Employee Name must not exceed 100 characters"),
+  
+  fatherHusbandName: z
+    .string()
+    .min(1, "Father/Husband Name is required")
+    .min(3, "Father/Husband Name must be at least 3 characters")
+    .max(100, "Father/Husband Name must not exceed 100 characters"),
+  
+  department: z
+    .string()
+    .min(1, "Department is required"),
+  
+  subDepartment: z
+    .string()
+    .optional(),
+  
+  employeeGrade: z
+    .string()
+    .min(1, "Employee Grade is required"),
+  
+  attendanceId: z
+    .string()
+    .min(1, "Attendance ID is required")
+    .min(3, "Attendance ID must be at least 3 characters")
+    .max(20, "Attendance ID must not exceed 20 characters"),
+  
+  designation: z
+    .string()
+    .min(1, "Designation is required"),
+  
+  maritalStatus: z
+    .string()
+    .min(1, "Marital Status is required"),
+  
+  employmentStatus: z
+    .string()
+    .min(1, "Employment Status is required"),
+  
+  probationExpiryDate: z
+    .string()
+    .optional(),
+  
+  cnicNumber: z
+    .string()
+    .min(1, "CNIC Number is required")
+    .refine(
+      (value) => validateCNIC(value),
+      "CNIC must be in format: 00000-0000000-0"
+    ),
+  
+  cnicExpiryDate: z
+    .string()
+    .optional(),
+  
+  lifetimeCnic: z
+    .boolean()
+    .default(false),
+  
+  joiningDate: z
+    .string()
+    .min(1, "Joining Date is required")
+    .refine(
+      (date) => {
+        const selectedDate = new Date(date);
+        return selectedDate <= new Date();
+      },
+      "Joining Date cannot be in the future"
+    ),
+  
+  dateOfBirth: z
+    .string()
+    .min(1, "Date of Birth is required")
+    .refine(
+      (date) => {
+        const dob = new Date(date);
+        const today = new Date();
+        const age = today.getFullYear() - dob.getFullYear();
+        return age >= 18;
+      },
+      "Employee must be at least 18 years old"
+    ),
+  
+  nationality: z
+    .string()
+    .min(1, "Nationality is required"),
+  
+  gender: z
+    .string()
+    .min(1, "Gender is required"),
+  
+  contactNumber: z
+    .string()
+    .min(1, "Contact Number is required")
+    .refine(
+      (value) => /^03\d{2}-\d{7}$|^\+92\d{10}$/.test(value.replace(/\s/g, "")),
+      "Contact Number must be in format: 03XX-XXXXXXX"
+    ),
+  
+  emergencyContactNumber: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || /^03\d{2}-\d{7}$|^\+92\d{10}$/.test(value.replace(/\s/g, "")),
+      "Emergency Contact Number must be in format: 03XX-XXXXXXX"
+    ),
+  
+  emergencyContactPersonName: z
+    .string()
+    .optional(),
+  
+  personalEmail: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || emailRegex.test(value),
+      "Personal Email must be a valid email address"
+    ),
+  
+  officialEmail: z
+    .string()
+    .min(1, "Official Email is required")
+    .email("Official Email must be a valid email address"),
+  
+  country: z
+    .string()
+    .min(1, "Country is required"),
+  
+  state: z
+    .string()
+    .min(1, "State is required"),
+  
+  city: z
+    .string()
+    .min(1, "City is required"),
+  
+  employeeSalary: z
+    .string()
+    .min(1, "Employee Salary is required")
+    .refine(
+      (value) => {
+        const num = parseFloat(value);
+        return !isNaN(num) && num > 0;
+      },
+      "Employee Salary must be a positive number"
+    ),
+  
+  // Benefits
+  eobi: z
+    .boolean()
+    .default(false),
+  
+  eobiNumber: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || /^\d{7,10}$/.test(value),
+      "EOBI Number must contain only digits"
+    ),
+  
+  providentFund: z
+    .boolean()
+    .default(false),
+  
+  overtimeApplicable: z
+    .boolean()
+    .default(false),
+  
+  daysOff: z
+    .string()
+    .optional(),
+  
+  reportingManager: z
+    .string()
+    .min(1, "Reporting Manager is required")
+    .min(3, "Reporting Manager name must be at least 3 characters"),
+  
+  workingHoursPolicy: z
+    .string()
+    .min(1, "Working Hours Policy is required"),
+  
+  branch: z
+    .string()
+    .min(1, "Branch is required"),
+  
+  leavesPolicy: z
+    .string()
+    .min(1, "Leaves Policy is required"),
+  
+  allowRemoteAttendance: z
+    .boolean()
+    .default(false),
+  
+  // Address Information
+  currentAddress: z
+    .string()
+    .optional(),
+  
+  permanentAddress: z
+    .string()
+    .optional(),
+  
+  // Bank Account Details
+  bankName: z
+    .string()
+    .min(1, "Bank Name is required"),
+  
+  accountNumber: z
+    .string()
+    .min(1, "Account Number is required")
+    .refine(
+      (value) => accountNumberRegex.test(value),
+      "Account Number must be between 7-26 digits"
+    ),
+  
+  accountTitle: z
+    .string()
+    .min(1, "Account Title is required")
+    .min(3, "Account Title must be at least 3 characters")
+    .max(100, "Account Title must not exceed 100 characters"),
+  
+  // Login Credentials
+  accountType: z
+    .string()
+    .optional(),
+  
+  password: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || value.length >= 6,
+      "Password must be at least 6 characters"
+    ),
+  
+  roles: z
+    .string()
+    .optional(),
+  
+  // Equipment
+  selectedEquipments: z
+    .array(z.string())
+    .default([]),
+});
+
+type EmployeeFormData = z.infer<typeof employeeFormSchema>;
+
 export default function CreateEmployeePage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+
+  // React Hook Form with Zod validation
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    trigger,
+    formState: { errors },
+  } = useForm<EmployeeFormData>({
+    resolver: zodResolver(employeeFormSchema),
+    defaultValues: {
+      employeeId: "",
+      employeeName: "",
+      fatherHusbandName: "",
+      department: "",
+      subDepartment: "",
+      employeeGrade: "",
+      attendanceId: "",
+      designation: "",
+      maritalStatus: "",
+      employmentStatus: "",
+      probationExpiryDate: "",
+      cnicNumber: "",
+      cnicExpiryDate: "",
+      lifetimeCnic: false,
+      joiningDate: "",
+      dateOfBirth: "",
+      nationality: "",
+      gender: "",
+      contactNumber: "",
+      emergencyContactNumber: "",
+      emergencyContactPersonName: "",
+      personalEmail: "",
+      officialEmail: "",
+      country: "Pakistan",
+      state: "",
+      city: "",
+      employeeSalary: "",
+      eobi: false,
+      eobiNumber: "",
+      providentFund: false,
+      overtimeApplicable: false,
+      daysOff: "",
+      reportingManager: "",
+      workingHoursPolicy: "",
+      branch: "",
+      leavesPolicy: "",
+      allowRemoteAttendance: false,
+      currentAddress: "",
+      permanentAddress: "",
+      bankName: "",
+      accountNumber: "",
+      accountTitle: "",
+      selectedEquipments: [],
+      accountType: "",
+      password: "",
+      roles: "",
+    },
+    mode: "onBlur",
+  });
+
+  // Watch form values
+  const formValues = watch();
+  const department = watch("department");
+  const state = watch("state");
+  const eobi = watch("eobi");
 
   // Dropdown data
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -109,60 +458,7 @@ export default function CreateEmployeePage() {
   const roles = ["Super Admin", "Admin", "HR Manager", "Employee", "Viewer"];
   const daysOff = ["Sunday", "Saturday-Sunday", "Friday", "Friday-Saturday"];
 
-  // Basic Information
-  const [formData, setFormData] = useState({
-    employeeId: "",
-    employeeName: "",
-    fatherHusbandName: "",
-    department: "",
-    subDepartment: "",
-    employeeGrade: "",
-    attendanceId: "",
-    designation: "",
-    maritalStatus: "",
-    employmentStatus: "",
-    probationExpiryDate: "",
-    cnicNumber: "",
-    cnicExpiryDate: "",
-    lifetimeCnic: false,
-    joiningDate: "",
-    dateOfBirth: "",
-    nationality: "",
-    gender: "",
-    contactNumber: "",
-    emergencyContactNumber: "",
-    emergencyContactPersonName: "",
-    personalEmail: "",
-    officialEmail: "",
-    country: "Pakistan",
-    state: "",
-    city: "",
-    employeeSalary: "",
-    eobi: false,
-    eobiNumber: "",
-    providentFund: false,
-    overtimeApplicable: false,
-    daysOff: "",
-    reportingManager: "",
-    workingHoursPolicy: "",
-    branch: "",
-    leavesPolicy: "",
-    allowRemoteAttendance: false,
-    // Address
-    currentAddress: "",
-    permanentAddress: "",
-    // Bank
-    bankName: "",
-    accountNumber: "",
-    accountTitle: "",
-    // Items Issued (will be dynamic from equipments)
-    selectedEquipments: [] as string[],
-    // Login
-    accountType: "",
-    password: "",
-    roles: "",
-  });
-
+  // Profile pic and documents state
   const [profilePic, setProfilePic] = useState<File | null>(null);
   const [profilePicPreview, setProfilePicPreview] = useState<string | null>(
     null
@@ -183,18 +479,23 @@ export default function CreateEmployeePage() {
     eobi: null,
   });
 
-  // CNIC formatting function - Format: 12345-1234567-1 (5 digits - 7 digits - 1 digit)
-  const formatCNIC = (value: string): string => {
-    // Remove all non-digits
-    const digits = value.replace(/\D/g, "");
+  // Multi-step wizard
+  const stepLabels = [
+    "Basic Info",
+    "Contact & Address",
+    "Bank & Login",
+    "Equipments & Documents",
+  ];
+  const [step, setStep] = useState(0);
 
+  // CNIC formatting function
+  const formatCNIC = (value: string): string => {
+    const digits = value.replace(/\D/g, "");
     if (digits.length <= 5) {
       return digits;
     } else if (digits.length <= 12) {
-      // After 5 digits, add first dash and show remaining digits
       return `${digits.slice(0, 5)}-${digits.slice(5)}`;
     } else {
-      // After 12 digits, add second dash and show only 1 more digit (total 13)
       return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(
         12,
         13
@@ -256,16 +557,16 @@ export default function CreateEmployeePage() {
   // Fetch sub-departments when department changes
   useEffect(() => {
     const fetchSubDepartments = async () => {
-      if (!formData.department) {
+      if (!department) {
         setSubDepartments([]);
-        setFormData((prev) => ({ ...prev, subDepartment: "" }));
+        setValue("subDepartment", "");
         setLoadingSubDepartments(false);
         return;
       }
 
       try {
         setLoadingSubDepartments(true);
-        const res = await getSubDepartmentsByDepartment(formData.department);
+        const res = await getSubDepartmentsByDepartment(department);
         if (res.status) {
           setSubDepartments(res.data || []);
         } else {
@@ -280,21 +581,21 @@ export default function CreateEmployeePage() {
     };
 
     fetchSubDepartments();
-  }, [formData.department]);
+  }, [department, setValue]);
 
   // Fetch cities when state changes
   useEffect(() => {
     const fetchCities = async () => {
-      if (!formData.state) {
+      if (!state) {
         setCities([]);
-        setFormData((prev) => ({ ...prev, city: "" }));
+        setValue("city", "");
         setLoadingCities(false);
         return;
       }
 
       try {
         setLoadingCities(true);
-        const res = await getCitiesByState(formData.state);
+        const res = await getCitiesByState(state);
         if (res.status) {
           setCities(res.data || []);
         } else {
@@ -309,7 +610,7 @@ export default function CreateEmployeePage() {
     };
 
     fetchCities();
-  }, [formData.state]);
+  }, [state, setValue]);
 
   // Handle profile pic upload
   const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -324,17 +625,13 @@ export default function CreateEmployeePage() {
     }
   };
 
-  const updateField = (field: string, value: string | boolean) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
   const generatePassword = () => {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
     let password = "";
     for (let i = 0; i < 8; i++) {
       password += chars.charAt(Math.floor(Math.random() * chars.length));
     }
-    updateField("password", password);
+    setValue("password", password);
     toast.success("Password generated!");
   };
 
@@ -342,68 +639,135 @@ export default function CreateEmployeePage() {
     setDocuments((prev) => ({ ...prev, [key]: file }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const RequiredLabel = ({ children }: { children: string }) => {
+    const parts = children.split(" *");
+    return parts.length > 1 ? (
+      <>
+        {parts[0]} <span className="text-red-500">*</span>
+      </>
+    ) : (
+      children
+    );
+  };
 
-    if (
-      !formData.employeeId ||
-      !formData.employeeName ||
-      !formData.officialEmail
-    ) {
-      toast.error("Please fill all required fields");
-      return;
+  // Validation for each step - Zod will handle validation automatically
+  const validateStep = async (currentStep: number) => {
+    if (currentStep === 0) {
+      const fields = [
+        "employeeId",
+        "employeeName",
+        "fatherHusbandName",
+        "department",
+        "employeeGrade",
+        "attendanceId",
+        "designation",
+        "maritalStatus",
+        "employmentStatus",
+        "joiningDate",
+        "dateOfBirth",
+        "nationality",
+        "gender",
+        "contactNumber",
+        "officialEmail",
+        "country",
+        "state",
+        "city",
+        "workingHoursPolicy",
+        "branch",
+        "leavesPolicy",
+        "reportingManager",
+        "employeeSalary",
+        "cnicNumber",
+      ];
+      
+      const results = await Promise.all(
+        fields.map(field => trigger(field as keyof EmployeeFormData))
+      );
+      
+      return results.every(result => result);
     }
 
+    if (currentStep === 1) {
+      const results = await trigger("officialEmail");
+      return results;
+    }
+
+    if (currentStep === 2) {
+      const fields = ["bankName", "accountNumber", "accountTitle"];
+      const results = await Promise.all(
+        fields.map(field => trigger(field as keyof EmployeeFormData))
+      );
+      return results.every(result => result);
+    }
+
+    return true;
+  };
+
+  const goNext = async () => {
+    const isValid = await validateStep(step);
+    if (!isValid) {
+      toast.error("Please fill required fields in this step");
+      return;
+    }
+    setStep((s) => Math.min(s + 1, stepLabels.length - 1));
+  };
+
+  const goBack = () => {
+    setStep((s) => Math.max(s - 1, 0));
+  };
+
+  const onSubmit = async (data: EmployeeFormData) => {
+    // Zod validation has already been done by the form resolver
     startTransition(async () => {
       try {
         const result = await createEmployee({
-          employeeId: formData.employeeId,
-          employeeName: formData.employeeName,
-          fatherHusbandName: formData.fatherHusbandName,
-          department: formData.department,
-          subDepartment: formData.subDepartment || undefined,
-          employeeGrade: formData.employeeGrade,
-          attendanceId: formData.attendanceId,
-          designation: formData.designation,
-          maritalStatus: formData.maritalStatus,
-          employmentStatus: formData.employmentStatus,
-          probationExpiryDate: formData.probationExpiryDate || undefined,
-          cnicNumber: formData.cnicNumber,
-          cnicExpiryDate: formData.cnicExpiryDate || undefined,
-          lifetimeCnic: formData.lifetimeCnic,
-          joiningDate: formData.joiningDate,
-          dateOfBirth: formData.dateOfBirth,
-          nationality: formData.nationality,
-          gender: formData.gender,
-          contactNumber: formData.contactNumber,
-          emergencyContactNumber: formData.emergencyContactNumber || undefined,
+          employeeId: data.employeeId,
+          employeeName: data.employeeName,
+          fatherHusbandName: data.fatherHusbandName,
+          department: data.department,
+          subDepartment: data.subDepartment || undefined,
+          employeeGrade: data.employeeGrade,
+          attendanceId: data.attendanceId,
+          designation: data.designation,
+          maritalStatus: data.maritalStatus,
+          employmentStatus: data.employmentStatus,
+          probationExpiryDate: data.probationExpiryDate || undefined,
+          cnicNumber: data.cnicNumber,
+          cnicExpiryDate: data.cnicExpiryDate || undefined,
+          lifetimeCnic: data.lifetimeCnic,
+          joiningDate: data.joiningDate,
+          dateOfBirth: data.dateOfBirth,
+          nationality: data.nationality,
+          gender: data.gender,
+          contactNumber: data.contactNumber,
+          emergencyContactNumber: data.emergencyContactNumber || undefined,
           emergencyContactPersonName:
-            formData.emergencyContactPersonName || undefined,
-          personalEmail: formData.personalEmail || undefined,
-          officialEmail: formData.officialEmail,
-          country: formData.country,
-          state: formData.state,
-          city: formData.city,
-          employeeSalary: formData.employeeSalary,
-          eobi: formData.eobi,
-          eobiNumber: formData.eobiNumber || undefined,
-          providentFund: formData.providentFund,
-          overtimeApplicable: formData.overtimeApplicable,
-          daysOff: formData.daysOff || undefined,
-          reportingManager: formData.reportingManager,
-          workingHoursPolicy: formData.workingHoursPolicy,
-          branch: formData.branch,
-          leavesPolicy: formData.leavesPolicy,
-          allowRemoteAttendance: formData.allowRemoteAttendance,
-          currentAddress: formData.currentAddress || undefined,
-          permanentAddress: formData.permanentAddress || undefined,
-          bankName: formData.bankName,
-          accountNumber: formData.accountNumber,
-          accountTitle: formData.accountTitle,
-          selectedEquipments: formData.selectedEquipments,
-          accountType: formData.accountType || undefined,
-          password: formData.password || undefined,
-          roles: formData.roles || undefined,
+            data.emergencyContactPersonName || undefined,
+          personalEmail: data.personalEmail || undefined,
+          officialEmail: data.officialEmail,
+          country: data.country,
+          state: data.state,
+          city: data.city,
+          employeeSalary: data.employeeSalary,
+          eobi: data.eobi,
+          eobiNumber: data.eobiNumber || undefined,
+          providentFund: data.providentFund,
+          overtimeApplicable: data.overtimeApplicable,
+          daysOff: data.daysOff || undefined,
+          reportingManager: data.reportingManager,
+          workingHoursPolicy: data.workingHoursPolicy,
+          branch: data.branch,
+          leavesPolicy: data.leavesPolicy,
+          allowRemoteAttendance: data.allowRemoteAttendance,
+          currentAddress: data.currentAddress || undefined,
+          permanentAddress: data.permanentAddress || undefined,
+          bankName: data.bankName,
+          accountNumber: data.accountNumber,
+          accountTitle: data.accountTitle,
+          selectedEquipments: data.selectedEquipments,
+          accountType: data.accountType || undefined,
+          password: data.password || undefined,
+          roles: data.roles || undefined,
         });
 
         if (result.status) {
@@ -419,45 +783,8 @@ export default function CreateEmployeePage() {
     });
   };
 
-  const FileUploadField = ({
-    label,
-    fieldKey,
-  }: {
-    label: string;
-    fieldKey: string;
-  }) => (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <div className="flex items-center gap-2">
-        <Input
-          type="file"
-          onChange={(e) =>
-            handleFileChange(fieldKey, e.target.files?.[0] || null)
-          }
-          className="flex-1"
-          disabled={isPending}
-        />
-        {documents[fieldKey] && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => handleFileChange(fieldKey, null)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
-      {documents[fieldKey] && (
-        <p className="text-xs text-muted-foreground">
-          {documents[fieldKey]?.name}
-        </p>
-      )}
-    </div>
-  );
-
   return (
-    <div className=" max-w-[90%] mx-auto pb-10">
+    <div className="max-w-[90%] mx-auto pb-10">
       <div className="mb-6">
         <Link href="/dashboard/employee/list">
           <Button variant="ghost" size="sm">
@@ -466,905 +793,1213 @@ export default function CreateEmployeePage() {
           </Button>
         </Link>
       </div>
-      <div className="border rounded-xl p-4 ">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Profile Picture Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                Profile Picture
-              </CardTitle>
-              <CardDescription>
-                Upload employee's profile picture
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-6">
-                <div className="relative">
-                  {profilePicPreview ? (
-                    <img
-                      src={profilePicPreview}
-                      alt="Profile preview"
-                      className="w-32 h-32 rounded-full object-cover border-2 border-border"
-                    />
-                  ) : (
-                    <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-2 border-border">
-                      <User className="w-16 h-16 text-muted-foreground" />
-                    </div>
-                  )}
+      <div className="border rounded-xl p-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <div className="flex flex-wrap items-center gap-3">
+            {stepLabels.map((label, idx) => {
+              const isActive = idx === step;
+              const isDone = idx < step;
+              return (
+                <div
+                  key={label}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm ${
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : isDone
+                      ? "bg-muted text-foreground"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  <span className="h-6 w-6 rounded-full bg-background border flex items-center justify-center">
+                    {idx + 1}
+                  </span>
+                  <span>{label}</span>
                 </div>
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="profilePic">Upload Profile Picture</Label>
-                  <Input
-                    id="profilePic"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleProfilePicChange}
-                    disabled={isPending}
-                    className="cursor-pointer"
-                  />
-                  {profilePic && (
-                    <p className="text-xs text-muted-foreground">
-                      {profilePic.name}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              );
+            })}
+          </div>
 
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold">
-                Basic Information
-              </CardTitle>
-              <CardDescription>Enter employee's basic details</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Employee ID *</Label>
-                <Input
-                  value={formData.employeeId}
-                  onChange={(e) => updateField("employeeId", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Employee Name *</Label>
-                <Input
-                  value={formData.employeeName}
-                  onChange={(e) => updateField("employeeName", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Father / Husband Name *</Label>
-                <Input
-                  value={formData.fatherHusbandName}
-                  onChange={(e) =>
-                    updateField("fatherHusbandName", e.target.value)
-                  }
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Department *</Label>
-                <Select
-                  value={formData.department}
-                  onValueChange={(v) => updateField("department", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Sub Department *</Label>
-                <Select
-                  value={formData.subDepartment}
-                  onValueChange={(v) => updateField("subDepartment", v)}
-                  disabled={
-                    isPending ||
-                    !formData.department ||
-                    loadingData ||
-                    loadingSubDepartments
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        loadingSubDepartments
-                          ? "Loading..."
-                          : formData.department
-                          ? "Select Sub Department"
-                          : "Select Department first"
-                      }
-                    />
-                    {loadingSubDepartments && (
-                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loadingSubDepartments ? (
-                      <div className="flex items-center justify-center p-4">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+          {step === 0 && (
+            <>
+              {/* Profile Picture Upload */}
+              <Card className="border-none shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">
+                    Profile Picture
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col items-center gap-6">
+                    <div 
+                      className="relative cursor-pointer group"
+                      onClick={() => document.getElementById("profile-pic-input")?.click()}
+                    >
+                      {profilePicPreview ? (
+                        <img
+                          src={profilePicPreview}
+                          alt="Profile preview"
+                          className="w-40 h-40 rounded-full object-cover border-4 border-border group-hover:opacity-80 transition-opacity"
+                        />
+                      ) : (
+                        <div className="w-40 h-40 rounded-full bg-muted flex items-center justify-center border-4 border-border group-hover:bg-muted/80 transition-colors">
+                          <img
+                            src="/profileicon.svg"
+                            alt="Default profile"
+                            className="w-20 h-20"
+                          />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Upload className="h-8 w-8 text-white" />
                       </div>
-                    ) : subDepartments.length === 0 ? (
-                      <div className="p-4 text-sm text-muted-foreground text-center">
-                        No sub-departments found
-                      </div>
-                    ) : (
-                      subDepartments.map((sd) => (
-                        <SelectItem key={sd.id} value={sd.id}>
-                          {sd.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Employee Grade *</Label>
-                <Select
-                  value={formData.employeeGrade}
-                  onValueChange={(v) => updateField("employeeGrade", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Grade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employeeGrades.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.grade}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Attendance ID *</Label>
-                <Input
-                  value={formData.attendanceId}
-                  onChange={(e) => updateField("attendanceId", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Designation *</Label>
-                <Select
-                  value={formData.designation}
-                  onValueChange={(v) => updateField("designation", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Designation" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {designations.map((d) => (
-                      <SelectItem key={d.id} value={d.id}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Marital Status *</Label>
-                <Select
-                  value={formData.maritalStatus}
-                  onValueChange={(v) => updateField("maritalStatus", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Marital Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {maritalStatuses.map((ms) => (
-                      <SelectItem key={ms.id} value={ms.id}>
-                        {ms.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Employment Status *</Label>
-                <Select
-                  value={formData.employmentStatus}
-                  onValueChange={(v) => updateField("employmentStatus", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Employment Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employeeStatuses.map((es) => (
-                      <SelectItem key={es.id} value={es.id}>
-                        {es.status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Probation / Internship Expiry Date *</Label>
-                <Input
-                  type="date"
-                  value={formData.probationExpiryDate}
-                  onChange={(e) =>
-                    updateField("probationExpiryDate", e.target.value)
-                  }
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>CNIC Number *</Label>
-                <Input
-                  placeholder="00000-0000000-0"
-                  value={formData.cnicNumber}
-                  onChange={(e) => {
-                    const formatted = formatCNIC(e.target.value);
-                    updateField("cnicNumber", formatted);
-                  }}
-                  maxLength={15}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>CNIC Expiry Date</Label>
-                <Input
-                  type="date"
-                  value={formData.cnicExpiryDate}
-                  onChange={(e) =>
-                    updateField("cnicExpiryDate", e.target.value)
-                  }
-                  disabled={isPending || formData.lifetimeCnic}
-                />
-                <div className="flex items-center gap-2 mt-1">
-                  <Switch
-                    id="lifetimeCnic"
-                    checked={formData.lifetimeCnic}
-                    onCheckedChange={(c) => updateField("lifetimeCnic", !!c)}
-                  />
-                  <label
-                    htmlFor="lifetimeCnic"
-                    className="text-sm cursor-pointer"
-                  >
-                    Lifetime CNIC
-                  </label>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Joining Date *</Label>
-                <Input
-                  type="date"
-                  value={formData.joiningDate}
-                  onChange={(e) => updateField("joiningDate", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Date of Birth *</Label>
-                <Input
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => updateField("dateOfBirth", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Nationality *</Label>
-                <Select
-                  value={formData.nationality}
-                  onValueChange={(v) => updateField("nationality", v)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nationalities.map((n) => (
-                      <SelectItem key={n} value={n}>
-                        {n}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Gender *</Label>
-                <Select
-                  value={formData.gender}
-                  onValueChange={(v) => updateField("gender", v)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {genders.map((g) => (
-                      <SelectItem key={g} value={g}>
-                        {g}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Contact Number *</Label>
-                <Input
-                  placeholder="03XX-XXXXXXX"
-                  value={formData.contactNumber}
-                  onChange={(e) => updateField("contactNumber", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Emergency Contact Number</Label>
-                <Input
-                  value={formData.emergencyContactNumber}
-                  onChange={(e) =>
-                    updateField("emergencyContactNumber", e.target.value)
-                  }
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Emergency Contact Person Name</Label>
-                <Input
-                  value={formData.emergencyContactPersonName}
-                  onChange={(e) =>
-                    updateField("emergencyContactPersonName", e.target.value)
-                  }
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Personal Email</Label>
-                <Input
-                  type="email"
-                  value={formData.personalEmail}
-                  onChange={(e) => updateField("personalEmail", e.target.value)}
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Official Email *</Label>
-                <Input
-                  type="email"
-                  value={formData.officialEmail}
-                  onChange={(e) => updateField("officialEmail", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Country *</Label>
-                <Input
-                  value={formData.country}
-                  onChange={(e) => updateField("country", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>State *</Label>
-                <Select
-                  value={formData.state}
-                  onValueChange={(v) => updateField("state", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select State" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {states.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>City *</Label>
-                <Select
-                  value={formData.city}
-                  onValueChange={(v) => updateField("city", v)}
-                  disabled={
-                    isPending || !formData.state || loadingData || loadingCities
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        loadingCities
-                          ? "Loading..."
-                          : formData.state
-                          ? "Select City"
-                          : "Select State first"
-                      }
-                    />
-                    {loadingCities && (
-                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                    )}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loadingCities ? (
-                      <div className="flex items-center justify-center p-4">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      </div>
-                    ) : cities.length === 0 ? (
-                      <div className="p-4 text-sm text-muted-foreground text-center">
-                        No cities found
-                      </div>
-                    ) : (
-                      cities.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Employee Salary (Compensation) *</Label>
-                <Input
-                  type="number"
-                  value={formData.employeeSalary}
-                  onChange={(e) =>
-                    updateField("employeeSalary", e.target.value)
-                  }
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>EOBI</Label>
-                <div className="flex items-center gap-4 h-10">
-                  <Switch
-                    id="eobi"
-                    checked={formData.eobi}
-                    onCheckedChange={(c) => updateField("eobi", !!c)}
-                  />
-                  <label htmlFor="eobi" className="text-sm cursor-pointer">
-                    Applicable
-                  </label>
-                </div>
-              </div>
-              {formData.eobi && (
-                <>
-                  <div className="space-y-2">
-                    <Label>EOBI Number</Label>
-                    <Input
-                      value={formData.eobiNumber}
-                      onChange={(e) =>
-                        updateField("eobiNumber", e.target.value)
-                      }
+                    </div>
+                    <input
+                      id="profile-pic-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleProfilePicChange}
+                      className="hidden"
                       disabled={isPending}
                     />
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Basic Information */}
+              <Card className="border-none shadow-none">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">
+                    Basic Information
+                  </CardTitle>
+                  <CardDescription>Enter employee's basic details</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label>EOBI Document</Label>
+                    <Label><RequiredLabel>Employee ID *</RequiredLabel></Label>
                     <Input
-                      type="file"
-                      onChange={(e) =>
-                        handleFileChange("eobi", e.target.files?.[0] || null)
-                      }
-                      className="flex-1"
+                      placeholder="456XXXXXXXXXX"
+                      {...register("employeeId")}
                       disabled={isPending}
-                      accept=".pdf,.jpg,.jpeg,.png"
                     />
-                    {documents.eobi && (
-                      <p className="text-xs text-muted-foreground">
-                        {documents.eobi.name}
+                    {errors.employeeId && (
+                      <p className="text-xs text-red-500">{errors.employeeId.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Employee Name *</RequiredLabel></Label>
+                    <Input
+                     placeholder="(eg John Doe)"
+                      {...register("employeeName")}
+                      disabled={isPending}
+                    />
+                    {errors.employeeName && (
+                      <p className="text-xs text-red-500">{errors.employeeName.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Father / Husband Name *</RequiredLabel></Label>
+                    <Input
+                     placeholder="(eg Richard Roe)"
+                      {...register("fatherHusbandName")}
+                      disabled={isPending}
+                    />
+                    {errors.fatherHusbandName && (
+                      <p className="text-xs text-red-500">{errors.fatherHusbandName.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Department *</RequiredLabel></Label>
+                    <Controller
+                      name="department"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments.map((d) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.department && (
+                      <p className="text-xs text-red-500">{errors.department.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Sub Department</Label>
+                    <Controller
+                      name="subDepartment"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={
+                            isPending ||
+                            !department ||
+                            loadingData ||
+                            loadingSubDepartments
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                !department
+                                  ? "Select Department first"
+                                  : loadingSubDepartments
+                                  ? "Loading..."
+                                  : "Select Sub Department"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {loadingSubDepartments ? (
+                              <div className="p-4 text-center text-sm">
+                                Loading...
+                              </div>
+                            ) : subDepartments.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-muted-foreground">
+                                No sub-departments found
+                              </div>
+                            ) : (
+                              subDepartments.map((sd) => (
+                                <SelectItem key={sd.id} value={sd.id}>
+                                  {sd.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Employee Grade *</RequiredLabel></Label>
+                    <Controller
+                      name="employeeGrade"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Grade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {employeeGrades.map((g) => (
+                              <SelectItem key={g.id} value={g.id}>
+                                {g.grade}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.employeeGrade && (
+                      <p className="text-xs text-red-500">{errors.employeeGrade.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Attendance ID *</RequiredLabel></Label>
+                    <Input
+                     placeholder="(eg ATT-00123)"
+                      {...register("attendanceId")}
+                      disabled={isPending}
+                    />
+                    {errors.attendanceId && (
+                      <p className="text-xs text-red-500">{errors.attendanceId.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Designation *</RequiredLabel></Label>
+                    <Controller
+                      name="designation"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Designation" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {designations.map((d) => (
+                              <SelectItem key={d.id} value={d.id}>
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.designation && (
+                      <p className="text-xs text-red-500">{errors.designation.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Marital Status *</RequiredLabel></Label>
+                    <Controller
+                      name="maritalStatus"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Marital Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {maritalStatuses.map((ms) => (
+                              <SelectItem key={ms.id} value={ms.id}>
+                                {ms.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.maritalStatus && (
+                      <p className="text-xs text-red-500">{errors.maritalStatus.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Employment Status *</RequiredLabel></Label>
+                    <Controller
+                      name="employmentStatus"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Employment Status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {employeeStatuses.map((es) => (
+                              <SelectItem key={es.id} value={es.id}>
+                                {es.status}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.employmentStatus && (
+                      <p className="text-xs text-red-500">{errors.employmentStatus.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Probation / Internship Expiry Date</Label>
+                    <Input
+                      type="date"
+                      {...register("probationExpiryDate")}
+                      disabled={isPending}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>CNIC Number *</RequiredLabel></Label>
+                    <Controller
+                      name="cnicNumber"
+                      control={control}
+                      render={({ field }) => (
+                        <Input
+                          placeholder="00000-0000000-0"
+                          value={field.value}
+                          onChange={(e) => {
+                            const formatted = formatCNIC(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          maxLength={15}
+                          disabled={isPending}
+                        />
+                      )}
+                    />
+                    {errors.cnicNumber && (
+                      <p className="text-xs text-red-500">{errors.cnicNumber.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>CNIC Expiry Date</Label>
+                    <Input
+                      type="date"
+                      {...register("cnicExpiryDate")}
+                      disabled={isPending || formValues.lifetimeCnic}
+                    />
+                    <div className="flex items-center gap-2 mt-1">
+                      <Controller
+                        name="lifetimeCnic"
+                        control={control}
+                        render={({ field }) => (
+                          <Switch
+                            id="lifetimeCnic"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <label
+                        htmlFor="lifetimeCnic"
+                        className="text-sm cursor-pointer"
+                      >
+                        Lifetime CNIC
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Joining Date *</RequiredLabel></Label>
+                    <Input
+                      type="date"
+                      {...register("joiningDate")}
+                      disabled={isPending}
+                    />
+                    {errors.joiningDate && (
+                      <p className="text-xs text-red-500">{errors.joiningDate.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Date of Birth *</RequiredLabel></Label>
+                    <Input
+                      type="date"
+                      {...register("dateOfBirth")}
+                      disabled={isPending}
+                    />
+                    {errors.dateOfBirth && (
+                      <p className="text-xs text-red-500">{errors.dateOfBirth.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Nationality *</RequiredLabel></Label>
+                    <Controller
+                      name="nationality"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {nationalities.map((n) => (
+                              <SelectItem key={n} value={n}>
+                                {n}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.nationality && (
+                      <p className="text-xs text-red-500">{errors.nationality.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Gender *</RequiredLabel></Label>
+                    <Controller
+                      name="gender"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {genders.map((g) => (
+                              <SelectItem key={g} value={g}>
+                                {g}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.gender && (
+                      <p className="text-xs text-red-500">{errors.gender.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Contact Number *</RequiredLabel></Label>
+                    <Input
+                      placeholder="03XX-XXXXXXX"
+                      {...register("contactNumber")}
+                      disabled={isPending}
+                    />
+                    {errors.contactNumber && (
+                      <p className="text-xs text-red-500">{errors.contactNumber.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Emergency Contact Number</Label>
+                    <Input
+                     placeholder="03XX-XXXXXXX"
+                      {...register("emergencyContactNumber")}
+                      disabled={isPending}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Emergency Contact Person Name</Label>
+                    <Input
+                     placeholder="(eg Jane Doe)"
+                      {...register("emergencyContactPersonName")}
+                      disabled={isPending}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Personal Email</Label>
+                    <Input
+                     placeholder="(eg jone@gmail.com)"
+                      type="email"
+                      {...register("personalEmail")}
+                      disabled={isPending}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Official Email *</RequiredLabel></Label>
+                    <Input
+                    placeholder="(eg jone@gmail.com)"
+                      type="email"
+                      {...register("officialEmail")}
+                      disabled={isPending}
+                    />
+                    {errors.officialEmail && (
+                      <p className="text-xs text-red-500">{errors.officialEmail.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Country *</RequiredLabel></Label>
+                    <Input
+                      {...register("country")}
+                      disabled={isPending}
+                    />
+                    {errors.country && (
+                      <p className="text-xs text-red-500">{errors.country.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>State *</RequiredLabel></Label>
+                    <Controller
+                      name="state"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select State" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {states.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.state && (
+                      <p className="text-xs text-red-500">{errors.state.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>City *</RequiredLabel></Label>
+                    <Controller
+                      name="city"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={
+                            isPending || !state || loadingData || loadingCities
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                loadingCities
+                                  ? "Loading..."
+                                  : state
+                                  ? "Select City"
+                                  : "Select State first"
+                              }
+                            />
+                            {loadingCities && (
+                              <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            {loadingCities ? (
+                              <div className="flex items-center justify-center p-4">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              </div>
+                            ) : cities.length === 0 ? (
+                              <div className="p-4 text-sm text-muted-foreground text-center">
+                                No cities found
+                              </div>
+                            ) : (
+                              cities.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                  {c.name}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.city && (
+                      <p className="text-xs text-red-500">{errors.city.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Employee Salary (Compensation) *</RequiredLabel></Label>
+                    <Input
+                      type="number"
+                      {...register("employeeSalary")}
+                      disabled={isPending}
+                    />
+                    {errors.employeeSalary && (
+                      <p className="text-xs text-red-500">{errors.employeeSalary.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>EOBI</Label>
+                    <div className="flex items-center gap-4 h-10">
+                      <Controller
+                        name="eobi"
+                        control={control}
+                        render={({ field }) => (
+                          <Switch
+                            id="eobi"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <label htmlFor="eobi" className="text-sm cursor-pointer">
+                        Applicable
+                      </label>
+                    </div>
+                  </div>
+
+                  {eobi && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>EOBI Number</Label>
+                        <Input
+                          {...register("eobiNumber")}
+                          disabled={isPending}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>EOBI Document</Label>
+                        <Input
+                          type="file"
+                          onChange={(e) =>
+                            handleFileChange("eobi", e.target.files?.[0] || null)
+                          }
+                          className="flex-1"
+                          disabled={isPending}
+                          accept=".pdf,.jpg,.jpeg,.png"
+                        />
+                        {documents.eobi && (
+                          <p className="text-xs text-muted-foreground">
+                            {documents.eobi.name}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label>Provident Fund</Label>
+                    <div className="flex items-center gap-4 h-10">
+                      <Controller
+                        name="providentFund"
+                        control={control}
+                        render={({ field }) => (
+                          <Switch
+                            id="pf"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <label htmlFor="pf" className="text-sm cursor-pointer">
+                        Applicable
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Overtime Applicable</Label>
+                    <div className="flex items-center gap-4 h-10">
+                      <Controller
+                        name="overtimeApplicable"
+                        control={control}
+                        render={({ field }) => (
+                          <Switch
+                            id="ot"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <label htmlFor="ot" className="text-sm cursor-pointer">
+                        Yes
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Days Off</Label>
+                    <Controller
+                      name="daysOff"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {daysOff.map((d) => (
+                              <SelectItem key={d} value={d}>
+                                {d}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Reporting Manager *</RequiredLabel></Label>
+                    <Input
+                      {...register("reportingManager")}
+                      disabled={isPending}
+                    />
+                    {errors.reportingManager && (
+                      <p className="text-xs text-red-500">{errors.reportingManager.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Working Hours Policy *</RequiredLabel></Label>
+                    <Controller
+                      name="workingHoursPolicy"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Working Hours Policy" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {workingHoursPolicies.map((policy) => (
+                              <SelectItem key={policy.id} value={policy.id}>
+                                {policy.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.workingHoursPolicy && (
+                      <p className="text-xs text-red-500">{errors.workingHoursPolicy.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Branch *</RequiredLabel></Label>
+                    <Controller
+                      name="branch"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Branch" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {branches.map((b) => (
+                              <SelectItem key={b.id} value={b.id}>
+                                {b.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.branch && (
+                      <p className="text-xs text-red-500">{errors.branch.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Leaves Policy *</RequiredLabel></Label>
+                    <Controller
+                      name="leavesPolicy"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending || loadingData}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Leave Policy" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {leavesPolicies.map((policy) => (
+                              <SelectItem key={policy.id} value={policy.id}>
+                                {policy.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.leavesPolicy && (
+                      <p className="text-xs text-red-500">{errors.leavesPolicy.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Allow Remote Attendance</Label>
+                    <div className="flex items-center gap-4 h-10">
+                      <Controller
+                        name="allowRemoteAttendance"
+                        control={control}
+                        render={({ field }) => (
+                          <Switch
+                            id="remote"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                      <label htmlFor="remote" className="text-sm cursor-pointer">
+                        Yes
+                      </label>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {step === 1 && (
+            <>
+              {/* Address Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Address Information</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Current Address</Label>
+                    <Textarea
+                      placeholder="(e.g., House No. 123, Street Name, City, Province)"
+                      {...register("currentAddress")}
+                      disabled={isPending}
+                      rows={3}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Permanent Address</Label>
+                    <Textarea
+                      placeholder="(e.g., House No. 456, Street Name, City, Province)"
+                      {...register("permanentAddress")}
+                      disabled={isPending}
+                      rows={3}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              {/* Bank Account Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bank Account Details</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Bank Name *</RequiredLabel></Label>
+                    <Controller
+                      name="bankName"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {banks.map((b) => (
+                              <SelectItem key={b} value={b}>
+                                {b}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.bankName && (
+                      <p className="text-xs text-red-500">{errors.bankName.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Account Number *</RequiredLabel></Label>
+                    <Input
+                      {...register("accountNumber")}
+                      disabled={isPending}
+                    />
+                    {errors.accountNumber && (
+                      <p className="text-xs text-red-500">{errors.accountNumber.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label><RequiredLabel>Account Title *</RequiredLabel></Label>
+                    <Input
+                      {...register("accountTitle")}
+                      disabled={isPending}
+                    />
+                    {errors.accountTitle && (
+                      <p className="text-xs text-red-500">{errors.accountTitle.message}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Login Credentials */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Login Credentials</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Account Type</Label>
+                    <Controller
+                      name="accountType"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {accountTypes.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Password</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        {...register("password")}
+                        disabled={isPending}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={generatePassword}
+                        disabled={isPending}
+                      >
+                        <Key className="h-4 w-4 mr-1" />
+                        Generate
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Roles</Label>
+                    <Controller
+                      name="roles"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roles.map((r) => (
+                              <SelectItem key={r} value={r}>
+                                {r}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {step === 3 && (
+            <>
+              {/* Employee Items Issued */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Employee Items Issued</CardTitle>
+                  <CardDescription>
+                    Select items issued to the employee from master equipments
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-6">
+                    {equipments.map((equipment) => (
+                      <div key={equipment.id} className="flex items-center gap-2">
+                        <Controller
+                          name="selectedEquipments"
+                          control={control}
+                          render={({ field }) => (
+                            <Switch
+                              id={equipment.id}
+                              checked={field.value.includes(equipment.id)}
+                              onCheckedChange={(checked) => {
+                                const newValue = checked
+                                  ? [...field.value, equipment.id]
+                                  : field.value.filter((id) => id !== equipment.id);
+                                field.onChange(newValue);
+                              }}
+                              disabled={isPending || loadingData}
+                            />
+                          )}
+                        />
+                        <label
+                          htmlFor={equipment.id}
+                          className="text-sm cursor-pointer"
+                        >
+                          {equipment.name}
+                        </label>
+                      </div>
+                    ))}
+                    {equipments.length === 0 && !loadingData && (
+                      <p className="text-sm text-muted-foreground">
+                        No equipments available. Please add equipments in master data.
                       </p>
                     )}
                   </div>
-                </>
-              )}
-              <div className="space-y-2">
-                <Label>Provident Fund</Label>
-                <div className="flex items-center gap-4 h-10">
-                  <Switch
-                    id="pf"
-                    checked={formData.providentFund}
-                    onCheckedChange={(c) => updateField("providentFund", !!c)}
-                  />
-                  <label htmlFor="pf" className="text-sm cursor-pointer">
-                    Applicable
-                  </label>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Overtime Applicable</Label>
-                <div className="flex items-center gap-4 h-10">
-                  <Switch
-                    id="ot"
-                    checked={formData.overtimeApplicable}
-                    onCheckedChange={(c) =>
-                      updateField("overtimeApplicable", !!c)
-                    }
-                  />
-                  <label htmlFor="ot" className="text-sm cursor-pointer">
-                    Yes
-                  </label>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Days Off</Label>
-                <Select
-                  value={formData.daysOff}
-                  onValueChange={(v) => updateField("daysOff", v)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {daysOff.map((d) => (
-                      <SelectItem key={d} value={d}>
-                        {d}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Reporting Manager *</Label>
-                <Input
-                  value={formData.reportingManager}
-                  onChange={(e) =>
-                    updateField("reportingManager", e.target.value)
-                  }
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Working Hours Policy *</Label>
-                <Select
-                  value={formData.workingHoursPolicy}
-                  onValueChange={(v) => updateField("workingHoursPolicy", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Working Hours Policy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {workingHoursPolicies.map((policy) => (
-                      <SelectItem key={policy.id} value={policy.id}>
-                        {policy.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Branch *</Label>
-                <Select
-                  value={formData.branch}
-                  onValueChange={(v) => updateField("branch", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Leaves Policy *</Label>
-                <Select
-                  value={formData.leavesPolicy}
-                  onValueChange={(v) => updateField("leavesPolicy", v)}
-                  disabled={isPending || loadingData}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Leave Policy" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leavesPolicies.map((policy) => (
-                      <SelectItem key={policy.id} value={policy.id}>
-                        {policy.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Allow Remote Attendance</Label>
-                <div className="flex items-center gap-4 h-10">
-                  <Switch
-                    id="remote"
-                    checked={formData.allowRemoteAttendance}
-                    onCheckedChange={(c) =>
-                      updateField("allowRemoteAttendance", !!c)
-                    }
-                  />
-                  <label htmlFor="remote" className="text-sm cursor-pointer">
-                    Yes
-                  </label>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          {/* Address Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Address Information</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Current Address</Label>
-                <Textarea
-                  value={formData.currentAddress}
-                  onChange={(e) =>
-                    updateField("currentAddress", e.target.value)
-                  }
-                  disabled={isPending}
-                  rows={3}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Permanent Address</Label>
-                <Textarea
-                  value={formData.permanentAddress}
-                  onChange={(e) =>
-                    updateField("permanentAddress", e.target.value)
-                  }
-                  disabled={isPending}
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Bank Account Details */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Bank Account Details</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Bank Name *</Label>
-                <Select
-                  value={formData.bankName}
-                  onValueChange={(v) => updateField("bankName", v)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {banks.map((b) => (
-                      <SelectItem key={b} value={b}>
-                        {b}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Account Number *</Label>
-                <Input
-                  value={formData.accountNumber}
-                  onChange={(e) => updateField("accountNumber", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Account Title *</Label>
-                <Input
-                  value={formData.accountTitle}
-                  onChange={(e) => updateField("accountTitle", e.target.value)}
-                  required
-                  disabled={isPending}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Employee Items Issued */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Employee Items Issued</CardTitle>
-              <CardDescription>
-                Select items issued to the employee from master equipments
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-6">
-                {equipments.map((equipment) => (
-                  <div key={equipment.id} className="flex items-center gap-2">
-                    <Switch
-                      id={equipment.id}
-                      checked={formData.selectedEquipments.includes(
-                        equipment.id
-                      )}
-                      onCheckedChange={(checked) => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          selectedEquipments: checked
-                            ? [...prev.selectedEquipments, equipment.id]
-                            : prev.selectedEquipments.filter(
-                                (id) => id !== equipment.id
-                              ),
-                        }));
-                      }}
-                      disabled={isPending || loadingData}
+              {/* Document Uploads */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Employee Document Uploads</CardTitle>
+                  <CardDescription>Upload required documents</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Upload CV</Label>
+                    <FileUpload
+                      id="cv"
+                      onChange={(files) => handleFileChange("cv", files?.[0] || null)}
                     />
-                    <label
-                      htmlFor={equipment.id}
-                      className="text-sm cursor-pointer"
-                    >
-                      {equipment.name}
-                    </label>
                   </div>
-                ))}
-                {equipments.length === 0 && !loadingData && (
-                  <p className="text-sm text-muted-foreground">
-                    No equipments available. Please add equipments in master
-                    data.
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Document Uploads */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Employee Document Uploads</CardTitle>
-              <CardDescription>
-                Upload required documents (multiple files supported)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FileUploadField label="Upload CV" fieldKey="cv" />
-              <FileUploadField
-                label="Upload Education Degrees"
-                fieldKey="educationDegrees"
-              />
-              <FileUploadField
-                label="Upload Passport Size Photos (2)"
-                fieldKey="passportPhotos"
-              />
-              <FileUploadField label="Upload CNIC" fieldKey="cnic" />
-              <FileUploadField
-                label="Clearance Letter (if any)"
-                fieldKey="clearanceLetter"
-              />
-              <FileUploadField
-                label="Fit & Proper Criteria Form"
-                fieldKey="fitProperCriteria"
-              />
-              <FileUploadField
-                label="Affirmation – Company Service Rules"
-                fieldKey="serviceRulesAffirmation"
-              />
-              <FileUploadField
-                label="Affirmation – VIS Code of Conduct 2019"
-                fieldKey="codeOfConduct"
-              />
-              <FileUploadField
-                label="Upload Non-Disclosure Agreement (NDA)"
-                fieldKey="nda"
-              />
-              <FileUploadField
-                label="Information Secrecy / Confidentiality Form"
-                fieldKey="secrecyForm"
-              />
-              <FileUploadField
-                label="Investment Disclosure Form"
-                fieldKey="investmentDisclosure"
-              />
-            </CardContent>
-          </Card>
+                  <div>
+                    <Label>Upload Education Degrees</Label>
+                    <FileUpload
+                      id="educationDegrees"
+                      onChange={(files) => handleFileChange("educationDegrees", files?.[0] || null)}
+                    />
+                  </div>
 
-          {/* Login Credentials */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Login Credentials</CardTitle>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Account Type</Label>
-                <Select
-                  value={formData.accountType}
-                  onValueChange={(v) => updateField("accountType", v)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accountTypes.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Password</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={formData.password}
-                    onChange={(e) => updateField("password", e.target.value)}
-                    disabled={isPending}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={generatePassword}
-                    disabled={isPending}
-                  >
-                    <Key className="h-4 w-4 mr-1" />
-                    Generate
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Roles</Label>
-                <Select
-                  value={formData.roles}
-                  onValueChange={(v) => updateField("roles", v)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {roles.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {r}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+                  <div>
+                    <Label>Upload Passport Size Photos (2)</Label>
+                    <FileUpload
+                      id="passportPhotos"
+                      onChange={(files) => handleFileChange("passportPhotos", files?.[0] || null)}
+                    />
+                  </div>
 
-          {/* Submit Buttons */}
-          <div className="flex gap-2 justify-center bottom-4 bg-background p-4  rounded-lg shadow-lg">
-            <Button type="submit" disabled={isPending} className="flex-1">
-              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Create Employee
-            </Button>
+                  <div>
+                    <Label>Upload CNIC</Label>
+                    <FileUpload
+                      id="cnic"
+                      onChange={(files) => handleFileChange("cnic", files?.[0] || null)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Clearance Letter (if any)</Label>
+                    <FileUpload
+                      id="clearanceLetter"
+                      onChange={(files) => handleFileChange("clearanceLetter", files?.[0] || null)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Fit & Proper Criteria Form</Label>
+                    <FileUpload
+                      id="fitProperCriteria"
+                      onChange={(files) => handleFileChange("fitProperCriteria", files?.[0] || null)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Affirmation – Company Service Rules</Label>
+                    <FileUpload
+                      id="serviceRulesAffirmation"
+                      onChange={(files) => handleFileChange("serviceRulesAffirmation", files?.[0] || null)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Affirmation – VIS Code of Conduct 2019</Label>
+                    <FileUpload
+                      id="codeOfConduct"
+                      onChange={(files) => handleFileChange("codeOfConduct", files?.[0] || null)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Upload Non-Disclosure Agreement (NDA)</Label>
+                    <FileUpload
+                      id="nda"
+                      onChange={(files) => handleFileChange("nda", files?.[0] || null)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Information Secrecy / Confidentiality Form</Label>
+                    <FileUpload
+                      id="secrecyForm"
+                      onChange={(files) => handleFileChange("secrecyForm", files?.[0] || null)}
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Investment Disclosure Form</Label>
+                    <FileUpload
+                      id="investmentDisclosure"
+                      onChange={(files) => handleFileChange("investmentDisclosure", files?.[0] || null)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {/* Submit / Navigation Buttons */}
+          <div className="flex gap-2 justify-end ">
+            {step > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={goBack}
+                disabled={isPending}
+              >
+                Back
+              </Button>
+            )}
+            {step < stepLabels.length - 1 && (
+              <Button type="button" onClick={goNext} disabled={isPending}>
+                Next
+              </Button>
+            )}
+            {step === stepLabels.length - 1 && (
+              <Button type="submit" disabled={isPending} className="flex-1">
+                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Create Employee
+              </Button>
+            )}
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => router.back()}
+              disabled={isPending}
             >
               Cancel
             </Button>
