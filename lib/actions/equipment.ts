@@ -14,7 +14,7 @@ export interface Equipment {
   updatedAt: string;
 }
 
-export async function getEquipments(): Promise<{ status: boolean; data: Equipment[] }> {
+export async function getEquipments(): Promise<{ status: boolean; data: Equipment[]; message?: string }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/equipments`, {
@@ -24,7 +24,7 @@ export async function getEquipments(): Promise<{ status: boolean; data: Equipmen
     return res.json();
   } catch (error) {
     console.error("Failed to fetch equipments:", error);
-    return { status: false, data: [] };
+    return { status: false, data: [], message: "Failed to fetch equipments" };
   }
 }
 

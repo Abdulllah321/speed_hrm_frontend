@@ -1,6 +1,8 @@
 import { getLeavesPolicies } from "@/lib/actions/leaves-policy";
 import { LeavesPolicyList } from "./leaves-policy-list";
 
+export const dynamic = "force-dynamic";
+
 export default async function LeavesPolicyListPage({
   searchParams,
 }: {

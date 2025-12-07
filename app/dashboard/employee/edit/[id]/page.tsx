@@ -226,7 +226,7 @@ export default function EditEmployeePage() {
           const emp = result.data;
           
           // Map boolean equipment fields back to equipment IDs
-          let selectedEquipmentIds: string[] = [];
+          const selectedEquipmentIds: string[] = [];
           if (equipmentsResult.status && equipmentsResult.data) {
             const equipmentList = equipmentsResult.data;
             equipmentList.forEach((equipment) => {
@@ -601,7 +601,7 @@ export default function EditEmployeePage() {
                     />
                   ) : (
                     <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-2 border-border">
-                      <User className="w-16 h-16 text-muted-foreground" />
+                      <User className="w-16 h-16" />
                     </div>
                   )}
                 </div>

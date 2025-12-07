@@ -2,6 +2,8 @@ import { getLeaveTypes } from "@/lib/actions/leave-type";
 import { LeaveTypeList } from "./leave-type-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function LeaveTypeListPage({
   searchParams,
 }: {

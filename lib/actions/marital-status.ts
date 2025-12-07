@@ -14,7 +14,7 @@ export interface MaritalStatus {
   updatedAt: string;
 }
 
-export async function getMaritalStatuses(): Promise<{ status: boolean; data: MaritalStatus[] }> {
+export async function getMaritalStatuses(): Promise<{ status: boolean; data: MaritalStatus[]; message?: string }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/marital-statuses`, {
@@ -24,7 +24,7 @@ export async function getMaritalStatuses(): Promise<{ status: boolean; data: Mar
     return res.json();
   } catch (error) {
     console.error("Failed to fetch marital statuses:", error);
-    return { status: false, data: [] };
+    return { status: false, data: [], message: "Failed to fetch marital statuses" };
   }
 }
 

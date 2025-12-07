@@ -1,6 +1,8 @@
 import { getEOBIs } from "@/lib/actions/eobi";
 import { EOBIList } from "./eobi-list";
 
+export const dynamic = "force-dynamic";
+
 export default async function EOBIListPage({
   searchParams,
 }: {

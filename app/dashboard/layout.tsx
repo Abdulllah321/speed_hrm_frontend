@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { HeaderSearch } from "@/components/dashboard/header-search";
@@ -10,7 +10,7 @@ import { HeaderMasterMenu } from "@/components/dashboard/header-master-menu";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import { SessionChecker } from "@/components/auth/session-checker";
 import { Button } from "@/components/ui/button";
-import { Search, X } from "lucide-react";
+import { Search, X, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function DashboardLayout({
@@ -19,6 +19,27 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [erpMode, setErpMode] = useState(false);
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("erp-mode") : null;
+    const isOn = saved === "on";
+    setErpMode(isOn);
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.erpMode = isOn ? "on" : "off";
+    }
+  }, []);
+
+  const toggleErpMode = () => {
+    const next = !erpMode;
+    setErpMode(next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("erp-mode", next ? "on" : "off");
+    }
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.erpMode = next ? "on" : "off";
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -46,6 +67,27 @@ export default function DashboardLayout({
           <div className="flex-1 sm:flex-none" />
           <div className="flex items-center gap-1 sm:gap-2">
             <HeaderMasterMenu />
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+              <Button
+                variant={erpMode ? "default" : "outline"}
+                size="sm"
+                className={`relative overflow-hidden ${erpMode ? "animate-pulse" : ""}`}
+                onClick={toggleErpMode}
+             >
+                <Sparkles className="h-4 w-4 mr-2" />
+                {erpMode ? "ERP Mode On" : "Switch to ERP mode"}
+                <motion.span
+                  className="absolute inset-0"
+                  initial={false}
+                  animate={erpMode ? { opacity: [0.2, 0.5, 0.2] } : { opacity: 0 }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  style={{
+                    background:
+                      "radial-gradient(120% 120% at 50% 50%, rgba(99,102,241,0.15) 0%, rgba(147,51,234,0.15) 50%, transparent 100%)",
+                  }}
+                />
+              </Button>
+            </motion.div>
             <ThemeToggle />
             <HeaderNotifications />
             <HeaderUserMenu />

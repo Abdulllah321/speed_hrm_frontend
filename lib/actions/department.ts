@@ -26,7 +26,7 @@ export interface SubDepartment {
 }
 
 // Department Actions
-export async function getDepartments(): Promise<{ status: boolean; data: Department[] }> {
+export async function getDepartments(): Promise<{ status: boolean; data: Department[]; message?: string }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/departments`, {
@@ -36,7 +36,7 @@ export async function getDepartments(): Promise<{ status: boolean; data: Departm
     return res.json();
   } catch (error) {
     console.error("Failed to fetch departments:", error);
-    return { status: false, data: [] };
+    return { status: false, data: [], message: "Failed to fetch departments" };
   }
 }
 
@@ -217,7 +217,7 @@ export async function updateDepartments(
 }
 
 // Sub-Department Actions
-export async function getSubDepartments(): Promise<{ status: boolean; data: SubDepartment[] }> {
+export async function getSubDepartments(): Promise<{ status: boolean; data: SubDepartment[]; message?: string }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/sub-departments`, {
@@ -227,7 +227,7 @@ export async function getSubDepartments(): Promise<{ status: boolean; data: SubD
     return res.json();
   } catch (error) {
     console.error("Failed to fetch sub-departments:", error);
-    return { status: false, data: [] };
+    return { status: false, data: [], message: "Failed to fetch sub-departments" };
   }
 }
 

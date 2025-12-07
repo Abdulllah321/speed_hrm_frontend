@@ -2,6 +2,8 @@ import { getInstitutes } from "@/lib/actions/institute";
 import { InstituteList } from "./institute-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function InstituteListPage({
   searchParams,
 }: {

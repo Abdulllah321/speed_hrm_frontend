@@ -62,6 +62,8 @@ export interface Employee {
   mobileSim?: boolean;
   key?: boolean;
   tools?: boolean;
+  accountType?: string | null;
+  roles?: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -173,6 +175,9 @@ export async function createEmployee(data: {
   accountType?: string;
   password?: string;
   roles?: string;
+  avatarUrl?: string;
+  eobiDocumentUrl?: string;
+  documentUrls?: Record<string, string>;
 }): Promise<{ status: boolean; data?: Employee; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/employees`, {

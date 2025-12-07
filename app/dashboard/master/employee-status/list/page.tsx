@@ -2,6 +2,8 @@ import { getEmployeeStatuses } from "@/lib/actions/employee-status";
 import { EmployeeStatusList } from "./employee-status-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function EmployeeStatusListPage({
   searchParams,
 }: {

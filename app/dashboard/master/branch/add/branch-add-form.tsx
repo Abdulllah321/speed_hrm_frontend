@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -57,8 +57,7 @@ type BranchFormValues = z.infer<typeof branchSchema>;
 
 export function BranchAddForm({ cities }: BranchAddFormProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const defaultCityId = searchParams.get("cityId") || "";
+  const [defaultCityId, setDefaultCityId] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const form = useForm<BranchFormValues>({
@@ -74,6 +73,15 @@ export function BranchAddForm({ cities }: BranchAddFormProps) {
       ],
     },
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cityIdParam = params.get("cityId") || "";
+    setDefaultCityId(cityIdParam);
+    if (cityIdParam) {
+      form.setValue("branches.0.cityId", cityIdParam);
+    }
+  }, [form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,

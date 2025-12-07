@@ -2,6 +2,8 @@ import { getMaritalStatuses } from "@/lib/actions/marital-status";
 import { MaritalStatusList } from "./marital-status-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function MaritalStatusListPage({
   searchParams,
 }: {

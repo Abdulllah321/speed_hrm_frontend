@@ -10,6 +10,7 @@ import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+import { motion, AnimatePresence } from "motion/react"
 
 function Calendar({
   className,
@@ -25,8 +26,33 @@ function Calendar({
 }) {
   const defaultClassNames = getDefaultClassNames()
 
+  const monthIndex = React.useMemo(() => {
+    const m = (props as any).month as Date | undefined
+    return m ? m.getFullYear() * 12 + m.getMonth() : undefined
+  }, [props])
+  const prevRef = React.useRef<number | undefined>(undefined)
+  const [dir, setDir] = React.useState(0)
+  React.useEffect(() => {
+    if (monthIndex === undefined) return
+    if (prevRef.current !== undefined) setDir(monthIndex - prevRef.current)
+    prevRef.current = monthIndex
+  }, [monthIndex])
+
+  const keyMonth = React.useMemo(() => {
+    const m = (props as any).month as Date | undefined
+    return m ? `${m.getFullYear()}-${m.getMonth()}` : "static"
+  }, [props])
+
   return (
-    <DayPicker
+    <AnimatePresence mode="popLayout">
+      <motion.div
+        key={keyMonth}
+        initial={{ opacity: 0, x: dir > 0 ? 12 : -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: dir > 0 ? -12 : 12 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+      >
+        <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
         "bg-background group/calendar p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
@@ -172,6 +198,8 @@ function Calendar({
       }}
       {...props}
     />
+      </motion.div>
+    </AnimatePresence>
   )
 }
 

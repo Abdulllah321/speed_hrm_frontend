@@ -2,6 +2,8 @@ import { getDesignations } from "@/lib/actions/designation";
 import { DesignationList } from "./designation-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function DesignationListPage({
   searchParams,
 }: {

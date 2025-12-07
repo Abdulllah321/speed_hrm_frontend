@@ -107,9 +107,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-2 justify-center">
-          <Building2 className="size-6 min-w-6 min-h-6 shrink-0 text-primary" />
           <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden">
-            HRM
+            Speed Pvt. Ltd
           </span>
         </div>
       </SidebarHeader>

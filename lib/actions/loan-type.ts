@@ -14,7 +14,7 @@ export interface LoanType {
   updatedAt: string;
 }
 
-export async function getLoanTypes(): Promise<{ status: boolean; data: LoanType[] }> {
+export async function getLoanTypes(): Promise<{ status: boolean; data: LoanType[]; message?: string }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/loan-types`, {
@@ -24,7 +24,7 @@ export async function getLoanTypes(): Promise<{ status: boolean; data: LoanType[
     return res.json();
   } catch (error) {
     console.error("Failed to fetch loan types:", error);
-    return { status: false, data: [] };
+    return { status: false, data: [], message: "Failed to fetch loan types" };
   }
 }
 

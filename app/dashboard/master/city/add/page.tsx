@@ -2,6 +2,8 @@ import { getCountries } from "@/lib/actions/city";
 import { CityAddForm } from "./city-add-form";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function AddCityPage({
   searchParams,
 }: {

@@ -2,6 +2,8 @@ import { getInstitutes } from "@/lib/actions/institute";
 import { QualificationAddForm } from "./qualification-add-form";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function AddQualificationPage() {
   try {
     const institutesRes = await getInstitutes();

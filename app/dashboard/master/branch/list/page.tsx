@@ -7,6 +7,8 @@ interface PageProps {
   searchParams: Promise<{ newItemId?: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function BranchListPage({ searchParams }: PageProps) {
   try {
     const params = await searchParams;

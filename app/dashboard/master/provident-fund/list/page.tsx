@@ -2,6 +2,8 @@ import { getProvidentFunds } from "@/lib/actions/provident-fund";
 import { ProvidentFundList } from "./provident-fund-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function ProvidentFundListPage({
   searchParams,
 }: {

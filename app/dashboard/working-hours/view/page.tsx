@@ -2,6 +2,8 @@ import { getWorkingHoursPolicies } from "@/lib/actions/working-hours-policy";
 import { WorkingHoursPolicyList } from "./working-hours-policy-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function WorkingHoursPolicyViewPage({
   searchParams,
 }: {

@@ -5,12 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-
-import { CalendarIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
+// removed unused UI imports
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,47 +26,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Upload, Key, X, User } from "lucide-react";
+import { ArrowLeft, Loader2, Upload, Key } from "lucide-react";
 import Link from "next/link";
 import { FileUpload } from "@/components/ui/file-upload";
-import {
-  getDepartments,
-  getSubDepartmentsByDepartment,
-  type Department,
-  type SubDepartment,
-} from "@/lib/actions/department";
-import {
-  getEmployeeGrades,
-  type EmployeeGrade,
-} from "@/lib/actions/employee-grade";
-import { getDesignations, type Designation } from "@/lib/actions/designation";
-import {
-  getMaritalStatuses,
-  type MaritalStatus,
-} from "@/lib/actions/marital-status";
-import {
-  getEmployeeStatuses,
-  type EmployeeStatus,
-} from "@/lib/actions/employee-status";
-import { getBranches, type Branch } from "@/lib/actions/branch";
-import {
-  getStates,
-  getCitiesByState,
-  type State,
-  type City,
-} from "@/lib/actions/city";
-import { getEquipments, type Equipment } from "@/lib/actions/equipment";
-import {
-  getWorkingHoursPolicies,
-  type WorkingHoursPolicy,
-} from "@/lib/actions/working-hours-policy";
-import {
-  getLeavesPolicies,
-  type LeavesPolicy,
-} from "@/lib/actions/leaves-policy";
+import type { Department, SubDepartment } from "@/lib/actions/department";
+import type { EmployeeGrade } from "@/lib/actions/employee-grade";
+import type { Designation } from "@/lib/actions/designation";
+import type { MaritalStatus } from "@/lib/actions/marital-status";
+import type { EmployeeStatus } from "@/lib/actions/employee-status";
+import type { Branch } from "@/lib/actions/branch";
+import type { State, City } from "@/lib/actions/city";
+import type { Equipment } from "@/lib/actions/equipment";
+import type { WorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
+import type { LeavesPolicy } from "@/lib/actions/leaves-policy";
 import { createEmployee } from "@/lib/actions/employee";
+import { BasicInfoSection } from "./components/basic-info-section";
+import { uploadFile } from "@/lib/upload";
+import { DateSection } from "./components/date-section";
+import { useFormDraft } from "@/hooks/use-form-draft";
+import { DraftActions } from "./components/draft-actions";
+import Cropper from "react-easy-crop";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 // CNIC validation regex
 const cnicRegex = /^\d{5}-\d{7}-\d{1}$/;
@@ -334,6 +310,8 @@ const employeeFormSchema = z.object({
   roles: z
     .string()
     .optional(),
+  avatarUrl: z.string().optional(),
+  eobiDocumentUrl: z.string().optional(),
   
   // Equipment
   selectedEquipments: z
@@ -348,16 +326,9 @@ export default function CreateEmployeePage() {
   const [isPending, startTransition] = useTransition();
 
   // React Hook Form with Zod validation
-  const {
-    register,
-    handleSubmit,
-    control,
-    watch,
-    setValue,
-    trigger,
-    formState: { errors },
-  } = useForm<EmployeeFormData>({
+  const form = useForm({
     resolver: zodResolver(employeeFormSchema),
+
     defaultValues: {
       employeeId: "",
       employeeName: "",
@@ -405,15 +376,26 @@ export default function CreateEmployeePage() {
       accountType: "",
       password: "",
       roles: "",
+      avatarUrl: "",
+      eobiDocumentUrl: "",
     },
-    mode: "onBlur",
+    mode: "onChange",
+    reValidateMode: "onBlur",
   });
+  const {
+    register,
+    handleSubmit,
+    control,
+    watch,
+    setValue,
+    trigger,
+    formState: { errors },
+  } = form;
+  const { hasDraft, saveDraft, loadDraft, clearDraft } = useFormDraft(form, "employee-create-draft");
 
   // Watch form values
-  const formValues = watch();
   const department = watch("department");
   const state = watch("state");
-  const eobi = watch("eobi");
 
   // Dropdown data
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -459,10 +441,14 @@ export default function CreateEmployeePage() {
   const daysOff = ["Sunday", "Saturday-Sunday", "Friday", "Friday-Saturday"];
 
   // Profile pic and documents state
-  const [profilePic, setProfilePic] = useState<File | null>(null);
   const [profilePicPreview, setProfilePicPreview] = useState<string | null>(
     null
   );
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
   const [documents, setDocuments] = useState<{ [key: string]: File | null }>({
     cv: null,
@@ -478,6 +464,7 @@ export default function CreateEmployeePage() {
     investmentDisclosure: null,
     eobi: null,
   });
+  const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>({});
 
   // Multi-step wizard
   const stepLabels = [
@@ -508,41 +495,23 @@ export default function CreateEmployeePage() {
     const fetchData = async () => {
       try {
         setLoadingData(true);
-        const [
-          deptsRes,
-          gradesRes,
-          designationsRes,
-          maritalRes,
-          statusesRes,
-          branchesRes,
-          statesRes,
-          equipmentsRes,
-          workingHoursRes,
-          leavesRes,
-        ] = await Promise.all([
-          getDepartments(),
-          getEmployeeGrades(),
-          getDesignations(),
-          getMaritalStatuses(),
-          getEmployeeStatuses(),
-          getBranches(),
-          getStates(),
-          getEquipments(),
-          getWorkingHoursPolicies(),
-          getLeavesPolicies(),
-        ]);
-
-        if (deptsRes.status) setDepartments(deptsRes.data || []);
-        if (gradesRes.status) setEmployeeGrades(gradesRes.data || []);
-        if (designationsRes.status) setDesignations(designationsRes.data || []);
-        if (maritalRes.status) setMaritalStatuses(maritalRes.data || []);
-        if (statusesRes.status) setEmployeeStatuses(statusesRes.data || []);
-        if (branchesRes.status) setBranches(branchesRes.data || []);
-        if (statesRes.status) setStates(statesRes.data || []);
-        if (equipmentsRes.status) setEquipments(equipmentsRes.data || []);
-        if (workingHoursRes.status)
-          setWorkingHoursPolicies(workingHoursRes.data || []);
-        if (leavesRes.status) setLeavesPolicies(leavesRes.data || []);
+        const res = await fetch(`/api/data/employee-create`, { cache: "no-store" });
+        const json = await res.json();
+        if (json.status) {
+          const d = json.data || {};
+          setDepartments(d.departments || []);
+          setEmployeeGrades(d.employeeGrades || []);
+          setDesignations(d.designations || []);
+          setMaritalStatuses(d.maritalStatuses || []);
+          setEmployeeStatuses(d.employeeStatuses || []);
+          setBranches(d.branches || []);
+          setStates(d.states || []);
+          setEquipments(d.equipments || []);
+          setWorkingHoursPolicies(d.workingHoursPolicies || []);
+          setLeavesPolicies(d.leavesPolicies || []);
+        } else {
+          toast.error(json.message || "Failed to load form data");
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load form data");
@@ -554,74 +523,93 @@ export default function CreateEmployeePage() {
     fetchData();
   }, []);
 
-  // Fetch sub-departments when department changes
   useEffect(() => {
-    const fetchSubDepartments = async () => {
-      if (!department) {
-        setSubDepartments([]);
-        setValue("subDepartment", "");
-        setLoadingSubDepartments(false);
-        return;
-      }
+    if (!department) {
+      setSubDepartments([]);
+      setValue("subDepartment", "");
+      setLoadingSubDepartments(false);
+      return;
+    }
+    const selected = departments.find((d) => d.id === department);
+    setSubDepartments(selected?.subDepartments || []);
+    setLoadingSubDepartments(false);
+  }, [department, departments, setValue]);
 
-      try {
-        setLoadingSubDepartments(true);
-        const res = await getSubDepartmentsByDepartment(department);
-        if (res.status) {
-          setSubDepartments(res.data || []);
-        } else {
-          toast.error("Failed to load sub-departments");
-        }
-      } catch (error) {
-        console.error("Error fetching sub-departments:", error);
-        toast.error("Failed to load sub-departments");
-      } finally {
-        setLoadingSubDepartments(false);
-      }
-    };
-
-    fetchSubDepartments();
-  }, [department, setValue]);
-
-  // Fetch cities when state changes
   useEffect(() => {
-    const fetchCities = async () => {
+    const run = async () => {
       if (!state) {
         setCities([]);
         setValue("city", "");
         setLoadingCities(false);
         return;
       }
-
       try {
         setLoadingCities(true);
-        const res = await getCitiesByState(state);
-        if (res.status) {
-          setCities(res.data || []);
-        } else {
-          toast.error(res.message || "Failed to load cities");
-        }
-      } catch (error) {
-        console.error("Error fetching cities:", error);
+        const res = await fetch(`/api/data/cities/${state}`, { cache: "no-store" });
+        const json = await res.json();
+        if (json.status) setCities(json.data || []);
+        else toast.error(json.message || "Failed to load cities");
+      } catch {
         toast.error("Failed to load cities");
       } finally {
         setLoadingCities(false);
       }
     };
-
-    fetchCities();
+    const timer = setTimeout(run, 250);
+    return () => clearTimeout(timer);
   }, [state, setValue]);
 
   // Handle profile pic upload
-  const handleProfilePicChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setProfilePic(file);
+    if (!file) return;
+    const src = URL.createObjectURL(file);
+    setCropSrc(src);
+    setCropDialogOpen(true);
+  };
+
+  const onCropComplete = (_: any, areaPixels: any) => setCroppedAreaPixels(areaPixels);
+
+  async function getCroppedBlob(imageSrc: string, area: any): Promise<Blob> {
+    const image: HTMLImageElement = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = imageSrc;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = area.width;
+    canvas.height = area.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(
+      image,
+      area.x,
+      area.y,
+      area.width,
+      area.height,
+      0,
+      0,
+      area.width,
+      area.height
+    );
+    return await new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.9));
+  }
+
+  const confirmCropAndUpload = async () => {
+    if (!cropSrc || !croppedAreaPixels) return;
+    try {
+      const blob = await getCroppedBlob(cropSrc, croppedAreaPixels);
+      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePicPreview(reader.result as string);
-      };
+      reader.onloadend = () => setProfilePicPreview(reader.result as string);
       reader.readAsDataURL(file);
+      const uploaded = await uploadFile(file);
+      setValue("avatarUrl", uploaded.url);
+      toast.success("Profile picture uploaded");
+      setCropDialogOpen(false);
+      setCropSrc(null);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to upload profile picture");
     }
   };
 
@@ -635,8 +623,20 @@ export default function CreateEmployeePage() {
     toast.success("Password generated!");
   };
 
-  const handleFileChange = (key: string, file: File | null) => {
+  const handleFileChange = async (key: string, file: File | null) => {
     setDocuments((prev) => ({ ...prev, [key]: file }));
+    if (file) {
+      try {
+        const uploaded = await uploadFile(file);
+        setDocumentUrls((prev) => ({ ...prev, [key]: uploaded.url }));
+        if (key === "eobi") {
+          setValue("eobiDocumentUrl", uploaded.url);
+        }
+        toast.success("File uploaded");
+      } catch (err: any) {
+        toast.error(err?.message || "Failed to upload file");
+      }
+    }
   };
 
   const RequiredLabel = ({ children }: { children: string }) => {
@@ -768,6 +768,9 @@ export default function CreateEmployeePage() {
           accountType: data.accountType || undefined,
           password: data.password || undefined,
           roles: data.roles || undefined,
+          avatarUrl: data.avatarUrl || undefined,
+          eobiDocumentUrl: data.eobiDocumentUrl || undefined,
+          documentUrls: documentUrls,
         });
 
         if (result.status) {
@@ -784,30 +787,36 @@ export default function CreateEmployeePage() {
   };
 
   return (
-    <div className="max-w-[90%] mx-auto pb-10">
-      <div className="mb-6">
+    <div className="max-w-6xl mx-auto pb-10">
+      <div className="mb-6 flex items-center justify-between">
         <Link href="/dashboard/employee/list">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
           </Button>
         </Link>
+        <DraftActions
+          hasDraft={hasDraft}
+          onSave={() => saveDraft()}
+          onLoad={() => loadDraft() && (toast.success("Draft loaded"), true) || false}
+          onClear={() => { clearDraft(); toast.success("Draft cleared"); }}
+        />
       </div>
-      <div className="border rounded-xl p-4">
+      <div className="rounded-2xl border bg-muted/10 p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">   
             {stepLabels.map((label, idx) => {
               const isActive = idx === step;
               const isDone = idx < step;
               return (
                 <div
                   key={label}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
                     isActive
-                      ? "bg-primary/10 text-primary"
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/40"
                       : isDone
-                      ? "bg-muted text-foreground"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-muted text-foreground ring-1 ring-border"
+                      : "bg-muted text-muted-foreground ring-1 ring-border"
                   }`}
                 >
                   <span className="h-6 w-6 rounded-full bg-background border flex items-center justify-center">
@@ -822,7 +831,7 @@ export default function CreateEmployeePage() {
           {step === 0 && (
             <>
               {/* Profile Picture Upload */}
-              <Card className="border-none shadow-none">
+              <Card className="rounded-xl border bg-muted/20">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
                     Profile Picture
@@ -845,7 +854,7 @@ export default function CreateEmployeePage() {
                           <img
                             src="/profileicon.svg"
                             alt="Default profile"
-                            className="w-20 h-20"
+                            className="w-20 h-20 dark:invert"
                           />
                         </div>
                       )}
@@ -859,794 +868,76 @@ export default function CreateEmployeePage() {
                       accept="image/*"
                       onChange={handleProfilePicChange}
                       className="hidden"
-                      disabled={isPending}
+                disabled={isPending}
+              />
+            </div>
+            <Dialog open={cropDialogOpen} onOpenChange={setCropDialogOpen}>
+              <DialogContent className="sm:max-w-[480px]">
+                <DialogHeader>
+                  <DialogTitle>Crop Profile Picture</DialogTitle>
+                </DialogHeader>
+                <div className="relative w-full h-80 bg-muted rounded-md overflow-hidden">
+                  {cropSrc && (
+                    <Cropper
+                      image={cropSrc}
+                      crop={crop}
+                      zoom={zoom}
+                      aspect={1}
+                      onCropChange={setCrop}
+                      onZoomChange={setZoom}
+                      onCropComplete={onCropComplete}
                     />
+                  )}
+                </div>
+                <DialogFooter>
+                  <div className="flex w-full justify-end gap-2">
+                    <Button variant="outline" onClick={() => setCropDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={confirmCropAndUpload}>Save</Button>
                   </div>
-                </CardContent>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </CardContent>
               </Card>
 
               {/* Basic Information */}
-              <Card className="border-none shadow-none">
+              <Card className="rounded-xl border bg-muted/20">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
                     Basic Information
                   </CardTitle>
-                  <CardDescription>Enter employee's basic details</CardDescription>
+                  <CardDescription>Enter employee&apos;s basic details</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Employee ID *</RequiredLabel></Label>
-                    <Input
-                      placeholder="456XXXXXXXXXX"
-                      {...register("employeeId")}
-                      disabled={isPending}
-                    />
-                    {errors.employeeId && (
-                      <p className="text-xs text-red-500">{errors.employeeId.message}</p>
-                    )}
-                  </div>
+                <CardContent>
+                  <BasicInfoSection
+                    form={form}
 
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Employee Name *</RequiredLabel></Label>
-                    <Input
-                     placeholder="(eg John Doe)"
-                      {...register("employeeName")}
-                      disabled={isPending}
-                    />
-                    {errors.employeeName && (
-                      <p className="text-xs text-red-500">{errors.employeeName.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Father / Husband Name *</RequiredLabel></Label>
-                    <Input
-                     placeholder="(eg Richard Roe)"
-                      {...register("fatherHusbandName")}
-                      disabled={isPending}
-                    />
-                    {errors.fatherHusbandName && (
-                      <p className="text-xs text-red-500">{errors.fatherHusbandName.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Department *</RequiredLabel></Label>
-                    <Controller
-                      name="department"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Department" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {departments.map((d) => (
-                              <SelectItem key={d.id} value={d.id}>
-                                {d.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.department && (
-                      <p className="text-xs text-red-500">{errors.department.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Sub Department</Label>
-                    <Controller
-                      name="subDepartment"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={
-                            isPending ||
-                            !department ||
-                            loadingData ||
-                            loadingSubDepartments
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue
-                              placeholder={
-                                !department
-                                  ? "Select Department first"
-                                  : loadingSubDepartments
-                                  ? "Loading..."
-                                  : "Select Sub Department"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {loadingSubDepartments ? (
-                              <div className="p-4 text-center text-sm">
-                                Loading...
-                              </div>
-                            ) : subDepartments.length === 0 ? (
-                              <div className="p-4 text-center text-sm text-muted-foreground">
-                                No sub-departments found
-                              </div>
-                            ) : (
-                              subDepartments.map((sd) => (
-                                <SelectItem key={sd.id} value={sd.id}>
-                                  {sd.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Employee Grade *</RequiredLabel></Label>
-                    <Controller
-                      name="employeeGrade"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Grade" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {employeeGrades.map((g) => (
-                              <SelectItem key={g.id} value={g.id}>
-                                {g.grade}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.employeeGrade && (
-                      <p className="text-xs text-red-500">{errors.employeeGrade.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Attendance ID *</RequiredLabel></Label>
-                    <Input
-                     placeholder="(eg ATT-00123)"
-                      {...register("attendanceId")}
-                      disabled={isPending}
-                    />
-                    {errors.attendanceId && (
-                      <p className="text-xs text-red-500">{errors.attendanceId.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Designation *</RequiredLabel></Label>
-                    <Controller
-                      name="designation"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Designation" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {designations.map((d) => (
-                              <SelectItem key={d.id} value={d.id}>
-                                {d.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.designation && (
-                      <p className="text-xs text-red-500">{errors.designation.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Marital Status *</RequiredLabel></Label>
-                    <Controller
-                      name="maritalStatus"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Marital Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {maritalStatuses.map((ms) => (
-                              <SelectItem key={ms.id} value={ms.id}>
-                                {ms.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.maritalStatus && (
-                      <p className="text-xs text-red-500">{errors.maritalStatus.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Employment Status *</RequiredLabel></Label>
-                    <Controller
-                      name="employmentStatus"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Employment Status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {employeeStatuses.map((es) => (
-                              <SelectItem key={es.id} value={es.id}>
-                                {es.status}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.employmentStatus && (
-                      <p className="text-xs text-red-500">{errors.employmentStatus.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Probation / Internship Expiry Date</Label>
-                    <Input
-                      type="date"
-                      {...register("probationExpiryDate")}
-                      disabled={isPending}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>CNIC Number *</RequiredLabel></Label>
-                    <Controller
-                      name="cnicNumber"
-                      control={control}
-                      render={({ field }) => (
-                        <Input
-                          placeholder="00000-0000000-0"
-                          value={field.value}
-                          onChange={(e) => {
-                            const formatted = formatCNIC(e.target.value);
-                            field.onChange(formatted);
-                          }}
-                          maxLength={15}
-                          disabled={isPending}
-                        />
-                      )}
-                    />
-                    {errors.cnicNumber && (
-                      <p className="text-xs text-red-500">{errors.cnicNumber.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>CNIC Expiry Date</Label>
-                    <Input
-                      type="date"
-                      {...register("cnicExpiryDate")}
-                      disabled={isPending || formValues.lifetimeCnic}
-                    />
-                    <div className="flex items-center gap-2 mt-1">
-                      <Controller
-                        name="lifetimeCnic"
-                        control={control}
-                        render={({ field }) => (
-                          <Switch
-                            id="lifetimeCnic"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <label
-                        htmlFor="lifetimeCnic"
-                        className="text-sm cursor-pointer"
-                      >
-                        Lifetime CNIC
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Joining Date *</RequiredLabel></Label>
-                    <Input
-                      type="date"
-                      {...register("joiningDate")}
-                      disabled={isPending}
-                    />
-                    {errors.joiningDate && (
-                      <p className="text-xs text-red-500">{errors.joiningDate.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Date of Birth *</RequiredLabel></Label>
-                    <Input
-                      type="date"
-                      {...register("dateOfBirth")}
-                      disabled={isPending}
-                    />
-                    {errors.dateOfBirth && (
-                      <p className="text-xs text-red-500">{errors.dateOfBirth.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Nationality *</RequiredLabel></Label>
-                    <Controller
-                      name="nationality"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {nationalities.map((n) => (
-                              <SelectItem key={n} value={n}>
-                                {n}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.nationality && (
-                      <p className="text-xs text-red-500">{errors.nationality.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Gender *</RequiredLabel></Label>
-                    <Controller
-                      name="gender"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {genders.map((g) => (
-                              <SelectItem key={g} value={g}>
-                                {g}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.gender && (
-                      <p className="text-xs text-red-500">{errors.gender.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Contact Number *</RequiredLabel></Label>
-                    <Input
-                      placeholder="03XX-XXXXXXX"
-                      {...register("contactNumber")}
-                      disabled={isPending}
-                    />
-                    {errors.contactNumber && (
-                      <p className="text-xs text-red-500">{errors.contactNumber.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Emergency Contact Number</Label>
-                    <Input
-                     placeholder="03XX-XXXXXXX"
-                      {...register("emergencyContactNumber")}
-                      disabled={isPending}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Emergency Contact Person Name</Label>
-                    <Input
-                     placeholder="(eg Jane Doe)"
-                      {...register("emergencyContactPersonName")}
-                      disabled={isPending}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Personal Email</Label>
-                    <Input
-                     placeholder="(eg jone@gmail.com)"
-                      type="email"
-                      {...register("personalEmail")}
-                      disabled={isPending}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Official Email *</RequiredLabel></Label>
-                    <Input
-                    placeholder="(eg jone@gmail.com)"
-                      type="email"
-                      {...register("officialEmail")}
-                      disabled={isPending}
-                    />
-                    {errors.officialEmail && (
-                      <p className="text-xs text-red-500">{errors.officialEmail.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Country *</RequiredLabel></Label>
-                    <Input
-                      {...register("country")}
-                      disabled={isPending}
-                    />
-                    {errors.country && (
-                      <p className="text-xs text-red-500">{errors.country.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>State *</RequiredLabel></Label>
-                    <Controller
-                      name="state"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select State" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {states.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.state && (
-                      <p className="text-xs text-red-500">{errors.state.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>City *</RequiredLabel></Label>
-                    <Controller
-                      name="city"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={
-                            isPending || !state || loadingData || loadingCities
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue
-                              placeholder={
-                                loadingCities
-                                  ? "Loading..."
-                                  : state
-                                  ? "Select City"
-                                  : "Select State first"
-                              }
-                            />
-                            {loadingCities && (
-                              <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                            )}
-                          </SelectTrigger>
-                          <SelectContent>
-                            {loadingCities ? (
-                              <div className="flex items-center justify-center p-4">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              </div>
-                            ) : cities.length === 0 ? (
-                              <div className="p-4 text-sm text-muted-foreground text-center">
-                                No cities found
-                              </div>
-                            ) : (
-                              cities.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                  {c.name}
-                                </SelectItem>
-                              ))
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.city && (
-                      <p className="text-xs text-red-500">{errors.city.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Employee Salary (Compensation) *</RequiredLabel></Label>
-                    <Input
-                      type="number"
-                      {...register("employeeSalary")}
-                      disabled={isPending}
-                    />
-                    {errors.employeeSalary && (
-                      <p className="text-xs text-red-500">{errors.employeeSalary.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>EOBI</Label>
-                    <div className="flex items-center gap-4 h-10">
-                      <Controller
-                        name="eobi"
-                        control={control}
-                        render={({ field }) => (
-                          <Switch
-                            id="eobi"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <label htmlFor="eobi" className="text-sm cursor-pointer">
-                        Applicable
-                      </label>
-                    </div>
-                  </div>
-
-                  {eobi && (
-                    <>
-                      <div className="space-y-2">
-                        <Label>EOBI Number</Label>
-                        <Input
-                          {...register("eobiNumber")}
-                          disabled={isPending}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>EOBI Document</Label>
-                        <Input
-                          type="file"
-                          onChange={(e) =>
-                            handleFileChange("eobi", e.target.files?.[0] || null)
-                          }
-                          className="flex-1"
-                          disabled={isPending}
-                          accept=".pdf,.jpg,.jpeg,.png"
-                        />
-                        {documents.eobi && (
-                          <p className="text-xs text-muted-foreground">
-                            {documents.eobi.name}
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label>Provident Fund</Label>
-                    <div className="flex items-center gap-4 h-10">
-                      <Controller
-                        name="providentFund"
-                        control={control}
-                        render={({ field }) => (
-                          <Switch
-                            id="pf"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <label htmlFor="pf" className="text-sm cursor-pointer">
-                        Applicable
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Overtime Applicable</Label>
-                    <div className="flex items-center gap-4 h-10">
-                      <Controller
-                        name="overtimeApplicable"
-                        control={control}
-                        render={({ field }) => (
-                          <Switch
-                            id="ot"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <label htmlFor="ot" className="text-sm cursor-pointer">
-                        Yes
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Days Off</Label>
-                    <Controller
-                      name="daysOff"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {daysOff.map((d) => (
-                              <SelectItem key={d} value={d}>
-                                {d}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Reporting Manager *</RequiredLabel></Label>
-                    <Input
-                      {...register("reportingManager")}
-                      disabled={isPending}
-                    />
-                    {errors.reportingManager && (
-                      <p className="text-xs text-red-500">{errors.reportingManager.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Working Hours Policy *</RequiredLabel></Label>
-                    <Controller
-                      name="workingHoursPolicy"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Working Hours Policy" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {workingHoursPolicies.map((policy) => (
-                              <SelectItem key={policy.id} value={policy.id}>
-                                {policy.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.workingHoursPolicy && (
-                      <p className="text-xs text-red-500">{errors.workingHoursPolicy.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Branch *</RequiredLabel></Label>
-                    <Controller
-                      name="branch"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Branch" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {branches.map((b) => (
-                              <SelectItem key={b.id} value={b.id}>
-                                {b.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.branch && (
-                      <p className="text-xs text-red-500">{errors.branch.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Leaves Policy *</RequiredLabel></Label>
-                    <Controller
-                      name="leavesPolicy"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending || loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Leave Policy" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {leavesPolicies.map((policy) => (
-                              <SelectItem key={policy.id} value={policy.id}>
-                                {policy.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.leavesPolicy && (
-                      <p className="text-xs text-red-500">{errors.leavesPolicy.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Allow Remote Attendance</Label>
-                    <div className="flex items-center gap-4 h-10">
-                      <Controller
-                        name="allowRemoteAttendance"
-                        control={control}
-                        render={({ field }) => (
-                          <Switch
-                            id="remote"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        )}
-                      />
-                      <label htmlFor="remote" className="text-sm cursor-pointer">
-                        Yes
-                      </label>
-                    </div>
-                  </div>
+                    isPending={isPending}
+                    loadingData={loadingData}
+                    departments={departments}
+                    subDepartments={subDepartments}
+                    department={department}
+                    loadingSubDepartments={loadingSubDepartments}
+                    employeeGrades={employeeGrades}
+                    designations={designations}
+                    maritalStatuses={maritalStatuses}
+                    employeeStatuses={employeeStatuses}
+                    errors={errors}
+                    formatCNIC={formatCNIC}
+                    nationalities={nationalities}
+                    genders={genders}
+                    states={states}
+                    cities={cities}
+                    state={state}
+                    loadingCities={loadingCities}
+                    daysOff={daysOff}
+                    workingHoursPolicies={workingHoursPolicies}
+                    branches={branches}
+                    leavesPolicies={leavesPolicies}
+                    documents={documents}
+                    handleFileChange={handleFileChange}
+                  />
+                  <DateSection form={form} isPending={isPending} errors={errors} />
                 </CardContent>
               </Card>
             </>
@@ -1845,11 +1136,12 @@ export default function CreateEmployeePage() {
                           render={({ field }) => (
                             <Switch
                               id={equipment.id}
-                              checked={field.value.includes(equipment.id)}
+                              checked={(field.value ?? []).includes(equipment.id)}
                               onCheckedChange={(checked) => {
+                                const current = Array.isArray(field.value) ? field.value : [];
                                 const newValue = checked
-                                  ? [...field.value, equipment.id]
-                                  : field.value.filter((id) => id !== equipment.id);
+                                  ? [...current, equipment.id]
+                                  : current.filter((id) => id !== equipment.id);
                                 field.onChange(newValue);
                               }}
                               disabled={isPending || loadingData}

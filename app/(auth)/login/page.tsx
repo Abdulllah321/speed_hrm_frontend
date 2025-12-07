@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,8 +12,12 @@ import { login } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const [callbackUrl, setCallbackUrl] = useState("/dashboard");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cb = params.get("callbackUrl");
+    if (cb) setCallbackUrl(cb);
+  }, []);
   
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);

@@ -2,6 +2,8 @@ import { getJobTypes } from "@/lib/actions/job-type";
 import { JobTypeList } from "./job-type-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function JobTypeListPage({
   searchParams,
 }: {

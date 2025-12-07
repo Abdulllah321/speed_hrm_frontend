@@ -103,20 +103,6 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-    title: "Allowance Heads",
-    children: [
-      { title: "Add", href: "/dashboard/master/allowance-heads/add" },
-      { title: "View", href: "/dashboard/master/allowance-heads/list" },
-    ],
-  },
-  {
-    title: "Deduction Heads",
-    children: [
-      { title: "Add", href: "/dashboard/master/deduction-heads/add" },
-      { title: "View", href: "/dashboard/master/deduction-heads/list" },
-    ],
-  },
-  {
     title: "Loan Types",
     children: [
       { title: "Add", href: "/dashboard/master/loan-types/add" },

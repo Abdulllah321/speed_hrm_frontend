@@ -18,7 +18,7 @@ export interface Designation {
 }
 
 // Designation Actions
-export async function getDesignations(): Promise<{ status: boolean; data: Designation[] }> {
+export async function getDesignations(): Promise<{ status: boolean; data: Designation[]; message?: string }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/designations`, {
@@ -31,7 +31,7 @@ export async function getDesignations(): Promise<{ status: boolean; data: Design
     return res.json();
   } catch (error) {
     console.error("Failed to fetch designations:", error);
-    return { status: false, data: [] };
+    return { status: false, data: [], message: "Failed to fetch designations" };
   }
 }
 

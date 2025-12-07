@@ -14,7 +14,7 @@ export interface LeaveType {
   updatedAt: string;
 }
 
-export async function getLeaveTypes(): Promise<{ status: boolean; data: LeaveType[] }> {
+export async function getLeaveTypes(): Promise<{ status: boolean; data: LeaveType[]; message?: string }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/leave-types`, {
@@ -24,7 +24,7 @@ export async function getLeaveTypes(): Promise<{ status: boolean; data: LeaveTyp
     return res.json();
   } catch (error) {
     console.error("Failed to fetch leave types:", error);
-    return { status: false, data: [] };
+    return { status: false, data: [], message: "Failed to fetch leave types" };
   }
 }
 

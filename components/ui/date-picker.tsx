@@ -1,51 +1,53 @@
-// "use client";
+"use client";
 
-// import * as React from "react";
-// import { format } from "date-fns";
-// import { Calendar as CalendarIcon } from "lucide-react";
+import * as React from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
 
-// import { cn } from "@/lib/utils";
-// import { Button } from "@/components/ui/button";
-// import {
-//   Popover,
-//   PopoverContent,
-//   PopoverTrigger,
-// } from "@/components/ui/popover";
-// import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
-// export function DatePicker({ value, onChange }: any) {
-//   const [date, setDate] = React.useState<Date | undefined>(
-//     value ? new Date(value) : undefined
-//   );
+export function DatePicker({ value, onChange, disabled, className, placeholder, fromYear = 1970, toYear = new Date().getFullYear() + 10 }: { value?: string; onChange?: (value: string) => void; disabled?: boolean; className?: string; placeholder?: string; fromYear?: number; toYear?: number }) {
+  const [date, setDate] = React.useState<Date | undefined>(value ? new Date(value) : undefined);
+  const [viewMonth, setViewMonth] = React.useState<Date | undefined>(value ? new Date(value) : new Date());
 
-//   const handleSelect = (d: any) => {
-//     setDate(d);
-//     onChange && onChange(d);
-//   };
+  React.useEffect(() => {
+    setDate(value ? new Date(value) : undefined);
+  }, [value]);
 
-//   return (
-//     <Popover>
-//       <PopoverTrigger asChild>
-//         <Button
-//           variant={"outline"}
-//           className={cn(
-//             "w-[240px] justify-start text-left font-normal",
-//             !date && "text-muted-foreground"
-//           )}
-//         >
-//           <CalendarIcon className="mr-2 h-4 w-4" />
-//           {date ? format(date, "PPP") : <span>Select Date</span>}
-//         </Button>
-//       </PopoverTrigger>
+  const handleSelect = (d: Date | undefined) => {
+    setDate(d);
+    if (onChange) onChange(d ? format(d, "yyyy-MM-dd") : "");
+  };
 
-//       <PopoverContent className="w-auto p-0">
-//         <Calendar
-//           mode="single"
-//           selected={date}
-//           onSelect={handleSelect}
-//           initialFocus
-//         />
-//       </PopoverContent>
-//     </Popover>
-//   );
-// }
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground", className)}
+          disabled={disabled}
+          type="button"
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, "PPP") : (placeholder || "Pick a date")}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={handleSelect}
+          captionLayout="dropdown"
+          fromYear={fromYear}
+          toYear={toYear}
+          month={viewMonth}
+          onMonthChange={setViewMonth}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}

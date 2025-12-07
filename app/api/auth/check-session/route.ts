@@ -5,7 +5,7 @@ const API_BASE = process.env.API_URL || "http://localhost:5000/api";
 
 export async function GET() {
   const cookieStore = await cookies();
-  let accessToken = cookieStore.get("accessToken")?.value;
+  const accessToken = cookieStore.get("accessToken")?.value;
   const refreshToken = cookieStore.get("refreshToken")?.value;
 
   if (!accessToken && !refreshToken) {

@@ -14,7 +14,7 @@ export interface JobType {
   updatedAt: string;
 }
 
-export async function getJobTypes(): Promise<{ status: boolean; data: JobType[] }> {
+export async function getJobTypes(): Promise<{ status: boolean; data: JobType[]; message?: string }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/job-types`, {
@@ -24,7 +24,7 @@ export async function getJobTypes(): Promise<{ status: boolean; data: JobType[] 
     return res.json();
   } catch (error) {
     console.error("Failed to fetch job types:", error);
-    return { status: false, data: [] };
+    return { status: false, data: [], message: "Failed to fetch job types" };
   }
 }
 

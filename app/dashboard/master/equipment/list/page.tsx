@@ -2,6 +2,8 @@ import { getEquipments } from "@/lib/actions/equipment";
 import { EquipmentList } from "./equipment-list";
 import { ListError } from "@/components/dashboard/list-error";
 
+export const dynamic = "force-dynamic";
+
 export default async function EquipmentListPage({
   searchParams,
 }: {

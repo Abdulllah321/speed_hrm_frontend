@@ -1,6 +1,8 @@
 import { getDepartments } from "@/lib/actions/department";
 import { SubDepartmentAddForm } from "./sub-department-add-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function AddSubDepartmentPage({
   searchParams,
 }: {
