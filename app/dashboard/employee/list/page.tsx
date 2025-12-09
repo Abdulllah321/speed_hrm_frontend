@@ -29,6 +29,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -43,12 +51,14 @@ import {
   Eye,
   History,
   UserX,
+  Upload,
 } from "lucide-react";
 import {
   getEmployees,
   deleteEmployee,
   type Employee,
 } from "@/lib/actions/employee";
+import { uploadEmployeeCsv } from "@/lib/actions/employee-import";
 
 export default function EmployeeListPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -56,6 +66,9 @@ export default function EmployeeListPage() {
   const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
   const tableRef = useRef<HTMLTableElement>(null);
+  const [uploadDialog, setUploadDialog] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadPending, setUploadPending] = useState(false);
 
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
@@ -198,6 +211,37 @@ export default function EmployeeListPage() {
     toast.success("CSV exported");
   };
 
+  const handleCsvUpload = async () => {
+    if (!selectedFile) {
+      toast.error("Please choose a CSV file first");
+      return;
+    }
+    setUploadPending(true);
+    try {
+      const res = await uploadEmployeeCsv(selectedFile);
+      if (res.status && res.data) {
+        toast.success(
+          res.data.inserted !== undefined
+            ? `Uploaded. Inserted ${res.data.inserted}/${res.data.total || res.data.inserted}`
+            : "CSV uploaded successfully"
+        );
+        const refreshed = await getEmployees();
+        if (refreshed.status && refreshed.data) {
+          setEmployees(refreshed.data);
+        }
+        setUploadDialog(false);
+      } else {
+        toast.error(res.message || "Upload failed");
+      }
+    } catch (error) {
+      console.error("Error uploading CSV:", error);
+      toast.error("Failed to upload CSV");
+    } finally {
+      setUploadPending(false);
+      setSelectedFile(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -205,12 +249,24 @@ export default function EmployeeListPage() {
           <h2 className="text-2xl font-bold tracking-tight">Employees</h2>
           <p className="text-muted-foreground">Manage employee records</p>
         </div>
-        <Link href="/dashboard/employee/create">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Employee
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/employee/create">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Employee
+            </Button>
+          </Link>
+          <Button variant="secondary" onClick={() => setUploadDialog(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Employees CSV
           </Button>
-        </Link>
+          <Button asChild variant="outline">
+            <a href="/employee_sample.csv" download>
+              <Download className="h-4 w-4 mr-2" />
+              Download Sample CSV
+            </a>
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -401,6 +457,53 @@ export default function EmployeeListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Employees CSV</DialogTitle>
+            <DialogDescription>
+              Select a CSV file. It will be stored in backend public/csv and parsed here.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="file"
+              accept=".csv,text/csv"
+              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+            />
+            {selectedFile ? (
+              <p className="text-sm text-muted-foreground">
+                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Allowed: CSV up to 5 MB
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setUploadDialog(false);
+                setSelectedFile(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCsvUpload}
+              disabled={uploadPending}
+            >
+              {uploadPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

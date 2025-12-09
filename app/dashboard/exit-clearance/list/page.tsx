@@ -32,17 +32,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Loader2, Search, Printer, Download, MoreHorizontal, Eye } from "lucide-react";
-
-interface ExitClearance {
-  id: number;
-  empNo: string;
-  employeeName: string;
-  department: string;
-  subDepartment: string;
-  designation: string;
-  lastWorkingDate: string;
-  approvalStatus: "pending" | "approved" | "rejected";
-}
+import { getAllExitClearances, deleteExitClearance } from "@/lib/actions/exit-clearance";
+import type { ExitClearance } from "@/lib/actions/exit-clearance";
 
 export default function ExitClearanceListPage() {
   const [records, setRecords] = useState<ExitClearance[]>([]);
@@ -53,18 +44,29 @@ export default function ExitClearanceListPage() {
   const [deletingRecord, setDeletingRecord] = useState<ExitClearance | null>(null);
 
   useEffect(() => {
-    setRecords([
-      { id: 1, empNo: "EMP001", employeeName: "Ahmed Khan", department: "IT", subDepartment: "Development", designation: "Software Engineer", lastWorkingDate: "2024-12-31", approvalStatus: "pending" },
-      { id: 2, empNo: "EMP002", employeeName: "Sara Ali", department: "HR", subDepartment: "Recruitment", designation: "HR Manager", lastWorkingDate: "2024-11-30", approvalStatus: "approved" },
-    ]);
-    setLoading(false);
+    const fetchRecords = async () => {
+      try {
+        const result = await getAllExitClearances();
+        if (result.status && result.data) {
+          setRecords(result.data);
+        } else {
+          toast.error(result.message || "Failed to load records");
+        }
+      } catch (error) {
+        console.error("Failed to fetch records:", error);
+        toast.error("Failed to load records");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecords();
   }, []);
 
   const filtered = records.filter(
     (r) =>
       r.employeeName.toLowerCase().includes(search.toLowerCase()) ||
-      r.empNo.toLowerCase().includes(search.toLowerCase()) ||
-      r.department.toLowerCase().includes(search.toLowerCase())
+      r.department?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleDelete = (record: ExitClearance) => {
@@ -75,9 +77,21 @@ export default function ExitClearanceListPage() {
   const handleDeleteConfirm = async () => {
     if (!deletingRecord) return;
     startTransition(async () => {
-      setRecords(records.filter((r) => r.id !== deletingRecord.id));
-      toast.success("Record deleted");
-      setDeleteDialog(false);
+      try {
+        const result = await deleteExitClearance(deletingRecord.id);
+
+        if (result.status) {
+          setRecords(records.filter((r) => r.id !== deletingRecord.id));
+          toast.success(result.message || "Record deleted successfully");
+        } else {
+          toast.error(result.message || "Failed to delete record");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        toast.error("Failed to delete record");
+      } finally {
+        setDeleteDialog(false);
+      }
     });
   };
 
@@ -88,16 +102,16 @@ export default function ExitClearanceListPage() {
       <html><head><title>Exit Clearance List</title>
       <style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;text-align:left}th{background:#f4f4f4}h1{text-align:center}</style>
       </head><body><h1>Exit Clearance List</h1>
-      <table><thead><tr><th>S.No</th><th>Emp No.</th><th>Employee Name</th><th>Dep/Sub Dep</th><th>Designation</th><th>Last Working Date</th><th>Status</th></tr></thead>
-      <tbody>${filtered.map((r, i) => `<tr><td>${i + 1}</td><td>${r.empNo}</td><td>${r.employeeName}</td><td>${r.department}/${r.subDepartment}</td><td>${r.designation}</td><td>${r.lastWorkingDate}</td><td>${r.approvalStatus}</td></tr>`).join("")}</tbody></table></body></html>
+      <table><thead><tr><th>S.No</th><th>Employee Name</th><th>Dep/Sub Dep</th><th>Designation</th><th>Last Working Date</th><th>Status</th></tr></thead>
+      <tbody>${filtered.map((r, i) => `<tr><td>${i + 1}</td><td>${r.employeeName}</td><td>${r.department && r.subDepartment ? `${r.department} / ${r.subDepartment}` : r.department || '-'}</td><td>${r.designation}</td><td>${r.lastWorkingDate}</td><td>${r.approvalStatus}</td></tr>`).join("")}</tbody></table></body></html>
     `);
     printWindow.document.close();
     printWindow.print();
   };
 
   const handleExportCSV = () => {
-    const headers = ["S.No", "Emp No.", "Employee Name", "Department", "Sub Department", "Designation", "Last Working Date", "Approval Status"];
-    const rows = filtered.map((r, i) => [i + 1, r.empNo, r.employeeName, r.department, r.subDepartment, r.designation, r.lastWorkingDate, r.approvalStatus]);
+    const headers = ["S.No", "Employee Name", "Department", "Sub Department", "Designation", "Last Working Date", "Approval Status"];
+    const rows = filtered.map((r, i) => [i + 1, r.employeeName, r.department, r.subDepartment, r.designation, r.lastWorkingDate, r.approvalStatus]);
     const csv = [headers.join(","), ...rows.map((row) => row.map((c) => `"${c}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const link = document.createElement("a");
@@ -150,7 +164,6 @@ export default function ExitClearanceListPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-14">S.No</TableHead>
-                    <TableHead>Emp No.</TableHead>
                     <TableHead>Employee Name</TableHead>
                     <TableHead>Dep/Sub Dep</TableHead>
                     <TableHead>Designation</TableHead>
@@ -163,11 +176,10 @@ export default function ExitClearanceListPage() {
                   {filtered.map((record, index) => (
                     <TableRow key={record.id}>
                       <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>{record.empNo}</TableCell>
                       <TableCell>{record.employeeName}</TableCell>
-                      <TableCell>{record.department}/{record.subDepartment}</TableCell>
+                      <TableCell>{record.department && record.subDepartment ? `${record.department} / ${record.subDepartment}` : record.department || '-'}</TableCell>
                       <TableCell>{record.designation}</TableCell>
-                      <TableCell>{record.lastWorkingDate}</TableCell>
+                      <TableCell>{new Date(record.lastWorkingDate).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge variant={statusVariant(record.approvalStatus)}>{record.approvalStatus}</Badge>
                       </TableCell>
@@ -177,8 +189,16 @@ export default function ExitClearanceListPage() {
                             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem><Eye className="h-4 w-4 mr-2" />View</DropdownMenuItem>
-                            <DropdownMenuItem><Pencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/exit-clearance/list/${record.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />View
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/dashboard/exit-clearance/edit/${record.id}`}>
+                                <Pencil className="h-4 w-4 mr-2" />Edit
+                              </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDelete(record)} className="text-destructive">
                               <Trash2 className="h-4 w-4 mr-2" />Delete
                             </DropdownMenuItem>

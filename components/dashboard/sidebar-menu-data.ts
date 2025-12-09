@@ -205,7 +205,7 @@ export const menuData: MenuItem[] = [
         icon: LogOut,
         children: [
           { title: "Create", href: "/dashboard/exit-clearance/create" },
-          { title: "View", href: "/dashboard/exit-clearance/view" },
+          { title: "List", href: "/dashboard/exit-clearance/list" },
         ],
       },
     ],
