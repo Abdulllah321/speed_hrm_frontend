@@ -196,10 +196,6 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/dashboard/employee/create" },
           { title: "List", href: "/dashboard/employee/list" },
-<<<<<<< HEAD
-          // { title: "Upload", href: "/dashboard/employee/upload" },
-=======
->>>>>>> 0fa6fc716714aeda90088ebcec005ddde909cfcb
           { title: "User Accounts", href: "/dashboard/employee/accounts" },
         ],
       },
