@@ -28,9 +28,11 @@ const secondaryVariant = {
 const FileUploadComponent = ({
   id,
   onChange,
+  accept,
 }: {
   id: string;
   onChange?: (files: File[]) => void;
+  accept?: string;
 }) => {
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,9 +47,39 @@ const FileUploadComponent = ({
     fileInputRef.current?.click();
   };
 
+  // Parse accept prop for react-dropzone format
+  const getAcceptObject = () => {
+    if (!accept) return undefined;
+    // Handle CSV files
+    if (accept.includes('.csv') || accept.includes('text/csv')) {
+      return {
+        'text/csv': ['.csv'],
+        'application/vnd.ms-excel': ['.csv'],
+      };
+    }
+    // Handle other file types - parse comma-separated values
+    const acceptMap: Record<string, string[]> = {};
+    accept.split(',').forEach((item) => {
+      const trimmed = item.trim();
+      if (trimmed.startsWith('.')) {
+        // Extension
+        const mimeType = trimmed === '.csv' ? 'text/csv' : `application/${trimmed.slice(1)}`;
+        if (!acceptMap[mimeType]) acceptMap[mimeType] = [];
+        acceptMap[mimeType].push(trimmed);
+      } else if (trimmed.includes('/')) {
+        // MIME type
+        const ext = trimmed === 'text/csv' ? '.csv' : '';
+        if (ext && !acceptMap[trimmed]) acceptMap[trimmed] = [];
+        if (ext) acceptMap[trimmed].push(ext);
+      }
+    });
+    return Object.keys(acceptMap).length > 0 ? acceptMap : undefined;
+  };
+
   const { getRootProps, isDragActive } = useDropzone({
     multiple: false,
     noClick: true,
+    accept: getAcceptObject(),
     onDrop: handleFileChange,
     onDropRejected: (error) => {
       console.log(error);
@@ -65,6 +97,7 @@ const FileUploadComponent = ({
           ref={fileInputRef}
           id={`file-upload-handle-${id}`}
           type="file"
+          accept={accept}
           onChange={(e) => handleFileChange(Array.from(e.target.files || []))}
           className="hidden"
         />

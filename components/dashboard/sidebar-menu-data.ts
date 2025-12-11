@@ -220,7 +220,7 @@ export const menuData: MenuItem[] = [
           { title: "Manage", href: "/dashboard/attendance/manage" },
           { title: "View", href: "/dashboard/attendance/view" },
           { title: "Summary", href: "/dashboard/attendance/summary" },
-          { title: "Requests", href: "/dashboard/attendance/requests" },
+          { title: "Request", href: "/dashboard/attendance/request" },
           { title: "Request List", href: "/dashboard/attendance/request-list" },
           { title: "Exemptions", href: "/dashboard/attendance/exemptions" },
           {
@@ -238,6 +238,7 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/dashboard/working-hours/create" },
           { title: "View", href: "/dashboard/working-hours/view" },
+          { title: "Assign Policy", href: "/dashboard/working-hours/assign-policy" },
         ],
       },
       {

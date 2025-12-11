@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Upload, Download } from "lucide-react";
 import Link from "next/link";
+import { FileUpload } from "@/components/ui/file-upload";
 
 interface Employee {
   id: string;
@@ -222,75 +223,69 @@ export default function AttendanceManagePage() {
                 required
                 disabled={isPending}
               />
+           <div className="flex space-x-4 mt-4 justify-end">
+  <Button type="submit" disabled={isPending} className="flex-1">
+    {isPending && <Loader2 className="h-4 w-2 mr-2 animate-spin" />}
+    Save Attendance
+  </Button>
+  <Button
+    type="button"
+    variant="outline"
+    className="flex-1"
+    onClick={() =>
+      setFormData({
+        employeeId: "",
+        employeeName: "",
+        department: "",
+        subDepartment: "",
+        fromDate: "",
+        toDate: "",
+      })
+    }
+  >
+    Clear
+  </Button>
+</div>
+
             </div>
           </CardContent>
         </Card>
 
         {/* Submit */}
-        <div className="flex gap-2 sticky bottom-4 bg-background p-4 border rounded-lg shadow-lg">
-          <Button type="submit" disabled={isPending} className="flex-1">
-            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Save Attendance
-          </Button>
-          <Button type="button" variant="outline" onClick={() => setFormData({
-            employeeId: "",
-            employeeName: "",
-            department: "",
-            subDepartment: "",
-            fromDate: "",
-            toDate: "",
-          })}>
-            Clear
-          </Button>
-        </div>
+        
       </form>
 
       <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
-        <DialogContent className="max-w-2xl sm:max-w-3xl md:max-w-4xl lg:max-w-5xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Upload Attendance File</DialogTitle>
-            <DialogDescription className="text-base">
+            <DialogTitle>Upload Attendance File</DialogTitle>
+            <DialogDescription>
               Select a CSV file to upload attendance records. It will be stored in backend public/csv and parsed here.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div>
-              <Label className="text-base mb-2 block">Choose File</Label>
-              <Input
-                type="file"
-                accept=".csv,text/csv"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="h-12"
-              />
+          <div className="space-y-3">
+            <FileUpload
+              id="attendance-file-upload"
+              accept=".csv,text/csv"
+              onChange={(files) => {
+                if (files && files.length > 0) {
+                  setSelectedFile(files[0]);
+                } else {
+                  setSelectedFile(null);
+                }
+              }}
+            />
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-900 mb-2">Need a template?</p>
+              <Button asChild variant="outline" size="sm">
+                <a href="/attendance_samples.csv" download>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Sample Template
+                </a>
+              </Button>
             </div>
-            {selectedFile ? (
-              <p className="text-sm text-muted-foreground bg-green-50 border border-green-200 rounded-lg p-4">
-                <span className="font-semibold">Selected:</span> {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <span className="font-semibold">Allowed format:</span> CSV up to 5 MB
-              </p>
-            )}
-            <div className="bg-muted border border-border rounded-lg p-6">
-  <p className="text-base font-semibold text-foreground mb-3">
-    Need a template?
-  </p>
-
-  <p className="text-sm text-muted-foreground mb-4">
-    Download our sample CSV file to see the correct format for uploading attendance records.
-  </p>
-
-  <Button asChild variant="outline" size="lg">
-    <a href="/attendance_samples.csv" download>
-      <Download className="h-5 w-5 mr-2" />
-      Download Sample Format
-    </a>
-  </Button>
-</div>
-
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -298,18 +293,16 @@ export default function AttendanceManagePage() {
                 setUploadDialog(false);
                 setSelectedFile(null);
               }}
-              size="lg"
             >
               Cancel
             </Button>
             <Button
               type="button"
               onClick={handleFileUpload}
-              disabled={uploadPending}
-              size="lg"
+              disabled={uploadPending || !selectedFile}
             >
-              {uploadPending && <Loader2 className="h-5 w-5 mr-2 animate-spin" />}
-              Upload File
+              {uploadPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Upload
             </Button>
           </DialogFooter>
         </DialogContent>

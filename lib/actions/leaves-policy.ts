@@ -22,6 +22,7 @@ export interface LeavesPolicy {
   halfDayDeductionRate?: number;
   shortLeaveDeductionRate?: number;
   status: string;
+  isDefault?: boolean;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;

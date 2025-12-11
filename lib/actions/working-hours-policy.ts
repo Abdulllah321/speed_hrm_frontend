@@ -59,6 +59,7 @@ export interface WorkingHoursPolicy {
       }
     | null;
   status: string;
+  isDefault?: boolean;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;

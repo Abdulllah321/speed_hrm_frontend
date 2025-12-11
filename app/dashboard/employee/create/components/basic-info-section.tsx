@@ -8,10 +8,24 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { FileUpload } from "@/components/ui/file-upload";
 
 type Option = { id: string; name: string };
 
-export function BasicInfoSection({ form, isPending, loadingData, departments, subDepartments, department, loadingSubDepartments, employeeGrades, designations, maritalStatuses, employeeStatuses, errors, formatCNIC, nationalities, genders, states, cities, state, loadingCities, daysOff, workingHoursPolicies, branches, leavesPolicies, documents, handleFileChange }: {
+// Phone number formatting function - formats like CNIC (03XX-XXXXXXX)
+const formatPhone = (value: string): string => {
+  if (!value) return "";
+  const digits = value.replace(/\D/g, "");
+  if (digits.length <= 4) {
+    return digits;
+  } else if (digits.length <= 11) {
+    return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  } else {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 11)}`;
+  }
+};
+
+export function BasicInfoSection({ form, isPending, loadingData, departments, subDepartments, department, loadingSubDepartments, employeeGrades, designations, maritalStatuses, employeeStatuses, errors, formatCNIC, nationalities, genders, states, cities, state, loadingCities, daysOff, workingHoursPolicies, branches, leavesPolicies, documents, handleFileChange, employees }: {
   form: UseFormReturn<any>;
   isPending: boolean;
   loadingData: boolean;
@@ -32,19 +46,15 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
   state?: string;
   loadingCities: boolean;
   daysOff: string[];
-  workingHoursPolicies: { id: string; name: string }[];
-  branches: { id: string; name: string }[];
-  leavesPolicies: { id: string; name: string }[];
+  workingHoursPolicies: { id: string; name: string; isDefault?: boolean }[];
+  branches: { id: string; name: string; isDefault?: boolean }[];
+  leavesPolicies: { id: string; name: string; isDefault?: boolean }[];
   documents: Record<string, File | null>;
   handleFileChange: (key: string, file: File | null) => void;
+  employees: { id: string; employeeName: string; employeeId: string }[];
 }) {
   const { register, control } = form;
   const lifetimeCnic = useWatch({ control, name: "lifetimeCnic" });
-  const managers = [
-  { id: "1", name: "Ali Khan" },
-  { id: "2", name: "Sara Ahmed" },
-  { id: "3", name: "Usman Tariq" },
-];
   const isEobi = useWatch({ control, name: "eobi" });
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -194,12 +204,28 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
       <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-2">
           <Label>Contact Number <span className="text-destructive">*</span></Label>
-          <Input placeholder="03XX-XXXXXXX" {...register("contactNumber")} disabled={isPending} />
+          <Controller name="contactNumber" control={control} render={({ field }) => (
+            <Input
+              placeholder="03XX-XXXXXXX"
+              value={(field.value as string | undefined) || ""}
+              onChange={(e) => field.onChange(formatPhone(e.target.value))}
+              maxLength={12}
+              disabled={isPending}
+            />
+          )} />
           {errors?.contactNumber && <p className="text-xs text-red-500">{errors.contactNumber.message}</p>}
         </div>
         <div className="space-y-2">
           <Label>Emergency Contact Number</Label>
-          <Input placeholder="03XX-XXXXXXX" {...register("emergencyContactNumber")} disabled={isPending} />
+          <Controller name="emergencyContactNumber" control={control} render={({ field }) => (
+            <Input
+              placeholder="03XX-XXXXXXX"
+              value={(field.value as string | undefined) || ""}
+              onChange={(e) => field.onChange(formatPhone(e.target.value))}
+              maxLength={12}
+              disabled={isPending}
+            />
+          )} />
         </div>
         <div className="space-y-2">
           <Label>Emergency Contact Person Name</Label>
@@ -274,29 +300,23 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
     Reporting Manager <span className="text-destructive">*</span>
   </Label>
 
-
-
   <Controller
     name="reportingManager"
     control={control}
     render={({ field }) => (
-      <Select
+      <Autocomplete
+        options={employees.map((emp) => ({
+          value: emp.id,
+          label: `${emp.employeeName} (${emp.employeeId})`,
+        }))}
         value={field.value as string | undefined}
         onValueChange={field.onChange}
-        disabled={isPending}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder="Select Reporting Manager" />
-        </SelectTrigger>
-
-        <SelectContent>
-          {managers.map((m) => (
-            <SelectItem key={m.id} value={m.name}>
-              {m.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        placeholder="Select Reporting Manager"
+        searchPlaceholder="Search employee..."
+        emptyMessage="No employees found."
+        disabled={isPending || loadingData}
+        isLoading={loadingData}
+      />
     )}
   />
 
@@ -312,24 +332,45 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         <div className="space-y-2">
           <Label>Working Hours Policy <span className="text-destructive">*</span></Label>
           <Controller name="workingHoursPolicy" control={control} render={({ field }) => (
-            <Autocomplete options={workingHoursPolicies.map((p) => ({ value: p.id, label: p.name }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder="Select Working Hours Policy" disabled={isPending || loadingData} />
+            <Autocomplete 
+              options={workingHoursPolicies.map((p) => ({ value: p.id, label: `${p.name}${p.isDefault ? " (Default)" : ""}` }))} 
+              value={field.value as string | undefined} 
+              onValueChange={field.onChange} 
+              placeholder="Select Working Hours Policy" 
+              disabled={isPending || loadingData} 
+            />
           )} />
           {errors?.workingHoursPolicy && <p className="text-xs text-red-500">{errors.workingHoursPolicy.message}</p>}
         </div>
         <div className="space-y-2">
           <Label>Branch <span className="text-destructive">*</span></Label>
           <Controller name="branch" control={control} render={({ field }) => (
-            <Autocomplete options={branches.map((b) => ({ value: b.id, label: b.name }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder="Select Branch" disabled={isPending || loadingData} />
+            <Autocomplete 
+              options={branches.map((b) => ({ value: b.id, label: `${b.name}${b.isDefault ? " (Default)" : ""}` }))} 
+              value={field.value as string | undefined} 
+              onValueChange={field.onChange} 
+              placeholder="Select Branch" 
+              disabled={isPending || loadingData} 
+            />
           )} />
           {errors?.branch && <p className="text-xs text-red-500">{errors.branch.message}</p>}
         </div>
         <div className="space-y-2">
           <Label>Leaves Policy <span className="text-destructive">*</span></Label>
           <Controller name="leavesPolicy" control={control} render={({ field }) => (
-            <Select value={field.value as string | undefined} onValueChange={field.onChange} disabled={isPending || loadingData}>
-              <SelectTrigger><SelectValue placeholder="Select Leave Policy" /></SelectTrigger>
-              <SelectContent>{leavesPolicies.map((policy) => (<SelectItem key={policy.id} value={policy.id}>{policy.name}</SelectItem>))}</SelectContent>
-            </Select>
+            <Autocomplete
+              options={leavesPolicies.map((policy) => ({
+                value: policy.id,
+                label: `${policy.name}${policy.isDefault ? " (Default)" : ""}`,
+              }))}
+              value={field.value as string | undefined}
+              onValueChange={field.onChange}
+              placeholder="Select Leave Policy"
+              searchPlaceholder="Search leave policy..."
+              emptyMessage="No leave policies found."
+              disabled={isPending || loadingData}
+              isLoading={loadingData}
+            />
           )} />
           {errors?.leavesPolicy && <p className="text-xs text-red-500">{errors.leavesPolicy.message}</p>}
         </div>
@@ -355,20 +396,21 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
           <>
             <div className="space-y-2">
               <Label>EOBI Number</Label>
-              <Input {...register("eobiNumber")} disabled={isPending} />
+              <Input placeholder="Enter EOBI Number" {...register("eobiNumber")} disabled={isPending} />
             </div>
             <div className="space-y-2">
               <Label>EOBI Document</Label>
-              <Input
-                type="file"
-                onChange={(e) => handleFileChange("eobi", e.target.files?.[0] || null)}
-                className="flex-1"
-                disabled={isPending}
+              <FileUpload
+                id="eobi-document-upload"
                 accept=".pdf,.jpg,.jpeg,.png"
+                onChange={(files) => {
+                  if (files && files.length > 0) {
+                    handleFileChange("eobi", files[0]);
+                  } else {
+                    handleFileChange("eobi", null);
+                  }
+                }}
               />
-              {documents.eobi && (
-                <p className="text-xs text-muted-foreground">{documents.eobi.name}</p>
-              )}
             </div>
           </>
         ) : null}

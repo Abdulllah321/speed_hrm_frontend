@@ -59,6 +59,7 @@ import {
   type Employee,
 } from "@/lib/actions/employee";
 import { uploadEmployeeCsv } from "@/lib/actions/employee-import";
+import { FileUpload } from "@/components/ui/file-upload";
 
 export default function EmployeeListPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -461,20 +462,17 @@ export default function EmployeeListPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <Input
-              type="file"
+            <FileUpload
+              id="employee-csv-upload"
               accept=".csv,text/csv"
-              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+              onChange={(files) => {
+                if (files && files.length > 0) {
+                  setSelectedFile(files[0]);
+                } else {
+                  setSelectedFile(null);
+                }
+              }}
             />
-            {selectedFile ? (
-              <p className="text-sm text-muted-foreground">
-                Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Allowed: CSV up to 5 MB
-              </p>
-            )}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-900 mb-2">Need a template?</p>
               <Button asChild variant="outline" size="sm">
@@ -499,7 +497,7 @@ export default function EmployeeListPage() {
             <Button
               type="button"
               onClick={handleCsvUpload}
-              disabled={uploadPending}
+              disabled={uploadPending || !selectedFile}
             >
               {uploadPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Upload

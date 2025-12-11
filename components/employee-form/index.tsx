@@ -39,7 +39,7 @@ import type { State, City } from "@/lib/actions/city";
 import type { Equipment } from "@/lib/actions/equipment";
 import type { WorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
 import type { LeavesPolicy } from "@/lib/actions/leaves-policy";
-import { createEmployee, updateEmployee, type Employee } from "@/lib/actions/employee";
+import { createEmployee, updateEmployee, getEmployees, type Employee } from "@/lib/actions/employee";
 import { BasicInfoSection } from "@/app/dashboard/employee/create/components/basic-info-section";
 import { uploadFile } from "@/lib/upload";
 import { DateSection } from "@/app/dashboard/employee/create/components/date-section";
@@ -257,8 +257,7 @@ const employeeFormSchema = z.object({
   
   reportingManager: z
     .string()
-    .min(1, "Reporting Manager is required")
-    .min(3, "Reporting Manager name must be at least 3 characters"),
+    .min(1, "Reporting Manager is required"),
   
   workingHoursPolicy: z
     .string()
@@ -505,6 +504,30 @@ export function EmployeeForm({
   const [cities, setCities] = useState<City[]>(initialCities);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
+  const [employees, setEmployees] = useState<{ id: string; employeeName: string; employeeId: string }[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+  // Fetch employees for reporting manager dropdown
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoadingEmployees(true);
+        const result = await getEmployees();
+        if (result.status && result.data) {
+          setEmployees(result.data.map(emp => ({
+            id: emp.id,
+            employeeName: emp.employeeName,
+            employeeId: emp.employeeId
+          })));
+        }
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
 
   // Static options
   const nationalities = [
@@ -1041,6 +1064,7 @@ export function EmployeeForm({
                     leavesPolicies={leavesPolicies}
                     documents={documents}
                     handleFileChange={handleFileChange}
+                    employees={employees}
                   />
                   <DateSection form={form} isPending={isPending} errors={errors} />
                 </CardContent>
