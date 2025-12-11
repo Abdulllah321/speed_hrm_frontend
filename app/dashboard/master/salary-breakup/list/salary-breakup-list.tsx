@@ -1,17 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import DataTable from "@/components/common/data-table";
+import { columns, SalaryBreakupRow } from "./columns";
+import { SalaryBreakup } from "@/lib/actions/salary-breakup";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -20,42 +14,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Printer, FileDown, Search } from "lucide-react";
-import { SalaryBreakup } from "@/lib/actions/salary-breakup";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Loader2 } from "lucide-react";
 
-type SalaryBreakupRow = {
-  id: string;
-  salaryType: string;
-  percent: number;
-  isTaxable: boolean;
-  createdBy: string;
-  status: "Active" | "Inactive";
-};
-
-export function SalaryBreakupList({
-  initialSalaryBreakups,
-}: {
+interface SalaryBreakupListProps {
   initialSalaryBreakups: SalaryBreakup[];
-}) {
-  type Entry = { typeName: string; percent: number; isTaxable: boolean };
-  const rows: SalaryBreakupRow[] = initialSalaryBreakups.flatMap((sb) => {
+  newItemId?: string;
+}
+
+type Entry = { typeName: string; percent: number; isTaxable: boolean };
+
+export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBreakupListProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [editRows, setEditRows] = useState<{ id: string; salaryType: string; percent: string; isTaxable: boolean }[]>([]);
+
+  // Flatten the salary breakups into rows
+  const data: SalaryBreakupRow[] = initialSalaryBreakups.flatMap((sb) => {
     let details: Entry[] = [];
-    if (Array.isArray(sb.details)) details = sb.details as Entry[];
-    else if (typeof sb.details === "string" && sb.details) {
+    if (Array.isArray(sb.details)) {
+      details = sb.details as Entry[];
+    } else if (typeof sb.details === "string" && sb.details) {
       try {
         details = JSON.parse(sb.details) as Entry[];
       } catch {
@@ -69,201 +52,139 @@ export function SalaryBreakupList({
       isTaxable: !!d.isTaxable,
       createdBy: sb.createdBy || "",
       status: sb.status === "active" ? "Active" : "Inactive",
+      breakupId: sb.id,
+      breakupName: sb.name,
     }));
   });
 
-  const [search, setSearch] = useState("");
-  const [data, setData] = useState<SalaryBreakupRow[]>(rows);
-  const [editDialog, setEditDialog] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [selected, setSelected] = useState<SalaryBreakupRow | null>(null);
-  const [editForm, setEditForm] = useState({ salaryType: "", percent: "" });
-
-  const filtered = data.filter((item) =>
-    item.salaryType.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const handleEdit = (item: SalaryBreakupRow) => {
-    setSelected(item);
-    setEditForm({ salaryType: item.salaryType, percent: item.percent.toString() });
-    setEditDialog(true);
+  const handleToggle = () => {
+    router.push("/dashboard/master/salary-breakup/add");
   };
 
-  const handleEditSave = () => {
-    if (!selected || !editForm.salaryType.trim()) return;
-    setData(
-      data.map((d) =>
-        d.id === selected.id
-          ? { ...d, salaryType: editForm.salaryType, percent: parseFloat(editForm.percent) }
-          : d
-      )
+  const handleMultiDelete = (ids: string[]) => {
+    // TODO: Implement multi-delete when backend endpoint is available
+    toast.info("Multi-delete functionality will be available soon");
+  };
+
+  const handleBulkEdit = (items: SalaryBreakupRow[]) => {
+    setEditRows(
+      items.map((item) => ({
+        id: item.id,
+        salaryType: item.salaryType,
+        percent: item.percent.toString(),
+        isTaxable: item.isTaxable,
+      }))
     );
-    toast.success("Salary breakup updated successfully");
-    setEditDialog(false);
+    setBulkEditOpen(true);
   };
 
-  const handleDelete = (item: SalaryBreakupRow) => {
-    setSelected(item);
-    setDeleteDialog(true);
+  const updateEditRow = (id: string, field: "salaryType" | "percent" | "isTaxable", value: string | boolean) => {
+    setEditRows((rows) =>
+      rows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
   };
 
-  const handleDeleteConfirm = () => {
-    if (!selected) return;
-    setData(data.filter((d) => d.id !== selected.id));
-    toast.success("Salary breakup deleted successfully");
-    setDeleteDialog(false);
-  };
-
-  const handlePrint = () => window.print();
-
-  const handleExportCSV = () => {
-    const csv = [
-      ["S.No", "Salary Type", "Percent (%)", "Created By", "Status"],
-      ...filtered.map((item, i) => [i + 1, item.salaryType, item.percent, item.createdBy, item.status]),
-    ]
-      .map((row) => row.join(","))
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "salary-breakup.csv";
-    a.click();
-    toast.success("CSV exported successfully");
+  const handleBulkEditSubmit = async () => {
+    const validRows = editRows.filter((r) => r.salaryType.trim() && !isNaN(parseFloat(r.percent)));
+    if (validRows.length === 0) {
+      toast.error("Please fill in all fields correctly");
+      return;
+    }
+    // TODO: Implement bulk update when backend endpoint is available
+    toast.info("Bulk edit functionality will be available soon");
+    setBulkEditOpen(false);
   };
 
   return (
-    <div className="space-y-6 px-4 sm:px-0">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">View Salary Breakup List</h2>
-          <p className="text-sm text-muted-foreground">Manage salary breakup types</p>
-        </div>
-        <Link href="/dashboard/master/salary-breakup/add">
-          <Button className="w-full sm:w-auto">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Salary Breakup
-          </Button>
-        </Link>
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Salary Breakup</h2>
+        <p className="text-muted-foreground">Manage salary breakup configurations</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <CardTitle className="text-lg">Salary Breakup List</CardTitle>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handlePrint} className="flex-1 sm:flex-none">
-                  <Printer className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Print</span>
-                </Button>
-                <Button variant="outline" size="sm" onClick={handleExportCSV} className="flex-1 sm:flex-none">
-                  <FileDown className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Export CSV</span>
-                </Button>
-              </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table className="min-w-[600px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">S.No</TableHead>
-                <TableHead>Salary Type</TableHead>
-                <TableHead>Percent (%)</TableHead>
-                <TableHead>Created By</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((item, index) => (
-                <TableRow key={item.id}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{item.salaryType}</TableCell>
-                  <TableCell>{item.percent}%</TableCell>
-                  <TableCell>{item.createdBy}</TableCell>
-                  <TableCell>
-                    <Badge variant={item.status === "Active" ? "default" : "secondary"}>
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(item)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <DataTable<SalaryBreakupRow>
+        columns={columns}
+        data={data}
+        actionText="Add Salary Breakup"
+        toggleAction={handleToggle}
+        newItemId={newItemId}
+        searchFields={[
+          { key: "breakupName", label: "Breakup Name" },
+          { key: "salaryType", label: "Salary Type" },
+        ]}
+        filters={[
+          {
+            key: "status",
+            label: "Status",
+            options: [
+              { value: "Active", label: "Active" },
+              { value: "Inactive", label: "Inactive" },
+            ],
+          },
+          {
+            key: "isTaxable",
+            label: "Taxable",
+            options: [
+              { value: "true", label: "Yes" },
+              { value: "false", label: "No" },
+            ],
+          },
+        ]}
+        onMultiDelete={handleMultiDelete}
+        onBulkEdit={handleBulkEdit}
+      />
 
-      <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent>
+      <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+        <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Edit Salary Breakup</DialogTitle>
-            <DialogDescription>Update salary breakup details</DialogDescription>
+            <DialogTitle>Edit Salary Breakup Entries</DialogTitle>
+            <DialogDescription>Update {editRows.length} salary breakup entry(ies)</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Salary Type</Label>
-              <Input
-                value={editForm.salaryType}
-                onChange={(e) => setEditForm({ ...editForm, salaryType: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Percent (%)</Label>
-              <Input
-                type="number"
-                value={editForm.percent}
-                onChange={(e) => setEditForm({ ...editForm, percent: e.target.value })}
-              />
-            </div>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto py-4">
+            {editRows.map((row, index) => (
+              <div key={row.id} className="space-y-2 p-3 border rounded-lg">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={`Salary Type ${index + 1}`}
+                    value={row.salaryType}
+                    onChange={(e) => updateEditRow(row.id, "salaryType", e.target.value)}
+                    disabled={isPending}
+                    className="flex-1"
+                  />
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="Percent"
+                    value={row.percent}
+                    onChange={(e) => updateEditRow(row.id, "percent", e.target.value)}
+                    disabled={isPending}
+                    className="w-24"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={row.isTaxable}
+                    onCheckedChange={(checked) => updateEditRow(row.id, "isTaxable", !!checked)}
+                    disabled={isPending}
+                  />
+                  <Label className="font-normal text-sm">Taxable</Label>
+                </div>
+              </div>
+            ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialog(false)}>Cancel</Button>
-            <Button onClick={handleEditSave}>Save Changes</Button>
+            <Button variant="outline" onClick={() => setBulkEditOpen(false)} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkEditSubmit} disabled={isPending}>
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Salary Breakup</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {selected?.salaryType}? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Yes
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

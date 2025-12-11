@@ -3,8 +3,8 @@
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { HighlightText } from "@/components/common/data-table";
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,19 +35,16 @@ import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Qualification, updateQualification, deleteQualification } from "@/lib/actions/qualification";
+import { Holiday, updateHoliday, deleteHoliday } from "@/lib/actions/holiday";
 
-export type QualificationRow = Qualification & { id: string };
+export type HolidayRow = Holiday & { id: string };
 
-export const columns: ColumnDef<QualificationRow>[] = [
+export const columns: ColumnDef<HolidayRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
+        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
@@ -66,26 +63,45 @@ export const columns: ColumnDef<QualificationRow>[] = [
   {
     header: "Name",
     accessorKey: "name",
+    size: 250,
+    enableSorting: true,
+    cell: ({ row }) => <HighlightText text={row.original.name} />,
+  },
+  {
+    header: "Date Range",
+    accessorKey: "dateFrom",
     size: 300,
     enableSorting: true,
-    cell: ({ row }) => (
-      <div className="max-w-[280px] whitespace-normal wrap-break-word">
-        <HighlightText text={row.original.name} className="block" />
-      </div>
-    ),
+    cell: ({ row }) => {
+      const dateFrom = row.original.dateFrom;
+      const dateTo = row.original.dateTo;
+      if (!dateFrom || !dateTo) return "—";
+      const fromDate = new Date(dateFrom).toLocaleDateString();
+      const toDate = new Date(dateTo).toLocaleDateString();
+      return (
+        <Badge variant="outline" className="text-xs">
+          {fromDate === toDate ? fromDate : `${fromDate} - ${toDate}`}
+        </Badge>
+      );
+    },
   },
   {
     header: "Status",
     accessorKey: "status",
-    size: 100,
+    size: 120,
     enableSorting: true,
     cell: ({ row }) => (
-      <Badge
-        variant={row.original.status === "inactive" ? "secondary" : "default"}
-      >
-        {row.original.status || "active"}
+      <Badge variant={row.original.status === "active" ? "default" : "secondary"}>
+        {row.original.status}
       </Badge>
     ),
+  },
+  {
+    header: "Created By",
+    accessorKey: "createdBy",
+    size: 150,
+    enableSorting: true,
+    cell: ({ row }) => row.original.createdBy || "—",
   },
   {
     header: "Created At",
@@ -103,29 +119,38 @@ export const columns: ColumnDef<QualificationRow>[] = [
   },
 ];
 
-type RowActionsProps = {
-  row: Row<QualificationRow>;
-};
+type RowActionsProps = { row: Row<HolidayRow> };
 
 function RowActions({ row }: RowActionsProps) {
-  const qual = row.original;
+  const holiday = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
-  const [editData, setEditData] = useState({
-    name: qual.name,
-    status: qual.status,
+  const [editForm, setEditForm] = useState({
+    name: holiday.name,
+    dateFrom: new Date(holiday.dateFrom).toISOString().split("T")[0],
+    dateTo: new Date(holiday.dateTo).toISOString().split("T")[0],
+    status: holiday.status,
   });
 
   const handleEditSubmit = async () => {
-    if (!editData.name.trim()) {
+    if (!editForm.name.trim()) {
       toast.error("Name is required");
+      return;
+    }
+    if (!editForm.dateFrom || !editForm.dateTo) {
+      toast.error("Both start date and end date are required");
       return;
     }
 
     startTransition(async () => {
-      const result = await updateQualification(qual.id, editData);
+      const result = await updateHoliday(holiday.id, {
+        name: editForm.name,
+        dateFrom: new Date(editForm.dateFrom).toISOString(),
+        dateTo: new Date(editForm.dateTo).toISOString(),
+        status: editForm.status,
+      });
       if (result.status) {
         toast.success(result.message);
         setEditDialog(false);
@@ -138,7 +163,7 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
-      const result = await deleteQualification(qual.id);
+      const result = await deleteHoliday(holiday.id);
       if (result.status) {
         toast.success(result.message);
         setDeleteDialog(false);
@@ -149,17 +174,13 @@ function RowActions({ row }: RowActionsProps) {
     });
   };
 
+
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex justify-end">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="shadow-none"
-              aria-label="Actions"
-            >
+            <Button size="icon" variant="ghost" className="shadow-none" aria-label="Actions">
               <EllipsisIcon size={16} />
             </Button>
           </div>
@@ -169,45 +190,71 @@ function RowActions({ row }: RowActionsProps) {
             <Pencil className="h-4 w-4 mr-2" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
-          >
+          <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Edit Dialog */}
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Qualification</DialogTitle>
-            <DialogDescription>Update the qualification name</DialogDescription>
+            <DialogTitle>Edit Holiday</DialogTitle>
+            <DialogDescription>Update the holiday details</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Qualification Name</Label>
+              <Label htmlFor="edit-name">Holiday Name</Label>
               <Input
-                value={editData.name}
-                onChange={(e) =>
-                  setEditData({ ...editData, name: e.target.value })
-                }
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                 disabled={isPending}
-                placeholder="Qualification name"
+                required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-dateFrom">Start Date</Label>
+              <Input
+                id="edit-dateFrom"
+                type="date"
+                value={editForm.dateFrom}
+                onChange={(e) => setEditForm({ ...editForm, dateFrom: e.target.value })}
+                disabled={isPending}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-dateTo">End Date</Label>
+              <Input
+                id="edit-dateTo"
+                type="date"
+                value={editForm.dateTo}
+                onChange={(e) => setEditForm({ ...editForm, dateTo: e.target.value })}
+                disabled={isPending}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-status">Status</Label>
+              <select
+                id="edit-status"
+                value={editForm.status}
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                disabled={isPending}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditDialog(false)}
-              disabled={isPending}
-            >
+            <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleEditSubmit} disabled={isPending}>
+            <Button type="button" onClick={handleEditSubmit} disabled={isPending}>
               {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save Changes
             </Button>
@@ -215,13 +262,12 @@ function RowActions({ row }: RowActionsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Qualification</AlertDialogTitle>
+            <AlertDialogTitle>Delete Holiday</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{qual.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{holiday.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -240,3 +286,4 @@ function RowActions({ row }: RowActionsProps) {
     </>
   );
 }
+

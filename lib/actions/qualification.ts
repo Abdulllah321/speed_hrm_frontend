@@ -14,11 +14,7 @@ async function getAuthHeaders() {
 
 export interface Qualification {
   id: string;
-  instituteId?: string | null;
-  instituteName: string;
-  qualification: string;
-  country: string;
-  city: string;
+  name: string;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -47,14 +43,31 @@ export async function getQualifications(): Promise<{ status: boolean; data?: Qua
   }
 }
 
+// Get qualification by id
+export async function getQualificationById(id: string): Promise<{ status: boolean; data?: Qualification; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/qualifications/${id}`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch qualification' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching qualification:', error);
+    return { 
+      status: false, 
+      message: error instanceof Error ? error.message : 'Failed to fetch qualification' 
+    };
+  }
+}
+
 // Create qualification
-export async function createQualification(data: { 
-  instituteId?: string; 
-  instituteName: string; 
-  qualification: string; 
-  country: string; 
-  city: string; 
-}): Promise<{ status: boolean; data?: Qualification; message?: string }> {
+export async function createQualification(data: { name: string; status?: string }): Promise<{ status: boolean; data?: Qualification; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/qualifications`, {
       method: 'POST',
@@ -75,13 +88,7 @@ export async function createQualification(data: {
 }
 
 // Create qualifications bulk
-export async function createQualificationsBulk(items: { 
-  instituteId?: string; 
-  instituteName: string; 
-  qualification: string; 
-  country: string; 
-  city: string; 
-}[]): Promise<{ status: boolean; message?: string }> {
+export async function createQualificationsBulk(items: { name: string; status?: string }[]): Promise<{ status: boolean; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/qualifications/bulk`, {
       method: 'POST',
@@ -102,14 +109,7 @@ export async function createQualificationsBulk(items: {
 }
 
 // Update qualification
-export async function updateQualification(id: string, data: {
-  instituteId?: string;
-  instituteName: string;
-  qualification: string;
-  country: string;
-  city: string;
-  status?: string;
-}): Promise<{ status: boolean; data?: Qualification; message?: string }> {
+export async function updateQualification(id: string, data: { name?: string; status?: string }): Promise<{ status: boolean; data?: Qualification; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/qualifications/${id}`, {
       method: 'PUT',
@@ -152,11 +152,7 @@ export async function deleteQualification(id: string): Promise<{ status: boolean
 // Update qualifications bulk
 export async function updateQualifications(items: {
   id: string;
-  instituteId?: string;
-  instituteName: string;
-  qualification: string;
-  country: string;
-  city: string;
+  name: string;
   status?: string;
 }[]): Promise<{ status: boolean; message?: string }> {
   try {
@@ -178,20 +174,25 @@ export async function updateQualifications(items: {
 
 // Delete qualifications bulk
 export async function deleteQualifications(ids: string[]): Promise<{ status: boolean; message?: string }> {
+  if (!ids.length) {
+    return { status: false, message: 'No items to delete' };
+  }
+
   try {
-    const results = await Promise.all(
-      ids.map(id => deleteQualification(id))
-    );
-    
-    const failed = results.filter(r => !r.status);
-    if (failed.length > 0) {
-      return { status: false, message: `${failed.length} qualification(s) failed to delete` };
+    const res = await fetch(`${API_URL}/qualifications/bulk`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ ids }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to delete qualifications' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    return { status: true, message: `${results.length} qualification(s) deleted successfully` };
+    return res.json();
   } catch (error) {
     console.error('Error deleting qualifications:', error);
     return { status: false, message: error instanceof Error ? error.message : 'Failed to delete qualifications' };
   }
 }
-
