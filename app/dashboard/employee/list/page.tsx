@@ -473,11 +473,11 @@ export default function EmployeeListPage() {
                 }
               }}
             />
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-sm text-blue-900 mb-2">Need a template?</p>
-              <Button asChild variant="outline" size="sm">
-                <a href="/employee_samples.xlsx" download>
-                  <Download className="h-4 w-4 mr-2" />
+            <div className="border border-primary/20 rounded-lg p-3 bg-primary/5">
+              <p className="text-sm text-primary mb-2">Need a template?</p>
+              <Button asChild variant="outline" size="sm" className="!bg-primary/40 !text-primary-foreground">
+              <a href="/employee_samples.xlsx" download>
+              <Download className="h-4 w-4 mr-2" />
                   Download Sample Template
                 </a>
               </Button>

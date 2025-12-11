@@ -17,6 +17,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Tooltip,
@@ -27,7 +32,7 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
+const SIDEBAR_WIDTH = "17rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
@@ -88,9 +93,14 @@ function SidebarProvider({
     [setOpenProp, open]
   )
 
+
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
+    if (isMobile) {
+      setOpenMobile((open) => !open)
+    } else {
+      setOpen((open) => !open)
+    }
   }, [isMobile, setOpen, setOpenMobile])
 
   // Adds a keyboard shortcut to toggle the sidebar.
@@ -108,6 +118,7 @@ function SidebarProvider({
     window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [toggleSidebar])
+
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.
@@ -462,7 +473,17 @@ function SidebarMenu({ className, ...props }: React.ComponentProps<"ul">) {
   )
 }
 
-function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
+function SidebarMenuItem({ 
+  className, 
+  hasSubMenu = false,
+  subMenuContent,
+  ...props 
+}: React.ComponentProps<"li"> & { 
+  hasSubMenu?: boolean
+  subMenuContent?: React.ReactNode
+}) {
+  const { state } = useSidebar()
+
   return (
     <li
       data-slot="sidebar-menu-item"
@@ -637,7 +658,11 @@ function SidebarMenuSkeleton({
   )
 }
 
-function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
+function SidebarMenuSub({ 
+  className, 
+  children,
+  ...props 
+}: React.ComponentProps<"ul"> & { children?: React.ReactNode }) {
   return (
     <ul
       data-slot="sidebar-menu-sub"
@@ -648,7 +673,9 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </ul>
   )
 }
 
