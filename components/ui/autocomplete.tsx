@@ -59,7 +59,7 @@ export function Autocomplete({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between",
+            "w-full justify-between bg-input/30",
             !selectedOption && "text-muted-foreground",
             className
           )}

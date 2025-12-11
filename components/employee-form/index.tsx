@@ -959,7 +959,7 @@ export function EmployeeForm({
           {step === 0 && (
             <>
               {/* Profile Picture Upload */}
-           <Card className="rounded-xl border bg-muted/20">
+           <Card className="border-0 shadow-none bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
                     Profile Picture
@@ -1030,7 +1030,7 @@ export function EmployeeForm({
 
 
               {/* Basic Information */}
-              <Card className="rounded-xl border bg-muted/20">
+              <Card className="border-0 shadow-none bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
                     Basic Information

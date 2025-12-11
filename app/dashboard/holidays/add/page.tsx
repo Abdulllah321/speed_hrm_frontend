@@ -28,11 +28,13 @@ import {
 export default function AddHolidayPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  // Use current year for date picker, but we'll normalize to base year when sending to backend
+  const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     name: "",
     dateRange: {
-      from: new Date(),
-      to: new Date(),
+      from: new Date(currentYear, 0, 1), // Jan 1 of current year
+      to: new Date(currentYear, 0, 1), // Jan 1 of current year
     } as DateRange,
     status: "active",
   });
@@ -50,9 +52,16 @@ export default function AddHolidayPage() {
       return;
     }
 
+    // Normalize dates to current year (backend will normalize to base year 2000)
+    // Extract month and day, use current year
+    const fromDate = formData.dateRange.from;
+    const toDate = formData.dateRange.to;
+    const normalizedFrom = new Date(currentYear, fromDate.getMonth(), fromDate.getDate());
+    const normalizedTo = new Date(currentYear, toDate.getMonth(), toDate.getDate());
+    
     // Convert dates to ISO strings
-    const dateFrom = formData.dateRange.from.toISOString();
-    const dateTo = formData.dateRange.to.toISOString();
+    const dateFrom = normalizedFrom.toISOString();
+    const dateTo = normalizedTo.toISOString();
 
     startTransition(async () => {
       const result = await createHoliday({
@@ -118,9 +127,10 @@ export default function AddHolidayPage() {
                   }
                 }}
                 dateRange={{
-                  oldestDate: new Date(2020, 0, 1),
-                  latestDate: new Date(2100, 11, 31),
+                  oldestDate: new Date(currentYear, 0, 1),
+                  latestDate: new Date(currentYear, 11, 31),
                 }}
+                isPreset={false}
               />
             </div>
 

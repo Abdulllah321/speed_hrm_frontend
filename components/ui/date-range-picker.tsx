@@ -44,6 +44,7 @@ export interface DateRangePickerProps {
     latestDate: Date | null;
   };
   range?: DateRange | undefined;
+  isPreset?: boolean;
 }
 
 const formatDate = (date: Date, locale: string = "en-us"): string => {
@@ -106,6 +107,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
   dateRange,
   range: passedRange,
   align = "start",
+  isPreset = true,
 }): JSX.Element => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -532,7 +534,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                   )}
                 </div>
               </div>
-              {isSmallScreen && (
+              {isPreset&&(isSmallScreen && (
                 <div className="w-[180px] mx-auto mb-2">
                   <Select
                     value={selectedPreset}
@@ -550,7 +552,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              ))}
               <div>
                 <Calendar
                   mode="range"
@@ -581,7 +583,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
               </div>
             </div>
           </div>
-          {!isSmallScreen && (
+          {isPreset&&(!isSmallScreen && (
             <div className="flex flex-col items-end gap-1 pr-2 pl-6 pb-6">
               <div className="flex w-full flex-col items-end gap-1 pr-2 pl-6 pb-6">
                 {PRESETS.map((preset) => (
@@ -594,7 +596,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
                 ))}
               </div>
             </div>
-          )}
+          ))}
         </div>
         <div className="flex justify-end gap-2 py-2 pr-4">
           <Button
