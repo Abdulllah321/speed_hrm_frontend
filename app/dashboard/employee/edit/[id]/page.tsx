@@ -140,6 +140,22 @@ export default function EditEmployeePage() {
     fetchData();
   }, []);
 
+  // Fetch sub-departments when employee department is available
+  useEffect(() => {
+    if (!employee?.department) return;
+    const fetchSubDepartments = async () => {
+      try {
+        const res = await getSubDepartmentsByDepartment(employee.department);
+        if (res.status) {
+          setSubDepartments(res.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching sub-departments:", error);
+      }
+    };
+    fetchSubDepartments();
+  }, [employee?.department]);
+
   // Fetch cities when employee province is available
   useEffect(() => {
     if (!employee?.province) return;
@@ -156,7 +172,7 @@ export default function EditEmployeePage() {
     fetchCities();
   }, [employee?.province]);
 
-  if (loadingEmployee) {
+  if (loadingEmployee || loadingData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

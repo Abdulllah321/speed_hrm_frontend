@@ -244,7 +244,7 @@ export const menuData: MenuItem[] = [
       {
         title: "Holidays",
         children: [
-          { title: "Create", href: "/dashboard/holidays/create" },
+          { title: "Create", href: "/dashboard/holidays/add" },
           { title: "List", href: "/dashboard/holidays/list" },
         ],
       },

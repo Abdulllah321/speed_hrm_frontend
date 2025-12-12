@@ -80,8 +80,12 @@ export async function getAllExitClearances(): Promise<{ status: boolean; data?: 
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    const data = await res.json();
-    return { status: true, data };
+    const result = await res.json();
+    // Backend returns { status: true, data: ExitClearance[] }
+    if (result.status && result.data) {
+      return { status: true, data: result.data };
+    }
+    return { status: false, message: 'Invalid response format' };
   } catch (error) {
     console.error('Error fetching exit clearances:', error);
     return {
@@ -104,8 +108,12 @@ export async function getExitClearanceById(id: string): Promise<{ status: boolea
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    const data = await res.json();
-    return { status: true, data };
+    const result = await res.json();
+    // Backend returns { status: true, data: ExitClearance }
+    if (result.status && result.data) {
+      return { status: true, data: result.data };
+    }
+    return { status: false, message: result.message || 'Exit clearance not found' };
   } catch (error) {
     console.error('Error fetching exit clearance:', error);
     return {
@@ -130,10 +138,12 @@ export async function createExitClearance(data: Omit<ExitClearance, 'id' | 'crea
     }
 
     const result = await res.json();
-    if (result.id || result.status) {
+    // Backend returns { status: true, data: ExitClearance }
+    if (result.status && result.data) {
       revalidatePath('/dashboard/exit-clearance/list');
+      return { status: true, data: result.data };
     }
-    return { status: true, data: result };
+    return { status: false, message: result.message || 'Failed to create exit clearance' };
   } catch (error) {
     console.error('Error creating exit clearance:', error);
     return {
@@ -158,10 +168,12 @@ export async function updateExitClearance(id: string, data: Partial<ExitClearanc
     }
 
     const result = await res.json();
-    if (result.id || result.status) {
+    // Backend returns { status: true, data: ExitClearance }
+    if (result.status && result.data) {
       revalidatePath('/dashboard/exit-clearance/list');
+      return { status: true, data: result.data };
     }
-    return { status: true, data: result };
+    return { status: false, message: result.message || 'Failed to update exit clearance' };
   } catch (error) {
     console.error('Error updating exit clearance:', error);
     return {
@@ -198,7 +210,7 @@ export async function deleteExitClearance(id: string): Promise<{ status: boolean
 // Get all employees for clearance
 export async function getAllEmployeesForClearance(): Promise<{ status: boolean; data?: Employee[]; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/employees-list`, {
+    const res = await fetch(`${API_URL}/employees`, {
       headers: await getAuthHeaders(),
       cache: 'no-store',
     });
@@ -208,8 +220,21 @@ export async function getAllEmployeesForClearance(): Promise<{ status: boolean; 
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    const data = await res.json();
-    return { status: true, data };
+    const result = await res.json();
+    // Backend returns { status: true, data: employees[] }
+    if (result.status && result.data) {
+      // Map the full employee data to the Employee interface format
+      const employees: Employee[] = result.data.map((emp: any) => ({
+        id: emp.id,
+        employeeId: emp.employeeId,
+        employeeName: emp.employeeName,
+        department: emp.department,
+        subDepartment: emp.subDepartment || undefined,
+        designation: emp.designation,
+      }));
+      return { status: true, data: employees };
+    }
+    return { status: false, message: 'Invalid response format' };
   } catch (error) {
     console.error('Error fetching employees:', error);
     return {

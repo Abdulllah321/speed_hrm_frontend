@@ -60,6 +60,9 @@ import {
 } from "@/lib/actions/employee";
 import { uploadEmployeeCsv } from "@/lib/actions/employee-import";
 import { FileUpload } from "@/components/ui/file-upload";
+import { getDepartments, type Department } from "@/lib/actions/department";
+import { getDesignations, type Designation } from "@/lib/actions/designation";
+import { getCitiesByState, type City } from "@/lib/actions/city";
 
 export default function EmployeeListPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -75,6 +78,58 @@ export default function EmployeeListPage() {
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
     null
   );
+
+  // Dropdown data for mapping IDs to names
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [designations, setDesignations] = useState<Designation[]>([]);
+  const [citiesMap, setCitiesMap] = useState<Record<string, City[]>>({});
+
+  // Fetch dropdown data for mapping
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      try {
+        const [deptsRes, designationsRes] = await Promise.all([
+          getDepartments(),
+          getDesignations(),
+        ]);
+
+        if (deptsRes.status) setDepartments(deptsRes.data || []);
+        if (designationsRes.status) setDesignations(designationsRes.data || []);
+      } catch (error) {
+        console.error("Error fetching dropdown data:", error);
+      }
+    };
+
+    fetchDropdownData();
+  }, []);
+
+  // Fetch cities for employees
+  useEffect(() => {
+    const fetchCities = async () => {
+      if (employees.length === 0) return;
+      
+      const uniqueProvinces = [...new Set(employees.map(e => e.province).filter(Boolean))];
+      const citiesData: Record<string, City[]> = {};
+      
+      await Promise.all(
+        uniqueProvinces.map(async (province) => {
+          if (!province) return;
+          try {
+            const res = await getCitiesByState(province);
+            if (res.status && res.data) {
+              citiesData[province] = res.data;
+            }
+          } catch (error) {
+            console.error(`Error fetching cities for ${province}:`, error);
+          }
+        })
+      );
+      
+      setCitiesMap(citiesData);
+    };
+
+    fetchCities();
+  }, [employees]);
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -99,11 +154,31 @@ export default function EmployeeListPage() {
     fetchEmployees();
   }, []);
 
+  // Helper functions to map IDs to names
+  const getDepartmentName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const dept = departments.find(d => d.id === id);
+    return dept?.name || id;
+  };
+
+  const getDesignationName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const designation = designations.find(d => d.id === id);
+    return designation?.name || id;
+  };
+
+  const getCityName = (id: string | null | undefined, province: string | null | undefined) => {
+    if (!id || !province) return "N/A";
+    const cities = citiesMap[province] || [];
+    const city = cities.find(c => c.id === id);
+    return city?.name || id;
+  };
+
   const filteredEmployees = employees.filter(
     (e) =>
       e.employeeName.toLowerCase().includes(search.toLowerCase()) ||
       e.employeeId.toLowerCase().includes(search.toLowerCase()) ||
-      (e.department?.toLowerCase() || "").includes(search.toLowerCase())
+      getDepartmentName(e.department).toLowerCase().includes(search.toLowerCase())
   );
 
   const handleDelete = (employee: Employee) => {
@@ -157,8 +232,8 @@ export default function EmployeeListPage() {
           (e, i) =>
             `<tr><td>${i + 1}</td><td>${e.employeeId}</td><td>${
               e.employeeName
-            }</td><td>${(e as any).departmentName || e.department}</td><td>${
-              (e as any).designationName || e.designation
+            }</td><td>${getDepartmentName(e.department)}</td><td>${
+              getDesignationName(e.designation)
             }</td><td>${e.contactNumber}</td><td>${e.bankName}</td><td>${Number(
               e.employeeSalary
             ).toLocaleString()}</td><td>${e.status}</td></tr>`
@@ -189,14 +264,14 @@ export default function EmployeeListPage() {
       i + 1,
       e.employeeId,
       e.employeeName,
-      e.department || "N/A",
-      e.designation || "N/A",
+      getDepartmentName(e.department),
+      getDesignationName(e.designation),
       e.contactNumber,
       e.officialEmail,
       e.bankName || "N/A",
       e.accountNumber || "N/A",
       e.currentAddress || "N/A",
-      e.city || "N/A",
+      getCityName(e.city, e.province),
       Number(e.employeeSalary),
       e.status,
     ]);
@@ -333,13 +408,9 @@ export default function EmployeeListPage() {
                             {emp.employeeId}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {(emp as any).departmentName ||
-                              emp.department ||
-                              "N/A"}{" "}
+                            {getDepartmentName(emp.department)}{" "}
                             •{" "}
-                            {(emp as any).designationName ||
-                              emp.designation ||
-                              "N/A"}
+                            {getDesignationName(emp.designation)}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {emp.contactNumber}
@@ -360,7 +431,7 @@ export default function EmployeeListPage() {
                             {emp.currentAddress || "N/A"}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {(emp as any).cityName || emp.city || "N/A"}
+                            {getCityName(emp.city, emp.province)}
                           </div>
                         </div>
                       </TableCell>
@@ -475,12 +546,13 @@ export default function EmployeeListPage() {
             />
             <div className="border border-primary/20 rounded-lg p-3 bg-primary/5">
               <p className="text-sm text-primary mb-2">Need a template?</p>
-              <Button asChild variant="outline" size="sm" className="!bg-primary/40 !text-primary-foreground">
-              <a href="/employee_samples.xlsx" download>
-              <Download className="h-4 w-4 mr-2" />
-                  Download Sample Template
-                </a>
-              </Button>
+              <Button asChild variant="outline" size="sm" className="!bg-primary !text-white hover:!bg-primary/90">
+  <a href="/employee_samples.xlsx" download>
+    <Download className="h-4 w-4 mr-2" />
+    Download Sample Template
+  </a>
+</Button>
+
             </div>
           </div>
           <DialogFooter>

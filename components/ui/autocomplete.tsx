@@ -50,6 +50,13 @@ export function Autocomplete({
   const [open, setOpen] = React.useState(false)
 
   const selectedOption = options.find((option) => option.value === value)
+  
+  // Debug: Log if value doesn't match any option
+  React.useEffect(() => {
+    if (value && !selectedOption && options.length > 0) {
+      console.warn(`Autocomplete: Value "${value}" not found in options. Available options:`, options.map(o => o.value));
+    }
+  }, [value, selectedOption, options]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -72,7 +79,13 @@ export function Autocomplete({
             </>
           ) : (
             <>
-              {selectedOption ? selectedOption.label : placeholder}
+              {selectedOption ? (
+                selectedOption.label
+              ) : value && options.length === 0 ? (
+                <span className="text-muted-foreground">Loading options...</span>
+              ) : (
+                placeholder
+              )}
               <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </>
           )}
