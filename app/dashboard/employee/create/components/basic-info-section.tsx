@@ -219,7 +219,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
           <Label>Emergency Contact Number</Label>
           <Controller name="emergencyContactNumber" control={control} render={({ field }) => (
             <Input
-              placeholder="03XX-XXXXXXX"
+              placeholder="0XXX-XXXXXXX"
               value={(field.value as string | undefined) || ""}
               onChange={(e) => field.onChange(formatPhone(e.target.value))}
               maxLength={12}

@@ -17,6 +17,16 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2, User, Edit } from "lucide-react";
 import Link from "next/link";
 import { getEmployeeById, type Employee } from "@/lib/actions/employee";
+import { getDepartments, type Department } from "@/lib/actions/department";
+import { getEmployeeGrades, type EmployeeGrade } from "@/lib/actions/employee-grade";
+import { getDesignations, type Designation } from "@/lib/actions/designation";
+import { getMaritalStatuses, type MaritalStatus } from "@/lib/actions/marital-status";
+import { getEmployeeStatuses, type EmployeeStatus } from "@/lib/actions/employee-status";
+import { getBranches, type Branch } from "@/lib/actions/branch";
+import { getStates, getCitiesByState, type State, type City } from "@/lib/actions/city";
+import { getWorkingHoursPolicies, type WorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
+import { getLeavesPolicies, type LeavesPolicy } from "@/lib/actions/leaves-policy";
+import { getEmployees } from "@/lib/actions/employee";
 
 export default function ViewEmployeePage() {
   const params = useParams();
@@ -24,6 +34,81 @@ export default function ViewEmployeePage() {
   const employeeId = params.id as string;
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Dropdown data for mapping IDs to names
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [employeeGrades, setEmployeeGrades] = useState<EmployeeGrade[]>([]);
+  const [designations, setDesignations] = useState<Designation[]>([]);
+  const [maritalStatuses, setMaritalStatuses] = useState<MaritalStatus[]>([]);
+  const [employeeStatuses, setEmployeeStatuses] = useState<EmployeeStatus[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [states, setStates] = useState<State[]>([]);
+  const [cities, setCities] = useState<City[]>([]);
+  const [workingHoursPolicies, setWorkingHoursPolicies] = useState<WorkingHoursPolicy[]>([]);
+  const [leavesPolicies, setLeavesPolicies] = useState<LeavesPolicy[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
+  // Fetch dropdown data for mapping
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      try {
+        const [
+          deptsRes,
+          gradesRes,
+          designationsRes,
+          maritalRes,
+          statusesRes,
+          branchesRes,
+          statesRes,
+          workingHoursRes,
+          leavesRes,
+          employeesRes,
+        ] = await Promise.all([
+          getDepartments(),
+          getEmployeeGrades(),
+          getDesignations(),
+          getMaritalStatuses(),
+          getEmployeeStatuses(),
+          getBranches(),
+          getStates(),
+          getWorkingHoursPolicies(),
+          getLeavesPolicies(),
+          getEmployees(),
+        ]);
+
+        if (deptsRes.status) setDepartments(deptsRes.data || []);
+        if (gradesRes.status) setEmployeeGrades(gradesRes.data || []);
+        if (designationsRes.status) setDesignations(designationsRes.data || []);
+        if (maritalRes.status) setMaritalStatuses(maritalRes.data || []);
+        if (statusesRes.status) setEmployeeStatuses(statusesRes.data || []);
+        if (branchesRes.status) setBranches(branchesRes.data || []);
+        if (statesRes.status) setStates(statesRes.data || []);
+        if (workingHoursRes.status) setWorkingHoursPolicies(workingHoursRes.data || []);
+        if (leavesRes.status) setLeavesPolicies(leavesRes.data || []);
+        if (employeesRes.status) setEmployees(employeesRes.data || []);
+      } catch (error) {
+        console.error("Error fetching dropdown data:", error);
+      }
+    };
+
+    fetchDropdownData();
+  }, []);
+
+  // Fetch cities when employee province is available
+  useEffect(() => {
+    if (!employee?.province) return;
+    const fetchCities = async () => {
+      try {
+        const res = await getCitiesByState(employee.province);
+        if (res.status) {
+          setCities(res.data || []);
+        }
+      } catch (error) {
+        console.error("Error fetching cities:", error);
+      }
+    };
+    fetchCities();
+  }, [employee?.province]);
 
   useEffect(() => {
     const fetchEmployee = async () => {
@@ -84,6 +169,80 @@ export default function ViewEmployeePage() {
       return `${cleaned.slice(0, 5)}-${cleaned.slice(5, 12)}-${cleaned.slice(12)}`;
     }
     return cnic;
+  };
+
+  // Helper functions to map IDs to names
+  const getDepartmentName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const dept = departments.find(d => d.id === id);
+    return dept?.name || (employee as any).departmentName || id;
+  };
+
+  const getSubDepartmentName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const dept = departments.find(d => d.id === employee?.department);
+    const subDept = dept?.subDepartments?.find(sd => sd.id === id);
+    return subDept?.name || (employee as any).subDepartmentName || id;
+  };
+
+  const getEmployeeGradeName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const grade = employeeGrades.find(g => g.id === id);
+    return grade?.grade || (employee as any).employeeGradeName || id;
+  };
+
+  const getDesignationName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const designation = designations.find(d => d.id === id);
+    return designation?.name || (employee as any).designationName || id;
+  };
+
+  const getMaritalStatusName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const status = maritalStatuses.find(ms => ms.id === id);
+    return status?.name || (employee as any).maritalStatusName || id;
+  };
+
+  const getEmploymentStatusName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const status = employeeStatuses.find(es => es.id === id);
+    return status?.status || (employee as any).employmentStatusName || id;
+  };
+
+  const getBranchName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const branch = branches.find(b => b.id === id);
+    return branch?.name || (employee as any).branchName || id;
+  };
+
+  const getStateName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const state = states.find(s => s.id === id);
+    return state?.name || (employee as any).provinceName || id;
+  };
+
+  const getCityName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const city = cities.find(c => c.id === id);
+    return city?.name || (employee as any).cityName || id;
+  };
+
+  const getWorkingHoursPolicyName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const policy = workingHoursPolicies.find(p => p.id === id);
+    return policy?.name || (employee as any).workingHoursPolicyName || id;
+  };
+
+  const getLeavesPolicyName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const policy = leavesPolicies.find(p => p.id === id);
+    return policy?.name || (employee as any).leavesPolicyName || id;
+  };
+
+  const getReportingManagerName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const manager = employees.find(e => e.id === id);
+    return manager ? `${manager.employeeName} (${manager.employeeId})` : (employee as any).reportingManagerName || id;
   };
 
   return (
@@ -149,13 +308,13 @@ export default function ViewEmployeePage() {
   { label: "Employee ID", value: employee.employeeId },
   { label: "Employee Name", value: employee.employeeName },
   { label: "Father / Husband Name", value: employee.fatherHusbandName || "N/A" },
-  { label: "Department", value: (employee as any).departmentName || employee.department || "N/A" },
-  { label: "Sub Department", value: (employee as any).subDepartmentName || employee.subDepartment || "N/A" },
-  { label: "Employee Grade", value: (employee as any).employeeGradeName || employee.employeeGrade || "N/A" },
+  { label: "Department", value: getDepartmentName(employee.department) },
+  { label: "Sub Department", value: getSubDepartmentName(employee.subDepartment) },
+  { label: "Employee Grade", value: getEmployeeGradeName(employee.employeeGrade) },
   { label: "Attendance ID", value: employee.attendanceId || "N/A" },
-  { label: "Designation", value: (employee as any).designationName || employee.designation || "N/A" },
-  { label: "Marital Status", value: (employee as any).maritalStatusName || employee.maritalStatus || "N/A" },
-  { label: "Employment Status", value: (employee as any).employmentStatusName || employee.employmentStatus || "N/A" },
+  { label: "Designation", value: getDesignationName(employee.designation) },
+  { label: "Marital Status", value: getMaritalStatusName(employee.maritalStatus) },
+  { label: "Employment Status", value: getEmploymentStatusName(employee.employmentStatus) },
   { label: "Probation Expiry Date", value: formatDate(employee.probationExpiryDate) },
   { label: "CNIC Number", value: formatCNIC(employee.cnicNumber) },
   { label: "CNIC Expiry Date", value: employee.lifetimeCnic ? "Lifetime" : formatDate(employee.cnicExpiryDate) },
@@ -169,18 +328,18 @@ export default function ViewEmployeePage() {
   { label: "Personal Email", value: employee.personalEmail || "N/A" },
   { label: "Official Email", value: employee.officialEmail || "N/A" },
   { label: "Country", value: employee.country || "N/A" },
-  { label: "State / Province", value: (employee as any).provinceName || employee.province || "N/A" },
-  { label: "City", value: (employee as any).cityName || employee.city || "N/A" },
+  { label: "State / Province", value: getStateName(employee.province) },
+  { label: "City", value: getCityName(employee.city) },
   { label: "Employee Salary", value: `PKR ${Number(employee.employeeSalary).toLocaleString()}` },
   { label: "EOBI", value: employee.eobi ? "Yes" : "No" },
   ...(employee.eobi ? [{ label: "EOBI Number", value: employee.eobiNumber || "N/A" }] : []),
   { label: "Provident Fund", value: employee.providentFund ? "Yes" : "No" },
   { label: "Overtime Applicable", value: employee.overtimeApplicable ? "Yes" : "No" },
   { label: "Days Off", value: employee.daysOff || "N/A" },
-  { label: "Reporting Manager", value: employee.reportingManager || "N/A" },
-  { label: "Working Hours Policy", value: (employee as any).workingHoursPolicyName || employee.workingHoursPolicy || "N/A" },
-  { label: "Branch", value: (employee as any).branchName || employee.branch || "N/A" },
-  { label: "Leaves Policy", value: (employee as any).leavesPolicyName || employee.leavesPolicy || "N/A" },
+  { label: "Reporting Manager", value: getReportingManagerName(employee.reportingManager) },
+  { label: "Working Hours Policy", value: getWorkingHoursPolicyName(employee.workingHoursPolicy) },
+  { label: "Branch", value: getBranchName(employee.branch) },
+  { label: "Leaves Policy", value: getLeavesPolicyName(employee.leavesPolicy) },
   { label: "Allow Remote Attendance", value: employee.allowRemoteAttendance ? "Yes" : "No" },
 ].map((item, index) => (
   <div

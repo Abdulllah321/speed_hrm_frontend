@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -31,6 +32,7 @@ export default function CreateExitClearancePage() {
   const [loading, setLoading] = useState(true);
 
   const [formData, setFormData] = useState({
+    selectedEmployeeId: "",
     employeeName: "",
     designation: "",
     department: "",
@@ -76,8 +78,13 @@ export default function CreateExitClearancePage() {
     const fetchEmployees = async () => {
       try {
         const result = await getAllEmployeesForClearance();
+        console.log("Employees fetch result:", result);
         if (result.status && result.data) {
+          console.log("Employees data:", result.data);
           setEmployees(result.data);
+          if (result.data.length === 0) {
+            toast.info("No employees available for clearance");
+          }
         } else {
           toast.error(result.message || "Failed to load employees");
         }
@@ -101,6 +108,7 @@ export default function CreateExitClearancePage() {
     if (selected) {
       setFormData((prev) => ({
         ...prev,
+        selectedEmployeeId: employeeId,
         employeeName: selected.employeeName,
         designation: selected.designation,
         department: selected.department,
@@ -196,14 +204,20 @@ export default function CreateExitClearancePage() {
               {loading ? (
                 <div className="h-10 bg-muted rounded animate-pulse" />
               ) : (
-                <Select value={formData.employeeName} onValueChange={handleEmployeeChange} disabled={isPending || loading}>
-                  <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                <Select value={formData.selectedEmployeeId} onValueChange={handleEmployeeChange} disabled={isPending || loading}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={employees.length > 0 ? "Select employee" : "No employees available"} />
+                  </SelectTrigger>
                   <SelectContent>
-                    {employees.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.employeeName} ({e.employeeId})
-                      </SelectItem>
-                    ))}
+                    {employees.length > 0 ? (
+                      employees.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.employeeName} - {e.employeeId}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">No employees available</div>
+                    )}
                   </SelectContent>
                 </Select>
               )}
@@ -236,11 +250,21 @@ export default function CreateExitClearancePage() {
             </div>
             <div className="space-y-2">
               <Label>Contract End</Label>
-              <Input type="date" value={formData.contractEnd} onChange={(e) => updateField("contractEnd", e.target.value)} disabled={isPending} />
+              <DatePicker 
+                value={formData.contractEnd || undefined} 
+                onChange={(value) => updateField("contractEnd", value)} 
+                disabled={isPending}
+                placeholder="Select contract end date"
+              />
             </div>
             <div className="space-y-2">
               <Label>Last Working Date *</Label>
-              <Input type="date" value={formData.lastWorkingDate} onChange={(e) => updateField("lastWorkingDate", e.target.value)} required disabled={isPending} />
+              <DatePicker 
+                value={formData.lastWorkingDate || undefined} 
+                onChange={(value) => updateField("lastWorkingDate", value)} 
+                disabled={isPending}
+                placeholder="Select last working date"
+              />
             </div>
             <div className="space-y-2">
               <Label>Reporting Manager</Label>
@@ -248,7 +272,12 @@ export default function CreateExitClearancePage() {
             </div>
             <div className="space-y-2">
               <Label>Date</Label>
-              <Input type="date" value={formData.date} onChange={(e) => updateField("date", e.target.value)} disabled={isPending} />
+              <DatePicker 
+                value={formData.date || undefined} 
+                onChange={(value) => updateField("date", value)} 
+                disabled={isPending}
+                placeholder="Select date"
+              />
             </div>
           </CardContent>
         </Card>

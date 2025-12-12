@@ -403,7 +403,7 @@ export function EmployeeForm({
       gender: initialData.gender || "",
       contactNumber: initialData.contactNumber || "",
       emergencyContactNumber: initialData.emergencyContactNumber || "",
-      emergencyContactPersonName: initialData.emergencyContactPersonName || "",
+      emergencyContactPersonName: (initialData as any).emergencyContactPersonName || initialData.emergencyContactPerson || "",
       personalEmail: initialData.personalEmail || "",
       officialEmail: initialData.officialEmail || "",
       country: initialData.country || "Pakistan",
@@ -675,6 +675,17 @@ export function EmployeeForm({
     return await new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.9));
   }
 
+  const handleCropDialogClose = (open: boolean) => {
+    if (!open) {
+      // Reset all crop state when dialog closes
+      setCropSrc(null);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+    }
+    setCropDialogOpen(open);
+  };
+
   const confirmCropAndUpload = async () => {
     if (!cropSrc || !croppedAreaPixels) return;
     try {
@@ -686,10 +697,13 @@ export function EmployeeForm({
       const uploaded = await uploadFile(file);
       setValue("avatarUrl", uploaded.url);
       toast.success("Profile picture uploaded");
-      setCropDialogOpen(false);
-      setCropSrc(null);
+      
+      // Close dialog - state will be reset by handleCropDialogClose
+      handleCropDialogClose(false);
     } catch (err: any) {
       toast.error(err?.message || "Failed to upload profile picture");
+      // Close dialog even on error
+      handleCropDialogClose(false);
     }
   };
 
@@ -784,8 +798,12 @@ export function EmployeeForm({
   };
 
   const goNext = async () => {
+    console.log("➡️ Next button clicked, current step:", step);
     const isValid = await validateStep(step);
+    console.log("✅ Step validation result:", isValid);
     if (!isValid) {
+      console.log("❌ Validation failed for step:", step);
+      console.log("🔍 Current form errors:", errors);
       toast.error("Please fill required fields in this step");
       return;
     }
@@ -797,10 +815,17 @@ export function EmployeeForm({
   };
 
   const onSubmit = async (data: EmployeeFormData) => {
+    console.log("✅ Form submitted! Mode:", mode);
+    console.log("📋 Form data:", data);
+    console.log("🔍 Form errors:", errors);
+    
     startTransition(async () => {
+      console.log("🚀 Start transition called");
       try {
         if (mode === "create") {
-          const result = await createEmployee({
+          console.log("📝 Creating new employee...");
+          // Prepare employee data
+          const employeeData = {
             employeeId: data.employeeId,
             employeeName: data.employeeName,
             fatherHusbandName: data.fatherHusbandName,
@@ -841,23 +866,37 @@ export function EmployeeForm({
             allowRemoteAttendance: data.allowRemoteAttendance,
             currentAddress: data.currentAddress || undefined,
             permanentAddress: data.permanentAddress || undefined,
-            bankName: data.bankName,
-            accountNumber: data.accountNumber,
-            accountTitle: data.accountTitle,
+            bankName: data.bankName || "",
+            accountNumber: data.accountNumber || "",
+            accountTitle: data.accountTitle || "",
             selectedEquipments: data.selectedEquipments,
             accountType: data.accountType || undefined,
             password: data.password || undefined,
             roles: data.roles || undefined,
+            avatarUrl: data.avatarUrl || undefined,
+            eobiDocumentUrl: data.eobiDocumentUrl || undefined,
+            documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
+          };
+
+          // Debug: Log the data being sent (remove sensitive data in production)
+          console.log("🚀 Creating employee with data:", {
+            ...employeeData,
+            password: data.password ? "***" : undefined,
           });
+
+          const result = await createEmployee(employeeData);
+
+          console.log("📥 Employee creation response:", result);
 
           if (result.status) {
             toast.success(result.message || "Employee created successfully");
             router.push("/dashboard/employee/list");
           } else {
+            console.error("❌ Employee creation failed:", result);
             toast.error(result.message || "Failed to create employee");
           }
         } else if (mode === "edit" && initialData) {
-          const result = await updateEmployee(initialData.id, {
+          const employeeData = {
             employeeId: data.employeeId,
             employeeName: data.employeeName,
             fatherHusbandName: data.fatherHusbandName,
@@ -885,7 +924,7 @@ export function EmployeeForm({
             country: data.country,
             state: data.state,
             city: data.city,
-            employeeSalary: data.employeeSalary,
+            employeeSalary: parseFloat(data.employeeSalary) || 0,
             eobi: data.eobi,
             eobiNumber: data.eobiNumber || undefined,
             providentFund: data.providentFund,
@@ -898,24 +937,42 @@ export function EmployeeForm({
             allowRemoteAttendance: data.allowRemoteAttendance,
             currentAddress: data.currentAddress || undefined,
             permanentAddress: data.permanentAddress || undefined,
-            bankName: data.bankName,
-            accountNumber: data.accountNumber,
-            accountTitle: data.accountTitle,
+            bankName: data.bankName || "",
+            accountNumber: data.accountNumber || "",
+            accountTitle: data.accountTitle || "",
             selectedEquipments: data.selectedEquipments,
             accountType: data.accountType || undefined,
             roles: data.roles || undefined,
+            avatarUrl: data.avatarUrl || undefined,
+            eobiDocumentUrl: data.eobiDocumentUrl || undefined,
+            documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
+          };
+
+          console.log("🔄 Updating employee with data:", {
+            ...employeeData,
+            password: data.password ? "***" : undefined,
           });
+
+          const result = await updateEmployee(initialData.id, employeeData);
+
+          console.log("📥 Employee update response:", result);
 
           if (result.status) {
             toast.success(result.message || "Employee updated successfully");
             router.push("/dashboard/employee/list");
           } else {
+            console.error("❌ Employee update failed:", result);
             toast.error(result.message || "Failed to update employee");
           }
         }
       } catch (error) {
-        console.error("Error:", error);
-        toast.error(mode === "create" ? "Failed to create employee" : "Failed to update employee");
+        console.error("💥 Error in employee form submission:", error);
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : mode === "create" 
+            ? "Failed to create employee. Please check console for details." 
+            : "Failed to update employee. Please check console for details.";
+        toast.error(errorMessage);
       }
     });
   };
@@ -931,7 +988,18 @@ export function EmployeeForm({
         </Link>
       </div>
       <div className="rounded-2xl border bg-muted/10 p-6">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form 
+          onSubmit={handleSubmit(
+            onSubmit,
+            (errors) => {
+              console.log("❌ Form validation failed!");
+              console.log("🔍 Validation errors:", errors);
+              console.log("📋 Current form values:", form.getValues());
+              toast.error("Please fix all validation errors before submitting");
+            }
+          )} 
+          className="space-y-6"
+        >
           <div className="flex flex-wrap items-center gap-3">   
             {stepLabels.map((label, idx) => {
               const isActive = idx === step;
@@ -999,7 +1067,7 @@ export function EmployeeForm({
                 disabled={isPending}
               />
             </div>
-            <Dialog open={cropDialogOpen} onOpenChange={setCropDialogOpen}>
+            <Dialog open={cropDialogOpen} onOpenChange={handleCropDialogClose}>
               <DialogContent className="sm:max-w-[480px]">
                 <DialogHeader>
                   <DialogTitle>Crop Profile Picture</DialogTitle>
@@ -1019,7 +1087,7 @@ export function EmployeeForm({
                 </div>
                 <DialogFooter>
                   <div className="flex w-full justify-end gap-2">
-                    <Button variant="outline" onClick={() => setCropDialogOpen(false)}>Cancel</Button>
+                    <Button variant="outline" onClick={() => handleCropDialogClose(false)}>Cancel</Button>
                     <Button onClick={confirmCropAndUpload}>Save</Button>
                   </div>
                 </DialogFooter>
@@ -1428,7 +1496,20 @@ export function EmployeeForm({
               </Button>
             )}
             {step === stepLabels.length - 1 && (
-              <Button type="submit" disabled={isPending} className="flex-1">
+              <Button 
+                type="submit" 
+                disabled={isPending} 
+                className="flex-1"
+                onClick={(e) => {
+                  console.log("🖱️ Submit button clicked!");
+                  console.log("📊 Current step:", step);
+                  console.log("📋 Form values:", form.getValues());
+                  console.log("❌ Form errors:", form.formState.errors);
+                  console.log("✅ Form is valid:", form.formState.isValid);
+                  console.log("⏳ Is pending:", isPending);
+                  // Let form submit normally - don't prevent default
+                }}
+              >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {mode === "create" ? "Create Employee" : "Update Employee"}
               </Button>
