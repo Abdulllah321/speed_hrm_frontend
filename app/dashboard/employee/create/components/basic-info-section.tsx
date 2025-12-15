@@ -292,7 +292,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
 
         <div className="space-y-2">
   <Label>
-    Reporting Manager <span className="text-destructive">*</span>
+    Reporting Manager
   </Label>
 
   <Controller

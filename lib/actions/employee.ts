@@ -57,14 +57,18 @@ export interface Employee {
   bankName: string;
   accountNumber: string;
   accountTitle: string;
-  laptop?: boolean;
-  card?: boolean;
-  mobileSim?: boolean;
-  key?: boolean;
-  tools?: boolean;
-  accountType?: string | null;
-  roles?: string | null;
   status: string;
+  equipmentAssignments?: Array<{
+    id: string;
+    equipmentId: string;
+    equipment?: {
+      id: string;
+      name: string;
+    };
+    assignedDate: string;
+    returnedDate?: string | null;
+    status: string;
+  }>;
   createdAt: string;
   updatedAt: string;
   // Optional mapped name fields from backend

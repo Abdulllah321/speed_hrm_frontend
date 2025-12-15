@@ -189,10 +189,7 @@ const employeeFormSchema = z.object({
   emergencyContactNumber: z
     .string()
     .optional()
-    .refine(
-      (value) => !value || /^03\d{2}-\d{7}$|^\+92\d{10}$/.test(value.replace(/\s/g, "")),
-      "Emergency Contact Number must be in format: 03XX-XXXXXXX"
-    ),
+   ,
   
   emergencyContactPersonName: z
     .string()
@@ -261,7 +258,7 @@ const employeeFormSchema = z.object({
   
   reportingManager: z
     .string()
-    .min(1, "Reporting Manager is required"),
+    .optional(),
   
   workingHoursPolicy: z
     .string()
@@ -317,23 +314,6 @@ const employeeFormSchema = z.object({
       "Account Title must not exceed 100 characters"
     ),
 
-  
-  // Login Credentials
-  accountType: z
-    .string()
-    .optional(),
-  
-  password: z
-    .string()
-    .optional()
-    .refine(
-      (value) => !value || value.length >= 6,
-      "Password must be at least 6 characters"
-    ),
-  
-  roles: z
-    .string()
-    .optional(),
   avatarUrl: z.string().optional(),
   eobiDocumentUrl: z.string().optional(),
   
@@ -435,7 +415,7 @@ export function EmployeeForm({
       personalEmail: initialData.personalEmail || "",
       officialEmail: initialData.officialEmail || "",
       country: initialData.country || "Pakistan",
-      state: initialData.province || initialData.state || "",
+      state: initialData.province || "",
       city: initialData.city || "",
       employeeSalary: initialData.employeeSalary?.toString() || "",
       eobi: initialData.eobi || false,
@@ -448,17 +428,16 @@ export function EmployeeForm({
       branch: initialData.branch || "",
       leavesPolicy: initialData.leavesPolicy || "",
       allowRemoteAttendance: initialData.allowRemoteAttendance || false,
-      currentAddress: initialData.currentAddress || "",
-      permanentAddress: initialData.permanentAddress || "",
+      currentAddress: initialData.currentAddress ?? "",
+      permanentAddress: initialData.permanentAddress ?? "",
       bankName: initialData.bankName || "",
       accountNumber: initialData.accountNumber || "",
       accountTitle: initialData.accountTitle || "",
-      selectedEquipments: initialData.selectedEquipments || [],
-      accountType: initialData.accountType || "",
-      password: "",
-      roles: initialData.roles || "",
-      avatarUrl: initialData.avatarUrl || "",
-      eobiDocumentUrl: initialData.eobiDocumentUrl || "",
+      selectedEquipments: (initialData as any).equipmentAssignments 
+        ? (initialData as any).equipmentAssignments.map((ea: any) => ea.equipment?.id || ea.equipmentId).filter(Boolean)
+        : [],
+      avatarUrl: (initialData as any).avatarUrl || "",
+      eobiDocumentUrl: (initialData as any).eobiDocumentUrl || "",
       qualifications: (initialData as any).qualifications && Array.isArray((initialData as any).qualifications) && (initialData as any).qualifications.length > 0
         ? (initialData as any).qualifications
         : [{
@@ -514,9 +493,6 @@ export function EmployeeForm({
       accountNumber: "",
       accountTitle: "",
       selectedEquipments: [],
-      accountType: "",
-      password: "",
-      roles: "",
       avatarUrl: "",
       eobiDocumentUrl: "",
       qualifications: [{
@@ -595,13 +571,11 @@ export function EmployeeForm({
     "Meezan Bank",
     "Standard Chartered",
   ];
-  const accountTypes = ["Admin", "Employee", "Manager", "HR"];
-  const roles = ["Super Admin", "Admin", "HR Manager", "Employee", "Viewer"];
   const daysOff = ["Sunday", "Saturday-Sunday", "Friday", "Friday-Saturday"];
 
   // Profile pic and documents state
   const [profilePicPreview, setProfilePicPreview] = useState<string | null>(
-    initialData?.avatarUrl || null
+    (initialData as any)?.avatarUrl || null
   );
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
@@ -672,6 +646,21 @@ export function EmployeeForm({
     }
   };
 
+  // Initialize sub-departments when editing with initialData
+  useEffect(() => {
+    if (mode === "edit" && initialData?.department && departments.length > 0) {
+      const deptId = typeof initialData.department === 'string' 
+        ? initialData.department 
+        : (initialData.department as any)?.id;
+      if (deptId) {
+        const selected = departments.find((d) => d.id === deptId);
+        if (selected?.subDepartments) {
+          setSubDepartments(selected.subDepartments);
+        }
+      }
+    }
+  }, [mode, initialData?.department, departments]);
+
   // Handle sub-departments change
   useEffect(() => {
     if (!department) {
@@ -685,6 +674,56 @@ export function EmployeeForm({
     setLoadingSubDepartments(false);
   }, [department, departments, setValue]);
 
+  // Auto-select default working hours policy and leaves policy
+  useEffect(() => {
+    if (mode === "create" && !initialData && workingHoursPolicies.length > 0 && leavesPolicies.length > 0) {
+      // Find default working hours policy
+      const defaultWorkingHoursPolicy = workingHoursPolicies.find(p => p.isDefault);
+      if (defaultWorkingHoursPolicy) {
+        const currentValue = watch("workingHoursPolicy");
+        if (!currentValue) {
+          setValue("workingHoursPolicy", defaultWorkingHoursPolicy.id, { shouldValidate: false });
+        }
+      }
+
+      // Find default leaves policy
+      const defaultLeavesPolicy = leavesPolicies.find(p => p.isDefault);
+      if (defaultLeavesPolicy) {
+        const currentValue = watch("leavesPolicy");
+        if (!currentValue) {
+          setValue("leavesPolicy", defaultLeavesPolicy.id, { shouldValidate: false });
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workingHoursPolicies, leavesPolicies, mode, initialData]);
+
+  // Initialize cities when editing with initialData
+  useEffect(() => {
+    if (mode === "edit" && initialData?.province && states.length > 0) {
+      const stateId = typeof initialData.province === 'string' 
+        ? initialData.province 
+        : (initialData.province as any)?.id;
+      if (stateId) {
+        const fetchCities = async () => {
+          try {
+            setLoadingCities(true);
+            const { getCitiesByState } = await import("@/lib/actions/city");
+            const res = await getCitiesByState(stateId);
+            if (res.status && res.data) {
+              setCities(res.data);
+            }
+          } catch (error) {
+            console.error("Error fetching cities:", error);
+          } finally {
+            setLoadingCities(false);
+          }
+        };
+        fetchCities();
+      }
+    }
+  }, [mode, initialData?.province, states.length]);
+
   // Handle cities change
   useEffect(() => {
     const run = async () => {
@@ -696,10 +735,13 @@ export function EmployeeForm({
       }
       try {
         setLoadingCities(true);
-        const res = await fetch(`/api/data/cities/${state}`, { cache: "no-store" });
-        const json = await res.json();
-        if (json.status) setCities(json.data || []);
-        else toast.error(json.message || "Failed to load cities");
+        const { getCitiesByState } = await import("@/lib/actions/city");
+        const res = await getCitiesByState(state);
+        if (res.status && res.data) {
+          setCities(res.data);
+        } else {
+          toast.error(res.message || "Failed to load cities");
+        }
       } catch {
         toast.error("Failed to load cities");
       } finally {
@@ -778,15 +820,6 @@ export function EmployeeForm({
     }
   };
 
-  const generatePassword = () => {
-    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-    let password = "";
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setValue("password", password);
-    toast.success("Password generated!");
-  };
 
   const handleFileChange = async (key: string, file: File | null) => {
     setDocuments((prev) => ({ ...prev, [key]: file }));
@@ -935,7 +968,7 @@ export function EmployeeForm({
             providentFund: data.providentFund,
             overtimeApplicable: data.overtimeApplicable,
             daysOff: data.daysOff || undefined,
-            reportingManager: data.reportingManager,
+            reportingManager: data.reportingManager || "",
             workingHoursPolicy: data.workingHoursPolicy,
             branch: data.branch,
             leavesPolicy: data.leavesPolicy,
@@ -946,9 +979,6 @@ export function EmployeeForm({
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
             selectedEquipments: data.selectedEquipments,
-            accountType: data.accountType || undefined,
-            password: data.password || undefined,
-            roles: data.roles || undefined,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
@@ -966,10 +996,7 @@ export function EmployeeForm({
           };
 
           // Debug: Log the data being sent (remove sensitive data in production)
-          console.log("🚀 Creating employee with data:", {
-            ...employeeData,
-            password: data.password ? "***" : undefined,
-          });
+          console.log("🚀 Creating employee with data:", employeeData);
 
           const result = await createEmployee(employeeData);
 
@@ -1028,8 +1055,6 @@ export function EmployeeForm({
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
             selectedEquipments: data.selectedEquipments,
-            accountType: data.accountType || undefined,
-            roles: data.roles || undefined,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
@@ -1046,10 +1071,7 @@ export function EmployeeForm({
               : undefined,
           };
 
-          console.log("🔄 Updating employee with data:", {
-            ...employeeData,
-            password: data.password ? "***" : undefined,
-          });
+          console.log("🔄 Updating employee with data:", employeeData);
 
           const result = await updateEmployee(initialData.id, employeeData as any);
 
@@ -1358,84 +1380,6 @@ export function EmployeeForm({
                 </CardContent>
               </Card>
 
-              {/* Login Credentials */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Login Credentials</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Account Type</Label>
-                    <Controller
-                      name="accountType"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {accountTypes.map((t) => (
-                              <SelectItem key={t} value={t}>
-                                {t}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Password</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        {...register("password")}
-                        disabled={isPending}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={generatePassword}
-                        disabled={isPending}
-                      >
-                        <Key className="h-4 w-4 mr-1" />
-                        Generate
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Roles</Label>
-                    <Controller
-                      name="roles"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roles.map((r) => (
-                              <SelectItem key={r} value={r}>
-                                {r}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
             </>
           )}
 

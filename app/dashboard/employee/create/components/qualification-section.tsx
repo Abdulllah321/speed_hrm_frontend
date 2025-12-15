@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { createQualification } from "@/lib/actions/qualification";
 import { createInstitute } from "@/lib/actions/institute";
+import { getCitiesByState } from "@/lib/actions/city";
 import * as React from "react";
 import { CheckIcon, ChevronsUpDownIcon, Loader2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -108,15 +109,14 @@ export function QualificationSection({
 
       try {
         setLoadingQualificationCities((prev) => ({ ...prev, [index]: true }));
-        const res = await fetch(`/api/data/cities/${stateId}`, { cache: "no-store" });
-        const json = await res.json();
-        if (json.status) {
+        const result = await getCitiesByState(stateId);
+        if (result.status && result.data) {
           setQualificationCities((prev) => ({
             ...prev,
-            [index]: json.data || [],
+            [index]: result.data || [],
           }));
         } else {
-          toast.error(json.message || "Failed to load cities");
+          console.error("Failed to load cities:", result.message);
           setQualificationCities((prev) => {
             const updated = { ...prev };
             updated[index] = [];
@@ -125,7 +125,6 @@ export function QualificationSection({
         }
       } catch (error) {
         console.error("Error fetching cities:", error);
-        toast.error("Failed to load cities");
         setQualificationCities((prev) => {
           const updated = { ...prev };
           updated[index] = [];
@@ -136,12 +135,25 @@ export function QualificationSection({
       }
     };
 
+    if (!watchedQualifications || watchedQualifications.length === 0) {
+      return;
+    }
+
     // Fetch cities for each qualification that has a state
     const timers: NodeJS.Timeout[] = [];
-    watchedQualifications?.forEach((qual: any, index: number) => {
-      if (qual?.stateId) {
+    watchedQualifications.forEach((qual: any, index: number) => {
+      const stateId = qual?.stateId;
+      if (stateId) {
+        // Set loading state immediately if not already set
+        setLoadingQualificationCities((prev) => {
+          if (!prev[index]) {
+            return { ...prev, [index]: true };
+          }
+          return prev;
+        });
+        // Always fetch when stateId is present to ensure fresh data
         const timer = setTimeout(() => {
-          fetchCitiesForQualification(index, qual.stateId);
+          fetchCitiesForQualification(index, stateId);
         }, 250);
         timers.push(timer);
       } else {
@@ -152,13 +164,14 @@ export function QualificationSection({
           return updated;
         });
         form.setValue(`qualifications.${index}.cityId`, "");
+        setLoadingQualificationCities((prev) => ({ ...prev, [index]: false }));
       }
     });
 
     return () => {
       timers.forEach(timer => clearTimeout(timer));
     };
-  }, [watchedQualifications, form]);
+  }, [watchedQualifications, form.setValue]);
 
   // Handle create qualification from search
   const handleCreateQualification = async (name: string, index: number): Promise<string | null> => {
@@ -375,21 +388,8 @@ export function QualificationSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2 flex-1">
-          Qualification
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleAddQualification}
-          disabled={isPending}
-          className="ml-4"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Qualification
-        </Button>
+      <div className="text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2">
+        Qualification
       </div>
 
       <div className="space-y-4">
@@ -535,6 +535,18 @@ export function QualificationSection({
                           field.onChange(val);
                           // Reset city when state changes
                           form.setValue(`qualifications.${index}.cityId`, "");
+                          // Clear cities for this qualification to trigger refetch
+                          setQualificationCities((prev) => {
+                            const updated = { ...prev };
+                            updated[index] = [];
+                            return updated;
+                          });
+                          // Set loading state immediately when state changes
+                          if (val) {
+                            setLoadingQualificationCities((prev) => ({ ...prev, [index]: true }));
+                          } else {
+                            setLoadingQualificationCities((prev) => ({ ...prev, [index]: false }));
+                          }
                         }}
                         placeholder="Select State"
                         disabled={isPending || loadingData}
@@ -577,6 +589,19 @@ export function QualificationSection({
             </div>
           );
         })}
+      </div>
+
+      <div className="flex justify-end pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAddQualification}
+          disabled={isPending}
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Qualification
+        </Button>
       </div>
     </div>
   );

@@ -151,11 +151,17 @@ export default function EditEmployeePage() {
   }, []);
 
   // Fetch sub-departments when employee department is available
+  // Note: employee.department should now be an ID string from the backend
   useEffect(() => {
     if (!employee?.department) return;
+    const departmentId = typeof employee.department === 'string' 
+      ? employee.department 
+      : (employee.department as any)?.id;
+    if (!departmentId) return;
+    
     const fetchSubDepartments = async () => {
       try {
-        const res = await getSubDepartmentsByDepartment(employee.department);
+        const res = await getSubDepartmentsByDepartment(departmentId);
         if (res.status) {
           setSubDepartments(res.data || []);
         }
