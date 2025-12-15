@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { createAttendanceRequestQuery } from "@/lib/actions/attendance-request-query";
+import { createAttendanceRequestQuery, getAllAttendanceRequestQueries } from "@/lib/actions/attendance-request-query";
+import type { AttendanceRequestQuery } from "@/lib/actions/attendance-request-query";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-Picker";
 import {
@@ -22,12 +23,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { getAllEmployeesForClearance } from "@/lib/actions/exit-clearance";
 import type { Employee } from "@/lib/actions/exit-clearance";
+import DataTable from "@/components/common/data-table";
+import { columns } from "../request-list/columns";
 
 export default function AttendanceRequestQueryPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userRequests, setUserRequests] = useState<AttendanceRequestQuery[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
 
   const [formData, setFormData] = useState({
     employeeId: "",
@@ -61,6 +66,36 @@ export default function AttendanceRequestQueryPage() {
 
     fetchEmployees();
   }, []);
+
+  // Fetch user's requests when employee is selected
+  useEffect(() => {
+    const fetchUserRequests = async () => {
+      if (!formData.employeeId) {
+        setUserRequests([]);
+        return;
+      }
+
+      setLoadingRequests(true);
+      try {
+        const result = await getAllAttendanceRequestQueries();
+        if (result.status && result.data) {
+          // Filter requests for the selected employee
+          const filtered = result.data.filter(
+            (req) => req.employeeId === formData.employeeId
+          );
+          setUserRequests(filtered);
+        } else {
+          console.error("Failed to load requests:", result.message);
+        }
+      } catch (error) {
+        console.error("Failed to fetch requests:", error);
+      } finally {
+        setLoadingRequests(false);
+      }
+    };
+
+    fetchUserRequests();
+  }, [formData.employeeId]);
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -103,7 +138,16 @@ export default function AttendanceRequestQueryPage() {
 
         if (result.status) {
           toast.success(result.message || "Attendance request query created successfully");
-          router.push("/dashboard/attendance/request-list");
+          // Refresh user requests
+          const refreshResult = await getAllAttendanceRequestQueries();
+          if (refreshResult.status && refreshResult.data) {
+            const filtered = refreshResult.data.filter(
+              (req) => req.employeeId === formData.employeeId
+            );
+            setUserRequests(filtered);
+          }
+          // Optionally redirect or stay on page
+          // router.push("/dashboard/attendance/request-list");
         } else {
           toast.error(result.message || "Failed to create attendance request query");
         }
@@ -228,6 +272,55 @@ export default function AttendanceRequestQueryPage() {
         {/* Submit */}
       
       </form>
+
+      {/* User's Requests Data Table */}
+      {formData.employeeId && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>My Requests</CardTitle>
+            <CardDescription>
+              View all your attendance request queries for {formData.employeeName}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingRequests ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : userRequests.length > 0 ? (
+              <DataTable
+                columns={columns}
+                data={userRequests.map((req, index) => ({
+                  ...req,
+                  id: req.id,
+                  sNo: index + 1,
+                }))}
+                searchFields={[
+                  { key: "query", label: "Query" },
+                  { key: "attendanceDate", label: "Date" },
+                  { key: "approvalStatus", label: "Status" },
+                ]}
+                filters={[
+                  {
+                    key: "approvalStatus",
+                    label: "Status",
+                    options: [
+                      { value: "all", label: "All Status" },
+                      { value: "pending", label: "Pending" },
+                      { value: "approved", label: "Approved" },
+                      { value: "rejected", label: "Rejected" },
+                    ],
+                  },
+                ]}
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                No requests found for this employee.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

@@ -225,13 +225,14 @@ export async function getAllEmployeesForClearance(): Promise<{ status: boolean; 
     // Backend returns { status: true, data: employees[] }
     if (result.status && result.data) {
       // Map the full employee data to the Employee interface format
+      // Backend now returns names directly in department, subDepartment, designation fields
       const employees: Employee[] = result.data.map((emp: any) => ({
         id: emp.id,
         employeeId: emp.employeeId,
         employeeName: emp.employeeName,
-        department: emp.department,
-        subDepartment: emp.subDepartment || undefined,
-        designation: emp.designation,
+        department: emp.department || emp.departmentId || '',
+        subDepartment: emp.subDepartment || emp.subDepartmentId || undefined,
+        designation: emp.designation || emp.designationId || '',
       }));
       return { status: true, data: employees };
     }

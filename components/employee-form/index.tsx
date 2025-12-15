@@ -1243,19 +1243,18 @@ export function EmployeeForm({
               {/* Qualification Section */}
               <Card className="border-0 shadow-none bg-muted/50">
                 <CardHeader>
-                  <CardTitle className="text-lg font-semibold">
+                  {/* <CardTitle className="text-lg font-semibold">
                     Qualifications
                   </CardTitle>
-                  <CardDescription>Add employee qualifications</CardDescription>
+                  <CardDescription>Add employee qualifications</CardDescription> */}
                 </CardHeader>
                 <CardContent>
                   <QualificationSection
                     form={form}
                     isPending={isPending}
-                    loadingData={loadingData || loadingCountries}
+                    loadingData={loadingData}
                     qualifications={(qualifications || []).map(q => ({ id: q.id, name: q.name }))}
                     institutes={(institutes || []).map(i => ({ id: i.id, name: i.name }))}
-                    countries={countries}
                     states={states.map(s => ({ id: s.id, name: s.name }))}
                     cities={cities.map(c => ({ id: c.id, name: c.name, stateId: (c as any).stateId }))}
                     errors={errors}

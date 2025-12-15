@@ -132,6 +132,8 @@ type DataTableProps<TData extends DataTableRow> = {
   onBulkEdit?: (items: TData[]) => void;
   searchFields?: { key: string; label: string }[];
   filters?: FilterConfig[];
+  onFilterChange?: (key: string, value: string) => void;
+  resetFilterKey?: string; // Key to reset a specific filter when it changes
 };
 
 export default function DataTable<TData extends DataTableRow>({
@@ -145,6 +147,8 @@ export default function DataTable<TData extends DataTableRow>({
   onBulkEdit,
   searchFields,
   filters,
+  onFilterChange,
+  resetFilterKey,
 }: DataTableProps<TData>) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -192,8 +196,36 @@ export default function DataTable<TData extends DataTableRow>({
       // Check active filters (AND across all filters)
       for (const [key, value] of Object.entries(activeFilters)) {
         if (value && value !== "all") {
-          const rowValue = row.getValue(key);
-          if (String(rowValue ?? "") !== value) return false;
+          // Try to get value from column first, then fallback to original data
+          let rowValue: any;
+          try {
+            rowValue = row.getValue(key);
+          } catch {
+            // If getValue fails, try accessing original data directly
+            const originalData = row.original as any;
+            rowValue = originalData?.[key];
+          }
+          
+          // If still undefined, try accessing original data directly
+          if (rowValue === undefined || rowValue === null) {
+            const originalData = row.original as any;
+            rowValue = originalData?.[key];
+          }
+          
+          const rowValueStr = rowValue != null ? String(rowValue).trim() : "";
+          const filterValueStr = String(value).trim();
+          
+          // Skip if both are empty (null/undefined handling)
+          if (!rowValueStr && !filterValueStr) continue;
+          
+          // For department and other text fields, use case-insensitive comparison
+          // For IDs (UUIDs), use exact match
+          const isIdField = key === "employeeId" || key === "id" || key.includes("Id");
+          if (isIdField) {
+            if (rowValueStr !== filterValueStr) return false;
+          } else {
+            if (rowValueStr.toLowerCase() !== filterValueStr.toLowerCase()) return false;
+          }
         }
       }
 
@@ -211,6 +243,25 @@ export default function DataTable<TData extends DataTableRow>({
   useEffect(() => {
     setData(initialData);
   }, [initialData]);
+
+  // Track previous resetFilterKey to detect changes
+  const prevResetFilterKeyRef = useRef<string | undefined>(undefined);
+  
+  // Reset employee filter when department changes
+  useEffect(() => {
+    if (resetFilterKey !== undefined && prevResetFilterKeyRef.current !== undefined && prevResetFilterKeyRef.current !== resetFilterKey) {
+      setActiveFilters((prev) => {
+        const newFilters = { ...prev };
+        // Clear employee filter when department changes
+        const employeeFilter = filters?.find((f) => f.key === "employeeId");
+        if (employeeFilter && prev[employeeFilter.key]) {
+          delete newFilters[employeeFilter.key];
+        }
+        return newFilters;
+      });
+    }
+    prevResetFilterKeyRef.current = resetFilterKey;
+  }, [resetFilterKey, filters]);
 
   useEffect(() => {
     if (newItemId) {
@@ -241,10 +292,15 @@ export default function DataTable<TData extends DataTableRow>({
   };
 
   const handleFilterChange = (key: string, value: string) => {
-    setActiveFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    setActiveFilters((prev) => {
+      const newFilters = {
+        ...prev,
+        [key]: value,
+      };
+      // Call callback if provided
+      onFilterChange?.(key, value);
+      return newFilters;
+    });
   };
 
   return (

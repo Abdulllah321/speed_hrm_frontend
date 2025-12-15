@@ -59,6 +59,12 @@ export const columns: ColumnDef<AttendanceRequestQueryRow>[] = [
     size: 150,
   },
   {
+    accessorKey: "employeeId",
+    header: "Employee ID",
+    enableHiding: true,
+    size: 0, // Hidden column, only used for filtering
+  },
+  {
     accessorKey: "attendanceDate",
     header: "Att Date",
     cell: ({ row }) => {

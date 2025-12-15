@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Controller } from "react-hook-form";
+import { Controller, useFieldArray } from "react-hook-form";
 import type { UseFormReturn } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { createQualification } from "@/lib/actions/qualification";
 import { createInstitute } from "@/lib/actions/institute";
 import * as React from "react";
-import { CheckIcon, ChevronsUpDownIcon, Loader2, Plus } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon, Loader2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,7 +35,6 @@ export function QualificationSection({
   loadingData,
   qualifications,
   institutes,
-  countries,
   states,
   cities,
   errors,
@@ -47,7 +46,6 @@ export function QualificationSection({
   loadingData: boolean;
   qualifications: Option[];
   institutes: Option[];
-  countries: Option[];
   states: Option[];
   cities: { id: string; name: string; stateId?: string }[];
   errors: Record<string, { message?: string }>;
@@ -56,61 +54,116 @@ export function QualificationSection({
 }) {
   const { control, watch } = form;
 
-  // Creating states
-  const [isCreatingQualification, setIsCreatingQualification] = useState(false);
-  const [isCreatingInstitute, setIsCreatingInstitute] = useState(false);
+  // Use field array for dynamic qualifications
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "qualifications",
+  });
 
-  // Dynamic cities loading based on state
-  const [qualificationCities, setQualificationCities] = useState<{ id: string; name: string }[]>([]);
-  const [loadingQualificationCities, setLoadingQualificationCities] = useState(false);
-
-  // Watch for state changes to load cities
-  const qualificationState = watch("qualifications.0.stateId");
-
-  // Fetch cities when state changes (same as Basic Info section)
+  // Initialize with one qualification if empty
   useEffect(() => {
-    const fetchCities = async () => {
-      if (!qualificationState) {
-        setQualificationCities([]);
-        form.setValue("qualifications.0.cityId", "");
-        setLoadingQualificationCities(false);
+    if (fields.length === 0) {
+      append({
+        qualification: "",
+        instituteId: "",
+        year: "",
+        grade: "",
+        stateId: "",
+        cityId: "",
+      });
+    }
+  }, [fields.length, append]);
+
+  // Creating states
+  const [isCreatingQualification, setIsCreatingQualification] = useState<Record<number, boolean>>({});
+  const [isCreatingInstitute, setIsCreatingInstitute] = useState<Record<number, boolean>>({});
+
+  // Dynamic cities loading based on state for each qualification
+  const [qualificationCities, setQualificationCities] = useState<Record<number, { id: string; name: string }[]>>({});
+  const [loadingQualificationCities, setLoadingQualificationCities] = useState<Record<number, boolean>>({});
+
+  // Watch all qualification states
+  const watchedQualifications = watch("qualifications");
+
+  // Fetch cities when state changes for any qualification
+  useEffect(() => {
+    const fetchCitiesForQualification = async (index: number, stateId: string) => {
+      if (!stateId) {
+        setQualificationCities((prev) => {
+          const updated = { ...prev };
+          updated[index] = [];
+          return updated;
+        });
+        form.setValue(`qualifications.${index}.cityId`, "");
+        setLoadingQualificationCities((prev) => ({ ...prev, [index]: false }));
         return;
       }
 
       try {
-        setLoadingQualificationCities(true);
-        const res = await fetch(`/api/data/cities/${qualificationState}`, { cache: "no-store" });
+        setLoadingQualificationCities((prev) => ({ ...prev, [index]: true }));
+        const res = await fetch(`/api/data/cities/${stateId}`, { cache: "no-store" });
         const json = await res.json();
         if (json.status) {
-          setQualificationCities(json.data || []);
+          setQualificationCities((prev) => ({
+            ...prev,
+            [index]: json.data || [],
+          }));
         } else {
           toast.error(json.message || "Failed to load cities");
-          setQualificationCities([]);
+          setQualificationCities((prev) => {
+            const updated = { ...prev };
+            updated[index] = [];
+            return updated;
+          });
         }
       } catch (error) {
         console.error("Error fetching cities:", error);
         toast.error("Failed to load cities");
-        setQualificationCities([]);
+        setQualificationCities((prev) => {
+          const updated = { ...prev };
+          updated[index] = [];
+          return updated;
+        });
       } finally {
-        setLoadingQualificationCities(false);
+        setLoadingQualificationCities((prev) => ({ ...prev, [index]: false }));
       }
     };
 
-    const timer = setTimeout(fetchCities, 250);
-    return () => clearTimeout(timer);
-  }, [qualificationState, form]);
+    // Fetch cities for each qualification that has a state
+    const timers: NodeJS.Timeout[] = [];
+    watchedQualifications?.forEach((qual: any, index: number) => {
+      if (qual?.stateId) {
+        const timer = setTimeout(() => {
+          fetchCitiesForQualification(index, qual.stateId);
+        }, 250);
+        timers.push(timer);
+      } else {
+        // Clear cities if state is cleared
+        setQualificationCities((prev) => {
+          const updated = { ...prev };
+          updated[index] = [];
+          return updated;
+        });
+        form.setValue(`qualifications.${index}.cityId`, "");
+      }
+    });
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, [watchedQualifications, form]);
 
   // Handle create qualification from search
-  const handleCreateQualification = async (name: string): Promise<string | null> => {
+  const handleCreateQualification = async (name: string, index: number): Promise<string | null> => {
     if (!name.trim()) return null;
 
     try {
-      setIsCreatingQualification(true);
+      setIsCreatingQualification((prev) => ({ ...prev, [index]: true }));
       const result = await createQualification({ name: name.trim(), status: "active" });
       
       if (result.status && result.data) {
         const newQualification = { id: result.data.id, name: result.data.name };
-        form.setValue("qualifications.0.qualification", newQualification.id);
+        form.setValue(`qualifications.${index}.qualification`, newQualification.id);
         toast.success("Qualification added successfully");
         onQualificationAdded?.(newQualification);
         return newQualification.id;
@@ -123,21 +176,21 @@ export function QualificationSection({
       console.error("Error creating qualification:", error);
       return null;
     } finally {
-      setIsCreatingQualification(false);
+      setIsCreatingQualification((prev) => ({ ...prev, [index]: false }));
     }
   };
 
   // Handle create institute from search
-  const handleCreateInstitute = async (name: string): Promise<string | null> => {
+  const handleCreateInstitute = async (name: string, index: number): Promise<string | null> => {
     if (!name.trim()) return null;
 
     try {
-      setIsCreatingInstitute(true);
+      setIsCreatingInstitute((prev) => ({ ...prev, [index]: true }));
       const result = await createInstitute({ name: name.trim(), status: "active" });
       
       if (result.status && result.data) {
         const newInstitute = { id: result.data.id, name: result.data.name };
-        form.setValue("qualifications.0.instituteId", newInstitute.id);
+        form.setValue(`qualifications.${index}.instituteId`, newInstitute.id);
         toast.success("Institute added successfully");
         onInstituteAdded?.(newInstitute);
         return newInstitute.id;
@@ -150,7 +203,34 @@ export function QualificationSection({
       console.error("Error creating institute:", error);
       return null;
     } finally {
-      setIsCreatingInstitute(false);
+      setIsCreatingInstitute((prev) => ({ ...prev, [index]: false }));
+    }
+  };
+
+  // Add new qualification
+  const handleAddQualification = () => {
+    append({
+      qualification: "",
+      instituteId: "",
+      year: "",
+      grade: "",
+      stateId: "",
+      cityId: "",
+    });
+  };
+
+  // Remove qualification
+  const handleRemoveQualification = (index: number) => {
+    if (fields.length > 1) {
+      remove(index);
+      // Clean up cities state for removed qualification
+      setQualificationCities((prev) => {
+        const updated = { ...prev };
+        delete updated[index];
+        return updated;
+      });
+    } else {
+      toast.error("At least one qualification is required");
     }
   };
 
@@ -284,192 +364,202 @@ export function QualificationSection({
 
   return (
     <div className="space-y-4">
-      <div className="text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2">
-        Qualification
+      <div className="flex items-center justify-between">
+        <div className="text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2 flex-1">
+          Qualification
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleAddQualification}
+          disabled={isPending}
+          className="ml-4"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add Qualification
+        </Button>
       </div>
 
-      <div className="p-4 border rounded-lg space-y-4 bg-muted/30">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label>
-              Qualification <span className="text-destructive">*</span>
-            </Label>
-            <Controller
-              name="qualifications.0.qualification"
-              control={control}
-              render={({ field }) => (
-                <CreateableAutocomplete
-                  options={qualifications.map((q) => ({
-                    value: q.id,
-                    label: q.name,
-                  }))}
-                  value={field.value as string | undefined}
-                  onValueChange={field.onChange}
-                  placeholder="Select or create Qualification"
-                  searchPlaceholder="Search or create qualification..."
-                  emptyMessage="No qualifications found"
-                  disabled={isPending || loadingData}
-                  onCreateNew={handleCreateQualification}
-                  isCreating={isCreatingQualification}
-                />
-              )}
-            />
-            {(errors?.qualifications as any)?.[0]?.qualification && (
-              <p className="text-xs text-red-500">
-                {(errors.qualifications as any)[0].qualification.message}
-              </p>
-            )}
-          </div>
+      <div className="space-y-4">
+        {fields.map((field, index) => {
+          const qualificationState = watch(`qualifications.${index}.stateId`);
+          const citiesForThisQual = qualificationCities[index] || [];
+          const loadingCitiesForThisQual = loadingQualificationCities[index] || false;
 
-          <div className="space-y-2">
-            <Label>Institute</Label>
-            <Controller
-              name="qualifications.0.instituteId"
-              control={control}
-              render={({ field }) => (
-                <CreateableAutocomplete
-                  options={institutes.map((i) => ({
-                    value: i.id,
-                    label: i.name,
-                  }))}
-                  value={field.value as string | undefined}
-                  onValueChange={field.onChange}
-                  placeholder="Select or create Institute"
-                  searchPlaceholder="Search or create institute..."
-                  emptyMessage="No institutes found"
-                  disabled={isPending || loadingData}
-                  onCreateNew={handleCreateInstitute}
-                  isCreating={isCreatingInstitute}
-                />
-              )}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Year</Label>
-            <Controller
-              name="qualifications.0.year"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  type="number"
-                  placeholder="e.g., 2020"
-                  value={field.value || ""}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    field.onChange(val ? parseInt(val) : "");
-                  }}
-                  min="1900"
-                  max={new Date().getFullYear()}
+          return (
+            <div key={field.id} className="p-4 border rounded-lg space-y-4 bg-muted/30 relative">
+              {fields.length > 1 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveQualification(index)}
                   disabled={isPending}
-                />
+                  className="absolute top-2 right-2 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               )}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Grade</Label>
-            <Controller
-              name="qualifications.0.grade"
-              control={control}
-              render={({ field }) => (
-                <Input
-                  placeholder="e.g., A+, First Division"
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  disabled={isPending}
-                />
+              
+              {fields.length > 1 && (
+                <div className="text-sm font-medium text-muted-foreground mb-2">
+                  Qualification {index + 1}
+                </div>
               )}
-            />
-          </div>
 
-          <div className="space-y-2">
-            <Label>Country</Label>
-            <Controller
-              name="qualifications.0.countryId"
-              control={control}
-              render={({ field }) => {
-                // Filter to show only Pakistan
-                const pakistanOnly = countries.filter((c) => 
-                  c.name.toLowerCase() === "pakistan"
-                );
-                
-                return (
-                  <Autocomplete
-                    options={pakistanOnly.map((c) => ({
-                      value: c.id,
-                      label: c.name,
-                    }))}
-                    value={field.value as string | undefined}
-                    onValueChange={(val) => {
-                      field.onChange(val);
-                      // Reset state and city when country changes
-                      form.setValue("qualifications.0.stateId", "");
-                      form.setValue("qualifications.0.cityId", "");
-                    }}
-                    placeholder="Select Country"
-                    disabled={isPending || loadingData}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>
+                    Qualification <span className="text-destructive">*</span>
+                  </Label>
+                  <Controller
+                    name={`qualifications.${index}.qualification`}
+                    control={control}
+                    render={({ field }) => (
+                      <CreateableAutocomplete
+                        options={qualifications.map((q) => ({
+                          value: q.id,
+                          label: q.name,
+                        }))}
+                        value={field.value as string | undefined}
+                        onValueChange={field.onChange}
+                        placeholder="Select or create Qualification"
+                        searchPlaceholder="Search or create qualification..."
+                        emptyMessage="No qualifications found"
+                        disabled={isPending || loadingData}
+                        onCreateNew={(name) => handleCreateQualification(name, index)}
+                        isCreating={isCreatingQualification[index] || false}
+                      />
+                    )}
                   />
-                );
-              }}
-            />
-          </div>
+                  {(errors?.qualifications as any)?.[index]?.qualification && (
+                    <p className="text-xs text-red-500">
+                      {(errors.qualifications as any)[index].qualification.message}
+                    </p>
+                  )}
+                </div>
 
-          <div className="space-y-2">
-            <Label>State</Label>
-            <Controller
-              name="qualifications.0.stateId"
-              control={control}
-              render={({ field }) => (
-                <Autocomplete
-                  options={states.map((s) => ({
-                    value: s.id,
-                    label: s.name,
-                  }))}
-                  value={field.value as string | undefined}
-                  onValueChange={(val) => {
-                    field.onChange(val);
-                    // Reset city when state changes
-                    form.setValue("qualifications.0.cityId", "");
-                  }}
-                  placeholder="Select State"
-                  disabled={isPending || loadingData}
-                />
-              )}
-            />
-          </div>
+                <div className="space-y-2">
+                  <Label>Institute</Label>
+                  <Controller
+                    name={`qualifications.${index}.instituteId`}
+                    control={control}
+                    render={({ field }) => (
+                      <CreateableAutocomplete
+                        options={institutes.map((i) => ({
+                          value: i.id,
+                          label: i.name,
+                        }))}
+                        value={field.value as string | undefined}
+                        onValueChange={field.onChange}
+                        placeholder="Select or create Institute"
+                        searchPlaceholder="Search or create institute..."
+                        emptyMessage="No institutes found"
+                        disabled={isPending || loadingData}
+                        onCreateNew={(name) => handleCreateInstitute(name, index)}
+                        isCreating={isCreatingInstitute[index] || false}
+                      />
+                    )}
+                  />
+                </div>
 
-          <div className="space-y-2">
-            <Label>City</Label>
-            <Controller
-              name="qualifications.0.cityId"
-              control={control}
-              render={({ field }) => (
-                <Autocomplete
-                  options={qualificationCities.map((c) => ({
-                    value: c.id,
-                    label: c.name,
-                  }))}
-                  value={field.value as string | undefined}
-                  onValueChange={field.onChange}
-                  placeholder={
-                    qualificationState
-                      ? "Select City"
-                      : "Select State first"
-                  }
-                  disabled={
-                    isPending ||
-                    !qualificationState ||
-                    loadingData ||
-                    loadingQualificationCities
-                  }
-                  isLoading={loadingQualificationCities}
-                  emptyMessage="No cities available"
-                />
-              )}
-            />
-          </div>
-        </div>
+                <div className="space-y-2">
+                  <Label>Year</Label>
+                  <Controller
+                    name={`qualifications.${index}.year`}
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        type="number"
+                        placeholder="e.g., 2020"
+                        value={field.value || ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          field.onChange(val ? parseInt(val) : "");
+                        }}
+                        min="1900"
+                        max={new Date().getFullYear()}
+                        disabled={isPending}
+                      />
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Grade</Label>
+                  <Controller
+                    name={`qualifications.${index}.grade`}
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        placeholder="e.g., A+, First Division"
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        disabled={isPending}
+                      />
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>State</Label>
+                  <Controller
+                    name={`qualifications.${index}.stateId`}
+                    control={control}
+                    render={({ field }) => (
+                      <Autocomplete
+                        options={states.map((s) => ({
+                          value: s.id,
+                          label: s.name,
+                        }))}
+                        value={field.value as string | undefined}
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          // Reset city when state changes
+                          form.setValue(`qualifications.${index}.cityId`, "");
+                        }}
+                        placeholder="Select State"
+                        disabled={isPending || loadingData}
+                      />
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Controller
+                    name={`qualifications.${index}.cityId`}
+                    control={control}
+                    render={({ field }) => (
+                      <Autocomplete
+                        options={citiesForThisQual.map((c) => ({
+                          value: c.id,
+                          label: c.name,
+                        }))}
+                        value={field.value as string | undefined}
+                        onValueChange={field.onChange}
+                        placeholder={
+                          qualificationState
+                            ? "Select City"
+                            : "Select State first"
+                        }
+                        disabled={
+                          isPending ||
+                          !qualificationState ||
+                          loadingData ||
+                          loadingCitiesForThisQual
+                        }
+                        isLoading={loadingCitiesForThisQual}
+                        emptyMessage="No cities available"
+                      />
+                    )}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

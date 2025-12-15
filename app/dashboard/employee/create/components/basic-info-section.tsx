@@ -241,11 +241,6 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         </div>
       
         <div className="space-y-2">
-          <Label>Country <span className="text-destructive">*</span></Label>
-          <Input {...register("country")} disabled={isPending} />
-          {errors?.country && <p className="text-xs text-red-500">{errors.country.message}</p>}
-        </div>
-        <div className="space-y-2">
           <Label>State <span className="text-destructive">*</span></Label>
           <Controller name="state" control={control} render={({ field }) => (
             <Autocomplete options={states.map((s) => ({ value: s.id, label: s.name }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder="Select State" disabled={isPending || loadingData} />
