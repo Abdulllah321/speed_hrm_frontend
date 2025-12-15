@@ -7,6 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { createQualification } from "@/lib/actions/qualification";
 import { createInstitute } from "@/lib/actions/institute";
 import * as React from "react";
@@ -233,6 +240,10 @@ export function QualificationSection({
       toast.error("At least one qualification is required");
     }
   };
+
+  // Generate years array (from 1900 to current year)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1899 }, (_, i) => currentYear - i);
 
   // Custom Autocomplete with create-on-search
   const CreateableAutocomplete = ({
@@ -465,23 +476,29 @@ export function QualificationSection({
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Year</Label>
+                  <Label>Passing Year</Label>
                   <Controller
                     name={`qualifications.${index}.year`}
                     control={control}
                     render={({ field }) => (
-                      <Input
-                        type="number"
-                        placeholder="e.g., 2020"
-                        value={field.value || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          field.onChange(val ? parseInt(val) : "");
+                      <Select
+                        value={field.value ? String(field.value) : ""}
+                        onValueChange={(value) => {
+                          field.onChange(value ? parseInt(value) : "");
                         }}
-                        min="1900"
-                        max={new Date().getFullYear()}
                         disabled={isPending}
-                      />
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {years.map((year) => (
+                            <SelectItem key={year} value={String(year)}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     )}
                   />
                 </div>

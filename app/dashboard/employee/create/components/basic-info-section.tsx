@@ -17,6 +17,7 @@ const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, "");
   if (digits.length <= 4) {
     return digits;
+     
   } else if (digits.length <= 11) {
     return `${digits.slice(0, 4)}-${digits.slice(4)}`;
   } else {
