@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,9 @@ import { getStates, getCitiesByState, type State, type City } from "@/lib/action
 import { getWorkingHoursPolicies, type WorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
 import { getLeavesPolicies, type LeavesPolicy } from "@/lib/actions/leaves-policy";
 import { getEmployees } from "@/lib/actions/employee";
+import { getQualifications, type Qualification } from "@/lib/actions/qualification";
+import { getInstitutes, type Institute } from "@/lib/actions/institute";
+import { getCountries } from "@/lib/actions/city";
 
 export default function ViewEmployeePage() {
   const params = useParams();
@@ -47,6 +50,9 @@ export default function ViewEmployeePage() {
   const [workingHoursPolicies, setWorkingHoursPolicies] = useState<WorkingHoursPolicy[]>([]);
   const [leavesPolicies, setLeavesPolicies] = useState<LeavesPolicy[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [qualifications, setQualifications] = useState<Qualification[]>([]);
+  const [institutes, setInstitutes] = useState<Institute[]>([]);
+  const [countries, setCountries] = useState<any[]>([]);
 
   // Fetch dropdown data for mapping
   useEffect(() => {
@@ -63,6 +69,9 @@ export default function ViewEmployeePage() {
           workingHoursRes,
           leavesRes,
           employeesRes,
+          qualificationsRes,
+          institutesRes,
+          countriesRes,
         ] = await Promise.all([
           getDepartments(),
           getEmployeeGrades(),
@@ -74,6 +83,9 @@ export default function ViewEmployeePage() {
           getWorkingHoursPolicies(),
           getLeavesPolicies(),
           getEmployees(),
+          getQualifications(),
+          getInstitutes(),
+          getCountries(),
         ]);
 
         if (deptsRes.status) setDepartments(deptsRes.data || []);
@@ -86,6 +98,9 @@ export default function ViewEmployeePage() {
         if (workingHoursRes.status) setWorkingHoursPolicies(workingHoursRes.data || []);
         if (leavesRes.status) setLeavesPolicies(leavesRes.data || []);
         if (employeesRes.status) setEmployees(employeesRes.data || []);
+        if (qualificationsRes.status) setQualifications(qualificationsRes.data || []);
+        if (institutesRes.status) setInstitutes(institutesRes.data || []);
+        if (countriesRes.status) setCountries(countriesRes.data || []);
       } catch (error) {
         console.error("Error fetching dropdown data:", error);
       }
@@ -109,6 +124,28 @@ export default function ViewEmployeePage() {
     };
     fetchCities();
   }, [employee?.province]);
+
+  // Fetch cities for qualification state if different from employee province
+  useEffect(() => {
+    const qualState = (employee as any)?.qualifications?.[0]?.stateId;
+    if (!qualState || qualState === employee?.province) return;
+    const fetchQualCities = async () => {
+      try {
+        const res = await getCitiesByState(qualState);
+        if (res.status) {
+          setCities(prev => {
+            // Merge with existing cities, avoiding duplicates
+            const existingIds = new Set(prev.map(c => c.id));
+            const newCities = (res.data || []).filter(c => !existingIds.has(c.id));
+            return [...prev, ...newCities];
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching qualification cities:", error);
+      }
+    };
+    fetchQualCities();
+  }, [(employee as any)?.qualifications?.[0]?.stateId, employee?.province]);
 
   useEffect(() => {
     const fetchEmployee = async () => {
@@ -134,6 +171,56 @@ export default function ViewEmployeePage() {
       fetchEmployee();
     }
   }, [employeeId, router]);
+
+  // Helper functions to map IDs to names
+  const getQualificationName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const qual = qualifications.find(q => q.id === id);
+    return qual?.name || "N/A";
+  };
+
+  const getInstituteName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const inst = institutes.find(i => i.id === id);
+    return inst?.name || "N/A";
+  };
+
+  const getCountryName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const country = countries.find(c => c.id === id);
+    return country?.name || "N/A";
+  };
+
+  const getStateName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const state = states.find(s => s.id === id);
+    return state?.name || (employee as any)?.provinceName || id;
+  };
+
+  const getCityName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    const city = cities.find(c => c.id === id);
+    return city?.name || (employee as any)?.cityName || id;
+  };
+
+  // Memoize qualification data to ensure it's computed with loaded data
+  // Must be called before any early returns to follow Rules of Hooks
+  const qualificationData = useMemo(() => {
+    if (!employee || !(employee as any).qualifications || !Array.isArray((employee as any).qualifications) || (employee as any).qualifications.length === 0) {
+      return null;
+    }
+    const qual = (employee as any).qualifications[0];
+    return {
+      qualification: getQualificationName(qual.qualification),
+      institute: getInstituteName(qual.instituteId),
+      year: qual.year || "N/A",
+      grade: qual.grade || "N/A",
+      country: getCountryName(qual.countryId),
+      state: getStateName(qual.stateId),
+      city: getCityName(qual.cityId),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee, qualifications, institutes, countries, states, cities]);
 
   if (loading) {
     return (
@@ -212,37 +299,25 @@ export default function ViewEmployeePage() {
   const getBranchName = (id: string | null | undefined) => {
     if (!id) return "N/A";
     const branch = branches.find(b => b.id === id);
-    return branch?.name || (employee as any).branchName || id;
-  };
-
-  const getStateName = (id: string | null | undefined) => {
-    if (!id) return "N/A";
-    const state = states.find(s => s.id === id);
-    return state?.name || (employee as any).provinceName || id;
-  };
-
-  const getCityName = (id: string | null | undefined) => {
-    if (!id) return "N/A";
-    const city = cities.find(c => c.id === id);
-    return city?.name || (employee as any).cityName || id;
+    return branch?.name || (employee as any)?.branchName || id;
   };
 
   const getWorkingHoursPolicyName = (id: string | null | undefined) => {
     if (!id) return "N/A";
     const policy = workingHoursPolicies.find(p => p.id === id);
-    return policy?.name || (employee as any).workingHoursPolicyName || id;
+    return policy?.name || (employee as any)?.workingHoursPolicyName || id;
   };
 
   const getLeavesPolicyName = (id: string | null | undefined) => {
     if (!id) return "N/A";
     const policy = leavesPolicies.find(p => p.id === id);
-    return policy?.name || (employee as any).leavesPolicyName || id;
+    return policy?.name || (employee as any)?.leavesPolicyName || id;
   };
 
   const getReportingManagerName = (id: string | null | undefined) => {
     if (!id) return "N/A";
     const manager = employees.find(e => e.id === id);
-    return manager ? `${manager.employeeName} (${manager.employeeId})` : (employee as any).reportingManagerName || id;
+    return manager ? `${manager.employeeName} (${manager.employeeId})` : (employee as any)?.reportingManagerName || id;
   };
 
   return (
@@ -347,7 +422,7 @@ export default function ViewEmployeePage() {
     className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
   >
     <p className="text-xs text-muted-foreground">{item.label}</p>
-    <p className="text-gray-900 font-semibold text-1xl mt-1">
+    <p className="text-foreground font-semibold text-1xl mt-1">
       {item.value}
     </p>
   </div>
@@ -358,14 +433,40 @@ export default function ViewEmployeePage() {
   </CardContent>
 </Card>
 
-
-
-
-
-
-
-
-
+{/* Qualification Section */}
+{qualificationData && (
+  <Card className="border-none shadow-none">
+    <CardHeader>
+      <CardTitle className="text-lg font-semibold">Qualification</CardTitle>
+      <CardDescription>Employee educational qualifications</CardDescription>
+    </CardHeader>
+    <CardContent>
+      <div className="p-4 border rounded-lg bg-muted/30">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { label: "Qualification", value: qualificationData.qualification },
+            { label: "Institute", value: qualificationData.institute },
+            { label: "Year", value: qualificationData.year },
+            { label: "Grade", value: qualificationData.grade },
+            { label: "Country", value: qualificationData.country },
+            { label: "State", value: qualificationData.state },
+            { label: "City", value: qualificationData.city },
+          ].map((item, index) => (
+            <div
+              key={index}
+              className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
+            >
+              <p className="text-xs text-muted-foreground">{item.label}</p>
+              <p className="text-foreground font-semibold text-1xl mt-1">
+                {item.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+)}
 
 {/* Address Information */}
 <Card className="border-none shadow-none">
@@ -383,7 +484,7 @@ export default function ViewEmployeePage() {
         className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
       >
         <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-        <p className="text-gray-900 font-semibold text-1xl mt-1">
+        <p className="text-foreground font-semibold text-1xl mt-1">
           {item.value || "N/A"}
         </p>
       </div>
@@ -410,7 +511,7 @@ export default function ViewEmployeePage() {
         className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
       >
         <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-        <p className="text-gray-900 font-semibold text-1xl mt-1">
+        <p className="text-foreground font-semibold text-1xl mt-1">
           {item.value || "N/A"}
         </p>
       </div>
@@ -440,7 +541,7 @@ export default function ViewEmployeePage() {
             {item.label}
           </p>
 
-          <p className="text-gray-900 font-semibold text-1xl mt-1">
+          <p className="text-foreground font-semibold text-1xl mt-1">
             {valStr}
           </p>
         </div>
@@ -448,9 +549,6 @@ export default function ViewEmployeePage() {
     })}
   </CardContent>
 </Card>
-
-
-
 
 
         {/* Login Credentials */}
@@ -463,13 +561,13 @@ export default function ViewEmployeePage() {
               {employee.accountType && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Account Type</Label>
-                  <p className="font-medium">{employee.accountType}</p>
+                  <p className="font-medium text-foreground">{employee.accountType}</p>
                 </div>
               )}
               {employee.roles && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Roles</Label>
-                  <p className="font-medium">{employee.roles}</p>
+                  <p className="font-medium text-foreground">{employee.roles}</p>
                 </div>
               )}
             </CardContent>

@@ -15,6 +15,7 @@ async function getAuthHeaders() {
 
 export interface ExitClearance {
   id: string;
+  employeeId: string;
   employeeName: string;
   designation?: string | null;
   department?: string | null;

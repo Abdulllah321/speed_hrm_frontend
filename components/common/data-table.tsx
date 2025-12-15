@@ -385,8 +385,9 @@ export default function DataTable<TData extends DataTableRow>({
         </div>
       </div>
 
-      <div className="bg-background overflow-hidden rounded-md border">
-        <Table className="table-fixed">
+      <div className="bg-background overflow-hidden rounded-md border w-full max-w-full">
+        <div className="w-full max-w-full overflow-x-hidden">
+          <Table className="w-full table-auto">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className="hover:bg-transparent">
@@ -487,6 +488,7 @@ export default function DataTable<TData extends DataTableRow>({
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       <div className="flex items-center justify-between gap-8 md:flex-row flex-col">

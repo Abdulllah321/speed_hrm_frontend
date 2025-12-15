@@ -39,10 +39,14 @@ import type { State, City } from "@/lib/actions/city";
 import type { Equipment } from "@/lib/actions/equipment";
 import type { WorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
 import type { LeavesPolicy } from "@/lib/actions/leaves-policy";
+import type { Qualification } from "@/lib/actions/qualification";
+import type { Institute } from "@/lib/actions/institute";
 import { createEmployee, updateEmployee, getEmployees, type Employee } from "@/lib/actions/employee";
 import { BasicInfoSection } from "@/app/dashboard/employee/create/components/basic-info-section";
+import { QualificationSection } from "@/app/dashboard/employee/create/components/qualification-section";
 import { uploadFile } from "@/lib/upload";
 import { DateSection } from "@/app/dashboard/employee/create/components/date-section";
+import { getCountries } from "@/lib/actions/city";
 import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
@@ -337,6 +341,22 @@ const employeeFormSchema = z.object({
   selectedEquipments: z
     .array(z.string())
     .default([]),
+
+  // Qualifications
+  qualifications: z
+    .array(
+      z.object({
+        qualification: z.string().optional(),
+        instituteId: z.string().optional(),
+        countryId: z.string().optional(),
+        stateId: z.string().optional(),
+        cityId: z.string().optional(),
+        year: z.union([z.string(), z.number()]).optional(),
+        grade: z.string().optional(),
+      })
+    )
+    .default([])
+    .optional(),
 });
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
@@ -356,7 +376,11 @@ interface EmployeeFormProps {
   equipments: Equipment[];
   workingHoursPolicies: WorkingHoursPolicy[];
   leavesPolicies: LeavesPolicy[];
+  qualifications?: Qualification[];
+  institutes?: Institute[];
   loadingData: boolean;
+  onQualificationAdded?: (qualification: { id: string; name: string }) => void;
+  onInstituteAdded?: (institute: { id: string; name: string }) => void;
 }
 
 export function EmployeeForm({
@@ -374,7 +398,11 @@ export function EmployeeForm({
   equipments,
   workingHoursPolicies,
   leavesPolicies,
+  qualifications = [],
+  institutes = [],
   loadingData,
+  onQualificationAdded,
+  onInstituteAdded,
 }: EmployeeFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -431,6 +459,17 @@ export function EmployeeForm({
       roles: initialData.roles || "",
       avatarUrl: initialData.avatarUrl || "",
       eobiDocumentUrl: initialData.eobiDocumentUrl || "",
+      qualifications: (initialData as any).qualifications && Array.isArray((initialData as any).qualifications) && (initialData as any).qualifications.length > 0
+        ? (initialData as any).qualifications
+        : [{
+            qualification: "",
+            instituteId: "",
+            countryId: "",
+            stateId: "",
+            cityId: "",
+            year: "",
+            grade: "",
+          }],
     } : {
       employeeId: "",
       employeeName: "",
@@ -480,6 +519,15 @@ export function EmployeeForm({
       roles: "",
       avatarUrl: "",
       eobiDocumentUrl: "",
+      qualifications: [{
+        qualification: "",
+        instituteId: "",
+        countryId: "",
+        stateId: "",
+        cityId: "",
+        year: "",
+        grade: "",
+      }],
     },
     mode: "onChange",
     reValidateMode: "onBlur",
@@ -580,11 +628,34 @@ export function EmployeeForm({
   // Multi-step wizard
   const stepLabels = [
     "Basic Info",
+    "Qualification",
     "Contact & Address",
     "Bank & Login",
     "Equipments & Documents",
   ];
   const [step, setStep] = useState(0);
+
+  // Countries state
+  const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
+  const [loadingCountries, setLoadingCountries] = useState(false);
+
+  // Fetch countries
+  useEffect(() => {
+    const fetchCountries = async () => {
+      try {
+        setLoadingCountries(true);
+        const result = await getCountries();
+        if (result.status && result.data) {
+          setCountries(result.data.map(c => ({ id: c.id, name: c.name })));
+        }
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+      } finally {
+        setLoadingCountries(false);
+      }
+    };
+    fetchCountries();
+  }, []);
 
   // CNIC formatting function
   const formatCNIC = (value: string): string => {
@@ -782,11 +853,16 @@ export function EmployeeForm({
     }
 
     if (currentStep === 1) {
+      // Qualification step - no required fields, all optional
+      return true;
+    }
+
+    if (currentStep === 2) {
       const results = await trigger("officialEmail");
       return results;
     }
 
-    if (currentStep === 2) {
+    if (currentStep === 3) {
       const fields = ["bankName", "accountNumber", "accountTitle"];
       const results = await Promise.all(
         fields.map(field => trigger(field as keyof EmployeeFormData))
@@ -876,6 +952,17 @@ export function EmployeeForm({
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
+            qualifications: data.qualifications && Array.isArray(data.qualifications) && data.qualifications.length > 0
+              ? data.qualifications.map((q: any) => ({
+                  qualification: q.qualification || "",
+                  instituteId: q.instituteId || undefined,
+                  countryId: q.countryId || undefined,
+                  stateId: q.stateId || undefined,
+                  cityId: q.cityId || undefined,
+                  year: q.year ? String(q.year) : undefined,
+                  grade: q.grade || undefined,
+                }))
+              : undefined,
           };
 
           // Debug: Log the data being sent (remove sensitive data in production)
@@ -946,6 +1033,17 @@ export function EmployeeForm({
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
+            qualifications: data.qualifications && Array.isArray(data.qualifications) && data.qualifications.length > 0
+              ? data.qualifications.map((q: any) => ({
+                  qualification: q.qualification || "",
+                  instituteId: q.instituteId || undefined,
+                  countryId: q.countryId || undefined,
+                  stateId: q.stateId || undefined,
+                  cityId: q.cityId || undefined,
+                  year: q.year ? String(q.year) : undefined,
+                  grade: q.grade || undefined,
+                }))
+              : undefined,
           };
 
           console.log("🔄 Updating employee with data:", {
@@ -953,7 +1051,7 @@ export function EmployeeForm({
             password: data.password ? "***" : undefined,
           });
 
-          const result = await updateEmployee(initialData.id, employeeData);
+          const result = await updateEmployee(initialData.id, employeeData as any);
 
           console.log("📥 Employee update response:", result);
 
@@ -1142,6 +1240,35 @@ export function EmployeeForm({
 
           {step === 1 && (
             <>
+              {/* Qualification Section */}
+              <Card className="border-0 shadow-none bg-muted/50">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">
+                    Qualifications
+                  </CardTitle>
+                  <CardDescription>Add employee qualifications</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <QualificationSection
+                    form={form}
+                    isPending={isPending}
+                    loadingData={loadingData || loadingCountries}
+                    qualifications={(qualifications || []).map(q => ({ id: q.id, name: q.name }))}
+                    institutes={(institutes || []).map(i => ({ id: i.id, name: i.name }))}
+                    countries={countries}
+                    states={states.map(s => ({ id: s.id, name: s.name }))}
+                    cities={cities.map(c => ({ id: c.id, name: c.name, stateId: (c as any).stateId }))}
+                    errors={errors}
+                    onQualificationAdded={onQualificationAdded}
+                    onInstituteAdded={onInstituteAdded}
+                  />
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
               {/* Address Information */}
               <Card>
                 <CardHeader>
@@ -1171,7 +1298,7 @@ export function EmployeeForm({
             </>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <>
               {/* Bank Account Details */}
               <Card>
@@ -1313,7 +1440,7 @@ export function EmployeeForm({
             </>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
               {/* Employee Items Issued */}
               <Card>

@@ -8,7 +8,6 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { FileUpload } from "@/components/ui/file-upload";
 
 type Option = { id: string; name: string };
 
@@ -400,17 +399,21 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
             </div>
             <div className="space-y-2">
               <Label>EOBI Document</Label>
-              <FileUpload
-                id="eobi-document-upload"
+              <Input
+                type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
-                onChange={(files) => {
-                  if (files && files.length > 0) {
-                    handleFileChange("eobi", files[0]);
-                  } else {
-                    handleFileChange("eobi", null);
-                  }
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  handleFileChange("eobi", file);
                 }}
+                disabled={isPending}
+                className="cursor-pointer"
               />
+              {documents.eobi && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Selected: {documents.eobi.name}
+                </p>
+              )}
             </div>
           </>
         ) : null}

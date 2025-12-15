@@ -119,13 +119,14 @@ export default function CreateExitClearancePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.employeeName || !formData.lastWorkingDate) {
+    if (!formData.selectedEmployeeId || !formData.employeeName || !formData.lastWorkingDate) {
       toast.error("Please fill required fields");
       return;
     }
     startTransition(async () => {
       try {
         const result = await createExitClearance({
+          employeeId: formData.selectedEmployeeId,
           employeeName: formData.employeeName,
           designation: formData.designation || null,
           department: formData.department || null,
@@ -191,11 +192,12 @@ export default function CreateExitClearancePage() {
         </Link>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="border rounded-xl p-4 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
         {/* Employee Information */}
-        <Card>
+        <Card className="border-0 shadow-none bg-muted/50">
           <CardHeader>
-            <CardTitle>Employee Information</CardTitle>
+            <CardTitle className="text-lg font-semibold">Employee Information</CardTitle>
             <CardDescription>Basic details of the departing employee</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -283,9 +285,9 @@ export default function CreateExitClearancePage() {
         </Card>
 
         {/* IT Department */}
-        <Card>
+        <Card className="border-0 shadow-none bg-muted/50">
           <CardHeader>
-            <CardTitle>IT Department – Clearance</CardTitle>
+            <CardTitle className="text-lg font-semibold">IT Department – Clearance</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <CheckboxField id="itAccessControl" label="Access Control of Software" checked={formData.itAccessControl} />
@@ -300,9 +302,9 @@ export default function CreateExitClearancePage() {
         </Card>
 
         {/* Finance Department */}
-        <Card>
+        <Card className="border-0 shadow-none bg-muted/50">
           <CardHeader>
-            <CardTitle>Finance Department – Clearance</CardTitle>
+            <CardTitle className="text-lg font-semibold">Finance Department – Clearance</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <CheckboxField id="financeAdvance" label="Advance" checked={formData.financeAdvance} />
@@ -312,9 +314,9 @@ export default function CreateExitClearancePage() {
         </Card>
 
         {/* Admin Department */}
-        <Card>
+        <Card className="border-0 shadow-none bg-muted/50">
           <CardHeader>
-            <CardTitle>Admin Department – Clearance</CardTitle>
+            <CardTitle className="text-lg font-semibold">Admin Department – Clearance</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <CheckboxField id="adminVehicle" label="Company-Owned Vehicle" checked={formData.adminVehicle} />
@@ -326,9 +328,9 @@ export default function CreateExitClearancePage() {
         </Card>
 
         {/* HR Department */}
-        <Card>
+        <Card className="border-0 shadow-none bg-muted/50">
           <CardHeader>
-            <CardTitle>HR Department – Clearance</CardTitle>
+            <CardTitle className="text-lg font-semibold">HR Department – Clearance</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
             <CheckboxField id="hrEobi" label="EOBI" checked={formData.hrEobi} />
@@ -342,9 +344,9 @@ export default function CreateExitClearancePage() {
         </Card>
 
         {/* Note */}
-        <Card>
+        <Card className="border-0 shadow-none bg-muted/50">
           <CardHeader>
-            <CardTitle>Note</CardTitle>
+            <CardTitle className="text-lg font-semibold">Note</CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea value={formData.note} onChange={(e) => updateField("note", e.target.value)} placeholder="Additional notes..." rows={4} disabled={isPending} />
@@ -352,14 +354,22 @@ export default function CreateExitClearancePage() {
         </Card>
 
         {/* Submit */}
-        <div className="flex gap-2 sticky bottom-4 bg-background p-4 border rounded-lg shadow-lg">
-          <Button type="submit" disabled={isPending} className="flex-1">
+        <div className="flex gap-2 justify-end">
+          <Button type="submit" disabled={isPending}>
             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Submit Clearance
           </Button>
-          <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => router.back()}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
         </div>
       </form>
+      </div>
     </div>
   );
 }

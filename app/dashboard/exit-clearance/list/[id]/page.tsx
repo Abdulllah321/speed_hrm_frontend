@@ -142,7 +142,7 @@ export default function ViewExitClearancePage() {
         className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
       >
         <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-        <p className="text-gray-900 font-semibold text-1xl mt-1">
+        <p className="text-foreground font-semibold text-1xl mt-1">
           {item.value || "N/A"}
         </p>
       </div>
@@ -168,7 +168,7 @@ export default function ViewExitClearancePage() {
         className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
       >
         <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-        <p className="text-gray-900 font-semibold text-1xl mt-1">
+        <p className="text-foreground font-semibold text-1xl mt-1">
           {item.value || "N/A"}
         </p>
       </div>
@@ -194,7 +194,7 @@ export default function ViewExitClearancePage() {
               { label: "Bills Settlement", value: clearance.itBillsSettlement },
             ].map((item, index) => {
               const valStr = item.value ? "✓" : "✗";
-              const valueColor = item.value ? "text-gray-900 font-semibold" : "text-red-600 font-semibold";
+              const valueColor = item.value ? "text-foreground font-semibold" : "text-red-600 font-semibold";
               return (
                 <div
                   key={index}
@@ -220,7 +220,7 @@ export default function ViewExitClearancePage() {
               { label: "Other Liabilities", value: clearance.financeOtherLiabilities },
             ].map((item, index) => {
               const valStr = item.value ? "✓" : "✗";
-              const valueColor = item.value ? "text-gray-900 font-semibold" : "text-red-600 font-semibold";
+              const valueColor = item.value ? "text-foreground font-semibold" : "text-red-600 font-semibold";
               return (
                 <div
                   key={index}
@@ -248,7 +248,7 @@ export default function ViewExitClearancePage() {
               { label: "Visiting Cards", value: clearance.adminVisitingCards },
             ].map((item, index) => {
               const valStr = item.value ? "✓" : "✗";
-              const valueColor = item.value ? "text-gray-900 font-semibold" : "text-red-600 font-semibold";
+              const valueColor = item.value ? "text-foreground font-semibold" : "text-red-600 font-semibold";
               return (
                 <div
                   key={index}
@@ -278,7 +278,7 @@ export default function ViewExitClearancePage() {
               { label: "Other Compensation", value: clearance.hrOtherCompensation },
             ].map((item, index) => {
               const valStr = item.value ? "✓" : "✗";
-              const valueColor = item.value ? "text-gray-900 font-semibold" : "text-red-600 font-semibold";
+              const valueColor = item.value ? "text-foreground font-semibold" : "text-red-600 font-semibold";
               return (
                 <div
                   key={index}
@@ -299,7 +299,7 @@ export default function ViewExitClearancePage() {
               <CardTitle>Notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm whitespace-pre-wrap">{clearance.note}</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{clearance.note}</p>
             </CardContent>
           </Card>
         )}

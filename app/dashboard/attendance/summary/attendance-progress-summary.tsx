@@ -191,7 +191,7 @@ export function AttendanceProgressSummary({
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">View Employee Attendance Progress Summary</h2>
@@ -341,14 +341,16 @@ export function AttendanceProgressSummary({
         </CardContent>
       </Card>
 
-      <DataTable
-        columns={columns}
-        data={data}
-        searchFields={[
-          { key: "employeeName", label: "Employee" },
-          { key: "employeeId", label: "Employee ID" },
-        ]}
-      />
+      <div className="w-full max-w-full overflow-x-hidden">
+        <DataTable
+          columns={columns}
+          data={data}
+          searchFields={[
+            { key: "employeeName", label: "Employee" },
+            { key: "employeeId", label: "Employee ID" },
+          ]}
+        />
+      </div>
     </div>
   );
 }

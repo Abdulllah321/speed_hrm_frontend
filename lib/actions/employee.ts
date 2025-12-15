@@ -79,6 +79,16 @@ export interface Employee {
   workingHoursPolicyName?: string;
   leavesPolicyName?: string;
   employmentStatusName?: string;
+  qualifications?: Array<{
+    id: string;
+    qualification: string;
+    instituteId?: string | null;
+    countryId?: string | null;
+    stateId?: string | null;
+    cityId?: string | null;
+    year?: number | null;
+    grade?: string | null;
+  }>;
 }
 
 // Get all employees
@@ -178,6 +188,15 @@ export async function createEmployee(data: {
   avatarUrl?: string;
   eobiDocumentUrl?: string;
   documentUrls?: Record<string, string>;
+  qualifications?: Array<{
+    qualification: string;
+    instituteId?: string;
+    countryId?: string;
+    stateId?: string;
+    cityId?: string;
+    year?: string;
+    grade?: string;
+  }>;
 }): Promise<{ status: boolean; data?: Employee; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/employees`, {
@@ -203,7 +222,20 @@ export async function createEmployee(data: {
 }
 
 // Update employee
-export async function updateEmployee(id: string, data: Partial<Employee>): Promise<{ status: boolean; data?: Employee; message?: string }> {
+export async function updateEmployee(
+  id: string, 
+  data: Partial<Employee> & {
+    qualifications?: Array<{
+      qualification: string;
+      instituteId?: string;
+      countryId?: string;
+      stateId?: string;
+      cityId?: string;
+      year?: string;
+      grade?: string;
+    }>;
+  }
+): Promise<{ status: boolean; data?: Employee; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/employees/${id}`, {
       method: 'PUT',
