@@ -550,7 +550,7 @@ export function EmployeeForm({
           })));
         }
       } catch (error) {
-        console.error("Error fetching employees:", error);
+        // Error fetching employees
       } finally {
         setLoadingEmployees(false);
       }
@@ -642,7 +642,7 @@ export function EmployeeForm({
           setCountries(result.data.map(c => ({ id: c.id, name: c.name })));
         }
       } catch (error) {
-        console.error("Error fetching countries:", error);
+        // Error fetching countries
       } finally {
         setLoadingCountries(false);
       }
@@ -733,7 +733,7 @@ export function EmployeeForm({
               setCities(res.data);
             }
           } catch (error) {
-            console.error("Error fetching cities:", error);
+            // Error fetching cities
           } finally {
             setLoadingCities(false);
           }
@@ -926,12 +926,8 @@ export function EmployeeForm({
   };
 
   const goNext = async () => {
-    console.log("➡️ Next button clicked, current step:", step);
     const isValid = await validateStep(step);
-    console.log("✅ Step validation result:", isValid);
     if (!isValid) {
-      console.log("❌ Validation failed for step:", step);
-      console.log("🔍 Current form errors:", errors);
       toast.error("Please fill required fields in this step");
       return;
     }
@@ -943,15 +939,9 @@ export function EmployeeForm({
   };
 
   const onSubmit = async (data: EmployeeFormData) => {
-    console.log("✅ Form submitted! Mode:", mode);
-    console.log("📋 Form data:", data);
-    console.log("🔍 Form errors:", errors);
-    
     startTransition(async () => {
-      console.log("🚀 Start transition called");
       try {
         if (mode === "create") {
-          console.log("📝 Creating new employee...");
           // Prepare employee data
           const employeeData = {
             employeeId: data.employeeId,
@@ -1014,18 +1004,12 @@ export function EmployeeForm({
               : undefined,
           };
 
-          // Debug: Log the data being sent (remove sensitive data in production)
-          console.log("🚀 Creating employee with data:", employeeData);
-
           const result = await createEmployee(employeeData);
-
-          console.log("📥 Employee creation response:", result);
 
           if (result.status) {
             toast.success(result.message || "Employee created successfully");
             router.push("/dashboard/employee/list");
           } else {
-            console.error("❌ Employee creation failed:", result);
             toast.error(result.message || "Failed to create employee");
           }
         } else if (mode === "edit" && initialData) {
@@ -1090,22 +1074,16 @@ export function EmployeeForm({
               : undefined,
           };
 
-          console.log("🔄 Updating employee with data:", employeeData);
-
           const result = await updateEmployee(initialData.id, employeeData as any);
-
-          console.log("📥 Employee update response:", result);
 
           if (result.status) {
             toast.success(result.message || "Employee updated successfully");
             router.push("/dashboard/employee/list");
           } else {
-            console.error("❌ Employee update failed:", result);
             toast.error(result.message || "Failed to update employee");
           }
         }
       } catch (error) {
-        console.error("💥 Error in employee form submission:", error);
         const errorMessage = error instanceof Error 
           ? error.message 
           : mode === "create" 
@@ -1131,9 +1109,6 @@ export function EmployeeForm({
           onSubmit={handleSubmit(
             onSubmit,
             (errors) => {
-              console.log("❌ Form validation failed!");
-              console.log("🔍 Validation errors:", errors);
-              console.log("📋 Current form values:", form.getValues());
               toast.error("Please fix all validation errors before submitting");
             }
           )} 
@@ -1184,12 +1159,7 @@ export function EmployeeForm({
                           alt="Profile preview"
                           className="w-40 h-40 rounded-full object-cover border-4 border-border group-hover:opacity-80 transition-opacity"
                           onError={(e) => {
-                            console.error('❌ Image failed to load:', profilePicPreview);
-                            console.error('❌ Error:', e);
                             setProfilePicPreview(null);
-                          }}
-                          onLoad={() => {
-                            console.log('✅ Image loaded successfully:', profilePicPreview);
                           }}
                         />
                       ) : (
@@ -1597,15 +1567,6 @@ export function EmployeeForm({
                 type="submit" 
                 disabled={isPending} 
                 className="flex-1"
-                onClick={(e) => {
-                  console.log("🖱️ Submit button clicked!");
-                  console.log("📊 Current step:", step);
-                  console.log("📋 Form values:", form.getValues());
-                  console.log("❌ Form errors:", form.formState.errors);
-                  console.log("✅ Form is valid:", form.formState.isValid);
-                  console.log("⏳ Is pending:", isPending);
-                  // Let form submit normally - don't prevent default
-                }}
               >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {mode === "create" ? "Create Employee" : "Update Employee"}

@@ -64,7 +64,7 @@ export default function AttendanceManagePage() {
         setEmployees([]);
         toast.info("Employee data will be loaded from API");
       } catch (error) {
-        console.error("Failed to fetch employees:", error);
+       
         toast.error("Failed to load employees");
       } finally {
         setLoading(false);
