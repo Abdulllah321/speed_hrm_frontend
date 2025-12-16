@@ -257,9 +257,10 @@ export const menuData: MenuItem[] = [
       {
         title: "Leave Application",
         children: [
-          { title: "Mine List", href: "/dashboard/leaves/mine" },
+          { title: "Create Leave", href: "/dashboard/leaves/create-Leaves" },
           { title: "View Requests", href: "/dashboard/leaves/requests" },
-          { title: "Request Forwarding", href: "/dashboard/leaves/forwarding" },
+
+          
         ],
       },
     ],

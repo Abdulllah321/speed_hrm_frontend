@@ -186,7 +186,7 @@ body {
 
 @theme inline {
   --animate-collapsible-down: collapsible-down 0.2s ease-out;
-  --animate-collapsible-up: collapsible-up 0.2s ease-out;
+  --animate-collapsible-up: collapsible-up 0.2s ease-out; 
 }
 
 @keyframes collapsible-down {

@@ -135,7 +135,7 @@ export default function ViewExitClearancePage() {
       { label: "Designation", value: clearance.designation },
       { label: "Department", value: clearance.department },
       { label: "Sub Department", value: clearance.subDepartment },
-      { label: "Reporting Manager", value: clearance.reportingManager },
+     
     ].map((item, index) => (
       <div
         key={index}
