@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, User, Edit } from "lucide-react";
+import { ArrowLeft, User, Edit, Upload, ExternalLink, FileText } from "lucide-react";
 import Link from "next/link";
 import { getEmployeeById, getEmployees } from "@/lib/actions/employee";
 
@@ -208,6 +208,21 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                 { label: "Employee Salary", value: `PKR ${Number(employee.employeeSalary).toLocaleString()}` },
                 { label: "EOBI", value: employee.eobi ? "Yes" : "No" },
                 ...(employee.eobi ? [{ label: "EOBI Number", value: employee.eobiNumber || "N/A" }] : []),
+                ...(employee.eobi && employee.eobiDocumentUrl ? [{
+                  label: "EOBI Document",
+                  value: (
+                    <a
+                      href={employee.eobiDocumentUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Upload className="h-4 w-4" />
+                      View Document
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )
+                }] : []),
                 { label: "Provident Fund", value: employee.providentFund ? "Yes" : "No" },
                 { label: "Overtime Applicable", value: employee.overtimeApplicable ? "Yes" : "No" },
                 { label: "Days Off", value: employee.daysOff || "N/A" },
@@ -344,6 +359,64 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                     </p>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Employee Document Uploads */}
+        {employee.documentUrls && typeof employee.documentUrls === 'object' && Object.keys(employee.documentUrls).length > 0 && (
+          <Card className="border-none shadow-none">
+            <CardHeader>
+              <CardTitle>Employee Document Uploads</CardTitle>
+              <CardDescription>Documents uploaded for this employee</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Object.entries(employee.documentUrls as Record<string, string>).map(([key, url]) => {
+                  const documentLabels: Record<string, string> = {
+                    cv: "CV",
+                    educationDegrees: "Education Degrees",
+                    passportPhotos: "Passport Size Photos",
+                    cnic: "CNIC",
+                    clearanceLetter: "Clearance Letter",
+                    fitProperCriteria: "Fit & Proper Criteria Form",
+                    serviceRulesAffirmation: "Company Service Rules Affirmation",
+                    codeOfConduct: "VIS Code of Conduct 2019",
+                    nda: "Non-Disclosure Agreement (NDA)",
+                    secrecyForm: "Information Secrecy / Confidentiality Form",
+                    investmentDisclosure: "Investment Disclosure Form",
+                  };
+                  
+                  const label = documentLabels[key] || key;
+                  const fileName = url.split('/').pop() || 'Document';
+                  
+                  return (
+                    <div
+                      key={key}
+                      className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className="text-foreground font-semibold text-sm mt-1 truncate">
+                            {fileName}
+                          </p>
+                        </div>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline flex items-center gap-1 shrink-0"
+                        >
+                          <FileText className="h-4 w-4" />
+                          View
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

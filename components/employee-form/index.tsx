@@ -596,6 +596,7 @@ export function EmployeeForm({
       setProfilePicPreview((initialData as any).avatarUrl);
     }
   }, []);
+
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -616,7 +617,64 @@ export function EmployeeForm({
     investmentDisclosure: null,
     eobi: null,
   });
-  const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>({});
+  // Initialize documentUrls with existing documents when editing
+  const initialDocumentUrls: { [key: string]: string } = {};
+  if (mode === "edit") {
+    // Add EOBI document URL
+    if ((initialData as any)?.eobiDocumentUrl) {
+      console.log('📄 Initializing EOBI document URL:', (initialData as any).eobiDocumentUrl);
+      initialDocumentUrls.eobi = (initialData as any).eobiDocumentUrl;
+    }
+    // Add all other document URLs from documentUrls JSON field
+    if ((initialData as any)?.documentUrls && typeof (initialData as any).documentUrls === 'object') {
+      const existingDocs = (initialData as any).documentUrls;
+      Object.keys(existingDocs).forEach((key) => {
+        if (existingDocs[key] && typeof existingDocs[key] === 'string') {
+          initialDocumentUrls[key] = existingDocs[key];
+        }
+      });
+      console.log('📄 Initializing document URLs:', initialDocumentUrls);
+    }
+  }
+  const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>(initialDocumentUrls);
+
+  // Update documentUrls when initialData changes
+  useEffect(() => {
+    if (mode === "edit") {
+      const updatedUrls: { [key: string]: string } = {};
+      
+      // Add EOBI document URL
+      if ((initialData as any)?.eobiDocumentUrl) {
+        updatedUrls.eobi = (initialData as any).eobiDocumentUrl;
+      }
+      
+      // Add all other document URLs from documentUrls JSON field
+      if ((initialData as any)?.documentUrls && typeof (initialData as any).documentUrls === 'object') {
+        const existingDocs = (initialData as any).documentUrls;
+        Object.keys(existingDocs).forEach((key) => {
+          if (existingDocs[key] && typeof existingDocs[key] === 'string') {
+            updatedUrls[key] = existingDocs[key];
+          }
+        });
+      }
+      
+      if (Object.keys(updatedUrls).length > 0) {
+        console.log('📄 Updating document URLs:', updatedUrls);
+        setDocumentUrls((prev) => ({
+          ...prev,
+          ...updatedUrls,
+        }));
+      }
+    }
+  }, [mode, (initialData as any)?.eobiDocumentUrl, (initialData as any)?.documentUrls]);
+  
+  // Debug: Log documentUrls changes
+  useEffect(() => {
+    console.log('📋 documentUrls state:', documentUrls);
+    console.log('📋 eobiDocumentUrl from form:', watch('eobiDocumentUrl'));
+    console.log('📋 initialData eobiDocumentUrl:', (initialData as any)?.eobiDocumentUrl);
+    console.log('📋 initialData documentUrls:', (initialData as any)?.documentUrls);
+  }, [documentUrls]);
 
   // Multi-step wizard
   const stepLabels = [
@@ -1250,6 +1308,7 @@ export function EmployeeForm({
                     documents={documents}
                     handleFileChange={handleFileChange}
                     employees={employees}
+                    documentUrls={documentUrls}
                   />
                   <DateSection form={form} isPending={isPending} errors={errors} />
                 </CardContent>
@@ -1442,6 +1501,7 @@ export function EmployeeForm({
                     <FileUpload
                       id="cv"
                       onChange={(files) => handleFileChange("cv", files?.[0] || null)}
+                      existingFileUrl={documentUrls.cv}
                     />
                   </div>
 
@@ -1452,6 +1512,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("educationDegrees", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.educationDegrees}
                     />
                   </div>
 
@@ -1462,6 +1523,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("passportPhotos", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.passportPhotos}
                     />
                   </div>
 
@@ -1470,6 +1532,7 @@ export function EmployeeForm({
                     <FileUpload
                       id="cnic"
                       onChange={(files) => handleFileChange("cnic", files?.[0] || null)}
+                      existingFileUrl={documentUrls.cnic}
                     />
                   </div>
 
@@ -1480,6 +1543,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("clearanceLetter", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.clearanceLetter}
                     />
                   </div>
 
@@ -1490,6 +1554,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("fitProperCriteria", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.fitProperCriteria}
                     />
                   </div>
 
@@ -1500,6 +1565,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("serviceRulesAffirmation", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.serviceRulesAffirmation}
                     />
                   </div>
 
@@ -1510,6 +1576,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("codeOfConduct", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.codeOfConduct}
                     />
                   </div>
 
@@ -1518,6 +1585,7 @@ export function EmployeeForm({
                     <FileUpload
                       id="nda"
                       onChange={(files) => handleFileChange("nda", files?.[0] || null)}
+                      existingFileUrl={documentUrls.nda}
                     />
                   </div>
 
@@ -1528,6 +1596,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("secrecyForm", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.secrecyForm}
                     />
                   </div>
 
@@ -1538,6 +1607,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("investmentDisclosure", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.investmentDisclosure}
                     />
                   </div>
                 </CardContent>
