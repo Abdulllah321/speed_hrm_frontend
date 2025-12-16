@@ -240,8 +240,8 @@ const employeeFormSchema = z.object({
     .string()
     .optional()
     .refine(
-      (value) => !value || /^\d{7,10}$/.test(value),
-      "EOBI Number must contain only digits"
+      (value) => !value || value.trim() === "" || /^\d{7,10}$/.test(value.trim()),
+      "EOBI Number must be 7-10 digits"
     ),
   
   providentFund: z
@@ -328,7 +328,6 @@ const employeeFormSchema = z.object({
       z.object({
         qualification: z.string().optional(),
         instituteId: z.string().optional(),
-        countryId: z.string().optional(),
         stateId: z.string().optional(),
         cityId: z.string().optional(),
         year: z.union([z.string(), z.number()]).optional(),
@@ -439,11 +438,17 @@ export function EmployeeForm({
       avatarUrl: (initialData as any).avatarUrl || "",
       eobiDocumentUrl: (initialData as any).eobiDocumentUrl || "",
       qualifications: (initialData as any).qualifications && Array.isArray((initialData as any).qualifications) && (initialData as any).qualifications.length > 0
-        ? (initialData as any).qualifications
+        ? (initialData as any).qualifications.map((q: any) => ({
+            qualification: q.qualificationId || q.qualification || "",
+            instituteId: q.instituteId || "",
+            stateId: q.stateId || "",
+            cityId: q.cityId || "",
+            year: q.year?.toString() || "",
+            grade: q.grade || "",
+          }))
         : [{
             qualification: "",
             instituteId: "",
-            countryId: "",
             stateId: "",
             cityId: "",
             year: "",
@@ -498,7 +503,6 @@ export function EmployeeForm({
       qualifications: [{
         qualification: "",
         instituteId: "",
-        countryId: "",
         stateId: "",
         cityId: "",
         year: "",
@@ -522,6 +526,7 @@ export function EmployeeForm({
   // Watch form values
   const department = watch("department");
   const state = watch("state");
+  const avatarUrl = watch("avatarUrl");
 
   // Local state for dynamic dropdowns
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>(initialSubDepartments);
@@ -577,6 +582,20 @@ export function EmployeeForm({
   const [profilePicPreview, setProfilePicPreview] = useState<string | null>(
     (initialData as any)?.avatarUrl || null
   );
+
+  // Sync profilePicPreview with avatarUrl form value
+  useEffect(() => {
+    if (avatarUrl && avatarUrl.trim() !== '') {
+      setProfilePicPreview(avatarUrl);
+    }
+  }, [avatarUrl]);
+
+  // Initialize preview from initialData when component mounts
+  useEffect(() => {
+    if ((initialData as any)?.avatarUrl && !profilePicPreview) {
+      setProfilePicPreview((initialData as any).avatarUrl);
+    }
+  }, []);
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -1164,6 +1183,14 @@ export function EmployeeForm({
                           src={profilePicPreview}
                           alt="Profile preview"
                           className="w-40 h-40 rounded-full object-cover border-4 border-border group-hover:opacity-80 transition-opacity"
+                          onError={(e) => {
+                            console.error('❌ Image failed to load:', profilePicPreview);
+                            console.error('❌ Error:', e);
+                            setProfilePicPreview(null);
+                          }}
+                          onLoad={() => {
+                            console.log('✅ Image loaded successfully:', profilePicPreview);
+                          }}
                         />
                       ) : (
                         <div className="w-40 h-40 rounded-full bg-muted flex items-center justify-center border-4 border-border group-hover:bg-muted/80 transition-colors">

@@ -34,40 +34,50 @@ export default async function ViewEmployeePage({ params }: PageProps) {
   const employees = employeesRes.status ? employeesRes.data || [] : [];
 
   // Helper functions to get names from relations
+  // Backend returns relation objects under *Relation properties and also spreads them initially
   const getDepartmentName = () => {
-    return employee.department?.name || "N/A";
+    const dept = (employee as any).departmentRelation || (employee as any).department;
+    return (dept && typeof dept === 'object' && dept.name) ? dept.name : "N/A";
   };
 
   const getSubDepartmentName = () => {
-    return employee.subDepartment?.name || "N/A";
+    const subDept = (employee as any).subDepartmentRelation || (employee as any).subDepartment;
+    return (subDept && typeof subDept === 'object' && subDept.name) ? subDept.name : "N/A";
   };
 
   const getEmployeeGradeName = () => {
-    return employee.employeeGrade?.grade || "N/A";
+    const grade = (employee as any).employeeGradeRelation || (employee as any).employeeGrade;
+    return (grade && typeof grade === 'object' && grade.grade) ? grade.grade : "N/A";
   };
 
   const getDesignationName = () => {
-    return employee.designation?.name || "N/A";
+    const designation = (employee as any).designationRelation || (employee as any).designation;
+    return (designation && typeof designation === 'object' && designation.name) ? designation.name : "N/A";
   };
 
   const getMaritalStatusName = () => {
-    return employee.maritalStatus?.name || "N/A";
+    const maritalStatus = (employee as any).maritalStatusRelation || (employee as any).maritalStatus;
+    return (maritalStatus && typeof maritalStatus === 'object' && maritalStatus.name) ? maritalStatus.name : "N/A";
   };
 
   const getEmploymentStatusName = () => {
-    return employee.employmentStatus?.status || "N/A";
+    const employmentStatus = (employee as any).employmentStatusRelation || (employee as any).employmentStatus;
+    return (employmentStatus && typeof employmentStatus === 'object' && employmentStatus.status) ? employmentStatus.status : "N/A";
   };
 
   const getBranchName = () => {
-    return employee.branch?.name || "N/A";
+    const branch = (employee as any).branchRelation || (employee as any).branch;
+    return (branch && typeof branch === 'object' && branch.name) ? branch.name : "N/A";
   };
 
   const getWorkingHoursPolicyName = () => {
-    return employee.workingHoursPolicy?.name || "N/A";
+    const policy = (employee as any).workingHoursPolicyRelation || (employee as any).workingHoursPolicy;
+    return (policy && typeof policy === 'object' && policy.name) ? policy.name : "N/A";
   };
 
   const getLeavesPolicyName = () => {
-    return employee.leavesPolicy?.name || "N/A";
+    const policy = (employee as any).leavesPolicyRelation || (employee as any).leavesPolicy;
+    return (policy && typeof policy === 'object' && policy.name) ? policy.name : "N/A";
   };
 
   const getReportingManagerName = () => {
@@ -77,15 +87,18 @@ export default async function ViewEmployeePage({ params }: PageProps) {
   };
 
   const getStateName = () => {
-    return employee.state?.name || "N/A";
+    const state = (employee as any).stateRelation || (employee as any).provinceRelation || (employee as any).state;
+    return (state && typeof state === 'object' && state.name) ? state.name : "N/A";
   };
 
   const getCityName = () => {
-    return employee.city?.name || "N/A";
+    const city = (employee as any).cityRelation || (employee as any).city;
+    return (city && typeof city === 'object' && city.name) ? city.name : "N/A";
   };
 
   const getCountryName = () => {
-    return employee.country?.name || "N/A";
+    const country = (employee as any).countryRelation || (employee as any).country;
+    return (country && typeof country === 'object' && country.name) ? country.name : "N/A";
   };
 
   const formatDate = (date: string | null | undefined) => {
@@ -102,21 +115,13 @@ export default async function ViewEmployeePage({ params }: PageProps) {
     return cnic;
   };
 
-  // Qualification data - use first qualification if available
-  const qualificationData = employee.qualifications && Array.isArray(employee.qualifications) && employee.qualifications.length > 0
-    ? (() => {
-        const qual = employee.qualifications[0];
-        return {
-          qualification: qual.qualification || "N/A",
-          institute: qual.institute?.name || "N/A",
-          year: qual.year || "N/A",
-          grade: qual.grade || "N/A",
-          country: qual.country?.name || "N/A",
-          state: qual.state?.name || "N/A",
-          city: qual.city?.name || "N/A",
-        };
-        })()
-      : null;
+  // Helper function to get qualification name from relation object
+  const getQualificationName = (qual: any) => {
+    const qualification = qual?.qualification;
+    return (qualification && typeof qualification === 'object' && qualification.name) 
+      ? qualification.name 
+      : "N/A";
+  };
 
   return (
     <div className="max-w-[90%] mx-auto pb-10">
@@ -140,8 +145,16 @@ export default async function ViewEmployeePage({ params }: PageProps) {
         <Card className="border-none shadow-none">
           <CardHeader>
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-2 border-border">
-                <User className="w-16 h-16 text-muted-foreground" />
+              <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-2 border-border overflow-hidden">
+                {employee.avatarUrl ? (
+                  <img
+                    src={employee.avatarUrl}
+                    alt={employee.employeeName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-16 h-16 text-muted-foreground" />
+                )}
               </div>
               <div>
                 <CardTitle className="text-2xl">{employee.employeeName}</CardTitle>
@@ -219,35 +232,43 @@ export default async function ViewEmployeePage({ params }: PageProps) {
         </Card>
 
         {/* Qualification Section */}
-        {qualificationData && (
+        {employee.qualifications && Array.isArray(employee.qualifications) && employee.qualifications.length > 0 && (
           <Card className="border-none shadow-none">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Qualification</CardTitle>
+              <CardTitle className="text-lg font-semibold">Qualifications</CardTitle>
               <CardDescription>Employee educational qualifications</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="p-4 border rounded-lg bg-muted/30">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {[
-                    { label: "Qualification", value: qualificationData.qualification },
-                    { label: "Institute", value: qualificationData.institute },
-                    { label: "Year", value: qualificationData.year },
-                    { label: "Grade", value: qualificationData.grade },
-                    { label: "Country", value: qualificationData.country },
-                    { label: "State", value: qualificationData.state },
-                    { label: "City", value: qualificationData.city },
-                  ].map((item, index) => (
-                    <div
-                      key={index}
-                      className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
-                    >
-                      <p className="text-xs text-muted-foreground">{item.label}</p>
-                      <p className="text-foreground font-semibold text-1xl mt-1">
-                        {item.value}
-                      </p>
+              <div className="space-y-4">
+                {employee.qualifications.map((qual: any, index: number) => (
+                  <div key={qual.id || index} className="p-4 border rounded-lg bg-muted/30">
+                    {employee.qualifications.length > 1 && (
+                      <div className="text-sm font-medium text-muted-foreground mb-3">
+                        Qualification {index + 1}
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {[
+                        { label: "Qualification", value: getQualificationName(qual) },
+                        { label: "Institute", value: (qual.institute as any)?.name || "N/A" },
+                        { label: "Year", value: qual.year || "N/A" },
+                        { label: "Grade", value: qual.grade || "N/A" },
+                        { label: "State", value: (qual.state as any)?.name || "N/A" },
+                        { label: "City", value: (qual.city as any)?.name || "N/A" },
+                      ].map((item, itemIndex) => (
+                        <div
+                          key={itemIndex}
+                          className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
+                        >
+                          <p className="text-xs text-muted-foreground">{item.label}</p>
+                          <p className="text-foreground font-semibold text-1xl mt-1">
+                            {item.value}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

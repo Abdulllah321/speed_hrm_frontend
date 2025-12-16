@@ -90,11 +90,16 @@ export function QualificationSection({
   const [qualificationCities, setQualificationCities] = useState<Record<number, { id: string; name: string }[]>>({});
   const [loadingQualificationCities, setLoadingQualificationCities] = useState<Record<number, boolean>>({});
 
-  // Watch all qualification states
+  // Watch all qualification states - create a string of stateIds to properly track changes
   const watchedQualifications = watch("qualifications");
+  const stateIdsString = watchedQualifications?.map((q: any, i: number) => `${i}:${q?.stateId || ''}`).join('|') || '';
 
-  // Fetch cities when state changes for any qualification
+  // Fetch cities when state changes for any qualification (similar to basic-info-section)
   useEffect(() => {
+    if (!watchedQualifications || watchedQualifications.length === 0) {
+      return;
+    }
+
     const fetchCitiesForQualification = async (index: number, stateId: string) => {
       if (!stateId) {
         setQualificationCities((prev) => {
@@ -108,7 +113,7 @@ export function QualificationSection({
       }
 
       try {
-        setLoadingQualificationCities((prev) => ({ ...prev, [index]: true }));
+        // Loading state is already set before calling this function
         const result = await getCitiesByState(stateId);
         if (result.status && result.data) {
           setQualificationCities((prev) => ({
@@ -116,7 +121,7 @@ export function QualificationSection({
             [index]: result.data || [],
           }));
         } else {
-          console.error("Failed to load cities:", result.message);
+          toast.error(result.message || "Failed to load cities");
           setQualificationCities((prev) => {
             const updated = { ...prev };
             updated[index] = [];
@@ -125,6 +130,7 @@ export function QualificationSection({
         }
       } catch (error) {
         console.error("Error fetching cities:", error);
+        toast.error("Failed to fetch cities. Please try again.");
         setQualificationCities((prev) => {
           const updated = { ...prev };
           updated[index] = [];
@@ -135,26 +141,17 @@ export function QualificationSection({
       }
     };
 
-    if (!watchedQualifications || watchedQualifications.length === 0) {
-      return;
-    }
-
-    // Fetch cities for each qualification that has a state
+    // Fetch cities for each qualification that has a state (with debounce like basic-info-section)
     const timers: NodeJS.Timeout[] = [];
+    
     watchedQualifications.forEach((qual: any, index: number) => {
       const stateId = qual?.stateId;
       if (stateId) {
-        // Set loading state immediately if not already set
-        setLoadingQualificationCities((prev) => {
-          if (!prev[index]) {
-            return { ...prev, [index]: true };
-          }
-          return prev;
-        });
-        // Always fetch when stateId is present to ensure fresh data
+        // Set loading state immediately (like basic-info-section)
+        setLoadingQualificationCities((prev) => ({ ...prev, [index]: true }));
         const timer = setTimeout(() => {
           fetchCitiesForQualification(index, stateId);
-        }, 250);
+        }, 100);
         timers.push(timer);
       } else {
         // Clear cities if state is cleared
@@ -171,7 +168,7 @@ export function QualificationSection({
     return () => {
       timers.forEach(timer => clearTimeout(timer));
     };
-  }, [watchedQualifications, form.setValue]);
+  }, [stateIdsString, form.setValue]);
 
   // Handle create qualification from search
   const handleCreateQualification = async (name: string, index: number): Promise<string | null> => {

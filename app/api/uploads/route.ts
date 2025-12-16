@@ -25,8 +25,17 @@ export async function POST(req: NextRequest) {
     if (!json.status) {
       return NextResponse.json(json, { status: res.status });
     }
+    // Convert relative URL to absolute URL if needed
     const id = json.data?.id;
-    const url = `${API_BASE}/uploads/${id}/download`;
+    let url = json.data?.url;
+    if (url && url.startsWith('/')) {
+      // Convert relative URL to absolute
+      const backendUrl = API_BASE.replace('/api', '');
+      url = `${backendUrl}${url}`;
+    } else if (!url) {
+      // Fallback: generate URL
+      url = `${API_BASE}/uploads/${id}`;
+    }
     return NextResponse.json({ status: true, data: { ...json.data, url } });
   } catch (error: any) {
     return NextResponse.json({ status: false, message: error?.message || "Upload failed" }, { status: 500 });
