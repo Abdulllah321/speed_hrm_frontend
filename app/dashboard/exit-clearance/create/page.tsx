@@ -41,7 +41,6 @@ export default function CreateExitClearancePage() {
     leavingReason: "",
     contractEnd: "",
     lastWorkingDate: "",
-    reportingManager: "",
     date: new Date().toISOString().split("T")[0],
     // IT Department
     itAccessControl: false,
@@ -135,7 +134,6 @@ export default function CreateExitClearancePage() {
           leavingReason: formData.leavingReason || null,
           contractEnd: formData.contractEnd || null,
           lastWorkingDate: formData.lastWorkingDate,
-          reportingManager: formData.reportingManager || null,
           date: formData.date,
           itAccessControl: formData.itAccessControl,
           itPasswordInactivated: formData.itPasswordInactivated,
@@ -226,15 +224,15 @@ export default function CreateExitClearancePage() {
             </div>
             <div className="space-y-2">
               <Label>Designation</Label>
-              <Input value={formData.designation} disabled className="bg-muted" />
+              <Input value={formData.designation} disabled className="bg-muted" placeholder="Select employee to auto-fill" />
             </div>
             <div className="space-y-2">
               <Label>Department</Label>
-              <Input value={formData.department} disabled className="bg-muted" />
+              <Input value={formData.department} disabled className="bg-muted" placeholder="Select employee to auto-fill" />
             </div>
             <div className="space-y-2">
               <Label>Sub Department</Label>
-              <Input value={formData.subDepartment} disabled className="bg-muted" />
+              <Input value={formData.subDepartment} disabled className="bg-muted" placeholder="Select employee to auto-fill" />
             </div>
             {/* <div className="space-y-2">
               <Label>Location</Label>
@@ -267,10 +265,6 @@ export default function CreateExitClearancePage() {
                 disabled={isPending}
                 placeholder="Select last working date"
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Reporting Manager</Label>
-              <Input value={formData.reportingManager} onChange={(e) => updateField("reportingManager", e.target.value)} disabled={isPending} />
             </div>
             <div className="space-y-2">
               <Label>Date</Label>

@@ -82,7 +82,7 @@ export default function AttendanceManagePage() {
           toast.error(result.message || "Failed to load employees");
         }
       } catch (error) {
-        console.error("Failed to fetch employees:", error);
+       
         toast.error("Failed to load employees");
       } finally {
         setLoading(false);

@@ -8,6 +8,7 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Upload } from "lucide-react";
 
 type Option = { id: string; name: string };
 
@@ -25,7 +26,7 @@ const formatPhone = (value: string): string => {
   }
 };
 
-export function BasicInfoSection({ form, isPending, loadingData, departments, subDepartments, department, loadingSubDepartments, employeeGrades, designations, maritalStatuses, employeeStatuses, errors, formatCNIC, nationalities, genders, states, cities, state, loadingCities, daysOff, workingHoursPolicies, branches, leavesPolicies, documents, handleFileChange, employees }: {
+export function BasicInfoSection({ form, isPending, loadingData, departments, subDepartments, department, loadingSubDepartments, employeeGrades, designations, maritalStatuses, employeeStatuses, errors, formatCNIC, nationalities, genders, states, cities, state, loadingCities, daysOff, workingHoursPolicies, branches, leavesPolicies, documents, handleFileChange, employees, documentUrls }: {
   form: UseFormReturn<any>;
   isPending: boolean;
   loadingData: boolean;
@@ -52,6 +53,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
   documents: Record<string, File | null>;
   handleFileChange: (key: string, file: File | null) => void;
   employees: { id: string; employeeName: string; employeeId: string }[];
+  documentUrls?: Record<string, string>;
 }) {
   const { register, control } = form;
   const lifetimeCnic = useWatch({ control, name: "lifetimeCnic" });
@@ -409,6 +411,28 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
                 <p className="text-xs text-muted-foreground mt-1">
                   Selected: {documents.eobi.name}
                 </p>
+              )}
+              {(() => {
+                console.log('🔍 EOBI Document Debug:', {
+                  documentUrls,
+                  'documentUrls.eobi': documentUrls?.eobi,
+                  'documents.eobi': documents.eobi,
+                  shouldShow: documentUrls?.eobi && !documents.eobi
+                });
+                return null;
+              })()}
+              {documentUrls?.eobi && !documents.eobi && (
+                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                  <a
+                    href={documentUrls.eobi}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-green-700 dark:text-green-400 hover:underline flex items-center gap-1"
+                  >
+                    <Upload className="h-3 w-3" />
+                    View Uploaded Document
+                  </a>
+                </div>
               )}
             </div>
           </>

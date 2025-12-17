@@ -29,10 +29,12 @@ const FileUploadComponent = ({
   id,
   onChange,
   accept,
+  existingFileUrl,
 }: {
   id: string;
   onChange?: (files: File[]) => void;
   accept?: string;
+  existingFileUrl?: string;
 }) => {
   const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -164,7 +166,36 @@ const FileUploadComponent = ({
                   </div>
                 </motion.div>
               ))}
-            {!files.length && (
+            {files.length === 0 && existingFileUrl && (
+              <motion.div
+                layoutId={`file-upload-${id}`}
+                className={cn(
+                  "relative overflow-hidden z-0 bg-white dark:bg-neutral-900 flex flex-col items-start justify-start md:h-24 p-4 mt-4 w-full mx-auto rounded-md",
+                  "shadow-sm"
+                )}
+              >
+                <div className="flex justify-between w-full items-center gap-4">
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    layout
+                    className="text-base text-neutral-700 dark:text-neutral-300 truncate max-w-xs"
+                  >
+                    {existingFileUrl.split('/').pop()}
+                  </motion.p>
+                  <a
+                    href={existingFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-lg px-2 py-1 w-fit shrink-0 text-sm text-blue-600 dark:text-blue-400 hover:underline shadow-input"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View
+                  </a>
+                </div>
+              </motion.div>
+            )}
+            {!files.length && !existingFileUrl && (
               <motion.div
                 layoutId={`file-upload-${id}`}
                 variants={mainVariant}

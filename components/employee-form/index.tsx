@@ -550,7 +550,7 @@ export function EmployeeForm({
           })));
         }
       } catch (error) {
-        console.error("Error fetching employees:", error);
+        // Error fetching employees
       } finally {
         setLoadingEmployees(false);
       }
@@ -596,6 +596,7 @@ export function EmployeeForm({
       setProfilePicPreview((initialData as any).avatarUrl);
     }
   }, []);
+
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -616,7 +617,64 @@ export function EmployeeForm({
     investmentDisclosure: null,
     eobi: null,
   });
-  const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>({});
+  // Initialize documentUrls with existing documents when editing
+  const initialDocumentUrls: { [key: string]: string } = {};
+  if (mode === "edit") {
+    // Add EOBI document URL
+    if ((initialData as any)?.eobiDocumentUrl) {
+      console.log('📄 Initializing EOBI document URL:', (initialData as any).eobiDocumentUrl);
+      initialDocumentUrls.eobi = (initialData as any).eobiDocumentUrl;
+    }
+    // Add all other document URLs from documentUrls JSON field
+    if ((initialData as any)?.documentUrls && typeof (initialData as any).documentUrls === 'object') {
+      const existingDocs = (initialData as any).documentUrls;
+      Object.keys(existingDocs).forEach((key) => {
+        if (existingDocs[key] && typeof existingDocs[key] === 'string') {
+          initialDocumentUrls[key] = existingDocs[key];
+        }
+      });
+      console.log('📄 Initializing document URLs:', initialDocumentUrls);
+    }
+  }
+  const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>(initialDocumentUrls);
+
+  // Update documentUrls when initialData changes
+  useEffect(() => {
+    if (mode === "edit") {
+      const updatedUrls: { [key: string]: string } = {};
+      
+      // Add EOBI document URL
+      if ((initialData as any)?.eobiDocumentUrl) {
+        updatedUrls.eobi = (initialData as any).eobiDocumentUrl;
+      }
+      
+      // Add all other document URLs from documentUrls JSON field
+      if ((initialData as any)?.documentUrls && typeof (initialData as any).documentUrls === 'object') {
+        const existingDocs = (initialData as any).documentUrls;
+        Object.keys(existingDocs).forEach((key) => {
+          if (existingDocs[key] && typeof existingDocs[key] === 'string') {
+            updatedUrls[key] = existingDocs[key];
+          }
+        });
+      }
+      
+      if (Object.keys(updatedUrls).length > 0) {
+        console.log('📄 Updating document URLs:', updatedUrls);
+        setDocumentUrls((prev) => ({
+          ...prev,
+          ...updatedUrls,
+        }));
+      }
+    }
+  }, [mode, (initialData as any)?.eobiDocumentUrl, (initialData as any)?.documentUrls]);
+  
+  // Debug: Log documentUrls changes
+  useEffect(() => {
+    console.log('📋 documentUrls state:', documentUrls);
+    console.log('📋 eobiDocumentUrl from form:', watch('eobiDocumentUrl'));
+    console.log('📋 initialData eobiDocumentUrl:', (initialData as any)?.eobiDocumentUrl);
+    console.log('📋 initialData documentUrls:', (initialData as any)?.documentUrls);
+  }, [documentUrls]);
 
   // Multi-step wizard
   const stepLabels = [
@@ -642,7 +700,7 @@ export function EmployeeForm({
           setCountries(result.data.map(c => ({ id: c.id, name: c.name })));
         }
       } catch (error) {
-        console.error("Error fetching countries:", error);
+        // Error fetching countries
       } finally {
         setLoadingCountries(false);
       }
@@ -733,7 +791,7 @@ export function EmployeeForm({
               setCities(res.data);
             }
           } catch (error) {
-            console.error("Error fetching cities:", error);
+            // Error fetching cities
           } finally {
             setLoadingCities(false);
           }
@@ -926,12 +984,8 @@ export function EmployeeForm({
   };
 
   const goNext = async () => {
-    console.log("➡️ Next button clicked, current step:", step);
     const isValid = await validateStep(step);
-    console.log("✅ Step validation result:", isValid);
     if (!isValid) {
-      console.log("❌ Validation failed for step:", step);
-      console.log("🔍 Current form errors:", errors);
       toast.error("Please fill required fields in this step");
       return;
     }
@@ -943,15 +997,9 @@ export function EmployeeForm({
   };
 
   const onSubmit = async (data: EmployeeFormData) => {
-    console.log("✅ Form submitted! Mode:", mode);
-    console.log("📋 Form data:", data);
-    console.log("🔍 Form errors:", errors);
-    
     startTransition(async () => {
-      console.log("🚀 Start transition called");
       try {
         if (mode === "create") {
-          console.log("📝 Creating new employee...");
           // Prepare employee data
           const employeeData = {
             employeeId: data.employeeId,
@@ -1014,18 +1062,12 @@ export function EmployeeForm({
               : undefined,
           };
 
-          // Debug: Log the data being sent (remove sensitive data in production)
-          console.log("🚀 Creating employee with data:", employeeData);
-
           const result = await createEmployee(employeeData);
-
-          console.log("📥 Employee creation response:", result);
 
           if (result.status) {
             toast.success(result.message || "Employee created successfully");
             router.push("/dashboard/employee/list");
           } else {
-            console.error("❌ Employee creation failed:", result);
             toast.error(result.message || "Failed to create employee");
           }
         } else if (mode === "edit" && initialData) {
@@ -1090,22 +1132,16 @@ export function EmployeeForm({
               : undefined,
           };
 
-          console.log("🔄 Updating employee with data:", employeeData);
-
           const result = await updateEmployee(initialData.id, employeeData as any);
-
-          console.log("📥 Employee update response:", result);
 
           if (result.status) {
             toast.success(result.message || "Employee updated successfully");
             router.push("/dashboard/employee/list");
           } else {
-            console.error("❌ Employee update failed:", result);
             toast.error(result.message || "Failed to update employee");
           }
         }
       } catch (error) {
-        console.error("💥 Error in employee form submission:", error);
         const errorMessage = error instanceof Error 
           ? error.message 
           : mode === "create" 
@@ -1131,9 +1167,6 @@ export function EmployeeForm({
           onSubmit={handleSubmit(
             onSubmit,
             (errors) => {
-              console.log("❌ Form validation failed!");
-              console.log("🔍 Validation errors:", errors);
-              console.log("📋 Current form values:", form.getValues());
               toast.error("Please fix all validation errors before submitting");
             }
           )} 
@@ -1184,12 +1217,7 @@ export function EmployeeForm({
                           alt="Profile preview"
                           className="w-40 h-40 rounded-full object-cover border-4 border-border group-hover:opacity-80 transition-opacity"
                           onError={(e) => {
-                            console.error('❌ Image failed to load:', profilePicPreview);
-                            console.error('❌ Error:', e);
                             setProfilePicPreview(null);
-                          }}
-                          onLoad={() => {
-                            console.log('✅ Image loaded successfully:', profilePicPreview);
                           }}
                         />
                       ) : (
@@ -1280,6 +1308,7 @@ export function EmployeeForm({
                     documents={documents}
                     handleFileChange={handleFileChange}
                     employees={employees}
+                    documentUrls={documentUrls}
                   />
                   <DateSection form={form} isPending={isPending} errors={errors} />
                 </CardContent>
@@ -1472,6 +1501,7 @@ export function EmployeeForm({
                     <FileUpload
                       id="cv"
                       onChange={(files) => handleFileChange("cv", files?.[0] || null)}
+                      existingFileUrl={documentUrls.cv}
                     />
                   </div>
 
@@ -1482,6 +1512,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("educationDegrees", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.educationDegrees}
                     />
                   </div>
 
@@ -1492,6 +1523,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("passportPhotos", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.passportPhotos}
                     />
                   </div>
 
@@ -1500,6 +1532,7 @@ export function EmployeeForm({
                     <FileUpload
                       id="cnic"
                       onChange={(files) => handleFileChange("cnic", files?.[0] || null)}
+                      existingFileUrl={documentUrls.cnic}
                     />
                   </div>
 
@@ -1510,6 +1543,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("clearanceLetter", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.clearanceLetter}
                     />
                   </div>
 
@@ -1520,6 +1554,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("fitProperCriteria", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.fitProperCriteria}
                     />
                   </div>
 
@@ -1530,6 +1565,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("serviceRulesAffirmation", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.serviceRulesAffirmation}
                     />
                   </div>
 
@@ -1540,6 +1576,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("codeOfConduct", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.codeOfConduct}
                     />
                   </div>
 
@@ -1548,6 +1585,7 @@ export function EmployeeForm({
                     <FileUpload
                       id="nda"
                       onChange={(files) => handleFileChange("nda", files?.[0] || null)}
+                      existingFileUrl={documentUrls.nda}
                     />
                   </div>
 
@@ -1558,6 +1596,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("secrecyForm", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.secrecyForm}
                     />
                   </div>
 
@@ -1568,6 +1607,7 @@ export function EmployeeForm({
                       onChange={(files) =>
                         handleFileChange("investmentDisclosure", files?.[0] || null)
                       }
+                      existingFileUrl={documentUrls.investmentDisclosure}
                     />
                   </div>
                 </CardContent>
@@ -1597,15 +1637,6 @@ export function EmployeeForm({
                 type="submit" 
                 disabled={isPending} 
                 className="flex-1"
-                onClick={(e) => {
-                  console.log("🖱️ Submit button clicked!");
-                  console.log("📊 Current step:", step);
-                  console.log("📋 Form values:", form.getValues());
-                  console.log("❌ Form errors:", form.formState.errors);
-                  console.log("✅ Form is valid:", form.formState.isValid);
-                  console.log("⏳ Is pending:", isPending);
-                  // Let form submit normally - don't prevent default
-                }}
               >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 {mode === "create" ? "Create Employee" : "Update Employee"}
