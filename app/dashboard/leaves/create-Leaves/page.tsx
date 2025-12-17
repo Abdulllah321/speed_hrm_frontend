@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DataTable from "@/components/common/data-table";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, CalendarCheck, Calendar } from "lucide-react";
 import { getEmployees, type Employee } from "@/lib/actions/employee";
 import { getEmployeeLeaveBalance, createLeaveApplication, type LeaveBalance, type EmployeeLeaveInfo } from "@/lib/actions/leave-application";
 import { getLeaveRequests, type LeaveRequest } from "@/lib/actions/leave-requests";
@@ -46,8 +46,10 @@ export default function CreateLeavePage() {
   // Form state
   const [selectedLeaveType, setSelectedLeaveType] = useState<string>("");
   const [dayType, setDayType] = useState<string>("fullDay");
-  const [fromDate, setFromDate] = useState<string>("");
-  const [toDate, setToDate] = useState<string>("");
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: undefined,
+    to: undefined,
+  });
   const [reasonForLeave, setReasonForLeave] = useState<string>("");
   const [addressWhileOnLeave, setAddressWhileOnLeave] = useState<string>("");
 
@@ -234,8 +236,8 @@ export default function CreateLeavePage() {
       return;
     }
 
-    if (!fromDate || !toDate) {
-      toast.error("Please select from date and to date");
+    if (!dateRange.from || !dateRange.to) {
+      toast.error("Please select date range");
       return;
     }
 
@@ -255,8 +257,8 @@ export default function CreateLeavePage() {
         employeeId: selectedEmployeeId,
         leaveTypeId: selectedLeaveType,
         dayType: dayType as 'fullDay' | 'halfDay' | 'shortLeave',
-        fromDate,
-        toDate,
+        fromDate: format(dateRange.from!, 'yyyy-MM-dd'),
+        toDate: format(dateRange.to!, 'yyyy-MM-dd'),
         reasonForLeave,
         addressWhileOnLeave,
       });
@@ -295,8 +297,10 @@ export default function CreateLeavePage() {
   const handleClearForm = () => {
     setSelectedLeaveType("");
     setDayType("fullDay");
-    setFromDate("");
-    setToDate("");
+    setDateRange({
+      from: undefined,
+      to: undefined,
+    });
     setReasonForLeave("");
     setAddressWhileOnLeave("");
   };
@@ -354,17 +358,27 @@ export default function CreateLeavePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
               <CardContent className="pt-6">
-                <div className="text-sm text-muted-foreground">Taken Leaves</div>
-                <div className="text-2xl font-bold text-green-700 dark:text-green-400">
-                  {totals.used}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Taken Leaves</div>
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-400">
+                      {totals.used}
+                    </div>
+                  </div>
+                  <CalendarCheck className="h-8 w-8 text-green-700 dark:text-green-400" />
                 </div>
               </CardContent>
             </Card>
             <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
               <CardContent className="pt-6">
-                <div className="text-sm text-muted-foreground">Remaining Leaves</div>
-                <div className="text-2xl font-bold text-red-700 dark:text-red-400">
-                  {totals.remaining}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-muted-foreground">Remaining Leaves</div>
+                    <div className="text-2xl font-bold text-red-700 dark:text-red-400">
+                      {totals.remaining}
+                    </div>
+                  </div>
+                  <Calendar className="h-8 w-8 text-red-700 dark:text-red-400" />
                 </div>
               </CardContent>
             </Card>
@@ -427,38 +441,32 @@ export default function CreateLeavePage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label>From Date</Label>
-                      <DatePicker
-                        value={fromDate}
-                        onChange={setFromDate}
-                        placeholder="Select From Date"
+                      <Label>Date Range</Label>
+                      <DateRangePicker
+                        initialDateFrom={dateRange.from}
+                        initialDateTo={dateRange.to}
+                        onUpdate={(values) => {
+                          setDateRange(values.range);
+                        }}
+                        placeholder="Select Date Range"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label>To Date</Label>
-                      <DatePicker
-                        value={toDate}
-                        onChange={setToDate}
-                        placeholder="Select To Date"
-                      />
+                      <Label>Reason For Leave</Label>
+                      <Select value={reasonForLeave} onValueChange={setReasonForLeave}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Reason" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {reasonOptions.map((reason) => (
+                            <SelectItem key={reason} value={reason}>
+                              {reason}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Reason For Leave</Label>
-                    <Select value={reasonForLeave} onValueChange={setReasonForLeave}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select Reason" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {reasonOptions.map((reason) => (
-                          <SelectItem key={reason} value={reason}>
-                            {reason}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   <div className="space-y-2">

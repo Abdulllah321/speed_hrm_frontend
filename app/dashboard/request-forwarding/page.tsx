@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-const approvalLevelTypes = ["Multi Level", "Single Level"];
+const approvalLevelTypes = ["Multi Level", "Auto Approval"];
 const types = ["Specific Employee", "Department", "All Employees"];
 const approvalTypes = ["One Level", "Two Level", "Three Level"];
 
@@ -137,17 +137,13 @@ export default function AttendanceRequestForwardingPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-6">
           <TabsTrigger value="exemption">Exemption Request Forwarding</TabsTrigger>
-          <TabsTrigger value="attendance">Attendance Request Forwarding</TabsTrigger>
+          
         </TabsList>
 
         <TabsContent value="exemption">
           <form onSubmit={handleSubmit}>
             <Card>
-              <CardHeader>
-                <CardTitle className="border-b-2 border-blue-500 pb-2">
-                  Exemption Request Forwarding
-                </CardTitle>
-              </CardHeader>
+         
               <CardContent className="pt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Left Column */}
@@ -256,121 +252,7 @@ export default function AttendanceRequestForwardingPage() {
           </form>
         </TabsContent>
 
-        <TabsContent value="attendance">
-          <form onSubmit={handleSubmit}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="border-b-2 border-blue-500 pb-2">
-                  Attendance Request Forwarding
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Left Column */}
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <Label>
-                        Approval Level Type: <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={formData.approvalLevelType}
-                        onValueChange={(value) => updateField("approvalLevelType", value)}
-                        disabled={isPending}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select approval level type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {approvalLevelTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {Array.from({ length: getLevelCount() }).map((_, index) => {
-                      const levelNum = index + 1;
-                      return (
-                        <div key={`type-${levelNum}`} className="space-y-2">
-                          <Label>
-                            Type: <span className="text-red-500">*</span>
-                          </Label>
-                          <Select
-                            value={formData[`type${levelNum}` as keyof typeof formData] as string}
-                            onValueChange={(value) => updateField(`type${levelNum}`, value)}
-                            disabled={isPending}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {types.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {type}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <Label>
-                        Approval Type: <span className="text-red-500">*</span>
-                      </Label>
-                      <Select
-                        value={formData.approvalType}
-                        onValueChange={(value) => updateField("approvalType", value)}
-                        disabled={isPending}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select approval type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {approvalTypes.map((type) => (
-                            <SelectItem key={type} value={type}>
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {Array.from({ length: getLevelCount() }).map((_, index) => {
-                      const levelNum = index + 1;
-                      return (
-                        <div key={`approval-type-${levelNum}`} className="space-y-2">
-                          <Label>
-                            Approval Type {levelNum}: <span className="text-red-500">*</span>
-                          </Label>
-                          <Input
-                            value={formData[`approvalType${levelNum}` as keyof typeof formData] as string}
-                            onChange={(e) => updateField(`approvalType${levelNum}`, e.target.value)}
-                            placeholder={`Enter approval type ${levelNum}`}
-                            disabled={isPending}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="flex justify-end mt-6">
-                  <Button type="submit" disabled={isPending} className="bg-green-600 hover:bg-green-700">
-                    {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Submit
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </form>
-        </TabsContent>
+  
       </Tabs>
     </div>
   );

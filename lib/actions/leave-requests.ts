@@ -125,7 +125,7 @@ export async function approveLeaveApplication(id: string): Promise<{ status: boo
     const result = await res.json();
     if (result.status && result.data) {
       revalidatePath('/dashboard/leaves/requests');
-      revalidatePath('/dashboard/leaves/create-Leaves');
+      revalidatePath('/dashboard/leaves/create-leaves');
       return { status: true, data: result.data };
     }
     return { status: false, message: result.message || 'Failed to approve leave application' };
@@ -155,7 +155,7 @@ export async function rejectLeaveApplication(id: string, remarks?: string): Prom
     const result = await res.json();
     if (result.status && result.data) {
       revalidatePath('/dashboard/leaves/requests');
-      revalidatePath('/dashboard/leaves/create-Leaves');
+      revalidatePath('/dashboard/leaves/create-leaves');
       return { status: true, data: result.data };
     }
     return { status: false, message: result.message || 'Failed to reject leave application' };
