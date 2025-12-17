@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { getAccessToken } from "@/lib/auth";
+import { LeaveType } from "./leave-type";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
 
 export interface LeavesPolicyLeaveType {
   leaveTypeId: string;
-  leaveTypeName: string;
+  leaveType: LeaveType;
   numberOfLeaves: number;
 }
 
