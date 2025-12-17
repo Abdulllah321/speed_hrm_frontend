@@ -361,7 +361,7 @@ function RowActions({ row }: { row: Row<LeavesPolicyRow> }) {
       } else toast.error(result.message);
     });
   };
-
+console.log(policyDetails);
   return (
     <>
       <DropdownMenu>
@@ -494,7 +494,7 @@ function RowActions({ row }: { row: Row<LeavesPolicyRow> }) {
                       <TableBody>
                         {policyDetails.leaveTypes.map((lt, index) => (
                           <TableRow key={index}>
-                            <TableCell>{lt.leaveTypeName}</TableCell>
+                            <TableCell>{lt.leaveType?.name}</TableCell>
                             <TableCell>{lt.numberOfLeaves}</TableCell>
                           </TableRow>
                         ))}

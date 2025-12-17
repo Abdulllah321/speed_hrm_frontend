@@ -1,0 +1,335 @@
+'use server';
+
+import { getAccessToken } from '../auth';
+import { revalidatePath } from 'next/cache';
+
+const API_URL = process.env.API_URL || 'http://localhost:5000/api';
+
+async function getAuthHeaders() {
+  const token = await getAccessToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+}
+
+export interface Attendance {
+  id: string;
+  employeeId: string;
+  date: string;
+  checkIn?: string | null;
+  checkOut?: string | null;
+  status: string;
+  isRemote: boolean;
+  location?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  workingHours?: number | null;
+  overtimeHours?: number | null;
+  lateMinutes?: number | null;
+  earlyLeaveMinutes?: number | null;
+  breakDuration?: number | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  employee?: {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    departmentId?: string;
+    subDepartmentId?: string;
+    workingHoursPolicyId?: string;
+  };
+}
+
+// Get all attendances with filters
+export async function getAttendances(filters?: {
+  employeeId?: string;
+  dateFrom?: Date | string;
+  dateTo?: Date | string;
+  status?: string;
+}): Promise<{ status: boolean; data?: Attendance[]; message?: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (filters?.employeeId) params.append('employeeId', filters.employeeId);
+    if (filters?.dateFrom) {
+      const date = typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom.toISOString();
+      params.append('dateFrom', date);
+    }
+    if (filters?.dateTo) {
+      const date = typeof filters.dateTo === 'string' ? filters.dateTo : filters.dateTo.toISOString();
+      params.append('dateTo', date);
+    }
+    if (filters?.status) params.append('status', filters.status);
+
+    const res = await fetch(`${API_URL}/attendances?${params.toString()}`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch attendances' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching attendances:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch attendances. Please check your connection.',
+    };
+  }
+}
+
+// Get attendance by id
+export async function getAttendanceById(id: string): Promise<{ status: boolean; data?: Attendance; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/attendances/${id}`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch attendance' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching attendance:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch attendance',
+    };
+  }
+}
+
+// Create single attendance record
+export async function createAttendance(data: {
+  employeeId: string;
+  date: string | Date;
+  checkIn?: string | Date;
+  checkOut?: string | Date;
+  status?: string;
+  isRemote?: boolean;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  notes?: string;
+}): Promise<{ status: boolean; data?: Attendance; message?: string }> {
+  try {
+    // Convert dates to ISO strings
+    const payload: any = {
+      employeeId: data.employeeId,
+      date: data.date instanceof Date ? data.date.toISOString() : data.date,
+    };
+
+    if (data.checkIn) {
+      payload.checkIn = data.checkIn instanceof Date ? data.checkIn.toISOString() : data.checkIn;
+    }
+    if (data.checkOut) {
+      payload.checkOut = data.checkOut instanceof Date ? data.checkOut.toISOString() : data.checkOut;
+    }
+    if (data.status) payload.status = data.status;
+    if (data.isRemote !== undefined) payload.isRemote = data.isRemote;
+    if (data.location) payload.location = data.location;
+    if (data.latitude !== undefined) payload.latitude = data.latitude;
+    if (data.longitude !== undefined) payload.longitude = data.longitude;
+    if (data.notes) payload.notes = data.notes;
+
+    const res = await fetch(`${API_URL}/attendances`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to create attendance' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    const result = await res.json();
+    if (result.status) {
+      revalidatePath('/dashboard/attendance');
+      revalidatePath('/dashboard/attendance/manage');
+    }
+    return result;
+  } catch (error) {
+    console.error('Error creating attendance:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to create attendance' };
+  }
+}
+
+// Create attendance records for a date range
+export async function createAttendanceForDateRange(data: {
+  employeeId: string;
+  fromDate: string | Date;
+  toDate: string | Date;
+  checkIn?: string;
+  checkOut?: string;
+  status?: string;
+  isRemote?: boolean;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  notes?: string;
+}): Promise<{ status: boolean; data?: Attendance[]; errors?: Array<{ date: string; error: string }>; message?: string }> {
+  try {
+    const payload: any = {
+      employeeId: data.employeeId,
+      fromDate: data.fromDate instanceof Date ? data.fromDate.toISOString() : data.fromDate,
+      toDate: data.toDate instanceof Date ? data.toDate.toISOString() : data.toDate,
+    };
+
+    if (data.checkIn) payload.checkIn = data.checkIn;
+    if (data.checkOut) payload.checkOut = data.checkOut;
+    if (data.status) payload.status = data.status;
+    if (data.isRemote !== undefined) payload.isRemote = data.isRemote;
+    if (data.location) payload.location = data.location;
+    if (data.latitude !== undefined) payload.latitude = data.latitude;
+    if (data.longitude !== undefined) payload.longitude = data.longitude;
+    if (data.notes) payload.notes = data.notes;
+
+    const res = await fetch(`${API_URL}/attendances/date-range`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to create attendance records' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    const result = await res.json();
+    if (result.status) {
+      revalidatePath('/dashboard/attendance');
+      revalidatePath('/dashboard/attendance/manage');
+    }
+    return result;
+  } catch (error) {
+    console.error('Error creating attendance records:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to create attendance records' };
+  }
+}
+
+// Update attendance record
+export async function updateAttendance(
+  id: string,
+  data: {
+    checkIn?: string | Date;
+    checkOut?: string | Date;
+    status?: string;
+    isRemote?: boolean;
+    location?: string;
+    latitude?: number;
+    longitude?: number;
+    notes?: string;
+  }
+): Promise<{ status: boolean; data?: Attendance; message?: string }> {
+  try {
+    const payload: any = {};
+
+    if (data.checkIn !== undefined) {
+      payload.checkIn = data.checkIn instanceof Date ? data.checkIn.toISOString() : data.checkIn;
+    }
+    if (data.checkOut !== undefined) {
+      payload.checkOut = data.checkOut instanceof Date ? data.checkOut.toISOString() : data.checkOut;
+    }
+    if (data.status !== undefined) payload.status = data.status;
+    if (data.isRemote !== undefined) payload.isRemote = data.isRemote;
+    if (data.location !== undefined) payload.location = data.location;
+    if (data.latitude !== undefined) payload.latitude = data.latitude;
+    if (data.longitude !== undefined) payload.longitude = data.longitude;
+    if (data.notes !== undefined) payload.notes = data.notes;
+
+    const res = await fetch(`${API_URL}/attendances/${id}`, {
+      method: 'PUT',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to update attendance' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    const result = await res.json();
+    if (result.status) {
+      revalidatePath('/dashboard/attendance');
+      revalidatePath('/dashboard/attendance/manage');
+    }
+    return result;
+  } catch (error) {
+    console.error('Error updating attendance:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to update attendance' };
+  }
+}
+
+// Delete attendance record
+export async function deleteAttendance(id: string): Promise<{ status: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/attendances/${id}`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to delete attendance' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    const result = await res.json();
+    if (result.status) {
+      revalidatePath('/dashboard/attendance');
+      revalidatePath('/dashboard/attendance/manage');
+    }
+    return result;
+  } catch (error) {
+    console.error('Error deleting attendance:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to delete attendance' };
+  }
+}
+
+// Bulk upload attendance from CSV
+export async function bulkUploadAttendance(file: File): Promise<{
+  status: boolean;
+  data?: Attendance[];
+  errors?: Array<{ row: Record<string, string>; error: string }>;
+  message?: string;
+}> {
+  try {
+    const token = await getAccessToken();
+    const fd = new FormData();
+    fd.append('file', file);
+
+    const res = await fetch(`${API_URL}/attendances/bulk-upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: fd,
+    });
+
+    const json = await res.json();
+    if (!json.status) {
+      return {
+        status: false,
+        message: json?.message || `Upload failed with status ${res.status}`,
+      };
+    }
+
+    revalidatePath('/dashboard/attendance');
+    revalidatePath('/dashboard/attendance/manage');
+
+    return json;
+  } catch (error) {
+    console.error('Error uploading attendance CSV:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to upload attendance CSV',
+    };
+  }
+}
+

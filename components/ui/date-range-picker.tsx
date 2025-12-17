@@ -3,12 +3,9 @@
 import React, { type FC, useState, useEffect, useRef, JSX } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
-import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
-import { Switch } from "../ui/switch";
-import { Label } from "../ui/label";
-import { Input } from "./input";
+import { Calendar as CalendarIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
 import { Calendar } from "../ui/calendar";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay, isSameDay } from "date-fns";
 import {
   Popover,
   PopoverContent,
@@ -45,6 +42,9 @@ export interface DateRangePickerProps {
   };
   range?: DateRange | undefined;
   isPreset?: boolean;
+  className?: string;
+  disabled?: boolean;
+  placeholder?: string;
 }
 
 const formatDate = (date: Date, locale: string = "en-us"): string => {
@@ -57,20 +57,16 @@ const formatDate = (date: Date, locale: string = "en-us"): string => {
 
 const getDateAdjustedForTimezone = (dateInput: Date | string): Date => {
   if (typeof dateInput === "string") {
-    // Split the date string to get year, month, and day parts
     const parts = dateInput.split("-").map((part) => parseInt(part, 10));
-    // Create a new Date object using the local timezone
-    // Note: Month is 0-indexed, so subtract 1 from the month part
     const date = new Date(parts[0], parts[1] - 1, parts[2]);
     return date;
   } else {
-    // If dateInput is already a Date object, return it directly
     return dateInput;
   }
 };
 
 export interface DateRange {
-  from: Date;
+  from: Date | undefined;
   to: Date | undefined;
 }
 
@@ -81,74 +77,94 @@ interface Preset {
 
 // Define presets
 const PRESETS: Preset[] = [
-  { name: "all", label: "All" },
-  { name: "today", label: "Today" },
-  { name: "yesterday", label: "Yesterday" },
-  { name: "last7", label: "Last 7 days" },
-  { name: "last14", label: "Last 14 days" },
-  { name: "last30", label: "Last 30 days" },
-  { name: "thisWeek", label: "This Week" },
-  { name: "lastWeek", label: "Last Week" },
   { name: "thisMonth", label: "This Month" },
   { name: "lastMonth", label: "Last Month" },
+  { name: "thisWeek", label: "This Week" },
+  { name: "last3", label: "Last 3 days" },
+  { name: "last15", label: "Last 15 days" },
 ];
 
 /** The DateRangePicker component allows a user to select a range of dates */
 export const DateRangePicker: FC<DateRangePickerProps> & {
   filePath: string;
 } = ({
-  initialDateFrom = new Date(new Date().setHours(0, 0, 0, 0)),
+  initialDateFrom,
   initialDateTo,
   initialCompareFrom,
   initialCompareTo,
   onUpdate,
   locale = "en-US",
-  showCompare = true,
+  showCompare = false,
   dateRange,
   range: passedRange,
   align = "start",
   isPreset = true,
+  className,
+  disabled,
+  placeholder = "Select date range",
 }): JSX.Element => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const isSelectingRef = useRef(false);
 
-  const [range, setRange] = useState<DateRange>({
-    from: getDateAdjustedForTimezone(initialDateFrom),
-    to: initialDateTo
-      ? getDateAdjustedForTimezone(initialDateTo)
-      : getDateAdjustedForTimezone(initialDateFrom),
+  const [range, setRange] = useState<DateRange>(() => {
+    if (passedRange) {
+      return {
+        from: passedRange.from ? startOfDay(passedRange.from) : undefined,
+        to: passedRange.to ? endOfDay(passedRange.to) : undefined,
+      };
+    }
+    return {
+      from: initialDateFrom ? startOfDay(getDateAdjustedForTimezone(initialDateFrom)) : undefined,
+      to: initialDateTo ? endOfDay(getDateAdjustedForTimezone(initialDateTo)) : undefined,
+    };
   });
+
   const [rangeCompare, setRangeCompare] = useState<DateRange | undefined>(
     initialCompareFrom
       ? {
-          from: new Date(new Date(initialCompareFrom).setHours(0, 0, 0, 0)),
+          from: startOfDay(getDateAdjustedForTimezone(initialCompareFrom)),
           to: initialCompareTo
-            ? new Date(new Date(initialCompareTo).setHours(0, 0, 0, 0))
-            : new Date(new Date(initialCompareFrom).setHours(0, 0, 0, 0)),
+            ? endOfDay(getDateAdjustedForTimezone(initialCompareTo))
+            : undefined,
         }
       : undefined
   );
 
-  // Refs to store the values of range and rangeCompare when the date picker is opened
-  const openedRangeRef = useRef<DateRange | undefined>(undefined);
-  const openedRangeCompareRef = useRef<DateRange | undefined>(undefined);
-
-  const [selectedPreset, setSelectedPreset] = useState<string | undefined>(
-    undefined
-  );
-
+  const [selectedPreset, setSelectedPreset] = useState<string | undefined>(undefined);
   const [isSmallScreen, setIsSmallScreen] = useState(
     typeof window !== "undefined" ? window.innerWidth < 960 : false
   );
 
+  // Generate years for dropdown (from oldestDate to latestDate or current year)
+  const getAvailableYears = (): number[] => {
+    const currentYear = new Date().getFullYear();
+    let startYear: number;
+    let endYear: number;
+    
+    if (dateRange?.oldestDate && dateRange?.latestDate) {
+      startYear = new Date(dateRange.oldestDate).getFullYear();
+      endYear = new Date(dateRange.latestDate).getFullYear();
+    } else {
+      // Default: show 10 years back and 2 years forward
+      startYear = currentYear - 10;
+      endYear = currentYear + 2;
+    }
+    
+    const years: number[] = [];
+    for (let year = startYear; year <= endYear; year++) {
+      years.push(year);
+    }
+    return years.reverse(); // Most recent first
+  };
+
+  const availableYears = getAvailableYears();
+
   useEffect(() => {
     if (passedRange) {
-      setRange(passedRange);
-    } else {
       setRange({
-        from: getDateAdjustedForTimezone(initialDateFrom),
-        to: initialDateTo
-          ? getDateAdjustedForTimezone(initialDateTo)
-          : getDateAdjustedForTimezone(initialDateFrom),
+        from: passedRange.from ? startOfDay(passedRange.from) : undefined,
+        to: passedRange.to ? endOfDay(passedRange.to) : undefined,
       });
     }
   }, [passedRange]);
@@ -157,77 +173,62 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
     const handleResize = (): void => {
       setIsSmallScreen(window.innerWidth < 960);
     };
-
     window.addEventListener("resize", handleResize);
-
-    // Clean up event listener on unmount
     return () => {
       window.removeEventListener("resize", handleResize);
     };
   }, []);
 
-  const getPresetRange = (presetName: string): DateRange => {
+  const getPresetRange = (presetName: string, selectedYear?: number): { from: Date; to: Date } => {
     const preset = PRESETS.find(({ name }) => name === presetName);
     if (!preset) throw new Error(`Unknown date range preset: ${presetName}`);
+    
+    const today = new Date();
     const from = new Date();
     const to = new Date();
-    const first = from.getDate() - from.getDay();
+    
     switch (preset.name) {
-      case "all":
-        if (!dateRange?.oldestDate || !dateRange?.latestDate) {
-          throw new Error("Passed dateRange is required for 'All' preset.");
-        }
-        return {
-          from: new Date(dateRange.oldestDate),
-          to: new Date(dateRange.latestDate),
-        };
-
-      case "today":
-        from.setHours(0, 0, 0, 0);
-        to.setHours(23, 59, 59, 999);
-        break;
-      case "yesterday":
-        from.setDate(from.getDate() - 1);
-        from.setHours(0, 0, 0, 0);
-        to.setDate(to.getDate() - 1);
-        to.setHours(23, 59, 59, 999);
-        break;
-      case "last7":
-        from.setDate(from.getDate() - 6);
-        from.setHours(0, 0, 0, 0);
-        to.setHours(23, 59, 59, 999);
-        break;
-      case "last14":
-        from.setDate(from.getDate() - 13);
-        from.setHours(0, 0, 0, 0);
-        to.setHours(23, 59, 59, 999);
-        break;
-      case "last30":
-        from.setDate(from.getDate() - 29);
-        from.setHours(0, 0, 0, 0);
-        to.setHours(23, 59, 59, 999);
-        break;
-      case "thisWeek":
-        from.setDate(first);
-        from.setHours(0, 0, 0, 0);
-        to.setHours(23, 59, 59, 999);
-        break;
-      case "lastWeek":
-        from.setDate(from.getDate() - 7 - from.getDay());
-        to.setDate(to.getDate() - to.getDay() - 1);
-        from.setHours(0, 0, 0, 0);
-        to.setHours(23, 59, 59, 999);
-        break;
       case "thisMonth":
-        from.setDate(1);
+        // Current month of selected year (or current year)
+        const thisMonthYear = selectedYear ?? today.getFullYear();
+        const thisMonthMonth = selectedYear === today.getFullYear() ? today.getMonth() : today.getMonth();
+        from.setFullYear(thisMonthYear, thisMonthMonth, 1);
         from.setHours(0, 0, 0, 0);
+        to.setFullYear(thisMonthYear, thisMonthMonth + 1, 0);
         to.setHours(23, 59, 59, 999);
         break;
       case "lastMonth":
-        from.setMonth(from.getMonth() - 1);
-        from.setDate(1);
+        // Previous month of selected year (or current year)
+        const lastMonthYear = selectedYear ?? today.getFullYear();
+        const lastMonthMonth = selectedYear === today.getFullYear() ? today.getMonth() - 1 : today.getMonth() - 1;
+        from.setFullYear(lastMonthYear, lastMonthMonth, 1);
         from.setHours(0, 0, 0, 0);
-        to.setDate(0);
+        to.setFullYear(lastMonthYear, lastMonthMonth + 1, 0);
+        to.setHours(23, 59, 59, 999);
+        break;
+      case "thisWeek":
+        // Current week (always relative to today, not year-specific)
+        const weekStart = new Date(today);
+        weekStart.setDate(today.getDate() - today.getDay());
+        weekStart.setHours(0, 0, 0, 0);
+        from.setTime(weekStart.getTime());
+        const weekEnd = new Date(today);
+        weekEnd.setDate(today.getDate() - today.getDay() + 6);
+        weekEnd.setHours(23, 59, 59, 999);
+        to.setTime(weekEnd.getTime());
+        break;
+      case "last3":
+        // Last 3 days from today (always relative to today)
+        from.setDate(today.getDate() - 2);
+        from.setHours(0, 0, 0, 0);
+        to.setTime(today.getTime());
+        to.setHours(23, 59, 59, 999);
+        break;
+      case "last15":
+        // Last 15 days from today (always relative to today)
+        from.setDate(today.getDate() - 14);
+        from.setHours(0, 0, 0, 0);
+        to.setTime(today.getTime());
         to.setHours(23, 59, 59, 999);
         break;
     }
@@ -236,398 +237,302 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
   };
 
   const setPreset = (preset: string): void => {
-    const range = getPresetRange(preset);
-    setRange(range);
-    if (rangeCompare) {
-      const rangeCompare = {
-        from: new Date(
-          range.from.getFullYear() - 1,
-          range.from.getMonth(),
-          range.from.getDate()
-        ),
-        to: range.to
-          ? new Date(
-              range.to.getFullYear() - 1,
-              range.to.getMonth(),
-              range.to.getDate()
-            )
-          : undefined,
-      };
-
-      setRangeCompare(rangeCompare);
-    }
-    onUpdate?.({ range, rangeCompare });
+    const presetRange = getPresetRange(preset, currentYear);
+    const newRange: DateRange = {
+      from: startOfDay(presetRange.from),
+      to: endOfDay(presetRange.to),
+    };
+    setRange(newRange);
+    setSelectedPreset(preset);
+    setIsSelecting(false);
+    isSelectingRef.current = false;
+    
+    // Auto-close after preset selection
+    setTimeout(() => {
+      setIsOpen(false);
+      onUpdate?.({ range: newRange, rangeCompare });
+    }, 150);
   };
 
-  const checkPreset = (): void => {
-    for (const preset of PRESETS) {
-      const presetRange = getPresetRange(preset.name);
+  const handleSelect = (selectedRange: { from?: Date; to?: Date } | undefined) => {
+    if (!selectedRange) {
+      const clearedRange: DateRange = { from: undefined, to: undefined };
+      setRange(clearedRange);
+      setSelectedPreset(undefined);
+      setIsSelecting(false);
+      isSelectingRef.current = false;
+      if (onUpdate) {
+        onUpdate({ range: clearedRange, rangeCompare });
+      }
+      return;
+    }
 
-      const normalizedRangeFrom = new Date(range.from);
-      normalizedRangeFrom.setHours(0, 0, 0, 0);
-      const normalizedPresetFrom = new Date(
-        presetRange.from.setHours(0, 0, 0, 0)
-      );
+    const newRange: DateRange = {
+      from: selectedRange.from ? startOfDay(selectedRange.from) : undefined,
+      to: selectedRange.to ? endOfDay(selectedRange.to) : undefined,
+    };
 
-      const normalizedRangeTo = new Date(range.to ?? 0);
-      normalizedRangeTo.setHours(0, 0, 0, 0);
-      const normalizedPresetTo = new Date(
-        presetRange.to?.setHours(0, 0, 0, 0) ?? 0
-      );
+    setRange(newRange);
+    setSelectedPreset(undefined);
 
-      if (
-        normalizedRangeFrom.getTime() === normalizedPresetFrom.getTime() &&
-        normalizedRangeTo.getTime() === normalizedPresetTo.getTime()
-      ) {
-        setSelectedPreset(preset.name);
+    // Track if we're in the middle of selecting (have "from" but not "to")
+    const hasFromButNotTo = !!newRange.from && !newRange.to;
+    isSelectingRef.current = hasFromButNotTo;
+    setIsSelecting(hasFromButNotTo);
+
+    // Only auto-close when both dates are selected
+    if (newRange.from && newRange.to) {
+      isSelectingRef.current = false;
+      setIsSelecting(false);
+      setTimeout(() => {
+        setIsOpen(false);
+        if (onUpdate) {
+          onUpdate({ range: newRange, rangeCompare });
+        }
+      }, 200);
+    } else if (onUpdate) {
+      onUpdate({ range: newRange, rangeCompare });
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && isSelectingRef.current) {
+      return; // Don't close if we're still selecting
+    }
+    setIsOpen(open);
+    if (!open) {
+      setIsSelecting(false);
+      isSelectingRef.current = false;
+    }
+  };
+
+  const formatDateRange = () => {
+    if (!range.from && !range.to) {
+      return placeholder;
+    }
+    if (range.from && range.to) {
+      if (isSameDay(range.from, range.to)) {
+        return format(range.from, "MMM d, yyyy");
+      }
+      return `${format(range.from, "MMM d, yyyy")} - ${format(range.to, "MMM d, yyyy")}`;
+    }
+    if (range.from) {
+      return `${format(range.from, "MMM d, yyyy")} - ...`;
+    }
+    return placeholder;
+  };
+
+  const handleYearChange = (year: string) => {
+    const yearNum = parseInt(year, 10);
+    
+    // If a preset is selected, update the preset range for the new year
+    if (selectedPreset) {
+      const presetRange = getPresetRange(selectedPreset, yearNum);
+      const newRange: DateRange = {
+        from: startOfDay(presetRange.from),
+        to: endOfDay(presetRange.to),
+      };
+      setRange(newRange);
+      if (onUpdate) {
+        onUpdate({ range: newRange, rangeCompare });
+      }
+    } else {
+      // Otherwise, just update the year of the current range
+      const currentMonth = range.from?.getMonth() ?? new Date().getMonth();
+      const currentDay = range.from?.getDate() ?? 1;
+      const newFromDate = new Date(yearNum, currentMonth, currentDay);
+      
+      const currentToMonth = range.to?.getMonth() ?? new Date().getMonth();
+      const currentToDay = range.to?.getDate() ?? new Date().getDate();
+      const newToDate = new Date(yearNum, currentToMonth, currentToDay);
+      
+      if (dateRange?.oldestDate && newFromDate < new Date(dateRange.oldestDate)) {
         return;
       }
+      if (dateRange?.latestDate && newToDate > new Date(dateRange.latestDate)) {
+        return;
+      }
+
+      setRange({
+        from: startOfDay(newFromDate),
+        to: range.to ? endOfDay(newToDate) : undefined,
+      });
     }
-
-    setSelectedPreset(undefined);
   };
 
-  const resetValues = (): void => {
-    setRange({
-      from:
-        typeof initialDateFrom === "string"
-          ? getDateAdjustedForTimezone(initialDateFrom)
-          : initialDateFrom,
-      to: initialDateTo
-        ? typeof initialDateTo === "string"
-          ? getDateAdjustedForTimezone(initialDateTo)
-          : initialDateTo
-        : typeof initialDateFrom === "string"
-        ? getDateAdjustedForTimezone(initialDateFrom)
-        : initialDateFrom,
-    });
-    setRangeCompare(
-      initialCompareFrom
-        ? {
-            from:
-              typeof initialCompareFrom === "string"
-                ? getDateAdjustedForTimezone(initialCompareFrom)
-                : initialCompareFrom,
-            to: initialCompareTo
-              ? typeof initialCompareTo === "string"
-                ? getDateAdjustedForTimezone(initialCompareTo)
-                : initialCompareTo
-              : typeof initialCompareFrom === "string"
-              ? getDateAdjustedForTimezone(initialCompareFrom)
-              : initialCompareFrom,
-          }
-        : undefined
-    );
-  };
-
-  useEffect(() => {
-    checkPreset();
-  }, [range]);
-
-  const PresetButton = ({
-    preset,
-    label,
-    isSelected,
-  }: {
-    preset: string;
-    label: string;
-    isSelected: boolean;
-  }): JSX.Element => (
-    <Button
-      className={cn(isSelected && "pointer-events-none")}
-      variant="ghost"
-      onClick={() => {
-        setPreset(preset);
-      }}
-    >
-      <>
-        <span className={cn("pr-2 opacity-0", isSelected && "opacity-70")}>
-          <CheckIcon width={18} height={18} />
-        </span>
-        {label}
-      </>
-    </Button>
-  );
-
-  // Helper function to check if two date ranges are equal
-  const areRangesEqual = (a?: DateRange, b?: DateRange): boolean => {
-    if (!a || !b) return a === b; // If either is undefined, return true if both are undefined
-    return (
-      a.from.getTime() === b.from.getTime() &&
-      (!a.to || !b.to || a.to.getTime() === b.to.getTime())
-    );
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      openedRangeRef.current = range;
-      openedRangeCompareRef.current = rangeCompare;
-    }
-  }, [isOpen]);
+  const currentYear = range.from?.getFullYear() ?? new Date().getFullYear();
 
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
-          size={"lg"}
           variant="outline"
-          className="w-full flex items-center justify-between"
+          className={cn(
+            "w-full justify-start text-left font-normal h-9",
+            (!range.from || !range.to) && "text-muted-foreground",
+            className
+          )}
+          disabled={disabled}
+          type="button"
         >
-          <div className="text-right ">
-            <div className="py-1">
-              <div>{`${formatDate(range.from, locale)}${
-                range.to != null ? " - " + formatDate(range.to, locale) : ""
-              }`}</div>
-            </div>
-            {rangeCompare != null && (
-              <div className="opacity-60 text-xs -mt-1">
-                <>
-                  vs. {formatDate(rangeCompare.from, locale)}
-                  {rangeCompare.to != null
-                    ? ` - ${formatDate(rangeCompare.to, locale)}`
-                    : ""}
-                </>
-              </div>
-            )}
-          </div>
-          <div className="pl-1 opacity-60 -mr-2 scale-125">
-            {isOpen ? (
-              <ChevronUpIcon width={24} />
-            ) : (
-              <ChevronDownIcon width={24} />
-            )}
-          </div>
+          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+          <span className="flex-1 truncate text-sm">{formatDateRange()}</span>
+          {isOpen ? (
+            <ChevronUpIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          ) : (
+            <ChevronDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
         align={align}
-        className="min-w-[300px] w-auto p-0"
+        className="w-auto p-2 max-w-[480px]"
+        onInteractOutside={(e) => {
+          if (isSelectingRef.current) {
+            e.preventDefault();
+          }
+        }}
+        onEscapeKeyDown={() => {
+          isSelectingRef.current = false;
+          setIsSelecting(false);
+        }}
       >
-      <div className="w-auto">
-        <div className="flex py-2">
-          <div className="flex">
-            <div className="flex flex-col">
-              <div className="flex flex-col lg:flex-row gap-2 px-3 justify-end items-center lg:items-start pb-4 lg:pb-0">
-                {showCompare && (
-                  <div className="flex items-center space-x-2 pr-4 py-1">
-                    <Switch
-                      defaultChecked={Boolean(rangeCompare)}
-                      onCheckedChange={(checked: boolean) => {
-                        if (checked) {
-                          if (!range.to) {
-                            setRange({
-                              from: range.from,
-                              to: range.from,
-                            });
-                          }
-                          setRangeCompare({
-                            from: new Date(
-                              range.from.getFullYear(),
-                              range.from.getMonth(),
-                              range.from.getDate() - 365
-                            ),
-                            to: range.to
-                              ? new Date(
-                                  range.to.getFullYear() - 1,
-                                  range.to.getMonth(),
-                                  range.to.getDate()
-                                )
-                              : new Date(
-                                  range.from.getFullYear() - 1,
-                                  range.from.getMonth(),
-                                  range.from.getDate()
-                                ),
-                          });
-                        } else {
-                          setRangeCompare(undefined);
-                        }
-                      }}
-                      id="compare-mode"
-                    />
-                    <Label htmlFor="compare-mode">Compare</Label>
-                  </div>
-                )}
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <Input
-                      type="date"
-                      value={format(range.from, "yyyy-MM-dd")}
-                      onChange={(e) => {
-                        const date = new Date(e.target.value);
-                        const toDate =
-                          range.to == null || date > range.to ? date : range.to;
-                        setRange((prevRange) => ({
-                          ...prevRange,
-                          from: date,
-                          to: toDate,
-                        }));
-                      }}
-                      readOnly
-                      className="w-auto"
-                    />
-                    <div className="py-1">-</div>
-                    <Input
-                      type="date"
-                      value={range.to ? format(range.to, "yyyy-MM-dd") : ""}
-                      onChange={(e) => {
-                        const date = new Date(e.target.value);
-                        const fromDate = date < range.from ? date : range.from;
-                        setRange((prevRange) => ({
-                          ...prevRange,
-                          from: fromDate,
-                          to: date,
-                        }));
-                      }}
-                      readOnly
-                      className="w-auto"
-                    />
-                  </div>
-                  {rangeCompare != null && (
-                    <div className="flex gap-2">
-                      <Input
-                        type="date"
-                        value={rangeCompare?.from ? format(rangeCompare.from, "yyyy-MM-dd") : ""}
-                        onChange={(e) => {
-                          const date = new Date(e.target.value);
-                          if (rangeCompare) {
-                            const compareToDate =
-                              rangeCompare.to == null || date > rangeCompare.to
-                                ? date
-                                : rangeCompare.to;
-                            setRangeCompare((prevRangeCompare) => ({
-                              ...prevRangeCompare,
-                              from: date,
-                              to: compareToDate,
-                            }));
-                          } else {
-                            setRangeCompare({
-                              from: date,
-                              to: new Date(),
-                            });
-                          }
-                        }}
-                        readOnly
-                        className="w-auto"
-                      />
-                      <div className="py-1">-</div>
-                      <Input
-                        type="date"
-                        value={rangeCompare?.to ? format(rangeCompare.to, "yyyy-MM-dd") : ""}
-                        onChange={(e) => {
-                          const date = new Date(e.target.value);
-                          if (rangeCompare && rangeCompare.from) {
-                            const compareFromDate =
-                              date < rangeCompare.from
-                                ? date
-                                : rangeCompare.from;
-                            setRangeCompare({
-                              ...rangeCompare,
-                              from: compareFromDate,
-                              to: date,
-                            });
-                          }
-                        }}
-                        readOnly
-                        className="w-auto"
-                      />
-                    </div>
+        <div className="flex flex-col gap-3">
+          {/* Preset Tabs with Year Selector */}
+          {isPreset && (
+            <div 
+              className="flex items-center gap-1.5 overflow-x-auto pb-2 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] hover:[scrollbar-width:thin] mask-l-from-95% mask-r-from-95% pl-[5%] pr-[5%]"
+              style={{
+                WebkitOverflowScrolling: 'touch',
+              }}
+              onWheel={(e) => {
+                e.preventDefault();
+                const element = e.currentTarget;
+                element.scrollLeft += e.deltaY;
+              }}
+            >
+              {/* Year Selector as first item */}
+              <Select
+                value={currentYear.toString()}
+                onValueChange={handleYearChange}
+              >
+                <SelectTrigger className="h-7 w-[85px] text-xs shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent 
+                  className="max-h-[200px] [&>div:first-child]:relative [&>div:first-child]:before:content-[''] [&>div:first-child]:before:absolute [&>div:first-child]:before:top-0 [&>div:first-child]:before:left-0 [&>div:first-child]:before:right-0 [&>div:first-child]:before:h-4 [&>div:first-child]:before:bg-[linear-gradient(to_bottom,hsl(var(--popover)),transparent)] [&>div:first-child]:before:pointer-events-none [&>div:first-child]:before:z-10 [&>div:first-child]:after:content-[''] [&>div:first-child]:after:absolute [&>div:first-child]:after:bottom-0 [&>div:first-child]:after:left-0 [&>div:first-child]:after:right-0 [&>div:first-child]:after:h-4 [&>div:first-child]:after:bg-[linear-gradient(to_top,hsl(var(--popover)),transparent)] [&>div:first-child]:after:pointer-events-none [&>div:first-child]:after:z-10"
+                  position="popper"
+                >
+                  {availableYears.length > 0 ? (
+                    availableYears.map((year) => (
+                      <SelectItem 
+                        key={year} 
+                        value={year.toString()} 
+                        className="text-xs py-2 cursor-pointer hover:bg-accent"
+                      >
+                        {year}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value={currentYear.toString()} className="text-xs py-2">
+                      {currentYear}
+                    </SelectItem>
                   )}
-                </div>
-              </div>
-              {isPreset&&(isSmallScreen && (
-                <div className="w-[180px] mx-auto mb-2">
-                  <Select
-                    value={selectedPreset}
-                    onValueChange={setPreset}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PRESETS.map((preset) => (
-                        <SelectItem key={preset.name} value={preset.name}>
-                          {preset.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                </SelectContent>
+              </Select>
+
+              {/* Preset Buttons */}
+              {PRESETS.map((preset) => (
+                <Button
+                  key={preset.name}
+                  variant={selectedPreset === preset.name ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "h-7 text-xs px-3 transition-all shrink-0",
+                    selectedPreset === preset.name 
+                      ? "bg-primary text-primary-foreground shadow-sm" 
+                      : "hover:bg-accent"
+                  )}
+                  onClick={() => setPreset(preset.name)}
+                  type="button"
+                >
+                  {preset.label}
+                </Button>
               ))}
-              <div>
-                <Calendar
-                  mode="range"
-                  onSelect={(value: { from?: Date; to?: Date } | undefined) => {
-                    if (value?.from != null) {
-                      const range = { from: value.from, to: value?.to };
-                      setRange(range);
-                      onUpdate?.({ range, rangeCompare });
-                    }
-                  }}
-                  selected={range}
-                  numberOfMonths={isSmallScreen ? 1 : 2}
-                  defaultMonth={
-                    new Date(
-                      new Date().setMonth(
-                        new Date().getMonth() - (isSmallScreen ? 0 : 1)
-                      )
-                    )
-                  }
-                  disabled={(date) => {
-                    // Disable dates before January 1, 2025 and after today
-                    return (
-                      date < new Date(dateRange!.oldestDate!) ||
-                      date > new Date(dateRange!.latestDate!)
-                    );
-                  }}
-                />
-              </div>
             </div>
+          )}
+
+          {/* Year Selection - Only show if presets are disabled */}
+          {!isPreset && (
+            <div className="flex items-center gap-2 pb-1.5 border-b">
+              <span className="text-xs font-medium text-foreground whitespace-nowrap">Year:</span>
+              <Select
+                value={currentYear.toString()}
+                onValueChange={handleYearChange}
+              >
+                <SelectTrigger className="h-8 w-[90px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent 
+                  className="max-h-[200px] [&>div:first-child]:relative [&>div:first-child]:before:content-[''] [&>div:first-child]:before:absolute [&>div:first-child]:before:top-0 [&>div:first-child]:before:left-0 [&>div:first-child]:before:right-0 [&>div:first-child]:before:h-4 [&>div:first-child]:before:bg-[linear-gradient(to_bottom,hsl(var(--popover)),transparent)] [&>div:first-child]:before:pointer-events-none [&>div:first-child]:before:z-10 [&>div:first-child]:after:content-[''] [&>div:first-child]:after:absolute [&>div:first-child]:after:bottom-0 [&>div:first-child]:after:left-0 [&>div:first-child]:after:right-0 [&>div:first-child]:after:h-4 [&>div:first-child]:after:bg-[linear-gradient(to_top,hsl(var(--popover)),transparent)] [&>div:first-child]:after:pointer-events-none [&>div:first-child]:after:z-10"
+                  position="popper"
+                >
+                  {availableYears.length > 0 ? (
+                    availableYears.map((year) => (
+                      <SelectItem 
+                        key={year} 
+                        value={year.toString()} 
+                        className="text-xs py-2 cursor-pointer hover:bg-accent"
+                      >
+                        {year}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value={currentYear.toString()} className="text-xs py-2">
+                      {currentYear}
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Calendar */}
+          <div className="border-t pt-1.5">
+            <Calendar
+              mode="range"
+              selected={{
+                from: range.from,
+                to: range.to,
+              }}
+              onSelect={handleSelect}
+              numberOfMonths={isSmallScreen ? 1 : 2}
+              captionLayout="label"
+              fromYear={dateRange?.oldestDate ? new Date(dateRange.oldestDate).getFullYear() : 1970}
+              toYear={dateRange?.latestDate ? new Date(dateRange.latestDate).getFullYear() : new Date().getFullYear() + 10}
+              defaultMonth={(range.from || new Date()) as Date}
+              disabled={(date) => {
+                if (!dateRange?.oldestDate || !dateRange?.latestDate) return false;
+                return (
+                  date < new Date(dateRange.oldestDate) ||
+                  date > new Date(dateRange.latestDate)
+                );
+              }}
+              className="[&_.rdp-months]:gap-2 [&_.rdp-month]:space-y-1 [&_.rdp-cell]:size-7 [&_.rdp-button]:size-7 [&_.rdp-day]:size-7 [&_.rdp-day_button]:text-xs [&_.rdp-caption]:text-xs [&_.rdp-dropdown]:text-xs [&_.rdp-dropdown]:h-7 [&_.rdp-nav]:h-7 [&_.rdp-button_previous]:size-7 [&_.rdp-button_next]:size-7 [&_.rdp-month_caption]:h-7 [&_.rdp-dropdown_root]:h-7 [&_.rdp-root]:p-2"
+            />
           </div>
-          {isPreset&&(!isSmallScreen && (
-            <div className="flex flex-col items-end gap-1 pr-2 pl-6 pb-6">
-              <div className="flex w-full flex-col items-end gap-1 pr-2 pl-6 pb-6">
-                {PRESETS.map((preset) => (
-                  <PresetButton
-                    key={preset.name}
-                    preset={preset.name}
-                    label={preset.label}
-                    isSelected={selectedPreset === preset.name}
-                  />
-                ))}
-              </div>
+
+          {/* Selection hint when only "from" is selected */}
+          {isSelecting && (
+            <div className="text-xs text-muted-foreground text-center pt-1.5 border-t">
+              Select end date to complete range
             </div>
-          ))}
+          )}
         </div>
-        <div className="flex justify-end gap-2 py-2 pr-4">
-          <Button
-            onClick={() => {
-              setIsOpen(false);
-              resetValues();
-            }}
-            variant="ghost"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              setIsOpen(false);
-              if (
-                !areRangesEqual(range, openedRangeRef.current) ||
-                !areRangesEqual(rangeCompare, openedRangeCompareRef.current)
-              ) {
-                onUpdate?.({ range, rangeCompare });
-              }
-            }}
-          >
-            Update
-          </Button>
-        </div>
-      </div>
       </PopoverContent>
     </Popover>
   );
 };
 
 DateRangePicker.displayName = "DateRangePicker";
-DateRangePicker.filePath =
-  "libs/shared/ui-kit/src/lib/date-range-picker/date-range-picker.tsx";
+DateRangePicker.filePath = "components/ui/date-range-picker.tsx";
