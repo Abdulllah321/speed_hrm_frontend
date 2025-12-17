@@ -114,6 +114,18 @@ export default function AttendanceRequestQueryPage() {
     }
   };
 
+  const resetForm = () => {
+    setFormData((prev) => ({
+      ...prev,
+      attendanceDate: "",
+      clockInTimeRequest: "",
+      clockOutTimeRequest: "",
+      breakIn: "",
+      breakOut: "",
+      query: "",
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.attendanceDate || !formData.query) {
@@ -138,6 +150,8 @@ export default function AttendanceRequestQueryPage() {
 
         if (result.status) {
           toast.success(result.message || "Attendance request query created successfully");
+          // Clear form fields (keep employee selection)
+          resetForm();
           // Refresh user requests
           const refreshResult = await getAllAttendanceRequestQueries();
           if (refreshResult.status && refreshResult.data) {
@@ -193,11 +207,21 @@ export default function AttendanceRequestQueryPage() {
             </div>
             <div className="space-y-2">
               <Label>Department</Label>
-              <Input value={formData.department} disabled className="bg-muted" />
+              <Input 
+                value={formData.department} 
+                disabled 
+                className="bg-muted" 
+                placeholder="Select employee to see department"
+              />
             </div>
             <div className="space-y-2">
               <Label>Sub Department</Label>
-              <Input value={formData.subDepartment} disabled className="bg-muted" />
+              <Input 
+                value={formData.subDepartment} 
+                disabled 
+                className="bg-muted" 
+                placeholder="Select employee to see sub department"
+              />
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Attendance Date *</Label>

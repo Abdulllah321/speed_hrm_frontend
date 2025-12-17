@@ -49,21 +49,23 @@ export const columns: ColumnDef<AttendanceRequestQueryRow>[] = [
     cell: ({ row }) => {
       const employeeName = row.original.employeeName || "-";
       const employeeId = row.original.employeeId || "";
-      return (
-        <div>
-          <div className="font-medium">{employeeName}</div>
-          {employeeId && <div className="text-xs text-muted-foreground">{employeeId}</div>}
-        </div>
-      );
+      if (employeeId) {
+        return (
+          <div className="font-medium">
+            ({employeeId}) {employeeName}
+          </div>
+        );
+      }
+      return <div className="font-medium">{employeeName}</div>;
     },
     size: 150,
   },
-  {
-    accessorKey: "employeeId",
-    header: "Employee ID",
-    enableHiding: true,
-    size: 0, // Hidden column, only used for filtering
-  },
+  // {
+  //   accessorKey: "employeeId",
+  //   header: "Employee ID",
+  //   enableHiding: true,
+  //   size: 0, // Hidden column, only used for filtering
+  // },
   {
     accessorKey: "attendanceDate",
     header: "Att Date",

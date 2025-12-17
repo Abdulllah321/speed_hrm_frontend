@@ -109,17 +109,12 @@ export function Autocomplete({
                     return (
                       <CommandItem
                         key={option.value}
-                        value={option.label}
-                        onSelect={(selectedLabel) => {
-                          // Find the option that matches the selected label
-                          const selectedOption = options.find(
-                            (opt) => opt.label === selectedLabel
-                          );
-                          if (selectedOption) {
-                            const newValue = isSelected ? "" : selectedOption.value;
-                            onValueChange?.(newValue);
-                            setOpen(false);
-                          }
+                        value={`${option.value} ${option.label}`}
+                        onSelect={() => {
+                          // Toggle selection: if already selected, deselect; otherwise select
+                          const newValue = isSelected ? "" : option.value;
+                          onValueChange?.(newValue);
+                          setOpen(false);
                         }}
                       >
                         <CheckIcon

@@ -2,7 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
-import { AttendanceExemptionRow } from "./attendance-exemptions-list";
+import type { AttendanceExemptionRow } from "./attendance-exemptions-list";
 import { format } from "date-fns";
 
 const statusVariant = (status: string): "default" | "secondary" | "destructive" => {

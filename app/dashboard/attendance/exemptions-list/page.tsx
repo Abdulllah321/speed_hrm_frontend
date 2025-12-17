@@ -1,38 +1,10 @@
 import { getEmployees } from "@/lib/actions/employee";
+import { getAttendanceExemptions } from "@/lib/actions/attendance-exemption";
+import { getDepartments } from "@/lib/actions/department";
 import { AttendanceExemptionsList } from "./attendance-exemptions-list";
 import { ListError } from "@/components/dashboard/list-error";
 
 export const dynamic = "force-dynamic";
-
-// Mock data - replace with actual API call
-const mockExemptions = [
-  {
-    id: "1",
-    employeeId: "EMP001",
-    employeeName: "John Doe",
-    department: "IT",
-    subDepartment: "Development",
-    attendanceDate: "2024-01-15",
-    flagType: "Late",
-    exemptionType: "Medical Emergency",
-    reason: "Had a medical emergency",
-    approvalStatus: "pending",
-    createdAt: "2024-01-15T10:00:00Z",
-  },
-  {
-    id: "2",
-    employeeId: "EMP002",
-    employeeName: "Jane Smith",
-    department: "HR",
-    subDepartment: "Recruitment",
-    attendanceDate: "2024-01-16",
-    flagType: "Absent",
-    exemptionType: "Family Emergency",
-    reason: "Family emergency situation",
-    approvalStatus: "approved",
-    createdAt: "2024-01-16T09:00:00Z",
-  },
-];
 
 export default async function AttendanceExemptionsListPage({
   searchParams,
@@ -53,14 +25,18 @@ export default async function AttendanceExemptionsListPage({
     }
 
     const employees = employeesResult.data || [];
-    // TODO: Replace mockExemptions with actual API call
-    // const exemptionsResult = await getAttendanceExemptions();
-    // const exemptions = exemptionsResult.status && exemptionsResult.data ? exemptionsResult.data : [];
+    
+    const exemptionsResult = await getAttendanceExemptions();
+    const exemptions = exemptionsResult.status && exemptionsResult.data ? exemptionsResult.data : [];
+
+    const departmentsResult = await getDepartments();
+    const departments = departmentsResult.status && departmentsResult.data ? departmentsResult.data : [];
 
     return (
       <AttendanceExemptionsList
-        initialExemptions={mockExemptions}
+        initialExemptions={exemptions}
         employees={employees}
+        departments={departments}
         newItemId={newItemId}
       />
     );

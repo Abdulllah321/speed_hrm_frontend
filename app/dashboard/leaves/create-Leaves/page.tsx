@@ -57,11 +57,8 @@ export default function CreateLeavePage() {
       try {
         const result = await getEmployees();
         if (result.status && result.data) {
-          // Filter only active employees from employee table
-          const activeEmployees = result.data.filter(
-            (emp) => emp.status === "active"
-          );
-          setEmployees(activeEmployees);
+          // Show all employees (active and inactive)
+          setEmployees(result.data);
         } else {
           toast.error(result.message || "Failed to load employees");
         }

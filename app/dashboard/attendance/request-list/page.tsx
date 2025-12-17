@@ -1,5 +1,6 @@
 import { getAllAttendanceRequestQueries } from "@/lib/actions/attendance-request-query";
 import { getAllEmployeesForClearance } from "@/lib/actions/exit-clearance";
+import { getDepartments } from "@/lib/actions/department";
 import { AttendanceRequestQueryList } from "./attendance-request-query-list";
 import { ListError } from "@/components/dashboard/list-error";
 
@@ -12,9 +13,10 @@ export default async function AttendanceRequestQueryListPage({
 }) {
   try {
     const { newItemId } = await searchParams;
-    const [queriesResult, employeesResult] = await Promise.all([
+    const [queriesResult, employeesResult, departmentsResult] = await Promise.all([
       getAllAttendanceRequestQueries(),
       getAllEmployeesForClearance(),
+      getDepartments(),
     ]);
 
     if (!queriesResult.status || !queriesResult.data) {
@@ -27,11 +29,13 @@ export default async function AttendanceRequestQueryListPage({
     }
 
     const employees = employeesResult.status && employeesResult.data ? employeesResult.data : [];
+    const departments = departmentsResult.status && departmentsResult.data ? departmentsResult.data : [];
 
     return (
       <AttendanceRequestQueryList
         initialQueries={queriesResult.data || []}
         employees={employees}
+        departments={departments}
         newItemId={newItemId}
       />
     );

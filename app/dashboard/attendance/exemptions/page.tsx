@@ -20,6 +20,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { getEmployees } from "@/lib/actions/employee";
 import type { Employee } from "@/lib/actions/employee";
+import { createAttendanceExemption } from "@/lib/actions/attendance-exemption";
 
 const flagTypes = ["Late", "Absent", "Early Leave", "Missing Check-in", "Missing Check-out", "Other"];
 const exemptionTypes = ["Medical Emergency", "Family Emergency", "Official Duty", "Approved Leave", "System Error", "Other"];
@@ -84,22 +85,37 @@ export default function AttendanceExemptionPage() {
 
     startTransition(async () => {
       try {
-        // TODO: Replace with actual API call to create attendance exemption
-        console.log("Submitting attendance exemption:", formData);
-        toast.success("Attendance exemption request submitted successfully");
-        
-        // Reset form
-        setFormData({
-          employeeId: "",
-          employeeName: "",
-          attendanceDate: "",
-          flagType: "",
-          exemptionType: "",
-          reason: "",
+        const selectedEmployee = employees.find((e) => e.id === formData.employeeId);
+        const result = await createAttendanceExemption({
+          employeeId: formData.employeeId,
+          employeeName: formData.employeeName,
+          department: selectedEmployee?.department || null,
+          subDepartment: selectedEmployee?.subDepartment || null,
+          attendanceDate: formData.attendanceDate,
+          flagType: formData.flagType,
+          exemptionType: formData.exemptionType,
+          reason: formData.reason,
+          approvalStatus: "pending",
         });
-        
-        // Optionally redirect to list page
-        // router.push("/dashboard/attendance/exemptions/list");
+
+        if (result.status && result.data) {
+          toast.success("Attendance exemption request submitted successfully");
+          
+          // Reset form
+          setFormData({
+            employeeId: "",
+            employeeName: "",
+            attendanceDate: "",
+            flagType: "",
+            exemptionType: "",
+            reason: "",
+          });
+          
+          // Redirect to list page
+          router.push("/dashboard/attendance/exemptions-list");
+        } else {
+          toast.error(result.message || "Failed to submit attendance exemption request");
+        }
       } catch (error) {
         console.error("Error:", error);
         toast.error("Failed to submit attendance exemption request");

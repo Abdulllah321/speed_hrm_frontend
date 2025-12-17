@@ -341,20 +341,26 @@ export default function DataTable<TData extends DataTableRow>({
             </div>
           )}
             {/* Filter dropdowns */}
-            {filters?.map((filter) => (
-              <Autocomplete
-                key={filter.key}
-                options={[
-                  { value: "all", label: `All ${filter.label}` },
-                  ...filter.options,
-                ]}
-                value={activeFilters[filter.key] || "all"}
-                onValueChange={(value) => handleFilterChange(filter.key, value)}
-                placeholder={`Select ${filter.label}`}
-                searchPlaceholder={`Search ${filter.label}...`}
-                className="w-[150px]"
-              />
-            ))}
+            {filters?.map((filter) => {
+              // Increase width for Department and Employee filters
+              const isWideFilter = filter.key === "department" || filter.key === "employeeId";
+              const widthClass = isWideFilter ? "w-[220px]" : "w-[150px]";
+              
+              return (
+                <Autocomplete
+                  key={filter.key}
+                  options={[
+                    { value: "all", label: `All ${filter.label}` },
+                    ...filter.options,
+                  ]}
+                  value={activeFilters[filter.key] || "all"}
+                  onValueChange={(value) => handleFilterChange(filter.key, value)}
+                  placeholder={`Select ${filter.label}`}
+                  searchPlaceholder={`Search ${filter.label}...`}
+                  className={widthClass}
+                />
+              );
+            })}
 
         </div>
         {isMobile && <Separator />}

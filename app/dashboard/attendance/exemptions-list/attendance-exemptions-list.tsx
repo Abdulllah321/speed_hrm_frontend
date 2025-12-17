@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import DataTable from "@/components/common/data-table";
-import { columns, AttendanceExemptionRow } from "./columns";
+import { columns } from "./columns";
 import type { Employee } from "@/lib/actions/employee";
+import type { Department } from "@/lib/actions/department";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,27 +21,33 @@ import Link from "next/link";
 
 export interface AttendanceExemption {
   id: string;
-  employeeId: string;
-  employeeName: string;
-  department: string;
-  subDepartment?: string;
+  employeeId?: string | null;
+  employeeName?: string | null;
+  department?: string | null;
+  subDepartment?: string | null;
   attendanceDate: string;
   flagType: string;
   exemptionType: string;
   reason: string;
   approvalStatus: string;
-  createdAt: string;
+  createdAt?: string;
+}
+
+export interface AttendanceExemptionRow extends AttendanceExemption {
+  sNo: number;
 }
 
 interface AttendanceExemptionsListProps {
   initialExemptions: AttendanceExemption[];
   employees: Employee[];
+  departments: Department[];
   newItemId?: string;
 }
 
 export function AttendanceExemptionsList({
   initialExemptions,
   employees,
+  departments: masterDepartments,
   newItemId,
 }: AttendanceExemptionsListProps) {
   const router = useRouter();
@@ -48,22 +55,48 @@ export function AttendanceExemptionsList({
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [selectedSubDepartment, setSelectedSubDepartment] = useState<string>("all");
 
-  // Get unique departments and sub-departments from employees
-  const departments = useMemo(() => {
-    const deptSet = new Set<string>();
-    employees.forEach((emp) => {
-      if (emp.department) deptSet.add(emp.department);
-    });
-    return Array.from(deptSet).sort();
-  }, [employees]);
+  // Get all departments from master list
+  const departmentOptions = useMemo(() => {
+    const deptNames = masterDepartments.map((dept) => dept.name).sort();
+    return [
+      { value: "all", label: "All Departments" },
+      ...deptNames.map((name) => ({ value: name, label: name })),
+    ];
+  }, [masterDepartments]);
 
-  const subDepartments = useMemo(() => {
+  // Get sub-departments based on selected department or all sub-departments
+  const subDepartmentOptions = useMemo(() => {
     const subDeptSet = new Set<string>();
+    
+    if (selectedDepartment === "all") {
+      // If "All Departments" is selected, show all sub-departments
+      masterDepartments.forEach((dept) => {
+        dept.subDepartments?.forEach((subDept) => {
+          subDeptSet.add(subDept.name);
+        });
+      });
+    } else {
+      // If a specific department is selected, show only its sub-departments
+      const selectedDept = masterDepartments.find((d) => d.name === selectedDepartment);
+      selectedDept?.subDepartments?.forEach((subDept) => {
+        subDeptSet.add(subDept.name);
+      });
+    }
+    
+    // Also add sub-departments from exemptions and employees for completeness
+    initialExemptions.forEach((ex) => {
+      if (ex.subDepartment) subDeptSet.add(ex.subDepartment);
+    });
     employees.forEach((emp) => {
       if (emp.subDepartment) subDeptSet.add(emp.subDepartment);
     });
-    return Array.from(subDeptSet).sort();
-  }, [employees]);
+
+    const subDeptNames = Array.from(subDeptSet).sort();
+    return [
+      { value: "all", label: "All Sub Departments" },
+      ...subDeptNames.map((name) => ({ value: name, label: name })),
+    ];
+  }, [masterDepartments, selectedDepartment, initialExemptions, employees]);
 
   // Handle employee selection - auto-populate department and sub-department
   const handleEmployeeChange = (employeeId: string) => {
@@ -78,6 +111,13 @@ export function AttendanceExemptionsList({
         setSelectedSubDepartment(selectedEmployee.subDepartment || "all");
       }
     }
+  };
+
+  // Handle department change - reset sub-department if needed
+  const handleDepartmentChange = (department: string) => {
+    setSelectedDepartment(department);
+    // Reset sub-department when department changes
+    setSelectedSubDepartment("all");
   };
 
   // Filter exemptions based on selected filters
@@ -122,16 +162,6 @@ export function AttendanceExemptionsList({
     })),
   ];
 
-  const departmentOptions = [
-    { value: "all", label: "All Departments" },
-    ...departments.map((dept) => ({ value: dept, label: dept })),
-  ];
-
-  const subDepartmentOptions = [
-    { value: "all", label: "All Sub Departments" },
-    ...subDepartments.map((subDept) => ({ value: subDept, label: subDept })),
-  ];
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -168,7 +198,7 @@ export function AttendanceExemptionsList({
             </div>
             <div className="space-y-2">
               <Label>Department</Label>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <Select value={selectedDepartment} onValueChange={handleDepartmentChange}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
