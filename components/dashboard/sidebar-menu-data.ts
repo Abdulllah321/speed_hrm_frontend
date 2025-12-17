@@ -169,13 +169,6 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/dashboard/master/bonus-types/list" },
     ],
   },
-  {
-    title: "Multi-level Approval",
-    children: [
-      { title: "Add", href: "/dashboard/master/approval-settings/add" },
-      { title: "View", href: "/dashboard/master/approval-settings/list" },
-    ],
-  },
 ];
 
 export const menuData: MenuItem[] = [
@@ -238,7 +231,10 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/dashboard/working-hours/create" },
           { title: "View", href: "/dashboard/working-hours/view" },
-          { title: "Assign Policy", href: "/dashboard/working-hours/assign-policy" },
+          {
+            title: "Assign Policy",
+            href: "/dashboard/working-hours/assign-policy",
+          },
         ],
       },
       {
@@ -254,17 +250,11 @@ export const menuData: MenuItem[] = [
     title: "Leaves Setup",
     icon: Palmtree,
     children: [
-      {
-        title: "Leave Application",
-        children: [
-          { title: "Create Leave", href: "/dashboard/leaves/create-Leaves" },
-          { title: "View Requests", href: "/dashboard/leaves/requests" },
-
-          
-        ],
-      },
+      { title: "Create Leave", href: "/dashboard/leaves/create-leaves" },
+      { title: "View Requests", href: "/dashboard/leaves/requests" },
     ],
   },
+
   {
     title: "Payroll Setup",
     icon: Wallet,

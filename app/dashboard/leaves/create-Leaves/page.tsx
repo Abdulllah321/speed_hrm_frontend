@@ -387,8 +387,9 @@ export default function CreateLeavePage() {
           {/* Leave Application Form */}
           <Card>
             <CardHeader>
-              <CardTitle className="bg-purple-100 dark:bg-purple-900/30 p-4 rounded-lg">
+              <CardTitle >
                 SELECT LEAVE TYPE
+                <hr className="mt-2"/>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -400,11 +401,6 @@ export default function CreateLeavePage() {
                     type="button"
                     variant={selectedLeaveType === leaveType.id ? "default" : "outline"}
                     onClick={() => setSelectedLeaveType(leaveType.id)}
-                    className={
-                      selectedLeaveType === leaveType.id
-                        ? "bg-green-600 hover:bg-green-700"
-                        : "bg-green-50 hover:bg-green-100 dark:bg-green-900/20 dark:hover:bg-green-900/30"
-                    }
                   >
                     {leaveType.name} ({leaveType.remaining} remaining)
                   </Button>

@@ -9,7 +9,7 @@ const API_BASE =
 
 export interface LeavesPolicyLeaveType {
   leaveTypeId: string;
-  leaveType: LeaveType;
+  leaveTypeName: string;
   numberOfLeaves: number;
 }
 

@@ -494,7 +494,7 @@ console.log(policyDetails);
                       <TableBody>
                         {policyDetails.leaveTypes.map((lt, index) => (
                           <TableRow key={index}>
-                            <TableCell>{lt.leaveType?.name}</TableCell>
+                            <TableCell>{lt.leaveTypeName}</TableCell>
                             <TableCell>{lt.numberOfLeaves}</TableCell>
                           </TableRow>
                         ))}
