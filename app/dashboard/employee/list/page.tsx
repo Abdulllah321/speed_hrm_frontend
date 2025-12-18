@@ -70,6 +70,7 @@ export default function EmployeeListPage() {
   const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
   const tableRef = useRef<HTMLTableElement>(null);
+  const hasFetchedRef = useRef(false);
   const [uploadDialog, setUploadDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadPending, setUploadPending] = useState(false);
@@ -84,74 +85,67 @@ export default function EmployeeListPage() {
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [citiesMap, setCitiesMap] = useState<Record<string, City[]>>({});
 
-  // Fetch dropdown data for mapping
+  // Fetch all data in a single useEffect to avoid multiple API calls
   useEffect(() => {
-    const fetchDropdownData = async () => {
+    // Prevent duplicate calls in React Strict Mode
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    const fetchAllData = async () => {
       try {
-        const [deptsRes, designationsRes] = await Promise.all([
+        setLoading(true);
+        
+        // Fetch employees, departments, and designations in parallel
+        const [employeesRes, deptsRes, designationsRes] = await Promise.all([
+          getEmployees(),
           getDepartments(),
           getDesignations(),
         ]);
 
+        // Set departments and designations
         if (deptsRes.status) setDepartments(deptsRes.data || []);
         if (designationsRes.status) setDesignations(designationsRes.data || []);
-      } catch (error) {
-        console.error("Error fetching dropdown data:", error);
-      }
-    };
 
-    fetchDropdownData();
-  }, []);
-
-  // Fetch cities for employees
-  useEffect(() => {
-    const fetchCities = async () => {
-      if (employees.length === 0) return;
-      
-      const uniqueProvinces = [...new Set(employees.map(e => e.province).filter(Boolean))];
-      const citiesData: Record<string, City[]> = {};
-      
-      await Promise.all(
-        uniqueProvinces.map(async (province) => {
-          if (!province) return;
-          try {
-            const res = await getCitiesByState(province);
-            if (res.status && res.data) {
-              citiesData[province] = res.data;
-            }
-          } catch (error) {
-            console.error(`Error fetching cities for ${province}:`, error);
+        // Set employees
+        if (employeesRes.status && employeesRes.data) {
+          setEmployees(employeesRes.data);
+          
+          // Fetch cities only for unique provinces found in employee data
+          const uniqueProvinces = [...new Set(employeesRes.data.map(e => e.province).filter(Boolean))];
+          
+          if (uniqueProvinces.length > 0) {
+            const citiesData: Record<string, City[]> = {};
+            
+            await Promise.all(
+              uniqueProvinces.map(async (province) => {
+                if (!province) return;
+                try {
+                  const res = await getCitiesByState(province);
+                  if (res.status && res.data) {
+                    citiesData[province] = res.data;
+                  }
+                } catch (error) {
+                  console.error(`Error fetching cities for ${province}:`, error);
+                }
+              })
+            );
+            
+            setCitiesMap(citiesData);
           }
-        })
-      );
-      
-      setCitiesMap(citiesData);
-    };
-
-    fetchCities();
-  }, [employees]);
-
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setLoading(true);
-        const result = await getEmployees();
-        if (result.status && result.data) {
-          setEmployees(result.data);
         } else {
-          toast.error(result.message || "Failed to fetch employees");
+          toast.error(employeesRes.message || "Failed to fetch employees");
           setEmployees([]);
         }
       } catch (error) {
-        console.error("Error fetching employees:", error);
-        toast.error("Failed to fetch employees");
+        console.error("Error fetching data:", error);
+        toast.error("Failed to fetch data");
         setEmployees([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEmployees();
+    fetchAllData();
   }, []);
 
   // Helper functions to map IDs to names

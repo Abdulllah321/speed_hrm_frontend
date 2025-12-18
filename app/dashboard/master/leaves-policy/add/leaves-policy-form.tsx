@@ -202,7 +202,7 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">
-                    Leaves Policy Name <span className="text-destructive">*</span>
+                    Leaves Policy Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="name"
@@ -215,7 +215,7 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    Policy Date from <span className="text-destructive">*</span>
+                    Policy Date from <span className="text-red-500">*</span>
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -243,7 +243,7 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label>
-                    Policy Date till <span className="text-destructive">*</span>
+                    Policy Date till <span className="text-red-500">*</span>
                   </Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -278,7 +278,7 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fullDay">
-                    Full Day Deduction Rate <span className="text-destructive">*</span>
+                    Full Day Deduction Rate <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={fullDayDeductionRate}
@@ -299,7 +299,7 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="halfDay">
-                    Half Day Deduction Rate <span className="text-destructive">*</span>
+                    Half Day Deduction Rate <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={halfDayDeductionRate}
@@ -320,7 +320,7 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="shortLeave">
-                    Short Leave Deduction Rate <span className="text-destructive">*</span>
+                    Short Leave Deduction Rate <span className="text-red-500">*</span>
                   </Label>
                   <Select
                     value={shortLeaveDeductionRate}
@@ -347,31 +347,20 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
               <h3 className="text-lg font-semibold">Leaves Type and Quantity</h3>
               <div className="space-y-3">
                 {items.map((item, index) => (
-                  <div key={item.id} className="flex gap-2 items-end">
-                    {items.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeItem(item.id)}
-                        disabled={isPending}
-                        className="text-destructive hover:text-destructive mb-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                    {items.length === 1 && <div className="w-10" />}
+                  <div key={item.id} className="flex gap-3 items-end">
                     <div className="flex-1 space-y-2">
-                      <Label>
-                        Leaves Type <span className="text-destructive">*</span>
-                      </Label>
+                      {index === 0 && (
+                        <Label>
+                          Leaves Type <span className="text-red-500">*</span>
+                        </Label>
+                      )}
                       <Select
                         value={item.leaveTypeId}
                         onValueChange={(value) => updateItem(item.id, "leaveTypeId", value)}
                         disabled={isPending || loadingLeaveTypes}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select" />
+                          <SelectValue placeholder="Select leave type" />
                         </SelectTrigger>
                         <SelectContent>
                           {leaveTypes.map((leaveType) => (
@@ -383,9 +372,11 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
                       </Select>
                     </div>
                     <div className="flex-1 space-y-2">
-                      <Label>
-                        No. of Leaves <span className="text-destructive">*</span>
-                      </Label>
+                      {index === 0 && (
+                        <Label>
+                          No. of Leaves <span className="text-red-500">*</span>
+                        </Label>
+                      )}
                       <Input
                         type="number"
                         min="0"
@@ -397,6 +388,16 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
                         required
                       />
                     </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeItem(item.id)}
+                      disabled={items.length === 1 || isPending}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -404,39 +405,41 @@ export function LeavesPolicyForm({ onSubmit }: LeavesPolicyFormProps) {
 
             {/* Total and Action Buttons */}
             <div className="space-y-4 border-t pt-4">
-              <div className="flex items-center gap-4">
-                <Label className="text-base font-medium">Total:</Label>
-                <Input
-                  type="text"
-                  value={calculateTotal()}
-                  disabled
-                  className="w-32 bg-muted text-muted-foreground"
-                  readOnly
-                />
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={addItem}
+                  disabled={isPending}
+                  className="text-sm text-primary hover:underline disabled:opacity-50"
+                >
+                  + Add more leave type
+                </button>
+                <div className="flex items-center gap-3">
+                  <Label className="text-base font-medium">Total Leaves:</Label>
+                  <span className="text-lg font-semibold text-primary">{calculateTotal()}</span>
+                </div>
               </div>
-              <div className="flex gap-2 justify-between">
+              <div className="flex gap-2 justify-end pt-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={addItem}
+                  onClick={clearForm}
                   disabled={isPending}
                 >
-                  Add More Leaves Type
+                  Clear Form
                 </Button>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={clearForm}
-                    disabled={isPending}
-                  >
-                    Clear Form
-                  </Button>
-                  <Button type="submit" disabled={isPending} className="bg-green-600 hover:bg-green-700 text-white">
-                    {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Submit
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.back()}
+                  disabled={isPending}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isPending}>
+                  {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Create Policy
+                </Button>
               </div>
             </div>
           </form>

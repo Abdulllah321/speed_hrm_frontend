@@ -58,6 +58,7 @@ import {
   Eye,
   CalendarIcon,
   Plus,
+  Star,
 } from "lucide-react";
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -67,7 +68,9 @@ import {
   deleteLeavesPolicy,
   getLeavesPolicyById,
   updateLeavesPolicy,
+  setDefaultLeavesPolicy,
 } from "@/lib/actions/leaves-policy";
+import { Badge } from "@/components/ui/badge";
 import { getLeaveTypes, LeaveType } from "@/lib/actions/leave-type";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -109,7 +112,16 @@ export const columns: ColumnDef<LeavesPolicyRow>[] = [
     accessorKey: "name",
     size: 250,
     enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.name} />,
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        <HighlightText text={row.original.name} />
+        {row.original.isDefault && (
+          <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+            Default
+          </Badge>
+        )}
+      </div>
+    ),
   },
   {
     header: "Policy Date From",
@@ -361,6 +373,18 @@ function RowActions({ row }: { row: Row<LeavesPolicyRow> }) {
       } else toast.error(result.message);
     });
   };
+
+  const handleSetDefault = () => {
+    startTransition(async () => {
+      const result = await setDefaultLeavesPolicy(lp.id);
+      if (result.status) {
+        toast.success(result.message);
+        router.refresh();
+      } else {
+        toast.error(result.message);
+      }
+    });
+  };
 console.log(policyDetails);
   return (
     <>
@@ -386,6 +410,12 @@ console.log(policyDetails);
             <Pencil className="h-4 w-4 mr-2" />
             Edit
           </DropdownMenuItem>
+          {!lp.isDefault && (
+            <DropdownMenuItem onClick={handleSetDefault}>
+              <Star className="h-4 w-4 mr-2" />
+              Set as Default
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             className="text-destructive focus:text-destructive"

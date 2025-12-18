@@ -179,7 +179,7 @@ export default function AddLeavesPolicyPage() {
             {/* Policy Name and Dates */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Leaves Policy Name *</Label>
+                <Label>Leaves Policy Name <span className="text-red-500">*</span></Label>
                 <Input
                   placeholder="Policy name"
                   value={name}
@@ -189,7 +189,7 @@ export default function AddLeavesPolicyPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Policy Date from *</Label>
+                <Label>Policy Date from <span className="text-red-500">*</span></Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -220,7 +220,7 @@ export default function AddLeavesPolicyPage() {
                 </Popover>
               </div>
               <div className="space-y-2">
-                <Label>Policy Date till *</Label>
+                <Label>Policy Date till <span className="text-red-500">*</span></Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -255,7 +255,7 @@ export default function AddLeavesPolicyPage() {
             {/* Deduction Rates */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Full Day Deduction Rate *</Label>
+                <Label>Full Day Deduction Rate <span className="text-red-500">*</span></Label>
                 <Select
                   value={fullDayDeductionRate}
                   onValueChange={setFullDayDeductionRate}
@@ -274,7 +274,7 @@ export default function AddLeavesPolicyPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Half Day Deduction Rate *</Label>
+                <Label>Half Day Deduction Rate <span className="text-red-500">*</span></Label>
                 <Select
                   value={halfDayDeductionRate}
                   onValueChange={setHalfDayDeductionRate}
@@ -293,7 +293,7 @@ export default function AddLeavesPolicyPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Short Leave Deduction Rate *</Label>
+                <Label>Short Leave Deduction Rate <span className="text-red-500">*</span></Label>
                 <Select
                   value={shortLeaveDeductionRate}
                   onValueChange={setShortLeaveDeductionRate}
@@ -316,7 +316,7 @@ export default function AddLeavesPolicyPage() {
             {/* Leave Types */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label className="text-base font-medium">Leave Types *</Label>
+                <Label className="text-base font-medium">Leave Types <span className="text-red-500">*</span></Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -332,10 +332,10 @@ export default function AddLeavesPolicyPage() {
                 {leaveTypeRows.map((row, index) => (
                   <div
                     key={row.id}
-                    className="grid grid-cols-12 gap-4 items-start"
+                    className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"
                   >
-                    <div className="col-span-5 space-y-2">
-                      <Label>Leaves Type *</Label>
+                    <div className="space-y-2">
+                      {index === 0 && <Label>Leaves Type <span className="text-red-500">*</span></Label>}
                       <Select
                         value={row.leaveTypeId}
                         onValueChange={(value) =>
@@ -355,8 +355,8 @@ export default function AddLeavesPolicyPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="col-span-5 space-y-2">
-                      <Label>No. of Leaves *</Label>
+                    <div className="space-y-2">
+                      {index === 0 && <Label>No. of Leaves <span className="text-red-500">*</span></Label>}
                       <Input
                         type="number"
                         min="0"
@@ -373,7 +373,7 @@ export default function AddLeavesPolicyPage() {
                         required
                       />
                     </div>
-                    <div className=" flex pt-5">
+                    <div className="flex items-center">
                       <Button
                         type="button"
                         variant="ghost"

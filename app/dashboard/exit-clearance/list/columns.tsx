@@ -3,6 +3,7 @@
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { HighlightText } from "@/components/common/data-table";
 import {
   DropdownMenu,
@@ -20,25 +21,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
+import { EllipsisIcon, Eye, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Designation, updateDesignation, deleteDesignation } from "@/lib/actions/designation";
+import Link from "next/link";
+import { ExitClearance, deleteExitClearance } from "@/lib/actions/exit-clearance";
 
-export type DesignationRow = Designation & { id: string };
+export type ExitClearanceRow = ExitClearance & { id: string };
 
-export const columns: ColumnDef<DesignationRow>[] = [
+const statusVariant = (status: string) => {
+  if (status === "approved") return "default";
+  if (status === "rejected") return "destructive";
+  return "secondary";
+};
+
+export const columns: ColumnDef<ExitClearanceRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -63,25 +61,47 @@ export const columns: ColumnDef<DesignationRow>[] = [
     size: 28,
   },
   {
-    header: "Name",
-    accessorKey: "name",
-    size: 250,
+    header: "Employee Name",
+    accessorKey: "employeeName",
+    size: 200,
     enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.name} />,
+    cell: ({ row }) => <HighlightText text={row.original.employeeName} />,
   },
   {
-    header: "Created By",
-    accessorKey: "createdBy",
-    size: 150,
+    header: "Dep/Sub Dep",
+    accessorKey: "department",
+    size: 200,
     enableSorting: true,
-    cell: ({ row }) => row.original.createdBy ? `${row.original.createdBy.firstName} ${row.original.createdBy.lastName}` : "—",
+    cell: ({ row }) => {
+      const dept = row.original.department;
+      const subDept = row.original.subDepartment;
+      return dept && subDept ? `${dept} / ${subDept}` : dept || "—";
+    },
   },
   {
-    header: "Created At",
-    accessorKey: "createdAt",
+    header: "Designation",
+    accessorKey: "designation",
     size: 150,
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
     enableSorting: true,
+    cell: ({ row }) => row.original.designation || "—",
+  },
+  {
+    header: "Last Working Date",
+    accessorKey: "lastWorkingDate",
+    size: 150,
+    enableSorting: true,
+    cell: ({ row }) => new Date(row.original.lastWorkingDate).toLocaleDateString(),
+  },
+  {
+    header: "Approval Status",
+    accessorKey: "approvalStatus",
+    size: 130,
+    enableSorting: true,
+    cell: ({ row }) => (
+      <Badge variant={statusVariant(row.original.approvalStatus)}>
+        {row.original.approvalStatus}
+      </Badge>
+    ),
   },
   {
     id: "actions",
@@ -93,38 +113,24 @@ export const columns: ColumnDef<DesignationRow>[] = [
 ];
 
 type RowActionsProps = {
-  row: Row<DesignationRow>;
+  row: Row<ExitClearanceRow>;
 };
 
 function RowActions({ row }: RowActionsProps) {
-  const item = row.original;
+  const record = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
-
-  const handleEditSubmit = async (formData: FormData) => {
-    startTransition(async () => {
-      const result = await updateDesignation(item.id, formData);
-      if (result.status) {
-        toast.success(result.message);
-        setEditDialog(false);
-        router.refresh();
-      } else {
-        toast.error(result.message);
-      }
-    });
-  };
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
-      const result = await deleteDesignation(item.id);
+      const result = await deleteExitClearance(record.id);
       if (result.status) {
-        toast.success(result.message);
+        toast.success(result.message || "Record deleted successfully");
         setDeleteDialog(false);
         router.refresh();
       } else {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to delete record");
       }
     });
   };
@@ -134,20 +140,23 @@ function RowActions({ row }: RowActionsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <div className="flex justify-end">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="shadow-none"
-              aria-label="Actions"
-            >
+            <Button size="icon" variant="ghost" className="shadow-none" aria-label="Actions">
               <EllipsisIcon size={16} />
             </Button>
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/exit-clearance/list/${record.id}`}>
+              <Eye className="h-4 w-4 mr-2" />
+              View
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/exit-clearance/edit/${record.id}`}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
@@ -159,46 +168,12 @@ function RowActions({ row }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Edit Dialog */}
-      <Dialog open={editDialog} onOpenChange={setEditDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Designation</DialogTitle>
-            <DialogDescription>Update the designation name</DialogDescription>
-          </DialogHeader>
-          <form action={handleEditSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-name">Designation Name</Label>
-                <Input
-                  id="edit-name"
-                  name="name"
-                  defaultValue={item.name}
-                  disabled={isPending}
-                  required
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Designation</AlertDialogTitle>
+            <AlertDialogTitle>Delete Record</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{item.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete clearance for &quot;{record.employeeName}&quot;?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

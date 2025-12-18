@@ -37,6 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { Label } from "@/components/ui/label";
 import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
@@ -139,6 +140,7 @@ function RowActions({ row }: RowActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [cityId, setCityId] = useState(branch.cityId || "");
 
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -217,18 +219,18 @@ function RowActions({ row }: RowActionsProps) {
               </div>
               <div className="space-y-2">
                 <Label>City</Label>
-                <Select name="cityId" defaultValue={branch.cityId || ""}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a city" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {citiesStore.map((city) => (
-                      <SelectItem key={city.id} value={city.id}>
-                        {city.name} {city.country ? `(${city.country.name})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Autocomplete
+                  options={citiesStore.map((city) => ({
+                    value: city.id,
+                    label: city.name + (city.country ? ` (${city.country.name})` : ""),
+                  }))}
+                  value={cityId}
+                  onValueChange={setCityId}
+                  placeholder="Select a city..."
+                  searchPlaceholder="Search city..."
+                  disabled={isPending}
+                />
+                <input type="hidden" name="cityId" value={cityId} />
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>

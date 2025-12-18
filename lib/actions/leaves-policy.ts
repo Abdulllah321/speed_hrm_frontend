@@ -218,3 +218,23 @@ export async function updateLeavesPolicies(
     return { status: false, message: "Failed to update leave policies" };
   }
 }
+
+export async function setDefaultLeavesPolicy(
+  id: string
+): Promise<{ status: boolean; message: string }> {
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`${API_BASE}/leaves-policies/${id}/set-default`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+    const data = await res.json();
+    if (data.status) revalidatePath("/dashboard/master/leaves-policy");
+    return data;
+  } catch (error) {
+    return { status: false, message: "Failed to set default leave policy" };
+  }
+}

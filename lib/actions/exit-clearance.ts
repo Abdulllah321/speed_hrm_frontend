@@ -208,6 +208,35 @@ export async function deleteExitClearance(id: string): Promise<{ status: boolean
   }
 }
 
+// Bulk delete exit clearances
+export async function deleteExitClearances(ids: string[]): Promise<{ status: boolean; message: string }> {
+  if (!ids.length) {
+    return { status: false, message: 'No items to delete' };
+  }
+
+  try {
+    const res = await fetch(`${API_URL}/exit-clearance/bulk`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ ids }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to delete records' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    revalidatePath('/dashboard/exit-clearance/list');
+    return { status: true, message: 'Records deleted successfully' };
+  } catch (error) {
+    console.error('Error deleting exit clearances:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to delete records',
+    };
+  }
+}
+
 // Get all employees for clearance
 export async function getAllEmployeesForClearance(): Promise<{ status: boolean; data?: Employee[]; message?: string }> {
   try {

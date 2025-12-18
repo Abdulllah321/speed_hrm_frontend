@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { Button } from "@/components/ui/button";
 import { Loader2, Trash2 } from "lucide-react";
 
@@ -169,22 +170,19 @@ export function BranchList({ initialBranches, cities, newItemId }: BranchListPro
                   disabled={isPending}
                   className="flex-1"
                 />
-                <Select
-                  value={row.cityId}
-                  onValueChange={(value) => updateEditRow(row.id, "cityId", value)}
-                  disabled={isPending}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="City" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cities.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="w-[180px]">
+                  <Autocomplete
+                    options={cities.map((c) => ({
+                      value: c.id,
+                      label: c.name + (c.country ? ` (${c.country.name})` : ""),
+                    }))}
+                    value={row.cityId}
+                    onValueChange={(value) => updateEditRow(row.id, "cityId", value)}
+                    placeholder="Select city..."
+                    searchPlaceholder="Search city..."
+                    disabled={isPending}
+                  />
+                </div>
                 <Select
                   value={row.status}
                   onValueChange={(value) => updateEditRow(row.id, "status", value)}

@@ -76,8 +76,15 @@ export const columns: ColumnDef<HolidayRow>[] = [
       const dateFrom = row.original.dateFrom;
       const dateTo = row.original.dateTo;
       if (!dateFrom || !dateTo) return "—";
-      const fromDate = new Date(dateFrom).toLocaleDateString();
-      const toDate = new Date(dateTo).toLocaleDateString();
+      const formatDate = (date: string) => {
+        return new Date(date).toLocaleDateString("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric",
+        });
+      };
+      const fromDate = formatDate(dateFrom);
+      const toDate = formatDate(dateTo);
       return (
         <Badge variant="outline" className="text-xs">
           {fromDate === toDate ? fromDate : `${fromDate} - ${toDate}`}
@@ -107,7 +114,7 @@ export const columns: ColumnDef<HolidayRow>[] = [
     header: "Created At",
     accessorKey: "createdAt",
     size: 150,
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
     enableSorting: true,
   },
   {
