@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { isToday, startOfDay, format } from "date-fns";
 import { useCalendar } from "@/components/ui/calendar/contexts/calendar-context";
 import { getCalendarCells, getMonthCellEvents, calculateMonthEventPositions } from "@/components/ui/calendar/helpers";
+import { DndProviderWrapper } from "./dnd/dnd-provider";
 import { DroppableDayCell } from "./dnd/droppable-day-cell";
 import { cn } from "@/lib/utils";
 import type { IEvent } from "@/components/ui/calendar/interfaces";
@@ -39,6 +40,7 @@ export function PolicyAssignmentCalendar({ onDateClick }: PolicyAssignmentCalend
   const allEvents = [...multiDayEvents, ...singleDayEvents];
 
   return (
+    <DndProviderWrapper>
     <div>
       <div className="grid grid-cols-7 divide-x">
         {WEEK_DAYS.map(day => (
@@ -114,6 +116,7 @@ export function PolicyAssignmentCalendar({ onDateClick }: PolicyAssignmentCalend
         })}
       </div>
     </div>
+    </DndProviderWrapper>
   );
 }
 

@@ -45,7 +45,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <SessionChecker />
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="max-w-[calc(100%-17rem)]">
         <header className="flex h-[3.95rem] items-center gap-2 sm:gap-4 border-b bg-background px-3 sm:px-6 sticky top-0 z-40 w-full justify-between">
           <div className="flex items-center gap-2">
 

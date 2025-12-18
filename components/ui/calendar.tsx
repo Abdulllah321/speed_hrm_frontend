@@ -69,12 +69,12 @@ function Calendar({
       classNames={{
         root: cn("w-fit", defaultClassNames.root),
         months: cn(
-          "flex gap-4 flex-col md:flex-row relative justify-between",
+          "flex gap-8 flex-col md:flex-row relative",
           defaultClassNames.months
         ),
-        month: cn("flex flex-col gap-4 flex-1", defaultClassNames.month),
+        month: cn("flex flex-col gap-4", defaultClassNames.month),
         nav: cn(
-          "flex items-center gap-1 w-full absolute top-0 inset-x-0 justify-between",
+          "flex items-center gap-1 w-full absolute top-0 inset-x-0 justify-between z-10",
           defaultClassNames.nav
         ),
         button_previous: cn(
@@ -88,7 +88,7 @@ function Calendar({
           defaultClassNames.button_next
         ),
         month_caption: cn(
-          "flex items-center justify-between h-(--cell-size) w-full px-(--cell-size)",
+          "flex items-center justify-center h-(--cell-size) w-full",
           defaultClassNames.month_caption
         ),
         dropdowns: cn(

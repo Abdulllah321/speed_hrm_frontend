@@ -3,7 +3,7 @@
 import React, { type FC, useState, useEffect, useRef, JSX } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
-import { Calendar as CalendarIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronDownIcon, ChevronUpIcon, Check, X } from "lucide-react";
 import { Calendar } from "../ui/calendar";
 import { format, startOfDay, endOfDay, isSameDay } from "date-fns";
 import {
@@ -45,6 +45,8 @@ export interface DateRangePickerProps {
   className?: string;
   disabled?: boolean;
   placeholder?: string;
+  /** Array of date ranges to disable (e.g., already assigned dates) */
+  disabledDateRanges?: Array<{ from: Date; to: Date }>;
 }
 
 const formatDate = (date: Date, locale: string = "en-us"): string => {
@@ -102,11 +104,17 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
   className,
   disabled,
   placeholder = "Select date range",
+  disabledDateRanges = [],
 }): JSX.Element => {
   const [isOpen, setIsOpen] = useState(false);
   const [isSelecting, setIsSelecting] = useState(false);
   const isSelectingRef = useRef(false);
 
+  // Temporary range for selection (not confirmed yet)
+  const [tempRange, setTempRange] = useState<DateRange>({ from: undefined, to: undefined });
+  // Controlled month for calendar navigation
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
+  // Confirmed range
   const [range, setRange] = useState<DateRange>(() => {
     if (passedRange) {
       return {
@@ -242,28 +250,18 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
       from: startOfDay(presetRange.from),
       to: endOfDay(presetRange.to),
     };
-    setRange(newRange);
+    setTempRange(newRange);
     setSelectedPreset(preset);
     setIsSelecting(false);
     isSelectingRef.current = false;
-    
-    // Auto-close after preset selection
-    setTimeout(() => {
-      setIsOpen(false);
-      onUpdate?.({ range: newRange, rangeCompare });
-    }, 150);
   };
 
   const handleSelect = (selectedRange: { from?: Date; to?: Date } | undefined) => {
     if (!selectedRange) {
-      const clearedRange: DateRange = { from: undefined, to: undefined };
-      setRange(clearedRange);
+      setTempRange({ from: undefined, to: undefined });
       setSelectedPreset(undefined);
       setIsSelecting(false);
       isSelectingRef.current = false;
-      if (onUpdate) {
-        onUpdate({ range: clearedRange, rangeCompare });
-      }
       return;
     }
 
@@ -272,32 +270,59 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
       to: selectedRange.to ? endOfDay(selectedRange.to) : undefined,
     };
 
-    setRange(newRange);
+    setTempRange(newRange);
     setSelectedPreset(undefined);
 
     // Track if we're in the middle of selecting (have "from" but not "to")
     const hasFromButNotTo = !!newRange.from && !newRange.to;
     isSelectingRef.current = hasFromButNotTo;
     setIsSelecting(hasFromButNotTo);
+  };
 
-    // Only auto-close when both dates are selected
-    if (newRange.from && newRange.to) {
-      isSelectingRef.current = false;
+  const handleConfirm = () => {
+    if (tempRange.from) {
+      const confirmedRange: DateRange = {
+        from: tempRange.from,
+        to: tempRange.to || tempRange.from, // If no "to", use "from" as single day
+      };
+      setRange(confirmedRange);
+      setIsOpen(false);
       setIsSelecting(false);
-      setTimeout(() => {
-        setIsOpen(false);
-        if (onUpdate) {
-          onUpdate({ range: newRange, rangeCompare });
-        }
-      }, 200);
-    } else if (onUpdate) {
-      onUpdate({ range: newRange, rangeCompare });
+      isSelectingRef.current = false;
+      onUpdate?.({ range: confirmedRange, rangeCompare });
     }
   };
 
+  const handleClear = () => {
+    const clearedRange: DateRange = { from: undefined, to: undefined };
+    setTempRange(clearedRange);
+    setRange(clearedRange);
+    setSelectedPreset(undefined);
+    setIsSelecting(false);
+    isSelectingRef.current = false;
+    onUpdate?.({ range: clearedRange, rangeCompare });
+  };
+
+  const handleCancel = () => {
+    // Reset temp range to confirmed range
+    setTempRange({
+      from: range.from,
+      to: range.to,
+    });
+    setIsOpen(false);
+    setIsSelecting(false);
+    isSelectingRef.current = false;
+  };
+
   const handleOpenChange = (open: boolean) => {
-    if (!open && isSelectingRef.current) {
-      return; // Don't close if we're still selecting
+    if (open) {
+      // When opening, initialize temp range with current range
+      setTempRange({
+        from: range.from,
+        to: range.to,
+      });
+      // Initialize calendar month to show the selected range or current date
+      setCalendarMonth(range.from || new Date());
     }
     setIsOpen(open);
     if (!open) {
@@ -325,6 +350,10 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
   const handleYearChange = (year: string) => {
     const yearNum = parseInt(year, 10);
     
+    // Update the calendar month to the new year
+    const newMonth = new Date(yearNum, calendarMonth.getMonth(), 1);
+    setCalendarMonth(newMonth);
+    
     // If a preset is selected, update the preset range for the new year
     if (selectedPreset) {
       const presetRange = getPresetRange(selectedPreset, yearNum);
@@ -332,35 +361,11 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
         from: startOfDay(presetRange.from),
         to: endOfDay(presetRange.to),
       };
-      setRange(newRange);
-      if (onUpdate) {
-        onUpdate({ range: newRange, rangeCompare });
-      }
-    } else {
-      // Otherwise, just update the year of the current range
-      const currentMonth = range.from?.getMonth() ?? new Date().getMonth();
-      const currentDay = range.from?.getDate() ?? 1;
-      const newFromDate = new Date(yearNum, currentMonth, currentDay);
-      
-      const currentToMonth = range.to?.getMonth() ?? new Date().getMonth();
-      const currentToDay = range.to?.getDate() ?? new Date().getDate();
-      const newToDate = new Date(yearNum, currentToMonth, currentToDay);
-      
-      if (dateRange?.oldestDate && newFromDate < new Date(dateRange.oldestDate)) {
-        return;
-      }
-      if (dateRange?.latestDate && newToDate > new Date(dateRange.latestDate)) {
-        return;
-      }
-
-      setRange({
-        from: startOfDay(newFromDate),
-        to: range.to ? endOfDay(newToDate) : undefined,
-      });
+      setTempRange(newRange);
     }
   };
 
-  const currentYear = range.from?.getFullYear() ?? new Date().getFullYear();
+  const currentYear = calendarMonth.getFullYear();
 
   return (
     <Popover open={isOpen} onOpenChange={handleOpenChange}>
@@ -386,27 +391,18 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
       </PopoverTrigger>
       <PopoverContent
         align={align}
-        className="w-auto p-2 max-w-[480px]"
-        onInteractOutside={(e) => {
-          if (isSelectingRef.current) {
-            e.preventDefault();
-          }
-        }}
+        className="w-auto p-3"
         onEscapeKeyDown={() => {
-          isSelectingRef.current = false;
-          setIsSelecting(false);
+          handleCancel();
         }}
       >
         <div className="flex flex-col gap-3">
           {/* Preset Tabs with Year Selector */}
           {isPreset && (
             <div 
-              className="flex items-center gap-1.5 overflow-x-auto pb-2 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] hover:[scrollbar-width:thin] mask-l-from-95% mask-r-from-95% pl-[5%] pr-[5%]"
-              style={{
-                WebkitOverflowScrolling: 'touch',
-              }}
+              className="flex items-center gap-2 overflow-x-auto pb-2 scroll-smooth [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/20 [&::-webkit-scrollbar-thumb]:rounded-full"
               onWheel={(e) => {
-                e.preventDefault();
+                e.stopPropagation();
                 const element = e.currentTarget;
                 element.scrollLeft += e.deltaY;
               }}
@@ -464,7 +460,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
 
           {/* Year Selection - Only show if presets are disabled */}
           {!isPreset && (
-            <div className="flex items-center gap-2 pb-1.5 border-b">
+            <div className="flex items-center gap-2 ">
               <span className="text-xs font-medium text-foreground whitespace-nowrap">Year:</span>
               <Select
                 value={currentYear.toString()}
@@ -498,36 +494,90 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
           )}
 
           {/* Calendar */}
-          <div className="border-t pt-1.5">
+          <div className="pt-2">
             <Calendar
               mode="range"
               selected={{
-                from: range.from,
-                to: range.to,
+                from: tempRange.from,
+                to: tempRange.to,
               }}
               onSelect={handleSelect}
               numberOfMonths={isSmallScreen ? 1 : 2}
-              captionLayout="label"
               fromYear={dateRange?.oldestDate ? new Date(dateRange.oldestDate).getFullYear() : 1970}
               toYear={dateRange?.latestDate ? new Date(dateRange.latestDate).getFullYear() : new Date().getFullYear() + 10}
-              defaultMonth={(range.from || new Date()) as Date}
+              month={calendarMonth}
+              onMonthChange={setCalendarMonth}
               disabled={(date) => {
-                if (!dateRange?.oldestDate || !dateRange?.latestDate) return false;
-                return (
-                  date < new Date(dateRange.oldestDate) ||
-                  date > new Date(dateRange.latestDate)
-                );
+                // Check if date is outside allowed range
+                if (dateRange?.oldestDate && date < new Date(dateRange.oldestDate)) return true;
+                if (dateRange?.latestDate && date > new Date(dateRange.latestDate)) return true;
+                
+                // Check if date falls within any disabled date ranges
+                for (const disabledRange of disabledDateRanges) {
+                  const from = new Date(disabledRange.from);
+                  const to = new Date(disabledRange.to);
+                  from.setHours(0, 0, 0, 0);
+                  to.setHours(23, 59, 59, 999);
+                  if (date >= from && date <= to) return true;
+                }
+                
+                return false;
               }}
-              className="[&_.rdp-months]:gap-2 [&_.rdp-month]:space-y-1 [&_.rdp-cell]:size-7 [&_.rdp-button]:size-7 [&_.rdp-day]:size-7 [&_.rdp-day_button]:text-xs [&_.rdp-caption]:text-xs [&_.rdp-dropdown]:text-xs [&_.rdp-dropdown]:h-7 [&_.rdp-nav]:h-7 [&_.rdp-button_previous]:size-7 [&_.rdp-button_next]:size-7 [&_.rdp-month_caption]:h-7 [&_.rdp-dropdown_root]:h-7 [&_.rdp-root]:p-2"
             />
           </div>
 
-          {/* Selection hint when only "from" is selected */}
-          {isSelecting && (
-            <div className="text-xs text-muted-foreground text-center pt-1.5 border-t">
-              Select end date to complete range
+          {/* Selection summary */}
+          {tempRange.from && (
+            <div className="text-xs text-center py-1.5 px-3 bg-muted/50 rounded-md">
+              {tempRange.from && tempRange.to ? (
+                <span className="font-medium">
+                  {format(tempRange.from, "MMM d, yyyy")} — {format(tempRange.to, "MMM d, yyyy")}
+                </span>
+              ) : tempRange.from ? (
+                <span className="text-muted-foreground">
+                  {format(tempRange.from, "MMM d, yyyy")} — <span className="italic">Select end date</span>
+                </span>
+              ) : null}
             </div>
           )}
+
+          {/* Action buttons */}
+          <div className={cn(
+            "flex gap-2 pt-2 border-t",
+            isSmallScreen ? "flex-col" : "flex-row justify-end"
+          )}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClear}
+              className={cn("h-8 text-xs", isSmallScreen && "order-3")}
+              type="button"
+            >
+              Clear
+            </Button>
+            <div className={cn("flex gap-2", isSmallScreen && "order-1 flex-col")}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancel}
+                className="h-8 text-xs"
+                type="button"
+              >
+                <X className="h-3.5 w-3.5 mr-1" />
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleConfirm}
+                disabled={!tempRange.from}
+                className="h-8 text-xs"
+                type="button"
+              >
+                <Check className="h-3.5 w-3.5 mr-1" />
+                Done
+              </Button>
+            </div>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
