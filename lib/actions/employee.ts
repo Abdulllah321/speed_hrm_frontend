@@ -287,3 +287,59 @@ export async function deleteEmployee(id: string): Promise<{ status: boolean; mes
   }
 }
 
+// Lightweight interface for attendance management
+export interface EmployeeForAttendance {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  departmentId: string;
+  subDepartmentId?: string | null;
+  workingHoursPolicyId: string;
+  department?: {
+    id: string;
+    name: string;
+  };
+  subDepartment?: {
+    id: string;
+    name: string;
+  } | null;
+  workingHoursPolicy?: {
+    id: string;
+    name: string;
+    startWorkingHours: string;
+    endWorkingHours: string;
+  } | null;
+}
+
+// Get employees for attendance management (lightweight, only required fields)
+export async function getEmployeesForAttendance(filters?: { departmentId?: string; subDepartmentId?: string }): Promise<{ status: boolean; data?: EmployeeForAttendance[]; message?: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (filters?.departmentId) {
+      params.append('departmentId', filters.departmentId);
+    }
+    if (filters?.subDepartmentId) {
+      params.append('subDepartmentId', filters.subDepartmentId);
+    }
+
+    const url = `${API_URL}/employees/for-attendance${params.toString() ? `?${params.toString()}` : ''}`;
+    const res = await fetch(url, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch employees' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching employees for attendance:', error);
+    return { 
+      status: false, 
+      message: error instanceof Error ? error.message : 'Failed to fetch employees. Please check your connection.' 
+    };
+  }
+}
+

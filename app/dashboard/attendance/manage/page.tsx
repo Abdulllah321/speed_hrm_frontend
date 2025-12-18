@@ -22,37 +22,35 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Upload, Download } from "lucide-react";
 import Link from "next/link";
 import { FileUpload } from "@/components/ui/file-upload";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
-import { getEmployees } from "@/lib/actions/employee";
+import { TimePicker } from "@/components/ui/time-picker";
+import { getEmployeesForAttendance, type EmployeeForAttendance } from "@/lib/actions/employee";
+import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
 import { createAttendance, createAttendanceForDateRange, bulkUploadAttendance, type Attendance } from "@/lib/actions/attendance";
 import { format } from "date-fns";
-
-interface Employee {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  department?: string;
-  subDepartment?: string;
-}
+import { cn } from "@/lib/utils";
 
 export default function AttendanceManagePage() {
   const [isPending, setIsPending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [allEmployees, setAllEmployees] = useState<EmployeeForAttendance[]>([]); // Store all employees
+  const [employees, setEmployees] = useState<EmployeeForAttendance[]>([]); // Filtered employees for display
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [uploadDialog, setUploadDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadPending, setUploadPending] = useState(false);
 
   const [formData, setFormData] = useState({
     employeeId: "",
-    employeeDbId: "", // Internal ID from database
     employeeName: "",
-    department: "",
-    subDepartment: "",
+    departmentId: "",
+    subDepartmentId: "",
     dateRange: {
       from: new Date(),
       to: new Date(),
@@ -65,50 +63,162 @@ export default function AttendanceManagePage() {
     notes: "",
   });
 
+  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeForAttendance | null>(null);
+
+  // Fetch departments on mount
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchDepartments = async () => {
       try {
-        const result = await getEmployees();
+        const result = await getDepartments();
         if (result.status && result.data) {
-          const mappedEmployees = result.data.map((emp: any) => ({
-            id: emp.id,
-            employeeId: emp.employeeId,
-            employeeName: emp.employeeName,
-            department: typeof emp.department === 'string' ? emp.department : (emp.department as any)?.name || '',
-            subDepartment: typeof emp.subDepartment === 'string' ? emp.subDepartment : (emp.subDepartment as any)?.name || '',
-          }));
-          setEmployees(mappedEmployees);
-        } else {
-          toast.error(result.message || "Failed to load employees");
+          setDepartments(result.data);
         }
       } catch (error) {
-       
+        console.error("Failed to fetch departments:", error);
+      }
+    };
+    fetchDepartments();
+  }, []);
+
+  // Fetch all employees once on mount
+  useEffect(() => {
+    const fetchAllEmployees = async () => {
+      setLoading(true);
+      try {
+        const result = await getEmployeesForAttendance(); // No filters - get all employees
+        if (result.status && result.data) {
+          setAllEmployees(result.data);
+          setEmployees(result.data); // Initially show all employees
+        } else {
+          toast.error(result.message || "Failed to load employees");
+          setAllEmployees([]);
+          setEmployees([]);
+        }
+      } catch (error) {
+        console.error("Error:", error);
         toast.error("Failed to load employees");
+        setAllEmployees([]);
+        setEmployees([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEmployees();
-  }, []);
+    fetchAllEmployees();
+  }, []); // Only run once on mount
 
-  const handleEmployeeChange = (employeeDbId: string) => {
-    const selected = employees.find((e) => e.id === employeeDbId);
+  // Filter employees client-side when department/sub-department changes
+  useEffect(() => {
+    let filtered = [...allEmployees];
+
+    if (formData.departmentId) {
+      filtered = filtered.filter((emp) => emp.departmentId === formData.departmentId);
+    }
+
+    if (formData.subDepartmentId) {
+      filtered = filtered.filter((emp) => emp.subDepartmentId === formData.subDepartmentId);
+    }
+
+    setEmployees(filtered);
+  }, [formData.departmentId, formData.subDepartmentId, allEmployees]);
+
+  // Fetch sub-departments when department changes
+  useEffect(() => {
+    const fetchSubDepartments = async () => {
+      if (formData.departmentId) {
+        try {
+          const result = await getSubDepartmentsByDepartment(formData.departmentId);
+          if (result.status && result.data) {
+            setSubDepartments(result.data);
+          } else {
+            setSubDepartments([]);
+          }
+        } catch (error) {
+          console.error("Failed to fetch sub-departments:", error);
+          setSubDepartments([]);
+        }
+      } else {
+        setSubDepartments([]);
+        setFormData((prev) => ({ ...prev, subDepartmentId: "", employeeId: "", employeeName: "" }));
+      }
+    };
+
+    fetchSubDepartments();
+  }, [formData.departmentId]);
+
+  // Reset sub-department and employee when department changes
+  useEffect(() => {
+    if (formData.departmentId) {
+      setFormData((prev) => ({ ...prev, subDepartmentId: "", employeeId: "", employeeName: "" }));
+      setSelectedEmployee(null);
+    }
+  }, [formData.departmentId]);
+
+  // Reset employee when sub-department changes
+  useEffect(() => {
+    if (formData.subDepartmentId) {
+      setFormData((prev) => ({ ...prev, employeeId: "", employeeName: "" }));
+      setSelectedEmployee(null);
+    }
+  }, [formData.subDepartmentId]);
+
+  const handleDepartmentChange = (departmentId: string) => {
+    const actualDepartmentId = departmentId === "all" ? "" : departmentId;
+    setFormData((prev) => ({
+      ...prev,
+      departmentId: actualDepartmentId,
+      subDepartmentId: "",
+      employeeId: "",
+      employeeName: "",
+    }));
+    setSelectedEmployee(null);
+  };
+
+  const handleSubDepartmentChange = (subDepartmentId: string) => {
+    const actualSubDepartmentId = subDepartmentId === "all" ? "" : subDepartmentId;
+    setFormData((prev) => ({
+      ...prev,
+      subDepartmentId: actualSubDepartmentId,
+      employeeId: "",
+      employeeName: "",
+    }));
+    setSelectedEmployee(null);
+  };
+
+  const handleEmployeeChange = (employeeId: string) => {
+    // Search in all employees, not just filtered ones
+    const selected = allEmployees.find((e) => e.id === employeeId);
     if (selected) {
+      setSelectedEmployee(selected);
       setFormData((prev) => ({
         ...prev,
-        employeeDbId: selected.id,
-        employeeId: selected.employeeId,
+        employeeId: selected.id,
         employeeName: selected.employeeName,
-        department: selected.department || "",
-        subDepartment: selected.subDepartment || "",
+        // Don't update departmentId/subDepartmentId here - it will trigger refetch
+        // These are just for display/filtering, not for the selected employee
       }));
+
+      // Set default clock in/out times from working hours policy
+      const policy = selected.workingHoursPolicy;
+      if (policy) {
+        setFormData((prev) => ({
+          ...prev,
+          checkIn: policy.startWorkingHours || "",
+          checkOut: policy.endWorkingHours || "",
+      }));
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          checkIn: "",
+          checkOut: "",
+        }));
+      }
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.employeeDbId || !formData.dateRange.from || !formData.dateRange.to) {
+    if (!formData.employeeId || !formData.dateRange.from || !formData.dateRange.to) {
       toast.error("Please fill all required fields (Employee and Date Range)");
       return;
     }
@@ -131,7 +241,7 @@ export default function AttendanceManagePage() {
           : undefined;
 
         result = await createAttendance({
-          employeeId: formData.employeeDbId,
+          employeeId: formData.employeeId,
           date: fromDate,
           checkIn: checkInDateTime,
           checkOut: checkOutDateTime,
@@ -143,7 +253,7 @@ export default function AttendanceManagePage() {
       } else {
         // Date range - use createAttendanceForDateRange
         result = await createAttendanceForDateRange({
-          employeeId: formData.employeeDbId,
+          employeeId: formData.employeeId,
           fromDate: fromDate,
           toDate: toDate,
           checkIn: formData.checkIn || undefined,
@@ -157,26 +267,47 @@ export default function AttendanceManagePage() {
 
       if (result.status) {
         if (isSingleDate) {
-          toast.success("Attendance record created successfully");
+          const dateStr = format(fromDate, 'MMM dd, yyyy');
+          toast.success(
+            `Attendance record created successfully!`,
+            {
+              description: `Employee: ${formData.employeeName || 'N/A'} | Date: ${dateStr} | Status: ${formData.status}`,
+              duration: 5000,
+            }
+          );
         } else {
           const dateRangeResult = result as { status: boolean; data?: Attendance[]; errors?: Array<{ date: string; error: string }>; message?: string };
           const successCount = dateRangeResult.data?.length || 0;
           const errorCount = dateRangeResult.errors?.length || 0;
+          const fromDateStr = format(fromDate, 'MMM dd, yyyy');
+          const toDateStr = format(toDate, 'MMM dd, yyyy');
+          
           if (errorCount > 0) {
-            toast.warning(`${successCount} records created, ${errorCount} failed. Check console for details.`);
+            toast.warning(
+              `${successCount} records created, ${errorCount} failed`,
+              {
+                description: `Employee: ${formData.employeeName || 'N/A'} | Date Range: ${fromDateStr} - ${toDateStr} | Check console for failed records.`,
+                duration: 6000,
+              }
+            );
             console.error("Failed records:", dateRangeResult.errors);
           } else {
-            toast.success(`${successCount} attendance records created successfully`);
+            toast.success(
+              `${successCount} attendance records created successfully!`,
+              {
+                description: `Employee: ${formData.employeeName || 'N/A'} | Date Range: ${fromDateStr} - ${toDateStr} | Status: ${formData.status}`,
+                duration: 5000,
+              }
+            );
           }
         }
         
         // Reset form
         setFormData({
           employeeId: "",
-          employeeDbId: "",
           employeeName: "",
-          department: "",
-          subDepartment: "",
+          departmentId: "",
+          subDepartmentId: "",
           dateRange: {
             from: new Date(),
             to: new Date(),
@@ -188,6 +319,7 @@ export default function AttendanceManagePage() {
           location: "",
           notes: "",
         });
+        setSelectedEmployee(null);
       } else {
         toast.error(result.message || "Failed to create attendance record");
       }
@@ -199,11 +331,201 @@ export default function AttendanceManagePage() {
     }
   };
 
+  // Validate file format (CSV or XLSX) before upload
+  const validateCSVFormat = async (file: File): Promise<{ valid: boolean; error?: string; headers?: string[] }> => {
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const isXLSX = fileExtension === 'xlsx' || fileExtension === 'xls';
+    const isCSV = fileExtension === 'csv';
+
+    if (!isCSV && !isXLSX) {
+      return { valid: false, error: "Invalid file format. Please upload a CSV or XLSX file." };
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      
+      reader.onload = async (e) => {
+        try {
+          let headers: string[] = [];
+
+          if (isXLSX) {
+            // Parse XLSX file
+            try {
+              const XLSX = await import('xlsx');
+              const data = e.target?.result;
+              const workbook = XLSX.read(data, { type: 'array' });
+              
+              if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                resolve({ valid: false, error: "The XLSX file has no sheets" });
+                return;
+              }
+
+              // Get first sheet
+              const firstSheetName = workbook.SheetNames[0];
+              const worksheet = workbook.Sheets[firstSheetName];
+              
+              if (!worksheet) {
+                resolve({ valid: false, error: "The XLSX file sheet is empty" });
+                return;
+              }
+
+              // Convert to JSON to get headers from first row
+              const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+              
+              if (!jsonData || jsonData.length === 0) {
+                resolve({ valid: false, error: "The XLSX file has no data" });
+                return;
+              }
+
+              // First row contains headers
+              const headerRow = jsonData[0] as any[];
+              headers = headerRow.map((h: any) => String(h || '').trim()).filter(h => h.length > 0);
+              
+              if (headers.length === 0) {
+                resolve({ valid: false, error: "The XLSX file has no headers" });
+                return;
+              }
+            } catch (xlsxError) {
+              resolve({
+                valid: false,
+                error: `Failed to parse XLSX file: ${xlsxError instanceof Error ? xlsxError.message : 'Unknown error'}`,
+              });
+              return;
+            }
+          } else {
+            // Parse CSV file
+            const text = e.target?.result as string;
+            if (!text || text.trim().length === 0) {
+              resolve({ valid: false, error: "The CSV file is empty" });
+              return;
+            }
+
+            // Parse first line (header)
+            const lines = text.split('\n').filter(line => line.trim().length > 0);
+            if (lines.length === 0) {
+              resolve({ valid: false, error: "The CSV file has no content" });
+              return;
+            }
+
+            // Get headers - handle both comma and semicolon delimiters
+            const headerLine = lines[0].trim();
+            // Split by comma or semicolon, handle quoted values
+            headers = headerLine.split(/[,;](?=(?:[^"]*"[^"]*")*[^"]*$)/).map(h => h.trim().replace(/^["']|["']$/g, ''));
+          }
+          
+          // Normalize headers to lowercase for comparison
+          // Convert spaces to underscores, normalize multiple underscores to single
+          const normalizedHeaders = headers.map(h => 
+            h.toLowerCase()
+              .trim()
+              .replace(/\s+/g, '_')  // Replace spaces with underscores
+              .replace(/_+/g, '_')    // Normalize multiple underscores to single
+              .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
+          );
+          
+          // Required columns (case-insensitive, flexible naming)
+          // Accepts: ID, EmployeeID, employeeId, Employee ID, etc.
+          // Accepts: DATE, Date, date
+          const requiredColumns = [
+            { variants: ['id', 'employeeid', 'employee_id'], name: 'ID' },
+            { variants: ['date'], name: 'DATE' },
+          ];
+
+          // Check for required columns
+          const missingColumns: string[] = [];
+          for (const required of requiredColumns) {
+            // Check if any variant matches any normalized header
+            const found = required.variants.some(variant => {
+              // Direct match
+              if (normalizedHeaders.includes(variant)) return true;
+              // Also check if header contains the variant (for cases like "employee_id" matching "id")
+              return normalizedHeaders.some(h => h === variant || h.includes(variant) || variant.includes(h));
+            });
+            if (!found) {
+              missingColumns.push(required.name);
+            }
+          }
+
+          if (missingColumns.length > 0) {
+            // Debug: log what was found for troubleshooting
+            console.log('CSV Validation Debug:', {
+              originalHeaders: headers,
+              normalizedHeaders: normalizedHeaders,
+              requiredColumns: requiredColumns.map(r => r.name),
+              missingColumns,
+            });
+            
+            resolve({
+              valid: false,
+              error: `Missing required columns: ${missingColumns.join(', ')}. Found columns: ${headers.join(', ')}`,
+              headers,
+            });
+            return;
+          }
+
+          // Optional but recommended columns
+          // Accepts: CLOCK_IN, ClockIn, check_in, Check In, etc.
+          // Accepts: CLOCK_OUT, ClockOut, check_out, Check Out, etc.
+          const optionalColumns = [
+            { variants: ['clock_in', 'clockin', 'checkin', 'check_in'], name: 'CLOCK_IN' },
+            { variants: ['clock_out', 'clockout', 'checkout', 'check_out'], name: 'CLOCK_OUT' },
+            { variants: ['status'], name: 'Status' },
+          ];
+
+          const foundOptional: string[] = [];
+          for (const optional of optionalColumns) {
+            const found = optional.variants.some(variant => {
+              // Direct match
+              if (normalizedHeaders.includes(variant)) return true;
+              // Also check if header contains the variant or vice versa
+              return normalizedHeaders.some(h => h === variant || h.includes(variant) || variant.includes(h));
+            });
+            if (found) {
+              foundOptional.push(optional.name);
+            }
+          }
+
+          resolve({ valid: true, headers });
+        } catch (error) {
+          resolve({
+            valid: false,
+            error: `Failed to parse file: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          });
+        }
+      };
+
+      reader.onerror = () => {
+        resolve({ valid: false, error: "Failed to read file" });
+      };
+
+      // Read file based on type
+      if (isXLSX) {
+        // For XLSX, read as array buffer
+        reader.readAsArrayBuffer(file);
+      } else {
+        // For CSV, read only first 10KB to check headers
+        const blob = file.slice(0, 10240);
+        reader.readAsText(blob);
+      }
+    });
+  };
+
   const handleFileUpload = async () => {
     if (!selectedFile) {
       toast.error("Please choose a file first");
       return;
     }
+
+    // Validate file format first
+    const validation = await validateCSVFormat(selectedFile);
+    if (!validation.valid) {
+      toast.error("Invalid file format", {
+        description: "Please check the file format. Required columns: ID (or EmployeeID), DATE (or Date). Optional: CLOCK_IN, CLOCK_OUT, Status",
+        duration: 6000,
+      });
+      return;
+    }
+
     setUploadPending(true);
     try {
       const result = await bulkUploadAttendance(selectedFile);
@@ -212,7 +534,18 @@ export default function AttendanceManagePage() {
         const successCount = result.data?.length || 0;
         const errorCount = result.errors?.length || 0;
         if (errorCount > 0) {
-          toast.warning(`${successCount} records imported, ${errorCount} failed. Check console for details.`);
+          // Show detailed error information
+          const errorMessages = result.errors?.slice(0, 5).map((err, idx) => 
+            `Row ${idx + 1}: ${err.error}`
+          ).join('\n') || '';
+          
+          toast.warning(
+            `${successCount} records imported, ${errorCount} failed`,
+            {
+              description: errorMessages || "Check console for detailed error information",
+              duration: 8000,
+            }
+          );
           console.error("Failed records:", result.errors);
         } else {
           toast.success(`${successCount} attendance records imported successfully`);
@@ -220,18 +553,24 @@ export default function AttendanceManagePage() {
         setUploadDialog(false);
         setSelectedFile(null);
       } else {
-        toast.error(result.message || "Failed to upload attendance file");
+        toast.error(result.message || "Failed to upload attendance file", {
+          description: "Please check the file format and try again",
+          duration: 6000,
+        });
       }
     } catch (error) {
       console.error("Error uploading file:", error);
-      toast.error("Failed to upload attendance file");
+      toast.error("Failed to upload attendance file", {
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
+        duration: 6000,
+      });
     } finally {
       setUploadPending(false);
     }
   };
 
   return (
-    <div className="max-w-4xl  mx-auto pb-10">
+    <div className="max-w-4xl mx-auto pb-10">
       <div className="mb-6 flex items-center justify-between">
         <Link href="/dashboard/attendance">
           <Button variant="ghost" size="sm">
@@ -246,23 +585,68 @@ export default function AttendanceManagePage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Employee Information */}
+        {/* Employee Selection - All in one line */}
         <Card>
   <CardHeader>
-    <CardTitle>Attendance Details</CardTitle>
+            <CardTitle>Employee Selection</CardTitle>
     <CardDescription>
-      Select employee and specify the attendance period
+              Select department, sub-department, and employee (all employees shown by default)
     </CardDescription>
   </CardHeader>
-  <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-    {/* Employee Information */}
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Department */}
+              <div className="space-y-2">
+                <Label>Department</Label>
+                <Select
+                  value={formData.departmentId || "all"}
+                  onValueChange={handleDepartmentChange}
+                  disabled={isPending}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Departments</SelectItem>
+                    {departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sub Department */}
+              <div className="space-y-2">
+                <Label>Sub Department</Label>
+                <Select
+                  value={formData.subDepartmentId || "all"}
+                  onValueChange={handleSubDepartmentChange}
+                  disabled={isPending || !formData.departmentId || formData.departmentId === "all"}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Sub Departments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sub Departments</SelectItem>
+                    {subDepartments.map((subDept) => (
+                      <SelectItem key={subDept.id} value={subDept.id}>
+                        {subDept.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Employee */}
     <div className="space-y-2">
-      <Label>Employee ID/Name *</Label>
+                <Label>Employee <span className="text-red-500">*</span></Label>
       {loading ? (
         <div className="h-10 bg-muted rounded animate-pulse" />
       ) : (
         <Select
-          value={formData.employeeDbId}
+                    value={formData.employeeId}
           onValueChange={handleEmployeeChange}
           disabled={isPending || loading}
         >
@@ -285,20 +669,51 @@ export default function AttendanceManagePage() {
         </Select>
       )}
     </div>
-
-    <div className="space-y-2">
-      <Label>Department</Label>
-      <Input value={formData.department} disabled className="bg-muted" />
     </div>
 
-    <div className="space-y-2">
-      <Label>Sub Department</Label>
-      <Input value={formData.subDepartment} disabled className="bg-muted" />
+            {/* Show selected employee info and working hours policy */}
+            {selectedEmployee && (
+              <div className="mt-4 p-3 bg-muted rounded-lg space-y-2">
+                <div className="flex items-center gap-4 text-sm">
+                  {selectedEmployee.department && (
+                    <div>
+                      <span className="text-muted-foreground">Department: </span>
+                      <span className="font-medium">{selectedEmployee.department.name}</span>
+                    </div>
+                  )}
+                  {selectedEmployee.subDepartment && (
+                    <div>
+                      <span className="text-muted-foreground">Sub Department: </span>
+                      <span className="font-medium">{selectedEmployee.subDepartment.name}</span>
+                    </div>
+                  )}
+                </div>
+                {selectedEmployee.workingHoursPolicy && (
+                  <>
+                    <p className="text-sm font-medium">
+                      Working Hours Policy: {selectedEmployee.workingHoursPolicy.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Default: {selectedEmployee.workingHoursPolicy.startWorkingHours} - {selectedEmployee.workingHoursPolicy.endWorkingHours}
+                    </p>
+                  </>
+                )}
     </div>
+            )}
+          </CardContent>
+        </Card>
 
     {/* Date Range */}
-    <div className="space-y-2 md:col-span-2 lg:col-span-2">
-      <Label>Date Range *</Label>
+        <Card>
+          <CardHeader>
+            <CardTitle>Date Range</CardTitle>
+            <CardDescription>
+              Select the date or date range for attendance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Date Range <span className="text-red-500">*</span></Label>
       <DateRangePicker
         initialDateFrom={formData.dateRange.from}
         initialDateTo={formData.dateRange.to}
@@ -324,115 +739,129 @@ export default function AttendanceManagePage() {
               Enter check-in/check-out times and other details
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <CardContent className="space-y-6">
+            {/* Time Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Check In Time */}
-            <div className="space-y-2">
-              <Label htmlFor="checkIn">Check In Time</Label>
-              <Input
-                id="checkIn"
-                type="time"
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-semibold">Check In Time</Label>
+                  {selectedEmployee?.workingHoursPolicy && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Policy default: {selectedEmployee.workingHoursPolicy.startWorkingHours}
+                    </p>
+                  )}
+                </div>
+                <TimePicker
                 value={formData.checkIn}
-                onChange={(e) => setFormData({ ...formData, checkIn: e.target.value })}
+                  onChange={(value: string) => setFormData({ ...formData, checkIn: value })}
                 disabled={isPending}
+                  placeholder="Select check-in time"
               />
-              <p className="text-xs text-muted-foreground">
-                Leave empty if not applicable
-              </p>
             </div>
 
             {/* Check Out Time */}
-            <div className="space-y-2">
-              <Label htmlFor="checkOut">Check Out Time</Label>
-              <Input
-                id="checkOut"
-                type="time"
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-semibold">Check Out Time</Label>
+                  {selectedEmployee?.workingHoursPolicy && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Policy default: {selectedEmployee.workingHoursPolicy.endWorkingHours}
+                    </p>
+                  )}
+                </div>
+                <TimePicker
                 value={formData.checkOut}
-                onChange={(e) => setFormData({ ...formData, checkOut: e.target.value })}
+                  onChange={(value: string) => setFormData({ ...formData, checkOut: value })}
                 disabled={isPending}
+                  placeholder="Select check-out time"
               />
-              <p className="text-xs text-muted-foreground">
-                Leave empty if not applicable
-              </p>
+              </div>
             </div>
 
-            {/* Status */}
-            <div className="space-y-2">
-              <Label htmlFor="status">Status *</Label>
-              <Select
+            {/* Status Section */}
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">
+                Status <span className="text-red-500">*</span>
+              </Label>
+              <Tabs
                 value={formData.status}
-                onValueChange={(value) => setFormData({ ...formData, status: value })}
-                disabled={isPending}
+                onValueChange={(value) => setFormData({ ...formData, status: value as "present" | "absent" })}
+                className="w-full"
+                color="primary"
+                variant="card"
               >
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="present">Present</SelectItem>
-                  <SelectItem value="absent">Absent</SelectItem>
-                  <SelectItem value="leave">Leave</SelectItem>
-                  <SelectItem value="half_day">Half Day</SelectItem>
-                  <SelectItem value="holiday">Holiday</SelectItem>
-                </SelectContent>
-              </Select>
+                <TabsList className="grid w-full grid-cols-2 h-12">
+                  <TabsTrigger value="present" className="text-base font-medium" disabled={isPending}>
+                    Present
+                  </TabsTrigger>
+                  <TabsTrigger value="absent" className="text-base font-medium" disabled={isPending}>
+                    Absent
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
 
+            {/* Additional Details Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t">
             {/* Remote Work */}
-            <div className="space-y-2">
-              <Label htmlFor="isRemote">Remote Work</Label>
-              <div className="flex items-center space-x-2 pt-2">
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">Remote Work</Label>
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
                 <Switch
                   id="isRemote"
                   checked={formData.isRemote}
                   onCheckedChange={(checked) => setFormData({ ...formData, isRemote: checked })}
                   disabled={isPending}
                 />
-                <Label htmlFor="isRemote" className="cursor-pointer">
-                  {formData.isRemote ? "Yes" : "No"}
+                  <Label htmlFor="isRemote" className="text-sm font-medium cursor-pointer flex-1">
+                    {formData.isRemote ? "Working Remotely" : "On-Site"}
                 </Label>
               </div>
             </div>
 
             {/* Location */}
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="location">Location</Label>
+              <div className="space-y-3">
+                <Label htmlFor="location" className="text-sm font-semibold">Location</Label>
               <Input
                 id="location"
                 type="text"
-                placeholder="e.g., Office, Client Site, Remote"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="e.g., Office, Client Site, Remote"
                 disabled={isPending}
+                  className="h-11"
               />
+              </div>
             </div>
 
             {/* Notes */}
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="notes">Notes</Label>
+            <div className="space-y-3 pt-2 border-t">
+              <Label htmlFor="notes" className="text-sm font-semibold">Notes</Label>
               <Textarea
                 id="notes"
-                placeholder="Additional notes or remarks..."
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Additional notes or remarks..."
+                rows={4}
                 disabled={isPending}
-                rows={3}
+                className="resize-none"
               />
             </div>
           </CardContent>
         </Card>
-
 
         {/* Submit */}
         <div className="flex gap-2 justify-end">
           <Button
             type="button"
             variant="outline"
-            onClick={() =>
+            onClick={() => {
               setFormData({
                 employeeId: "",
-                employeeDbId: "",
                 employeeName: "",
-                department: "",
-                subDepartment: "",
+                departmentId: "",
+                subDepartmentId: "",
                 dateRange: {
                   from: new Date(),
                   to: new Date(),
@@ -443,8 +872,9 @@ export default function AttendanceManagePage() {
                 isRemote: false,
                 location: "",
                 notes: "",
-              })
-            }
+              });
+              setSelectedEmployee(null);
+            }}
             disabled={isPending}
           >
             Clear
@@ -461,13 +891,13 @@ export default function AttendanceManagePage() {
           <DialogHeader>
             <DialogTitle>Upload Attendance File</DialogTitle>
             <DialogDescription>
-              Select a CSV file to upload attendance records. It will be stored in backend public/csv and parsed here.
+              Select a CSV or XLSX file to upload attendance records. Required columns: <strong>ID</strong> (or EmployeeID), <strong>DATE</strong> (or Date). Optional: <strong>CLOCK_IN</strong>, <strong>CLOCK_OUT</strong>, Status, Location, Notes.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <FileUpload
               id="attendance-file-upload"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               onChange={(files) => {
                 if (files && files.length > 0) {
                   setSelectedFile(files[0]);
@@ -484,7 +914,6 @@ export default function AttendanceManagePage() {
     Download Sample Template
   </a>
 </Button>
-
             </div>
           </div>
           <DialogFooter>

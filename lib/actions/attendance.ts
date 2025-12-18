@@ -333,3 +333,74 @@ export async function bulkUploadAttendance(file: File): Promise<{
   }
 }
 
+// Get attendance progress summary
+export interface AttendanceProgress {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  departmentName?: string;
+  subDepartment?: string;
+  subDepartmentName?: string;
+  designation?: string;
+  designationName?: string;
+  days: number;
+  scheduleDays: number;
+  offDays: number;
+  present: number;
+  presentOnHoliday: number;
+  leaves: number;
+  absents: number;
+  late: number;
+  halfDay: number;
+  shortDays: number;
+  scheduleTime: string;
+  actualWorkedTime: string;
+  breakTime: string;
+  absentTime: string;
+  overtimeBeforeTime: string;
+  overtimeAfterTime: string;
+  shortExcessTime: string;
+}
+
+export async function getAttendanceProgressSummary(filters?: {
+  employeeId?: string;
+  departmentId?: string;
+  subDepartmentId?: string;
+  dateFrom?: Date | string;
+  dateTo?: Date | string;
+}): Promise<{ status: boolean; data?: AttendanceProgress[]; message?: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (filters?.employeeId) params.append('employeeId', filters.employeeId);
+    if (filters?.departmentId) params.append('departmentId', filters.departmentId);
+    if (filters?.subDepartmentId) params.append('subDepartmentId', filters.subDepartmentId);
+    if (filters?.dateFrom) {
+      const date = typeof filters.dateFrom === 'string' ? filters.dateFrom : filters.dateFrom.toISOString();
+      params.append('dateFrom', date);
+    }
+    if (filters?.dateTo) {
+      const date = typeof filters.dateTo === 'string' ? filters.dateTo : filters.dateTo.toISOString();
+      params.append('dateTo', date);
+    }
+
+    const res = await fetch(`${API_URL}/attendances/summary?${params.toString()}`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch attendance summary' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching attendance summary:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch attendance summary. Please check your connection.',
+    };
+  }
+}
+

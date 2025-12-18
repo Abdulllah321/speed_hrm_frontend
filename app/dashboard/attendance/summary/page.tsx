@@ -1,81 +1,41 @@
 import { getEmployees } from "@/lib/actions/employee";
 import { getDepartments } from "@/lib/actions/department";
-import { AttendanceProgressSummary, type AttendanceProgress } from "./attendance-progress-summary";
+import { getAttendanceProgressSummary, type AttendanceProgress } from "@/lib/actions/attendance";
+import { AttendanceProgressSummary } from "./attendance-progress-summary";
 import { ListError } from "@/components/dashboard/list-error";
 
 export const dynamic = "force-dynamic";
 
-// Mock data - replace with actual API call
-const mockAttendanceProgress: AttendanceProgress[] = [
-  {
-    id: "1",
-    employeeId: "EMP001",
-    employeeName: "John Doe",
-    department: "dept-1",
-    departmentName: "IT",
-    subDepartment: "sub-dept-1",
-    subDepartmentName: "Development",
-    designation: "desig-1",
-    designationName: "Senior Developer",
-    days: 30,
-    scheduleDays: 22,
-    offDays: 8,
-    present: 20,
-    presentOnHoliday: 2,
-    leaves: 2,
-    absents: 0,
-    late: 3,
-    halfDay: 1,
-    shortDays: 0,
-    scheduleTime: "176h",
-    actualWorkedTime: "160h",
-    breakTime: "16h",
-    absentTime: "0h",
-    overtimeBeforeTime: "5h",
-    overtimeAfterTime: "10h",
-    shortExcessTime: "0h",
-  },
-  {
-    id: "2",
-    employeeId: "EMP002",
-    employeeName: "Jane Smith",
-    department: "dept-2",
-    departmentName: "HR",
-    subDepartment: "sub-dept-2",
-    subDepartmentName: "Recruitment",
-    designation: "desig-2",
-    designationName: "HR Manager",
-    days: 30,
-    scheduleDays: 22,
-    offDays: 8,
-    present: 22,
-    presentOnHoliday: 0,
-    leaves: 0,
-    absents: 0,
-    late: 0,
-    halfDay: 0,
-    shortDays: 0,
-    scheduleTime: "176h",
-    actualWorkedTime: "176h",
-    breakTime: "16h",
-    absentTime: "0h",
-    overtimeBeforeTime: "0h",
-    overtimeAfterTime: "5h",
-    shortExcessTime: "0h",
-  },
-];
-
 export default async function AttendanceProgressSummaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ newItemId?: string }>;
+  searchParams: Promise<{ 
+    newItemId?: string;
+    employeeId?: string;
+    departmentId?: string;
+    subDepartmentId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }>;
 }) {
   try {
-    const { newItemId } = await searchParams;
+    const params = await searchParams;
+    const { newItemId, employeeId, departmentId, subDepartmentId, dateFrom, dateTo } = params;
     
-    const [employeesResult, departmentsResult] = await Promise.all([
+    // Default date range: current month
+    const defaultDateFrom = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const defaultDateTo = new Date();
+    
+    const [employeesResult, departmentsResult, progressResult] = await Promise.all([
       getEmployees(),
       getDepartments(),
+      getAttendanceProgressSummary({
+        employeeId,
+        departmentId,
+        subDepartmentId,
+        dateFrom: dateFrom ? new Date(dateFrom) : defaultDateFrom,
+        dateTo: dateTo ? new Date(dateTo) : defaultDateTo,
+      }),
     ]);
 
     if (!employeesResult.status || !employeesResult.data) {
@@ -96,16 +56,22 @@ export default async function AttendanceProgressSummaryPage({
       );
     }
 
+    if (!progressResult.status) {
+      return (
+        <ListError
+          title="Failed to load attendance progress"
+          message={progressResult.message || "Unable to fetch attendance progress. Please check your connection and try again."}
+        />
+      );
+    }
+
     const employees = employeesResult.data || [];
     const departments = departmentsResult.data || [];
-    
-    // TODO: Replace mockAttendanceProgress with actual API call
-    // const progressResult = await getAttendanceProgressSummary();
-    // const progressData = progressResult.status && progressResult.data ? progressResult.data : [];
+    const progressData = progressResult.data || [];
 
     return (
       <AttendanceProgressSummary
-        initialData={mockAttendanceProgress}
+        initialData={progressData}
         employees={employees}
         departments={departments}
         newItemId={newItemId}

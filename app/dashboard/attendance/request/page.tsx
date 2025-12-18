@@ -12,7 +12,7 @@ import Link from "next/link";
 import { createAttendanceRequestQuery, getAllAttendanceRequestQueries } from "@/lib/actions/attendance-request-query";
 import type { AttendanceRequestQuery } from "@/lib/actions/attendance-request-query";
 import { DatePicker } from "@/components/ui/date-picker";
-import { TimePicker } from "@/components/ui/time-Picker";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
   Select,
   SelectContent,
