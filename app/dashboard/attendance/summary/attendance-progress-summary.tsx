@@ -1,12 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo, useEffect } from "react";
 import DataTable from "@/components/common/data-table";
 import { columns } from "./columns";
 import type { AttendanceProgressRow } from "./columns";
 import type { Employee } from "@/lib/actions/employee";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -18,42 +24,21 @@ import {
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { getDepartments, type Department } from "@/lib/actions/department";
-import { getSubDepartmentsByDepartment, type SubDepartment } from "@/lib/actions/department";
+import {
+  getSubDepartmentsByDepartment,
+  type SubDepartment,
+} from "@/lib/actions/department";
 import { getEmployees } from "@/lib/actions/employee";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown } from "lucide-react";
-
-export interface AttendanceProgress {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  department: string;
-  departmentName?: string;
-  subDepartment?: string;
-  subDepartmentName?: string;
-  designation?: string;
-  designationName?: string;
-  days: number;
-  scheduleDays: number;
-  offDays: number;
-  present: number;
-  presentOnHoliday: number;
-  leaves: number;
-  absents: number;
-  late: number;
-  halfDay: number;
-  shortDays: number;
-  scheduleTime: string;
-  actualWorkedTime: string;
-  breakTime: string;
-  absentTime: string;
-  overtimeBeforeTime: string;
-  overtimeAfterTime: string;
-  shortExcessTime: string;
-}
+import type { AttendanceProgress } from "@/lib/actions/attendance";
 
 interface AttendanceProgressSummaryProps {
   initialData: AttendanceProgress[];
@@ -93,19 +78,82 @@ export function AttendanceProgressSummary({
   newItemId,
 }: AttendanceProgressSummaryProps) {
   const router = useRouter();
-  
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("all");
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
-  const [selectedSubDepartment, setSelectedSubDepartment] = useState<string>("all");
+  const searchParams = useSearchParams();
+
+  // Initialize from URL params or defaults
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(
+    searchParams.get("employeeId") || "all"
+  );
+  const [selectedDepartment, setSelectedDepartment] = useState<string>(
+    searchParams.get("departmentId") || "all"
+  );
+  const [selectedSubDepartment, setSelectedSubDepartment] = useState<string>(
+    searchParams.get("subDepartmentId") || "all"
+  );
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
-  const [selectedColumns, setSelectedColumns] = useState<string[]>(COLUMN_OPTIONS.map(col => col.value));
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(
+    COLUMN_OPTIONS.map((col) => col.value)
+  );
   const [columnPopoverOpen, setColumnPopoverOpen] = useState(false);
-  
-  const [dateRange, setDateRange] = useState<DateRange>({
-    from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    to: new Date(),
-  });
+
+  const getInitialDateRange = (): DateRange => {
+    const dateFrom = searchParams.get("dateFrom");
+    const dateTo = searchParams.get("dateTo");
+    return {
+      from: dateFrom
+        ? new Date(dateFrom)
+        : new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+      to: dateTo ? new Date(dateTo) : new Date(),
+    };
+  };
+
+  const [dateRange, setDateRange] = useState<DateRange>(getInitialDateRange());
+
+  // Update URL params when filters change to trigger server refetch
+  const updateFilters = (updates: {
+    employeeId?: string;
+    departmentId?: string;
+    subDepartmentId?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+  }) => {
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (updates.employeeId !== undefined) {
+      if (updates.employeeId === "all") {
+        params.delete("employeeId");
+      } else {
+        params.set("employeeId", updates.employeeId);
+      }
+    }
+
+    if (updates.departmentId !== undefined) {
+      if (updates.departmentId === "all") {
+        params.delete("departmentId");
+      } else {
+        params.set("departmentId", updates.departmentId);
+      }
+    }
+
+    if (updates.subDepartmentId !== undefined) {
+      if (updates.subDepartmentId === "all") {
+        params.delete("subDepartmentId");
+      } else {
+        params.set("subDepartmentId", updates.subDepartmentId);
+      }
+    }
+
+    if (updates.dateFrom) {
+      params.set("dateFrom", updates.dateFrom.toISOString());
+    }
+
+    if (updates.dateTo) {
+      params.set("dateTo", updates.dateTo.toISOString());
+    }
+
+    router.push(`/dashboard/attendance/summary?${params.toString()}`);
+  };
 
   // Fetch sub-departments when department changes
   useEffect(() => {
@@ -137,25 +185,42 @@ export function AttendanceProgressSummary({
     let filtered = initialData;
 
     if (selectedEmployeeId !== "all") {
-      const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId);
+      const selectedEmployee = employees.find(
+        (e) => e.id === selectedEmployeeId
+      );
       if (selectedEmployee) {
-        filtered = filtered.filter((item) => item.employeeId === selectedEmployee.employeeId);
+        filtered = filtered.filter(
+          (item) => item.employeeId === selectedEmployee.employeeId
+        );
       }
     }
 
     if (selectedDepartment !== "all") {
-      const selectedDept = initialDepartments.find((d) => d.id === selectedDepartment);
+      const selectedDept = initialDepartments.find(
+        (d) => d.id === selectedDepartment
+      );
       if (selectedDept) {
-        filtered = filtered.filter((item) => item.department === selectedDept.id);
+        filtered = filtered.filter(
+          (item) => item.department === selectedDept.id
+        );
       }
     }
 
     if (selectedSubDepartment !== "all" && selectedSubDepartment) {
-      filtered = filtered.filter((item) => item.subDepartment === selectedSubDepartment);
+      filtered = filtered.filter(
+        (item) => item.subDepartment === selectedSubDepartment
+      );
     }
 
     return filtered;
-  }, [initialData, selectedEmployeeId, selectedDepartment, selectedSubDepartment, employees, initialDepartments]);
+  }, [
+    initialData,
+    selectedEmployeeId,
+    selectedDepartment,
+    selectedSubDepartment,
+    employees,
+    initialDepartments,
+  ]);
 
   // Transform data for DataTable
   const data: AttendanceProgressRow[] = filteredData.map((item, index) => ({
@@ -189,13 +254,16 @@ export function AttendanceProgressSummary({
     })),
   ];
 
-
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">View Employee Attendance Progress Summary</h2>
-          <p className="text-muted-foreground">View detailed attendance progress for employees</p>
+          <h2 className="text-2xl font-bold tracking-tight">
+            View Employee Attendance Progress Summary
+          </h2>
+          <p className="text-muted-foreground">
+            View detailed attendance progress for employees
+          </p>
         </div>
       </div>
 
@@ -212,11 +280,19 @@ export function AttendanceProgressSummary({
                 options={employeeOptions}
                 value={selectedEmployeeId}
                 onValueChange={(value) => {
-                  setSelectedEmployeeId(value || "all");
+                  const newValue = value || "all";
+                  setSelectedEmployeeId(newValue);
+                  updateFilters({ employeeId: newValue });
                   if (value && value !== "all") {
-                    const selectedEmployee = employees.find((e) => e.id === value);
-                    if (selectedEmployee) {
-                      setSelectedDepartment(selectedEmployee.department || "all");
+                    const selectedEmployee = employees.find(
+                      (e) => e.id === value
+                    );
+                    if (selectedEmployee && selectedEmployee.department) {
+                      setSelectedDepartment(selectedEmployee.department);
+                      updateFilters({
+                        employeeId: newValue,
+                        departmentId: selectedEmployee.department,
+                      });
                     }
                   }
                 }}
@@ -246,8 +322,16 @@ export function AttendanceProgressSummary({
               <Autocomplete
                 options={subDepartmentOptions}
                 value={selectedSubDepartment}
-                onValueChange={(value) => setSelectedSubDepartment(value || "all")}
-                placeholder={selectedDepartment === "all" ? "Select department first" : "Select sub department"}
+                onValueChange={(value) => {
+                  const newValue = value || "all";
+                  setSelectedSubDepartment(newValue);
+                  updateFilters({ subDepartmentId: newValue });
+                }}
+                placeholder={
+                  selectedDepartment === "all"
+                    ? "Select department first"
+                    : "Select sub department"
+                }
                 searchPlaceholder="Search sub department..."
                 emptyMessage="No sub departments found"
                 disabled={selectedDepartment === "all" || loadingSubDepartments}
@@ -264,20 +348,22 @@ export function AttendanceProgressSummary({
                 onUpdate={(values) => {
                   if (values.range) {
                     setDateRange(values.range);
+                    updateFilters({
+                      dateFrom: values.range.from,
+                      dateTo: values.range.to,
+                    });
                   }
                 }}
-                dateRange={{
-                  oldestDate: new Date(new Date().getFullYear(), 0, 1),
-                  latestDate: new Date(new Date().getFullYear(), 11, 31),
-                }}
-                isPreset={false}
               />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label>Select Columns</Label>
-            <Popover open={columnPopoverOpen} onOpenChange={setColumnPopoverOpen}>
+            <Popover
+              open={columnPopoverOpen}
+              onOpenChange={setColumnPopoverOpen}
+            >
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -286,14 +372,18 @@ export function AttendanceProgressSummary({
                 >
                   {selectedColumns.length === COLUMN_OPTIONS.length
                     ? "All Columns Selected"
-                    : `${selectedColumns.length} Column${selectedColumns.length !== 1 ? "s" : ""} Selected`}
+                    : `${selectedColumns.length} Column${
+                        selectedColumns.length !== 1 ? "s" : ""
+                      } Selected`}
                   <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[300px] p-0" align="start">
                 <div className="p-4 space-y-2">
                   <div className="flex items-center justify-between border-b pb-2">
-                    <Label className="text-sm font-semibold">Select Columns</Label>
+                    <Label className="text-sm font-semibold">
+                      Select Columns
+                    </Label>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -302,25 +392,37 @@ export function AttendanceProgressSummary({
                         if (selectedColumns.length === COLUMN_OPTIONS.length) {
                           setSelectedColumns([]);
                         } else {
-                          setSelectedColumns(COLUMN_OPTIONS.map(col => col.value));
+                          setSelectedColumns(
+                            COLUMN_OPTIONS.map((col) => col.value)
+                          );
                         }
                       }}
                     >
-                      {selectedColumns.length === COLUMN_OPTIONS.length ? "Deselect All" : "Select All"}
+                      {selectedColumns.length === COLUMN_OPTIONS.length
+                        ? "Deselect All"
+                        : "Select All"}
                     </Button>
                   </div>
                   <ScrollArea className="h-[300px]">
                     <div className="space-y-2 p-2">
                       {COLUMN_OPTIONS.map((col) => (
-                        <div key={col.value} className="flex items-center space-x-2">
+                        <div
+                          key={col.value}
+                          className="flex items-center space-x-2"
+                        >
                           <Checkbox
                             id={col.value}
                             checked={selectedColumns.includes(col.value)}
                             onCheckedChange={(checked) => {
                               if (checked) {
-                                setSelectedColumns([...selectedColumns, col.value]);
+                                setSelectedColumns([
+                                  ...selectedColumns,
+                                  col.value,
+                                ]);
                               } else {
-                                setSelectedColumns(selectedColumns.filter(c => c !== col.value));
+                                setSelectedColumns(
+                                  selectedColumns.filter((c) => c !== col.value)
+                                );
                               }
                             }}
                           />
@@ -354,4 +456,3 @@ export function AttendanceProgressSummary({
     </div>
   );
 }
-
