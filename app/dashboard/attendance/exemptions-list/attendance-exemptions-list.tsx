@@ -169,9 +169,7 @@ export function AttendanceExemptionsList({
           <h2 className="text-2xl font-bold tracking-tight">Attendance Exemptions</h2>
           <p className="text-muted-foreground">Manage employee attendance exemption requests</p>
         </div>
-        <Link href="/dashboard/attendance/exemptions">
-          <Button><Plus className="h-4 w-4 mr-2" />Create Exemption</Button>
-        </Link>
+        
       </div>
 
       <Card>

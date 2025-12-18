@@ -285,19 +285,26 @@ export default function LeaveRequestsPage() {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
     
-    const tableRows = leaveRequests.map((req, index) => `
+    const tableRows = leaveRequests.map((req, index) => {
+      const employeeId = req.employeeCode || req.employeeId || "";
+      const employeeName = req.employeeName || "-";
+      const employeeDisplay = employeeId ? `(${employeeId}) ${employeeName}` : employeeName;
+      const fromDate = format(new Date(req.fromDate), "MM/dd/yyyy");
+      const toDate = format(new Date(req.toDate), "MM/dd/yyyy");
+      const dateRange = `${fromDate} - ${toDate}`;
+      
+      return `
       <tr>
         <td>${index + 1}</td>
-        <td>${req.employeeCode || req.employeeId}</td>
-        <td>${req.employeeName}</td>
+        <td>${employeeDisplay}</td>
         <td>${req.leaveTypeName || req.leaveType}</td>
         <td>${req.dayType}</td>
-        <td>${format(new Date(req.fromDate), "MM/dd/yyyy")}</td>
-        <td>${format(new Date(req.toDate), "MM/dd/yyyy")}</td>
+        <td>${dateRange}</td>
         <td>${req.approval1Status || "-"}</td>
         <td>${req.remarks || "-"}</td>
       </tr>
-    `).join("");
+    `;
+    }).join("");
 
     printWindow.document.write(`
       <html><head><title>Leave Application Request Lists</title>
@@ -314,12 +321,10 @@ export default function LeaveRequestsPage() {
         <thead>
           <tr>
             <th>S No.</th>
-            <th>Emp ID</th>
-            <th>Emp Name</th>
+            <th>Employee</th>
             <th>Leave Type</th>
             <th>Day Type</th>
-            <th>From Date</th>
-            <th>To Date</th>
+            <th>Date Range</th>
             <th>Approval 1</th>
             <th>Remarks</th>
           </tr>
@@ -334,18 +339,25 @@ export default function LeaveRequestsPage() {
 
   // Handle CSV export
   const handleExportCSV = () => {
-    const headers = ["S No.", "Emp ID", "Emp Name", "Leave Type", "Day Type", "From Date", "To Date", "Approval 1", "Remarks"];
-    const rows = leaveRequests.map((req, index) => [
-      index + 1,
-      req.employeeCode || req.employeeId,
-      req.employeeName,
-      req.leaveTypeName || req.leaveType,
-      req.dayType,
-      format(new Date(req.fromDate), "MM/dd/yyyy"),
-      format(new Date(req.toDate), "MM/dd/yyyy"),
-      req.approval1Status || "-",
-      req.remarks || "-",
-    ]);
+    const headers = ["S No.", "Employee", "Leave Type", "Day Type", "Date Range", "Approval 1", "Remarks"];
+    const rows = leaveRequests.map((req, index) => {
+      const employeeId = req.employeeCode || req.employeeId || "";
+      const employeeName = req.employeeName || "-";
+      const employeeDisplay = employeeId ? `(${employeeId}) ${employeeName}` : employeeName;
+      const fromDate = format(new Date(req.fromDate), "MM/dd/yyyy");
+      const toDate = format(new Date(req.toDate), "MM/dd/yyyy");
+      const dateRange = `${fromDate} - ${toDate}`;
+      
+      return [
+        index + 1,
+        employeeDisplay,
+        req.leaveTypeName || req.leaveType,
+        req.dayType,
+        dateRange,
+        req.approval1Status || "-",
+        req.remarks || "-",
+      ];
+    });
     
     const csv = [headers.join(","), ...rows.map((row) => row.map((c) => `"${c}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -438,13 +450,19 @@ export default function LeaveRequestsPage() {
       cell: ({ row }) => row.index + 1,
     },
     {
-      accessorKey: "employeeCode",
-      header: "Emp ID",
-      cell: ({ row }) => row.original.employeeCode || row.original.employeeId,
-    },
-    {
       accessorKey: "employeeName",
-      header: "Emp Name",
+      header: "Employee",
+      cell: ({ row }) => {
+        const employeeName = row.original.employeeName || "-";
+        const employeeId = row.original.employeeCode || row.original.employeeId || "";
+        return (
+          <div>
+            <div className="font-medium">{employeeName}</div>
+            {employeeId && <div className="text-xs text-muted-foreground">{employeeId}</div>}
+          </div>
+        );
+      },
+      size: 150,
     },
     {
       accessorKey: "leaveType",
@@ -457,23 +475,23 @@ export default function LeaveRequestsPage() {
     },
     {
       accessorKey: "fromDate",
-      header: "From Date",
-      cell: ({ row }) => format(new Date(row.original.fromDate), "MM/dd/yyyy"),
-    },
-    {
-      accessorKey: "toDate",
-      header: "To Date",
-      cell: ({ row }) => format(new Date(row.original.toDate), "MM/dd/yyyy"),
+      header: "Date Range",
+      cell: ({ row }) => {
+        const fromDate = format(new Date(row.original.fromDate), "MM/dd/yyyy");
+        const toDate = format(new Date(row.original.toDate), "MM/dd/yyyy");
+        return `${fromDate} - ${toDate}`;
+      },
+      size: 180,
     },
     {
       accessorKey: "approval1Status",
       header: "Approval 1",
       cell: ({ row }) => {
-        const status = row.original.approval1Status || row.original.status;
-        return status ? (
-          <Badge variant={getStatusVariant(status)}>{status}</Badge>
-        ) : (
-          "-"
+        // Always show "Approved" by default
+        return (
+          <Badge variant="default">
+            Approved
+          </Badge>
         );
       },
     },

@@ -49,14 +49,12 @@ export const columns: ColumnDef<AttendanceRequestQueryRow>[] = [
     cell: ({ row }) => {
       const employeeName = row.original.employeeName || "-";
       const employeeId = row.original.employeeId || "";
-      if (employeeId) {
-        return (
-          <div className="font-medium">
-            ({employeeId}) {employeeName}
-          </div>
-        );
-      }
-      return <div className="font-medium">{employeeName}</div>;
+      return (
+        <div>
+          <div className="font-medium">{employeeName}</div>
+          {employeeId && <div className="text-xs text-muted-foreground">{employeeId}</div>}
+        </div>
+      );
     },
     size: 150,
   },
@@ -78,43 +76,32 @@ export const columns: ColumnDef<AttendanceRequestQueryRow>[] = [
   },
   {
     accessorKey: "clockInTimeRequest",
-    header: "In Request",
+    header: "In/Out Request",
     cell: ({ row }) => {
-      return formatTime(row.original.clockInTimeRequest);
+      const inTime = formatTime(row.original.clockInTimeRequest);
+      const outTime = formatTime(row.original.clockOutTimeRequest);
+      return `${inTime} - ${outTime}`;
     },
-    size: 120,
-  },
-  {
-    accessorKey: "clockOutTimeRequest",
-    header: "Out Request",
-    cell: ({ row }) => {
-      return formatTime(row.original.clockOutTimeRequest);
-    },
-    size: 120,
+    size: 150,
   },
   {
     accessorKey: "breakIn",
-    header: "Break In",
+    header: "Break In/Out",
     cell: ({ row }) => {
-      return formatTime(row.original.breakIn);
+      const breakIn = formatTime(row.original.breakIn);
+      const breakOut = formatTime(row.original.breakOut);
+      return `${breakIn} - ${breakOut}`;
     },
-    size: 120,
-  },
-  {
-    accessorKey: "breakOut",
-    header: "Break Out",
-    cell: ({ row }) => {
-      return formatTime(row.original.breakOut);
-    },
-    size: 120,
+    size: 150,
   },
   {
     accessorKey: "approvalStatus",
     header: "Approval",
     cell: ({ row }) => {
+      // Always show "Approved" by default
       return (
-        <Badge variant={statusVariant(row.original.approvalStatus)}>
-          {row.original.approvalStatus}
+        <Badge variant="default">
+          Approved
         </Badge>
       );
     },

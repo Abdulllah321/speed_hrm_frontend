@@ -59,7 +59,7 @@ export async function createLeave(data: CreateLeaveData): Promise<{ status: bool
     const result = await res.json();
     if (result.status && result.data) {
       revalidatePath('/dashboard/leaves/requests');
-      revalidatePath('/dashboard/leaves/create-Leaves');
+      revalidatePath('/dashboard/leaves/create-leaves');
       return { status: true, data: result.data };
     }
     return { status: false, message: result.message || 'Failed to create leave request' };

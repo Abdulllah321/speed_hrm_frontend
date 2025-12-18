@@ -9,8 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { createAttendanceRequestQuery, getAllAttendanceRequestQueries } from "@/lib/actions/attendance-request-query";
-import type { AttendanceRequestQuery } from "@/lib/actions/attendance-request-query";
+import { createAttendanceRequestQuery } from "@/lib/actions/attendance-request-query";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import {
@@ -20,19 +19,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { getAllEmployeesForClearance } from "@/lib/actions/exit-clearance";
 import type { Employee } from "@/lib/actions/exit-clearance";
-import DataTable from "@/components/common/data-table";
-import { columns } from "../request-list/columns";
+import { getDepartments, type Department, type SubDepartment } from "@/lib/actions/department";
 
 export default function AttendanceRequestQueryPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userRequests, setUserRequests] = useState<AttendanceRequestQuery[]>([]);
-  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
 
   const [formData, setFormData] = useState({
     employeeId: "",
@@ -48,70 +45,80 @@ export default function AttendanceRequestQueryPage() {
   });
 
   useEffect(() => {
-    const fetchEmployees = async () => {
+    const fetchData = async () => {
       try {
-        const result = await getAllEmployeesForClearance();
-        if (result.status && result.data) {
-          setEmployees(result.data);
+        const [employeesResult, departmentsResult] = await Promise.all([
+          getAllEmployeesForClearance(),
+          getDepartments(),
+        ]);
+
+        if (employeesResult.status && employeesResult.data) {
+          setAllEmployees(employeesResult.data);
         } else {
-          toast.error(result.message || "Failed to load employees");
+          toast.error(employeesResult.message || "Failed to load employees");
+        }
+
+        if (departmentsResult.status && departmentsResult.data) {
+          setDepartments(departmentsResult.data);
         }
       } catch (error) {
-        console.error("Failed to fetch employees:", error);
-        toast.error("Failed to load employees");
+        console.error("Failed to fetch data:", error);
+        toast.error("Failed to load data");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEmployees();
+    fetchData();
   }, []);
-
-  // Fetch user's requests when employee is selected
-  useEffect(() => {
-    const fetchUserRequests = async () => {
-      if (!formData.employeeId) {
-        setUserRequests([]);
-        return;
-      }
-
-      setLoadingRequests(true);
-      try {
-        const result = await getAllAttendanceRequestQueries();
-        if (result.status && result.data) {
-          // Filter requests for the selected employee
-          const filtered = result.data.filter(
-            (req) => req.employeeId === formData.employeeId
-          );
-          setUserRequests(filtered);
-        } else {
-          console.error("Failed to load requests:", result.message);
-        }
-      } catch (error) {
-        console.error("Failed to fetch requests:", error);
-      } finally {
-        setLoadingRequests(false);
-      }
-    };
-
-    fetchUserRequests();
-  }, [formData.employeeId]);
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Filter employees based on selected department
+  const filteredEmployees = formData.department
+    ? allEmployees.filter((emp) => emp.department === formData.department)
+    : allEmployees;
+
   const handleEmployeeChange = (employeeId: string) => {
-    const selected = employees.find((e) => e.id === employeeId);
+    const selected = allEmployees.find((e) => e.id === employeeId);
     if (selected) {
       setFormData((prev) => ({
         ...prev,
         employeeId: selected.id,
         employeeName: selected.employeeName,
-        department: selected.department,
-        subDepartment: selected.subDepartment || "",
+        // Don't auto-fill department/subDepartment, let user select manually
       }));
     }
+  };
+
+  const handleDepartmentChange = (departmentName: string) => {
+    // Clear employee selection if current employee doesn't belong to new department
+    const currentEmployee = allEmployees.find((e) => e.id === formData.employeeId);
+    const shouldClearEmployee = currentEmployee && currentEmployee.department !== departmentName;
+
+    setFormData((prev) => ({
+      ...prev,
+      department: departmentName,
+      subDepartment: "", // Clear sub-department when department changes
+      ...(shouldClearEmployee && { employeeId: "", employeeName: "" }), // Clear employee if doesn't match
+    }));
+
+    // Find department and set its sub-departments
+    const selectedDept = departments.find((d) => d.name === departmentName);
+    if (selectedDept && selectedDept.subDepartments) {
+      setSubDepartments(selectedDept.subDepartments);
+    } else {
+      setSubDepartments([]);
+    }
+  };
+
+  const handleSubDepartmentChange = (subDepartmentName: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      subDepartment: subDepartmentName,
+    }));
   };
 
   const resetForm = () => {
@@ -150,18 +157,8 @@ export default function AttendanceRequestQueryPage() {
 
         if (result.status) {
           toast.success(result.message || "Attendance request query created successfully");
-          // Clear form fields (keep employee selection)
-          resetForm();
-          // Refresh user requests
-          const refreshResult = await getAllAttendanceRequestQueries();
-          if (refreshResult.status && refreshResult.data) {
-            const filtered = refreshResult.data.filter(
-              (req) => req.employeeId === formData.employeeId
-            );
-            setUserRequests(filtered);
-          }
-          // Optionally redirect or stay on page
-          // router.push("/dashboard/attendance/request-list");
+          // Redirect to request list page
+          router.push("/dashboard/attendance/request-list");
         } else {
           toast.error(result.message || "Failed to create attendance request query");
         }
@@ -189,42 +186,76 @@ export default function AttendanceRequestQueryPage() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Employee Name *</Label>
+              <Label>Department</Label>
+              <Select
+                value={formData.department}
+                onValueChange={handleDepartmentChange}
+                disabled={isPending || loading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.name}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Sub Department</Label>
+              <Select
+                value={formData.subDepartment}
+                onValueChange={handleSubDepartmentChange}
+                disabled={isPending || loading || !formData.department}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={formData.department ? "Select sub department" : "Select department first"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {subDepartments.length > 0 ? (
+                    subDepartments.map((subDept) => (
+                      <SelectItem key={subDept.id} value={subDept.name}>
+                        {subDept.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                      {formData.department ? "No sub departments available" : "Select department first"}
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Employee Name <span className="text-red-500">*</span></Label>
               {loading ? (
                 <div className="h-10 bg-muted rounded animate-pulse" />
               ) : (
                 <Select value={formData.employeeId} onValueChange={handleEmployeeChange} disabled={isPending || loading}>
-                  <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder={formData.department ? "Select employee from department" : "Select employee"} />
+                  </SelectTrigger>
                   <SelectContent>
-                    {employees.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.employeeName} ({e.employeeId})
-                      </SelectItem>
-                    ))}
+                    {filteredEmployees.length > 0 ? (
+                      filteredEmployees.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>
+                          {e.employeeName} ({e.employeeId})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                        {formData.department ? "No employees in this department" : "No employees available"}
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               )}
             </div>
             <div className="space-y-2">
-              <Label>Department</Label>
-              <Input 
-                value={formData.department} 
-                disabled 
-                className="bg-muted" 
-                placeholder="Select employee to see department"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Sub Department</Label>
-              <Input 
-                value={formData.subDepartment} 
-                disabled 
-                className="bg-muted" 
-                placeholder="Select employee to see sub department"
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Attendance Date *</Label>
+              <Label>Attendance Date <span className="text-red-500">*</span></Label>
               <DatePicker
                 value={formData.attendanceDate}
                 onChange={(value: string) => updateField("attendanceDate", value)}
@@ -233,7 +264,7 @@ export default function AttendanceRequestQueryPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Clock Inn Time Request To Change *</Label>
+              <Label>Clock Inn Time Request To Change <span className="text-red-500">*</span></Label>
               <TimePicker
                 value={formData.clockInTimeRequest}
                 onChange={(value: string) => updateField("clockInTimeRequest", value)}
@@ -242,7 +273,7 @@ export default function AttendanceRequestQueryPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Clock Out Time Request To Change *</Label>
+              <Label>Clock Out Time Request To Change <span className="text-red-500">*</span></Label>
               <TimePicker
                 value={formData.clockOutTimeRequest}
                 onChange={(value: string) => updateField("clockOutTimeRequest", value)}
@@ -251,7 +282,7 @@ export default function AttendanceRequestQueryPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Break In *</Label>
+              <Label>Break In <span className="text-red-500">*</span></Label>
               <TimePicker
                 value={formData.breakIn}
                 onChange={(value: string) => updateField("breakIn", value)}
@@ -260,7 +291,7 @@ export default function AttendanceRequestQueryPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Break Out *</Label>
+              <Label>Break Out <span className="text-red-500">*</span></Label>
               <TimePicker
                 value={formData.breakOut}
                 onChange={(value: string) => updateField("breakOut", value)}
@@ -269,7 +300,7 @@ export default function AttendanceRequestQueryPage() {
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <Label>Query *</Label>
+              <Label>Query <span className="text-red-500">*</span></Label>
               <Textarea
                 value={formData.query}
                 onChange={(e) => updateField("query", e.target.value)}
@@ -296,55 +327,6 @@ export default function AttendanceRequestQueryPage() {
         {/* Submit */}
       
       </form>
-
-      {/* User's Requests Data Table */}
-      {formData.employeeId && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>My Requests</CardTitle>
-            <CardDescription>
-              View all your attendance request queries for {formData.employeeName}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loadingRequests ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : userRequests.length > 0 ? (
-              <DataTable
-                columns={columns}
-                data={userRequests.map((req, index) => ({
-                  ...req,
-                  id: req.id,
-                  sNo: index + 1,
-                }))}
-                searchFields={[
-                  { key: "query", label: "Query" },
-                  { key: "attendanceDate", label: "Date" },
-                  { key: "approvalStatus", label: "Status" },
-                ]}
-                filters={[
-                  {
-                    key: "approvalStatus",
-                    label: "Status",
-                    options: [
-                      { value: "all", label: "All Status" },
-                      { value: "pending", label: "Pending" },
-                      { value: "approved", label: "Approved" },
-                      { value: "rejected", label: "Rejected" },
-                    ],
-                  },
-                ]}
-              />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No requests found for this employee.
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
