@@ -105,6 +105,7 @@ import { Separator } from "../ui/separator";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ScrollArea } from "../ui/scroll-area";
+import { motion } from "motion/react";
 
 interface DataTableRow {
   id: string;
@@ -447,28 +448,27 @@ export default function DataTable<TData extends DataTableRow>({
         </div>
       </div>
 
-      <div className="bg-background overflow-hidden rounded-md border w-full max-w-full">
-        <div className="w-full max-w-full overflow-x-hidden">
+      <div className="bg-card/50 backdrop-blur-sm overflow-hidden rounded-lg border border-border/50 shadow-sm w-full max-w-full">
+        <div className="w-full max-w-full overflow-x-auto">
           <Table className="w-full table-auto">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent">
+              <TableRow key={headerGroup.id} className="hover:bg-transparent border-b border-border/50 bg-muted/30">
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead
                       key={header.id}
                       style={{ width: `${header.getSize()}px` }}
-                      className="h-11"
+                      className="h-12 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                     >
                       {header.isPlaceholder ? null : header.column.getCanSort() ? (
                         <div
                           className={cn(
                             header.column.getCanSort() &&
-                              "flex h-full cursor-pointer items-center justify-between gap-2 select-none"
+                              "flex h-full cursor-pointer items-center justify-between gap-2 select-none hover:text-foreground transition-colors"
                           )}
                           onClick={header.column.getToggleSortingHandler()}
                           onKeyDown={(e) => {
-                            // Enhanced keyboard handling for sorting
                             if (
                               header.column.getCanSort() &&
                               (e.key === "Enter" || e.key === " ")
@@ -486,14 +486,14 @@ export default function DataTable<TData extends DataTableRow>({
                           {{
                             asc: (
                               <ChevronUpIcon
-                                className="shrink-0 opacity-60"
+                                className="shrink-0 text-primary animate-in slide-in-from-bottom-1 fade-in duration-200"
                                 size={16}
                                 aria-hidden="true"
                               />
                             ),
                             desc: (
                               <ChevronDownIcon
-                                className="shrink-0 opacity-60"
+                                className="shrink-0 text-primary animate-in slide-in-from-top-1 fade-in duration-200"
                                 size={16}
                                 aria-hidden="true"
                               />
@@ -514,37 +514,47 @@ export default function DataTable<TData extends DataTableRow>({
           </TableHeader>
           <TableBody>
             {table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => {
+              table.getRowModel().rows.map((row, index) => {
                 const isNew = row.original.id === highlightedId;
 
                 return (
-                  <TableRow
+                  <motion.tr
                     key={row.id}
+                    layout="position"
+                    transition={{ 
+                      type: "spring", 
+                      stiffness: 350, 
+                      damping: 30 
+                    }}
                     data-state={row.getIsSelected() && "selected"}
                     className={cn(
-                      "transition-colors duration-700",
-                      isNew &&
-                        "bg-muted-foreground/50 animate-pulse shadow-[inset_0px_5px_15px_-3px_rgba(0,_0,_0,_0.2)]"
+                      "border-b border-border/30",
+                      index % 2 === 0 ? "bg-transparent" : "bg-muted/20",
+                      "hover:bg-accent/50",
+                      isNew && "bg-primary/10 animate-pulse ring-1 ring-primary/30"
                     )}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} className="py-3">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
                         )}
                       </TableCell>
                     ))}
-                  </TableRow>
+                  </motion.tr>
                 );
               })
             ) : (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center"
+                  className="h-32 text-center text-muted-foreground"
                 >
-                  No results.
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-lg">No results found</span>
+                    <span className="text-sm">Try adjusting your search or filters</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}

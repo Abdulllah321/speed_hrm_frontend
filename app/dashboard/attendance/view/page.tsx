@@ -8,37 +8,41 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { toast } from "sonner";
-import { Loader2, Search, Download, Printer } from "lucide-react";
+import { Loader2, Download, Printer, CalendarDays, Clock, UserCircle } from "lucide-react";
 import { getEmployees } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
 import { getAttendances, type Attendance } from "@/lib/actions/attendance";
 import type { Employee } from "@/lib/actions/employee";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { format, eachDayOfInterval, isWeekend, isSameDay } from "date-fns";
+import { getHolidays } from "@/lib/actions/holiday";
 
-interface AttendanceSummary {
-  employeeId: string;
-  employeeName: string;
-  department: string;
-  subDepartment: string;
-  totalDays: number;
-  presentDays: number;
-  absentDays: number;
-  lateDays: number;
-  earlyLeaveDays: number;
-  halfDayDays: number;
-  shortDays: number;
-  leaves: number;
-  onLeaveDays: number;
+interface Holiday {
+  id: string;
+  name: string;
+  dateFrom: string;
+  dateTo: string;
+  status: string;
 }
 
-export default function ViewEmployeeAttendanceListPage() {
+interface DailyAttendanceRecord {
+  date: Date;
+  dayOfWeek: string;
+  serialNo: number;
+  status: "present" | "absent" | "holiday" | "weekly-off" | "leave" | "late" | "half-day";
+  checkIn?: string | null;
+  checkOut?: string | null;
+  workingHours?: number | null;
+  overtimeHours?: number | null;
+  isHoliday: boolean;
+  holidayName?: string;
+  isWeeklyOff: boolean;
+  isOvertime: boolean; // Present on holiday/weekly-off
+  notes?: string | null;
+}
+
+export default function ViewEmployeeAttendanceDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -46,25 +50,29 @@ export default function ViewEmployeeAttendanceListPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<Attendance[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  // Initialize filters from URL params or defaults
+  // Initialize filters - Department first, then sub-department, then employee
+  const [filters, setFilters] = useState({
+    department: searchParams.get('department') || "all",
+    subDepartment: searchParams.get('subDepartment') || "all",
+    employeeId: searchParams.get('employeeId') || "",
+  });
+
+  // Default date range: current month
   const getInitialDateRange = (): DateRange => {
     const fromDate = searchParams.get('fromDate');
     const toDate = searchParams.get('toDate');
+    const now = new Date();
     return {
-      from: fromDate ? new Date(fromDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-      to: toDate ? new Date(toDate) : new Date(),
+      from: fromDate ? new Date(fromDate) : new Date(now.getFullYear(), now.getMonth(), 1),
+      to: toDate ? new Date(toDate) : now,
     };
   };
-
-  const [filters, setFilters] = useState({
-    employeeId: searchParams.get('employeeId') || "all",
-    department: searchParams.get('department') || "all",
-    subDepartment: searchParams.get('subDepartment') || "all",
-  });
 
   const [dateRange, setDateRange] = useState<DateRange>(getInitialDateRange());
 
@@ -73,9 +81,10 @@ export default function ViewEmployeeAttendanceListPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [employeesResult, departmentsResult] = await Promise.all([
+        const [employeesResult, departmentsResult, holidaysResult] = await Promise.all([
           getEmployees(),
           getDepartments(),
+          getHolidays(),
         ]);
 
         if (employeesResult.status && employeesResult.data) {
@@ -86,8 +95,10 @@ export default function ViewEmployeeAttendanceListPage() {
 
         if (departmentsResult.status && departmentsResult.data) {
           setDepartments(departmentsResult.data);
-        } else {
-          toast.error(departmentsResult.message || "Failed to load departments");
+        }
+
+        if (holidaysResult.status && holidaysResult.data) {
+          setHolidays(holidaysResult.data);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -127,402 +138,304 @@ export default function ViewEmployeeAttendanceListPage() {
     fetchSubDepartments();
   }, [filters.department]);
 
-  // Handle employee selection - auto-populate department and sub-department
-  const handleEmployeeChange = (employeeId: string) => {
-    if (employeeId === "all") {
-      updateFilters({
-        employeeId: "all",
-        department: "all",
-        subDepartment: "all",
-      });
-    } else {
-      const selectedEmployee = employees.find((e) => e.id === employeeId);
-      if (selectedEmployee) {
-        updateFilters({
-          employeeId,
-          department: selectedEmployee.department || "all",
-          subDepartment: selectedEmployee.subDepartment || "all",
-        });
-      }
-    }
-  };
-
-  // Get department name for display
-  const getDepartmentName = useMemo(() => {
-    return (deptId: string) => {
-      const dept = departments.find((d) => d.id === deptId);
-      return dept?.name || deptId;
-    };
-  }, [departments]);
-
-  // Get sub-department name for display
-  const getSubDepartmentName = useMemo(() => {
-    return (subDeptId: string) => {
-      const subDept = subDepartments.find((sd) => sd.id === subDeptId);
-      return subDept?.name || subDeptId;
-    };
-  }, [subDepartments]);
-
-  // Filter employees based on selected filters
+  // Filter employees based on department/sub-department (frontend filtering)
   const filteredEmployees = useMemo(() => {
-    let filtered = employees;
-
-    if (filters.employeeId && filters.employeeId !== "all") {
-      filtered = filtered.filter((e) => e.id === filters.employeeId);
-    }
+    let result = employees;
 
     if (filters.department && filters.department !== "all") {
-      filtered = filtered.filter((e) => e.department === filters.department);
+      const dept = departments.find((d) => d.id === filters.department);
+      if (dept) {
+        result = result.filter(
+          (emp) =>
+            emp.departmentName === dept.name ||
+            emp.department === dept.name ||
+            emp.department === filters.department
+        );
+      }
     }
 
     if (filters.subDepartment && filters.subDepartment !== "all") {
-      filtered = filtered.filter((e) => e.subDepartment === filters.subDepartment);
+      const subDept = subDepartments.find((sd) => sd.id === filters.subDepartment);
+      if (subDept) {
+        result = result.filter(
+          (emp) =>
+            emp.subDepartmentName === subDept.name ||
+            emp.subDepartment === subDept.name ||
+            emp.subDepartment === filters.subDepartment
+        );
+      }
     }
 
-    return filtered;
-  }, [employees, filters.employeeId, filters.department, filters.subDepartment]);
+    return result;
+  }, [employees, filters.department, filters.subDepartment, departments, subDepartments]);
 
-  // Calculate attendance summary from actual attendance records
-  const attendanceData = useMemo(() => {
-    if (!attendanceRecords.length) return [];
+  // Get selected employee details
+  const selectedEmployee = useMemo(() => {
+    if (!filters.employeeId) return null;
+    return employees.find((e) => e.id === filters.employeeId) || null;
+  }, [employees, filters.employeeId]);
 
-    // Group attendance records by employee
-    const employeeMap = new Map<string, {
-      employee: Employee;
-      records: Attendance[];
-    }>();
-
-    // First, map attendance records to employees
-    attendanceRecords.forEach(record => {
-      const empId = record.employeeId;
-      if (!employeeMap.has(empId)) {
-        const employee = employees.find(e => e.id === empId);
-        if (employee) {
-          employeeMap.set(empId, {
-            employee,
-            records: [record],
-          });
+  // Check if a date is a holiday
+  const isHolidayDate = (date: Date): { isHoliday: boolean; name?: string } => {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    
+    for (const holiday of holidays) {
+      if (holiday.status !== 'active') continue;
+      
+      const from = new Date(holiday.dateFrom);
+      const to = new Date(holiday.dateTo);
+      const fromMonth = from.getMonth() + 1;
+      const fromDay = from.getDate();
+      const toMonth = to.getMonth() + 1;
+      const toDay = to.getDate();
+      
+      if (fromMonth === toMonth) {
+        if (month === fromMonth && day >= fromDay && day <= toDay) {
+          return { isHoliday: true, name: holiday.name };
         }
       } else {
-        employeeMap.get(empId)!.records.push(record);
+        if ((month === fromMonth && day >= fromDay) || (month === toMonth && day <= toDay)) {
+          return { isHoliday: true, name: holiday.name };
+        }
       }
-    });
+    }
+    return { isHoliday: false };
+  };
 
-    // Calculate statistics for each employee
-    const summaries: AttendanceSummary[] = [];
+  // Generate daily attendance records for the selected date range
+  const dailyRecords = useMemo((): DailyAttendanceRecord[] => {
+    if (!dateRange.from || !dateRange.to || !filters.employeeId) {
+      return [];
+    }
 
-    employeeMap.forEach(({ employee, records }) => {
-      // Apply department and sub-department filters if set
-      if (filters.department && filters.department !== "all" && employee.department !== filters.department) {
-        return; // Skip this employee if department doesn't match
-      }
-      if (filters.subDepartment && filters.subDepartment !== "all" && employee.subDepartment !== filters.subDepartment) {
-        return; // Skip this employee if sub-department doesn't match
-      }
+    const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
+    
+    return days.map((date, index) => {
+      const dayOfWeek = format(date, 'EEEE');
+      const holidayInfo = isHolidayDate(date);
+      const isWeeklyOffDay = isWeekend(date); // TODO: Check employee's working hours policy for custom weekly offs
+      
+      // Find attendance record for this date
+      const attendanceRecord = attendanceRecords.find((record) => {
+        const recordDate = new Date(record.date);
+        return isSameDay(recordDate, date);
+      });
 
-      const totalDays = records.length;
-      let presentDays = 0;
-      let absentDays = 0;
-      let lateDays = 0;
-      let earlyLeaveDays = 0;
-      let halfDayDays = 0;
-      let shortDays = 0;
-      let onLeaveDays = 0;
+      let status: DailyAttendanceRecord["status"] = "absent";
+      let isOvertime = false;
 
-      records.forEach(record => {
-        const status = record.status?.toLowerCase() || '';
+      if (attendanceRecord) {
+        const recordStatus = attendanceRecord.status?.toLowerCase() || '';
         
-        if (status === 'present') {
-          presentDays++;
-          if (record.lateMinutes && record.lateMinutes > 0) {
-            lateDays++;
-          }
-        } else if (status === 'late') {
-          presentDays++;
-          lateDays++;
-        } else if (status === 'absent') {
-          absentDays++;
-        } else if (status === 'half-day' || status === 'halfday') {
-          halfDayDays++;
-          presentDays++; // Half day is partially present
-        } else if (status === 'short-day' || status === 'shortday') {
-          shortDays++;
-          presentDays++; // Short day is still present
-        } else if (status === 'on-leave' || status === 'onleave') {
-          onLeaveDays++;
+        if (holidayInfo.isHoliday || isWeeklyOffDay) {
+          // Employee worked on a holiday or weekly off
+          isOvertime = true;
+          status = "present";
+        } else if (recordStatus === 'present') {
+          status = "present";
+        } else if (recordStatus === 'late') {
+          status = "late";
+        } else if (recordStatus === 'half-day' || recordStatus === 'halfday') {
+          status = "half-day";
+        } else if (recordStatus === 'absent') {
+          status = "absent";
+        } else if (recordStatus === 'on-leave' || recordStatus === 'leave') {
+          status = "leave";
+        } else {
+          status = "present";
         }
-
-        if (record.earlyLeaveMinutes && record.earlyLeaveMinutes > 0) {
-          earlyLeaveDays++;
+      } else {
+        // No attendance record
+        if (holidayInfo.isHoliday) {
+          status = "holiday";
+        } else if (isWeeklyOffDay) {
+          status = "weekly-off";
+        } else {
+          status = "absent";
         }
-      });
+      }
 
-      summaries.push({
-        employeeId: employee.employeeId,
-        employeeName: employee.employeeName,
-        department: employee.departmentName || getDepartmentName(employee.department) || "N/A",
-        subDepartment: employee.subDepartmentName || (employee.subDepartment ? getSubDepartmentName(employee.subDepartment) : "N/A"),
-        totalDays,
-        presentDays,
-        absentDays,
-        lateDays,
-        earlyLeaveDays,
-        halfDayDays,
-        shortDays,
-        leaves: onLeaveDays,
-        onLeaveDays,
-      });
+      return {
+        date,
+        dayOfWeek,
+        serialNo: index + 1,
+        status,
+        checkIn: attendanceRecord?.checkIn || null,
+        checkOut: attendanceRecord?.checkOut || null,
+        workingHours: attendanceRecord?.workingHours || null,
+        overtimeHours: attendanceRecord?.overtimeHours || null,
+        isHoliday: holidayInfo.isHoliday,
+        holidayName: holidayInfo.name,
+        isWeeklyOff: isWeeklyOffDay,
+        isOvertime,
+        notes: attendanceRecord?.notes || null,
+      };
     });
+  }, [dateRange.from, dateRange.to, filters.employeeId, attendanceRecords, holidays]);
 
-    return summaries;
-  }, [attendanceRecords, employees, filters.department, filters.subDepartment, getDepartmentName, getSubDepartmentName]);
-
-  // Update URL params when filters change
+  // Update URL params
   const updateFilters = (newFilters: Partial<typeof filters>) => {
     const updated = { ...filters, ...newFilters };
     setFilters(updated);
-    
-    const params = new URLSearchParams();
-    if (updated.employeeId !== "all") params.set('employeeId', updated.employeeId);
-    if (updated.department !== "all") params.set('department', updated.department);
-    if (updated.subDepartment !== "all") params.set('subDepartment', updated.subDepartment);
-    if (dateRange.from) params.set('fromDate', dateRange.from.toISOString());
-    if (dateRange.to) params.set('toDate', dateRange.to.toISOString());
-    
-    router.push(`/dashboard/attendance/view?${params.toString()}`);
   };
 
-  // Update date range and URL
-  const updateDateRange = (range: DateRange) => {
-    setDateRange(range);
-    const params = new URLSearchParams(searchParams.toString());
-    if (range.from) params.set('fromDate', range.from.toISOString());
-    if (range.to) params.set('toDate', range.to.toISOString());
-    router.push(`/dashboard/attendance/view?${params.toString()}`);
-  };
-
-  // Fetch attendance records when filters or date range changes
-  useEffect(() => {
-    const fetchAttendance = async () => {
-      if (!dateRange.from || !dateRange.to) {
-        setAttendanceRecords([]);
-        return;
-      }
-
-      if (dateRange.from > dateRange.to) {
-        return; // Invalid date range
-      }
-
-      try {
-        setLoadingAttendance(true);
-        
-        // Build query filters
-        const queryFilters: {
-          dateFrom?: Date;
-          dateTo?: Date;
-          employeeId?: string;
-        } = {
-          dateFrom: dateRange.from,
-          dateTo: dateRange.to,
-        };
-
-        // If specific employee is selected, filter by employee
-        if (filters.employeeId && filters.employeeId !== "all") {
-          queryFilters.employeeId = filters.employeeId;
-        }
-
-        const result = await getAttendances(queryFilters);
-
-        if (result.status && result.data) {
-          setAttendanceRecords(result.data);
-        } else {
-          setAttendanceRecords([]);
-        }
-      } catch (error) {
-        console.error("Error fetching attendance:", error);
-        setAttendanceRecords([]);
-      } finally {
-        setLoadingAttendance(false);
-      }
-    };
-
-    fetchAttendance();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.employeeId, dateRange.from, dateRange.to]);
-
+  // Fetch attendance records when employee is selected and search is triggered
   const handleSearch = async () => {
+    if (!filters.employeeId) {
+      toast.error("Please select an employee");
+      return;
+    }
     if (!dateRange.from || !dateRange.to) {
-      toast.error("Please select both from date and to date");
-      return;
-    }
-    if (dateRange.from > dateRange.to) {
-      toast.error("From date cannot be greater than to date");
-      return;
-    }
-
-    // Trigger refetch by updating URL
-    updateDateRange(dateRange);
-  };
-
-  const handleExport = () => {
-    if (attendanceData.length === 0) {
-      toast.error("No data to export");
+      toast.error("Please select a date range");
       return;
     }
 
     try {
-      // Create CSV content
-      const headers = [
-        "S.No",
-        "Employee ID",
-        "Employee Name",
-        "Department",
-        "Sub Department",
-        "Total Days",
-        "Present",
-        "Absent",
-        "Late",
-        "Early Leave",
-        "Half Day",
-        "Short Days",
-        "Leaves",
-      ];
+      setLoadingAttendance(true);
+      setHasSearched(true);
 
-      const rows = attendanceData.map((record, index) => [
-        index + 1,
-        record.employeeId,
-        record.employeeName,
-        record.department,
-        record.subDepartment,
-        record.totalDays,
-        record.presentDays,
-        record.absentDays,
-        record.lateDays,
-        record.earlyLeaveDays,
-        record.halfDayDays,
-        record.shortDays,
-        record.leaves,
-      ]);
+      const result = await getAttendances({
+        employeeId: filters.employeeId,
+        dateFrom: dateRange.from,
+        dateTo: dateRange.to,
+      });
 
-      const csvContent = [
-        headers.join(","),
-        ...rows.map(row => row.map(cell => `"${cell}"`).join(",")),
-      ].join("\n");
+      if (result.status && result.data) {
+        setAttendanceRecords(result.data);
+      } else {
+        setAttendanceRecords([]);
+        toast.error(result.message || "Failed to load attendance");
+      }
 
-      // Create blob and download
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      const fromDateStr = dateRange.from ? dateRange.from.toISOString().split('T')[0] : '';
-      const toDateStr = dateRange.to ? dateRange.to.toISOString().split('T')[0] : '';
-      link.setAttribute("download", `attendance_${fromDateStr}_to_${toDateStr}.csv`);
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success("Data exported successfully");
+      // Update URL
+      const params = new URLSearchParams();
+      if (filters.department !== "all") params.set('department', filters.department);
+      if (filters.subDepartment !== "all") params.set('subDepartment', filters.subDepartment);
+      params.set('employeeId', filters.employeeId);
+      params.set('fromDate', dateRange.from.toISOString());
+      params.set('toDate', dateRange.to.toISOString());
+      router.push(`/dashboard/attendance/view?${params.toString()}`);
     } catch (error) {
-      console.error("Error exporting data:", error);
-      toast.error("Failed to export data");
+      console.error("Error fetching attendance:", error);
+      toast.error("Failed to load attendance records");
+      setAttendanceRecords([]);
+    } finally {
+      setLoadingAttendance(false);
     }
+  };
+
+  const getStatusBadge = (record: DailyAttendanceRecord) => {
+    if (record.isOvertime) {
+      return (
+        <Badge className="bg-amber-500 hover:bg-amber-600 text-white">
+          Overtime {record.isHoliday ? '(Holiday)' : '(Off Day)'}
+        </Badge>
+      );
+    }
+
+    switch (record.status) {
+      case "present":
+        return <Badge className="bg-green-500 hover:bg-green-600 text-white">Present</Badge>;
+      case "absent":
+        return <Badge variant="destructive">Absent</Badge>;
+      case "holiday":
+        return <Badge className="bg-purple-500 hover:bg-purple-600 text-white">{record.holidayName || 'Holiday'}</Badge>;
+      case "weekly-off":
+        return <Badge variant="secondary">Weekly Off</Badge>;
+      case "leave":
+        return <Badge className="bg-blue-500 hover:bg-blue-600 text-white">On Leave</Badge>;
+      case "late":
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white">Late</Badge>;
+      case "half-day":
+        return <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Half Day</Badge>;
+      default:
+        return <Badge variant="outline">{record.status}</Badge>;
+    }
+  };
+
+  const formatTime = (time: string | null | undefined) => {
+    if (!time) return "-";
+    try {
+      const date = new Date(time);
+      return format(date, 'hh:mm a');
+    } catch {
+      return time;
+    }
+  };
+
+  const handleExport = () => {
+    if (dailyRecords.length === 0) {
+      toast.error("No data to export");
+      return;
+    }
+
+    const headers = ["S.No", "Date", "Day", "Clock In", "Clock Out", "Status", "Working Hours", "Overtime", "Notes"];
+    const rows = dailyRecords.map((record) => [
+      record.serialNo,
+      format(record.date, 'dd MMM yyyy'),
+      record.dayOfWeek,
+      formatTime(record.checkIn),
+      formatTime(record.checkOut),
+      record.isOvertime ? `Overtime (${record.isHoliday ? 'Holiday' : 'Off Day'})` : record.status,
+      record.workingHours ? `${record.workingHours}h` : '-',
+      record.overtimeHours ? `${record.overtimeHours}h` : '-',
+      record.notes || '-',
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `attendance_${selectedEmployee?.employeeName || 'employee'}_${format(dateRange.from!, 'yyyy-MM-dd')}_to_${format(dateRange.to!, 'yyyy-MM-dd')}.csv`;
+    link.click();
+    toast.success("Data exported successfully");
   };
 
   const handlePrint = () => {
-    if (attendanceData.length === 0) {
+    if (dailyRecords.length === 0) {
       toast.error("No data to print");
       return;
     }
-
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      toast.error("Please allow popups to print");
-      return;
-    }
-
-    const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Attendance Report</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-            .text-right { text-align: right; }
-            @media print {
-              body { margin: 0; }
-              @page { margin: 1cm; }
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Employee Attendance Report</h1>
-          <p><strong>Date Range:</strong> ${dateRange.from ? dateRange.from.toLocaleDateString() : ''} to ${dateRange.to ? dateRange.to.toLocaleDateString() : ''}</p>
-          <table>
-            <thead>
-              <tr>
-                <th>S.No</th>
-                <th>Employee ID</th>
-                <th>Employee Name</th>
-                <th>Department</th>
-                <th>Sub Department</th>
-                <th class="text-right">Total Days</th>
-                <th class="text-right">Present</th>
-                <th class="text-right">Absent</th>
-                <th class="text-right">Late</th>
-                <th class="text-right">Early Leave</th>
-                <th class="text-right">Half Day</th>
-                <th class="text-right">Short Days</th>
-                <th class="text-right">Leaves</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${attendanceData
-                .map(
-                  (record, index) => `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>${record.employeeId}</td>
-                  <td>${record.employeeName}</td>
-                  <td>${record.department}</td>
-                  <td>${record.subDepartment}</td>
-                  <td class="text-right">${record.totalDays}</td>
-                  <td class="text-right">${record.presentDays}</td>
-                  <td class="text-right">${record.absentDays}</td>
-                  <td class="text-right">${record.lateDays}</td>
-                  <td class="text-right">${record.earlyLeaveDays}</td>
-                  <td class="text-right">${record.halfDayDays}</td>
-                  <td class="text-right">${record.shortDays}</td>
-                  <td class="text-right">${record.leaves}</td>
-                </tr>
-              `
-                )
-                .join("")}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+    window.print();
   };
+
+  // Summary statistics
+  const summary = useMemo(() => {
+    const stats = {
+      totalDays: dailyRecords.length,
+      present: 0,
+      absent: 0,
+      holidays: 0,
+      weeklyOffs: 0,
+      leaves: 0,
+      late: 0,
+      overtime: 0,
+    };
+
+    dailyRecords.forEach((record) => {
+      if (record.isOvertime) stats.overtime++;
+      if (record.status === 'present' || record.status === 'late' || record.status === 'half-day') stats.present++;
+      if (record.status === 'absent') stats.absent++;
+      if (record.status === 'holiday') stats.holidays++;
+      if (record.status === 'weekly-off') stats.weeklyOffs++;
+      if (record.status === 'leave') stats.leaves++;
+      if (record.status === 'late') stats.late++;
+    });
+
+    return stats;
+  }, [dailyRecords]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">View Employee Attendance List</h2>
-          <p className="text-muted-foreground">View and filter employee attendance records</p>
+          <h2 className="text-2xl font-bold tracking-tight">View Employee Attendance Detail</h2>
+          <p className="text-muted-foreground">View detailed daily attendance records for an employee</p>
         </div>
       </div>
 
@@ -530,32 +443,10 @@ export default function ViewEmployeeAttendanceListPage() {
       <Card>
         <CardHeader>
           <CardTitle>Filters</CardTitle>
-          <CardDescription>Filter attendance records by employee, department, and date range</CardDescription>
+          <CardDescription>Select department, employee, and date range to view attendance</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Employee</Label>
-              {loading ? (
-                <div className="h-10 bg-muted rounded animate-pulse" />
-              ) : (
-                <Autocomplete
-                  options={[
-                    { value: "all", label: "All Employees" },
-                    ...employees.map((emp) => ({
-                      value: emp.id,
-                      label: `${emp.employeeName} (${emp.employeeId})`,
-                    })),
-                  ]}
-                  value={filters.employeeId}
-                  onValueChange={handleEmployeeChange}
-                  placeholder="Select employee"
-                  searchPlaceholder="Search employee..."
-                  emptyMessage="No employees found"
-                />
-              )}
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Department</Label>
               {loading ? (
@@ -570,9 +461,13 @@ export default function ViewEmployeeAttendanceListPage() {
                     })),
                   ]}
                   value={filters.department}
-                  onValueChange={(value) =>
-                    updateFilters({ department: value || "all", subDepartment: "all" })
-                  }
+                  onValueChange={(value) => {
+                    updateFilters({ 
+                      department: value || "all", 
+                      subDepartment: "all",
+                      employeeId: "", // Reset employee when department changes
+                    });
+                  }}
                   placeholder="Select department"
                   searchPlaceholder="Search department..."
                   emptyMessage="No departments found"
@@ -594,10 +489,13 @@ export default function ViewEmployeeAttendanceListPage() {
                     })),
                   ]}
                   value={filters.subDepartment}
-                  onValueChange={(value) =>
-                    updateFilters({ subDepartment: value || "all" })
-                  }
-                  placeholder={filters.department && filters.department !== "all" ? "Select sub-department" : "Select department first"}
+                  onValueChange={(value) => {
+                    updateFilters({ 
+                      subDepartment: value || "all",
+                      employeeId: "", // Reset employee when sub-department changes
+                    });
+                  }}
+                  placeholder={filters.department !== "all" ? "Select sub-department" : "Select department first"}
                   searchPlaceholder="Search sub department..."
                   emptyMessage="No sub departments found"
                   disabled={!filters.department || filters.department === "all" || loadingSubDepartments}
@@ -606,7 +504,27 @@ export default function ViewEmployeeAttendanceListPage() {
               )}
             </div>
 
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
+              <Label>Employee <span className="text-destructive">*</span></Label>
+              {loading ? (
+                <div className="h-10 bg-muted rounded animate-pulse" />
+              ) : (
+                <Autocomplete
+                  options={filteredEmployees.map((emp) => ({
+                    value: emp.id,
+                    label: `${emp.employeeName} (${emp.employeeId})`,
+                    description: emp.departmentName,
+                  }))}
+                  value={filters.employeeId}
+                  onValueChange={(value) => updateFilters({ employeeId: value || "" })}
+                  placeholder="Select employee"
+                  searchPlaceholder="Search employee..."
+                  emptyMessage="No employees found"
+                />
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label>Date Range</Label>
               <DateRangePicker
                 initialDateFrom={dateRange.from}
@@ -614,16 +532,15 @@ export default function ViewEmployeeAttendanceListPage() {
                 showCompare={false}
                 onUpdate={(values) => {
                   if (values.range) {
-                    updateDateRange(values.range);
+                    setDateRange(values.range);
                   }
                 }}
-
               />
             </div>
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button onClick={handleSearch} disabled={loading || !dateRange.from || !dateRange.to || loadingAttendance}>
+            <Button onClick={handleSearch} disabled={loading || !filters.employeeId || loadingAttendance}>
               {loadingAttendance ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -631,103 +548,202 @@ export default function ViewEmployeeAttendanceListPage() {
                 </>
               ) : (
                 <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
+                  <CalendarDays className="h-4 w-4 mr-2" />
+                  View Attendance
                 </>
               )}
             </Button>
-            <Button variant="outline" onClick={handleExport} disabled={attendanceData.length === 0}>
+            <Button variant="outline" onClick={handleExport} disabled={dailyRecords.length === 0}>
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button variant="outline" onClick={handlePrint} disabled={attendanceData.length === 0}>
+            <Button variant="outline" onClick={handlePrint} disabled={dailyRecords.length === 0}>
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
             <Button
               variant="ghost"
               onClick={() => {
-                setFilters({
-                  employeeId: "all",
-                  department: "all",
-                  subDepartment: "all",
-                });
-                const defaultRange = {
+                setFilters({ department: "all", subDepartment: "all", employeeId: "" });
+                setDateRange({
                   from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                   to: new Date(),
-                };
-                updateDateRange(defaultRange);
+                });
+                setAttendanceRecords([]);
+                setHasSearched(false);
                 router.push('/dashboard/attendance/view');
               }}
             >
-              Reset Filters
+              Reset
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Attendance List Card */}
-      <Card>
+      {/* Employee Info & Summary */}
+      {selectedEmployee && hasSearched && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-primary/10">
+                  <UserCircle className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Employee</p>
+                  <p className="font-semibold">{selectedEmployee.employeeName}</p>
+                  <p className="text-xs text-muted-foreground">{selectedEmployee.employeeId}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Present Days</p>
+                  <p className="text-2xl font-bold text-green-600">{summary.present}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Absent Days</p>
+                  <p className="text-2xl font-bold text-red-600">{summary.absent}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Holidays</p>
+                  <p className="text-2xl font-bold text-purple-600">{summary.holidays}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Weekly Offs</p>
+                  <p className="text-2xl font-bold text-gray-600">{summary.weeklyOffs}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Overtime Days</p>
+                  <p className="text-2xl font-bold text-amber-600">{summary.overtime}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Late Days</p>
+                  <p className="text-2xl font-bold text-yellow-600">{summary.late}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Attendance Detail Table */}
+      <Card className="print:shadow-none">
         <CardHeader>
-          <CardTitle>Attendance Records</CardTitle>
+          <CardTitle>Daily Attendance Records</CardTitle>
           <CardDescription>
-            {attendanceData.length > 0
-              ? `Showing ${attendanceData.length} employee(s)`
-              : "No attendance records found"}
+            {hasSearched && selectedEmployee
+              ? `Showing ${dailyRecords.length} days for ${selectedEmployee.employeeName}`
+              : "Select an employee and click 'View Attendance' to see records"}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loadingAttendance ? (
-            <div className="flex items-center justify-center py-8">
+          {!hasSearched ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <CalendarDays className="h-16 w-16 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-semibold text-muted-foreground">No Employee Selected</h3>
+              <p className="text-sm text-muted-foreground mt-1 max-w-md">
+                Select an employee from the filters above and click "View Attendance" to see their detailed daily attendance records.
+              </p>
+            </div>
+          ) : loadingAttendance ? (
+            <div className="flex items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               <span className="ml-2 text-muted-foreground">Loading attendance records...</span>
             </div>
-          ) : attendanceData.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {dateRange.from && dateRange.to
-                ? "No attendance records found for the selected filters"
-                : "Please select date range and click Search to view attendance records"}
+          ) : dailyRecords.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              No attendance records found for the selected date range
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-14">S.No</TableHead>
-                    <TableHead>Employee ID</TableHead>
-                    <TableHead>Employee Name</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Sub Department</TableHead>
-                    <TableHead className="text-right">Total Days</TableHead>
-                    <TableHead className="text-right">Present</TableHead>
-                    <TableHead className="text-right">Absent</TableHead>
-                    <TableHead className="text-right">Late</TableHead>
-                    <TableHead className="text-right">Early Leave</TableHead>
-                    <TableHead className="text-right">Half Day</TableHead>
-                    <TableHead className="text-right">Short Days</TableHead>
-                    <TableHead className="text-right">Leaves</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {attendanceData.map((record, index) => (
-                    <TableRow key={record.employeeId}>
-                      <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>{record.employeeId}</TableCell>
-                      <TableCell className="font-medium">{record.employeeName}</TableCell>
-                      <TableCell>{record.department}</TableCell>
-                      <TableCell>{record.subDepartment}</TableCell>
-                      <TableCell className="text-right">{record.totalDays}</TableCell>
-                      <TableCell className="text-right text-green-600 font-medium">{record.presentDays}</TableCell>
-                      <TableCell className="text-right text-red-600 font-medium">{record.absentDays}</TableCell>
-                      <TableCell className="text-right text-yellow-600 font-medium">{record.lateDays}</TableCell>
-                      <TableCell className="text-right text-orange-600 font-medium">{record.earlyLeaveDays}</TableCell>
-                      <TableCell className="text-right text-blue-600 font-medium">{record.halfDayDays}</TableCell>
-                      <TableCell className="text-right text-purple-600 font-medium">{record.shortDays}</TableCell>
-                      <TableCell className="text-right text-cyan-600 font-medium">{record.leaves}</TableCell>
-                    </TableRow>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/30">
+                    <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider">S.No</th>
+                    <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider">Date</th>
+                    <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider">Day</th>
+                    <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider">Clock In</th>
+                    <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider">Clock Out</th>
+                    <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider">Status</th>
+                    <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider">Working Hours</th>
+                    <th className="text-left p-3 font-semibold text-xs uppercase tracking-wider">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dailyRecords.map((record, index) => (
+                    <tr 
+                      key={record.serialNo} 
+                      className={cn(
+                        "border-b transition-colors",
+                        index % 2 === 0 ? "bg-transparent" : "bg-muted/10",
+                        record.status === 'absent' && "bg-red-50 dark:bg-red-950/20",
+                        record.status === 'holiday' && "bg-purple-50 dark:bg-purple-950/20",
+                        record.status === 'weekly-off' && "bg-gray-50 dark:bg-gray-950/20",
+                        record.isOvertime && "bg-amber-50 dark:bg-amber-950/20",
+                      )}
+                    >
+                      <td className="p-3 text-sm">{record.serialNo}</td>
+                      <td className="p-3 text-sm font-medium">{format(record.date, 'dd MMM yyyy')}</td>
+                      <td className="p-3 text-sm text-muted-foreground">{record.dayOfWeek}</td>
+                      <td className="p-3 text-sm">
+                        {record.checkIn ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-green-600" />
+                            {formatTime(record.checkIn)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm">
+                        {record.checkOut ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 text-red-600" />
+                            {formatTime(record.checkOut)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="p-3">{getStatusBadge(record)}</td>
+                      <td className="p-3 text-sm">
+                        {record.workingHours != null ? (
+                          <span>
+                            {Number(record.workingHours).toFixed(1)}h
+                            {record.overtimeHours != null && Number(record.overtimeHours) > 0 && (
+                              <span className="text-amber-600 ml-1">(+{Number(record.overtimeHours).toFixed(1)}h OT)</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm text-muted-foreground max-w-[200px] truncate">
+                        {record.notes || '-'}
+                      </td>
+                    </tr>
                   ))}
-                </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
           )}
         </CardContent>
@@ -735,4 +751,3 @@ export default function ViewEmployeeAttendanceListPage() {
     </div>
   );
 }
-

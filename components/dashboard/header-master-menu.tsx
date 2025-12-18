@@ -93,7 +93,7 @@ export function HeaderMasterMenu() {
           <Database className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-80">
+      <SheetContent side="right" className="w-80 gap-0">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Database className="h-5 w-5" />
@@ -109,7 +109,7 @@ export function HeaderMasterMenu() {
           />
         </div>
         </SheetHeader>
-        <ScrollArea className="h-[calc(100vh-160px)]">
+        <ScrollArea className="h-[calc(100vh-130px)]" showShadows shadowSize="md">
           <div className="grid gap-1 pr-4">
             {filteredMenu.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">

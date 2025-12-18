@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckIcon, ChevronsUpDownIcon, Loader2 } from "lucide-react"
+import { CheckIcon, ChevronDownIcon, Loader2, SearchIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ import {
 export interface AutocompleteOption {
   value: string
   label: string
+  description?: string
 }
 
 interface AutocompleteProps {
@@ -50,13 +51,6 @@ export function Autocomplete({
   const [open, setOpen] = React.useState(false)
 
   const selectedOption = options.find((option) => option.value === value)
-  
-  // Debug: Log if value doesn't match any option
-  React.useEffect(() => {
-    if (value && !selectedOption && options.length > 0) {
-      console.warn(`Autocomplete: Value "${value}" not found in options. Available options:`, options.map(o => o.value));
-    }
-  }, [value, selectedOption, options]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -66,44 +60,53 @@ export function Autocomplete({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between bg-input/30",
+            "w-full justify-between font-normal",
             !selectedOption && "text-muted-foreground",
+            open && "ring-2 ring-ring/20",
             className
           )}
           disabled={disabled || isLoading}
         >
           {isLoading ? (
-            <>
-              <span className="text-muted-foreground">Loading...</span>
-              <Loader2 className="ml-2 h-4 w-4 shrink-0 animate-spin opacity-50" />
-            </>
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Loading...</span>
+            </span>
+          ) : selectedOption ? (
+            <span className="truncate">{selectedOption.label}</span>
+          ) : value && options.length === 0 ? (
+            <span>Loading options...</span>
           ) : (
-            <>
-              {selectedOption ? (
-                selectedOption.label
-              ) : value && options.length === 0 ? (
-                <span className="text-muted-foreground">Loading options...</span>
-              ) : (
-                placeholder
-              )}
-              <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </>
+            <span>{placeholder}</span>
           )}
+          <ChevronDownIcon className={cn(
+            "ml-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180"
+          )} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} disabled={isLoading} />
-          <CommandList>
+      <PopoverContent 
+        className="w-[var(--radix-popover-trigger-width)] p-0" 
+        align="start"
+        sideOffset={4}
+      >
+        <Command className="rounded-lg">
+          <CommandInput 
+            placeholder={searchPlaceholder} 
+            disabled={isLoading}
+          />
+          <CommandList className="max-h-[280px]">
             {isLoading ? (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
               </div>
             ) : (
               <>
-                <CommandEmpty>{emptyMessage}</CommandEmpty>
-                <CommandGroup>
+                <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
+                </CommandEmpty>
+                <CommandGroup className="p-1">
                   {options.map((option) => {
                     const isSelected = value === option.value;
                     return (
@@ -111,19 +114,31 @@ export function Autocomplete({
                         key={option.value}
                         value={`${option.value} ${option.label}`}
                         onSelect={() => {
-                          // Toggle selection: if already selected, deselect; otherwise select
                           const newValue = isSelected ? "" : option.value;
                           onValueChange?.(newValue);
                           setOpen(false);
                         }}
+                        className={cn(
+                          "flex items-center justify-between gap-2 px-3 py-2.5 rounded-md cursor-pointer",
+                          isSelected && "bg-accent"
+                        )}
                       >
-                        <CheckIcon
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            isSelected ? "opacity-100" : "opacity-0"
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className={cn(
+                            "truncate",
+                            isSelected && "font-medium"
+                          )}>
+                            {option.label}
+                          </span>
+                          {option.description && (
+                            <span className="text-xs text-muted-foreground truncate">
+                              {option.description}
+                            </span>
                           )}
-                        />
-                        {option.label}
+                        </div>
+                        {isSelected && (
+                          <CheckIcon className="h-4 w-4 shrink-0 text-primary" />
+                        )}
                       </CommandItem>
                     );
                   })}

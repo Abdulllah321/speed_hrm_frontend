@@ -14,21 +14,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
-import { getDepartments, type Department } from "@/lib/actions/department";
+import { type Department } from "@/lib/actions/department";
 import {
   getSubDepartmentsByDepartment,
   type SubDepartment,
 } from "@/lib/actions/department";
-import { getEmployees } from "@/lib/actions/employee";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -39,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown } from "lucide-react";
 import type { AttendanceProgress } from "@/lib/actions/attendance";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 interface AttendanceProgressSummaryProps {
   initialData: AttendanceProgress[];
@@ -81,9 +74,10 @@ export function AttendanceProgressSummary({
   const searchParams = useSearchParams();
 
   // Initialize from URL params or defaults
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(
-    searchParams.get("employeeId") || "all"
-  );
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>(() => {
+    const employeeId = searchParams.get("employeeId");
+    return employeeId ? employeeId.split(",") : [];
+  });
   const [selectedDepartment, setSelectedDepartment] = useState<string>(
     searchParams.get("departmentId") || "all"
   );
@@ -112,7 +106,7 @@ export function AttendanceProgressSummary({
 
   // Update URL params when filters change to trigger server refetch
   const updateFilters = (updates: {
-    employeeId?: string;
+    employeeIds?: string[];
     departmentId?: string;
     subDepartmentId?: string;
     dateFrom?: Date;
@@ -120,11 +114,11 @@ export function AttendanceProgressSummary({
   }) => {
     const params = new URLSearchParams(searchParams.toString());
 
-    if (updates.employeeId !== undefined) {
-      if (updates.employeeId === "all") {
+    if (updates.employeeIds !== undefined) {
+      if (updates.employeeIds.length === 0) {
         params.delete("employeeId");
       } else {
-        params.set("employeeId", updates.employeeId);
+        params.set("employeeId", updates.employeeIds.join(","));
       }
     }
 
@@ -180,19 +174,54 @@ export function AttendanceProgressSummary({
     fetchSubDepartments();
   }, [selectedDepartment]);
 
+  // Filter employees based on department/sub-department selection
+  const filteredEmployeeOptions = useMemo(() => {
+    let result = employees;
+
+    if (selectedDepartment !== "all") {
+      const dept = initialDepartments.find((d) => d.id === selectedDepartment);
+      if (dept) {
+        result = result.filter(
+          (emp) =>
+            emp.departmentName === dept.name ||
+            emp.department === dept.name ||
+            emp.department === selectedDepartment
+        );
+      }
+    }
+
+    if (selectedSubDepartment !== "all") {
+      const subDept = subDepartments.find((sd) => sd.id === selectedSubDepartment);
+      if (subDept) {
+        result = result.filter(
+          (emp) =>
+            emp.subDepartmentName === subDept.name ||
+            emp.subDepartment === subDept.name ||
+            emp.subDepartment === selectedSubDepartment
+        );
+      }
+    }
+
+    return result.map((emp) => ({
+      value: emp.id,
+      label: emp.employeeName,
+      description: `${emp.employeeId}${emp.departmentName ? ` • ${emp.departmentName}` : ""}`,
+    }));
+  }, [employees, selectedDepartment, selectedSubDepartment, initialDepartments, subDepartments]);
+
   // Filter data based on selected filters
   const filteredData = useMemo(() => {
     let filtered = initialData;
 
-    if (selectedEmployeeId !== "all") {
-      const selectedEmployee = employees.find(
-        (e) => e.id === selectedEmployeeId
+    if (selectedEmployeeIds.length > 0) {
+      const selectedEmployeeIdValues = selectedEmployeeIds.map((id) => {
+        const emp = employees.find((e) => e.id === id);
+        return emp?.employeeId;
+      }).filter(Boolean);
+      
+      filtered = filtered.filter((item) =>
+        selectedEmployeeIdValues.includes(item.employeeId)
       );
-      if (selectedEmployee) {
-        filtered = filtered.filter(
-          (item) => item.employeeId === selectedEmployee.employeeId
-        );
-      }
     }
 
     if (selectedDepartment !== "all") {
@@ -215,7 +244,7 @@ export function AttendanceProgressSummary({
     return filtered;
   }, [
     initialData,
-    selectedEmployeeId,
+    selectedEmployeeIds,
     selectedDepartment,
     selectedSubDepartment,
     employees,
@@ -230,14 +259,6 @@ export function AttendanceProgressSummary({
   }));
 
   // Prepare filter options
-  const employeeOptions = [
-    { value: "all", label: "All Employees" },
-    ...employees.map((emp) => ({
-      value: emp.id,
-      label: `${emp.employeeName} (${emp.employeeId})`,
-    })),
-  ];
-
   const departmentOptions = [
     { value: "all", label: "All Departments" },
     ...initialDepartments.map((dept) => ({
@@ -254,6 +275,11 @@ export function AttendanceProgressSummary({
     })),
   ];
 
+  const handleEmployeeChange = (newIds: string[]) => {
+    setSelectedEmployeeIds(newIds);
+    updateFilters({ employeeIds: newIds });
+  };
+
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
@@ -267,41 +293,9 @@ export function AttendanceProgressSummary({
         </div>
       </div>
 
-      <Card className="max-w-4xl">
-        <CardHeader>
-          {/* <CardTitle>Filters</CardTitle>
-          <CardDescription>Filter attendance data by employee, department, date range, and columns</CardDescription> */}
-        </CardHeader>
+      <Card>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 max-w-3xl">
-            <div className="space-y-2">
-              <Label>Employee</Label>
-              <Autocomplete
-                options={employeeOptions}
-                value={selectedEmployeeId}
-                onValueChange={(value) => {
-                  const newValue = value || "all";
-                  setSelectedEmployeeId(newValue);
-                  updateFilters({ employeeId: newValue });
-                  if (value && value !== "all") {
-                    const selectedEmployee = employees.find(
-                      (e) => e.id === value
-                    );
-                    if (selectedEmployee && selectedEmployee.department) {
-                      setSelectedDepartment(selectedEmployee.department);
-                      updateFilters({
-                        employeeId: newValue,
-                        departmentId: selectedEmployee.department,
-                      });
-                    }
-                  }
-                }}
-                placeholder="Select employee"
-                searchPlaceholder="Search employee..."
-                emptyMessage="No employees found"
-              />
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Department</Label>
               <Autocomplete
@@ -310,8 +304,9 @@ export function AttendanceProgressSummary({
                 onValueChange={(value) => {
                   setSelectedDepartment(value || "all");
                   setSelectedSubDepartment("all");
+                  updateFilters({ departmentId: value || "all" });
                 }}
-                placeholder="Select department"
+                placeholder="All Departments"
                 searchPlaceholder="Search department..."
                 emptyMessage="No departments found"
               />
@@ -329,7 +324,7 @@ export function AttendanceProgressSummary({
                 }}
                 placeholder={
                   selectedDepartment === "all"
-                    ? "Select department first"
+                    ? "All Sub Departments"
                     : "Select sub department"
                 }
                 searchPlaceholder="Search sub department..."
@@ -339,7 +334,19 @@ export function AttendanceProgressSummary({
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Employees</Label>
+              <MultiSelect
+                options={filteredEmployeeOptions}
+                value={selectedEmployeeIds}
+                onValueChange={handleEmployeeChange}
+                placeholder="All Employees"
+                searchPlaceholder="Search employees..."
+                emptyMessage="No employees found"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
               <Label>Date Range</Label>
               <DateRangePicker
                 initialDateFrom={dateRange.from}
@@ -358,7 +365,7 @@ export function AttendanceProgressSummary({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 md:col-span-2">
             <Label>Select Columns</Label>
             <Popover
               open={columnPopoverOpen}

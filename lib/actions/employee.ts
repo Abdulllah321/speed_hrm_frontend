@@ -118,6 +118,39 @@ export async function getEmployees(): Promise<{ status: boolean; data?: Employee
   }
 }
 
+// Lightweight employee data for dropdowns/selects
+export interface EmployeeDropdownOption {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  departmentId: string | null;
+  subDepartmentId: string | null;
+  departmentName: string | null;
+}
+
+// Get employees for dropdown (minimal fields)
+export async function getEmployeesForDropdown(): Promise<{ status: boolean; data?: EmployeeDropdownOption[]; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/employees/dropdown`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch employees' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching employees for dropdown:', error);
+    return { 
+      status: false, 
+      message: error instanceof Error ? error.message : 'Failed to fetch employees.' 
+    };
+  }
+}
+
 // Get employee by id
 export async function getEmployeeById(id: string): Promise<{ status: boolean; data?: Employee; message?: string }> {
   try {
@@ -339,6 +372,118 @@ export async function getEmployeesForAttendance(filters?: { departmentId?: strin
     return { 
       status: false, 
       message: error instanceof Error ? error.message : 'Failed to fetch employees. Please check your connection.' 
+    };
+  }
+}
+
+// Search for inactive employee by CNIC for rejoining
+export async function searchEmployeeForRejoin(cnic: string): Promise<{
+  status: boolean;
+  canRejoin?: boolean;
+  data?: Employee;
+  message?: string;
+}> {
+  try {
+    const res = await fetch(`${API_URL}/employees/rejoin/search?cnic=${encodeURIComponent(cnic)}`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to search employee' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error searching employee for rejoin:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to search employee.',
+    };
+  }
+}
+
+// Rejoin an inactive employee
+export async function rejoinEmployee(data: {
+  cnic: string;
+  employeeId: string;
+  attendanceId: string;
+  joiningDate: string | Date;
+  departmentId?: string;
+  subDepartmentId?: string;
+  designationId?: string;
+  employeeGradeId?: string;
+  employmentStatusId?: string;
+  employeeSalary?: number;
+  branchId?: string;
+  workingHoursPolicyId?: string;
+  leavesPolicyId?: string;
+  reportingManager?: string;
+  remarks?: string;
+}): Promise<{ status: boolean; data?: Employee; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/employees/rejoin`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        ...data,
+        joiningDate: data.joiningDate instanceof Date ? data.joiningDate.toISOString() : data.joiningDate,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to rejoin employee' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    const result = await res.json();
+    if (result.status) {
+      revalidatePath('/dashboard/employee');
+    }
+    return result;
+  } catch (error) {
+    console.error('Error rejoining employee:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to rejoin employee.',
+    };
+  }
+}
+
+// Get rejoining history for an employee
+export async function getEmployeeRejoiningHistory(employeeId: string): Promise<{
+  status: boolean;
+  data?: Array<{
+    id: string;
+    previousEmployeeId: string;
+    newEmployeeId: string;
+    previousAttendanceId: string;
+    newAttendanceId: string;
+    previousExitDate: string;
+    rejoiningDate: string;
+    remarks?: string;
+    createdAt: string;
+  }>;
+  message?: string;
+}> {
+  try {
+    const res = await fetch(`${API_URL}/employees/${employeeId}/rejoining-history`, {
+      headers: await getAuthHeaders(),
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch history' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error fetching rejoining history:', error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch rejoining history.',
     };
   }
 }
