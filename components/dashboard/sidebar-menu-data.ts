@@ -222,7 +222,7 @@ export const menuData: MenuItem[] = [
           },
           {
             title: "Request Forwarding",
-            href: "/dashboard/request-forwarding",
+            href: "/dashboard/request-forwarding?type=attendance",
           },
         ],
       },
@@ -297,7 +297,7 @@ export const menuData: MenuItem[] = [
           { title: "View Requests", href: "/dashboard/load-requests/requests" },
           {
             title: "Request Forwarding",
-            href: "/dashboard/request-forwarding",
+            href: "/dashboard/request-forwarding?type=attendance",
           },
         ],
       },
@@ -329,7 +329,7 @@ export const menuData: MenuItem[] = [
           { title: "List", href: "/dashboard/overtime/list" },
           {
             title: "Request Forwarding",
-            href: "/dashboard/request-forwarding",
+            href: "/dashboard/request-forwarding?type=attendance",
           },
         ],
       },
@@ -341,7 +341,7 @@ export const menuData: MenuItem[] = [
           { title: "List", href: "/dashboard/leave-encashment/list" },
           {
             title: "Request Forwarding",
-            href: "/dashboard/request-forwarding",
+            href: "/dashboard/request-forwarding?type=attendance",
           },
         ],
       },
