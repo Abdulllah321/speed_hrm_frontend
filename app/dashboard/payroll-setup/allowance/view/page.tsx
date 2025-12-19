@@ -1,14 +1,13 @@
 import { AllowanceList } from "./allowance-list";
 import { ListError } from "@/components/dashboard/list-error";
+import { getAllowances } from "@/lib/actions/allowance";
 
 export const dynamic = "force-dynamic";
 
 export default async function ViewAllowancePage() {
   try {
-    // TODO: Replace with actual API call to fetch allowances
-    // const result = await getAllowances();
-    // For now, using empty array as initial data
-    const initialData: any[] = [];
+    const result = await getAllowances();
+    const initialData = result.status && result.data ? result.data : [];
 
     return <AllowanceList initialData={initialData} />;
   } catch (error) {

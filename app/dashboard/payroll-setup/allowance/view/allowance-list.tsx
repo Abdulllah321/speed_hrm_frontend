@@ -20,47 +20,99 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, Printer, Download } from "lucide-react";
+import { Search, Printer, Download, Plus } from "lucide-react";
 import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
+import { getAllowances, getAllowanceHeads, type Allowance, type AllowanceHead } from "@/lib/actions/allowance";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import Link from "next/link";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 
 interface AllowanceListProps {
-  initialData?: AllowanceRow[];
+  initialData?: Allowance[];
 }
 
+const formatMonthYear = (month: string, year: string) => {
+  if (!month || !year) return "—";
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  const monthIndex = parseInt(month) - 1;
+  return `${monthNames[monthIndex] || month} ${year}`;
+};
+
 export function AllowanceList({ initialData = [] }: AllowanceListProps) {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
+  const [allowanceHeads, setAllowanceHeads] = useState<AllowanceHead[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
   const [filters, setFilters] = useState({
     department: "all",
     subDepartment: "all",
-    employeeId: "",
-    monthlyRecurring: "",
-    fromMonthYear: "",
-    toMonthYear: "",
+    employeeId: "all",
+    allowanceHeadId: "all",
+    month: "",
+    year: "",
+    status: "all",
   });
 
-  const [data, setData] = useState<AllowanceRow[]>(initialData);
+  const [data, setData] = useState<AllowanceRow[]>([]);
 
-  // Fetch departments on mount
+  // Transform API data to row format
+  const transformToRows = (allowances: Allowance[]): AllowanceRow[] => {
+    return allowances.map((allowance, index) => ({
+      id: allowance.id,
+      sNo: index + 1,
+      employeeId: allowance.employeeId,
+      employeeName: allowance.employee?.employeeName || allowance.employeeName || "—",
+      employeeCode: allowance.employee?.employeeId || "—",
+      department: allowance.employee?.department?.name || "—",
+      subDepartment: allowance.employee?.subDepartment?.name || "—",
+      allowanceHeadId: allowance.allowanceHeadId,
+      allowanceHeadName: allowance.allowanceHead?.name || allowance.allowanceHeadName || "—",
+      amount: Number(allowance.amount),
+      month: allowance.month || "",
+      year: allowance.year || "",
+      monthYear: formatMonthYear(allowance.month || "", allowance.year || ""),
+      isTaxable: allowance.isTaxable || false,
+      taxPercentage: allowance.taxPercentage ? Number(allowance.taxPercentage) : null,
+      notes: allowance.notes || null,
+      status: allowance.status || "active",
+      createdAt: allowance.createdAt,
+    }));
+  };
+
+  // Initialize data from props
   useEffect(() => {
-    const fetchDepartments = async () => {
+    if (initialData.length > 0) {
+      setData(transformToRows(initialData));
+    }
+  }, [initialData]);
+
+  // Fetch departments and allowance heads on mount
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const result = await getDepartments();
-        if (result.status && result.data) {
-          setDepartments(result.data);
+        const [deptResult, headsResult] = await Promise.all([
+          getDepartments(),
+          getAllowanceHeads(),
+        ]);
+        if (deptResult.status && deptResult.data) {
+          setDepartments(deptResult.data);
+        }
+        if (headsResult.status && headsResult.data) {
+          setAllowanceHeads(headsResult.data.filter((h) => h.status === "active"));
         }
       } catch (error) {
-        console.error("Failed to fetch departments:", error);
+        console.error("Failed to fetch data:", error);
       }
     };
-    fetchDepartments();
+    fetchData();
   }, []);
 
   // Fetch employees on mount
@@ -110,22 +162,42 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
   }, [filters.department]);
 
   const handleSearch = async () => {
-    if (!filters.employeeId || !filters.monthlyRecurring || !filters.fromMonthYear || !filters.toMonthYear) {
-      toast.error("Please fill all required fields");
-      return;
-    }
-
     setIsSearching(true);
     try {
-      // TODO: Replace with actual API call
-      // const result = await searchAllowances(filters);
-      // For now, using mock data
-      const mockData: AllowanceRow[] = [];
-      setData(mockData);
-      toast.success("Search completed");
+      const params: any = {};
+      
+      if (filters.employeeId && filters.employeeId !== "all") {
+        params.employeeId = filters.employeeId;
+      }
+      
+      if (filters.allowanceHeadId && filters.allowanceHeadId !== "all") {
+        params.allowanceHeadId = filters.allowanceHeadId;
+      }
+      
+      if (filters.month) {
+        params.month = filters.month.padStart(2, "0");
+      }
+      
+      if (filters.year) {
+        params.year = filters.year;
+      }
+      
+      if (filters.status && filters.status !== "all") {
+        params.status = filters.status;
+      }
+
+      const result = await getAllowances(params);
+      if (result.status && result.data) {
+        setData(transformToRows(result.data));
+        toast.success(`Found ${result.data.length} allowance(s)`);
+      } else {
+        setData([]);
+        toast.error(result.message || "No allowances found");
+      }
     } catch (error) {
       console.error("Error:", error);
       toast.error("Failed to search allowances");
+      setData([]);
     } finally {
       setIsSearching(false);
     }
@@ -143,28 +215,32 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
 
     const headers = [
       "S.No",
-      "EMP ID",
-      "Emp Name",
+      "Employee ID",
+      "Employee Name",
       "Department",
       "Sub Department",
       "Allowance Type",
-      "Monthly/Recurring",
-      "Month-Year",
       "Amount",
+      "Taxable",
+      "Tax %",
+      "Month-Year",
       "Status",
+      "Notes",
     ];
 
     const rows = data.map((row) => [
       row.sNo,
-      row.empId,
-      row.empName,
+      row.employeeCode,
+      row.employeeName,
       row.department,
       row.subDepartment,
-      row.allowanceType,
-      row.monthlyRecurring,
-      row.monthYear,
+      row.allowanceHeadName,
       row.amount.toString(),
+      row.isTaxable ? "Yes" : "No",
+      row.taxPercentage?.toString() || "—",
+      row.monthYear,
       row.status,
+      row.notes || "—",
     ]);
 
     const csvContent = [
@@ -195,10 +271,9 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
     return filtered;
   }, [employees, filters.department, filters.subDepartment]);
 
-
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
             View Employee Allowance List
@@ -207,7 +282,13 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
             Search and view employee allowance records
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Link href="/dashboard/payroll-setup/allowance/create">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Allowance
+            </Button>
+          </Link>
           <Button variant="secondary" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Print
@@ -219,8 +300,8 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
+      <Card className="border-0 shadow-lg">
+        <CardHeader className="pb-4">
           <CardTitle>Filters</CardTitle>
           <CardDescription>
             Use filters to search for allowance records
@@ -228,7 +309,7 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* First Row */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Department</Label>
               <Select
@@ -238,7 +319,7 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
                     ...prev,
                     department: value,
                     subDepartment: "all",
-                    employeeId: "",
+                    employeeId: "all",
                   }))
                 }
               >
@@ -259,23 +340,33 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
             <div className="space-y-2">
               <Label>Sub Department</Label>
               <Select
-                value={filters.subDepartment}
+                value={filters.subDepartment === "all" ? undefined : filters.subDepartment}
                 onValueChange={(value) =>
                   setFilters((prev) => ({
                     ...prev,
                     subDepartment: value,
-                    employeeId: "",
+                    employeeId: "all",
                   }))
                 }
                 disabled={filters.department === "all" || !filters.department || subDepartments.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="No Record Found" />
+                  <SelectValue
+                    placeholder={
+                      filters.department === "all" || !filters.department
+                        ? "Select department first"
+                        : subDepartments.length === 0
+                        ? "No sub departments available"
+                        : "Select Sub Department"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {subDepartments.length === 0 ? (
                     <SelectItem value="no-subdept" disabled>
-                      No Record Found
+                      {filters.department === "all" || !filters.department
+                        ? "Select department first"
+                        : "No sub departments found"}
                     </SelectItem>
                   ) : (
                     <>
@@ -292,111 +383,126 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
             </div>
 
             <div className="space-y-2">
-              <Label>
-                Employee <span className="text-red-500">*</span>
-              </Label>
+              <Label>Employee</Label>
               {loading ? (
                 <div className="h-10 bg-muted rounded animate-pulse" />
               ) : (
                 <Select
-                  value={filters.employeeId}
-                  onValueChange={async (value) => {
-                    const selectedEmp = employees.find((e) => e.id === value);
-                    if (selectedEmp) {
-                      // Auto-select department from employee
-                      const empDepartmentId = selectedEmp.departmentId || "all";
-                      
-                      // Fetch sub-departments for the employee's department
-                      if (selectedEmp.departmentId) {
-                        try {
-                          const result = await getSubDepartmentsByDepartment(selectedEmp.departmentId);
-                          if (result.status && result.data) {
-                            setSubDepartments(result.data);
-                          }
-                        } catch (error) {
-                          console.error("Failed to fetch sub-departments:", error);
-                        }
-                      }
-                      
-                      // Update filters with employee's department and sub-department
-                      setFilters((prev) => ({
-                        ...prev,
-                        employeeId: value,
-                        department: empDepartmentId,
-                        subDepartment: selectedEmp.subDepartmentId || "all",
-                      }));
-                    }
-                  }}
+                  value={filters.employeeId === "all" ? undefined : filters.employeeId}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      employeeId: value,
+                    }))
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredEmployees.length === 0 ? (
-                      <SelectItem value="no-employees" disabled>
-                        No employees found
+                    <SelectItem value="all">All Employees</SelectItem>
+                    {filteredEmployees.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{e.employeeName}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {e.employeeId}
+                            {e.departmentName && ` • ${e.departmentName}`}
+                          </span>
+                        </div>
                       </SelectItem>
-                    ) : (
-                      filteredEmployees.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>
-                          {e.employeeId} -- {e.employeeName}
-                        </SelectItem>
-                      ))
-                    )}
+                    ))}
                   </SelectContent>
                 </Select>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label>
-                Recurring/Monthly <span className="text-red-500">*</span>
-              </Label>
+              <Label>Allowance Type</Label>
               <Select
-                value={filters.monthlyRecurring}
+                value={filters.allowanceHeadId === "all" ? undefined : filters.allowanceHeadId}
                 onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, monthlyRecurring: value }))
+                  setFilters((prev) => ({ ...prev, allowanceHeadId: value }))
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
+                  <SelectValue placeholder="Select allowance type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Monthly">Monthly</SelectItem>
-                  <SelectItem value="Recurring">Recurring</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {allowanceHeads.map((head) => (
+                    <SelectItem key={head.id} value={head.id}>
+                      {head.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
           {/* Second Row */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2">
-              <Label>
-                From Month-Year <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                type="month"
-                value={filters.fromMonthYear}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, fromMonthYear: e.target.value }))
+              <Label>Month</Label>
+              <Select
+                value={filters.month}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, month: value }))
                 }
-                className="w-full"
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select month" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Months</SelectItem>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const monthNum = String(i + 1).padStart(2, "0");
+                    const monthNames = [
+                      "January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"
+                    ];
+                    return (
+                      <SelectItem key={monthNum} value={monthNum}>
+                        {monthNames[i]}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Year</Label>
+              <Input
+                type="number"
+                value={filters.year}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, year: e.target.value }))
+                }
+                placeholder="e.g., 2024"
+                min="2020"
+                max="2099"
               />
             </div>
 
             <div className="space-y-2">
-              <Label>
-                To Month-Year <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                type="month"
-                value={filters.toMonthYear}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, toMonthYear: e.target.value }))
+              <Label>Status</Label>
+              <Select
+                value={filters.status}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({ ...prev, status: value }))
                 }
-                className="w-full"
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2 flex items-end">
@@ -422,18 +528,22 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
         </CardContent>
       </Card>
 
-      <div className="w-full max-w-full overflow-x-hidden">
-        <DataTable
-          columns={columns}
-          data={data}
-          searchFields={[
-            { key: "empName", label: "Employee Name" },
-            { key: "empId", label: "Employee ID" },
-            { key: "department", label: "Department" },
-          ]}
-        />
-      </div>
+      <Card className="border-0 shadow-lg">
+        <CardContent className="p-0">
+          <div className="w-full max-w-full overflow-x-auto">
+            <DataTable
+              columns={columns}
+              data={data}
+              searchFields={[
+                { key: "employeeName", label: "Employee Name" },
+                { key: "employeeCode", label: "Employee ID" },
+                { key: "department", label: "Department" },
+                { key: "allowanceHeadName", label: "Allowance Type" },
+              ]}
+            />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
