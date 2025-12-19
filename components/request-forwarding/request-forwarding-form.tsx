@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,10 +14,8 @@ import { type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { type Department, type SubDepartment, getSubDepartmentsByDepartment } from "@/lib/actions/department";
 import { cn } from "@/lib/utils";
 import { 
-  getRequestForwardingByType, 
-  createRequestForwarding, 
   updateRequestForwarding,
-  type CreateRequestForwardingData 
+  type CreateApprovalLevel 
 } from "@/lib/actions/request-forwarding";
 
 export type RequestType = "exemption" | "attendance";
@@ -55,6 +54,8 @@ interface RequestForwardingFormProps {
   title: string;
   description: string;
   icon: LucideIcon;
+  initialConfigId?: string | null;
+  initialConfigLoaded?: boolean;
 }
 
 export function RequestForwardingForm({
@@ -67,41 +68,13 @@ export function RequestForwardingForm({
   title,
   description,
   icon: Icon,
+  initialConfigId = null,
+  initialConfigLoaded = false,
 }: RequestForwardingFormProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
-  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
-  const [existingConfigId, setExistingConfigId] = useState<string | null>(null);
-
-  // Load existing configuration on mount
-  useEffect(() => {
-    const loadConfiguration = async () => {
-      setIsLoadingConfig(true);
-      try {
-        const result = await getRequestForwardingByType(requestType);
-        if (result.status && result.data) {
-          setExistingConfigId(result.data.id);
-          onFormDataChange({
-            approvalFlow: result.data.approvalFlow,
-            levels: result.data.approvalLevels.map((level) => ({
-              level: level.level,
-              approverType: level.approverType,
-              departmentHeadMode: level.departmentHeadMode || undefined,
-              specificEmployeeId: level.specificEmployeeId || undefined,
-              departmentId: level.departmentId || undefined,
-              subDepartmentId: level.subDepartmentId || undefined,
-            })),
-          });
-        }
-      } catch (error) {
-        console.error('Error loading configuration:', error);
-      } finally {
-        setIsLoadingConfig(false);
-      }
-    };
-
-    loadConfiguration();
-  }, [requestType, onFormDataChange]);
+  const [existingConfigId] = useState<string | null>(initialConfigId);
 
   const handleApprovalFlowChange = (flow: ApprovalFlow) => {
     onFormDataChange({
@@ -233,24 +206,66 @@ export function RequestForwardingForm({
 
     startTransition(async () => {
       try {
-        // TODO: Replace with actual API call
-        const submissionData = {
-          requestType,
+        // Transform form data to API format - only include properties that have values
+        const submissionData: Record<string, any> = {
           approvalFlow: formData.approvalFlow,
-          levels: formData.levels,
         };
 
-        console.log("Submitting request forwarding:", submissionData);
+        // Only include levels if multi-level flow and has levels
+        if (formData.approvalFlow === "multi-level" && formData.levels.length > 0) {
+          submissionData.levels = formData.levels.map((level): CreateApprovalLevel => {
+            const levelData: CreateApprovalLevel = {
+              level: level.level,
+              approverType: level.approverType,
+            };
+
+            // Only include optional fields if they have values (not undefined)
+            if (level.departmentHeadMode !== undefined) {
+              levelData.departmentHeadMode = level.departmentHeadMode || null;
+            }
+            if (level.specificEmployeeId !== undefined) {
+              levelData.specificEmployeeId = level.specificEmployeeId || null;
+            }
+            if (level.departmentId !== undefined) {
+              levelData.departmentId = level.departmentId || null;
+            }
+            if (level.subDepartmentId !== undefined) {
+              levelData.subDepartmentId = level.subDepartmentId || null;
+            }
+
+            return levelData;
+          });
+        }
+
+        // Call the API (supports upsert - creates if doesn't exist, updates if exists)
+        const result = await updateRequestForwarding(requestType, submissionData);
+
+        if (!result.status) {
+          toast.error(result.message || "Failed to save request forwarding configuration");
+          return;
+        }
 
         toast.success(
           `${requestType === "exemption" ? "Exemption" : "Attendance"} Request Forwarding configured successfully`
         );
 
-        // Reset form
-        onFormDataChange({
-          approvalFlow: "auto-approved",
-          levels: [],
-        });
+        // Refresh the page to get updated data from server
+        router.refresh();
+
+        // Update form data with the response if available
+        if (result.data) {
+          onFormDataChange({
+            approvalFlow: result.data.approvalFlow as ApprovalFlow,
+            levels: result.data.approvalLevels?.map((level: any) => ({
+              level: level.level,
+              approverType: level.approverType as ApproverType,
+              departmentHeadMode: level.departmentHeadMode as DepartmentHeadMode | undefined,
+              specificEmployeeId: level.specificEmployeeId || undefined,
+              departmentId: level.departmentId || undefined,
+              subDepartmentId: level.subDepartmentId || undefined,
+            })) || [],
+          });
+        }
       } catch (error) {
         console.error("Error:", error);
         toast.error("Failed to save request forwarding configuration");
@@ -264,16 +279,6 @@ export function RequestForwardingForm({
       levels: [],
     });
   };
-
-  if (isLoadingConfig) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <form onSubmit={handleSubmit}>

@@ -3,9 +3,11 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -16,6 +18,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
@@ -31,6 +34,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight, Building2 } from "lucide-react";
 import { MenuItem, menuData } from "./sidebar-menu-data";
+import { cn } from "@/lib/utils";
 
 function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
   const isActive = item.href === pathname;
@@ -58,7 +62,14 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
   }
 
   return (
-    <SidebarMenuSubButton asChild isActive={isActive}>
+    <SidebarMenuSubButton 
+      asChild 
+      isActive={isActive}
+      className={cn(
+        "transition-all duration-200 hover:bg-sidebar-accent/60",
+        isActive && "bg-sidebar-accent/80 font-medium shadow-sm"
+      )}
+    >
       <Link href={item.href || "#"}>
         <span>{item.title}</span>
       </Link>
@@ -106,7 +117,7 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
             onMouseLeave={handleMouseLeave}
           >
             <PopoverTrigger asChild>
-              <SidebarMenuButton className="cursor-pointer w-full" tooltip={item.title}>
+              <SidebarMenuButton className="cursor-pointer w-full">
                 {Icon && <Icon className="h-4 w-4" />}
                 <span className="sr-only">{item.title}</span>
               </SidebarMenuButton>
@@ -135,14 +146,14 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
       <Collapsible className="group/collapsible">
         <SidebarMenuItem hasSubMenu={true}>
           <CollapsibleTrigger asChild>
-            <SidebarMenuButton className="cursor-pointer">
-              {Icon && <Icon className="h-4 w-4" />}
+            <SidebarMenuButton className="cursor-pointer transition-all duration-200 hover:bg-sidebar-accent/80 hover:shadow-sm">
+              {Icon && <Icon className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:scale-110" />}
               <span>{item.title}</span>
-              <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+              <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
             </SidebarMenuButton>
           </CollapsibleTrigger>
-          <CollapsibleContent>
-            <SidebarMenuSub>
+          <CollapsibleContent className="overflow-hidden">
+            <SidebarMenuSub className="mt-1">
               {item.children.map((child) => (
                 <SidebarMenuSubItem key={child.title}>
                   <SubMenuItem item={child} pathname={pathname} />
@@ -157,10 +168,27 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive}>
+      <SidebarMenuButton 
+        asChild 
+        isActive={isActive}
+        className={cn(
+          "group relative transition-all duration-200",
+          "hover:bg-sidebar-accent/80 hover:shadow-sm",
+          isActive && "bg-sidebar-accent shadow-md font-semibold",
+          "data-[active=true]:bg-sidebar-accent data-[active=true]:shadow-md"
+        )}
+      >
         <Link href={item.href || "#"}>
-          {Icon && <Icon className="h-4 w-4" />}
-          <span>{item.title}</span>
+          {Icon && (
+            <Icon className={cn(
+              "h-4 w-4 transition-transform duration-200",
+              isActive && "scale-110"
+            )} />
+          )}
+          <span className="relative z-10">{item.title}</span>
+          {isActive && (
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary transition-all duration-200" />
+          )}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -247,20 +275,31 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar collapsible="icon" >
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-2 py-2 justify-center">
-          <span className="font-semibold text-lg group-data-[collapsible=icon]:hidden">
-            Speed Pvt. Ltd
-          </span>
+    <Sidebar collapsible="icon" className="border-0 overflow-hidden">
+      <SidebarRail />
+      <SidebarHeader className="border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm ">
+        <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
+          <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-primary/10 text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
+            <Building2 className="h-5 w-5 " />
+          </div>
+          <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
+            <span className="font-bold text-base leading-tight text-sidebar-foreground">
+              Speed Pvt. Ltd
+            </span>
+            <span className="text-xs text-sidebar-foreground/60 font-medium">
+              Dashboard
+            </span>
+          </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
-        <ScrollArea className="h-[calc(100vh-80px)]">
+      <SidebarContent className="px-2 ">
+        <ScrollArea className="-mx-2 px-2" showShadows >
           <SidebarGroup>
-            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-2 group-data-[collapsible=icon]:hidden">
+              Navigation
+            </SidebarGroupLabel>
             <SidebarGroupContent>
-              <SidebarMenu>
+              <SidebarMenu className="space-y-1">
                 {menuData.map((item) => (
                   <MenuItemComponent key={item.title} item={item} pathname={pathname} />
                 ))}
@@ -269,6 +308,40 @@ export function AppSidebar() {
           </SidebarGroup>
         </ScrollArea>
       </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border/50 px-4 py-3">
+        <div className="flex items-center gap-2 px-2 group-data-[collapsible=icon]:justify-center">
+          <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden transition-opacity duration-200">
+            <div className="flex items-center justify-center size-8 rounded-lg overflow-hidden bg-transparent">
+              <Image
+                src="/logo.png"
+                alt="Innovative Network Logo"
+                width={32}
+                height={32}
+                className="object-contain"
+              />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs text-sidebar-foreground/60">
+                Powered by
+              </span>
+              <span className="text-xs font-semibold text-sidebar-foreground truncate">
+                Innovative Network
+              </span>
+            </div>
+          </div>
+          <div className="group-data-[collapsible=icon]:block hidden">
+            <div className="flex items-center justify-center size-8 rounded-lg overflow-hidden bg-transparent">
+              <Image
+                src="/logo.png"
+                alt="Innovative Network Logo"
+                width={32}
+                height={32}
+                className="object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }

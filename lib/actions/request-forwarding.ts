@@ -154,10 +154,14 @@ export async function updateRequestForwarding(
   data: UpdateRequestForwardingData,
 ) {
   try {
+    // Remove undefined values from the payload before sending
+    // JSON.stringify already omits undefined, but we need to clean nested objects
+    const cleanData = JSON.parse(JSON.stringify(data));
+    
     const response = await fetch(`${API_URL}/request-forwarding/${requestType}`, {
       method: 'PUT',
       headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify(cleanData),
     });
 
     const result = await response.json();

@@ -45,39 +45,38 @@ export default function DashboardLayout({
     <SidebarProvider>
       <SessionChecker />
       <AppSidebar />
-      <SidebarInset className="max-w-[calc(100%-17rem)]">
-        <header className="flex h-[3.95rem] items-center gap-2 sm:gap-4 border-b bg-background px-3 sm:px-6 sticky top-0 z-40 w-full justify-between">
-          <div className="flex items-center gap-2">
-
-          <SidebarTrigger />
-          {/* Desktop Search */}
-          <div className="hidden sm:block flex-1 max-w-xs lg:max-w-sm">
-            <HeaderSearch />
-          </div>
+      <SidebarInset>
+        <header className="flex h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky top-0 z-40 w-full justify-between shadow-sm">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <SidebarTrigger className="shrink-0" />
+            {/* Desktop Search */}
+            <div className="hidden sm:block flex-1 max-w-xs lg:max-w-sm">
+              <HeaderSearch />
+            </div>
           </div>
           {/* Mobile Search Button */}
           <Button
             variant="ghost"
             size="icon"
-            className="sm:hidden"
+            className="sm:hidden shrink-0"
             onClick={() => setMobileSearchOpen(true)}
           >
             <Search className="h-5 w-5" />
           </Button>
-          <div className="flex-1 sm:flex-none" />
-          <div className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <HeaderMasterMenu />
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
               <Button
                 variant={erpMode ? "default" : "outline"}
                 size="sm"
-                className={`relative overflow-hidden ${erpMode ? "animate-pulse" : ""}`}
+                className={`relative overflow-hidden transition-all duration-200 ${erpMode ? "animate-pulse shadow-md" : "hover:shadow-sm"}`}
                 onClick={toggleErpMode}
-             >
+              >
                 <Sparkles className="h-4 w-4 mr-2" />
-                {erpMode ? "ERP Mode On" : "Switch to ERP mode"}
+                <span className="hidden lg:inline">{erpMode ? "ERP Mode On" : "Switch to ERP mode"}</span>
+                <span className="lg:hidden">{erpMode ? "ERP" : "ERP"}</span>
                 <motion.span
-                  className="absolute inset-0"
+                  className="absolute inset-0 rounded-md"
                   initial={false}
                   animate={erpMode ? { opacity: [0.2, 0.5, 0.2] } : { opacity: 0 }}
                   transition={{ duration: 2, repeat: Infinity }}
@@ -93,7 +92,7 @@ export default function DashboardLayout({
             <HeaderUserMenu />
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-4 sm:p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
       </SidebarInset>
       
       {/* Mobile Floating Search */}
