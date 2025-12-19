@@ -271,22 +271,22 @@ export const menuData: MenuItem[] = [
       {
         title: "Allowance",
         children: [
-          { title: "Create", href: "/dashboard/allowance/create" },
-          { title: "View", href: "/dashboard/allowance/view" },
+          { title: "Create", href: "/dashboard/payroll-setup/allowance/create" },
+          { title: "View", href: "/dashboard/payroll-setup/allowance/view" },
         ],
       },
       {
         title: "Deduction",
         children: [
-          { title: "Create", href: "/dashboard/deduction/create" },
-          { title: "View", href: "/dashboard/deduction/view" },
+          { title: "Create", href: "/dashboard/payroll-setup/deduction/create" },
+          { title: "View", href: "/dashboard/payroll-setup/deduction/view" },
         ],
       },
       {
         title: "Advance Salary",
         children: [
-          { title: "Create", href: "/dashboard/advance-salary/create" },
-          { title: "View", href: "/dashboard/advance-salary/view" },
+          { title: "Create", href: "/dashboard/payroll-setup/advance-salary/create" },
+          { title: "View", href: "/dashboard/payroll-setup/advance-salary/view" },
         ],
       },
       {
