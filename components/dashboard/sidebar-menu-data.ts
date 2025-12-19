@@ -169,6 +169,20 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/dashboard/master/bonus-types/list" },
     ],
   },
+  {
+    title: "Allowance",
+    children: [
+      { title: "Add", href: "/dashboard/master/allowance-head/add" },
+      { title: "View", href: "/dashboard/master/allowance-head/list" },
+    ],
+  },
+  {
+    title: "Deduction",
+    children: [
+      { title: "Add", href: "/dashboard/master/deduction-head/add" },
+      { title: "View", href: "/dashboard/master/deduction-head/list" },
+    ],
+  },
 ];
 
 export const menuData: MenuItem[] = [
