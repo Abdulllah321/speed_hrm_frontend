@@ -153,6 +153,7 @@ export async function createAttendance(data: {
     if (result.status) {
       revalidatePath('/dashboard/attendance');
       revalidatePath('/dashboard/attendance/manage');
+      revalidatePath('/dashboard/attendance/view');
     }
     return result;
   } catch (error) {
@@ -259,6 +260,7 @@ export async function updateAttendance(
     if (result.status) {
       revalidatePath('/dashboard/attendance');
       revalidatePath('/dashboard/attendance/manage');
+      revalidatePath('/dashboard/attendance/view');
     }
     return result;
   } catch (error) {

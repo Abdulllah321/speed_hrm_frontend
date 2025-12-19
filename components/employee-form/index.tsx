@@ -1154,15 +1154,8 @@ export function EmployeeForm({
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      <div className="mb-6 flex items-center justify-between">
-        <Link href="/dashboard/employee/list">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to List
-          </Button>
-        </Link>
-      </div>
-      <div className="rounded-2xl border bg-muted/10 p-6">
+     
+      <div className="rounded-2xl bg-card shadow-sm p-6">
         <form 
           onSubmit={handleSubmit(
             onSubmit,

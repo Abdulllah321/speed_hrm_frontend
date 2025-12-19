@@ -8,10 +8,11 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { toast } from "sonner";
-import { Loader2, Download, Printer, CalendarDays, Clock, UserCircle } from "lucide-react";
+import { Loader2, Download, Printer, CalendarDays, Clock, UserCircle, Edit2, Check, X, Save } from "lucide-react";
+import { TimePicker } from "@/components/ui/time-picker";
 import { getEmployees } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
-import { getAttendances, type Attendance } from "@/lib/actions/attendance";
+import { getAttendances, updateAttendance, createAttendance, type Attendance } from "@/lib/actions/attendance";
 import type { Employee } from "@/lib/actions/employee";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ interface DailyAttendanceRecord {
   dayOfWeek: string;
   serialNo: number;
   status: "present" | "absent" | "holiday" | "weekly-off" | "leave" | "late" | "half-day";
+  attendanceId?: string | null; // ID of the attendance record for updates
   checkIn?: string | null;
   checkOut?: string | null;
   workingHours?: number | null;
@@ -55,6 +57,18 @@ export default function ViewEmployeeAttendanceDetailPage() {
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  
+  // Editing state
+  const [editingRecord, setEditingRecord] = useState<{
+    serialNo: number;
+    field: 'checkIn' | 'checkOut' | 'status';
+  } | null>(null);
+  const [editValues, setEditValues] = useState<{
+    checkIn: string;
+    checkOut: string;
+    status: 'present' | 'absent';
+  }>({ checkIn: '', checkOut: '', status: 'present' });
+  const [saving, setSaving] = useState(false);
 
   // Initialize filters - Department first, then sub-department, then employee
   const [filters, setFilters] = useState({
@@ -261,6 +275,7 @@ export default function ViewEmployeeAttendanceDetailPage() {
         dayOfWeek,
         serialNo: index + 1,
         status,
+        attendanceId: attendanceRecord?.id || null,
         checkIn: attendanceRecord?.checkIn || null,
         checkOut: attendanceRecord?.checkOut || null,
         workingHours: attendanceRecord?.workingHours || null,
@@ -396,12 +411,161 @@ export default function ViewEmployeeAttendanceDetailPage() {
     toast.success("Data exported successfully");
   };
 
-  const handlePrint = () => {
-    if (dailyRecords.length === 0) {
-      toast.error("No data to print");
+  // Handle editing clock in/out times
+  const handleEditTime = (record: DailyAttendanceRecord, field: 'checkIn' | 'checkOut') => {
+    if (!record.attendanceId) {
+      toast.error("Cannot edit: No attendance record exists for this date. Please create one first.");
       return;
     }
-    window.print();
+
+    const currentTime = record[field];
+    let timeValue = '';
+    
+    if (currentTime) {
+      try {
+        const date = new Date(currentTime);
+        // Format as HH:mm for time picker
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        timeValue = `${hours}:${minutes}`;
+      } catch {
+        timeValue = '';
+      }
+    }
+
+    setEditingRecord({ serialNo: record.serialNo, field });
+    setEditValues({
+      checkIn: field === 'checkIn' ? timeValue : (record.checkIn ? (() => {
+        try {
+          const d = new Date(record.checkIn);
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        } catch { return ''; }
+      })() : ''),
+      checkOut: field === 'checkOut' ? timeValue : (record.checkOut ? (() => {
+        try {
+          const d = new Date(record.checkOut);
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        } catch { return ''; }
+      })() : ''),
+      status: (record.status === 'present' || record.status === 'absent') ? record.status : 'present',
+    });
+  };
+
+  // Handle editing status (only between absent and present)
+  const handleEditStatus = (record: DailyAttendanceRecord) => {
+    // Only allow editing if status is absent or present
+    if (record.status !== 'absent' && record.status !== 'present') {
+      toast.error("Status can only be changed between 'Absent' and 'Present'. Other statuses are managed by the system.");
+      return;
+    }
+
+    if (!filters.employeeId) {
+      toast.error("Employee not selected");
+      return;
+    }
+
+    setEditingRecord({ serialNo: record.serialNo, field: 'status' });
+    setEditValues({
+      checkIn: record.checkIn ? (() => {
+        try {
+          const d = new Date(record.checkIn);
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        } catch { return ''; }
+      })() : '',
+      checkOut: record.checkOut ? (() => {
+        try {
+          const d = new Date(record.checkOut);
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        } catch { return ''; }
+      })() : '',
+      status: record.status === 'absent' ? 'present' : 'absent',
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRecord(null);
+    setEditValues({ checkIn: '', checkOut: '', status: 'present' });
+  };
+
+  const handleSaveTime = async (record: DailyAttendanceRecord) => {
+    if (!editingRecord || !filters.employeeId) return;
+
+    setSaving(true);
+    try {
+      // Combine date with time
+      const dateStr = format(record.date, 'yyyy-MM-dd');
+      const dateObj = new Date(record.date);
+      dateObj.setHours(0, 0, 0, 0);
+
+      // Prepare data for create or update
+      const attendanceData: { 
+        checkIn?: string; 
+        checkOut?: string; 
+        status?: string;
+      } = {};
+
+      if (editingRecord.field === 'checkIn' && editValues.checkIn) {
+        const [hours, minutes] = editValues.checkIn.split(':');
+        const dateTime = new Date(`${dateStr}T${hours}:${minutes}:00`);
+        attendanceData.checkIn = dateTime.toISOString();
+      } else if (editingRecord.field === 'checkOut' && editValues.checkOut) {
+        const [hours, minutes] = editValues.checkOut.split(':');
+        const dateTime = new Date(`${dateStr}T${hours}:${minutes}:00`);
+        attendanceData.checkOut = dateTime.toISOString();
+      } else if (editingRecord.field === 'status') {
+        attendanceData.status = editValues.status;
+      }
+
+      // If editing one field, preserve the other fields
+      if (editingRecord.field === 'checkIn') {
+        if (record.checkOut) attendanceData.checkOut = record.checkOut;
+        if (record.status && record.status !== 'holiday' && record.status !== 'weekly-off') {
+          attendanceData.status = record.status;
+        }
+      } else if (editingRecord.field === 'checkOut') {
+        if (record.checkIn) attendanceData.checkIn = record.checkIn;
+        if (record.status && record.status !== 'holiday' && record.status !== 'weekly-off') {
+          attendanceData.status = record.status;
+        }
+      } else if (editingRecord.field === 'status') {
+        // When changing status, preserve existing clock times if they exist
+        // Don't require clock times - status can be changed independently
+        if (record.checkIn) {
+          attendanceData.checkIn = record.checkIn;
+        }
+        if (record.checkOut) {
+          attendanceData.checkOut = record.checkOut;
+        }
+      }
+
+      let result;
+
+      // If no attendance record exists, create one
+      if (!record.attendanceId) {
+        result = await createAttendance({
+          employeeId: filters.employeeId,
+          date: dateObj,
+          ...attendanceData,
+        });
+      } else {
+        // Update existing record
+        result = await updateAttendance(record.attendanceId, attendanceData);
+      }
+
+      if (result.status) {
+        toast.success("Attendance updated successfully");
+        // Refresh attendance records
+        await handleSearch();
+        handleCancelEdit();
+      } else {
+        toast.error(result.message || "Failed to update attendance");
+      }
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      toast.error("Failed to update attendance");
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Summary statistics
@@ -557,10 +721,6 @@ export default function ViewEmployeeAttendanceDetailPage() {
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-            <Button variant="outline" onClick={handlePrint} disabled={dailyRecords.length === 0}>
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </Button>
             <Button
               variant="ghost"
               onClick={() => {
@@ -651,7 +811,7 @@ export default function ViewEmployeeAttendanceDetailPage() {
           <CardTitle>Daily Attendance Records</CardTitle>
           <CardDescription>
             {hasSearched && selectedEmployee
-              ? `Showing ${dailyRecords.length} days for ${selectedEmployee.employeeName}`
+              ? `Showing ${dailyRecords.length} days for ${selectedEmployee.employeeName}. Hover over any field to edit. Status can be toggled between Absent and Present. Clock times can be added separately.`
               : "Select an employee and click 'View Attendance' to see records"}
           </CardDescription>
         </CardHeader>
@@ -705,26 +865,183 @@ export default function ViewEmployeeAttendanceDetailPage() {
                       <td className="p-3 text-sm font-medium">{format(record.date, 'dd MMM yyyy')}</td>
                       <td className="p-3 text-sm text-muted-foreground">{record.dayOfWeek}</td>
                       <td className="p-3 text-sm">
-                        {record.checkIn ? (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-green-600" />
-                            {formatTime(record.checkIn)}
-                          </span>
+                        {editingRecord?.serialNo === record.serialNo && editingRecord?.field === 'checkIn' ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-[140px]">
+                              <TimePicker
+                                value={editValues.checkIn}
+                                onChange={(value) => setEditValues({ ...editValues, checkIn: value })}
+                                showAmPm={true}
+                                className="w-full"
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={() => handleSaveTime(record)}
+                              disabled={saving}
+                            >
+                              {saving ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3 text-green-600" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={handleCancelEdit}
+                              disabled={saving}
+                            >
+                              <X className="h-3 w-3 text-red-600" />
+                            </Button>
+                          </div>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <div className="flex items-center gap-2 group">
+                            {record.checkIn ? (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-green-600" />
+                                {formatTime(record.checkIn)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                            {record.attendanceId && (
+                              <button
+                                onClick={() => handleEditTime(record, 'checkIn')}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
+                                title="Edit clock in time"
+                              >
+                                <Edit2 className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="p-3 text-sm">
-                        {record.checkOut ? (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3 text-red-600" />
-                            {formatTime(record.checkOut)}
-                          </span>
+                        {editingRecord?.serialNo === record.serialNo && editingRecord?.field === 'checkOut' ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-[140px]">
+                              <TimePicker
+                                value={editValues.checkOut}
+                                onChange={(value) => setEditValues({ ...editValues, checkOut: value })}
+                                showAmPm={true}
+                                className="w-full"
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={() => handleSaveTime(record)}
+                              disabled={saving}
+                            >
+                              {saving ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3 text-green-600" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={handleCancelEdit}
+                              disabled={saving}
+                            >
+                              <X className="h-3 w-3 text-red-600" />
+                            </Button>
+                          </div>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <div className="flex items-center gap-2 group">
+                            {record.checkOut ? (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-red-600" />
+                                {formatTime(record.checkOut)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                            {record.attendanceId && (
+                              <button
+                                onClick={() => handleEditTime(record, 'checkOut')}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
+                                title="Edit clock out time"
+                              >
+                                <Edit2 className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
-                      <td className="p-3">{getStatusBadge(record)}</td>
+                      <td className="p-3">
+                        {editingRecord?.serialNo === record.serialNo && editingRecord?.field === 'status' ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setEditValues({ ...editValues, status: 'present' })}
+                              className={cn(
+                                "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                                editValues.status === 'present'
+                                  ? "bg-green-500 text-white shadow-sm"
+                                  : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                              )}
+                            >
+                              Present
+                            </button>
+                            <button
+                              onClick={() => setEditValues({ ...editValues, status: 'absent' })}
+                              className={cn(
+                                "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
+                                editValues.status === 'absent'
+                                  ? "bg-red-500 text-white shadow-sm"
+                                  : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                              )}
+                            >
+                              Absent
+                            </button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0 ml-1"
+                              onClick={() => handleSaveTime(record)}
+                              disabled={saving}
+                              title="Save"
+                            >
+                              {saving ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3 text-green-600" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 w-7 p-0"
+                              onClick={handleCancelEdit}
+                              disabled={saving}
+                              title="Cancel"
+                            >
+                              <X className="h-3 w-3 text-red-600" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group">
+                            {getStatusBadge(record)}
+                            {/* Allow editing status for absent/present even without attendanceId */}
+                            {(record.status === 'absent' || record.status === 'present') && (
+                              <button
+                                onClick={() => handleEditStatus(record)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"
+                                title="Toggle between Absent and Present"
+                              >
+                                <Edit2 className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="p-3 text-sm">
                         {record.workingHours != null ? (
                           <span>
