@@ -292,8 +292,8 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent className="px-2 py-3">
-        <ScrollArea className="h-[calc(100vh-180px)] -mx-2 px-2">
+      <SidebarContent className="px-2 ">
+        <ScrollArea className="-mx-2 px-2" showShadows >
           <SidebarGroup>
             <SidebarGroupLabel className="px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-2 group-data-[collapsible=icon]:hidden">
               Navigation
