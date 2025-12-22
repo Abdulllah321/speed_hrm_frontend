@@ -244,7 +244,7 @@ export function CreateAllowanceClient({
 
         if (result.status) {
           toast.success(result.message || "Allowances created successfully");
-          router.push("/dashboard/allowance/view");
+          router.push("/dashboard/payroll-setup/allowance/view");
         } else {
           toast.error(result.message || "Failed to create allowances");
         }
