@@ -444,16 +444,16 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
             <div className="space-y-2">
               <Label>Month</Label>
               <Select
-                value={filters.month}
+                value={filters.month || "all"}
                 onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, month: value }))
+                  setFilters((prev) => ({ ...prev, month: value === "all" ? "" : value }))
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select month" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Months</SelectItem>
+                  <SelectItem value="all">All Months</SelectItem>
                   {Array.from({ length: 12 }, (_, i) => {
                     const monthNum = String(i + 1).padStart(2, "0");
                     const monthNames = [
