@@ -308,7 +308,7 @@ export const menuData: MenuItem[] = [
         title: "Loan Requests",
         children: [
           { title: "Create Request", href: "/dashboard/loan-requests/create" },
-          { title: "View Requests", href: "/dashboard/loan-requests/view" },
+          { title: "View & Reports", href: "/dashboard/loan-requests/view" },
           { title: "Request Forwarding", href: "/dashboard/request-forwarding?type=loan" },
         ],
       },
@@ -324,12 +324,10 @@ export const menuData: MenuItem[] = [
         title: "Bonus",
         icon: Gift,
         children: [
-          { title: "Add", href: "/dashboard/bonus/add" },
-          { title: "View", href: "/dashboard/bonus/view" },
-          { title: "Issue Bonus", href: "/dashboard/bonus/issue" },
-          { title: "View Report", href: "/dashboard/bonus/report" },
-          { title: "Bank Report", href: "/dashboard/bonus/bank-report" },
-          { title: "Bonus Payslip", href: "/dashboard/bonus/payslip" },
+          { title: "Issue Bonus", href: "/dashboard/payroll-setup/bonus/issue" },
+          { title: "View Report", href: "/dashboard/payroll-setup/bonus/report" },
+          { title: "Bank Report", href: "/dashboard/payroll-setup/bonus/bank-report" },
+          { title: "Bonus Payslip", href: "/dashboard/payroll-setup/bonus/payslip" },
         ],
       },
       {
