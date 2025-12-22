@@ -24,12 +24,31 @@ export interface Allowance {
   id: string;
   employeeId: string;
   employeeName?: string;
+  employee?: {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    department?: {
+      id: string;
+      name: string;
+    };
+    subDepartment?: {
+      id: string;
+      name: string;
+    };
+  };
   allowanceHeadId: string;
   allowanceHeadName?: string;
-  amount: number;
+  allowanceHead?: {
+    id: string;
+    name: string;
+  };
+  amount: number | string;
   date: string;
   month?: string;
   year?: string;
+  isTaxable?: boolean;
+  taxPercentage?: number | string | null;
   notes?: string;
   status?: string;
   createdById?: string;

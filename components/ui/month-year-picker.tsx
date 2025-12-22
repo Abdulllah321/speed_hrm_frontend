@@ -73,21 +73,24 @@ export function MonthYearPicker({
   const handleMonthSelect = (month: number) => {
     setSelectedMonth(month);
     setViewMonth(month);
-    if (selectedYear !== null) {
-      const newValue = `${selectedYear}-${String(month + 1).padStart(2, "0")}`;
-      onChange?.(newValue);
-      setOpen(false);
-    }
+    // Use viewYear if selectedYear is null (allows immediate month selection)
+    const yearToUse = selectedYear !== null ? selectedYear : viewYear;
+    setSelectedYear(yearToUse);
+    const newValue = `${yearToUse}-${String(month + 1).padStart(2, "0")}`;
+    onChange?.(newValue);
+    setOpen(false);
   };
 
   const handleYearSelect = (year: number) => {
     setSelectedYear(year);
     setViewYear(year);
+    // If a month is already selected, complete the selection
     if (selectedMonth !== null) {
       const newValue = `${year}-${String(selectedMonth + 1).padStart(2, "0")}`;
       onChange?.(newValue);
       setOpen(false);
     }
+    // Otherwise, just update the year and keep popover open for month selection
   };
 
   const displayValue = React.useMemo(() => {
@@ -144,7 +147,11 @@ export function MonthYearPicker({
             <div className="flex items-center gap-2">
               <Select
                 value={viewYear.toString()}
-                onValueChange={(val) => setViewYear(parseInt(val))}
+                onValueChange={(val) => {
+                  const year = parseInt(val);
+                  setViewYear(year);
+                  handleYearSelect(year);
+                }}
               >
                 <SelectTrigger className="w-[100px] h-8">
                   <SelectValue />
@@ -176,8 +183,10 @@ export function MonthYearPicker({
           <div className="grid grid-cols-3 gap-2 w-[280px]">
             <AnimatePresence mode="wait">
               {MONTHS.map((month, index) => {
+                // Check if selected using either selectedYear or viewYear
+                const yearToCheck = selectedYear !== null ? selectedYear : viewYear;
                 const isSelected =
-                  selectedMonth === index && selectedYear === viewYear;
+                  selectedMonth === index && yearToCheck === viewYear;
                 const isCurrent =
                   index === currentMonth && viewYear === currentYear;
                 const isPast = viewYear < currentYear || 
