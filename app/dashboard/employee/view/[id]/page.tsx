@@ -282,6 +282,30 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                         </div>
                       ))}
                     </div>
+                    {/* Qualification Document */}
+                    {(() => {
+                      // Check documentUrl from qualification object first, then from documentUrls
+                      const docUrl = qual.documentUrl || 
+                        (employee.documentUrls && typeof employee.documentUrls === 'object' 
+                          ? (employee.documentUrls as Record<string, string>)[`qualification_${index}`] 
+                          : null);
+                      
+                      return docUrl ? (
+                        <div className="mt-4 p-4 border rounded-lg bg-muted/10">
+                          <p className="text-xs text-muted-foreground mb-2">Degree Document</p>
+                          <a
+                            href={docUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline flex items-center gap-2"
+                          >
+                            <FileText className="h-4 w-4" />
+                            <span>View Document</span>
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 ))}
               </div>
@@ -365,62 +389,70 @@ export default async function ViewEmployeePage({ params }: PageProps) {
         )}
 
         {/* Employee Document Uploads */}
-        {employee.documentUrls && typeof employee.documentUrls === 'object' && Object.keys(employee.documentUrls).length > 0 && (
-          <Card className="border-none shadow-none">
-            <CardHeader>
-              <CardTitle>Employee Document Uploads</CardTitle>
-              <CardDescription>Documents uploaded for this employee</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {Object.entries(employee.documentUrls as Record<string, string>).map(([key, url]) => {
-                  const documentLabels: Record<string, string> = {
-                    cv: "CV",
-                    educationDegrees: "Education Degrees",
-                    passportPhotos: "Passport Size Photos",
-                    cnic: "CNIC",
-                    clearanceLetter: "Clearance Letter",
-                    fitProperCriteria: "Fit & Proper Criteria Form",
-                    serviceRulesAffirmation: "Company Service Rules Affirmation",
-                    codeOfConduct: "VIS Code of Conduct 2019",
-                    nda: "Non-Disclosure Agreement (NDA)",
-                    secrecyForm: "Information Secrecy / Confidentiality Form",
-                    investmentDisclosure: "Investment Disclosure Form",
-                  };
-                  
-                  const label = documentLabels[key] || key;
-                  const fileName = url.split('/').pop() || 'Document';
-                  
-                  return (
-                    <div
-                      key={key}
-                      className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground">{label}</p>
-                          <p className="text-foreground font-semibold text-sm mt-1 truncate">
-                            {fileName}
-                          </p>
+        {employee.documentUrls && typeof employee.documentUrls === 'object' && Object.keys(employee.documentUrls).length > 0 && (() => {
+          // Filter out qualification documents (they're shown in Qualification section)
+          const filteredDocs = Object.entries(employee.documentUrls as Record<string, string>)
+            .filter(([key]) => !key.startsWith('qualification_'));
+          
+          if (filteredDocs.length === 0) return null;
+          
+          return (
+            <Card className="border-none shadow-none">
+              <CardHeader>
+                <CardTitle>Employee Document Uploads</CardTitle>
+                <CardDescription>Documents uploaded for this employee</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {filteredDocs.map(([key, url]) => {
+                    const documentLabels: Record<string, string> = {
+                      cv: "CV",
+                      educationDegrees: "Education Degrees",
+                      passportPhotos: "Passport Size Photos",
+                      cnic: "CNIC",
+                      clearanceLetter: "Clearance Letter",
+                      fitProperCriteria: "Fit & Proper Criteria Form",
+                      serviceRulesAffirmation: "Company Service Rules Affirmation",
+                      codeOfConduct: "VIS Code of Conduct 2019",
+                      nda: "Non-Disclosure Agreement (NDA)",
+                      secrecyForm: "Information Secrecy / Confidentiality Form",
+                      investmentDisclosure: "Investment Disclosure Form",
+                    };
+                    
+                    const label = documentLabels[key] || key;
+                    const fileName = url.split('/').pop() || 'Document';
+                    
+                    return (
+                      <div
+                        key={key}
+                        className="p-4 border rounded-lg bg-muted/10 hover:bg-muted/20 transition"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">{label}</p>
+                            <p className="text-foreground font-semibold text-sm mt-1 truncate">
+                              {fileName}
+                            </p>
+                          </div>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline flex items-center gap-1 shrink-0"
+                          >
+                            <FileText className="h-4 w-4" />
+                            View
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
                         </div>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-primary hover:underline flex items-center gap-1 shrink-0"
-                        >
-                          <FileText className="h-4 w-4" />
-                          View
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
     </div>
   );

@@ -332,6 +332,7 @@ const employeeFormSchema = z.object({
         cityId: z.string().optional(),
         year: z.union([z.string(), z.number()]).optional(),
         grade: z.string().optional(),
+        documentUrl: z.string().optional(),
       })
     )
     .default([])
@@ -445,6 +446,7 @@ export function EmployeeForm({
             cityId: q.cityId || "",
             year: q.year?.toString() || "",
             grade: q.grade || "",
+            documentUrl: q.documentUrl || "",
           }))
         : [{
             qualification: "",
@@ -453,6 +455,7 @@ export function EmployeeForm({
             cityId: "",
             year: "",
             grade: "",
+            documentUrl: "",
           }],
     } : {
       employeeId: "",
@@ -507,6 +510,7 @@ export function EmployeeForm({
         cityId: "",
         year: "",
         grade: "",
+        documentUrl: "",
       }],
     },
     mode: "onChange",
@@ -605,7 +609,6 @@ export function EmployeeForm({
 
   const [documents, setDocuments] = useState<{ [key: string]: File | null }>({
     cv: null,
-    educationDegrees: null,
     passportPhotos: null,
     cnic: null,
     clearanceLetter: null,
@@ -618,11 +621,11 @@ export function EmployeeForm({
     eobi: null,
   });
   // Initialize documentUrls with existing documents when editing
+  // Same pattern as Equipments & Documents section
   const initialDocumentUrls: { [key: string]: string } = {};
   if (mode === "edit") {
     // Add EOBI document URL
     if ((initialData as any)?.eobiDocumentUrl) {
-      console.log('📄 Initializing EOBI document URL:', (initialData as any).eobiDocumentUrl);
       initialDocumentUrls.eobi = (initialData as any).eobiDocumentUrl;
     }
     // Add all other document URLs from documentUrls JSON field
@@ -633,12 +636,47 @@ export function EmployeeForm({
           initialDocumentUrls[key] = existingDocs[key];
         }
       });
-      console.log('📄 Initializing document URLs:', initialDocumentUrls);
+    }
+    // Add qualification documents to documentUrls object (same pattern)
+    if ((initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+      (initialData as any).qualifications.forEach((q: any, index: number) => {
+        if (q.documentUrl) {
+          const qualKey = `qualification_${index}`;
+          initialDocumentUrls[qualKey] = q.documentUrl;
+        }
+      });
     }
   }
   const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>(initialDocumentUrls);
+  
+  // Qualification document URLs - keyed by qualification index
+  const initialQualificationDocumentUrls: Record<number, string> = {};
+  if (mode === "edit" && (initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+    (initialData as any).qualifications.forEach((q: any, index: number) => {
+      if (q.documentUrl) {
+        initialQualificationDocumentUrls[index] = q.documentUrl;
+      }
+    });
+  }
+  const [qualificationDocumentUrls, setQualificationDocumentUrls] = useState<Record<number, string>>(initialQualificationDocumentUrls);
+
+  // Update qualificationDocumentUrls when initialData changes
+  useEffect(() => {
+    if (mode === "edit" && (initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+      const updatedUrls: Record<number, string> = {};
+      (initialData as any).qualifications.forEach((q: any, index: number) => {
+        if (q.documentUrl) {
+          updatedUrls[index] = q.documentUrl;
+        }
+      });
+      if (Object.keys(updatedUrls).length > 0) {
+        setQualificationDocumentUrls(updatedUrls);
+      }
+    }
+  }, [mode, (initialData as any)?.qualifications]);
 
   // Update documentUrls when initialData changes
+  // Same pattern as Equipments & Documents section
   useEffect(() => {
     if (mode === "edit") {
       const updatedUrls: { [key: string]: string } = {};
@@ -658,23 +696,39 @@ export function EmployeeForm({
         });
       }
       
+      // Add qualification documents to documentUrls object (same pattern)
+      if ((initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+        (initialData as any).qualifications.forEach((q: any, index: number) => {
+          if (q.documentUrl) {
+            const qualKey = `qualification_${index}`;
+            updatedUrls[qualKey] = q.documentUrl;
+          }
+        });
+      }
+      
       if (Object.keys(updatedUrls).length > 0) {
-        console.log('📄 Updating document URLs:', updatedUrls);
         setDocumentUrls((prev) => ({
           ...prev,
           ...updatedUrls,
         }));
       }
     }
-  }, [mode, (initialData as any)?.eobiDocumentUrl, (initialData as any)?.documentUrls]);
-  
-  // Debug: Log documentUrls changes
+  }, [mode, (initialData as any)?.eobiDocumentUrl, (initialData as any)?.documentUrls, (initialData as any)?.qualifications]);
+
+  // Update qualificationDocumentUrls when initialData changes
   useEffect(() => {
-    console.log('📋 documentUrls state:', documentUrls);
-    console.log('📋 eobiDocumentUrl from form:', watch('eobiDocumentUrl'));
-    console.log('📋 initialData eobiDocumentUrl:', (initialData as any)?.eobiDocumentUrl);
-    console.log('📋 initialData documentUrls:', (initialData as any)?.documentUrls);
-  }, [documentUrls]);
+    if (mode === "edit" && (initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+      const updatedUrls: Record<number, string> = {};
+      (initialData as any).qualifications.forEach((q: any, index: number) => {
+        if (q.documentUrl) {
+          updatedUrls[index] = q.documentUrl;
+        }
+      });
+      if (Object.keys(updatedUrls).length > 0) {
+        setQualificationDocumentUrls(updatedUrls);
+      }
+    }
+  }, [mode, (initialData as any)?.qualifications]);
 
   // Multi-step wizard
   const stepLabels = [
@@ -903,13 +957,65 @@ export function EmployeeForm({
     if (file) {
       try {
         const uploaded = await uploadFile(file);
+        
+        // Store all documents (including qualification documents) in documentUrls object
+        // Same pattern as Equipments & Documents section
         setDocumentUrls((prev) => ({ ...prev, [key]: uploaded.url }));
-        if (key === "eobi") {
+        
+        // Check if this is a qualification document (format: qualification_0, qualification_1, etc.)
+        if (key.startsWith("qualification_")) {
+          const index = parseInt(key.replace("qualification_", ""));
+          if (!isNaN(index)) {
+           
+            // Also update qualificationDocumentUrls for quick access
+            setQualificationDocumentUrls((prev) => ({
+              ...prev,
+              [index]: uploaded.url,
+            }));
+            // Update form value for this qualification with proper options
+            setValue(`qualifications.${index}.documentUrl`, uploaded.url, {
+              shouldValidate: false,
+              shouldDirty: true,
+              shouldTouch: true,
+            });
+            // Trigger validation to ensure form state is updated
+            await trigger(`qualifications.${index}.documentUrl`);
+          }
+        } else if (key === "eobi") {
+          // Handle EOBI document separately
           setValue("eobiDocumentUrl", uploaded.url);
         }
         toast.success("File uploaded");
       } catch (err: any) {
         toast.error(err?.message || "Failed to upload file");
+      }
+    } else {
+      // Handle file removal
+      if (key.startsWith("qualification_")) {
+        const index = parseInt(key.replace("qualification_", ""));
+        if (!isNaN(index)) {
+          // Remove from documentUrls
+          setDocumentUrls((prev) => {
+            const updated = { ...prev };
+            delete updated[key];
+            return updated;
+          });
+          // Remove from qualificationDocumentUrls
+          setQualificationDocumentUrls((prev) => {
+            const updated = { ...prev };
+            delete updated[index];
+            return updated;
+          });
+          // Clear form value
+          setValue(`qualifications.${index}.documentUrl`, "");
+        }
+      } else {
+        // Remove from documentUrls for other documents
+        setDocumentUrls((prev) => {
+          const updated = { ...prev };
+          delete updated[key];
+          return updated;
+        });
       }
     }
   };
@@ -997,10 +1103,32 @@ export function EmployeeForm({
   };
 
   const onSubmit = async (data: EmployeeFormData) => {
+    // Get latest form values including qualification document URLs
+    const latestQualifications = watch("qualifications");
+    
     startTransition(async () => {
       try {
         if (mode === "create") {
-          // Prepare employee data
+          // Prepare employee data - use latest watched values for qualifications
+          // Same pattern as Equipments & Documents section
+          const qualificationsToSubmit = latestQualifications && Array.isArray(latestQualifications) && latestQualifications.length > 0
+            ? latestQualifications.map((q: any, index: number) => {
+                // Get document URL from documentUrls object (same pattern as other documents)
+                const qualKey = `qualification_${index}`;
+                const docUrl = documentUrls[qualKey] || q.documentUrl || qualificationDocumentUrls[index] || undefined;
+                return {
+                  qualification: q.qualification || "",
+                  instituteId: q.instituteId || undefined,
+                  countryId: q.countryId || undefined,
+                  stateId: q.stateId || undefined,
+                  cityId: q.cityId || undefined,
+                  year: q.year ? String(q.year) : undefined,
+                  grade: q.grade || undefined,
+                  documentUrl: docUrl,
+                };
+              })
+            : undefined;
+
           const employeeData = {
             employeeId: data.employeeId,
             employeeName: data.employeeName,
@@ -1049,17 +1177,7 @@ export function EmployeeForm({
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
-            qualifications: data.qualifications && Array.isArray(data.qualifications) && data.qualifications.length > 0
-              ? data.qualifications.map((q: any) => ({
-                  qualification: q.qualification || "",
-                  instituteId: q.instituteId || undefined,
-                  countryId: q.countryId || undefined,
-                  stateId: q.stateId || undefined,
-                  cityId: q.cityId || undefined,
-                  year: q.year ? String(q.year) : undefined,
-                  grade: q.grade || undefined,
-                }))
-              : undefined,
+            qualifications: qualificationsToSubmit,
           };
 
           const result = await createEmployee(employeeData);
@@ -1071,6 +1189,27 @@ export function EmployeeForm({
             toast.error(result.message || "Failed to create employee");
           }
         } else if (mode === "edit" && initialData) {
+          // Get latest form values including qualification document URLs
+          // Same pattern as Equipments & Documents section
+          const latestQualifications = watch("qualifications");
+          const qualificationsToSubmit = latestQualifications && Array.isArray(latestQualifications) && latestQualifications.length > 0
+            ? latestQualifications.map((q: any, index: number) => {
+                // Get document URL from documentUrls object (same pattern as other documents)
+                const qualKey = `qualification_${index}`;
+                const docUrl = documentUrls[qualKey] || q.documentUrl || qualificationDocumentUrls[index] || undefined;
+                return {
+                  qualification: q.qualification || "",
+                  instituteId: q.instituteId || undefined,
+                  countryId: q.countryId || undefined,
+                  stateId: q.stateId || undefined,
+                  cityId: q.cityId || undefined,
+                  year: q.year ? String(q.year) : undefined,
+                  grade: q.grade || undefined,
+                  documentUrl: docUrl,
+                };
+              })
+            : undefined;
+
           const employeeData = {
             employeeId: data.employeeId,
             employeeName: data.employeeName,
@@ -1119,17 +1258,7 @@ export function EmployeeForm({
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
-            qualifications: data.qualifications && Array.isArray(data.qualifications) && data.qualifications.length > 0
-              ? data.qualifications.map((q: any) => ({
-                  qualification: q.qualification || "",
-                  instituteId: q.instituteId || undefined,
-                  countryId: q.countryId || undefined,
-                  stateId: q.stateId || undefined,
-                  cityId: q.cityId || undefined,
-                  year: q.year ? String(q.year) : undefined,
-                  grade: q.grade || undefined,
-                }))
-              : undefined,
+            qualifications: qualificationsToSubmit,
           };
 
           const result = await updateEmployee(initialData.id, employeeData as any);
@@ -1331,6 +1460,9 @@ export function EmployeeForm({
                     errors={errors}
                     onQualificationAdded={onQualificationAdded}
                     onInstituteAdded={onInstituteAdded}
+                    handleFileChange={handleFileChange}
+                    qualificationDocumentUrls={qualificationDocumentUrls}
+                    documentUrls={documentUrls}
                   />
                 </CardContent>
               </Card>
@@ -1495,17 +1627,6 @@ export function EmployeeForm({
                       id="cv"
                       onChange={(files) => handleFileChange("cv", files?.[0] || null)}
                       existingFileUrl={documentUrls.cv}
-                    />
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Upload Education Degrees</Label>
-                    <FileUpload
-                      id="educationDegrees"
-                      onChange={(files) =>
-                        handleFileChange("educationDegrees", files?.[0] || null)
-                      }
-                      existingFileUrl={documentUrls.educationDegrees}
                     />
                   </div>
 

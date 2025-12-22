@@ -318,9 +318,9 @@ export const menuData: MenuItem[] = [
       {
         title: "Increment/Decrement",
         children: [
-          { title: "Create", href: "/dashboard/increment/create" },
-          { title: "View", href: "/dashboard/increment/view" },
-          { title: "Letters Email", href: "/dashboard/increment/letters" },
+          { title: "Create", href: "/dashboard/payroll-setup/increment/create" },
+          { title: "View", href: "/dashboard/payroll-setup/increment/view" },
+          { title: "Letters Email", href: "/dashboard/payroll-setup/increment/letters" },
         ],
       },
       {
@@ -339,8 +339,8 @@ export const menuData: MenuItem[] = [
         title: "Overtime",
         icon: Timer,
         children: [
-          { title: "Create", href: "/dashboard/overtime/create" },
-          { title: "List", href: "/dashboard/overtime/list" },
+          { title: "Create", href: "/dashboard/payroll-setup/overtime/create" },
+          { title: "List", href: "/dashboard/payroll-setup/overtime/list" },
           {
             title: "Request Forwarding",
             href: "/dashboard/request-forwarding?type=attendance",
@@ -395,9 +395,9 @@ export const menuData: MenuItem[] = [
         title: "HR Letters",
         icon: FileText,
         children: [
-          { title: "Create", href: "/dashboard/hr-letters/create" },
-          { title: "View", href: "/dashboard/hr-letters/view" },
-          { title: "Upload", href: "/dashboard/hr-letters/upload" },
+          { title: "Create", href: "/dashboard/payroll-setup/hr-letters/create" },
+          { title: "View", href: "/dashboard/payroll-setup/hr-letters/view" },
+          { title: "Upload", href: "/dashboard/payroll-setup/hr-letters/upload" },
         ],
       },
       {

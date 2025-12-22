@@ -6,6 +6,7 @@ import type { UseFormReturn } from "react-hook-form";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Autocomplete } from "@/components/ui/autocomplete";
+import { FileUpload } from "@/components/ui/file-upload";
 import { toast } from "sonner";
 import {
   Select,
@@ -48,6 +49,9 @@ export function QualificationSection({
   errors,
   onQualificationAdded,
   onInstituteAdded,
+  handleFileChange,
+  qualificationDocumentUrls,
+  documentUrls,
 }: {
   form: UseFormReturn<any>;
   isPending: boolean;
@@ -59,6 +63,9 @@ export function QualificationSection({
   errors: Record<string, { message?: string }>;
   onQualificationAdded?: (qualification: { id: string; name: string }) => void;
   onInstituteAdded?: (institute: { id: string; name: string }) => void;
+  handleFileChange?: (key: string, file: File | null) => Promise<void>;
+  qualificationDocumentUrls?: Record<number, string>;
+  documentUrls?: Record<string, string>;
 }) {
   const { control, watch } = form;
 
@@ -78,6 +85,7 @@ export function QualificationSection({
         grade: "",
         stateId: "",
         cityId: "",
+        documentUrl: "",
       });
     }
   }, [fields.length, append]);
@@ -233,7 +241,22 @@ export function QualificationSection({
       grade: "",
       stateId: "",
       cityId: "",
+      documentUrl: "",
     });
+  };
+
+  // Handle qualification document upload
+  const handleQualificationDocumentChange = async (index: number, file: File | null) => {
+    if (handleFileChange) {
+      const key = `qualification_${index}`;
+      await handleFileChange(key, file);
+      if (file) {
+        // File upload will be handled by handleFileChange, we just need to update the form value
+        // The URL will be set by handleFileChange in the parent component
+      } else {
+        form.setValue(`qualifications.${index}.documentUrl`, "");
+      }
+    }
   };
 
   // Remove qualification
@@ -580,6 +603,29 @@ export function QualificationSection({
                         emptyMessage="No cities available"
                       />
                     )}
+                  />
+                </div>
+              </div>
+
+              {/* Document Upload for this qualification */}
+              <div className="space-y-2 md:col-span-2">
+                <Label>Upload Degree Document</Label>
+                <div className="flex justify-center">
+                  <FileUpload
+                    id={`qualification-document-${index}`}
+                    onChange={async (files) => {
+                      const file = files?.[0] || null;
+                      if (handleFileChange) {
+                        const key = `qualification_${index}`;
+                        await handleFileChange(key, file);
+                      }
+                    }}
+                    existingFileUrl={
+                      documentUrls?.[`qualification_${index}`] ||
+                      qualificationDocumentUrls?.[index] || 
+                      watch(`qualifications.${index}.documentUrl`) || 
+                      undefined
+                    }
                   />
                 </div>
               </div>

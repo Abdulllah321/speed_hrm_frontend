@@ -92,6 +92,7 @@ export interface Employee {
     cityId?: string | null;
     year?: number | null;
     grade?: string | null;
+    documentUrl?: string | null;
   }>;
 }
 
@@ -233,6 +234,7 @@ export async function createEmployee(data: {
     cityId?: string;
     year?: string;
     grade?: string;
+    documentUrl?: string;
   }>;
 }): Promise<{ status: boolean; data?: Employee; message?: string }> {
   try {
@@ -270,6 +272,7 @@ export async function updateEmployee(
       cityId?: string;
       year?: string;
       grade?: string;
+      documentUrl?: string;
     }>;
   }
 ): Promise<{ status: boolean; data?: Employee; message?: string }> {
