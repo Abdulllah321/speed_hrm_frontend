@@ -112,6 +112,78 @@ export function CreateIncrementClient({
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<Record<string, Employee>>({});
   const [loadingEmployeeDetails, setLoadingEmployeeDetails] = useState<Record<string, boolean>>({});
 
+  // Calculate salary based on increment/decrement
+  const calculateSalary = (
+    baseSalary: number,
+    incrementType: "Increment" | "Decrement",
+    incrementMethod: "Amount" | "Percent",
+    incrementValue: number
+  ): number => {
+    if (!baseSalary || baseSalary <= 0) return 0;
+    if (!incrementValue || incrementValue <= 0) return baseSalary;
+
+    if (incrementMethod === "Amount") {
+      return incrementType === "Increment"
+        ? baseSalary + incrementValue
+        : baseSalary - incrementValue;
+    } else {
+      // Percent
+      const percentage = incrementValue / 100;
+      return incrementType === "Increment"
+        ? baseSalary + baseSalary * percentage
+        : baseSalary - baseSalary * percentage;
+    }
+  };
+
+  // Auto-calculate salary when increment values change
+  useEffect(() => {
+    if (selectedEmployeeIds.length === 0) {
+      setFormData((prev) => ({ ...prev, salary: "" }));
+      return;
+    }
+
+    // Get average salary of selected employees (or first employee's salary)
+    const firstEmployeeId = selectedEmployeeIds[0];
+    const firstEmployeeDetail = selectedEmployeeDetails[firstEmployeeId];
+    
+    if (!firstEmployeeDetail?.employeeSalary) {
+      setFormData((prev) => ({ ...prev, salary: "" }));
+      return;
+    }
+
+    const baseSalary = Number(firstEmployeeDetail.employeeSalary);
+    const incrementValue =
+      formData.incrementMethod === "Amount"
+        ? parseFloat(formData.incrementAmount) || 0
+        : parseFloat(formData.incrementPercentage) || 0;
+
+    if (incrementValue > 0) {
+      const calculatedSalary = calculateSalary(
+        baseSalary,
+        formData.incrementType,
+        formData.incrementMethod,
+        incrementValue
+      );
+      setFormData((prev) => ({
+        ...prev,
+        salary: calculatedSalary > 0 ? calculatedSalary.toFixed(2) : "",
+      }));
+    } else {
+      // Show base salary if no increment value
+      setFormData((prev) => ({
+        ...prev,
+        salary: baseSalary.toFixed(2),
+      }));
+    }
+  }, [
+    selectedEmployeeIds,
+    selectedEmployeeDetails,
+    formData.incrementType,
+    formData.incrementMethod,
+    formData.incrementAmount,
+    formData.incrementPercentage,
+  ]);
+
   // Fetch sub-departments when department changes
   useEffect(() => {
     const fetchSubDepartments = async () => {
@@ -265,20 +337,26 @@ export function CreateIncrementClient({
         return (designation && typeof designation === 'object' && designation.name) ? designation.name : "";
       };
       
+      // Calculate salary for this specific employee
+      const baseSalary = employeeDetail?.employeeSalary ? Number(employeeDetail.employeeSalary) : 0;
+      const calculatedSalary = baseSalary > 0 && incrementValue > 0
+        ? calculateSalary(baseSalary, formData.incrementType, formData.incrementMethod, incrementValue)
+        : salary; // Fallback to form salary if calculation fails
+      
       return {
         id: `${empId}-${Date.now()}`,
         employeeId: empId,
         employeeName: employee?.employeeName || "",
         employeeCode: employee?.employeeId || "",
         previousDesignation: getPreviousDesignation(),
-        previousSalary: employeeDetail?.employeeSalary || 0,
+        previousSalary: baseSalary,
         employeeGradeId: formData.employeeGradeId,
         designationId: formData.designationId,
         incrementType: formData.incrementType,
         incrementAmount: formData.incrementMethod === "Amount" ? incrementValue : undefined,
         incrementPercentage: formData.incrementMethod === "Percent" ? incrementValue : undefined,
         incrementMethod: formData.incrementMethod,
-        salary: salary,
+        salary: calculatedSalary,
         promotionDate: formData.promotionDate,
         currentMonth: formData.currentMonth,
         monthsOfIncrement: monthsOfIncrement,
@@ -332,6 +410,7 @@ export function CreateIncrementClient({
         if (result.status) {
           toast.success(result.message || "Increments created successfully");
           router.push("/dashboard/payroll-setup/increment/view");
+          router.refresh();
         } else {
           toast.error(result.message || "Failed to create increments");
         }
@@ -630,9 +709,15 @@ export function CreateIncrementClient({
                 </Label>
                 <RadioGroup
                   value={formData.incrementMethod}
-                  onValueChange={(value: "Amount" | "Percent") =>
-                    setFormData((prev) => ({ ...prev, incrementMethod: value }))
-                  }
+                  onValueChange={(value: "Amount" | "Percent") => {
+                    setFormData((prev) => ({ ...prev, incrementMethod: value }));
+                    // Clear the other field when method changes
+                    if (value === "Amount") {
+                      setFormData((prev) => ({ ...prev, incrementPercentage: "" }));
+                    } else {
+                      setFormData((prev) => ({ ...prev, incrementAmount: "" }));
+                    }
+                  }}
                   className="flex gap-6"
                 >
                   <div className="flex items-center space-x-2">
@@ -691,10 +776,27 @@ export function CreateIncrementClient({
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, salary: e.target.value }))
                   }
-                  placeholder="0.00"
+                  placeholder={
+                    selectedEmployeeIds.length > 0
+                      ? "Auto-calculated from employee salary"
+                      : "0.00"
+                  }
                   disabled={isPending}
                   required
+                  className="bg-muted/50"
+                  title={
+                    selectedEmployeeIds.length > 0
+                      ? "Salary is auto-calculated based on increment/decrement"
+                      : "Select employee first"
+                  }
                 />
+                {selectedEmployeeIds.length > 0 && formData.salary && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedEmployeeIds.length === 1
+                      ? `Base: PKR ${Number(selectedEmployeeDetails[selectedEmployeeIds[0]]?.employeeSalary || 0).toLocaleString()}`
+                      : `${selectedEmployeeIds.length} employees selected`}
+                  </p>
+                )}
               </div>
 
               {/* Promotion / Increment Date */}
@@ -839,6 +941,21 @@ export function CreateIncrementClient({
                                 value={item.incrementType}
                                 onValueChange={(value: "Increment" | "Decrement") => {
                                   handleUpdateIncrement(item.id, "incrementType", value);
+                                  // Recalculate salary when type changes
+                                  const baseSalary = item.previousSalary || 0;
+                                  const incrementValue =
+                                    item.incrementMethod === "Amount"
+                                      ? item.incrementAmount || 0
+                                      : item.incrementPercentage || 0;
+                                  if (incrementValue > 0) {
+                                    const newSalary = calculateSalary(
+                                      baseSalary,
+                                      value,
+                                      item.incrementMethod,
+                                      incrementValue
+                                    );
+                                    handleUpdateIncrement(item.id, "salary", newSalary);
+                                  }
                                 }}
                                 disabled={isPending}
                               >
@@ -858,13 +975,19 @@ export function CreateIncrementClient({
                                   step="0.01"
                                   min="0"
                                   value={item.incrementAmount || 0}
-                                  onChange={(e) =>
-                                    handleUpdateIncrement(
-                                      item.id,
-                                      "incrementAmount",
-                                      parseFloat(e.target.value) || 0
-                                    )
-                                  }
+                                  onChange={(e) => {
+                                    const newAmount = parseFloat(e.target.value) || 0;
+                                    handleUpdateIncrement(item.id, "incrementAmount", newAmount);
+                                    // Auto-calculate salary
+                                    const baseSalary = item.previousSalary || 0;
+                                    const newSalary = calculateSalary(
+                                      baseSalary,
+                                      item.incrementType,
+                                      "Amount",
+                                      newAmount
+                                    );
+                                    handleUpdateIncrement(item.id, "salary", newSalary);
+                                  }}
                                   disabled={isPending}
                                   className="w-[120px]"
                                 />
@@ -875,34 +998,45 @@ export function CreateIncrementClient({
                                   min="0"
                                   max="100"
                                   value={item.incrementPercentage || 0}
-                                  onChange={(e) =>
-                                    handleUpdateIncrement(
-                                      item.id,
-                                      "incrementPercentage",
-                                      parseFloat(e.target.value) || 0
-                                    )
-                                  }
+                                  onChange={(e) => {
+                                    const newPercentage = parseFloat(e.target.value) || 0;
+                                    handleUpdateIncrement(item.id, "incrementPercentage", newPercentage);
+                                    // Auto-calculate salary
+                                    const baseSalary = item.previousSalary || 0;
+                                    const newSalary = calculateSalary(
+                                      baseSalary,
+                                      item.incrementType,
+                                      "Percent",
+                                      newPercentage
+                                    );
+                                    handleUpdateIncrement(item.id, "salary", newSalary);
+                                  }}
                                   disabled={isPending}
                                   className="w-[120px]"
                                 />
                               )}
                             </TableCell>
                             <TableCell>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.salary}
-                                onChange={(e) =>
-                                  handleUpdateIncrement(
-                                    item.id,
-                                    "salary",
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                disabled={isPending}
-                                className="w-[120px]"
-                              />
+                              <div className="space-y-1">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.salary}
+                                  onChange={(e) => {
+                                    const newSalary = parseFloat(e.target.value) || 0;
+                                    handleUpdateIncrement(item.id, "salary", newSalary);
+                                  }}
+                                  disabled={isPending}
+                                  className="w-[120px]"
+                                  title="Salary is auto-calculated. You can manually adjust if needed."
+                                />
+                                {item.previousSalary && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Base: {Number(item.previousSalary).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <DatePicker
