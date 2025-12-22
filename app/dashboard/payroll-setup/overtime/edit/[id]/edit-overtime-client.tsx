@@ -7,16 +7,22 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { EmployeeDropdownOption } from "@/lib/actions/employee";
-import { createOvertimeRequest, type OvertimeType } from "@/lib/actions/overtime";
+import {
+  updateOvertimeRequest,
+  type OvertimeType,
+  type OvertimeRequest,
+} from "@/lib/actions/overtime";
 import { OvertimeForm } from "@/components/overtime/overtime-form";
 
-interface CreateOvertimeClientProps {
+interface EditOvertimeClientProps {
+  initialData: OvertimeRequest;
   initialEmployees: EmployeeDropdownOption[];
 }
 
-export function CreateOvertimeClient({
+export function EditOvertimeClient({
+  initialData,
   initialEmployees,
-}: CreateOvertimeClientProps) {
+}: EditOvertimeClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -31,7 +37,7 @@ export function CreateOvertimeClient({
   }) => {
     startTransition(async () => {
       try {
-        const result = await createOvertimeRequest({
+        const result = await updateOvertimeRequest(initialData.id, {
           employeeId: data.employeeId,
           overtimeType: data.overtimeType,
           title: data.title,
@@ -42,14 +48,14 @@ export function CreateOvertimeClient({
         });
 
         if (result.status) {
-          toast.success(result.message || "Overtime request created successfully");
+          toast.success(result.message || "Overtime request updated successfully");
           router.push("/dashboard/payroll-setup/overtime/view");
         } else {
-          toast.error(result.message || "Failed to create overtime request");
+          toast.error(result.message || "Failed to update overtime request");
         }
       } catch (error) {
         console.error("Error:", error);
-        toast.error("Failed to create overtime request");
+        toast.error("Failed to update overtime request");
       }
     });
   };
@@ -66,7 +72,8 @@ export function CreateOvertimeClient({
       </div>
 
       <OvertimeForm
-        mode="create"
+        mode="edit"
+        initialData={initialData}
         initialEmployees={initialEmployees}
         onSubmit={handleSubmit}
         isPending={isPending}

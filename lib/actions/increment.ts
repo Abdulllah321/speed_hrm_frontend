@@ -1,6 +1,7 @@
 'use server';
 
 import { getAccessToken } from '../auth';
+import { revalidatePath } from 'next/cache';
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_URL || 'http://localhost:5000/api';
 
@@ -16,10 +17,13 @@ export interface Increment {
   id: string;
   employeeId: string;
   employeeName?: string;
+  employeeCode?: string;
   employeeGradeId?: string;
   employeeGradeName?: string;
   designationId?: string;
   designationName?: string;
+  department?: string;
+  subDepartment?: string;
   incrementType: 'Increment' | 'Decrement';
   incrementAmount?: number;
   incrementPercentage?: number;
@@ -80,7 +84,9 @@ export async function bulkCreateIncrements(data: {
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    return res.json();
+    const result = await res.json();
+    revalidatePath('/dashboard/payroll-setup/increment');
+    return result;
   } catch (error) {
     console.error('Error creating increments:', error);
     return { status: false, message: error instanceof Error ? error.message : 'Failed to create increments' };
@@ -156,7 +162,9 @@ export async function updateIncrement(id: string, data: UpdateIncrementData): Pr
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    return res.json();
+    const result = await res.json();
+    revalidatePath('/dashboard/payroll-setup/increment');
+    return result;
   } catch (error) {
     console.error('Error updating increment:', error);
     return { status: false, message: error instanceof Error ? error.message : 'Failed to update increment' };
@@ -176,7 +184,9 @@ export async function deleteIncrement(id: string): Promise<{ status: boolean; me
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    return res.json();
+    const result = await res.json();
+    revalidatePath('/dashboard/payroll-setup/increment');
+    return result;
   } catch (error) {
     console.error('Error deleting increment:', error);
     return { status: false, message: error instanceof Error ? error.message : 'Failed to delete increment' };

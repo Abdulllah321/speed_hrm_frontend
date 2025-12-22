@@ -1,42 +1,59 @@
 import { IncrementList } from "./increment-list";
 import { ListError } from "@/components/dashboard/list-error";
 import type { IncrementRow } from "./columns";
+import { getIncrements } from "@/lib/actions/increment";
+import { format } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
 export default async function ViewIncrementPage() {
   try {
-    // TODO: Replace with actual API call to fetch increments
-    // const result = await getIncrements();
-    // For now, using dummy data
-    const initialData: IncrementRow[] = [
-      {
-        id: "1",
-        sNo: 1,
-        empId: "10",
-        empName: "Uzair Ahmed",
-        department: "Development",
-        subDepartment: "WooCommerce Development",
-        designation: "Regional Sales Manager",
-        increment: "-50,000",
-        salary: "250,000",
-        date: "01-Feb-2026",
-        status: "Active",
-      },
-      {
-        id: "2",
-        sNo: 2,
-        empId: "10",
-        empName: "Uzair Ahmed",
-        department: "Development",
-        subDepartment: "WooCommerce Development",
-        designation: "Regional Sales Manager",
-        increment: "-50,000",
-        salary: "200,000",
-        date: "01-Jan-2026",
-        status: "Active",
-      },
-    ];
+    const result = await getIncrements();
+    
+    let initialData: IncrementRow[] = [];
+    
+    if (result.status && result.data) {
+      initialData = result.data.map((item, index) => {
+        // Format increment value
+        const incrementValue = item.incrementMethod === "Amount"
+          ? item.incrementAmount || 0
+          : item.incrementPercentage || 0;
+        
+        const incrementDisplay = item.incrementMethod === "Amount"
+          ? `${item.incrementType === "Decrement" ? "-" : "+"}${Number(incrementValue).toLocaleString()}`
+          : `${item.incrementType === "Decrement" ? "-" : "+"}${Number(incrementValue).toFixed(2)}%`;
+        
+        // Format date
+        let formattedDate = "N/A";
+        try {
+          if (item.promotionDate) {
+            formattedDate = format(new Date(item.promotionDate), "dd-MMM-yyyy");
+          }
+        } catch {
+          formattedDate = item.promotionDate || "N/A";
+        }
+        
+        // Backend returns transformed data with employeeCode, department, subDepartment
+        const empId = item.employeeCode || item.employeeId || "";
+        const empName = item.employeeName || "N/A";
+        const department = item.department || "";
+        const subDepartment = item.subDepartment || "";
+        
+        return {
+          id: item.id,
+          sNo: index + 1,
+          empId: empId,
+          empName: empName,
+          department: department,
+          subDepartment: subDepartment,
+          designation: item.designationName || "N/A",
+          increment: incrementDisplay,
+          salary: Number(item.salary).toLocaleString(),
+          date: formattedDate,
+          status: item.status || "Active",
+        };
+      });
+    }
 
     return <IncrementList initialData={initialData} />;
   } catch (error) {

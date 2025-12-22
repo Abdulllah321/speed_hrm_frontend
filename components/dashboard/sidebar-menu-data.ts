@@ -340,7 +340,8 @@ export const menuData: MenuItem[] = [
         icon: Timer,
         children: [
           { title: "Create", href: "/dashboard/payroll-setup/overtime/create" },
-          { title: "List", href: "/dashboard/payroll-setup/overtime/list" },
+          { title: "List", href: "/dashboard/payroll-setup/overtime/view" },
+            
           {
             title: "Request Forwarding",
             href: "/dashboard/request-forwarding?type=attendance",
