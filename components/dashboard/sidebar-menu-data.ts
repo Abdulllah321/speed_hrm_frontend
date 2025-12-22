@@ -299,20 +299,17 @@ export const menuData: MenuItem[] = [
       {
         title: "Advance Salary",
         children: [
-          { title: "Create", href: "/dashboard/payroll-setup/advance-salary/create" },
-          { title: "View", href: "/dashboard/payroll-setup/advance-salary/view" },
+          { title: "Create Request", href: "/dashboard/payroll-setup/advance-salary/create" },
+          { title: "View Requests", href: "/dashboard/payroll-setup/advance-salary/view" },
+          { title: "Request Forwarding", href: "/dashboard/request-forwarding?type=advance-salary" },
         ],
       },
       {
-        title: "Load Requests",
+        title: "Loan Requests",
         children: [
-          { title: "Create", href: "/dashboard/load-requests/create" },
-          { title: "View", href: "/dashboard/load-requests/view" },
-          { title: "View Requests", href: "/dashboard/load-requests/requests" },
-          {
-            title: "Request Forwarding",
-            href: "/dashboard/request-forwarding?type=attendance",
-          },
+          { title: "Create Request", href: "/dashboard/loan-requests/create" },
+          { title: "View Requests", href: "/dashboard/loan-requests/view" },
+          { title: "Request Forwarding", href: "/dashboard/request-forwarding?type=loan" },
         ],
       },
       {

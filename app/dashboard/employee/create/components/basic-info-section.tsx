@@ -26,7 +26,7 @@ const formatPhone = (value: string): string => {
   }
 };
 
-export function BasicInfoSection({ form, isPending, loadingData, departments, subDepartments, department, loadingSubDepartments, employeeGrades, designations, maritalStatuses, employeeStatuses, errors, formatCNIC, nationalities, genders, states, cities, state, loadingCities, daysOff, workingHoursPolicies, branches, leavesPolicies, documents, handleFileChange, employees, documentUrls }: {
+export function BasicInfoSection({ form, isPending, loadingData, departments, subDepartments, department, loadingSubDepartments, employeeGrades, designations, maritalStatuses, employeeStatuses, errors, formatCNIC, nationalities, genders, states, cities, state, loadingCities, daysOff, workingHoursPolicies, branches, leavesPolicies, documents, handleFileChange, employees, documentUrls, mode }: {
   form: UseFormReturn<any>;
   isPending: boolean;
   loadingData: boolean;
@@ -54,6 +54,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
   handleFileChange: (key: string, file: File | null) => void;
   employees: { id: string; employeeName: string; employeeId: string }[];
   documentUrls?: Record<string, string>;
+  mode?: "create" | "edit" | "rejoin";
 }) {
   const { register, control } = form;
   const lifetimeCnic = useWatch({ control, name: "lifetimeCnic" });
@@ -141,10 +142,13 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
               value={(field.value as string | undefined) || ""}
               onChange={(e) => field.onChange(formatCNIC(e.target.value))}
               maxLength={15}
-              disabled={isPending}
+              disabled={isPending || mode === "rejoin"}
+              readOnly={mode === "rejoin"}
+              className={mode === "rejoin" ? "bg-muted cursor-not-allowed" : ""}
             />
           )} />
           {errors?.cnicNumber && <p className="text-xs text-red-500">{errors.cnicNumber.message}</p>}
+          {mode === "rejoin" && <p className="text-xs text-muted-foreground">CNIC cannot be changed on rejoin</p>}
         </div>
         <div className="space-y-2">
           <Label>CNIC Expiry Date</Label>

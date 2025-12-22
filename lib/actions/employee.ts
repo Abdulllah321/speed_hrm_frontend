@@ -407,32 +407,141 @@ export async function searchEmployeeForRejoin(cnic: string): Promise<{
   }
 }
 
-// Rejoin an inactive employee
+// Rejoin an inactive employee - accepts ALL fields except CNIC (which is passed separately)
 export async function rejoinEmployee(data: {
   cnic: string;
   employeeId: string;
   attendanceId: string;
   joiningDate: string | Date;
+  // All employee fields that can be updated on rejoin
+  employeeName?: string;
+  fatherHusbandName?: string;
   departmentId?: string;
+  department?: string;
   subDepartmentId?: string;
-  designationId?: string;
+  subDepartment?: string;
   employeeGradeId?: string;
+  employeeGrade?: string;
+  designationId?: string;
+  designation?: string;
+  maritalStatusId?: string;
+  maritalStatus?: string;
   employmentStatusId?: string;
-  employeeSalary?: number;
-  branchId?: string;
-  workingHoursPolicyId?: string;
-  leavesPolicyId?: string;
+  employmentStatus?: string;
+  probationExpiryDate?: string;
+  cnicExpiryDate?: string;
+  lifetimeCnic?: boolean;
+  dateOfBirth?: string;
+  nationality?: string;
+  gender?: string;
+  contactNumber?: string;
+  emergencyContactNumber?: string;
+  emergencyContactPerson?: string;
+  emergencyContactPersonName?: string;
+  personalEmail?: string;
+  officialEmail?: string;
+  countryId?: string;
+  country?: string;
+  stateId?: string;
+  state?: string;
+  cityId?: string;
+  city?: string;
+  area?: string;
+  employeeSalary?: number | string;
+  eobi?: boolean;
+  eobiNumber?: string;
+  eobiDocumentUrl?: string;
+  documentUrls?: Record<string, string>;
+  providentFund?: boolean;
+  overtimeApplicable?: boolean;
+  daysOff?: string;
   reportingManager?: string;
+  workingHoursPolicyId?: string;
+  workingHoursPolicy?: string;
+  branchId?: string;
+  branch?: string;
+  leavesPolicyId?: string;
+  leavesPolicy?: string;
+  allowRemoteAttendance?: boolean;
+  currentAddress?: string;
+  permanentAddress?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountTitle?: string;
   remarks?: string;
-}): Promise<{ status: boolean; data?: Employee; message?: string }> {
+}): Promise<{ status: boolean; data?: Employee; message?: string; changedFields?: string[] }> {
   try {
+    // Prepare the data for the API
+    const payload: any = {
+      cnic: data.cnic,
+      employeeId: data.employeeId,
+      attendanceId: data.attendanceId,
+      joiningDate: data.joiningDate instanceof Date ? data.joiningDate.toISOString() : data.joiningDate,
+    };
+
+    // Add all optional fields if provided
+    if (data.employeeName !== undefined) payload.employeeName = data.employeeName;
+    if (data.fatherHusbandName !== undefined) payload.fatherHusbandName = data.fatherHusbandName;
+    if (data.departmentId !== undefined) payload.departmentId = data.departmentId;
+    if (data.department !== undefined) payload.department = data.department;
+    if (data.subDepartmentId !== undefined) payload.subDepartmentId = data.subDepartmentId;
+    if (data.subDepartment !== undefined) payload.subDepartment = data.subDepartment;
+    if (data.employeeGradeId !== undefined) payload.employeeGradeId = data.employeeGradeId;
+    if (data.employeeGrade !== undefined) payload.employeeGrade = data.employeeGrade;
+    if (data.designationId !== undefined) payload.designationId = data.designationId;
+    if (data.designation !== undefined) payload.designation = data.designation;
+    if (data.maritalStatusId !== undefined) payload.maritalStatusId = data.maritalStatusId;
+    if (data.maritalStatus !== undefined) payload.maritalStatus = data.maritalStatus;
+    if (data.employmentStatusId !== undefined) payload.employmentStatusId = data.employmentStatusId;
+    if (data.employmentStatus !== undefined) payload.employmentStatus = data.employmentStatus;
+    if (data.probationExpiryDate !== undefined) payload.probationExpiryDate = data.probationExpiryDate;
+    if (data.cnicExpiryDate !== undefined) payload.cnicExpiryDate = data.cnicExpiryDate;
+    if (data.lifetimeCnic !== undefined) payload.lifetimeCnic = data.lifetimeCnic;
+    if (data.dateOfBirth !== undefined) payload.dateOfBirth = data.dateOfBirth;
+    if (data.nationality !== undefined) payload.nationality = data.nationality;
+    if (data.gender !== undefined) payload.gender = data.gender;
+    if (data.contactNumber !== undefined) payload.contactNumber = data.contactNumber;
+    if (data.emergencyContactNumber !== undefined) payload.emergencyContactNumber = data.emergencyContactNumber;
+    if (data.emergencyContactPerson !== undefined) payload.emergencyContactPerson = data.emergencyContactPerson;
+    if (data.emergencyContactPersonName !== undefined) payload.emergencyContactPerson = data.emergencyContactPersonName;
+    if (data.personalEmail !== undefined) payload.personalEmail = data.personalEmail;
+    if (data.officialEmail !== undefined) payload.officialEmail = data.officialEmail;
+    if (data.countryId !== undefined) payload.countryId = data.countryId;
+    if (data.country !== undefined) payload.country = data.country;
+    if (data.stateId !== undefined) payload.stateId = data.stateId;
+    if (data.state !== undefined) payload.state = data.state;
+    if (data.cityId !== undefined) payload.cityId = data.cityId;
+    if (data.city !== undefined) payload.city = data.city;
+    if (data.area !== undefined) payload.area = data.area;
+    if (data.employeeSalary !== undefined) {
+      payload.employeeSalary = typeof data.employeeSalary === 'string' ? parseFloat(data.employeeSalary) : data.employeeSalary;
+    }
+    if (data.eobi !== undefined) payload.eobi = data.eobi;
+    if (data.eobiNumber !== undefined) payload.eobiNumber = data.eobiNumber;
+    if (data.eobiDocumentUrl !== undefined) payload.eobiDocumentUrl = data.eobiDocumentUrl;
+    if (data.documentUrls !== undefined) payload.documentUrls = data.documentUrls;
+    if (data.providentFund !== undefined) payload.providentFund = data.providentFund;
+    if (data.overtimeApplicable !== undefined) payload.overtimeApplicable = data.overtimeApplicable;
+    if (data.daysOff !== undefined) payload.daysOff = data.daysOff;
+    if (data.reportingManager !== undefined) payload.reportingManager = data.reportingManager;
+    if (data.workingHoursPolicyId !== undefined) payload.workingHoursPolicyId = data.workingHoursPolicyId;
+    if (data.workingHoursPolicy !== undefined) payload.workingHoursPolicy = data.workingHoursPolicy;
+    if (data.branchId !== undefined) payload.branchId = data.branchId;
+    if (data.branch !== undefined) payload.branch = data.branch;
+    if (data.leavesPolicyId !== undefined) payload.leavesPolicyId = data.leavesPolicyId;
+    if (data.leavesPolicy !== undefined) payload.leavesPolicy = data.leavesPolicy;
+    if (data.allowRemoteAttendance !== undefined) payload.allowRemoteAttendance = data.allowRemoteAttendance;
+    if (data.currentAddress !== undefined) payload.currentAddress = data.currentAddress;
+    if (data.permanentAddress !== undefined) payload.permanentAddress = data.permanentAddress;
+    if (data.bankName !== undefined) payload.bankName = data.bankName;
+    if (data.accountNumber !== undefined) payload.accountNumber = data.accountNumber;
+    if (data.accountTitle !== undefined) payload.accountTitle = data.accountTitle;
+    if (data.remarks !== undefined) payload.remarks = data.remarks;
+
     const res = await fetch(`${API_URL}/employees/rejoin`, {
       method: 'POST',
       headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...data,
-        joiningDate: data.joiningDate instanceof Date ? data.joiningDate.toISOString() : data.joiningDate,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {

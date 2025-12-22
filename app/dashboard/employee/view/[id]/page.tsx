@@ -9,9 +9,19 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, User, Edit, Upload, ExternalLink, FileText } from "lucide-react";
+import { ArrowLeft, User, Edit, Upload, ExternalLink, FileText, Calendar, LogIn, LogOut, Eye, History } from "lucide-react";
 import Link from "next/link";
-import { getEmployeeById, getEmployees } from "@/lib/actions/employee";
+import { getEmployeeById, getEmployees, getEmployeeRejoiningHistory } from "@/lib/actions/employee";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -20,10 +30,11 @@ interface PageProps {
 export default async function ViewEmployeePage({ params }: PageProps) {
   const { id: employeeId } = await params;
 
-  // Fetch employee with all relations and employees list for reporting manager
-  const [employeeRes, employeesRes] = await Promise.all([
+  // Fetch employee with all relations, employees list, and rejoining history
+  const [employeeRes, employeesRes, historyRes] = await Promise.all([
     getEmployeeById(employeeId),
     getEmployees(), // Only needed for reporting manager name lookup
+    getEmployeeRejoiningHistory(employeeId),
   ]);
 
   if (!employeeRes.status || !employeeRes.data) {
@@ -32,6 +43,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
 
   const employee = employeeRes.data as any;
   const employees = employeesRes.status ? employeesRes.data || [] : [];
+  const rejoiningHistory = historyRes.status ? historyRes.data || [] : [];
 
   // Helper functions to get names from relations
   // Backend returns relation objects under *Relation properties and also spreads them initially
@@ -106,6 +118,76 @@ export default async function ViewEmployeePage({ params }: PageProps) {
     return new Date(date).toLocaleDateString();
   };
 
+  const formatDateTime = (date: string | null | undefined) => {
+    if (!date) return "N/A";
+    const d = new Date(date);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Build timeline events
+  // Add rejoining history events (sorted by date, oldest first)
+  const sortedHistory = [...rejoiningHistory].sort((a, b) => 
+    new Date(a.rejoiningDate).getTime() - new Date(b.rejoiningDate).getTime()
+  );
+
+  const timelineEvents: Array<{
+    type: 'joined' | 'rejoined' | 'exited';
+    date: string;
+    title: string;
+    description: string;
+    iconType: 'joined' | 'rejoined' | 'exited';
+    historyEvent?: any;
+  }> = [];
+
+  // Add original joining date
+  if (employee.originalJoiningDate || employee.joiningDate) {
+    const originalDate = employee.originalJoiningDate || employee.joiningDate;
+    timelineEvents.push({
+      type: 'joined',
+      date: originalDate,
+      title: 'Original Joining',
+      description: `Employee joined with ID: ${employee.employeeId}`,
+      iconType: 'joined',
+    });
+  }
+
+  sortedHistory.forEach((event: any, index: number) => {
+    // Add exit event before rejoining
+    if (event.previousExitDate) {
+      timelineEvents.push({
+        type: 'exited',
+        date: event.previousExitDate,
+        title: `Exit #${index + 1}`,
+        description: `Employee left with ID: ${event.previousEmployeeId}`,
+        iconType: 'exited',
+      });
+    }
+
+    // Add rejoining event
+    timelineEvents.push({
+      type: 'rejoined',
+      date: event.rejoiningDate,
+      title: `Rejoin #${index + 1}`,
+      description: `Employee rejoined with new ID: ${event.newEmployeeId}${event.remarks ? ` - ${event.remarks}` : ''}`,
+      iconType: 'rejoined',
+      historyEvent: event,
+    });
+  });
+
+  // Add current exit if employee is inactive/resigned/terminated
+  if (employee.lastExitDate && (employee.status === 'inactive' || employee.status === 'resigned' || employee.status === 'terminated')) {
+    timelineEvents.push({
+      type: 'exited',
+      date: employee.lastExitDate,
+      title: 'Current Exit',
+      description: `Employee status: ${employee.status}`,
+      iconType: 'exited',
+    });
+  }
+
+  // Sort all events by date
+  timelineEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
   const formatCNIC = (cnic: string) => {
     if (!cnic) return "N/A";
     const cleaned = cnic.replace(/-/g, "");
@@ -113,6 +195,149 @@ export default async function ViewEmployeePage({ params }: PageProps) {
       return `${cleaned.slice(0, 5)}-${cleaned.slice(5, 12)}-${cleaned.slice(12)}`;
     }
     return cnic;
+  };
+
+  // Component to display historical employee data
+  const HistoricalEmployeeData = ({ data }: { data: any }) => {
+    if (!data || typeof data !== 'object') {
+      return <p className="text-muted-foreground">No historical data available</p>;
+    }
+
+    const historicalEmployee = data as any;
+
+    // Helper functions for historical data (similar to main helpers)
+    const getHistoricalDepartmentName = () => {
+      const dept = historicalEmployee.departmentRelation || historicalEmployee.department;
+      return (dept && typeof dept === 'object' && dept.name) ? dept.name : historicalEmployee.departmentId || "N/A";
+    };
+
+    const getHistoricalSubDepartmentName = () => {
+      const subDept = historicalEmployee.subDepartmentRelation || historicalEmployee.subDepartment;
+      return (subDept && typeof subDept === 'object' && subDept.name) ? subDept.name : historicalEmployee.subDepartmentId || "N/A";
+    };
+
+    const getHistoricalEmployeeGradeName = () => {
+      const grade = historicalEmployee.employeeGradeRelation || historicalEmployee.employeeGrade;
+      return (grade && typeof grade === 'object' && grade.grade) ? grade.grade : historicalEmployee.employeeGradeId || "N/A";
+    };
+
+    const getHistoricalDesignationName = () => {
+      const designation = historicalEmployee.designationRelation || historicalEmployee.designation;
+      return (designation && typeof designation === 'object' && designation.name) ? designation.name : historicalEmployee.designationId || "N/A";
+    };
+
+    const getHistoricalMaritalStatusName = () => {
+      const maritalStatus = historicalEmployee.maritalStatusRelation || historicalEmployee.maritalStatus;
+      return (maritalStatus && typeof maritalStatus === 'object' && maritalStatus.status) ? maritalStatus.status : historicalEmployee.maritalStatusId || "N/A";
+    };
+
+    const getHistoricalEmploymentStatusName = () => {
+      const employmentStatus = historicalEmployee.employmentStatusRelation || historicalEmployee.employmentStatus;
+      return (employmentStatus && typeof employmentStatus === 'object' && employmentStatus.status) ? employmentStatus.status : historicalEmployee.employmentStatusId || "N/A";
+    };
+
+    const getHistoricalBranchName = () => {
+      const branch = historicalEmployee.branchRelation || historicalEmployee.branch;
+      return (branch && typeof branch === 'object' && branch.name) ? branch.name : historicalEmployee.branchId || "N/A";
+    };
+
+    const getHistoricalWorkingHoursPolicyName = () => {
+      const policy = historicalEmployee.workingHoursPolicyRelation || historicalEmployee.workingHoursPolicy;
+      return (policy && typeof policy === 'object' && policy.name) ? policy.name : historicalEmployee.workingHoursPolicyId || "N/A";
+    };
+
+    const getHistoricalLeavesPolicyName = () => {
+      const policy = historicalEmployee.leavesPolicyRelation || historicalEmployee.leavesPolicy;
+      return (policy && typeof policy === 'object' && policy.name) ? policy.name : historicalEmployee.leavesPolicyId || "N/A";
+    };
+
+    const getHistoricalStateName = () => {
+      const state = historicalEmployee.stateRelation || historicalEmployee.provinceRelation || historicalEmployee.state;
+      return (state && typeof state === 'object' && state.name) ? state.name : historicalEmployee.stateId || "N/A";
+    };
+
+    const getHistoricalCityName = () => {
+      const city = historicalEmployee.cityRelation || historicalEmployee.city;
+      return (city && typeof city === 'object' && city.name) ? city.name : historicalEmployee.cityId || "N/A";
+    };
+
+    const getHistoricalCountryName = () => {
+      const country = historicalEmployee.countryRelation || historicalEmployee.country;
+      return (country && typeof country === 'object' && country.name) ? country.name : historicalEmployee.countryId || "N/A";
+    };
+
+    // Helper component for email with tooltip
+    const EmailField = ({ email, label }: { email: string | null | undefined; label: string }) => {
+      const emailValue = email || "N/A";
+      if (emailValue === "N/A") {
+        return <p className="text-foreground font-semibold text-sm mt-1">{emailValue}</p>;
+      }
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <p className="text-foreground font-semibold text-sm mt-1 line-clamp-1 cursor-help">
+              {emailValue}
+            </p>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{emailValue}</p>
+          </TooltipContent>
+        </Tooltip>
+      );
+    };
+
+    return (
+      <div className="h-[70vh] pr-4">
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: "Employee ID", value: historicalEmployee.employeeId || "N/A" },
+                  { label: "Employee Name", value: historicalEmployee.employeeName || "N/A" },
+                  { label: "Father / Husband Name", value: historicalEmployee.fatherHusbandName || "N/A" },
+                  { label: "Department", value: getHistoricalDepartmentName() },
+                  { label: "Sub Department", value: getHistoricalSubDepartmentName() },
+                  { label: "Employee Grade", value: getHistoricalEmployeeGradeName() },
+                  { label: "Attendance ID", value: historicalEmployee.attendanceId || "N/A" },
+                  { label: "Designation", value: getHistoricalDesignationName() },
+                  { label: "Marital Status", value: getHistoricalMaritalStatusName() },
+                  { label: "Employment Status", value: getHistoricalEmploymentStatusName() },
+                  { label: "CNIC Number", value: formatCNIC(historicalEmployee.cnicNumber) },
+                  { label: "Joining Date", value: formatDate(historicalEmployee.joiningDate) },
+                  { label: "Date of Birth", value: formatDate(historicalEmployee.dateOfBirth) },
+                  { label: "Nationality", value: historicalEmployee.nationality || "N/A" },
+                  { label: "Gender", value: historicalEmployee.gender || "N/A" },
+                  { label: "Contact Number", value: historicalEmployee.contactNumber || "N/A" },
+                  { label: "Personal Email", value: historicalEmployee.personalEmail, isEmail: true },
+                  { label: "Official Email", value: historicalEmployee.officialEmail, isEmail: true },
+                  { label: "Country", value: getHistoricalCountryName() },
+                  { label: "State / Province", value: getHistoricalStateName() },
+                  { label: "City", value: getHistoricalCityName() },
+                  { label: "Employee Salary", value: historicalEmployee.employeeSalary ? `PKR ${Number(historicalEmployee.employeeSalary).toLocaleString()}` : "N/A" },
+                  { label: "Branch", value: getHistoricalBranchName() },
+                  { label: "Working Hours Policy", value: getHistoricalWorkingHoursPolicyName() },
+                  { label: "Leaves Policy", value: getHistoricalLeavesPolicyName() },
+                  { label: "Status", value: historicalEmployee.status || "N/A" },
+                ].map((item, idx) => (
+                  <div key={idx} className="p-3 border rounded-lg bg-muted/10">
+                    <p className="text-xs text-muted-foreground">{item.label}</p>
+                    {item.isEmail ? (
+                      <EmailField email={item.value} label={item.label} />
+                    ) : (
+                      <p className="text-foreground font-semibold text-sm mt-1">{item.value}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   };
 
   // Helper function to get qualification name from relation object
@@ -161,15 +386,124 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                 <CardDescription className="text-base mt-1">
                   {employee.employeeId}
                 </CardDescription>
-                <div className="mt-2">
+                <div className="mt-2 flex items-center justify-center gap-2">
                   <Badge variant={employee.status === "active" ? "default" : "secondary"}>
                     {employee.status}
                   </Badge>
+                  {employee.isRejoined && (
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      Rejoined ({employee.rejoinCount || 0}x)
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
           </CardHeader>
         </Card>
+
+        {/* Employment Timeline */}
+        {timelineEvents.length > 0 && (
+          <Card className="border-none shadow-none">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Employment Timeline
+              </CardTitle>
+              <CardDescription>Complete history of join and exit events</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
+                
+                {/* Timeline events */}
+                <div className="space-y-6">
+                  {timelineEvents.map((event, index) => (
+                    <div key={index} className="relative flex items-start gap-4">
+                      {/* Icon */}
+                      <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background ${
+                        event.iconType === 'joined' ? 'border-green-500' :
+                        event.iconType === 'rejoined' ? 'border-blue-500' :
+                        'border-red-500'
+                      }`}>
+                        {event.iconType === 'joined' ? (
+                          <LogIn className="h-5 w-5 text-green-600" />
+                        ) : event.iconType === 'rejoined' ? (
+                          <LogIn className="h-5 w-5 text-blue-600" />
+                        ) : (
+                          <LogOut className="h-5 w-5 text-red-600" />
+                        )}
+                      </div>
+                      
+                      {/* Content */}
+                      <div className="flex-1 pt-1">
+                        <div className="flex items-center justify-between gap-4 mb-1">
+                          <h4 className="font-semibold text-base">{event.title}</h4>
+                          <span className="text-sm text-muted-foreground whitespace-nowrap">
+                            {formatDateTime(event.date)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{event.description}</p>
+                        
+                        {/* Show changed fields and view old data button for rejoining events */}
+                        {event.type === 'rejoined' && event.historyEvent && (() => {
+                          const historyEvent = event.historyEvent;
+                          const hasPreviousState = historyEvent?.previousState && typeof historyEvent.previousState === 'object';
+                          
+                          return (
+                            <div className="mt-3 space-y-2 flex items-start justify-between">
+                              {historyEvent?.keyChanges && Array.isArray(historyEvent.keyChanges) && historyEvent.keyChanges.length > 0 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {historyEvent.keyChanges.slice(0, 5).map((field: string, idx: number) => (
+                                    <Badge key={idx} variant="outline" className="text-xs">
+                                      {field}
+                                    </Badge>
+                                  ))}
+                                  {historyEvent.keyChanges.length > 5 && (
+                                    <Badge variant="outline" className="text-xs">
+                                      +{historyEvent.keyChanges.length - 5} more
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                              
+                              {hasPreviousState && (
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm" >
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      View Old Data
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-4xl">
+                                    <DialogHeader>
+                                      <DialogTitle className="flex items-center gap-2">
+                                        <History className="h-5 w-5" />
+                                        Employee Data Before Rejoin
+                                      </DialogTitle>
+                                      <DialogDescription>
+                                        Historical employee data snapshot before rejoining on {formatDateTime(event.date)}
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <ScrollArea className="flex-1 min-h-0 px-6 py-4" showShadows={true} shadowSize="md">
+                                      <div className="space-y-4">
+                                        <HistoricalEmployeeData data={historyEvent.previousState} />
+                                      </div>
+                                    </ScrollArea>
+                                  </DialogContent>
+                                </Dialog>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Basic Information */}
         <Card className="border-none shadow-none">

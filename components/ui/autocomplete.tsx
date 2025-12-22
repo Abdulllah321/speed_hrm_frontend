@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CheckIcon, ChevronDownIcon, Loader2, SearchIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon, Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { ScrollArea } from "./scroll-area"
 
 export interface AutocompleteOption {
   value: string
@@ -96,55 +97,62 @@ export function Autocomplete({
             disabled={isLoading}
           />
           <CommandList className="max-h-[280px]">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
-              </div>
-            ) : (
-              <>
-                <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
-                  {emptyMessage}
-                </CommandEmpty>
-                <CommandGroup className="p-1">
-                  {options.map((option) => {
-                    const isSelected = value === option.value;
-                    return (
-                      <CommandItem
-                        key={option.value}
-                        value={`${option.value} ${option.label}`}
-                        onSelect={() => {
-                          const newValue = isSelected ? "" : option.value;
-                          onValueChange?.(newValue);
-                          setOpen(false);
-                        }}
-                        className={cn(
-                          "flex items-center justify-between gap-2 px-3 py-2.5 rounded-md cursor-pointer",
-                          isSelected && "bg-accent"
-                        )}
-                      >
-                        <div className="flex flex-col gap-0.5 min-w-0">
-                          <span className={cn(
-                            "truncate",
-                            isSelected && "font-medium"
-                          )}>
-                            {option.label}
-                          </span>
-                          {option.description && (
-                            <span className="text-xs text-muted-foreground truncate">
-                              {option.description}
-                            </span>
-                          )}
-                        </div>
-                        {isSelected && (
-                          <CheckIcon className="h-4 w-4 shrink-0 text-primary" />
-                        )}
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              </>
-            )}
+            <div className={cn(
+              "max-h-[280px]",
+              options.length <= 5 ? "h-fit" : "h-[280px]"
+            )}>
+              <ScrollArea showShadows={true} shadowSize="md" className="h-full">
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+                  </div>
+                ) : (
+                  <>
+                    <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
+                      {emptyMessage}
+                    </CommandEmpty>
+                    <CommandGroup className="p-1">
+                      {options.map((option) => {
+                        const isSelected = value === option.value;
+                        return (
+                          <CommandItem
+                            key={option.value}
+                            value={`${option.value} ${option.label}`}
+                            onSelect={() => {
+                              const newValue = isSelected ? "" : option.value;
+                              onValueChange?.(newValue);
+                              setOpen(false);
+                            }}
+                            className={cn(
+                              "flex items-center justify-between gap-2 px-3 py-2.5 rounded-md cursor-pointer",
+                              isSelected && "bg-accent"
+                            )}
+                          >
+                            <div className="flex flex-col gap-0.5 min-w-0">
+                              <span className={cn(
+                                "truncate",
+                                isSelected && "font-medium"
+                              )}>
+                                {option.label}
+                              </span>
+                              {option.description && (
+                                <span className="text-xs text-muted-foreground truncate">
+                                  {option.description}
+                                </span>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <CheckIcon className="h-4 w-4 shrink-0 text-primary" />
+                            )}
+                          </CommandItem>
+                        );
+                      })}
+                    </CommandGroup>
+                  </>
+                )}
+              </ScrollArea>
+            </div>
           </CommandList>
         </Command>
       </PopoverContent>

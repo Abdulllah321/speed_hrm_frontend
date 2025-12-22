@@ -22,7 +22,9 @@ export interface AllowanceRow {
   employeeName: string;
   employeeCode: string;
   department: string;
+  departmentId?: string;
   subDepartment: string;
+  subDepartmentId?: string;
   allowanceHeadId: string;
   allowanceHeadName: string;
   amount: number;
@@ -61,9 +63,10 @@ export const columns: ColumnDef<AllowanceRow>[] = [
     ),
     size: 60,
     enableHiding: false,
+    enableSorting: false,
   },
   {
-    accessorKey: "employee",
+    accessorKey: "employeeName",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
         Employee
@@ -77,9 +80,14 @@ export const columns: ColumnDef<AllowanceRow>[] = [
     ),
     size: 200,
     enableSorting: true,
+    sortingFn: (rowA, rowB) => {
+      const nameA = rowA.original.employeeName?.toLowerCase() || "";
+      const nameB = rowB.original.employeeName?.toLowerCase() || "";
+      return nameA.localeCompare(nameB);
+    },
   },
   {
-    accessorKey: "departmentInfo",
+    accessorKey: "department",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
         Department
@@ -151,6 +159,15 @@ export const columns: ColumnDef<AllowanceRow>[] = [
       </div>
     ),
     size: 120,
+    enableSorting: true,
+    sortingFn: (rowA, rowB) => {
+      const aTaxable = rowA.original.isTaxable ? 1 : 0;
+      const bTaxable = rowB.original.isTaxable ? 1 : 0;
+      if (aTaxable !== bTaxable) return aTaxable - bTaxable;
+      const aTax = rowA.original.taxPercentage || 0;
+      const bTax = rowB.original.taxPercentage || 0;
+      return Number(aTax) - Number(bTax);
+    },
   },
   {
     accessorKey: "monthYear",

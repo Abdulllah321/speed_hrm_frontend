@@ -1,19 +1,20 @@
 "use client";
 
 import DataTable from "@/components/common/data-table";
-import { columns, type AdvanceSalaryRow } from "./columns";
+import { columns, type LoanRequestRow } from "./columns";
 import { Button } from "@/components/ui/button";
-import { Printer, Download } from "lucide-react";
+import { Printer, Download, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-interface AdvanceSalaryListProps {
-  initialData?: AdvanceSalaryRow[];
+interface LoanRequestListProps {
+  initialData?: LoanRequestRow[];
 }
 
-export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) {
-  const data: AdvanceSalaryRow[] = initialData;
+export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
+  const data: LoanRequestRow[] = initialData;
   const router = useRouter();
   
   const handlePrint = () => {
@@ -29,18 +30,18 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
     }
 
     // Calculate summary statistics
-    const totalAmount = data.reduce((sum, row) => sum + row.amountNeeded, 0);
-    const approvedCount = data.filter(row => row.approval1 === 'Approved').length;
-    const pendingCount = data.filter(row => row.approval1 === 'Pending').length;
-    const rejectedCount = data.filter(row => row.approval1 === 'Rejected').length;
-    const activeCount = data.filter(row => row.status === 'Active').length;
+    const totalAmount = data.reduce((sum, row) => sum + row.amount, 0);
+    const approvedCount = data.filter(row => row.approvalStatus === 'Approved').length;
+    const pendingCount = data.filter(row => row.approvalStatus === 'Pending').length;
+    const rejectedCount = data.filter(row => row.approvalStatus === 'Rejected').length;
+    const disbursedCount = data.filter(row => row.status === 'Disbursed').length;
     const completedCount = data.filter(row => row.status === 'Completed').length;
 
     const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Advance Salary List - ${format(new Date(), "MMMM dd, yyyy")}</title>
+          <title>Loan Requests List - ${format(new Date(), "MMMM dd, yyyy")}</title>
           <meta charset="UTF-8">
           <style>
             @media print {
@@ -149,12 +150,6 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
             tbody tr:hover {
               background: #f3f4f6;
             }
-            .text-right {
-              text-align: right;
-            }
-            .text-center {
-              text-align: center;
-            }
             .badge {
               display: inline-block;
               padding: 3px 8px;
@@ -162,62 +157,55 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
               font-size: 9px;
               font-weight: 600;
               text-transform: uppercase;
-              letter-spacing: 0.3px;
             }
             .badge-approved {
               background: #10b981;
               color: white;
             }
             .badge-pending {
-              background: #6b7280;
+              background: #f59e0b;
               color: white;
             }
             .badge-rejected {
               background: #ef4444;
               color: white;
             }
-            .badge-active {
-              background: #10b981;
-              color: white;
-            }
-            .badge-completed {
+            .badge-disbursed {
               background: #3b82f6;
               color: white;
             }
-            .badge-cancelled {
-              background: #ef4444;
+            .badge-completed {
+              background: #10b981;
               color: white;
             }
-            .footer {
-              margin-top: 25px;
-              padding-top: 12px;
-              border-top: 2px solid #e5e7eb;
+            .badge-cancelled {
+              background: #6b7280;
+              color: white;
+            }
+            .text-right {
+              text-align: right;
+            }
+            .text-center {
               text-align: center;
-              font-size: 9px;
-              color: #6b7280;
             }
             .summary {
               margin-top: 20px;
-              padding: 12px;
+              padding: 15px;
               background: #f9fafb;
               border-radius: 4px;
               border: 1px solid #e5e7eb;
             }
             .summary h3 {
-              font-size: 13px;
-              margin-bottom: 12px;
+              font-size: 14px;
+              margin-bottom: 10px;
               color: #1f2937;
-              font-weight: 600;
-              border-bottom: 1px solid #e5e7eb;
-              padding-bottom: 6px;
             }
             .summary-grid {
               display: grid;
-              grid-template-columns: repeat(6, 1fr);
-              gap: 12px;
+              grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+              gap: 10px;
             }
             .summary-item {
-              text-align: center;
               padding: 8px;
               background: white;
               border-radius: 3px;
@@ -228,69 +216,66 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
               color: #6b7280;
               text-transform: uppercase;
               margin-bottom: 4px;
-              font-weight: 500;
             }
             .summary-value {
-              font-size: 14px;
+              font-size: 12px;
               font-weight: 700;
               color: #1f2937;
-            }
-            .amount-value {
-              font-size: 12px;
-            }
-            @media print {
-              .summary-item {
-                break-inside: avoid;
-              }
             }
           </style>
         </head>
         <body>
           <div class="header">
-            <h1>Advance Salary Request List</h1>
+            <h1>Loan Requests List</h1>
             <p>Generated on ${format(new Date(), "MMMM dd, yyyy 'at' hh:mm a")}</p>
           </div>
 
           <div class="info-bar">
             <span>Total Records: ${data.length}</span>
-            <span>Report Date: ${format(new Date(), "dd-MMM-yyyy")}</span>
+            <span>Total Amount: ${new Intl.NumberFormat("en-PK", {
+              style: "currency",
+              currency: "PKR",
+              minimumFractionDigits: 0,
+            }).format(totalAmount)}</span>
           </div>
 
           <table>
             <thead>
               <tr>
-                <th style="width: 40px;">S.No</th>
-                <th style="width: 90px;">EMP ID</th>
-                <th style="width: 160px;">Employee Name</th>
-                <th style="width: 110px;" class="text-right">Amount Needed</th>
-                <th style="width: 110px;">Salary Need On</th>
-                <th style="width: 130px;">Deduction Month/Year</th>
-                <th style="width: 90px;" class="text-center">Approval</th>
-                <th style="width: 90px;" class="text-center">Status</th>
+                <th>S.No</th>
+                <th>Employee ID</th>
+                <th>Employee Name</th>
+                <th>Department</th>
+                <th>Loan Type</th>
+                <th class="text-right">Amount</th>
+                <th>Requested Date</th>
+                <th>Repayment Start</th>
+                <th>Installments</th>
+                <th class="text-center">Approval Status</th>
+                <th class="text-center">Status</th>
               </tr>
             </thead>
             <tbody>
-              ${data.map((row) => `
+              ${data.map((row, idx) => `
                 <tr>
-                  <td class="text-center">${row.sNo}</td>
+                  <td>${row.sNo}</td>
                   <td>${row.empId}</td>
                   <td>${row.empName}</td>
+                  <td>${row.department}</td>
+                  <td>${row.loanType}</td>
                   <td class="text-right">${new Intl.NumberFormat("en-PK", {
                     style: "currency",
                     currency: "PKR",
                     minimumFractionDigits: 0,
-                  }).format(row.amountNeeded)}</td>
-                  <td>${row.salaryNeedOn}</td>
-                  <td>${row.deductionMonthYear}</td>
+                  }).format(row.amount)}</td>
+                  <td>${row.requestedDate}</td>
+                  <td>${row.repaymentStartMonthYear}</td>
+                  <td class="text-center">${row.numberOfInstallments}</td>
                   <td class="text-center">
-                    <span class="badge badge-${row.approval1 === 'Approved' ? 'approved' : row.approval1 === 'Pending' ? 'pending' : 'rejected'}">
-                      ${row.approval1}
-                    </span>
+                    <span class="badge badge-${row.approvalStatus.toLowerCase()}">${row.approvalStatus}</span>
                   </td>
                   <td class="text-center">
-                    <span class="badge badge-${row.status === 'Active' ? 'active' : row.status === 'Completed' ? 'completed' : row.status === 'Cancelled' ? 'cancelled' : 'pending'}">
-                      ${row.status}
-                    </span>
+                    <span class="badge badge-${row.status.toLowerCase()}">${row.status}</span>
                   </td>
                 </tr>
               `).join('')}
@@ -301,12 +286,12 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
             <h3>Summary Statistics</h3>
             <div class="summary-grid">
               <div class="summary-item">
-                <div class="summary-label">Total Records</div>
+                <div class="summary-label">Total Requests</div>
                 <div class="summary-value">${data.length}</div>
               </div>
               <div class="summary-item">
                 <div class="summary-label">Total Amount</div>
-                <div class="summary-value amount-value">${new Intl.NumberFormat("en-PK", {
+                <div class="summary-value">${new Intl.NumberFormat("en-PK", {
                   style: "currency",
                   currency: "PKR",
                   minimumFractionDigits: 0,
@@ -325,15 +310,14 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
                 <div class="summary-value">${rejectedCount}</div>
               </div>
               <div class="summary-item">
-                <div class="summary-label">Active</div>
-                <div class="summary-value">${activeCount}</div>
+                <div class="summary-label">Disbursed</div>
+                <div class="summary-value">${disbursedCount}</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">Completed</div>
+                <div class="summary-value">${completedCount}</div>
               </div>
             </div>
-          </div>
-
-          <div class="footer">
-            <p><strong>This is a system-generated document. Confidential and for internal use only.</strong></p>
-            <p>Generated by Speed Limit HR System | ${format(new Date(), "dd MMMM yyyy 'at' hh:mm a")}</p>
           </div>
         </body>
       </html>
@@ -342,13 +326,9 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
     printWindow.document.write(printContent);
     printWindow.document.close();
     printWindow.focus();
-    
-    // Wait for content to load, then print
     setTimeout(() => {
       printWindow.print();
-    }, 300);
-    
-    toast.success("Print dialog opened");
+    }, 250);
   };
 
   const handleExportCSV = () => {
@@ -359,51 +339,68 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
 
     const headers = [
       "S.No",
-      "EMP ID",
+      "Employee ID",
       "Employee Name",
-      "Amount Needed",
-      "Salary Need On",
-      "Deduction Month/year",
-      "Approval 1",
-      "Status",
+      "Department",
+      "Loan Type",
+      "Amount",
+      "Requested Date",
+      "Repayment Start",
+      "Installments",
+      "Approval Status",
+      "Status"
     ];
 
-    const rows = data.map((row) => [
-      row.sNo,
-      row.empId,
-      row.empName,
-      row.amountNeeded.toString(),
-      row.salaryNeedOn,
-      row.deductionMonthYear,
-      row.approval1,
-      row.status,
-    ]);
-
-    const csvContent = [
+    const csvRows = [
       headers.join(","),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
-    ].join("\n");
+      ...data.map((row) =>
+        [
+          row.sNo,
+          `"${row.empId}"`,
+          `"${row.empName}"`,
+          `"${row.department}"`,
+          `"${row.loanType}"`,
+          row.amount,
+          `"${row.requestedDate}"`,
+          `"${row.repaymentStartMonthYear}"`,
+          row.numberOfInstallments === "—" ? "" : row.numberOfInstallments,
+          `"${row.approvalStatus}"`,
+          `"${row.status}"`,
+        ].join(",")
+      ),
+    ];
 
+    const csvContent = csvRows.join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `advance_salary_list_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `loan-requests-${format(new Date(), "yyyy-MM-dd")}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
     link.click();
-    toast.success("Data exported successfully");
+    document.body.removeChild(link);
+    toast.success("CSV exported successfully");
   };
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            View Advance Salary List
+            View Loan Requests
           </h2>
           <p className="text-muted-foreground">
-            View advance salary requests
+            View and manage loan requests
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Link href="/dashboard/loan-requests/create">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Loan Request
+            </Button>
+          </Link>
           <Button variant="secondary" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Print
@@ -422,12 +419,11 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
           searchFields={[
             { key: "empName", label: "Employee Name" },
             { key: "empId", label: "Employee ID" },
+            { key: "department", label: "Department" },
+            { key: "loanType", label: "Loan Type" },
           ]}
-          actionText="Create Advance Salary"
-          toggleAction={() => router.push("/dashboard/payroll-setup/advance-salary/create")}
         />
       </div>
     </div>
   );
 }
-

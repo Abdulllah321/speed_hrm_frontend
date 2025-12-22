@@ -22,7 +22,9 @@ export interface DeductionRow {
   employeeName: string;
   employeeCode: string;
   department: string;
+  departmentId?: string;
   subDepartment: string;
+  subDepartmentId?: string;
   deductionHeadId: string;
   deductionHeadName: string;
   amount: number;
