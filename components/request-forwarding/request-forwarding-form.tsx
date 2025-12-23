@@ -18,7 +18,7 @@ import {
   type CreateApprovalLevel 
 } from "@/lib/actions/request-forwarding";
 
-export type RequestType = "exemption" | "attendance";
+export type RequestType = "exemption" | "attendance" | "advance-salary" | "loan";
 
 export type ApprovalFlow = "auto-approved" | "multi-level";
 
@@ -245,8 +245,14 @@ export function RequestForwardingForm({
           return;
         }
 
+        const requestTypeLabels: Record<RequestType, string> = {
+          exemption: "Exemption",
+          attendance: "Attendance",
+          "advance-salary": "Advance Salary",
+          loan: "Loan",
+        };
         toast.success(
-          `${requestType === "exemption" ? "Exemption" : "Attendance"} Request Forwarding configured successfully`
+          `${requestTypeLabels[requestType]} Request Forwarding configured successfully`
         );
 
         // Refresh the page to get updated data from server
@@ -690,7 +696,7 @@ export function RequestForwardingForm({
                   <div className="space-y-1">
                     <p className="font-medium">Auto Approval Enabled</p>
                     <p className="text-sm text-muted-foreground">
-                      All {requestType === "exemption" ? "exception" : "attendance"} requests will be automatically
+                      All {requestType === "exemption" ? "exception" : requestType === "attendance" ? "attendance" : requestType === "advance-salary" ? "advance salary" : "loan"} requests will be automatically
                       approved without requiring manual approval from any approver.
                     </p>
                   </div>

@@ -52,30 +52,36 @@ import { MoreHorizontal, CheckCircle2, XCircle, Edit2, Trash2, Eye, Printer, Loa
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
-  approveAdvanceSalary,
-  rejectAdvanceSalary,
-  deleteAdvanceSalary,
-  getAdvanceSalaryById,
-  updateAdvanceSalary,
-  type AdvanceSalary,
-} from "@/lib/actions/advance-salary";
+  approveLoanRequest,
+  rejectLoanRequest,
+  deleteLoanRequest,
+  getLoanRequestById,
+  updateLoanRequest,
+  type LoanRequest,
+} from "@/lib/actions/loan-request";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
+import { Autocomplete } from "@/components/ui/autocomplete";
+import { getLoanTypes, type LoanType } from "@/lib/actions/loan-type";
 
-export interface AdvanceSalaryRow {
+export interface LoanRequestRow {
   id: string;
   sNo: number;
   empId: string;
   empName: string;
-  amountNeeded: number;
-  salaryNeedOn: string;
-  deductionMonthYear: string;
-  approval1: string;
+  department: string;
+  loanType: string;
+  amount: number;
+  requestedDate: string;
+  repaymentStartMonthYear: string;
+  numberOfInstallments: string | number;
+  approvalStatus: string;
   status: string;
 }
 
 // Edit form schema
-const editAdvanceSalarySchema = z.object({
+const editLoanRequestSchema = z.object({
+  loanTypeId: z.string().min(1, "Loan type is required"),
   amount: z
     .string()
     .min(1, "Amount is required")
@@ -86,76 +92,114 @@ const editAdvanceSalarySchema = z.object({
       },
       "Amount must be a positive number"
     ),
-  neededOn: z
+  requestedDate: z.string().min(1, "Requested date is required"),
+  repaymentStartMonthYear: z
     .string()
-    .min(1, "Advance salary needed date is required"),
-  deductionMonthYear: z
+    .optional()
+    .refine(
+      (val) => !val || /^\d{4}-\d{2}$/.test(val),
+      "Invalid month-year format (YYYY-MM)"
+    ),
+  numberOfInstallments: z
     .string()
-    .min(1, "Deduction month and year is required")
-    .regex(/^\d{4}-\d{2}$/, "Invalid month-year format"),
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        const num = parseInt(val);
+        return !isNaN(num) && num > 0 && num <= 120;
+      },
+      "Number of installments must be between 1 and 120"
+    ),
   reason: z
     .string()
     .min(1, "Reason is required")
     .min(10, "Reason must be at least 10 characters")
-    .max(500, "Reason must not exceed 500 characters"),
+    .max(1000, "Reason must not exceed 1000 characters"),
+  additionalDetails: z
+    .string()
+    .max(2000, "Additional details must not exceed 2000 characters")
+    .optional(),
 });
 
-type EditAdvanceSalaryFormData = z.infer<typeof editAdvanceSalarySchema>;
+type EditLoanRequestFormData = z.infer<typeof editLoanRequestSchema>;
 
-function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
+function RowActions({ row }: { row: { original: LoanRequestRow } }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [rejectDialog, setRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
   const [viewDialog, setViewDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
-  const [advanceSalaryDetails, setAdvanceSalaryDetails] = useState<AdvanceSalary | null>(null);
+  const [loanRequestDetails, setLoanRequestDetails] = useState<LoanRequest | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [loanTypes, setLoanTypes] = useState<LoanType[]>([]);
+  const [loadingLoanTypes, setLoadingLoanTypes] = useState(false);
   const record = row.original;
 
-  const form = useForm<EditAdvanceSalaryFormData>({
-    resolver: zodResolver(editAdvanceSalarySchema),
+  const form = useForm<EditLoanRequestFormData>({
+    resolver: zodResolver(editLoanRequestSchema),
     defaultValues: {
+      loanTypeId: "",
       amount: "",
-      neededOn: "",
-      deductionMonthYear: "",
+      requestedDate: "",
+      repaymentStartMonthYear: undefined,
+      numberOfInstallments: "",
       reason: "",
+      additionalDetails: "",
     },
     mode: "onBlur",
   });
 
-  // Load advance salary details for view
+  // Load loan types
   useEffect(() => {
-    if (viewDialog && !advanceSalaryDetails) {
-      setLoadingDetails(true);
-      getAdvanceSalaryById(record.id).then((res) => {
+    if (editDialog && loanTypes.length === 0) {
+      setLoadingLoanTypes(true);
+      getLoanTypes().then((res) => {
         if (res.status && res.data) {
-          setAdvanceSalaryDetails(res.data);
+          setLoanTypes(res.data);
+        }
+        setLoadingLoanTypes(false);
+      });
+    }
+  }, [editDialog, loanTypes.length]);
+
+  // Load loan request details for view
+  useEffect(() => {
+    if (viewDialog && !loanRequestDetails) {
+      setLoadingDetails(true);
+      getLoanRequestById(record.id).then((res) => {
+        if (res.status && res.data) {
+          setLoanRequestDetails(res.data);
         } else {
-          toast.error(res.message || "Failed to load advance salary details");
+          toast.error(res.message || "Failed to load loan request details");
           setViewDialog(false);
         }
         setLoadingDetails(false);
       });
     }
-  }, [viewDialog, record.id, advanceSalaryDetails]);
+  }, [viewDialog, record.id, loanRequestDetails]);
 
-  // Load advance salary details for edit
+  // Load loan request details for edit
   useEffect(() => {
     if (editDialog) {
       setLoadingDetails(true);
-      getAdvanceSalaryById(record.id).then((res) => {
+      getLoanRequestById(record.id).then((res) => {
         if (res.status && res.data) {
           const data = res.data;
-          setAdvanceSalaryDetails(data);
+          setLoanRequestDetails(data);
           form.reset({
+            loanTypeId: data.loanTypeId,
             amount: typeof data.amount === 'string' ? data.amount : data.amount.toString(),
-            neededOn: data.neededOn,
-            deductionMonthYear: data.deductionMonthYear,
+            requestedDate: data.requestedDate,
+            repaymentStartMonthYear: data.repaymentStartMonthYear || undefined,
+            numberOfInstallments: data.numberOfInstallments?.toString() || "",
             reason: data.reason,
+            additionalDetails: data.additionalDetails || "",
           });
         } else {
-          toast.error(res.message || "Failed to load advance salary details");
+          toast.error(res.message || "Failed to load loan request details");
           setEditDialog(false);
         }
         setLoadingDetails(false);
@@ -165,64 +209,72 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
 
   const handleApprove = async () => {
     startTransition(async () => {
-      const result = await approveAdvanceSalary(record.id);
+      const result = await approveLoanRequest(record.id);
       if (result.status) {
-        toast.success(result.message || "Advance salary approved successfully");
+        toast.success(result.message || "Loan request approved successfully");
         router.refresh();
       } else {
-        toast.error(result.message || "Failed to approve advance salary");
+        toast.error(result.message || "Failed to approve loan request");
       }
     });
   };
 
   const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
     startTransition(async () => {
-      const result = await rejectAdvanceSalary(record.id);
+      const result = await rejectLoanRequest(record.id, rejectionReason);
       if (result.status) {
-        toast.success(result.message || "Advance salary rejected successfully");
+        toast.success(result.message || "Loan request rejected successfully");
         setRejectDialog(false);
+        setRejectionReason("");
         router.refresh();
       } else {
-        toast.error(result.message || "Failed to reject advance salary");
+        toast.error(result.message || "Failed to reject loan request");
       }
     });
   };
 
   const handleDelete = async () => {
     startTransition(async () => {
-      const result = await deleteAdvanceSalary(record.id);
+      const result = await deleteLoanRequest(record.id);
       if (result.status) {
-        toast.success(result.message || "Advance salary deleted successfully");
+        toast.success(result.message || "Loan request deleted successfully");
         setDeleteDialog(false);
         router.refresh();
       } else {
-        toast.error(result.message || "Failed to delete advance salary");
+        toast.error(result.message || "Failed to delete loan request");
       }
     });
   };
 
-  const handleEditSubmit = async (data: EditAdvanceSalaryFormData) => {
+  const handleEditSubmit = async (data: EditLoanRequestFormData) => {
     startTransition(async () => {
-      const result = await updateAdvanceSalary(record.id, {
+      const result = await updateLoanRequest(record.id, {
+        loanTypeId: data.loanTypeId,
         amount: parseFloat(data.amount),
-        neededOn: data.neededOn,
-        deductionMonthYear: data.deductionMonthYear,
+        requestedDate: data.requestedDate,
+        repaymentStartMonthYear: data.repaymentStartMonthYear || undefined,
+        numberOfInstallments: data.numberOfInstallments ? parseInt(data.numberOfInstallments) : undefined,
         reason: data.reason,
+        additionalDetails: data.additionalDetails || undefined,
       });
       if (result.status) {
-        toast.success(result.message || "Advance salary updated successfully");
+        toast.success(result.message || "Loan request updated successfully");
         setEditDialog(false);
-        setAdvanceSalaryDetails(null);
+        setLoanRequestDetails(null);
         form.reset();
         router.refresh();
       } else {
-        toast.error(result.message || "Failed to update advance salary");
+        toast.error(result.message || "Failed to update loan request");
       }
     });
   };
 
   const handlePrint = () => {
-    if (!advanceSalaryDetails) return;
+    if (!loanRequestDetails) return;
     
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -230,11 +282,22 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
       return;
     }
 
+    const formatMonthYear = (monthYear?: string) => {
+      if (!monthYear) return "—";
+      const [year, month] = monthYear.split("-");
+      const monthNames = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+      ];
+      const monthIndex = parseInt(month) - 1;
+      return `${monthNames[monthIndex] || month} ${year}`;
+    };
+
     const printContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Advance Salary Request - ${advanceSalaryDetails.employee?.employeeName || record.empName}</title>
+          <title>Loan Request - ${loanRequestDetails.employee?.employeeName || record.empName}</title>
           <style>
             @media print {
               @page { margin: 20mm; }
@@ -315,11 +378,19 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
               background: #ef4444;
               color: white;
             }
+            .badge-disbursed {
+              background: #3b82f6;
+              color: white;
+            }
+            .badge-completed {
+              background: #10b981;
+              color: white;
+            }
           </style>
         </head>
         <body>
           <div class="header">
-            <h1>Advance Salary Request</h1>
+            <h1>Loan Request</h1>
             <p>Generated on ${format(new Date(), "MMMM dd, yyyy 'at' hh:mm a")}</p>
           </div>
 
@@ -328,55 +399,63 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
             <div class="info-grid">
               <div class="info-item">
                 <div class="info-label">Employee ID</div>
-                <div class="info-value">${advanceSalaryDetails.employee?.employeeId || record.empId}</div>
+                <div class="info-value">${loanRequestDetails.employee?.employeeId || record.empId}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Employee Name</div>
-                <div class="info-value">${advanceSalaryDetails.employee?.employeeName || record.empName}</div>
+                <div class="info-value">${loanRequestDetails.employee?.employeeName || record.empName}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Department</div>
-                <div class="info-value">${advanceSalaryDetails.employee?.department?.name || "—"}</div>
+                <div class="info-value">${loanRequestDetails.employee?.department?.name || "—"}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Sub Department</div>
-                <div class="info-value">${advanceSalaryDetails.employee?.subDepartment?.name || "—"}</div>
+                <div class="info-value">${loanRequestDetails.employee?.subDepartment?.name || "—"}</div>
               </div>
             </div>
           </div>
 
           <div class="info-section">
-            <h2>Advance Salary Details</h2>
+            <h2>Loan Details</h2>
             <div class="info-grid">
+              <div class="info-item">
+                <div class="info-label">Loan Type</div>
+                <div class="info-value">${loanRequestDetails.loanType?.name || record.loanType}</div>
+              </div>
               <div class="info-item">
                 <div class="info-label">Amount</div>
                 <div class="info-value">${new Intl.NumberFormat("en-PK", {
                   style: "currency",
                   currency: "PKR",
                   minimumFractionDigits: 0,
-                }).format(typeof advanceSalaryDetails.amount === 'string' ? parseFloat(advanceSalaryDetails.amount) : advanceSalaryDetails.amount)}</div>
+                }).format(typeof loanRequestDetails.amount === 'string' ? parseFloat(loanRequestDetails.amount) : loanRequestDetails.amount)}</div>
               </div>
               <div class="info-item">
-                <div class="info-label">Needed On</div>
-                <div class="info-value">${format(new Date(advanceSalaryDetails.neededOn), "MMMM dd, yyyy")}</div>
+                <div class="info-label">Requested Date</div>
+                <div class="info-value">${format(new Date(loanRequestDetails.requestedDate), "MMMM dd, yyyy")}</div>
               </div>
               <div class="info-item">
-                <div class="info-label">Deduction Month & Year</div>
-                <div class="info-value">${format(new Date(`${advanceSalaryDetails.deductionMonthYear}-01`), "MMMM yyyy")}</div>
+                <div class="info-label">Repayment Start</div>
+                <div class="info-value">${formatMonthYear(loanRequestDetails.repaymentStartMonthYear)}</div>
+              </div>
+              <div class="info-item">
+                <div class="info-label">Number of Installments</div>
+                <div class="info-value">${loanRequestDetails.numberOfInstallments || "—"}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Status</div>
                 <div class="info-value">
-                  <span class="badge badge-${advanceSalaryDetails.status === 'active' ? 'approved' : advanceSalaryDetails.status === 'pending' ? 'pending' : 'rejected'}">
-                    ${advanceSalaryDetails.status}
+                  <span class="badge badge-${loanRequestDetails.status === 'approved' || loanRequestDetails.status === 'completed' ? 'approved' : loanRequestDetails.status === 'disbursed' ? 'disbursed' : loanRequestDetails.status === 'pending' ? 'pending' : 'rejected'}">
+                    ${loanRequestDetails.status}
                   </span>
                 </div>
               </div>
               <div class="info-item">
                 <div class="info-label">Approval Status</div>
                 <div class="info-value">
-                  <span class="badge badge-${advanceSalaryDetails.approvalStatus === 'approved' ? 'approved' : advanceSalaryDetails.approvalStatus === 'pending' ? 'pending' : 'rejected'}">
-                    ${advanceSalaryDetails.approvalStatus}
+                  <span class="badge badge-${loanRequestDetails.approvalStatus === 'approved' ? 'approved' : loanRequestDetails.approvalStatus === 'pending' ? 'pending' : 'rejected'}">
+                    ${loanRequestDetails.approvalStatus}
                   </span>
                 </div>
               </div>
@@ -386,15 +465,24 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
           <div class="info-section">
             <h2>Reason</h2>
             <div class="reason-box">
-              ${advanceSalaryDetails.reason}
+              ${loanRequestDetails.reason.replace(/\n/g, '<br>')}
             </div>
           </div>
 
-          ${advanceSalaryDetails.rejectionReason ? `
+          ${loanRequestDetails.additionalDetails ? `
+          <div class="info-section">
+            <h2>Additional Details</h2>
+            <div class="reason-box">
+              ${loanRequestDetails.additionalDetails.replace(/\n/g, '<br>')}
+            </div>
+          </div>
+          ` : ''}
+
+          ${loanRequestDetails.rejectionReason ? `
           <div class="info-section">
             <h2>Rejection Reason</h2>
             <div class="reason-box">
-              ${advanceSalaryDetails.rejectionReason}
+              ${loanRequestDetails.rejectionReason.replace(/\n/g, '<br>')}
             </div>
           </div>
           ` : ''}
@@ -404,20 +492,20 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
             <div class="info-grid">
               <div class="info-item">
                 <div class="info-label">Created By</div>
-                <div class="info-value">${advanceSalaryDetails.createdBy ? `${advanceSalaryDetails.createdBy.firstName} ${advanceSalaryDetails.createdBy.lastName}` : "—"}</div>
+                <div class="info-value">${loanRequestDetails.createdBy ? `${loanRequestDetails.createdBy.firstName} ${loanRequestDetails.createdBy.lastName}` : "—"}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Created At</div>
-                <div class="info-value">${format(new Date(advanceSalaryDetails.createdAt), "MMMM dd, yyyy 'at' hh:mm a")}</div>
+                <div class="info-value">${format(new Date(loanRequestDetails.createdAt), "MMMM dd, yyyy 'at' hh:mm a")}</div>
               </div>
-              ${advanceSalaryDetails.approvedBy ? `
+              ${loanRequestDetails.approvedBy ? `
               <div class="info-item">
                 <div class="info-label">Approved By</div>
-                <div class="info-value">${advanceSalaryDetails.approvedBy.firstName} ${advanceSalaryDetails.approvedBy.lastName}</div>
+                <div class="info-value">${loanRequestDetails.approvedBy.firstName} ${loanRequestDetails.approvedBy.lastName}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Approved At</div>
-                <div class="info-value">${advanceSalaryDetails.approvedAt ? format(new Date(advanceSalaryDetails.approvedAt), "MMMM dd, yyyy 'at' hh:mm a") : "—"}</div>
+                <div class="info-value">${loanRequestDetails.approvedAt ? format(new Date(loanRequestDetails.approvedAt), "MMMM dd, yyyy 'at' hh:mm a") : "—"}</div>
               </div>
               ` : ''}
             </div>
@@ -440,18 +528,23 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
 
   const handleViewClose = () => {
     setViewDialog(false);
-    setAdvanceSalaryDetails(null);
+    setLoanRequestDetails(null);
   };
 
   const handleEditClose = () => {
     setEditDialog(false);
-    setAdvanceSalaryDetails(null);
+    setLoanRequestDetails(null);
     form.reset();
   };
 
-  const isPendingApproval = record.approval1 === "Pending";
-  const isApproved = record.approval1 === "Approved";
-  const isRejected = record.approval1 === "Rejected";
+  const isPendingApproval = record.approvalStatus === "Pending";
+  const isApproved = record.approvalStatus === "Approved";
+  const isRejected = record.approvalStatus === "Rejected";
+
+  const loanTypeOptions = loanTypes.map((lt) => ({
+    value: lt.id,
+    label: lt.name,
+  }));
 
   return (
     <>
@@ -522,13 +615,13 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
 
           <DropdownMenuItem
             onClick={async () => {
-              let details = advanceSalaryDetails;
+              let details = loanRequestDetails;
               if (!details) {
                 setLoadingDetails(true);
-                const res = await getAdvanceSalaryById(record.id);
+                const res = await getLoanRequestById(record.id);
                 if (res.status && res.data) {
                   details = res.data;
-                  setAdvanceSalaryDetails(details);
+                  setLoanRequestDetails(details);
                 } else {
                   toast.error("Failed to load details for printing");
                   setLoadingDetails(false);
@@ -536,222 +629,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                 }
                 setLoadingDetails(false);
               }
-              
-              // Use the details to print
-              if (details) {
-                const printWindow = window.open('', '_blank');
-                if (!printWindow) {
-                  toast.error("Please allow popups to print");
-                  return;
-                }
-
-                const printContent = `
-                  <!DOCTYPE html>
-                  <html>
-                    <head>
-                      <title>Advance Salary Request - ${details.employee?.employeeName || record.empName}</title>
-                      <style>
-                        @media print {
-                          @page { margin: 20mm; }
-                        }
-                        body {
-                          font-family: Arial, sans-serif;
-                          padding: 20px;
-                          max-width: 800px;
-                          margin: 0 auto;
-                        }
-                        .header {
-                          text-align: center;
-                          margin-bottom: 30px;
-                          border-bottom: 2px solid #000;
-                          padding-bottom: 20px;
-                        }
-                        .header h1 {
-                          margin: 0;
-                          font-size: 24px;
-                        }
-                        .info-section {
-                          margin-bottom: 25px;
-                        }
-                        .info-section h2 {
-                          font-size: 18px;
-                          margin-bottom: 15px;
-                          border-bottom: 1px solid #ccc;
-                          padding-bottom: 5px;
-                        }
-                        .info-grid {
-                          display: grid;
-                          grid-template-columns: 1fr 1fr;
-                          gap: 15px;
-                          margin-bottom: 15px;
-                        }
-                        .info-item {
-                          margin-bottom: 10px;
-                        }
-                        .info-label {
-                          font-weight: bold;
-                          color: #666;
-                          font-size: 12px;
-                          text-transform: uppercase;
-                          margin-bottom: 3px;
-                        }
-                        .info-value {
-                          font-size: 14px;
-                        }
-                        .reason-box {
-                          background: #f5f5f5;
-                          padding: 15px;
-                          border-radius: 5px;
-                          margin-top: 10px;
-                        }
-                        .footer {
-                          margin-top: 40px;
-                          padding-top: 20px;
-                          border-top: 1px solid #ccc;
-                          font-size: 12px;
-                          color: #666;
-                        }
-                        .badge {
-                          display: inline-block;
-                          padding: 4px 12px;
-                          border-radius: 4px;
-                          font-size: 12px;
-                          font-weight: bold;
-                        }
-                        .badge-approved {
-                          background: #10b981;
-                          color: white;
-                        }
-                        .badge-pending {
-                          background: #6b7280;
-                          color: white;
-                        }
-                        .badge-rejected {
-                          background: #ef4444;
-                          color: white;
-                        }
-                      </style>
-                    </head>
-                    <body>
-                      <div class="header">
-                        <h1>Advance Salary Request</h1>
-                        <p>Generated on ${format(new Date(), "MMMM dd, yyyy 'at' hh:mm a")}</p>
-                      </div>
-
-                      <div class="info-section">
-                        <h2>Employee Information</h2>
-                        <div class="info-grid">
-                          <div class="info-item">
-                            <div class="info-label">Employee ID</div>
-                            <div class="info-value">${details.employee?.employeeId || record.empId}</div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Employee Name</div>
-                            <div class="info-value">${details.employee?.employeeName || record.empName}</div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Department</div>
-                            <div class="info-value">${details.employee?.department?.name || "—"}</div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Sub Department</div>
-                            <div class="info-value">${details.employee?.subDepartment?.name || "—"}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="info-section">
-                        <h2>Advance Salary Details</h2>
-                        <div class="info-grid">
-                          <div class="info-item">
-                            <div class="info-label">Amount</div>
-                            <div class="info-value">${new Intl.NumberFormat("en-PK", {
-                              style: "currency",
-                              currency: "PKR",
-                              minimumFractionDigits: 0,
-                            }).format(typeof details.amount === 'string' ? parseFloat(details.amount) : details.amount)}</div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Needed On</div>
-                            <div class="info-value">${format(new Date(details.neededOn), "MMMM dd, yyyy")}</div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Deduction Month & Year</div>
-                            <div class="info-value">${format(new Date(`${details.deductionMonthYear}-01`), "MMMM yyyy")}</div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Status</div>
-                            <div class="info-value">
-                              <span class="badge badge-${details.status === 'active' ? 'approved' : details.status === 'pending' ? 'pending' : 'rejected'}">
-                                ${details.status}
-                              </span>
-                            </div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Approval Status</div>
-                            <div class="info-value">
-                              <span class="badge badge-${details.approvalStatus === 'approved' ? 'approved' : details.approvalStatus === 'pending' ? 'pending' : 'rejected'}">
-                                ${details.approvalStatus}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="info-section">
-                        <h2>Reason</h2>
-                        <div class="reason-box">
-                          ${details.reason.replace(/\n/g, '<br>')}
-                        </div>
-                      </div>
-
-                      ${details.rejectionReason ? `
-                      <div class="info-section">
-                        <h2>Rejection Reason</h2>
-                        <div class="reason-box">
-                          ${details.rejectionReason.replace(/\n/g, '<br>')}
-                        </div>
-                      </div>
-                      ` : ''}
-
-                      <div class="info-section">
-                        <h2>Audit Information</h2>
-                        <div class="info-grid">
-                          <div class="info-item">
-                            <div class="info-label">Created By</div>
-                            <div class="info-value">${details.createdBy ? `${details.createdBy.firstName} ${details.createdBy.lastName}` : "—"}</div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Created At</div>
-                            <div class="info-value">${format(new Date(details.createdAt), "MMMM dd, yyyy 'at' hh:mm a")}</div>
-                          </div>
-                          ${details.approvedBy ? `
-                          <div class="info-item">
-                            <div class="info-label">Approved By</div>
-                            <div class="info-value">${details.approvedBy.firstName} ${details.approvedBy.lastName}</div>
-                          </div>
-                          <div class="info-item">
-                            <div class="info-label">Approved At</div>
-                            <div class="info-value">${details.approvedAt ? format(new Date(details.approvedAt), "MMMM dd, yyyy 'at' hh:mm a") : "—"}</div>
-                          </div>
-                          ` : ''}
-                        </div>
-                      </div>
-
-                      <div class="footer">
-                        <p>This is a system-generated document.</p>
-                      </div>
-                    </body>
-                  </html>
-                `;
-
-                printWindow.document.write(printContent);
-                printWindow.document.close();
-                printWindow.focus();
-                setTimeout(() => {
-                  printWindow.print();
-                }, 250);
-              }
+              handlePrint();
             }}
             disabled={isPending}
           >
@@ -776,9 +654,9 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
       <Dialog open={viewDialog} onOpenChange={handleViewClose}>
         <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b shrink-0 px-6 pt-6 pb-4">
-            <DialogTitle>Advance Salary Details</DialogTitle>
+            <DialogTitle>Loan Request Details</DialogTitle>
             <DialogDescription>
-              Complete information about the advance salary request
+              Complete information about the loan request
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1 px-6">
@@ -786,7 +664,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
-            ) : advanceSalaryDetails ? (
+            ) : loanRequestDetails ? (
               <div className="space-y-6 py-4">
                 {/* Employee Information */}
                 <div className="space-y-4">
@@ -794,29 +672,33 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm text-muted-foreground">Employee ID</Label>
-                      <p className="font-medium">{advanceSalaryDetails.employee?.employeeId || record.empId}</p>
+                      <p className="font-medium">{loanRequestDetails.employee?.employeeId || record.empId}</p>
                     </div>
                     <div>
                       <Label className="text-sm text-muted-foreground">Employee Name</Label>
-                      <p className="font-medium">{advanceSalaryDetails.employee?.employeeName || record.empName}</p>
+                      <p className="font-medium">{loanRequestDetails.employee?.employeeName || record.empName}</p>
                     </div>
                     <div>
                       <Label className="text-sm text-muted-foreground">Department</Label>
-                      <p className="font-medium">{advanceSalaryDetails.employee?.department?.name || "—"}</p>
+                      <p className="font-medium">{loanRequestDetails.employee?.department?.name || "—"}</p>
                     </div>
                     <div>
                       <Label className="text-sm text-muted-foreground">Sub Department</Label>
-                      <p className="font-medium">{advanceSalaryDetails.employee?.subDepartment?.name || "—"}</p>
+                      <p className="font-medium">{loanRequestDetails.employee?.subDepartment?.name || "—"}</p>
                     </div>
                   </div>
                 </div>
 
                 <Separator />
 
-                {/* Advance Salary Details */}
+                {/* Loan Details */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold">Advance Salary Details</h3>
+                  <h3 className="text-lg font-semibold">Loan Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Loan Type</Label>
+                      <p className="font-medium">{loanRequestDetails.loanType?.name || record.loanType}</p>
+                    </div>
                     <div>
                       <Label className="text-sm text-muted-foreground">Amount</Label>
                       <p className="font-semibold text-lg">
@@ -824,34 +706,40 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                           style: "currency",
                           currency: "PKR",
                           minimumFractionDigits: 0,
-                        }).format(typeof advanceSalaryDetails.amount === 'string' ? parseFloat(advanceSalaryDetails.amount) : advanceSalaryDetails.amount)}
+                        }).format(typeof loanRequestDetails.amount === 'string' ? parseFloat(loanRequestDetails.amount) : loanRequestDetails.amount)}
                       </p>
                     </div>
                     <div>
-                      <Label className="text-sm text-muted-foreground">Needed On</Label>
+                      <Label className="text-sm text-muted-foreground">Requested Date</Label>
                       <p className="font-medium">
-                        {format(new Date(advanceSalaryDetails.neededOn), "MMMM dd, yyyy")}
+                        {format(new Date(loanRequestDetails.requestedDate), "MMMM dd, yyyy")}
                       </p>
                     </div>
                     <div>
-                      <Label className="text-sm text-muted-foreground">Deduction Month & Year</Label>
+                      <Label className="text-sm text-muted-foreground">Repayment Start</Label>
                       <p className="font-medium">
-                        {format(new Date(`${advanceSalaryDetails.deductionMonthYear}-01`), "MMMM yyyy")}
+                        {loanRequestDetails.repaymentStartMonthYear 
+                          ? format(new Date(`${loanRequestDetails.repaymentStartMonthYear}-01`), "MMMM yyyy")
+                          : "—"}
                       </p>
+                    </div>
+                    <div>
+                      <Label className="text-sm text-muted-foreground">Number of Installments</Label>
+                      <p className="font-medium">{loanRequestDetails.numberOfInstallments || "—"}</p>
                     </div>
                     <div>
                       <Label className="text-sm text-muted-foreground">Status</Label>
                       <div>
-                        <Badge variant={advanceSalaryDetails.status === 'active' ? 'default' : advanceSalaryDetails.status === 'pending' ? 'secondary' : 'destructive'}>
-                          {advanceSalaryDetails.status}
+                        <Badge variant={loanRequestDetails.status === 'approved' || loanRequestDetails.status === 'completed' ? 'default' : loanRequestDetails.status === 'disbursed' ? 'default' : loanRequestDetails.status === 'pending' ? 'secondary' : 'destructive'}>
+                          {loanRequestDetails.status}
                         </Badge>
                       </div>
                     </div>
                     <div>
                       <Label className="text-sm text-muted-foreground">Approval Status</Label>
                       <div>
-                        <Badge variant={advanceSalaryDetails.approvalStatus === 'approved' ? 'default' : advanceSalaryDetails.approvalStatus === 'pending' ? 'secondary' : 'destructive'}>
-                          {advanceSalaryDetails.approvalStatus}
+                        <Badge variant={loanRequestDetails.approvalStatus === 'approved' ? 'default' : loanRequestDetails.approvalStatus === 'pending' ? 'secondary' : 'destructive'}>
+                          {loanRequestDetails.approvalStatus}
                         </Badge>
                       </div>
                     </div>
@@ -864,17 +752,29 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                 <div className="space-y-2">
                   <Label className="text-sm text-muted-foreground">Reason</Label>
                   <div className="bg-muted p-4 rounded-md">
-                    <p className="text-sm whitespace-pre-wrap">{advanceSalaryDetails.reason}</p>
+                    <p className="text-sm whitespace-pre-wrap">{loanRequestDetails.reason}</p>
                   </div>
                 </div>
 
-                {advanceSalaryDetails.rejectionReason && (
+                {loanRequestDetails.additionalDetails && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <Label className="text-sm text-muted-foreground">Additional Details</Label>
+                      <div className="bg-muted p-4 rounded-md">
+                        <p className="text-sm whitespace-pre-wrap">{loanRequestDetails.additionalDetails}</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {loanRequestDetails.rejectionReason && (
                   <>
                     <Separator />
                     <div className="space-y-2">
                       <Label className="text-sm text-muted-foreground">Rejection Reason</Label>
                       <div className="bg-destructive/10 p-4 rounded-md">
-                        <p className="text-sm whitespace-pre-wrap">{advanceSalaryDetails.rejectionReason}</p>
+                        <p className="text-sm whitespace-pre-wrap">{loanRequestDetails.rejectionReason}</p>
                       </div>
                     </div>
                   </>
@@ -889,30 +789,30 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                     <div>
                       <Label className="text-sm text-muted-foreground">Created By</Label>
                       <p className="font-medium">
-                        {advanceSalaryDetails.createdBy 
-                          ? `${advanceSalaryDetails.createdBy.firstName} ${advanceSalaryDetails.createdBy.lastName}`
+                        {loanRequestDetails.createdBy 
+                          ? `${loanRequestDetails.createdBy.firstName} ${loanRequestDetails.createdBy.lastName}`
                           : "—"}
                       </p>
                     </div>
                     <div>
                       <Label className="text-sm text-muted-foreground">Created At</Label>
                       <p className="font-medium">
-                        {format(new Date(advanceSalaryDetails.createdAt), "MMMM dd, yyyy 'at' hh:mm a")}
+                        {format(new Date(loanRequestDetails.createdAt), "MMMM dd, yyyy 'at' hh:mm a")}
                       </p>
                     </div>
-                    {advanceSalaryDetails.approvedBy && (
+                    {loanRequestDetails.approvedBy && (
                       <>
                         <div>
                           <Label className="text-sm text-muted-foreground">Approved By</Label>
                           <p className="font-medium">
-                            {`${advanceSalaryDetails.approvedBy.firstName} ${advanceSalaryDetails.approvedBy.lastName}`}
+                            {`${loanRequestDetails.approvedBy.firstName} ${loanRequestDetails.approvedBy.lastName}`}
                           </p>
                         </div>
                         <div>
                           <Label className="text-sm text-muted-foreground">Approved At</Label>
                           <p className="font-medium">
-                            {advanceSalaryDetails.approvedAt 
-                              ? format(new Date(advanceSalaryDetails.approvedAt), "MMMM dd, yyyy 'at' hh:mm a")
+                            {loanRequestDetails.approvedAt 
+                              ? format(new Date(loanRequestDetails.approvedAt), "MMMM dd, yyyy 'at' hh:mm a")
                               : "—"}
                           </p>
                         </div>
@@ -931,7 +831,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
             <Button variant="outline" onClick={handleViewClose}>
               Close
             </Button>
-            <Button onClick={handlePrint} disabled={!advanceSalaryDetails}>
+            <Button onClick={handlePrint} disabled={!loanRequestDetails}>
               <Printer className="h-4 w-4 mr-2" />
               Print
             </Button>
@@ -943,13 +843,13 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
       <Dialog open={editDialog} onOpenChange={handleEditClose}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
           <DialogHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b shrink-0 px-6 pt-6 pb-4">
-            <DialogTitle>Edit Advance Salary Request</DialogTitle>
+            <DialogTitle>Edit Loan Request</DialogTitle>
             <DialogDescription>
-              Update the advance salary request details
+              Update the loan request details
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="flex-1 px-6">
-            {loadingDetails ? (
+            {loadingDetails || loadingLoanTypes ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
@@ -960,9 +860,34 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                   <div className="space-y-2">
                     <Label className="text-sm text-muted-foreground">Employee</Label>
                     <p className="font-medium">
-                      {advanceSalaryDetails?.employee?.employeeName || record.empName} ({advanceSalaryDetails?.employee?.employeeId || record.empId})
+                      {loanRequestDetails?.employee?.employeeName || record.empName} ({loanRequestDetails?.employee?.employeeId || record.empId})
                     </p>
                   </div>
+
+                  {/* Loan Type */}
+                  <FormField
+                    control={form.control}
+                    name="loanTypeId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Loan Type <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Autocomplete
+                            options={loanTypeOptions}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Select loan type"
+                            searchPlaceholder="Search loan type..."
+                            emptyMessage="No loan types found"
+                            disabled={isPending || loadingLoanTypes}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Amount */}
                   <FormField
@@ -983,22 +908,19 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                             {...field}
                           />
                         </FormControl>
-                        <FormDescription>
-                          Enter the advance salary amount
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  {/* Needed On */}
+                  {/* Requested Date */}
                   <FormField
                     control={form.control}
-                    name="neededOn"
+                    name="requestedDate"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Advance Salary Needed On <span className="text-destructive">*</span>
+                          Requested Date <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <DatePicker
@@ -1008,22 +930,19 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                             placeholder="Select date"
                           />
                         </FormControl>
-                        <FormDescription>
-                          When the advance salary is needed
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  {/* Deduction Month-Year */}
+                  {/* Repayment Start Month-Year */}
                   <FormField
                     control={form.control}
-                    name="deductionMonthYear"
+                    name="repaymentStartMonthYear"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Deduction Month & Year <span className="text-destructive">*</span>
+                          Repayment Start Month & Year
                         </FormLabel>
                         <FormControl>
                           <MonthYearPicker
@@ -1033,8 +952,32 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                             placeholder="Select month and year"
                           />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Number of Installments */}
+                  <FormField
+                    control={form.control}
+                    name="numberOfInstallments"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Number of Installments
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="120"
+                            placeholder="Enter number of installments"
+                            disabled={isPending}
+                            {...field}
+                          />
+                        </FormControl>
                         <FormDescription>
-                          When the advance will be deducted from salary
+                          Number of installments (1-120)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1048,11 +991,11 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Reason (Detail) <span className="text-destructive">*</span>
+                          Reason <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Enter detailed reason for advance salary request..."
+                            placeholder="Enter detailed reason for loan request..."
                             rows={4}
                             disabled={isPending}
                             className="resize-none"
@@ -1060,7 +1003,33 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                           />
                         </FormControl>
                         <FormDescription>
-                          Provide a detailed reason (10-500 characters)
+                          Provide a detailed reason (10-1000 characters)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Additional Details */}
+                  <FormField
+                    control={form.control}
+                    name="additionalDetails"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Additional Details
+                        </FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter any additional details (optional)..."
+                            rows={3}
+                            disabled={isPending}
+                            className="resize-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Any additional information (max 2000 characters)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -1076,7 +1045,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
             </Button>
             <Button
               onClick={form.handleSubmit(handleEditSubmit)}
-              disabled={isPending || loadingDetails}
+              disabled={isPending || loadingDetails || loadingLoanTypes}
             >
               {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save Changes
@@ -1091,12 +1060,12 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the advance salary request for{" "}
+              This action cannot be undone. This will permanently delete the loan request for{" "}
               <strong>{record.empName}</strong> (Amount: {new Intl.NumberFormat("en-PK", {
                 style: "currency",
                 currency: "PKR",
                 minimumFractionDigits: 0,
-              }).format(record.amountNeeded)}).
+              }).format(record.amount)}).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1116,17 +1085,31 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
       <AlertDialog open={rejectDialog} onOpenChange={setRejectDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject Advance Salary Request?</AlertDialogTitle>
+            <AlertDialogTitle>Reject Loan Request?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to reject the advance salary request for{" "}
-              <strong>{record.empName}</strong>? This action will mark the request as rejected.
+              <div className="space-y-4">
+                <p>
+                  Are you sure you want to reject the loan request for{" "}
+                  <strong>{record.empName}</strong>? This action will mark the request as rejected.
+                </p>
+                <div className="space-y-2">
+                  <Label>Rejection Reason <span className="text-destructive">*</span></Label>
+                  <Textarea
+                    placeholder="Enter reason for rejection..."
+                    rows={3}
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isPending} onClick={() => setRejectionReason("")}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleReject}
-              disabled={isPending}
+              disabled={isPending || !rejectionReason.trim()}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isPending ? "Rejecting..." : "Reject"}
@@ -1138,7 +1121,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
   );
 }
 
-export const columns: ColumnDef<AdvanceSalaryRow>[] = [
+export const columns: ColumnDef<LoanRequestRow>[] = [
   {
     accessorKey: "sNo",
     header: () => (
@@ -1147,23 +1130,19 @@ export const columns: ColumnDef<AdvanceSalaryRow>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <div className="text-sm font-medium text-muted-foreground w-8">
-        {row.original.sNo}
-      </div>
+      <div className="text-sm font-medium">{row.original.sNo}</div>
     ),
-    size: 60,
   },
   {
     accessorKey: "empId",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        EMP ID
+        Employee ID
       </div>
     ),
     cell: ({ row }) => (
-      <div className="text-sm font-medium">{row.original.empId}</div>
+      <div className="text-sm">{row.original.empId}</div>
     ),
-    size: 100,
   },
   {
     accessorKey: "empName",
@@ -1175,105 +1154,133 @@ export const columns: ColumnDef<AdvanceSalaryRow>[] = [
     cell: ({ row }) => (
       <div className="text-sm font-medium">{row.original.empName}</div>
     ),
-    size: 150,
   },
   {
-    accessorKey: "amountNeeded",
+    accessorKey: "department",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Amount Needed
+        Department
       </div>
     ),
     cell: ({ row }) => (
-      <div className="text-sm font-semibold">
+      <div className="text-sm">{row.original.department}</div>
+    ),
+  },
+  {
+    accessorKey: "loanType",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Loan Type
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm">{row.original.loanType}</div>
+    ),
+  },
+  {
+    accessorKey: "amount",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+        Amount
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm font-medium text-right">
         {new Intl.NumberFormat("en-PK", {
           style: "currency",
           currency: "PKR",
           minimumFractionDigits: 0,
-        }).format(row.original.amountNeeded)}
+        }).format(row.original.amount)}
       </div>
     ),
-    size: 130,
   },
   {
-    accessorKey: "salaryNeedOn",
+    accessorKey: "requestedDate",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Salary Need On
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm">{row.original.salaryNeedOn}</div>
-    ),
-    size: 130,
-  },
-  {
-    accessorKey: "deductionMonthYear",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Deduction Month/year
+        Requested Date
       </div>
     ),
     cell: ({ row }) => (
-      <div className="text-sm">{row.original.deductionMonthYear}</div>
+      <div className="text-sm">{row.original.requestedDate}</div>
     ),
-    size: 150,
   },
   {
-    accessorKey: "approval1",
+    accessorKey: "repaymentStartMonthYear",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Approval 1
+        Repayment Start
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm">{row.original.repaymentStartMonthYear}</div>
+    ),
+  },
+  {
+    accessorKey: "numberOfInstallments",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+        Installments
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm text-center">{row.original.numberOfInstallments}</div>
+    ),
+  },
+  {
+    accessorKey: "approvalStatus",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+        Approval Status
       </div>
     ),
     cell: ({ row }) => {
-      const approval = row.original.approval1;
-      const variant =
-        approval === "Approved"
-          ? "default"
-          : approval === "Pending"
-          ? "secondary"
-          : "destructive";
+      const status = row.original.approvalStatus;
       return (
-        <Badge variant={variant} className="font-medium">
-          {approval}
-        </Badge>
+        <div className="flex justify-center">
+          <Badge
+            variant={
+              status === "Approved"
+                ? "default"
+                : status === "Pending"
+                ? "secondary"
+                : "destructive"
+            }
+          >
+            {status}
+          </Badge>
+        </div>
       );
     },
-    size: 120,
   },
   {
     accessorKey: "status",
     header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
         Status
       </div>
     ),
     cell: ({ row }) => {
       const status = row.original.status;
-      const variant =
-        status === "Active" || status === "Approved"
-          ? "default"
-          : status === "Pending"
-          ? "secondary"
-          : "destructive";
       return (
-        <Badge variant={variant} className="font-medium">
-          {status}
-        </Badge>
+        <div className="flex justify-center">
+          <Badge
+            variant={
+              status === "Approved" || status === "Completed" || status === "Disbursed"
+                ? "default"
+                : status === "Pending"
+                ? "secondary"
+                : "destructive"
+            }
+          >
+            {status}
+          </Badge>
+        </div>
       );
     },
-    size: 100,
   },
   {
     id: "actions",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-        Actions
-      </div>
-    ),
     cell: ({ row }) => <RowActions row={row} />,
-    size: 80,
-    enableHiding: false,
   },
 ];

@@ -1,7 +1,6 @@
 'use server';
 
 import { getAccessToken } from '../auth';
-import { revalidatePath } from 'next/cache';
 
 const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_URL || 'http://localhost:5000/api';
 
@@ -16,85 +15,76 @@ async function getAuthHeaders() {
 export interface LoanRequest {
   id: string;
   employeeId: string;
-  employeeName?: string;
-  employeeCode?: string;
-  department?: string;
-  subDepartment?: string;
+  employee?: {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    department?: {
+      id: string;
+      name: string;
+    };
+    subDepartment?: {
+      id: string;
+      name: string;
+    };
+  };
   loanTypeId: string;
-  loanTypeName?: string;
-  loanAmount: number;
-  perMonthDeduction: number;
-  neededOnMonth: string;
-  neededOnYear: string;
-  description: string;
-  status?: string;
-  approvalRemarks1?: string;
-  approvalRemarks2?: string;
-  topUpAmount?: number;
-  totalLoan?: number;
-  loanAdjustment?: number;
-  overallPF?: number;
-  paidLoanAmount?: number;
-  remainingAmount?: number;
+  loanType?: {
+    id: string;
+    name: string;
+  };
+  amount: number | string;
+  requestedDate: string;
+  repaymentStartMonthYear?: string;
+  numberOfInstallments?: number;
+  reason: string;
+  additionalDetails?: string;
+  status: string; // 'pending' | 'approved' | 'rejected' | 'disbursed' | 'completed' | 'cancelled'
+  approvalStatus: string; // 'pending' | 'approved' | 'rejected'
+  approvedById?: string;
+  approvedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  approvedAt?: string;
+  rejectionReason?: string;
   createdById?: string;
+  createdBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  updatedById?: string;
+  updatedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CreateLoanRequestData {
-  employeeId: string;
-  loanTypeId: string;
-  loanAmount: number;
-  perMonthDeduction: number;
-  neededOnMonth: string;
-  neededOnYear: string;
-  description: string;
-}
-
-export interface UpdateLoanRequestData {
-  employeeId?: string;
-  loanTypeId?: string;
-  loanAmount?: number;
-  perMonthDeduction?: number;
-  neededOnMonth?: string;
-  neededOnYear?: string;
-  description?: string;
-}
-
-// Create loan request
-export async function createLoanRequest(data: CreateLoanRequestData): Promise<{ status: boolean; data?: LoanRequest; message?: string }> {
-  try {
-    const res = await fetch(`${API_URL}/loan-requests`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'Failed to create loan request' }));
-      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
-    }
-
-    const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/loan-requests');
-    return result;
-  } catch (error) {
-    console.error('Error creating loan request:', error);
-    return { status: false, message: error instanceof Error ? error.message : 'Failed to create loan request' };
-  }
 }
 
 // Get all loan requests
 export async function getLoanRequests(params?: {
   employeeId?: string;
-  month?: string;
-  year?: string;
+  loanTypeId?: string;
+  status?: string;
+  approvalStatus?: string;
+  requestedDate?: string;
+  repaymentStartMonthYear?: string;
 }): Promise<{ status: boolean; data?: LoanRequest[]; message?: string }> {
   try {
     const queryParams = new URLSearchParams();
     if (params?.employeeId) queryParams.append('employeeId', params.employeeId);
-    if (params?.month) queryParams.append('month', params.month);
-    if (params?.year) queryParams.append('year', params.year);
+    if (params?.loanTypeId) queryParams.append('loanTypeId', params.loanTypeId);
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.approvalStatus) queryParams.append('approvalStatus', params.approvalStatus);
+    if (params?.requestedDate) queryParams.append('requestedDate', params.requestedDate);
+    if (params?.repaymentStartMonthYear) queryParams.append('repaymentStartMonthYear', params.repaymentStartMonthYear);
 
     const res = await fetch(`${API_URL}/loan-requests?${queryParams.toString()}`, {
       headers: await getAuthHeaders(),
@@ -116,7 +106,7 @@ export async function getLoanRequests(params?: {
   }
 }
 
-// Get loan request by id
+// Get single loan request
 export async function getLoanRequestById(id: string): Promise<{ status: boolean; data?: LoanRequest; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/loan-requests/${id}`, {
@@ -134,13 +124,65 @@ export async function getLoanRequestById(id: string): Promise<{ status: boolean;
     console.error('Error fetching loan request:', error);
     return { 
       status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch loan request' 
+      message: error instanceof Error ? error.message : 'Failed to fetch loan request. Please check your connection.' 
     };
   }
 }
 
+// Create loan request
+export async function createLoanRequest(data: {
+  employeeIds: string[];
+  loanTypeId: string;
+  amount: number;
+  requestedDate: string;
+  repaymentStartMonthYear?: string;
+  numberOfInstallments?: number;
+  reason: string;
+  additionalDetails?: string;
+}): Promise<{ status: boolean; data?: LoanRequest | LoanRequest[]; message?: string }> {
+  try {
+    const loanRequests = data.employeeIds.map((employeeId) => ({
+      employeeId,
+      loanTypeId: data.loanTypeId,
+      amount: data.amount,
+      requestedDate: data.requestedDate,
+      repaymentStartMonthYear: data.repaymentStartMonthYear,
+      numberOfInstallments: data.numberOfInstallments,
+      reason: data.reason,
+      additionalDetails: data.additionalDetails,
+    }));
+
+    const res = await fetch(`${API_URL}/loan-requests`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        loanRequests,
+      }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to create loan request' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error creating loan request:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to create loan request' };
+  }
+}
+
 // Update loan request
-export async function updateLoanRequest(id: string, data: UpdateLoanRequestData): Promise<{ status: boolean; data?: LoanRequest; message?: string }> {
+export async function updateLoanRequest(id: string, data: {
+  loanTypeId?: string;
+  amount?: number;
+  requestedDate?: string;
+  repaymentStartMonthYear?: string;
+  numberOfInstallments?: number;
+  reason?: string;
+  additionalDetails?: string;
+  status?: string;
+}): Promise<{ status: boolean; data?: LoanRequest; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/loan-requests/${id}`, {
       method: 'PUT',
@@ -153,12 +195,52 @@ export async function updateLoanRequest(id: string, data: UpdateLoanRequestData)
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/loan-requests');
-    return result;
+    return res.json();
   } catch (error) {
     console.error('Error updating loan request:', error);
     return { status: false, message: error instanceof Error ? error.message : 'Failed to update loan request' };
+  }
+}
+
+// Approve loan request
+export async function approveLoanRequest(id: string): Promise<{ status: boolean; data?: LoanRequest; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/loan-requests/${id}/approve`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to approve loan request' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error approving loan request:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to approve loan request' };
+  }
+}
+
+// Reject loan request
+export async function rejectLoanRequest(id: string, rejectionReason?: string): Promise<{ status: boolean; data?: LoanRequest; message?: string }> {
+  try {
+    const res = await fetch(`${API_URL}/loan-requests/${id}/reject`, {
+      method: 'POST',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ rejectionReason }),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to reject loan request' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
+    }
+
+    return res.json();
+  } catch (error) {
+    console.error('Error rejecting loan request:', error);
+    return { status: false, message: error instanceof Error ? error.message : 'Failed to reject loan request' };
   }
 }
 
@@ -175,9 +257,7 @@ export async function deleteLoanRequest(id: string): Promise<{ status: boolean; 
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/loan-requests');
-    return result;
+    return res.json();
   } catch (error) {
     console.error('Error deleting loan request:', error);
     return { status: false, message: error instanceof Error ? error.message : 'Failed to delete loan request' };

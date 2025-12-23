@@ -342,7 +342,7 @@ const employeeFormSchema = z.object({
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
 
 interface EmployeeFormProps {
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "rejoin";
   initialData?: Employee;
   departments: Department[];
   subDepartments: SubDepartment[];
@@ -361,6 +361,9 @@ interface EmployeeFormProps {
   loadingData: boolean;
   onQualificationAdded?: (qualification: { id: string; name: string }) => void;
   onInstituteAdded?: (institute: { id: string; name: string }) => void;
+  // For rejoin mode
+  cnic?: string;
+  onRejoinSubmit?: (data: any) => Promise<void>;
 }
 
 export function EmployeeForm({
@@ -383,6 +386,8 @@ export function EmployeeForm({
   loadingData,
   onQualificationAdded,
   onInstituteAdded,
+  cnic,
+  onRejoinSubmit,
 }: EmployeeFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -394,13 +399,13 @@ export function EmployeeForm({
       employeeId: initialData.employeeId || "",
       employeeName: initialData.employeeName || "",
       fatherHusbandName: initialData.fatherHusbandName || "",
-      department: initialData.department || "",
-      subDepartment: initialData.subDepartment || "",
-      employeeGrade: initialData.employeeGrade || "",
+      department: (initialData as any).departmentId || (typeof initialData.department === 'string' ? initialData.department : (initialData.department as any)?.id) || "",
+      subDepartment: (initialData as any).subDepartmentId || (typeof initialData.subDepartment === 'string' ? initialData.subDepartment : (initialData.subDepartment as any)?.id) || "",
+      employeeGrade: (initialData as any).employeeGradeId || (typeof initialData.employeeGrade === 'string' ? initialData.employeeGrade : (initialData.employeeGrade as any)?.id) || "",
       attendanceId: initialData.attendanceId || "",
-      designation: initialData.designation || "",
-      maritalStatus: initialData.maritalStatus || "",
-      employmentStatus: initialData.employmentStatus || "",
+      designation: (initialData as any).designationId || (typeof initialData.designation === 'string' ? initialData.designation : (initialData.designation as any)?.id) || "",
+      maritalStatus: (initialData as any).maritalStatusId || (typeof initialData.maritalStatus === 'string' ? initialData.maritalStatus : (initialData.maritalStatus as any)?.id) || "",
+      employmentStatus: (initialData as any).employmentStatusId || (typeof initialData.employmentStatus === 'string' ? initialData.employmentStatus : (initialData.employmentStatus as any)?.id) || "",
       probationExpiryDate: initialData.probationExpiryDate || "",
       cnicNumber: formatCNICValue(initialData.cnicNumber || ""),
       cnicExpiryDate: initialData.cnicExpiryDate || "",
@@ -414,9 +419,9 @@ export function EmployeeForm({
       emergencyContactPersonName: (initialData as any).emergencyContactPersonName || initialData.emergencyContactPerson || "",
       personalEmail: initialData.personalEmail || "",
       officialEmail: initialData.officialEmail || "",
-      country: initialData.country || "Pakistan",
-      state: initialData.province || "",
-      city: initialData.city || "",
+      country: (initialData as any).countryId || (typeof initialData.country === 'string' ? initialData.country : (initialData.country as any)?.id) || "Pakistan",
+      state: (initialData as any).stateId || (typeof initialData.province === 'string' ? initialData.province : (initialData.province as any)?.id) || (typeof initialData.state === 'string' ? initialData.state : (initialData.state as any)?.id) || "",
+      city: (initialData as any).cityId || (typeof initialData.city === 'string' ? initialData.city : (initialData.city as any)?.id) || "",
       employeeSalary: initialData.employeeSalary?.toString() || "",
       eobi: initialData.eobi || false,
       eobiNumber: initialData.eobiNumber || "",
@@ -424,9 +429,9 @@ export function EmployeeForm({
       overtimeApplicable: initialData.overtimeApplicable || false,
       daysOff: initialData.daysOff || "",
       reportingManager: initialData.reportingManager || "",
-      workingHoursPolicy: initialData.workingHoursPolicy || "",
-      branch: initialData.branch || "",
-      leavesPolicy: initialData.leavesPolicy || "",
+      workingHoursPolicy: (initialData as any).workingHoursPolicyId || (typeof initialData.workingHoursPolicy === 'string' ? initialData.workingHoursPolicy : (initialData.workingHoursPolicy as any)?.id) || "",
+      branch: (initialData as any).branchId || (typeof initialData.branch === 'string' ? initialData.branch : (initialData.branch as any)?.id) || "",
+      leavesPolicy: (initialData as any).leavesPolicyId || (typeof initialData.leavesPolicy === 'string' ? initialData.leavesPolicy : (initialData.leavesPolicy as any)?.id) || "",
       allowRemoteAttendance: initialData.allowRemoteAttendance || false,
       currentAddress: initialData.currentAddress ?? "",
       permanentAddress: initialData.permanentAddress ?? "",
@@ -1188,6 +1193,56 @@ export function EmployeeForm({
           } else {
             toast.error(result.message || "Failed to create employee");
           }
+        } else if (mode === "rejoin" && cnic && onRejoinSubmit) {
+          // Rejoin mode - prepare data for rejoin API
+          const rejoinData = {
+            cnic: cnic,
+            employeeId: data.employeeId,
+            attendanceId: data.attendanceId,
+            joiningDate: data.joiningDate,
+            employeeName: data.employeeName,
+            fatherHusbandName: data.fatherHusbandName,
+            department: data.department,
+            subDepartment: data.subDepartment || undefined,
+            employeeGrade: data.employeeGrade,
+            designation: data.designation,
+            maritalStatus: data.maritalStatus,
+            employmentStatus: data.employmentStatus,
+            probationExpiryDate: data.probationExpiryDate || undefined,
+            cnicExpiryDate: data.cnicExpiryDate || undefined,
+            lifetimeCnic: data.lifetimeCnic,
+            dateOfBirth: data.dateOfBirth,
+            nationality: data.nationality,
+            gender: data.gender,
+            contactNumber: data.contactNumber,
+            emergencyContactNumber: data.emergencyContactNumber || undefined,
+            emergencyContactPersonName: data.emergencyContactPersonName || undefined,
+            personalEmail: data.personalEmail || undefined,
+            officialEmail: data.officialEmail,
+            country: data.country,
+            state: data.state,
+            city: data.city,
+            employeeSalary: data.employeeSalary,
+            eobi: data.eobi,
+            eobiNumber: data.eobiNumber || undefined,
+            providentFund: data.providentFund,
+            overtimeApplicable: data.overtimeApplicable,
+            daysOff: data.daysOff || undefined,
+            reportingManager: data.reportingManager || "",
+            workingHoursPolicy: data.workingHoursPolicy,
+            branch: data.branch,
+            leavesPolicy: data.leavesPolicy,
+            allowRemoteAttendance: data.allowRemoteAttendance,
+            currentAddress: data.currentAddress || undefined,
+            permanentAddress: data.permanentAddress || undefined,
+            bankName: data.bankName || "",
+            accountNumber: data.accountNumber || "",
+            accountTitle: data.accountTitle || "",
+            eobiDocumentUrl: data.eobiDocumentUrl || undefined,
+            documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
+          };
+          
+          await onRejoinSubmit(rejoinData);
         } else if (mode === "edit" && initialData) {
           // Get latest form values including qualification document URLs
           // Same pattern as Equipments & Documents section
@@ -1431,6 +1486,7 @@ export function EmployeeForm({
                     handleFileChange={handleFileChange}
                     employees={employees}
                     documentUrls={documentUrls}
+                    mode={mode}
                   />
                   <DateSection form={form} isPending={isPending} errors={errors} />
                 </CardContent>

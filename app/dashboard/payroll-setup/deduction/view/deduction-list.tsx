@@ -3,27 +3,12 @@
 import { useState, useEffect, useMemo } from "react";
 import DataTable from "@/components/common/data-table";
 import { columns, type DeductionRow } from "./columns";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { DeductionFilters } from "./deduction-filters";
 import { Button } from "@/components/ui/button";
-import { Search, Printer, Download, Plus } from "lucide-react";
+import { Printer, Download, Plus } from "lucide-react";
 import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
-import { getDeductions, getDeductionHeads, type Deduction, type DeductionHead } from "@/lib/actions/deduction";
+import { getDeductionHeads, type Deduction, type DeductionHead } from "@/lib/actions/deduction";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -43,24 +28,23 @@ const formatMonthYear = (month: string, year: string) => {
 };
 
 export function DeductionList({ initialData = [] }: DeductionListProps) {
-  const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [deductionHeads, setDeductionHeads] = useState<DeductionHead[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
 
   const [filters, setFilters] = useState({
-    department: "all",
-    subDepartment: "all",
+    departmentId: "all",
+    subDepartmentId: "all",
     employeeId: "all",
     deductionHeadId: "all",
-    month: "",
-    year: "",
     status: "all",
+    month: "all",
+    year: "all",
+    isTaxable: "all",
   });
-
-  const [data, setData] = useState<DeductionRow[]>([]);
 
   // Transform API data to row format
   const transformToRows = (deductions: Deduction[]): DeductionRow[] => {
@@ -71,7 +55,9 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
       employeeName: deduction.employee?.employeeName || "—",
       employeeCode: deduction.employee?.employeeId || "—",
       department: deduction.employee?.department?.name || "—",
+      departmentId: deduction.employee?.department?.id,
       subDepartment: deduction.employee?.subDepartment?.name || "—",
+      subDepartmentId: deduction.employee?.subDepartment?.id,
       deductionHeadId: deduction.deductionHeadId,
       deductionHeadName: deduction.deductionHead?.name || "—",
       amount: Number(deduction.amount),
@@ -86,16 +72,67 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
     }));
   };
 
-  // Initialize data from props
-  useEffect(() => {
-    if (initialData.length > 0) {
-      setData(transformToRows(initialData));
+  // Transform initial data to row format
+  const allData = useMemo(() => transformToRows(initialData), [initialData]);
+
+  // Apply filters to data
+  const data = useMemo(() => {
+    return allData.filter((row) => {
+      // Department filter: if filter is set and row has departmentId, they must match
+      if (filters.departmentId !== "all") {
+        if (!row.departmentId || row.departmentId !== filters.departmentId) {
+          return false;
+        }
+      }
+      
+      // Sub Department filter: only apply if department is selected and matches
+      if (filters.subDepartmentId !== "all") {
+        if (!row.subDepartmentId || row.subDepartmentId !== filters.subDepartmentId) {
+          return false;
+        }
+      }
+      
+      // Employee filter
+      if (filters.employeeId !== "all" && row.employeeId !== filters.employeeId) {
+        return false;
+      }
+      
+      // Deduction Head filter
+      if (filters.deductionHeadId !== "all" && row.deductionHeadId !== filters.deductionHeadId) {
+        return false;
+      }
+      
+      // Status filter
+      if (filters.status !== "all" && row.status?.toLowerCase() !== filters.status.toLowerCase()) {
+        return false;
     }
-  }, [initialData]);
+      
+      // Month filter
+      if (filters.month !== "all" && row.month !== filters.month) {
+        return false;
+      }
+      
+      // Year filter
+      if (filters.year !== "all" && row.year !== filters.year) {
+        return false;
+      }
+      
+      // Taxable status filter
+      if (filters.isTaxable !== "all") {
+        const isTaxable = filters.isTaxable === "true";
+        if (row.isTaxable !== isTaxable) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [allData, filters]);
 
   // Fetch departments and deduction heads on mount
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         const [deptResult, headsResult] = await Promise.all([
           getDepartments(),
@@ -109,6 +146,8 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
@@ -117,7 +156,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
   // Fetch employees on mount
   useEffect(() => {
     const fetchEmployees = async () => {
-      setLoading(true);
       try {
         const result = await getEmployeesForDropdown();
         if (result.status && result.data) {
@@ -128,8 +166,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
       } catch (error) {
         console.error("Error:", error);
         setEmployees([]);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -139,9 +175,10 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
   // Fetch sub-departments when department changes
   useEffect(() => {
     const fetchSubDepartments = async () => {
-      if (filters.department && filters.department !== "all") {
+      if (filters.departmentId && filters.departmentId !== "all") {
+        setLoadingSubDepartments(true);
         try {
-          const result = await getSubDepartmentsByDepartment(filters.department);
+          const result = await getSubDepartmentsByDepartment(filters.departmentId);
           if (result.status && result.data) {
             setSubDepartments(result.data);
           } else {
@@ -150,56 +187,32 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
         } catch (error) {
           console.error("Failed to fetch sub-departments:", error);
           setSubDepartments([]);
+        } finally {
+          setLoadingSubDepartments(false);
         }
       } else {
         setSubDepartments([]);
-        setFilters((prev) => ({ ...prev, subDepartment: "all" }));
       }
     };
 
     fetchSubDepartments();
-  }, [filters.department]);
+  }, [filters.departmentId]);
 
-  const handleSearch = async () => {
-    setIsSearching(true);
-    try {
-      const params: any = {};
-      
-      if (filters.employeeId && filters.employeeId !== "all") {
-        params.employeeId = filters.employeeId;
-      }
-      
-      if (filters.deductionHeadId && filters.deductionHeadId !== "all") {
-        params.deductionHeadId = filters.deductionHeadId;
-      }
-      
-      if (filters.month) {
-        params.month = filters.month.padStart(2, "0");
-      }
-      
-      if (filters.year) {
-        params.year = filters.year;
-      }
-      
-      if (filters.status && filters.status !== "all") {
-        params.status = filters.status;
-      }
+  const handleFiltersChange = (newFilters: typeof filters) => {
+    setFilters(newFilters);
+  };
 
-      const result = await getDeductions(params);
-      if (result.status && result.data) {
-        setData(transformToRows(result.data));
-        toast.success(`Found ${result.data.length} deduction(s)`);
-      } else {
-        setData([]);
-        toast.error(result.message || "No deductions found");
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("Failed to search deductions");
-      setData([]);
-    } finally {
-      setIsSearching(false);
-    }
+  const handleResetFilters = () => {
+    setFilters({
+      departmentId: "all",
+      subDepartmentId: "all",
+      employeeId: "all",
+      deductionHeadId: "all",
+      status: "all",
+      month: "all",
+      year: "all",
+      isTaxable: "all",
+    });
   };
 
   const handlePrint = () => {
@@ -255,20 +268,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
     toast.success("Data exported successfully");
   };
 
-  // Filter employees based on department and sub-department
-  const filteredEmployees = useMemo(() => {
-    let filtered = employees;
-
-    if (filters.department && filters.department !== "all") {
-      filtered = filtered.filter((emp) => emp.departmentId === filters.department);
-    }
-
-    if (filters.subDepartment && filters.subDepartment !== "all") {
-      filtered = filtered.filter((emp) => emp.subDepartmentId === filters.subDepartment);
-    }
-
-    return filtered;
-  }, [employees, filters.department, filters.subDepartment]);
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-x-hidden">
@@ -299,238 +298,19 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
         </div>
       </div>
 
-      <Card className="border-0 shadow-lg">
-        <CardHeader className="pb-4">
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>
-            Use filters to search for deduction records
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* First Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Department</Label>
-              <Select
-                value={filters.department}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    department: value,
-                    subDepartment: "all",
-                    employeeId: "all",
-                  }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Departments</SelectItem>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <DeductionFilters
+        departments={departments}
+        subDepartments={subDepartments}
+        employees={employees}
+        deductionHeads={deductionHeads}
+        loading={loading}
+        loadingSubDepartments={loadingSubDepartments}
+        filters={filters}
+        onFiltersChange={handleFiltersChange}
+        onReset={handleResetFilters}
+      />
 
-            <div className="space-y-2">
-              <Label>Sub Department</Label>
-              <Select
-                value={filters.subDepartment === "all" ? undefined : filters.subDepartment}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({
-                    ...prev,
-                    subDepartment: value,
-                    employeeId: "all",
-                  }))
-                }
-                disabled={filters.department === "all" || !filters.department || subDepartments.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      filters.department === "all" || !filters.department
-                        ? "Select department first"
-                        : subDepartments.length === 0
-                        ? "No sub departments available"
-                        : "Select Sub Department"
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {subDepartments.length === 0 ? (
-                    <SelectItem value="no-subdept" disabled>
-                      {filters.department === "all" || !filters.department
-                        ? "Select department first"
-                        : "No sub departments found"}
-                    </SelectItem>
-                  ) : (
-                    <>
-                      <SelectItem value="all">All Sub Departments</SelectItem>
-                      {subDepartments.map((subDept) => (
-                        <SelectItem key={subDept.id} value={subDept.id}>
-                          {subDept.name}
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Employee</Label>
-              {loading ? (
-                <div className="h-10 bg-muted rounded animate-pulse" />
-              ) : (
-                <Select
-                  value={filters.employeeId === "all" ? undefined : filters.employeeId}
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      employeeId: value,
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Employees</SelectItem>
-                    {filteredEmployees.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{e.employeeName}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {e.employeeId}
-                            {e.departmentName && ` • ${e.departmentName}`}
-                          </span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Deduction Type</Label>
-              <Select
-                value={filters.deductionHeadId === "all" ? undefined : filters.deductionHeadId}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, deductionHeadId: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select deduction type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  {deductionHeads.map((head) => (
-                    <SelectItem key={head.id} value={head.id}>
-                      {head.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Second Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Month</Label>
-              <Select
-                value={filters.month || "all"}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, month: value === "all" ? "" : value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select month" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Months</SelectItem>
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const monthNum = String(i + 1).padStart(2, "0");
-                    const monthNames = [
-                      "January", "February", "March", "April", "May", "June",
-                      "July", "August", "September", "October", "November", "December"
-                    ];
-                    return (
-                      <SelectItem key={monthNum} value={monthNum}>
-                        {monthNames[i]}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Year</Label>
-              <Input
-                type="number"
-                value={filters.year}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, year: e.target.value }))
-                }
-                placeholder="e.g., 2024"
-                min="2020"
-                max="2099"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={filters.status}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, status: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2 flex items-end">
-              <Button
-                onClick={handleSearch}
-                disabled={isSearching}
-                className="w-full"
-              >
-                {isSearching ? (
-                  <>
-                    <Search className="h-4 w-4 mr-2 animate-spin" />
-                    Searching...
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-4 w-4 mr-2" />
-                    Search
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-0">
-          <div className="w-full max-w-full overflow-x-auto">
-            <DataTable
+      <DataTable<DeductionRow>
               columns={columns}
               data={data}
               searchFields={[
@@ -540,9 +320,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
                 { key: "deductionHeadName", label: "Deduction Type" },
               ]}
             />
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

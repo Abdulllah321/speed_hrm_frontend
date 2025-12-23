@@ -299,20 +299,17 @@ export const menuData: MenuItem[] = [
       {
         title: "Advance Salary",
         children: [
-          { title: "Create", href: "/dashboard/payroll-setup/advance-salary/create" },
-          { title: "View", href: "/dashboard/payroll-setup/advance-salary/view" },
+          { title: "Create Request", href: "/dashboard/payroll-setup/advance-salary/create" },
+          { title: "View Requests", href: "/dashboard/payroll-setup/advance-salary/view" },
+          { title: "Request Forwarding", href: "/dashboard/request-forwarding?type=advance-salary" },
         ],
       },
       {
-        title: "Load Requests",
+        title: "Loan Requests",
         children: [
-          { title: "Create", href: "/dashboard/payroll-setup/loan-requests/create" },
-          { title: "View", href: "/dashboard/payroll-setup/loan-requests/view" },
-          { title: "View Requests", href: "/dashboard/payroll-setup/loan-requests/requests" },
-          {
-            title: "Request Forwarding",
-            href: "/dashboard/payroll-setup/request-forwarding?type=attendance",
-          },
+          { title: "Create Request", href: "/dashboard/loan-requests/create" },
+          { title: "View & Reports", href: "/dashboard/loan-requests/view" },
+          { title: "Request Forwarding", href: "/dashboard/request-forwarding?type=loan" },
         ],
       },
       {
@@ -327,8 +324,6 @@ export const menuData: MenuItem[] = [
         title: "Bonus",
         icon: Gift,
         children: [
-          { title: "Add", href: "/dashboard/payroll-setup/bonus/add" },
-          { title: "View", href: "/dashboard/payroll-setup/bonus/view" },
           { title: "Issue Bonus", href: "/dashboard/payroll-setup/bonus/issue" },
           { title: "View Report", href: "/dashboard/payroll-setup/bonus/report" },
           { title: "Bank Report", href: "/dashboard/payroll-setup/bonus/bank-report" },

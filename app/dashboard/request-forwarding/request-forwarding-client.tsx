@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, CheckCircle2 } from "lucide-react";
+import { Settings, CheckCircle2, DollarSign, CreditCard } from "lucide-react";
 import { RequestForwardingForm, type RequestType, type RequestForwardingFormData } from "@/components/request-forwarding/request-forwarding-form";
 import { type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { type Department } from "@/lib/actions/department";
@@ -26,18 +26,24 @@ export function RequestForwardingClient({
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<RequestType>(initialRequestType);
   
-  // Store configs for both tabs (initially only active tab has data)
+  // Store configs for all tabs (initially only active tab has data)
   const [exemptionConfig, setExemptionConfig] = useState<RequestForwardingConfiguration | null>(
     initialRequestType === "exemption" ? initialConfig : null
   );
   const [attendanceConfig, setAttendanceConfig] = useState<RequestForwardingConfiguration | null>(
     initialRequestType === "attendance" ? initialConfig : null
   );
+  const [advanceSalaryConfig, setAdvanceSalaryConfig] = useState<RequestForwardingConfiguration | null>(
+    initialRequestType === "advance-salary" ? initialConfig : null
+  );
+  const [loanConfig, setLoanConfig] = useState<RequestForwardingConfiguration | null>(
+    initialRequestType === "loan" ? initialConfig : null
+  );
 
   // Sync activeTab with URL searchParams and update configs when props change
   useEffect(() => {
     const typeParam = searchParams.get("type");
-    if (typeParam === "exemption" || typeParam === "attendance") {
+    if (typeParam === "exemption" || typeParam === "attendance" || typeParam === "advance-salary" || typeParam === "loan") {
       setActiveTab(typeParam);
     }
     
@@ -46,6 +52,10 @@ export function RequestForwardingClient({
       setExemptionConfig(initialConfig);
     } else if (initialRequestType === "attendance") {
       setAttendanceConfig(initialConfig);
+    } else if (initialRequestType === "advance-salary") {
+      setAdvanceSalaryConfig(initialConfig);
+    } else if (initialRequestType === "loan") {
+      setLoanConfig(initialConfig);
     }
   }, [searchParams, initialRequestType, initialConfig]);
 
@@ -87,6 +97,14 @@ export function RequestForwardingClient({
     getInitialFormData(attendanceConfig)
   );
 
+  const [advanceSalaryFormData, setAdvanceSalaryFormData] = useState<RequestForwardingFormData>(
+    getInitialFormData(advanceSalaryConfig)
+  );
+
+  const [loanFormData, setLoanFormData] = useState<RequestForwardingFormData>(
+    getInitialFormData(loanConfig)
+  );
+
   // Wrapper functions for form data updates - memoized to prevent unnecessary re-renders
   const handleExemptionFormDataChange = useCallback((updates: Partial<RequestForwardingFormData>) => {
     setExemptionFormData((prev) => ({ ...prev, ...updates }));
@@ -96,11 +114,19 @@ export function RequestForwardingClient({
     setAttendanceFormData((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  const handleAdvanceSalaryFormDataChange = useCallback((updates: Partial<RequestForwardingFormData>) => {
+    setAdvanceSalaryFormData((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleLoanFormDataChange = useCallback((updates: Partial<RequestForwardingFormData>) => {
+    setLoanFormData((prev) => ({ ...prev, ...updates }));
+  }, []);
+
   // Tab configuration
   const tabs = [
     {
       value: "exemption" as RequestType,
-      label: "Exception Request Forwarding",
+      label: "Exception",
       icon: Settings,
       title: "Exception Request Forwarding Configuration",
       description: "Set up approval workflows for exception requests",
@@ -110,13 +136,33 @@ export function RequestForwardingClient({
     },
     {
       value: "attendance" as RequestType,
-      label: "Attendance Request Forwarding",
+      label: "Attendance",
       icon: CheckCircle2,
       title: "Attendance Request Forwarding Configuration",
       description: "Set up approval workflows for attendance requests",
       formData: attendanceFormData,
       onFormDataChange: handleAttendanceFormDataChange,
       config: attendanceConfig,
+    },
+    {
+      value: "advance-salary" as RequestType,
+      label: "Advance Salary",
+      icon: DollarSign,
+      title: "Advance Salary Request Forwarding Configuration",
+      description: "Set up approval workflows for advance salary requests",
+      formData: advanceSalaryFormData,
+      onFormDataChange: handleAdvanceSalaryFormDataChange,
+      config: advanceSalaryConfig,
+    },
+    {
+      value: "loan" as RequestType,
+      label: "Loan",
+      icon: CreditCard,
+      title: "Loan Request Forwarding Configuration",
+      description: "Set up approval workflows for loan requests",
+      formData: loanFormData,
+      onFormDataChange: handleLoanFormDataChange,
+      config: loanConfig,
     },
   ];
 
@@ -128,7 +174,7 @@ export function RequestForwardingClient({
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as RequestType)} className="w-full">
-        <TabsList variant="card" className="grid w-full max-w-2xl grid-cols-2">
+        <TabsList variant="card" className="grid w-full max-w-4xl grid-cols-4">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (

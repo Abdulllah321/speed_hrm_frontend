@@ -34,9 +34,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Autocomplete } from "@/components/ui/autocomplete";
-import { DatePicker } from "@/components/ui/date-picker";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Loader2,
   Search,
@@ -47,7 +44,6 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
 import Link from "next/link";
 
 export default function CreateEmployeePage() {
@@ -56,7 +52,7 @@ export default function CreateEmployeePage() {
 
   // Dropdown data
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
+  const [subDepartments] = useState<SubDepartment[]>([]);
   const [employeeGrades, setEmployeeGrades] = useState<EmployeeGrade[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [maritalStatuses, setMaritalStatuses] = useState<MaritalStatus[]>([]);
@@ -65,7 +61,7 @@ export default function CreateEmployeePage() {
   );
   const [branches, setBranches] = useState<Branch[]>([]);
   const [states, setStates] = useState<State[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
+  const [cities] = useState<City[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [workingHoursPolicies, setWorkingHoursPolicies] = useState<
     WorkingHoursPolicy[]
@@ -73,9 +69,7 @@ export default function CreateEmployeePage() {
   const [leavesPolicies, setLeavesPolicies] = useState<LeavesPolicy[]>([]);
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
-  const [employeeList, setEmployeeList] = useState<EmployeeDropdownOption[]>(
-    []
-  );
+  const [, setEmployeeList] = useState<EmployeeDropdownOption[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   // Rejoin state
@@ -85,26 +79,7 @@ export default function CreateEmployeePage() {
   const [canRejoin, setCanRejoin] = useState(false);
   const [rejoinError, setRejoinError] = useState("");
 
-  // Rejoin form data
-  const [rejoinData, setRejoinData] = useState({
-    employeeId: "",
-    attendanceId: "",
-    joiningDate: null as unknown as Date,
-    departmentId: "",
-    subDepartmentId: "",
-    designationId: "",
-    employeeGradeId: "",
-    employmentStatusId: "",
-    employeeSalary: 0,
-    branchId: "",
-    workingHoursPolicyId: "",
-    leavesPolicyId: "",
-    reportingManager: "",
-    remarks: "",
-  });
-  const [submittingRejoin, setSubmittingRejoin] = useState(false);
-
-  // Fetch dropdown data
+  // Fetch dropdown data for both create and rejoin forms
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -190,28 +165,6 @@ export default function CreateEmployeePage() {
       if (result.status && result.canRejoin && result.data) {
         setFoundEmployee(result.data);
         setCanRejoin(true);
-
-        // Pre-fill rejoin form with existing data (except employeeId, attendanceId, joiningDate)
-        const emp = result.data as any;
-        setRejoinData({
-          employeeId: "",
-          attendanceId: "",
-          joiningDate: null as unknown as Date, // Not prefilled
-          departmentId: emp.departmentId || emp.department || "",
-          subDepartmentId: emp.subDepartmentId || emp.subDepartment || "",
-          designationId: emp.designationId || emp.designation || "",
-          employeeGradeId: emp.employeeGradeId || emp.employeeGrade || "",
-          employmentStatusId:
-            emp.employmentStatusId || emp.employmentStatus || "",
-          employeeSalary: emp.employeeSalary || 0,
-          branchId: emp.branchId || emp.branch || "",
-          workingHoursPolicyId:
-            emp.workingHoursPolicyId || emp.workingHoursPolicy || "",
-          leavesPolicyId: emp.leavesPolicyId || emp.leavesPolicy || "",
-          reportingManager: emp.reportingManager || "",
-          remarks: "",
-        });
-
         toast.success(result.message);
       } else {
         setRejoinError(
@@ -229,75 +182,12 @@ export default function CreateEmployeePage() {
     }
   };
 
-  // Handle rejoin submission
-  const handleRejoinSubmit = async () => {
-    if (!foundEmployee) return;
-
-    if (!rejoinData.employeeId.trim()) {
-      toast.error("New Employee ID is required");
-      return;
-    }
-    if (!rejoinData.attendanceId.trim()) {
-      toast.error("New Attendance ID is required");
-      return;
-    }
-    const joiningDateValue = rejoinData.joiningDate;
-    if (
-      !joiningDateValue ||
-      (joiningDateValue instanceof Date && isNaN(joiningDateValue.getTime()))
-    ) {
-      toast.error("Rejoining Date is required");
-      return;
-    }
-
-    setSubmittingRejoin(true);
-
-    try {
-      const result = await rejoinEmployee({
-        cnic: foundEmployee.cnicNumber,
-        ...rejoinData,
-        joiningDate:
-          rejoinData.joiningDate instanceof Date
-            ? rejoinData.joiningDate.toISOString()
-            : new Date(rejoinData.joiningDate).toISOString(),
-      });
-
-      if (result.status) {
-        toast.success(result.message || "Employee rejoined successfully!");
-        router.push("/dashboard/employee/list");
-      } else {
-        toast.error(result.message || "Failed to rejoin employee");
-      }
-    } catch (error) {
-      console.error("Error rejoining employee:", error);
-      toast.error("Failed to rejoin employee");
-    } finally {
-      setSubmittingRejoin(false);
-    }
-  };
-
   // Reset rejoin form
   const handleResetRejoin = () => {
     setRejoinCnic("");
     setFoundEmployee(null);
     setCanRejoin(false);
     setRejoinError("");
-    setRejoinData({
-      employeeId: "",
-      attendanceId: "",
-      joiningDate: null as unknown as Date,
-      departmentId: "",
-      subDepartmentId: "",
-      designationId: "",
-      employeeGradeId: "",
-      employmentStatusId: "",
-      employeeSalary: 0,
-      branchId: "",
-      workingHoursPolicyId: "",
-      leavesPolicyId: "",
-      reportingManager: "",
-      remarks: "",
-    });
   };
 
   return (
@@ -399,7 +289,7 @@ export default function CreateEmployeePage() {
                     </>
                   )}
                 </Button>
-                {foundEmployee && (
+                {foundEmployee && canRejoin && (
                   <Button variant="outline" onClick={handleResetRejoin}>
                     Reset
                   </Button>
@@ -423,315 +313,66 @@ export default function CreateEmployeePage() {
             </CardContent>
           </Card>
 
-          {/* Found Employee Details */}
+          {/* Found Employee Details - Use Full EmployeeForm for Rejoining */}
           {foundEmployee && canRejoin && (
-            <>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      Employee Found
-                    </CardTitle>
-                    <Badge
-                      variant="secondary"
-                      className="bg-amber-100 text-amber-800"
-                    >
-                      Rejoining
-                    </Badge>
-                  </div>
-                  <CardDescription>
-                    Review the employee details and update the required fields
-                    for rejoining
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">
-                        Employee Name
-                      </p>
-                      <p className="font-medium">
-                        {foundEmployee.employeeName}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">
-                        Previous Employee ID
-                      </p>
-                      <p className="font-medium">{foundEmployee.employeeId}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">CNIC</p>
-                      <p className="font-medium">{foundEmployee.cnicNumber}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">
-                        Previous Joining Date
-                      </p>
-                      <p className="font-medium">
-                        {foundEmployee.joiningDate
-                          ? format(
-                              new Date(foundEmployee.joiningDate),
-                              "dd MMM yyyy"
-                            )
-                          : "-"}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Contact</p>
-                      <p className="font-medium">
-                        {foundEmployee.contactNumber}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-muted-foreground">Status</p>
-                      <Badge variant="destructive">
-                        {foundEmployee.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Rejoin Form */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Rejoining Details</CardTitle>
-                  <CardDescription>
-                    Enter the new details for the rejoining employee. Fields
-                    marked with * are required.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>
-                        New Employee ID{" "}
-                        <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        placeholder="Enter new Employee ID"
-                        value={rejoinData.employeeId}
-                        onChange={(e) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            employeeId: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>
-                        New Attendance ID{" "}
-                        <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        placeholder="Enter new Attendance ID"
-                        value={rejoinData.attendanceId}
-                        onChange={(e) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            attendanceId: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>
-                        Rejoining Date{" "}
-                        <span className="text-destructive">*</span>
-                      </Label>
-                      <DatePicker
-                        value={
-                          rejoinData.joiningDate instanceof Date
-                            ? rejoinData.joiningDate.toISOString().split("T")[0]
-                            : rejoinData.joiningDate || ""
-                        }
-                        onChange={(value) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            joiningDate: value
-                              ? new Date(value)
-                              : (null as unknown as Date),
-                          })
-                        }
-                        placeholder="Select rejoining date"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Department</Label>
-                      <Autocomplete
-                        options={departments.map((d) => ({
-                          value: d.id,
-                          label: d.name,
-                        }))}
-                        value={rejoinData.departmentId}
-                        onValueChange={(v) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            departmentId: v || "",
-                            subDepartmentId: "",
-                          })
-                        }
-                        placeholder="Select department"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Designation</Label>
-                      <Autocomplete
-                        options={designations.map((d) => ({
-                          value: d.id,
-                          label: d.name,
-                        }))}
-                        value={rejoinData.designationId}
-                        onValueChange={(v) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            designationId: v || "",
-                          })
-                        }
-                        placeholder="Select designation"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Employee Grade</Label>
-                      <Autocomplete
-                        options={employeeGrades.map((g) => ({
-                          value: g.id,
-                          label: g.grade,
-                        }))}
-                        value={rejoinData.employeeGradeId}
-                        onValueChange={(v) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            employeeGradeId: v || "",
-                          })
-                        }
-                        placeholder="Select grade"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Branch</Label>
-                      <Autocomplete
-                        options={branches.map((b) => ({
-                          value: b.id,
-                          label: b.name,
-                        }))}
-                        value={rejoinData.branchId}
-                        onValueChange={(v) =>
-                          setRejoinData({ ...rejoinData, branchId: v || "" })
-                        }
-                        placeholder="Select branch"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Working Hours Policy</Label>
-                      <Autocomplete
-                        options={workingHoursPolicies.map((p) => ({
-                          value: p.id,
-                          label: p.name,
-                        }))}
-                        value={rejoinData.workingHoursPolicyId}
-                        onValueChange={(v) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            workingHoursPolicyId: v || "",
-                          })
-                        }
-                        placeholder="Select policy"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Leaves Policy</Label>
-                      <Autocomplete
-                        options={leavesPolicies.map((p) => ({
-                          value: p.id,
-                          label: p.name,
-                        }))}
-                        value={rejoinData.leavesPolicyId}
-                        onValueChange={(v) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            leavesPolicyId: v || "",
-                          })
-                        }
-                        placeholder="Select policy"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Salary</Label>
-                      <Input
-                        type="number"
-                        placeholder="Enter salary"
-                        value={rejoinData.employeeSalary || ""}
-                        onChange={(e) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            employeeSalary: parseFloat(e.target.value) || 0,
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Reporting Manager</Label>
-                      <Autocomplete
-                        options={employeeList.map((e) => ({
-                          value: e.id,
-                          label: `${e.employeeName} (${e.employeeId})`,
-                        }))}
-                        value={rejoinData.reportingManager}
-                        onValueChange={(v) =>
-                          setRejoinData({
-                            ...rejoinData,
-                            reportingManager: v || "",
-                          })
-                        }
-                        placeholder="Select reporting manager"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Remarks</Label>
-                    <Textarea
-                      placeholder="Enter any remarks for this rejoining..."
-                      value={rejoinData.remarks}
-                      onChange={(e) =>
-                        setRejoinData({
-                          ...rejoinData,
-                          remarks: e.target.value,
-                        })
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    Employee Found - Rejoining
+                  </CardTitle>
+                  <Badge
+                    variant="secondary"
+                    className="bg-amber-100 text-amber-800"
+                  >
+                    Rejoining
+                  </Badge>
+                </div>
+                <CardDescription>
+                  Review and update all employee details for rejoining. CNIC cannot be changed.
+                  All other fields can be updated including name, contact information, address, etc.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EmployeeForm
+                  mode="rejoin"
+                  initialData={foundEmployee}
+                  departments={departments}
+                  subDepartments={subDepartments}
+                  employeeGrades={employeeGrades}
+                  designations={designations}
+                  maritalStatuses={maritalStatuses}
+                  employeeStatuses={employeeStatuses}
+                  branches={branches}
+                  states={states}
+                  cities={cities}
+                  equipments={equipments}
+                  workingHoursPolicies={workingHoursPolicies}
+                  leavesPolicies={leavesPolicies}
+                  qualifications={qualifications}
+                  institutes={institutes}
+                  loadingData={loadingData}
+                  onQualificationAdded={handleQualificationAdded}
+                  onInstituteAdded={handleInstituteAdded}
+                  cnic={foundEmployee.cnicNumber}
+                  onRejoinSubmit={async (data) => {
+                    try {
+                      const result = await rejoinEmployee(data);
+                      if (result.status) {
+                        toast.success(result.message || "Employee rejoined successfully!");
+                        router.push("/dashboard/employee/list");
+                      } else {
+                        toast.error(result.message || "Failed to rejoin employee");
                       }
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-4 pt-4 border-t">
-                    <Button variant="outline" onClick={handleResetRejoin}>
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleRejoinSubmit}
-                      disabled={submittingRejoin}
-                    >
-                      {submittingRejoin ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <UserCheck className="h-4 w-4 mr-2" />
-                          Rejoin Employee
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
+                    } catch (error) {
+                      console.error("Error rejoining employee:", error);
+                      toast.error("Failed to rejoin employee");
+                    }
+                  }}
+                />
+              </CardContent>
+            </Card>
           )}
 
           {/* Empty State */}
