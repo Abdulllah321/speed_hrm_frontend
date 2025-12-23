@@ -7,15 +7,18 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { EmployeeDropdownOption } from "@/lib/actions/employee";
+import type { Department } from "@/lib/actions/department";
 import { createOvertimeRequest, type OvertimeType } from "@/lib/actions/overtime";
 import { OvertimeForm } from "@/components/overtime/overtime-form";
 
 interface CreateOvertimeClientProps {
   initialEmployees: EmployeeDropdownOption[];
+  initialDepartments: Department[];
 }
 
 export function CreateOvertimeClient({
   initialEmployees,
+  initialDepartments,
 }: CreateOvertimeClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -68,6 +71,7 @@ export function CreateOvertimeClient({
       <OvertimeForm
         mode="create"
         initialEmployees={initialEmployees}
+        initialDepartments={initialDepartments}
         onSubmit={handleSubmit}
         isPending={isPending}
       />

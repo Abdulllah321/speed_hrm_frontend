@@ -1,7 +1,7 @@
 "use client";
 
 import DataTable from "@/components/common/data-table";
-import { columns, type IncrementRow } from "./columns";
+import { columns, type LoanRequestRow } from "./columns";
 import { Button } from "@/components/ui/button";
 import { Printer, Download } from "lucide-react";
 import { toast } from "sonner";
@@ -9,12 +9,12 @@ import { format } from "date-fns";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
-interface IncrementListProps {
-  initialData?: IncrementRow[];
+interface LoanRequestListProps {
+  initialData?: LoanRequestRow[];
 }
 
-export function IncrementList({ initialData = [] }: IncrementListProps) {
-  const data: IncrementRow[] = initialData;
+export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
+  const data: LoanRequestRow[] = initialData;
 
   const handlePrint = () => {
     window.print();
@@ -31,12 +31,17 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
       "EMP ID",
       "Employee Name",
       "Department",
-      "Sub Department",
-      "Designation",
-      "Increment",
-      "Decrement",
-      "Salary",
-      "Date",
+      "Month",
+      "Year",
+      "Loan Amount",
+      "Top Up Amount",
+      "Total Loan",
+      "Loan Adjustment",
+      "Description",
+      "Overall PF",
+      "Paid Loan Amount",
+      "Remaining Amount",
+      "Approval Remarks 1",
       "Status",
     ];
 
@@ -44,13 +49,18 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
       row.sNo,
       row.empId,
       row.empName,
-      row.department,
-      row.subDepartment,
-      row.designation,
-      row.increment || "-",
-      row.decrement || "-",
-      row.salary,
-      row.date,
+      row.department || "-",
+      row.month,
+      row.year,
+      row.loanAmount,
+      row.topUpAmount,
+      row.totalLoan,
+      row.loanAdjustment,
+      row.description,
+      row.overallPF,
+      row.paidLoanAmount,
+      row.remainingAmount,
+      row.approvalRemarks1,
       row.status,
     ]);
 
@@ -62,7 +72,7 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `increment_list_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `loan_request_list_${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     toast.success("Data exported successfully");
   };
@@ -72,17 +82,17 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            View Promotion List
+            View Loan Request List
           </h2>
           <p className="text-muted-foreground">
-            View employee promotion/increment records
+            View employee loan request records
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/dashboard/payroll-setup/increment/create">
+          <Link href="/dashboard/payroll-setup/loan-requests/create">
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Create Promotion
+              Create Loan Request
             </Button>
           </Link>
           <Button variant="secondary" onClick={handlePrint}>

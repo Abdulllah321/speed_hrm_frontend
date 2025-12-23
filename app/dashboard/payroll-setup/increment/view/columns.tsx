@@ -205,6 +205,7 @@ export interface IncrementRow {
   subDepartment: string;
   designation: string;
   increment: string;
+  decrement: string;
   salary: string;
   date: string;
   status: string;
@@ -284,7 +285,23 @@ export const columns: ColumnDef<IncrementRow>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <div className="text-sm font-medium">{row.original.increment}</div>
+      <div className="text-sm font-medium text-green-600">
+        {row.original.increment || "-"}
+      </div>
+    ),
+    size: 120,
+  },
+  {
+    accessorKey: "decrement",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Decrement
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm font-medium text-red-600">
+        {row.original.decrement || "-"}
+      </div>
     ),
     size: 120,
   },
@@ -407,30 +424,10 @@ export const columns: ColumnDef<IncrementRow>[] = [
     size: 100,
   },
   {
-    id: "view",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        View
-      </div>
-    ),
-    cell: ({ row }) => (
-      <Button
-        variant="link"
-        size="sm"
-        asChild
-      >
-        <Link href={`/dashboard/payroll-setup/increment/view/${row.original.id}`}>
-          View
-        </Link>
-      </Button>
-    ),
-    size: 80,
-  },
-  {
     id: "actions",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-        Action
+        Actions
       </div>
     ),
     cell: ({ row }) => {

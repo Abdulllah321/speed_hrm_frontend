@@ -306,12 +306,12 @@ export const menuData: MenuItem[] = [
       {
         title: "Load Requests",
         children: [
-          { title: "Create", href: "/dashboard/load-requests/create" },
-          { title: "View", href: "/dashboard/load-requests/view" },
-          { title: "View Requests", href: "/dashboard/load-requests/requests" },
+          { title: "Create", href: "/dashboard/payroll-setup/loan-requests/create" },
+          { title: "View", href: "/dashboard/payroll-setup/loan-requests/view" },
+          { title: "View Requests", href: "/dashboard/payroll-setup/loan-requests/requests" },
           {
             title: "Request Forwarding",
-            href: "/dashboard/request-forwarding?type=attendance",
+            href: "/dashboard/payroll-setup/request-forwarding?type=attendance",
           },
         ],
       },
@@ -327,12 +327,12 @@ export const menuData: MenuItem[] = [
         title: "Bonus",
         icon: Gift,
         children: [
-          { title: "Add", href: "/dashboard/bonus/add" },
-          { title: "View", href: "/dashboard/bonus/view" },
-          { title: "Issue Bonus", href: "/dashboard/bonus/issue" },
-          { title: "View Report", href: "/dashboard/bonus/report" },
-          { title: "Bank Report", href: "/dashboard/bonus/bank-report" },
-          { title: "Bonus Payslip", href: "/dashboard/bonus/payslip" },
+          { title: "Add", href: "/dashboard/payroll-setup/bonus/add" },
+          { title: "View", href: "/dashboard/payroll-setup/bonus/view" },
+          { title: "Issue Bonus", href: "/dashboard/payroll-setup/bonus/issue" },
+          { title: "View Report", href: "/dashboard/payroll-setup/bonus/report" },
+          { title: "Bank Report", href: "/dashboard/payroll-setup/bonus/bank-report" },
+          { title: "Bonus Payslip", href: "/dashboard/payroll-setup/bonus/payslip" },
         ],
       },
       {
@@ -352,11 +352,11 @@ export const menuData: MenuItem[] = [
         title: "Leave Encashment",
         icon: Coins,
         children: [
-          { title: "Create", href: "/dashboard/leave-encashment/create" },
-          { title: "List", href: "/dashboard/leave-encashment/list" },
+          { title: "Create", href: "/dashboard/payroll-setup/leave-encashment/create" },
+          { title: "List", href: "/dashboard/payroll-setup/leave-encashment/list" },
           {
             title: "Request Forwarding",
-            href: "/dashboard/request-forwarding?type=attendance",
+            href: "/dashboard/payroll-setup/request-forwarding?type=attendance",
           },
         ],
       },
@@ -364,32 +364,32 @@ export const menuData: MenuItem[] = [
         title: "Provident Fund",
         icon: PiggyBank,
         children: [
-          { title: "Create", href: "/dashboard/provident-fund/create" },
-          { title: "List", href: "/dashboard/provident-fund/list" },
+          { title: "Create", href: "/dashboard/payroll-setup/provident-fund/create" },
+          { title: "List", href: "/dashboard/payroll-setup/provident-fund/list" },
         ],
       },
       {
         title: "PF for Employee",
         children: [
-          { title: "Create PF", href: "/dashboard/pf-employee/create" },
-          { title: "View PF", href: "/dashboard/pf-employee/view" },
+          { title: "Create PF", href: "/dashboard/payroll-setup/pf-employee/create" },
+          { title: "View PF", href: "/dashboard/payroll-setup/pf-employee/view" },
           {
             title: "Create Withdraw",
-            href: "/dashboard/pf-employee/withdraw-create",
+            href: "/dashboard/payroll-setup/pf-employee/withdraw-create",
           },
           {
             title: "View Withdraw",
-            href: "/dashboard/pf-employee/withdraw-view",
+            href: "/dashboard/payroll-setup/pf-employee/withdraw-view",
           },
-          { title: "View Report", href: "/dashboard/pf-employee/report" },
-          { title: "View Ledger", href: "/dashboard/pf-employee/ledger" },
+          { title: "View Report", href: "/dashboard/payroll-setup/pf-employee/report" },
+          { title: "View Ledger", href: "/dashboard/payroll-setup/pf-employee/ledger" },
         ],
       },
       {
         title: "Final Settlement",
         children: [
-          { title: "Create", href: "/dashboard/final-settlement/create" },
-          { title: "List", href: "/dashboard/final-settlement/list" },
+          { title: "Create", href: "/dashboard/payroll-setup/final-settlement/create" },
+          { title: "List", href: "/dashboard/payroll-setup/final-settlement/list" },
         ],
       },
       {

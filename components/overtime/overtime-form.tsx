@@ -25,6 +25,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import type { OvertimeType, OvertimeRequest } from "@/lib/actions/overtime";
 import type { EmployeeDropdownOption } from "@/lib/actions/employee";
+import type { Department, SubDepartment } from "@/lib/actions/department";
+import { getSubDepartmentsByDepartment } from "@/lib/actions/department";
 
 interface OvertimeFormData {
   employeeId: string;
@@ -39,6 +41,7 @@ interface OvertimeFormData {
 interface OvertimeFormProps {
   mode: "create" | "edit";
   initialEmployees: EmployeeDropdownOption[];
+  initialDepartments: Department[];
   initialData?: OvertimeRequest;
   onSubmit: (data: OvertimeFormData) => Promise<void>;
   isPending?: boolean;
@@ -47,10 +50,14 @@ interface OvertimeFormProps {
 export function OvertimeForm({
   mode,
   initialEmployees,
+  initialDepartments = [],
   initialData,
   onSubmit,
   isPending = false,
 }: OvertimeFormProps) {
+  const [departments] = useState<Department[]>(initialDepartments || []);
+  const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
+  const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   // Format date for DatePicker (YYYY-MM-DD format)
   const getFormattedDate = (dateString: string | undefined) => {
     if (!dateString) return "";
@@ -64,6 +71,8 @@ export function OvertimeForm({
   };
 
   const [formData, setFormData] = useState({
+    department: "all",
+    subDepartment: "all",
     employeeId: initialData?.employeeId || "",
     overtimeType: (initialData?.overtimeType || "") as OvertimeType | "",
     title: initialData?.title || "",
@@ -73,9 +82,38 @@ export function OvertimeForm({
     holidayOvertimeHours: initialData?.holidayOvertimeHours?.toString() || "0",
   });
 
+  // Fetch sub-departments when department changes
+  useEffect(() => {
+    const fetchSubDepartments = async () => {
+      if (formData.department && formData.department !== "all") {
+        setLoadingSubDepartments(true);
+        try {
+          const result = await getSubDepartmentsByDepartment(formData.department);
+          if (result.status && result.data) {
+            setSubDepartments(result.data);
+          } else {
+            setSubDepartments([]);
+          }
+        } catch (error) {
+          console.error("Failed to fetch sub-departments:", error);
+          setSubDepartments([]);
+        } finally {
+          setLoadingSubDepartments(false);
+        }
+      } else {
+        setSubDepartments([]);
+        setFormData((prev) => ({ ...prev, subDepartment: "all" }));
+      }
+    };
+
+    fetchSubDepartments();
+  }, [formData.department]);
+
   useEffect(() => {
     if (initialData) {
       setFormData({
+        department: "all",
+        subDepartment: "all",
         employeeId: initialData.employeeId || "",
         overtimeType: (initialData.overtimeType || "") as OvertimeType | "",
         title: initialData.title || "",
@@ -86,6 +124,17 @@ export function OvertimeForm({
       });
     }
   }, [initialData]);
+
+  // Filter employees based on department and sub-department
+  const filteredEmployees = initialEmployees.filter((emp) => {
+    if (formData.department && formData.department !== "all") {
+      if (emp.departmentId !== formData.department) return false;
+    }
+    if (formData.subDepartment && formData.subDepartment !== "all") {
+      if (emp.subDepartmentId !== formData.subDepartment) return false;
+    }
+    return true;
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,25 +208,87 @@ export function OvertimeForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* First Row - 2 columns */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Employee */}
+          {/* First Row - 3 columns */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Department */}
             <div className="space-y-2">
-              <Label htmlFor="employee">
-                Employee <span className="text-destructive">*</span>
+              <Label htmlFor="department">
+                Department <span className="text-destructive">*</span>
               </Label>
-              <Autocomplete
-                options={initialEmployees.map((e) => ({
-                  value: e.id,
-                  label: `${e.employeeName} (${e.employeeId})`,
-                }))}
-                value={formData.employeeId}
+              <Select
+                value={formData.department}
                 onValueChange={(value) =>
-                  setFormData((prev) => ({ ...prev, employeeId: value || "" }))
+                  setFormData((prev) => ({
+                    ...prev,
+                    department: value,
+                    subDepartment: "all",
+                  }))
                 }
-                placeholder="Select employee"
                 disabled={isPending}
-              />
+              >
+                <SelectTrigger id="department">
+                  <SelectValue placeholder="Select Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sub Department */}
+            <div className="space-y-2">
+              <Label htmlFor="subDepartment">
+                Sub Department <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.subDepartment === "all" ? undefined : formData.subDepartment}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, subDepartment: value || "all" }))
+                }
+                disabled={
+                  isPending ||
+                  formData.department === "all" ||
+                  !formData.department ||
+                  loadingSubDepartments
+                }
+              >
+                <SelectTrigger id="subDepartment">
+                  <SelectValue
+                    placeholder={
+                      loadingSubDepartments
+                        ? "Loading..."
+                        : formData.department === "all" || !formData.department
+                        ? "Select department first"
+                        : subDepartments.length === 0
+                        ? "No sub departments available"
+                        : "Select Sub Department"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {subDepartments.length === 0 ? (
+                    <SelectItem value="no-subdept" disabled>
+                      {formData.department === "all" || !formData.department
+                        ? "Select department first"
+                        : "No sub departments found"}
+                    </SelectItem>
+                  ) : (
+                    <>
+                      <SelectItem value="all">All Sub Departments</SelectItem>
+                      {subDepartments.map((subDept) => (
+                        <SelectItem key={subDept.id} value={subDept.id}>
+                          {subDept.name}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Overtime Type */}
@@ -203,7 +314,26 @@ export function OvertimeForm({
             </div>
           </div>
 
-          {/* Second Row - Description full width */}
+          {/* Second Row - Employee */}
+          <div className="space-y-2">
+            <Label htmlFor="employee">
+              Employee <span className="text-destructive">*</span>
+            </Label>
+            <Autocomplete
+              options={filteredEmployees.map((e) => ({
+                value: e.id,
+                label: `${e.employeeName} (${e.employeeId})`,
+              }))}
+              value={formData.employeeId}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, employeeId: value || "" }))
+              }
+              placeholder="Select employee"
+              disabled={isPending}
+            />
+          </div>
+
+          {/* Third Row - Description full width */}
           <div className="space-y-2">
             <Label htmlFor="description">
               Description <span className="text-destructive">*</span>
@@ -221,7 +351,7 @@ export function OvertimeForm({
             />
           </div>
 
-          {/* Third Row - 2 columns */}
+          {/* Fourth Row - 2 columns */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Title */}
             <div className="space-y-2">

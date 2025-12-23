@@ -14,14 +14,24 @@ export default async function ViewIncrementPage() {
     
     if (result.status && result.data) {
       initialData = result.data.map((item, index) => {
-        // Format increment value
+        // Format increment and decrement values separately
         const incrementValue = item.incrementMethod === "Amount"
           ? item.incrementAmount || 0
           : item.incrementPercentage || 0;
         
-        const incrementDisplay = item.incrementMethod === "Amount"
-          ? `${item.incrementType === "Decrement" ? "-" : "+"}${Number(incrementValue).toLocaleString()}`
-          : `${item.incrementType === "Decrement" ? "-" : "+"}${Number(incrementValue).toFixed(2)}%`;
+        // Increment display (only show if type is Increment)
+        const incrementDisplay = item.incrementType === "Increment"
+          ? item.incrementMethod === "Amount"
+            ? `${Number(incrementValue).toLocaleString()}`
+            : `${Number(incrementValue).toFixed(2)}%`
+          : "";
+        
+        // Decrement display (only show if type is Decrement)
+        const decrementDisplay = item.incrementType === "Decrement"
+          ? item.incrementMethod === "Amount"
+            ? `${Number(incrementValue).toLocaleString()}`
+            : `${Number(incrementValue).toFixed(2)}%`
+          : "";
         
         // Format date
         let formattedDate = "N/A";
@@ -48,6 +58,7 @@ export default async function ViewIncrementPage() {
           subDepartment: subDepartment,
           designation: item.designationName || "N/A",
           increment: incrementDisplay,
+          decrement: decrementDisplay,
           salary: Number(item.salary).toLocaleString(),
           date: formattedDate,
           status: item.status || "Active",

@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import type { EmployeeDropdownOption } from "@/lib/actions/employee";
+import type { Department } from "@/lib/actions/department";
 import {
   updateOvertimeRequest,
   type OvertimeType,
@@ -17,11 +18,13 @@ import { OvertimeForm } from "@/components/overtime/overtime-form";
 interface EditOvertimeClientProps {
   initialData: OvertimeRequest;
   initialEmployees: EmployeeDropdownOption[];
+  initialDepartments: Department[];
 }
 
 export function EditOvertimeClient({
   initialData,
   initialEmployees,
+  initialDepartments,
 }: EditOvertimeClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -75,6 +78,7 @@ export function EditOvertimeClient({
         mode="edit"
         initialData={initialData}
         initialEmployees={initialEmployees}
+        initialDepartments={initialDepartments}
         onSubmit={handleSubmit}
         isPending={isPending}
       />
