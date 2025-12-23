@@ -317,7 +317,6 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/dashboard/payroll-setup/increment/create" },
           { title: "View", href: "/dashboard/payroll-setup/increment/view" },
-          { title: "Letters Email", href: "/dashboard/payroll-setup/increment/letters" },
         ],
       },
       {
@@ -339,7 +338,7 @@ export const menuData: MenuItem[] = [
             
           {
             title: "Request Forwarding",
-            href: "/dashboard/request-forwarding?type=attendance",
+            href: "/dashboard/request-forwarding?type=overtime",
           },
         ],
       },
@@ -351,7 +350,7 @@ export const menuData: MenuItem[] = [
           { title: "List", href: "/dashboard/payroll-setup/leave-encashment/list" },
           {
             title: "Request Forwarding",
-            href: "/dashboard/payroll-setup/request-forwarding?type=attendance",
+            href: "/dashboard/request-forwarding?type=leave-encashment",
           },
         ],
       },

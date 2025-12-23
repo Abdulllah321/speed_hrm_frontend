@@ -3,14 +3,14 @@ import { getDepartments } from "@/lib/actions/department";
 import { getRequestForwardingByType, type RequestForwardingConfiguration } from "@/lib/actions/request-forwarding";
 import { RequestForwardingClient } from "./request-forwarding-client";
 
-type RequestType = "exemption" | "attendance" | "advance-salary" | "loan";
+type RequestType = "exemption" | "attendance" | "advance-salary" | "loan" | "overtime" | "leave-encashment";
 
 interface PageProps {
   searchParams: Promise<{ type?: string }>;
 }
 
 function validateRequestType(type: string | undefined): RequestType {
-  if (type === "exemption" || type === "attendance" || type === "advance-salary" || type === "loan") {
+  if (type === "exemption" || type === "attendance" || type === "advance-salary" || type === "loan" || type === "overtime" || type === "leave-encashment") {
     return type;
   }
   return "exemption"; // Default to exemption if invalid

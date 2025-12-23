@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, CheckCircle2, DollarSign, CreditCard } from "lucide-react";
+import { Settings, CheckCircle2, DollarSign, CreditCard, Clock, Wallet } from "lucide-react";
 import { RequestForwardingForm, type RequestType, type RequestForwardingFormData } from "@/components/request-forwarding/request-forwarding-form";
 import { type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { type Department } from "@/lib/actions/department";
@@ -39,11 +39,17 @@ export function RequestForwardingClient({
   const [loanConfig, setLoanConfig] = useState<RequestForwardingConfiguration | null>(
     initialRequestType === "loan" ? initialConfig : null
   );
+  const [overtimeConfig, setOvertimeConfig] = useState<RequestForwardingConfiguration | null>(
+    initialRequestType === "overtime" ? initialConfig : null
+  );
+  const [leaveEncashmentConfig, setLeaveEncashmentConfig] = useState<RequestForwardingConfiguration | null>(
+    initialRequestType === "leave-encashment" ? initialConfig : null
+  );
 
   // Sync activeTab with URL searchParams and update configs when props change
   useEffect(() => {
     const typeParam = searchParams.get("type");
-    if (typeParam === "exemption" || typeParam === "attendance" || typeParam === "advance-salary" || typeParam === "loan") {
+    if (typeParam === "exemption" || typeParam === "attendance" || typeParam === "advance-salary" || typeParam === "loan" || typeParam === "overtime" || typeParam === "leave-encashment") {
       setActiveTab(typeParam);
     }
     
@@ -56,6 +62,10 @@ export function RequestForwardingClient({
       setAdvanceSalaryConfig(initialConfig);
     } else if (initialRequestType === "loan") {
       setLoanConfig(initialConfig);
+    } else if (initialRequestType === "overtime") {
+      setOvertimeConfig(initialConfig);
+    } else if (initialRequestType === "leave-encashment") {
+      setLeaveEncashmentConfig(initialConfig);
     }
   }, [searchParams, initialRequestType, initialConfig]);
 
@@ -105,6 +115,14 @@ export function RequestForwardingClient({
     getInitialFormData(loanConfig)
   );
 
+  const [overtimeFormData, setOvertimeFormData] = useState<RequestForwardingFormData>(
+    getInitialFormData(overtimeConfig)
+  );
+
+  const [leaveEncashmentFormData, setLeaveEncashmentFormData] = useState<RequestForwardingFormData>(
+    getInitialFormData(leaveEncashmentConfig)
+  );
+
   // Wrapper functions for form data updates - memoized to prevent unnecessary re-renders
   const handleExemptionFormDataChange = useCallback((updates: Partial<RequestForwardingFormData>) => {
     setExemptionFormData((prev) => ({ ...prev, ...updates }));
@@ -120,6 +138,14 @@ export function RequestForwardingClient({
 
   const handleLoanFormDataChange = useCallback((updates: Partial<RequestForwardingFormData>) => {
     setLoanFormData((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleOvertimeFormDataChange = useCallback((updates: Partial<RequestForwardingFormData>) => {
+    setOvertimeFormData((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleLeaveEncashmentFormDataChange = useCallback((updates: Partial<RequestForwardingFormData>) => {
+    setLeaveEncashmentFormData((prev) => ({ ...prev, ...updates }));
   }, []);
 
   // Tab configuration
@@ -164,6 +190,26 @@ export function RequestForwardingClient({
       onFormDataChange: handleLoanFormDataChange,
       config: loanConfig,
     },
+    {
+      value: "overtime" as RequestType,
+      label: "Overtime",
+      icon: Clock,
+      title: "Overtime Request Forwarding Configuration",
+      description: "Set up approval workflows for overtime requests",
+      formData: overtimeFormData,
+      onFormDataChange: handleOvertimeFormDataChange,
+      config: overtimeConfig,
+    },
+    {
+      value: "leave-encashment" as RequestType,
+      label: "Leave Encashment",
+      icon: Wallet,
+      title: "Leave Encashment Request Forwarding Configuration",
+      description: "Set up approval workflows for leave encashment requests",
+      formData: leaveEncashmentFormData,
+      onFormDataChange: handleLeaveEncashmentFormDataChange,
+      config: leaveEncashmentConfig,
+    },
   ];
 
   return (
@@ -174,7 +220,7 @@ export function RequestForwardingClient({
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => handleTabChange(v as RequestType)} className="w-full">
-        <TabsList variant="card" className="grid w-full max-w-4xl grid-cols-4">
+        <TabsList variant="card" className="grid w-full max-w-6xl grid-cols-6">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (

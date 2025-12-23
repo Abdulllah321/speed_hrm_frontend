@@ -1,8 +1,21 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
-import { ColumnDef } from "@tanstack/react-table";
+import { useState, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { ColumnDef, Row } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,9 +24,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit2, Trash2, MoreHorizontal } from "lucide-react";
-import { format } from "date-fns";
-import type { Deduction } from "@/lib/actions/deduction";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Edit2, Trash2, MoreHorizontal, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { updateDeduction, deleteDeduction, getDeductionHeads, type DeductionHead } from "@/lib/actions/deduction";
 
 export interface DeductionRow {
   id: string;
@@ -214,7 +245,108 @@ export const columns: ColumnDef<DeductionRow>[] = [
         Actions
       </div>
     ),
-    cell: ({ row }) => (
+    cell: ({ row }) => <RowActions row={row} />,
+    size: 80,
+    enableHiding: false,
+  },
+];
+
+function RowActions({ row }: { row: Row<DeductionRow> }) {
+  const item = row.original;
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [editDialog, setEditDialog] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [deductionHeads, setDeductionHeads] = useState<DeductionHead[]>([]);
+  const [loadingHeads, setLoadingHeads] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    deductionHeadId: item.deductionHeadId || "",
+    amount: item.amount?.toString() || "",
+    isTaxable: item.isTaxable ? "Yes" : "No",
+    taxPercentage: item.taxPercentage?.toString() || "",
+    notes: item.notes || "",
+    status: item.status || "active",
+  });
+
+  // Fetch deduction heads when edit dialog opens
+  useEffect(() => {
+    if (editDialog && deductionHeads.length === 0) {
+      setLoadingHeads(true);
+      getDeductionHeads()
+        .then((result) => {
+          if (result.status && result.data) {
+            setDeductionHeads(result.data.filter((h) => h.status === "active"));
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to fetch deduction heads:", error);
+        })
+        .finally(() => {
+          setLoadingHeads(false);
+        });
+    }
+  }, [editDialog, deductionHeads.length]);
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.deductionHeadId || !formData.amount) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    if (formData.isTaxable === "Yes" && formData.taxPercentage) {
+      const taxPercent = parseFloat(formData.taxPercentage);
+      if (isNaN(taxPercent) || taxPercent < 0 || taxPercent > 100) {
+        toast.error("Tax percentage must be between 0 and 100");
+        return;
+      }
+    }
+
+    startTransition(async () => {
+      const result = await updateDeduction(item.id, {
+        deductionHeadId: formData.deductionHeadId,
+        amount: amount,
+        isTaxable: formData.isTaxable === "Yes",
+        taxPercentage: formData.isTaxable === "Yes" && formData.taxPercentage 
+          ? parseFloat(formData.taxPercentage) 
+          : null,
+        notes: formData.notes || undefined,
+        status: formData.status,
+      });
+
+      if (result.status) {
+        toast.success(result.message || "Deduction updated successfully");
+        setEditDialog(false);
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to update deduction");
+      }
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    startTransition(async () => {
+      const result = await deleteDeduction(item.id);
+      if (result.status) {
+        toast.success(result.message || "Deduction deleted successfully");
+        setDeleteDialog(false);
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to delete deduction");
+      }
+    });
+  };
+
+  return (
+    <>
       <div className="flex items-center justify-end gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -228,19 +360,23 @@ export const columns: ColumnDef<DeductionRow>[] = [
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => {
-                // Handle edit action
-                console.log("Edit", row.original.id);
+                setFormData({
+                  deductionHeadId: item.deductionHeadId || "",
+                  amount: item.amount?.toString() || "",
+                  isTaxable: item.isTaxable ? "Yes" : "No",
+                  taxPercentage: item.taxPercentage?.toString() || "",
+                  notes: item.notes || "",
+                  status: item.status || "active",
+                });
+                setEditDialog(true);
               }}
             >
               <Edit2 className="h-4 w-4 mr-2" />
               Edit
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => {
-                // Handle delete action
-                console.log("Delete", row.original.id);
-              }}
-              className="text-destructive"
+              onClick={() => setDeleteDialog(true)}
+              className="text-destructive focus:text-destructive"
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
@@ -248,8 +384,191 @@ export const columns: ColumnDef<DeductionRow>[] = [
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    ),
-    size: 80,
-    enableHiding: false,
-  },
-];
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialog} onOpenChange={setEditDialog}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Deduction</DialogTitle>
+            <DialogDescription>
+              Update the deduction details for {item.employeeName}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit}>
+            <div className="space-y-4 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Deduction Head */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-deduction-head">
+                    Deduction Type <span className="text-destructive">*</span>
+                  </Label>
+                  {loadingHeads ? (
+                    <div className="h-10 bg-muted rounded-md animate-pulse" />
+                  ) : (
+                    <Select
+                      value={formData.deductionHeadId}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, deductionHeadId: value })
+                      }
+                      disabled={isPending}
+                    >
+                      <SelectTrigger id="edit-deduction-head">
+                        <SelectValue placeholder="Select deduction type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {deductionHeads.map((head) => (
+                          <SelectItem key={head.id} value={head.id}>
+                            {head.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                {/* Amount */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-amount">
+                    Amount <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="edit-amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.amount}
+                    onChange={(e) =>
+                      setFormData({ ...formData, amount: e.target.value })
+                    }
+                    placeholder="0.00"
+                    disabled={isPending}
+                    required
+                  />
+                </div>
+
+                {/* Is Taxable */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-is-taxable">
+                    Is Taxable <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.isTaxable}
+                    onValueChange={(value) =>
+                      setFormData({
+                        ...formData,
+                        isTaxable: value,
+                        taxPercentage: value === "No" ? "" : formData.taxPercentage,
+                      })
+                    }
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="edit-is-taxable">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Yes">Yes</SelectItem>
+                      <SelectItem value="No">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Tax Percentage */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-tax-percentage">Tax Percentage</Label>
+                  <Input
+                    id="edit-tax-percentage"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={formData.taxPercentage}
+                    onChange={(e) =>
+                      setFormData({ ...formData, taxPercentage: e.target.value })
+                    }
+                    placeholder="0.00"
+                    disabled={isPending || formData.isTaxable === "No"}
+                  />
+                </div>
+
+                {/* Status */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-status">Status</Label>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, status: value })
+                    }
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="edit-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="edit-notes">Notes</Label>
+                <Textarea
+                  id="edit-notes"
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  placeholder="Enter notes"
+                  disabled={isPending}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialog(false)}
+                disabled={isPending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Deduction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the deduction for{" "}
+              <strong>{item.employeeName}</strong> ({item.deductionHeadName})? This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

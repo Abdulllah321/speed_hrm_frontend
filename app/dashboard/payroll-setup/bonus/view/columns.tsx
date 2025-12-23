@@ -42,11 +42,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Edit2, Trash2, MoreHorizontal, Loader2 } from "lucide-react";
+import { Edit2, Trash2, MoreHorizontal, Loader2, Wallet, DollarSign, CalendarDays, Minus } from "lucide-react";
 import { toast } from "sonner";
-import { updateAllowance, deleteAllowance, getAllowanceHeads, type AllowanceHead } from "@/lib/actions/allowance";
+import { updateBonus, deleteBonus } from "@/lib/actions/bonus";
+import { getBonusTypes, type BonusType } from "@/lib/actions/bonus-type";
 
-export interface AllowanceRow {
+export interface BonusRow {
   id: string;
   sNo: number;
   employeeId: string;
@@ -56,14 +57,16 @@ export interface AllowanceRow {
   departmentId?: string;
   subDepartment: string;
   subDepartmentId?: string;
-  allowanceHeadId: string;
-  allowanceHeadName: string;
+  bonusTypeId: string;
+  bonusTypeName: string;
   amount: number;
-  month: string;
-  year: string;
-  monthYear: string;
-  isTaxable: boolean;
-  taxPercentage: number | null;
+  percentage?: number | null;
+  calculationType: string;
+  bonusMonth: string;
+  bonusYear: string;
+  bonusMonthYear: string;
+  paymentMethod: string;
+  adjustmentMethod: string;
   notes: string | null;
   status: string;
   createdAt: string;
@@ -79,7 +82,7 @@ const formatMonthYear = (month: string, year: string) => {
   return `${monthNames[monthIndex] || month} ${year}`;
 };
 
-export const columns: ColumnDef<AllowanceRow>[] = [
+export const columns: ColumnDef<BonusRow>[] = [
   {
     accessorKey: "sNo",
     header: () => (
@@ -136,15 +139,15 @@ export const columns: ColumnDef<AllowanceRow>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: "allowanceHeadName",
+    accessorKey: "bonusTypeName",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-        Allowance Type
+        Bonus Type
       </div>
     ),
     cell: ({ row }) => (
       <Badge variant="outline" className="font-medium">
-        {row.original.allowanceHeadName}
+        {row.original.bonusTypeName}
       </Badge>
     ),
     size: 150,
@@ -171,37 +174,64 @@ export const columns: ColumnDef<AllowanceRow>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: "taxInfo",
+    accessorKey: "percentage",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-        Tax Info
+        Percentage
       </div>
     ),
     cell: ({ row }) => (
-      <div className="space-y-0.5">
-        <Badge variant={row.original.isTaxable ? "default" : "secondary"} className="text-xs">
-          {row.original.isTaxable ? "Taxable" : "Non-Taxable"}
-        </Badge>
-        {row.original.isTaxable && row.original.taxPercentage && (
-          <div className="text-xs text-muted-foreground">
-            {Number(row.original.taxPercentage).toFixed(2)}%
-          </div>
-        )}
+      <div className="text-sm">
+        {row.original.percentage !== null && row.original.percentage !== undefined
+          ? `${Number(row.original.percentage).toFixed(2)}%`
+          : "—"}
       </div>
     ),
-    size: 120,
+    size: 100,
     enableSorting: true,
-    sortingFn: (rowA, rowB) => {
-      const aTaxable = rowA.original.isTaxable ? 1 : 0;
-      const bTaxable = rowB.original.isTaxable ? 1 : 0;
-      if (aTaxable !== bTaxable) return aTaxable - bTaxable;
-      const aTax = rowA.original.taxPercentage || 0;
-      const bTax = rowB.original.taxPercentage || 0;
-      return Number(aTax) - Number(bTax);
-    },
   },
   {
-    accessorKey: "monthYear",
+    accessorKey: "paymentMethod",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+        Payment Method
+      </div>
+    ),
+    cell: ({ row }) => {
+      const method = row.original.paymentMethod;
+      return (
+        <Badge variant={method === "with_salary" ? "default" : "secondary"} className="text-xs">
+          {method === "with_salary" ? "With Salary" : "Separately"}
+        </Badge>
+      );
+    },
+    size: 130,
+    enableSorting: true,
+  },
+  {
+    accessorKey: "adjustmentMethod",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+        Adjustment Method
+      </div>
+    ),
+    cell: ({ row }) => {
+      const method = row.original.adjustmentMethod;
+      return (
+        <Badge variant="outline" className="text-xs">
+          {method === "distributed-remaining-months"
+            ? "Distributed"
+            : method === "deduct-current-month"
+            ? "Deduct Current"
+            : method}
+        </Badge>
+      );
+    },
+    size: 140,
+    enableSorting: true,
+  },
+  {
+    accessorKey: "bonusMonthYear",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
         Month-Year
@@ -209,7 +239,7 @@ export const columns: ColumnDef<AllowanceRow>[] = [
     ),
     cell: ({ row }) => (
       <div className="text-sm font-medium">
-        {formatMonthYear(row.original.month, row.original.year)}
+        {formatMonthYear(row.original.bonusMonth, row.original.bonusYear)}
       </div>
     ),
     size: 120,
@@ -266,47 +296,48 @@ export const columns: ColumnDef<AllowanceRow>[] = [
   },
 ];
 
-function RowActions({ row }: { row: Row<AllowanceRow> }) {
+function RowActions({ row }: { row: Row<BonusRow> }) {
   const item = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
-  const [allowanceHeads, setAllowanceHeads] = useState<AllowanceHead[]>([]);
-  const [loadingHeads, setLoadingHeads] = useState(false);
+  const [bonusTypes, setBonusTypes] = useState<BonusType[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(false);
   
   const [formData, setFormData] = useState({
-    allowanceHeadId: item.allowanceHeadId || "",
+    bonusTypeId: item.bonusTypeId || "",
     amount: item.amount?.toString() || "",
-    isTaxable: item.isTaxable ? "Yes" : "No",
-    taxPercentage: item.taxPercentage?.toString() || "",
+    percentage: item.percentage?.toString() || "",
+    paymentMethod: item.paymentMethod || "with_salary",
+    adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
     notes: item.notes || "",
     status: item.status || "active",
   });
 
-  // Fetch allowance heads when edit dialog opens
+  // Fetch bonus types when edit dialog opens
   useEffect(() => {
-    if (editDialog && allowanceHeads.length === 0) {
-      setLoadingHeads(true);
-      getAllowanceHeads()
+    if (editDialog && bonusTypes.length === 0) {
+      setLoadingTypes(true);
+      getBonusTypes()
         .then((result) => {
           if (result.status && result.data) {
-            setAllowanceHeads(result.data.filter((h) => h.status === "active"));
+            setBonusTypes(result.data.filter((bt) => bt.status === "active"));
           }
         })
         .catch((error) => {
-          console.error("Failed to fetch allowance heads:", error);
+          console.error("Failed to fetch bonus types:", error);
         })
         .finally(() => {
-          setLoadingHeads(false);
+          setLoadingTypes(false);
         });
     }
-  }, [editDialog, allowanceHeads.length]);
+  }, [editDialog, bonusTypes.length]);
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.allowanceHeadId || !formData.amount) {
+    if (!formData.bonusTypeId || !formData.amount) {
       toast.error("Please fill all required fields");
       return;
     }
@@ -317,45 +348,44 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
       return;
     }
 
-    if (formData.isTaxable === "Yes" && formData.taxPercentage) {
-      const taxPercent = parseFloat(formData.taxPercentage);
-      if (isNaN(taxPercent) || taxPercent < 0 || taxPercent > 100) {
-        toast.error("Tax percentage must be between 0 and 100");
+    if (formData.percentage) {
+      const percentage = parseFloat(formData.percentage);
+      if (isNaN(percentage) || percentage < 0 || percentage > 100) {
+        toast.error("Percentage must be between 0 and 100");
         return;
       }
     }
 
     startTransition(async () => {
-      const result = await updateAllowance(item.id, {
-        allowanceHeadId: formData.allowanceHeadId,
+      const result = await updateBonus(item.id, {
+        bonusTypeId: formData.bonusTypeId,
         amount: amount,
-        isTaxable: formData.isTaxable === "Yes",
-        taxPercentage: formData.isTaxable === "Yes" && formData.taxPercentage 
-          ? parseFloat(formData.taxPercentage) 
-          : null,
+        percentage: formData.percentage ? parseFloat(formData.percentage) : undefined,
+        paymentMethod: formData.paymentMethod,
+        adjustmentMethod: formData.adjustmentMethod,
         notes: formData.notes || undefined,
         status: formData.status,
       });
 
       if (result.status) {
-        toast.success(result.message || "Allowance updated successfully");
+        toast.success(result.message || "Bonus updated successfully");
         setEditDialog(false);
         router.refresh();
       } else {
-        toast.error(result.message || "Failed to update allowance");
+        toast.error(result.message || "Failed to update bonus");
       }
     });
   };
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
-      const result = await deleteAllowance(item.id);
+      const result = await deleteBonus(item.id);
       if (result.status) {
-        toast.success(result.message || "Allowance deleted successfully");
+        toast.success(result.message || "Bonus deleted successfully");
         setDeleteDialog(false);
         router.refresh();
       } else {
-        toast.error(result.message || "Failed to delete allowance");
+        toast.error(result.message || "Failed to delete bonus");
       }
     });
   };
@@ -376,10 +406,11 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
             <DropdownMenuItem
               onClick={() => {
                 setFormData({
-                  allowanceHeadId: item.allowanceHeadId || "",
+                  bonusTypeId: item.bonusTypeId || "",
                   amount: item.amount?.toString() || "",
-                  isTaxable: item.isTaxable ? "Yes" : "No",
-                  taxPercentage: item.taxPercentage?.toString() || "",
+                  percentage: item.percentage?.toString() || "",
+                  paymentMethod: item.paymentMethod || "with_salary",
+                  adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
                   notes: item.notes || "",
                   status: item.status || "active",
                 });
@@ -404,36 +435,36 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Allowance</DialogTitle>
+            <DialogTitle>Edit Bonus</DialogTitle>
             <DialogDescription>
-              Update the allowance details for {item.employeeName}
+              Update the bonus details for {item.employeeName}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <div className="space-y-4 p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Allowance Head */}
+                {/* Bonus Type */}
                 <div className="space-y-2">
-                  <Label htmlFor="edit-allowance-head">
-                    Allowance Type <span className="text-destructive">*</span>
+                  <Label htmlFor="edit-bonus-type">
+                    Bonus Type <span className="text-destructive">*</span>
                   </Label>
-                  {loadingHeads ? (
+                  {loadingTypes ? (
                     <div className="h-10 bg-muted rounded-md animate-pulse" />
                   ) : (
                     <Select
-                      value={formData.allowanceHeadId}
+                      value={formData.bonusTypeId}
                       onValueChange={(value) =>
-                        setFormData({ ...formData, allowanceHeadId: value })
+                        setFormData({ ...formData, bonusTypeId: value })
                       }
                       disabled={isPending}
                     >
-                      <SelectTrigger id="edit-allowance-head">
-                        <SelectValue placeholder="Select allowance type" />
+                      <SelectTrigger id="edit-bonus-type">
+                        <SelectValue placeholder="Select bonus type" />
                       </SelectTrigger>
                       <SelectContent>
-                        {allowanceHeads.map((head) => (
-                          <SelectItem key={head.id} value={head.id}>
-                            {head.name}
+                        {bonusTypes.map((type) => (
+                          <SelectItem key={type.id} value={type.id}>
+                            {type.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -461,48 +492,70 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
                   />
                 </div>
 
-                {/* Is Taxable */}
+                {/* Percentage */}
                 <div className="space-y-2">
-                  <Label htmlFor="edit-is-taxable">
-                    Is Taxable <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.isTaxable}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        isTaxable: value,
-                        taxPercentage: value === "No" ? "" : formData.taxPercentage,
-                      })
-                    }
-                    disabled={isPending}
-                  >
-                    <SelectTrigger id="edit-is-taxable">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Yes">Yes</SelectItem>
-                      <SelectItem value="No">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Tax Percentage */}
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tax-percentage">Tax Percentage</Label>
+                  <Label htmlFor="edit-percentage">Percentage</Label>
                   <Input
-                    id="edit-tax-percentage"
+                    id="edit-percentage"
                     type="number"
                     step="0.01"
                     min="0"
                     max="100"
-                    value={formData.taxPercentage}
+                    value={formData.percentage}
                     onChange={(e) =>
-                      setFormData({ ...formData, taxPercentage: e.target.value })
+                      setFormData({ ...formData, percentage: e.target.value })
                     }
                     placeholder="0.00"
-                    disabled={isPending || formData.isTaxable === "No"}
+                    disabled={isPending}
                   />
+                </div>
+
+                {/* Payment Method */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-payment-method">
+                    Payment Method <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.paymentMethod}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, paymentMethod: value })
+                    }
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="edit-payment-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="with_salary">Pay with Salary</SelectItem>
+                      <SelectItem value="separately">Separately</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Adjustment Method */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-adjustment-method">
+                    Adjustment Method <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.adjustmentMethod}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, adjustmentMethod: value })
+                    }
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="edit-adjustment-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="distributed-remaining-months">
+                        Distributed in Remaining Months
+                      </SelectItem>
+                      <SelectItem value="deduct-current-month">
+                        Deduct from Current Month
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Status */}
@@ -564,10 +617,10 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Allowance</AlertDialogTitle>
+            <AlertDialogTitle>Delete Bonus</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the allowance for{" "}
-              <strong>{item.employeeName}</strong> ({item.allowanceHeadName})? This
+              Are you sure you want to delete the bonus for{" "}
+              <strong>{item.employeeName}</strong> ({item.bonusTypeName})? This
               action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -587,3 +640,4 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
     </>
   );
 }
+

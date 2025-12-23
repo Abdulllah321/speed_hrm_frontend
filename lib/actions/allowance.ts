@@ -231,6 +231,9 @@ export async function updateAllowance(id: string, data: {
   month?: string;
   year?: string;
   notes?: string;
+  isTaxable?: boolean;
+  taxPercentage?: number | null;
+  status?: string;
 }): Promise<{ status: boolean; data?: Allowance; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/allowances/${id}`, {

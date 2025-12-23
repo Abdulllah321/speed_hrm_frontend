@@ -199,6 +199,9 @@ export async function updateDeduction(id: string, data: {
   month?: string;
   year?: string;
   notes?: string;
+  isTaxable?: boolean;
+  taxPercentage?: number | null;
+  status?: string;
 }): Promise<{ status: boolean; data?: Deduction; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/deductions/${id}`, {

@@ -18,7 +18,7 @@ import {
   type CreateApprovalLevel 
 } from "@/lib/actions/request-forwarding";
 
-export type RequestType = "exemption" | "attendance" | "advance-salary" | "loan";
+export type RequestType = "exemption" | "attendance" | "advance-salary" | "loan" | "overtime" | "leave-encashment";
 
 export type ApprovalFlow = "auto-approved" | "multi-level";
 
@@ -696,7 +696,7 @@ export function RequestForwardingForm({
                   <div className="space-y-1">
                     <p className="font-medium">Auto Approval Enabled</p>
                     <p className="text-sm text-muted-foreground">
-                      All {requestType === "exemption" ? "exception" : requestType === "attendance" ? "attendance" : requestType === "advance-salary" ? "advance salary" : "loan"} requests will be automatically
+                      All {requestType === "exemption" ? "exception" : requestType === "attendance" ? "attendance" : requestType === "advance-salary" ? "advance salary" : requestType === "loan" ? "loan" : requestType === "overtime" ? "overtime" : "leave encashment"} requests will be automatically
                       approved without requiring manual approval from any approver.
                     </p>
                   </div>
