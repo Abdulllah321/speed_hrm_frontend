@@ -189,7 +189,14 @@ export const masterMenuData: MenuItem[] = [
       { title: "Add", href: "/dashboard/master/banks/add" },
       { title: "View", href: "/dashboard/master/banks/list" },
     ],
-  }
+  },
+  {
+    title: "Rebate Nature",
+    children: [
+      { title: "Add", href: "/dashboard/master/rebate-nature/add" },
+      { title: "View", href: "/dashboard/master/rebate-nature/list" },
+    ],
+  },
 ];
 
 export const menuData: MenuItem[] = [
