@@ -15,19 +15,22 @@ async function getAuthHeaders() {
 export interface Bonus {
   id: string;
   employeeId: string;
-  employee?: {
-    id: string;
-    employeeId: string;
-    employeeName: string;
-    department?: {
-      id: string;
-      name: string;
-    };
-    subDepartment?: {
-      id: string;
-      name: string;
-    };
-  };
+         employee?: {
+           id: string;
+           employeeId: string;
+           employeeName: string;
+           bankName?: string;
+           accountNumber?: string;
+           accountTitle?: string;
+           department?: {
+             id: string;
+             name: string;
+           };
+           subDepartment?: {
+             id: string;
+             name: string;
+           };
+         };
   bonusTypeId: string;
   bonusType?: {
     id: string;

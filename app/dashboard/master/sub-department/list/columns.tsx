@@ -38,7 +38,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -47,6 +47,8 @@ import {
   updateSubDepartment,
   deleteSubDepartment,
 } from "@/lib/actions/department";
+import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
+import { Autocomplete } from "@/components/ui/autocomplete";
 
 export type SubDepartmentRow = SubDepartment & { id: string };
 
@@ -95,6 +97,13 @@ export const columns: ColumnDef<SubDepartmentRow>[] = [
     cell: ({ row }) => <HighlightText text={row.original.departmentName || row.original.department?.name || "—"} />,
   },
   {
+    header: "Head",
+    accessorKey: "headName",
+    size: 200,
+    enableSorting: true,
+    cell: ({ row }) => row.original.headName || "—",
+  },
+  {
     header: "Created By",
     accessorKey: "createdBy",
     size: 150,
@@ -127,6 +136,19 @@ function RowActions({ row }: RowActionsProps) {
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
+  const [selectedHeadId, setSelectedHeadId] = useState<string>(subDept.headId || "");
+
+  useEffect(() => {
+    if (editDialog) {
+      getEmployeesForDropdown().then((result) => {
+        if (result.status && result.data) {
+          setEmployees(result.data);
+        }
+      });
+      setSelectedHeadId(subDept.headId || "");
+    }
+  }, [editDialog, subDept.headId]);
 
   const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {
@@ -185,7 +207,16 @@ function RowActions({ row }: RowActionsProps) {
       </DropdownMenu>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialog} onOpenChange={setEditDialog}>
+      <Dialog open={editDialog} onOpenChange={(open) => {
+        setEditDialog(open);
+        if (open) {
+          getEmployeesForDropdown().then((result) => {
+            if (result.status && result.data) {
+              setEmployees(result.data);
+            }
+          });
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Sub-Department</DialogTitle>
@@ -217,6 +248,24 @@ function RowActions({ row }: RowActionsProps) {
                   disabled={isPending}
                   required
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-head">Sub-Department Head (Optional)</Label>
+                <Autocomplete
+                  options={[
+                    { value: "", label: "No Head" },
+                    ...employees.map((emp) => ({
+                      value: emp.id,
+                      label: `${emp.employeeName} (${emp.employeeId})`,
+                    })),
+                  ]}
+                  value={selectedHeadId}
+                  onValueChange={(value) => setSelectedHeadId(value || "")}
+                  placeholder="Select sub-department head"
+                  searchPlaceholder="Search employee..."
+                  emptyMessage="No employees found"
+                />
+                <input type="hidden" name="headId" value={selectedHeadId} />
               </div>
             </div>
             <DialogFooter>

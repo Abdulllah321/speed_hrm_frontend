@@ -183,6 +183,13 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/dashboard/master/deduction-head/list" },
     ],
   },
+  {
+    title: "Bank",
+    children: [
+      { title: "Add", href: "/dashboard/master/banks/add" },
+      { title: "View", href: "/dashboard/master/banks/list" },
+    ],
+  }
 ];
 
 export const menuData: MenuItem[] = [
@@ -324,7 +331,7 @@ export const menuData: MenuItem[] = [
         icon: Gift,
         children: [
           { title: "Issue Bonus", href: "/dashboard/payroll-setup/bonus/issue" },
-          { title: "View Report", href: "/dashboard/payroll-setup/bonus/report" },
+          { title: "View & Reports", href: "/dashboard/payroll-setup/bonus/view" },
           { title: "Bank Report", href: "/dashboard/payroll-setup/bonus/bank-report" },
           { title: "Bonus Payslip", href: "/dashboard/payroll-setup/bonus/payslip" },
         ],

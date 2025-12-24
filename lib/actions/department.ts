@@ -8,6 +8,13 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/
 export interface Department {
   id: string;
   name: string;
+  headId?: string | null;
+  head?: {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+  } | null;
+  headName?: string | null;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
@@ -20,6 +27,13 @@ export interface SubDepartment {
   departmentId: string;
   department?: Department;
   departmentName?: string;
+  headId?: string | null;
+  head?: {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+  } | null;
+  headName?: string | null;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
@@ -83,6 +97,7 @@ export async function createDepartments(names: string[]): Promise<{ status: bool
 
 export async function updateDepartment(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: Department }> {
   const name = formData.get("name") as string;
+  const headId = formData.get("headId") as string;
   
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
@@ -96,7 +111,7 @@ export async function updateDepartment(id: string, formData: FormData): Promise<
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, headId: headId || null }),
     });
     const data = await res.json();
     
@@ -250,7 +265,7 @@ export async function createSubDepartment(formData: FormData): Promise<{ status:
 }
 
 export async function createSubDepartments(
-  items: { name: string; departmentId: string }[]
+  items: { name: string; departmentId: string; headId?: string }[]
 ): Promise<{ status: boolean; message: string; data?: SubDepartment[] }> {
   if (!items.length) {
     return { status: false, message: "At least one sub-department is required" };
@@ -281,6 +296,7 @@ export async function createSubDepartments(
 export async function updateSubDepartment(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: SubDepartment }> {
   const name = formData.get("name") as string;
   const departmentId = formData.get("departmentId") as string;
+  const headId = formData.get("headId") as string;
   
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
@@ -294,7 +310,7 @@ export async function updateSubDepartment(id: string, formData: FormData): Promi
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name, departmentId: departmentId || undefined }),
+      body: JSON.stringify({ name, departmentId: departmentId || undefined, headId: headId || null }),
     });
     const data = await res.json();
     
