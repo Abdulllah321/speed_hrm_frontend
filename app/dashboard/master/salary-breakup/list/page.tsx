@@ -12,7 +12,7 @@ export default async function SalaryBreakupListPage({
   try {
     const { newItemId } = await searchParams;
     const result = await getSalaryBreakups();
-
+    console.log(result);
     if (!result.status || !result.data) {
       return (
         <ListError
