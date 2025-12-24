@@ -361,14 +361,7 @@ export const menuData: MenuItem[] = [
           },
         ],
       },
-      {
-        title: "Provident Fund",
-        icon: PiggyBank,
-        children: [
-          { title: "Create", href: "/dashboard/payroll-setup/provident-fund/create" },
-          { title: "List", href: "/dashboard/payroll-setup/provident-fund/list" },
-        ],
-      },
+     
       {
         title: "PF for Employee",
         children: [
@@ -415,8 +408,8 @@ export const menuData: MenuItem[] = [
       {
         title: "Rebate",
         children: [
-          { title: "Create", href: "/dashboard/rebate/create" },
-          { title: "List", href: "/dashboard/rebate/list" },
+          { title: "Create", href: "/dashboard/payroll-setup/rebate/create" },
+          { title: "List", href: "/dashboard/payroll-setup/rebate/list" },
         ],
       },
     ],
