@@ -66,6 +66,8 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
       month: allowance.month || "",
       year: allowance.year || "",
       monthYear: formatMonthYear(allowance.month || "", allowance.year || ""),
+      type: allowance.type || "specific",
+      adjustmentMethod: allowance.adjustmentMethod || undefined,
       isTaxable: allowance.isTaxable || false,
       taxPercentage: allowance.taxPercentage ? Number(allowance.taxPercentage) : null,
       notes: allowance.notes || null,

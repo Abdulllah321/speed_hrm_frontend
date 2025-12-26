@@ -62,6 +62,8 @@ export interface AllowanceRow {
   month: string;
   year: string;
   monthYear: string;
+  type?: string; // "recurring" | "specific"
+  adjustmentMethod?: string; // "distributed-remaining-months" | "deduct-current-month"
   isTaxable: boolean;
   taxPercentage: number | null;
   notes: string | null;
@@ -143,9 +145,18 @@ export const columns: ColumnDef<AllowanceRow>[] = [
       </div>
     ),
     cell: ({ row }) => (
-      <Badge variant="outline" className="font-medium">
-        {row.original.allowanceHeadName}
-      </Badge>
+      <div className="space-y-1">
+        <Badge variant="outline" className="font-medium">
+          {row.original.allowanceHeadName}
+        </Badge>
+        {row.original.type && (
+          <div className="text-xs">
+            <Badge variant={row.original.type === "recurring" ? "default" : "secondary"} className="text-xs">
+              {row.original.type === "recurring" ? "Recurring" : "Specific"}
+            </Badge>
+          </div>
+        )}
+      </div>
     ),
     size: 150,
     enableSorting: true,
@@ -278,6 +289,8 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
   const [formData, setFormData] = useState({
     allowanceHeadId: item.allowanceHeadId || "",
     amount: item.amount?.toString() || "",
+    type: item.type || "specific",
+    adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
     isTaxable: item.isTaxable ? "Yes" : "No",
     taxPercentage: item.taxPercentage?.toString() || "",
     notes: item.notes || "",
@@ -329,6 +342,8 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
       const result = await updateAllowance(item.id, {
         allowanceHeadId: formData.allowanceHeadId,
         amount: amount,
+        type: formData.type,
+        adjustmentMethod: formData.adjustmentMethod,
         isTaxable: formData.isTaxable === "Yes",
         taxPercentage: formData.isTaxable === "Yes" && formData.taxPercentage 
           ? parseFloat(formData.taxPercentage) 
@@ -378,6 +393,8 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
                 setFormData({
                   allowanceHeadId: item.allowanceHeadId || "",
                   amount: item.amount?.toString() || "",
+                  type: item.type || "specific",
+                  adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
                   isTaxable: item.isTaxable ? "Yes" : "No",
                   taxPercentage: item.taxPercentage?.toString() || "",
                   notes: item.notes || "",
@@ -459,6 +476,54 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
                     disabled={isPending}
                     required
                   />
+                </div>
+
+                {/* Type */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-type">
+                    Allowance Category <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, type: value })
+                    }
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="edit-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="specific">Specific Month</SelectItem>
+                      <SelectItem value="recurring">Recurring</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Adjustment Method */}
+                <div className="space-y-2">
+                  <Label htmlFor="edit-adjustment-method">
+                    Adjustment Method <span className="text-destructive">*</span>
+                  </Label>
+                  <Select
+                    value={formData.adjustmentMethod}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, adjustmentMethod: value })
+                    }
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="edit-adjustment-method">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="distributed-remaining-months">
+                        Distributed in Remaining Months
+                      </SelectItem>
+                      <SelectItem value="deduct-current-month">
+                        Deduct from Current Month
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Is Taxable */}

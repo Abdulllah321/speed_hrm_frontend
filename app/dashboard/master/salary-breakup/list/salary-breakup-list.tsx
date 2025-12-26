@@ -25,36 +25,28 @@ interface SalaryBreakupListProps {
   newItemId?: string;
 }
 
-type Entry = { typeName: string; percent: number; isTaxable: boolean };
-
 export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBreakupListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; salaryType: string; percent: string; isTaxable: boolean }[]>([]);
 
-  // Flatten the salary breakups into rows
-  const data: SalaryBreakupRow[] = initialSalaryBreakups.flatMap((sb) => {
-    let details: Entry[] = [];
-    if (Array.isArray(sb.details)) {
-      details = sb.details as Entry[];
-    } else if (typeof sb.details === "string" && sb.details) {
-      try {
-        details = JSON.parse(sb.details) as Entry[];
-      } catch {
-        details = [];
-      }
-    }
-    return details.map((d, i) => ({
-      id: `${sb.id}-${i}`,
-      salaryType: d.typeName || "",
-      percent: d.percent || 0,
-      isTaxable: !!d.isTaxable,
+  // Convert salary breakups to rows (one row per salary breakup)
+  const data: SalaryBreakupRow[] = initialSalaryBreakups.map((sb) => {
+    const percentage = sb.percentage 
+      ? (typeof sb.percentage === 'string' ? parseFloat(sb.percentage) : sb.percentage)
+      : 0;
+    
+    return {
+      id: sb.id,
+      salaryType: sb.name,
+      percent: percentage,
+      isTaxable: false, // Not available in current schema
       createdBy: sb.createdBy || "",
       status: sb.status === "active" ? "Active" : "Inactive",
       breakupId: sb.id,
       breakupName: sb.name,
-    }));
+    };
   });
 
   const handleToggle = () => {
@@ -109,8 +101,7 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
         toggleAction={handleToggle}
         newItemId={newItemId}
         searchFields={[
-          { key: "breakupName", label: "Breakup Name" },
-          { key: "salaryType", label: "Salary Type" },
+          { key: "salaryType", label: "Name" },
         ]}
         filters={[
           {

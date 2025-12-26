@@ -16,7 +16,7 @@ export default async function GeneratePayrollPage() {
     ]);
 
     const departments = departmentsResult.status ? departmentsResult.data : [];
-    const employees = employeesResult.status ? employeesResult.data : [];
+    const employees = employeesResult.status ? employeesResult.data ?? [] : [];
 
     return (
         <Suspense fallback={<div>Loading...</div>}>

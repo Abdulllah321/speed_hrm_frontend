@@ -69,14 +69,7 @@ export const columns: ColumnDef<SalaryBreakupRow>[] = [
     size: 28,
   },
   {
-    header: "Breakup Name",
-    accessorKey: "breakupName",
-    size: 200,
-    enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.breakupName} />,
-  },
-  {
-    header: "Salary Type",
+    header: "Name",
     accessorKey: "salaryType",
     size: 200,
     enableSorting: true,

@@ -52,9 +52,12 @@ interface EmployeeAllowanceItem {
   allowanceHeadId: string;
   allowanceHeadName: string;
   amount: number;
+  type: string; // "recurring" | "specific"
+  adjustmentMethod: string; // "distributed-remaining-months" | "deduct-current-month"
   isTaxable: boolean;
   taxPercentage: number;
   notes: string;
+  monthYear: string; // Format: "YYYY-MM" - stored for each allowance item
 }
 
 interface CreateAllowanceClientProps {
@@ -82,9 +85,11 @@ export function CreateAllowanceClient({
     remarks: "",
     allowanceAmount: "",
     allowanceType: "",
-    monthYear: "",
+    allowanceTypeCategory: "specific", // "recurring" | "specific"
+    monthYear: "" as string | string[], // Can be single string or array for multiple months
     isTaxable: "Yes",
     taxPercentage: "",
+    adjustmentMethod: "distributed-remaining-months", // "distributed-remaining-months" | "deduct-current-month"
   });
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
@@ -156,49 +161,72 @@ export function CreateAllowanceClient({
     description: `${emp.employeeId}${emp.departmentName ? ` • ${emp.departmentName}` : ""}`,
   }));
 
-  const handleSearch = () => {
-    if (!formData.allowanceAmount || !formData.allowanceType || !formData.monthYear) {
-      toast.error("Please fill all required fields (Allowance Amount, Allowance Type, Month-Year)");
-      return;
-    }
+    const handleSearch = () => {
+      if (!formData.allowanceAmount || !formData.allowanceType) {
+        toast.error("Please fill all required fields (Allowance Amount, Allowance Type)");
+        return;
+      }
 
-    const amount = parseFloat(formData.allowanceAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
+      if (formData.allowanceTypeCategory === "specific") {
+        if (Array.isArray(formData.monthYear) && formData.monthYear.length === 0) {
+          toast.error("Please select at least one month for specific allowance");
+          return;
+        } else if (!formData.monthYear) {
+          toast.error("Please select month and year for specific allowance");
+          return;
+        }
+      }
 
-    if (selectedEmployeeIds.length === 0) {
-      toast.error("Please select at least one employee");
-      return;
-    }
+      const amount = parseFloat(formData.allowanceAmount);
+      if (isNaN(amount) || amount <= 0) {
+        toast.error("Please enter a valid amount");
+        return;
+      }
 
-    const selectedAllowanceHead = allowanceHeads.find((h) => h.id === formData.allowanceType);
-    if (!selectedAllowanceHead) {
-      toast.error("Invalid allowance type selected");
-      return;
-    }
+      if (selectedEmployeeIds.length === 0) {
+        toast.error("Please select at least one employee");
+        return;
+      }
 
-    // Create allowance items for all selected employees
-    const newAllowances: EmployeeAllowanceItem[] = selectedEmployeeIds.map((empId) => {
-      const employee = employees.find((e) => e.id === empId);
-      return {
-        id: `${empId}-${formData.allowanceType}-${Date.now()}`,
-        employeeId: empId,
-        employeeName: employee?.employeeName || "",
-        employeeCode: employee?.employeeId || "",
-        allowanceHeadId: formData.allowanceType,
-        allowanceHeadName: selectedAllowanceHead.name,
-        amount: amount,
-        isTaxable: formData.isTaxable === "Yes",
-        taxPercentage: parseFloat(formData.taxPercentage) || 0,
-        notes: formData.remarks || "",
-      };
-    });
+      const selectedAllowanceHead = allowanceHeads.find((h) => h.id === formData.allowanceType);
+      if (!selectedAllowanceHead) {
+        toast.error("Invalid allowance type selected");
+        return;
+      }
 
-    setEmployeeAllowances([...employeeAllowances, ...newAllowances]);
-    toast.success(`Added allowances for ${selectedEmployeeIds.length} employee(s)`);
-  };
+      // Get selected months - handle both single string and array
+      const selectedMonths = Array.isArray(formData.monthYear) 
+        ? formData.monthYear 
+        : formData.monthYear 
+          ? [formData.monthYear] 
+          : [];
+
+      // Create allowance items for all selected employees and months
+      const newAllowances: EmployeeAllowanceItem[] = [];
+      selectedEmployeeIds.forEach((empId) => {
+        const employee = employees.find((e) => e.id === empId);
+        selectedMonths.forEach((monthYear, monthIndex) => {
+          newAllowances.push({
+            id: `${empId}-${formData.allowanceType}-${monthYear}-${Date.now()}-${monthIndex}`,
+            employeeId: empId,
+            employeeName: employee?.employeeName || "",
+            employeeCode: employee?.employeeId || "",
+            allowanceHeadId: formData.allowanceType,
+            allowanceHeadName: selectedAllowanceHead.name,
+            amount: amount,
+            type: formData.allowanceTypeCategory, // "recurring" or "specific"
+            adjustmentMethod: formData.adjustmentMethod,
+            isTaxable: formData.isTaxable === "Yes",
+            taxPercentage: parseFloat(formData.taxPercentage) || 0,
+            notes: formData.remarks || "",
+            monthYear: monthYear, // Store the month-year for this specific allowance
+          });
+        });
+      });
+
+      setEmployeeAllowances([...employeeAllowances, ...newAllowances]);
+      toast.success(`Added allowances for ${selectedEmployeeIds.length} employee(s) across ${selectedMonths.length} month(s)`);
+    };
 
   const handleUpdateAllowance = (id: string, field: keyof EmployeeAllowanceItem, value: any) => {
     setEmployeeAllowances(
@@ -220,33 +248,50 @@ export function CreateAllowanceClient({
       return;
     }
 
-    if (!formData.monthYear) {
-      toast.error("Please select month and year");
-      return;
-    }
-
     startTransition(async () => {
       try {
-        const [year, month] = formData.monthYear.split("-");
-        const result = await bulkCreateAllowances({
-          month: month,
-          year: year,
-          date: `${formData.monthYear}-01`,
-          allowances: employeeAllowances.map((item) => ({
-            employeeId: item.employeeId,
-            allowanceHeadId: item.allowanceHeadId,
-            amount: item.amount,
-            notes: item.notes || undefined,
-            isTaxable: item.isTaxable,
-            taxPercentage: item.taxPercentage > 0 ? item.taxPercentage : undefined,
-          })),
+        // Group allowances by month-year to create multiple bulk requests
+        const allowancesByMonth = new Map<string, typeof employeeAllowances>();
+        
+        employeeAllowances.forEach((item) => {
+          const monthYear = item.monthYear || new Date().toISOString().slice(0, 7);
+          if (!allowancesByMonth.has(monthYear)) {
+            allowancesByMonth.set(monthYear, []);
+          }
+          allowancesByMonth.get(monthYear)!.push(item);
         });
 
-        if (result.status) {
-          toast.success(result.message || "Allowances created successfully");
+        // Create allowances for each month-year group
+        const results = await Promise.all(
+          Array.from(allowancesByMonth.entries()).map(async ([monthYear, allowances]) => {
+            const [year, month] = monthYear.split("-");
+            return bulkCreateAllowances({
+              month: month,
+              year: year,
+              date: `${monthYear}-01`,
+              allowances: allowances.map((item) => ({
+                employeeId: item.employeeId,
+                allowanceHeadId: item.allowanceHeadId,
+                amount: item.amount,
+                type: item.type || "specific",
+                adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
+                notes: item.notes || undefined,
+                isTaxable: item.isTaxable,
+                taxPercentage: item.taxPercentage > 0 ? item.taxPercentage : undefined,
+              })),
+            });
+          })
+        );
+
+        // Check if all requests succeeded
+        const allSuccessful = results.every((result) => result.status);
+        if (allSuccessful) {
+          const totalCreated = results.reduce((sum, result) => sum + (result.data?.length || 0), 0);
+          toast.success(`Successfully created ${totalCreated} allowance(s) for ${allowancesByMonth.size} month(s)`);
           router.push("/dashboard/payroll-setup/allowance/view");
         } else {
-          toast.error(result.message || "Failed to create allowances");
+          const failedResult = results.find((result) => !result.status);
+          toast.error(failedResult?.message || "Failed to create some allowances");
         }
       } catch (error) {
         console.error("Error:", error);
@@ -431,18 +476,41 @@ export function CreateAllowanceClient({
                 </Select>
               </div>
 
+              {/* Allowance Type Category (Recurring/Specific) */}
+              <div className="space-y-2">
+                <Label htmlFor="allowanceTypeCategory">
+                  Allowance Category: <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.allowanceTypeCategory}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, allowanceTypeCategory: value }))
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="allowanceTypeCategory">
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="specific">Specific Month</SelectItem>
+                    <SelectItem value="recurring">Recurring</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Month-Year */}
               <div className="space-y-2">
                 <Label htmlFor="monthYear">
-                  Month-Year <span className="text-destructive">*</span>
+                  Month-Year {formData.allowanceTypeCategory === "specific" && <span className="text-destructive">*</span>}
                 </Label>
                 <MonthYearPicker
                   value={formData.monthYear}
                   onChange={(value) =>
                     setFormData((prev) => ({ ...prev, monthYear: value }))
                   }
-                  disabled={isPending}
-                  placeholder="Select month and year"
+                  disabled={isPending || formData.allowanceTypeCategory === "recurring"}
+                  placeholder={formData.allowanceTypeCategory === "recurring" ? "Not required for recurring" : "Select month(s) and year"}
+                  multiple={formData.allowanceTypeCategory === "specific"}
                 />
               </div>
 
@@ -461,8 +529,8 @@ export function CreateAllowanceClient({
               </div>
             </div>
 
-            {/* Fourth Row - 2 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Fourth Row - 3 columns */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Is Taxable */}
               <div className="space-y-2">
                 <Label htmlFor="isTaxable">
@@ -502,6 +570,32 @@ export function CreateAllowanceClient({
                   disabled={isPending || formData.isTaxable === "No"}
                 />
               </div>
+
+              {/* Adjustment Method */}
+              <div className="space-y-2">
+                <Label htmlFor="adjustmentMethod">
+                  Adjustment Method: <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.adjustmentMethod}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, adjustmentMethod: value }))
+                  }
+                  disabled={isPending}
+                >
+                  <SelectTrigger id="adjustmentMethod">
+                    <SelectValue placeholder="Select adjustment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="distributed-remaining-months">
+                      Distributed in Remaining Months
+                    </SelectItem>
+                    <SelectItem value="deduct-current-month">
+                      Deduct from Current Month
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Employee Allowances Table */}
@@ -519,6 +613,7 @@ export function CreateAllowanceClient({
                       <TableHeader>
                         <TableRow>
                           <TableHead>Employee</TableHead>
+                          <TableHead>Month-Year</TableHead>
                           <TableHead>Allowance Type</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Taxable</TableHead>
@@ -528,7 +623,19 @@ export function CreateAllowanceClient({
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {employeeAllowances.map((item) => (
+                        {employeeAllowances.map((item) => {
+                          const formatMonthYear = (monthYear: string) => {
+                            if (!monthYear) return "—";
+                            const [year, month] = monthYear.split("-");
+                            const monthNames = [
+                              "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                            ];
+                            const monthIndex = parseInt(month) - 1;
+                            return `${monthNames[monthIndex] || month} ${year}`;
+                          };
+
+                          return (
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">
                               <div className="flex flex-col">
@@ -537,6 +644,9 @@ export function CreateAllowanceClient({
                                   {item.employeeCode}
                                 </span>
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm">{formatMonthYear(item.monthYear)}</span>
                             </TableCell>
                             <TableCell>
                               <Select
@@ -637,7 +747,8 @@ export function CreateAllowanceClient({
                               </Button>
                             </TableCell>
                           </TableRow>
-                        ))}
+                        );
+                        })}
                       </TableBody>
                     </Table>
                   </div>

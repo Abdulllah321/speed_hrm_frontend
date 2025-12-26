@@ -9,7 +9,9 @@ export interface SalaryBreakup {
   id: string;
   name: string;
   details: string | null;
+  percentage: number | string | null;
   status: string;
+  createdById?: string | null;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
@@ -41,20 +43,38 @@ export async function createSalaryBreakup(
 
 export async function getSalaryBreakups(): Promise<{
   status: boolean;
-  message: string;
+  message?: string;
   data?: SalaryBreakup[];
 }> {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_URL}/salary-breakups`, {
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
-    const data = await res.json();
-    return data;
-  } catch {
-    return { status: false, message: "Failed to fetch salary breakups" };
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: "Failed to fetch salary breakups" }));
+      return {
+        status: false,
+        message: errorData.message || `HTTP error! status: ${res.status}`,
+      };
+    }
+
+    const result = await res.json();
+    return {
+      status: result.status || true,
+      data: result.data || result,
+      message: result.message,
+    };
+  } catch (error) {
+    console.error("Error fetching salary breakups:", error);
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : "Failed to fetch salary breakups",
+    };
   }
 }

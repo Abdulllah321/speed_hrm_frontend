@@ -43,6 +43,8 @@ import {
   type SubDepartment,
 } from "@/lib/actions/department";
 import { bulkCreateDeductions, type DeductionHead } from "@/lib/actions/deduction";
+import { format } from "date-fns";
+import { enUS } from "date-fns/locale";
 
 interface EmployeeDeductionItem {
   id: string;
@@ -55,6 +57,7 @@ interface EmployeeDeductionItem {
   isTaxable: boolean;
   taxPercentage: number;
   notes: string;
+  monthYear: string; // Format: "YYYY-MM" - stored for each deduction item
 }
 
 interface CreateDeductionClientProps {
@@ -82,7 +85,7 @@ export function CreateDeductionClient({
     remarks: "",
     deductionAmount: "",
     deductionType: "",
-    monthYear: "",
+    monthYear: "" as string | string[], // Can be single string or array for multiple months
     isTaxable: "Yes",
     taxPercentage: "",
   });
@@ -157,8 +160,13 @@ export function CreateDeductionClient({
   }));
 
   const handleSearch = () => {
-    if (!formData.deductionAmount || !formData.deductionType || !formData.monthYear) {
-      toast.error("Please fill all required fields (Deduction Amount, Deduction Type, Month-Year)");
+    if (!formData.deductionAmount || !formData.deductionType) {
+      toast.error("Please fill all required fields (Deduction Amount, Deduction Type)");
+      return;
+    }
+
+    if (!formData.monthYear || (Array.isArray(formData.monthYear) && formData.monthYear.length === 0)) {
+      toast.error("Please select at least one month");
       return;
     }
 
@@ -179,25 +187,36 @@ export function CreateDeductionClient({
       return;
     }
 
-    // Create deduction items for all selected employees
-    const newDeductions: EmployeeDeductionItem[] = selectedEmployeeIds.map((empId) => {
+    // Get selected months - handle both single string and array
+    const selectedMonths = Array.isArray(formData.monthYear) 
+      ? formData.monthYear 
+      : formData.monthYear 
+        ? [formData.monthYear] 
+        : [];
+
+    // Create deduction items for all selected employees and months
+    const newDeductions: EmployeeDeductionItem[] = [];
+    selectedEmployeeIds.forEach((empId) => {
       const employee = employees.find((e) => e.id === empId);
-      return {
-        id: `${empId}-${formData.deductionType}-${Date.now()}`,
-        employeeId: empId,
-        employeeName: employee?.employeeName || "",
-        employeeCode: employee?.employeeId || "",
-        deductionHeadId: formData.deductionType,
-        deductionHeadName: selectedDeductionHead.name,
-        amount: amount,
-        isTaxable: formData.isTaxable === "Yes",
-        taxPercentage: parseFloat(formData.taxPercentage) || 0,
-        notes: formData.remarks || "",
-      };
+      selectedMonths.forEach((monthYear, monthIndex) => {
+        newDeductions.push({
+          id: `${empId}-${formData.deductionType}-${monthYear}-${Date.now()}-${monthIndex}`,
+          employeeId: empId,
+          employeeName: employee?.employeeName || "",
+          employeeCode: employee?.employeeId || "",
+          deductionHeadId: formData.deductionType,
+          deductionHeadName: selectedDeductionHead.name,
+          amount: amount,
+          isTaxable: formData.isTaxable === "Yes",
+          taxPercentage: parseFloat(formData.taxPercentage) || 0,
+          notes: formData.remarks || "",
+          monthYear: monthYear, // Store the month-year for this specific deduction
+        });
+      });
     });
 
     setEmployeeDeductions([...employeeDeductions, ...newDeductions]);
-    toast.success(`Added deductions for ${selectedEmployeeIds.length} employee(s)`);
+    toast.success(`Added deductions for ${selectedEmployeeIds.length} employee(s) across ${selectedMonths.length} month(s)`);
   };
 
   const handleUpdateDeduction = (id: string, field: keyof EmployeeDeductionItem, value: any) => {
@@ -220,33 +239,48 @@ export function CreateDeductionClient({
       return;
     }
 
-    if (!formData.monthYear) {
-      toast.error("Please select month and year");
-      return;
-    }
-
     startTransition(async () => {
       try {
-        const [year, month] = formData.monthYear.split("-");
-        const result = await bulkCreateDeductions({
-          month: month,
-          year: year,
-          date: `${formData.monthYear}-01`,
-          deductions: employeeDeductions.map((item) => ({
-            employeeId: item.employeeId,
-            deductionHeadId: item.deductionHeadId,
-            amount: item.amount,
-            notes: item.notes || undefined,
-            isTaxable: item.isTaxable,
-            taxPercentage: item.taxPercentage > 0 ? item.taxPercentage : undefined,
-          })),
+        // Group deductions by month-year to create multiple bulk requests
+        const deductionsByMonth = new Map<string, typeof employeeDeductions>();
+        
+        employeeDeductions.forEach((item) => {
+          const monthYear = item.monthYear || new Date().toISOString().slice(0, 7);
+          if (!deductionsByMonth.has(monthYear)) {
+            deductionsByMonth.set(monthYear, []);
+          }
+          deductionsByMonth.get(monthYear)!.push(item);
         });
 
-        if (result.status) {
-          toast.success(result.message || "Deductions created successfully");
+        // Create deductions for each month-year group
+        const results = await Promise.all(
+          Array.from(deductionsByMonth.entries()).map(async ([monthYear, deductions]) => {
+            const [year, month] = monthYear.split("-");
+            return bulkCreateDeductions({
+              month: month,
+              year: year,
+              date: `${monthYear}-01`,
+              deductions: deductions.map((item) => ({
+                employeeId: item.employeeId,
+                deductionHeadId: item.deductionHeadId,
+                amount: item.amount,
+                notes: item.notes || undefined,
+                isTaxable: item.isTaxable,
+                taxPercentage: item.taxPercentage > 0 ? item.taxPercentage : undefined,
+              })),
+            });
+          })
+        );
+
+        // Check if all requests succeeded
+        const allSuccessful = results.every((result) => result.status);
+        if (allSuccessful) {
+          const totalCreated = results.reduce((sum, result) => sum + (result.data?.length || 0), 0);
+          toast.success(`Successfully created ${totalCreated} deduction(s) for ${deductionsByMonth.size} month(s)`);
           router.push("/dashboard/payroll-setup/deduction/view");
         } else {
-          toast.error(result.message || "Failed to create deductions");
+          const failedResult = results.find((result) => !result.status);
+          toast.error(failedResult?.message || "Failed to create some deductions");
         }
       } catch (error) {
         console.error("Error:", error);
@@ -379,7 +413,7 @@ export function CreateDeductionClient({
             </div>
 
             {/* Third Row - 4 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Deduction Amount */}
               <div className="space-y-2">
                 <Label htmlFor="deductionAmount">
@@ -442,23 +476,12 @@ export function CreateDeductionClient({
                     setFormData((prev) => ({ ...prev, monthYear: value }))
                   }
                   disabled={isPending}
-                  placeholder="Select month and year"
+                  placeholder="Select month(s) and year"
+                  multiple={true}
                 />
               </div>
 
-              {/* Search Button */}
-              <div className="space-y-2">
-                <Label>&nbsp;</Label>
-                <Button
-                  type="button"
-                  onClick={handleSearch}
-                  disabled={isPending}
-                  className="w-full"
-                >
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </Button>
-              </div>
+      
             </div>
 
             {/* Fourth Row - 2 columns */}
@@ -503,7 +526,19 @@ export function CreateDeductionClient({
                 />
               </div>
             </div>
-
+{/* Search Button */}
+<div className="space-y-2 flex justify-end">
+                <Label>&nbsp;</Label>
+                <Button
+                  type="button"
+                  onClick={handleSearch}
+                  disabled={isPending}
+                  className="w-fit self-end"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </Button>
+              </div>
             {/* Employee Deductions Table */}
             {employeeDeductions.length > 0 && (
               <Card className="border-dashed">
@@ -521,6 +556,7 @@ export function CreateDeductionClient({
                           <TableHead>Employee</TableHead>
                           <TableHead>Deduction Type</TableHead>
                           <TableHead>Amount</TableHead>
+                          <TableHead>Month-Year</TableHead>
                           <TableHead>Taxable</TableHead>
                           <TableHead>Tax %</TableHead>
                           <TableHead>Notes</TableHead>
@@ -578,6 +614,16 @@ export function CreateDeductionClient({
                                 disabled={isPending}
                                 className="w-[120px]"
                               />
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm font-medium">
+                                {item.monthYear 
+                                  ? (() => {
+                                      const [year, month] = item.monthYear.split("-").map(Number);
+                                      return format(new Date(year, month - 1, 1), "MMM yyyy", { locale: enUS });
+                                    })()
+                                  : "—"}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Select

@@ -47,6 +47,8 @@ export interface Allowance {
   date: string;
   month?: string;
   year?: string;
+  type?: string; // "recurring" | "specific"
+  adjustmentMethod?: string; // "distributed-remaining-months" | "deduct-current-month"
   isTaxable?: boolean;
   taxPercentage?: number | string | null;
   notes?: string;
@@ -164,6 +166,7 @@ export async function bulkCreateAllowances(data: {
     employeeId: string;
     allowanceHeadId: string;
     amount: number;
+    type?: string; // "recurring" | "specific"
     notes?: string;
     isTaxable?: boolean;
     taxPercentage?: number;
@@ -227,6 +230,8 @@ export async function updateAllowance(id: string, data: {
   employeeId?: string;
   allowanceHeadId?: string;
   amount?: number;
+  type?: string; // "recurring" | "specific"
+  adjustmentMethod?: string; // "distributed-remaining-months" | "deduct-current-month"
   date?: string;
   month?: string;
   year?: string;
