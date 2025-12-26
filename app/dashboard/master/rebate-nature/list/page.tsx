@@ -12,7 +12,6 @@ export default async function RebateNatureListPage({
   try {
     const { newItemId } = await searchParams;
     const result = await getRebateNatures();
-
     if (!result.status || !result.data) {
       return (
         <ListError

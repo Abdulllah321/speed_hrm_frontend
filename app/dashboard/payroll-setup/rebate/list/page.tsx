@@ -1,19 +1,13 @@
 import { RebateList } from "./rebate-list";
 import { ListError } from "@/components/dashboard/list-error";
+import { getRebates } from "@/lib/actions/rebate";
 
 export const dynamic = "force-dynamic";
 
-// TODO: Replace with actual API call when backend is ready
-// import { getAllRebates } from "@/lib/actions/rebate";
-
 export default async function RebateListPage() {
   try {
-    // TODO: Uncomment when backend is ready
-    // const result = await getAllRebates();
-    // const initialData = result.status && result.data ? result.data : [];
-
-    // Temporary empty data for frontend-only implementation
-    const initialData: any[] = [];
+    const result = await getRebates();
+    const initialData = result.status && result.data ? result.data : [];
 
     return <RebateList initialData={initialData} />;
   } catch (error) {

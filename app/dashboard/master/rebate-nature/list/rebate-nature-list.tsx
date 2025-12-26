@@ -28,22 +28,14 @@ export function RebateNatureList({
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
-      // Current generic delete does one by one or bulk?
-      // The action I wrote `deleteRebateNature` is single.
-      // I should write a loop or add a bulk delete endpoint.
-      // For now I'll just loop sequentially for simplicity, or modify the action.
-      // Actually, checking `department-list` it calls `deleteDepartments` (plural). 
-      // I implemented `deleteRebateNature` (singular). 
-      // I will implement a loop here for now.
-      
       let successCount = 0;
       for (const id of ids) {
-          const result = await deleteRebateNature(id);
-          if (result.status) successCount++;
+        const result = await deleteRebateNature(id);
+        if (result.status) successCount++;
       }
 
       if (successCount > 0) {
-        toast.success(`Deleted ${successCount} items`);
+        toast.success(`Deleted ${successCount} item${successCount > 1 ? "s" : ""}`);
         router.refresh();
       } else {
         toast.error("Failed to delete items");
@@ -51,10 +43,15 @@ export function RebateNatureList({
     });
   };
 
-  // Skip bulk edit for now as it's complex for multi-field forms
-  const handleBulkEdit = () => {
-      toast.info("Bulk edit not supported for Rebate Nature yet");
+  const handleBulkEdit = (items: RebateNatureRow[]) => {
+    toast.info("Bulk edit is not available for rebate natures due to complex fields. Please edit items individually.");
   };
+
+  // Transform data to include string id for DataTable
+  const data: RebateNatureRow[] = initialRebateNatures.map((item) => ({
+    ...item,
+    id: item.id.toString(),
+  }));
 
   return (
     <div className="space-y-6">
@@ -67,7 +64,7 @@ export function RebateNatureList({
 
       <DataTable<RebateNatureRow>
         columns={columns}
-        data={initialRebateNatures}
+        data={data}
         actionText="Add Rebate Nature"
         toggleAction={handleToggle}
         newItemId={newItemId}

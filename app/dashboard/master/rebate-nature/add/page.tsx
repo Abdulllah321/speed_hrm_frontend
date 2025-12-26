@@ -29,9 +29,28 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const REBATE_TYPES = ["fixed", "other"] as const;
+const REBATE_CATEGORIES = [
+  "Education",
+  "Consumer",
+  "Banking",
+  "Vehicle",
+  "Telephone",
+  "Property",
+] as const;
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  type: z.enum(["fixed", "other"]).optional(),
+  category: z.string().optional(),
   maxInvestmentPercentage: z.coerce.number().min(0).optional(),
   maxInvestmentAmount: z.coerce.number().min(0).optional(),
   details: z.string().optional(),
@@ -48,6 +67,8 @@ export default function AddRebateNaturePage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      type: "other",
+      category: undefined,
       maxInvestmentPercentage: undefined,
       maxInvestmentAmount: undefined,
       details: "",
@@ -56,6 +77,8 @@ export default function AddRebateNaturePage() {
       status: "active",
     },
   });
+
+  const selectedType = form.watch("type");
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     startTransition(async () => {
@@ -116,6 +139,71 @@ export default function AddRebateNaturePage() {
 
                   <FormField
                     control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            if (value !== "fixed") {
+                              form.setValue("category", undefined);
+                            }
+                          }}
+                          disabled={isPending}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {REBATE_TYPES.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type.charAt(0).toUpperCase() + type.slice(1)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {selectedType === "fixed" && (
+                    <FormField
+                      control={form.control}
+                      name="category"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Category</FormLabel>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {REBATE_CATEGORIES.map((category) => (
+                                <SelectItem key={category} value={category}>
+                                  {category}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <FormField
+                    control={form.control}
                     name="underSection"
                     render={({ field }) => (
                       <FormItem>
@@ -123,13 +211,12 @@ export default function AddRebateNaturePage() {
                         <FormControl>
                           <Input placeholder="e.g. 61" {...field} disabled={isPending} />
                         </FormControl>
-                        <FormDescription>
-                          The tax ordinance section number.
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+
 
                   {/* Row 2: Investment Limits */}
                   <FormField
@@ -137,7 +224,7 @@ export default function AddRebateNaturePage() {
                     name="maxInvestmentPercentage"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Max Investment % (of Salary)</FormLabel>
+                        <FormLabel>Total Invesment % (of Salary)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
@@ -156,7 +243,7 @@ export default function AddRebateNaturePage() {
                     name="maxInvestmentAmount"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Max Investment Amount</FormLabel>
+                        <FormLabel>Total Invesment Amount</FormLabel>
                         <FormControl>
                           <Input
                             type="number"

@@ -25,6 +25,7 @@ import { EllipsisIcon, Eye, FileText, Loader2, Pencil, Trash2 } from "lucide-rea
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { deleteRebate } from "@/lib/actions/rebate";
 import Link from "next/link";
 
 export type RebateRow = {
@@ -50,9 +51,9 @@ export type RebateRow = {
 };
 
 const statusVariant = (status: string) => {
-  if (status === "active") return "default";
-  if (status === "inactive") return "secondary";
-  if (status === "cancelled") return "destructive";
+  if (status === "approved") return "default";
+  if (status === "pending") return "secondary";
+  if (status === "rejected") return "destructive";
   return "secondary";
 };
 
@@ -201,20 +202,16 @@ function RowActions({ row }: RowActionsProps) {
   const [deleteDialog, setDeleteDialog] = useState(false);
 
   const handleDeleteConfirm = async () => {
-    // TODO: Replace with actual API call when backend is ready
-    // startTransition(async () => {
-    //   const result = await deleteRebate(record.id);
-    //   if (result.status) {
-    //     toast.success(result.message || "Record deleted successfully");
-    //     setDeleteDialog(false);
-    //     router.refresh();
-    //   } else {
-    //     toast.error(result.message || "Failed to delete record");
-    //   }
-    // });
-
-    toast.success("Delete functionality will be available when backend is ready");
-    setDeleteDialog(false);
+    startTransition(async () => {
+      const result = await deleteRebate(record.id);
+      if (result.status) {
+        toast.success(result.message || "Record deleted successfully");
+        setDeleteDialog(false);
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to delete record");
+      }
+    });
   };
 
   return (
@@ -229,13 +226,13 @@ function RowActions({ row }: RowActionsProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem asChild>
-            <Link href={`/dashboard/rebate/view/${record.id}`}>
+            <Link href={`/dashboard/payroll-setup/rebate/view/${record.id}`}>
               <Eye className="h-4 w-4 mr-2" />
               View
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href={`/dashboard/rebate/edit/${record.id}`}>
+            <Link href={`/dashboard/payroll-setup/rebate/edit/${record.id}`}>
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </Link>

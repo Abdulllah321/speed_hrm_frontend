@@ -8,6 +8,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/
 export interface RebateNature {
   id: string;
   name: string;
+  type?: string;
+  category?: string | null;
   maxInvestmentPercentage?: number | null;
   maxInvestmentAmount?: number | null;
   details?: string | null;
@@ -108,5 +110,35 @@ export async function deleteRebateNature(id: string): Promise<{ status: boolean;
     return { status: true, message: "Rebate Nature deleted successfully" };
   } catch (error: any) {
     return { status: false, message: error.message || "Failed to delete rebate nature" };
+  }
+}
+
+export async function getFixedRebateNaturesGrouped(): Promise<{ status: boolean; data: Record<string, RebateNature[]>; message?: string }> {
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`${API_BASE}/rebate-nature/fixed/grouped`, {
+      cache: "no-store",
+      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    });
+    const data = await res.json();
+    return { status: true, data: data || {} };
+  } catch (error) {
+    console.error("Failed to fetch fixed rebate natures:", error);
+    return { status: false, data: {}, message: "Failed to fetch fixed rebate natures" };
+  }
+}
+
+export async function getRebateNaturesByType(type: 'fixed' | 'other'): Promise<{ status: boolean; data: RebateNature[]; message?: string }> {
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`${API_BASE}/rebate-nature?type=${type}`, {
+      cache: "no-store",
+      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    });
+    const data = await res.json();
+    return { status: true, data: Array.isArray(data) ? data : [] };
+  } catch (error) {
+    console.error(`Failed to fetch ${type} rebate natures:`, error);
+    return { status: false, data: [], message: `Failed to fetch ${type} rebate natures` };
   }
 }

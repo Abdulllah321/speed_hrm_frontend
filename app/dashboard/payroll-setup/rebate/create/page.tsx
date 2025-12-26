@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,12 +22,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
+import { getRebateNatures, type RebateNature } from "@/lib/actions/rebate-nature";
+import { createRebate } from "@/lib/actions/rebate";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { Autocomplete } from "@/components/ui/autocomplete";
 
@@ -40,8 +44,7 @@ const rebateFormSchema = z.object({
     .string()
     .min(1, "Month - Year is required")
     .regex(/^\d{4}-\d{2}$/, "Invalid month-year format (YYYY-MM)"),
-  rebateType: z.string().min(1, "Rebate Type is required"),
-  rebateNature: z.string().min(1, "Rebate Nature is required"),
+  rebateNatureId: z.string().min(1, "Rebate Nature is required"),
   rebateAmount: z
     .string()
     .min(1, "Rebate Amount is required")
@@ -53,31 +56,21 @@ const rebateFormSchema = z.object({
       "Amount must be a positive number"
     ),
   file: z.any().optional(),
+  remarks: z.string().optional(),
 });
 
 type RebateFormData = z.infer<typeof rebateFormSchema>;
 
-// Rebate Type options (these should come from backend in the future)
-const REBATE_TYPES = [
-  { value: "fixed", label: "Fixed" },
-  { value: "other", label: "Other" },
-];
-
-// Rebate Nature options (these should come from backend in the future)
-const REBATE_NATURES = [
-  { value: "tax_rebate", label: "Tax Rebate" },
-  { value: "investment_rebate", label: "Investment Rebate" },
-  { value: "medical_rebate", label: "Medical Rebate" },
-  { value: "education_rebate", label: "Education Rebate" },
-];
-
 export default function CreateRebatePage() {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [loading, setLoading] = useState(true);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
+  const [rebateNatures, setRebateNatures] = useState<RebateNature[]>([]);
+  const [loadingRebateNatures, setLoadingRebateNatures] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File[]>([]);
 
   const form = useForm<RebateFormData>({
@@ -87,10 +80,10 @@ export default function CreateRebatePage() {
       subDepartmentId: undefined,
       employeeId: "",
       monthYear: "",
-      rebateType: "",
-      rebateNature: "",
+      rebateNatureId: "",
       rebateAmount: "",
       file: undefined,
+      remarks: "",
     },
     mode: "onBlur",
   });
@@ -135,6 +128,29 @@ export default function CreateRebatePage() {
     };
 
     fetchEmployees();
+  }, []);
+
+  // Fetch rebate natures on mount
+  useEffect(() => {
+    const fetchRebateNatures = async () => {
+      setLoadingRebateNatures(true);
+      try {
+        const result = await getRebateNatures();
+        if (result.status && result.data) {
+          setRebateNatures(result.data);
+        } else {
+          console.error("Failed to load rebate natures:", result.message);
+          setRebateNatures([]);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        setRebateNatures([]);
+      } finally {
+        setLoadingRebateNatures(false);
+      }
+    };
+
+    fetchRebateNatures();
   }, []);
 
   // Fetch sub-departments when department changes
@@ -199,41 +215,81 @@ export default function CreateRebatePage() {
   };
 
   const onSubmit = async (data: RebateFormData) => {
-    try {
-      // TODO: Replace with actual API call when backend is ready
-      // const result = await createRebate({
-      //   employeeId: data.employeeId,
-      //   monthYear: data.monthYear,
-      //   rebateType: data.rebateType,
-      //   rebateNature: data.rebateNature,
-      //   rebateAmount: parseFloat(data.rebateAmount),
-      //   file: data.file,
-      // });
+    startTransition(async () => {
+      try {
+        let attachmentUrl: string | undefined = undefined;
 
-      // Temporary success message for frontend-only implementation
-      toast.success("Rebate form submitted successfully");
-      console.log("Form data:", data);
-      
-      // TODO: Uncomment when backend is ready
-      // if (result.status) {
-      //   toast.success(result.message || "Rebate created successfully");
-      //   router.push("/dashboard/rebate/list");
-      // } else {
-      //   toast.error(result.message || "Failed to create rebate");
-      // }
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("Failed to create rebate");
-    }
+        // Upload file first if provided
+        if (data.file) {
+          const formData = new FormData();
+          formData.append("file", data.file);
+
+          const uploadRes = await fetch("/api/uploads", {
+            method: "POST",
+            body: formData,
+          });
+
+          const uploadResult = await uploadRes.json();
+
+          if (!uploadResult.status || !uploadResult.data?.url) {
+            toast.error(uploadResult.message || "Failed to upload file");
+            return;
+          }
+
+          attachmentUrl = uploadResult.data.url;
+        }
+
+        const result = await createRebate({
+          employeeId: data.employeeId,
+          rebateNatureId: data.rebateNatureId,
+          rebateAmount: parseFloat(data.rebateAmount),
+          monthYear: data.monthYear,
+          attachment: attachmentUrl,
+          remarks: data.remarks || undefined,
+        });
+
+        if (result.status) {
+          toast.success(result.message || "Rebate created successfully");
+          router.push("/dashboard/payroll-setup/rebate/list");
+        } else {
+          toast.error(result.message || "Failed to create rebate");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        toast.error("Failed to create rebate");
+      }
+    });
   };
 
-  const rebateType = form.watch("rebateType");
-  const amountLabel = rebateType === "other" ? "Actual Investment" : "Rebate Amount";
+  // Get selected rebate nature to determine type
+  const selectedRebateNatureId = form.watch("rebateNatureId");
+  const selectedRebateNature = rebateNatures.find((rn) => rn.id === selectedRebateNatureId);
+  const rebateType = selectedRebateNature?.type || "other";
+  const amountLabel = rebateType === "fixed" ? "Rebate Amount" : "Actual Investment";
+
+  // Group rebate natures by category
+  const groupedRebateNatures = useMemo(() => {
+    const fixedByCategory = new Map<string, RebateNature[]>();
+    const otherNatures: RebateNature[] = [];
+
+    rebateNatures.forEach((nature) => {
+      if (nature.type === "fixed" && nature.category) {
+        if (!fixedByCategory.has(nature.category)) {
+          fixedByCategory.set(nature.category, []);
+        }
+        fixedByCategory.get(nature.category)!.push(nature);
+      } else {
+        otherNatures.push(nature);
+      }
+    });
+
+    return { fixedByCategory, otherNatures };
+  }, [rebateNatures]);
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/dashboard/rebate/list">
+        <Link href="/dashboard/payroll-setup/rebate/list">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -278,7 +334,7 @@ export default function CreateRebatePage() {
                           placeholder="Select Department (Optional)"
                           searchPlaceholder="Search department..."
                           emptyMessage="No departments found"
-                          disabled={form.formState.isSubmitting}
+                          disabled={isPending || form.formState.isSubmitting}
                         />
                       </FormControl>
                       <FormMessage />
@@ -353,7 +409,7 @@ export default function CreateRebatePage() {
                             placeholder="Select Employee"
                             searchPlaceholder="Search employees..."
                             emptyMessage="No employees found"
-                            disabled={form.formState.isSubmitting}
+                            disabled={isPending || form.formState.isSubmitting}
                           />
                         )}
                       </FormControl>
@@ -375,7 +431,7 @@ export default function CreateRebatePage() {
                         <MonthYearPicker
                           value={field.value}
                           onChange={field.onChange}
-                          disabled={form.formState.isSubmitting}
+                          disabled={isPending || form.formState.isSubmitting}
                           placeholder="Select month and year"
                         />
                       </FormControl>
@@ -384,32 +440,60 @@ export default function CreateRebatePage() {
                   )}
                 />
 
-                {/* Rebate Type */}
+                {/* Rebate Nature */}
                 <FormField
                   control={form.control}
-                  name="rebateType"
+                  name="rebateNatureId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Rebate Type <span className="text-destructive">*</span>
+                        Rebate Nature <span className="text-destructive">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={form.formState.isSubmitting}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Rebate Type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {REBATE_TYPES.map((type) => (
-                              <SelectItem key={type.value} value={type.value}>
-                                {type.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {loadingRebateNatures ? (
+                          <div className="h-10 bg-muted rounded-md animate-pulse" />
+                        ) : (
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={isPending || form.formState.isSubmitting}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Nature of Rebate" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {/* Fixed rebate natures grouped by category */}
+                              {Array.from(groupedRebateNatures.fixedByCategory.entries())
+                                .sort(([catA], [catB]) => catA.localeCompare(catB))
+                                .map(([category, natures]) => (
+                                  <SelectGroup key={category}>
+                                    <SelectLabel>{category}</SelectLabel>
+                                    {natures
+                                      .sort((a, b) => a.name.localeCompare(b.name))
+                                      .map((nature) => (
+                                        <SelectItem key={nature.id} value={nature.id}>
+                                          {nature.name}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectGroup>
+                                ))}
+                              
+                              {/* Other rebate natures */}
+                              {groupedRebateNatures.otherNatures.length > 0 && (
+                                <SelectGroup>
+                                  <SelectLabel>Other</SelectLabel>
+                                  {groupedRebateNatures.otherNatures
+                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                    .map((nature) => (
+                                      <SelectItem key={nature.id} value={nature.id}>
+                                        {nature.name}
+                                      </SelectItem>
+                                    ))}
+                                </SelectGroup>
+                              )}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -419,37 +503,6 @@ export default function CreateRebatePage() {
 
               {/* Second Row - 3 columns */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Rebate Nature */}
-                <FormField
-                  control={form.control}
-                  name="rebateNature"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        Rebate Nature <span className="text-destructive">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={form.formState.isSubmitting}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Nature of Rebate" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {REBATE_NATURES.map((nature) => (
-                              <SelectItem key={nature.value} value={nature.value}>
-                                {nature.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 {/* Rebate Amount / Actual Investment */}
                 <FormField
@@ -466,7 +519,7 @@ export default function CreateRebatePage() {
                           step="0.01"
                           min="0"
                           placeholder="0.00"
-                          disabled={form.formState.isSubmitting}
+                          disabled={isPending || form.formState.isSubmitting}
                           {...field}
                         />
                       </FormControl>
@@ -481,12 +534,12 @@ export default function CreateRebatePage() {
                   name="file"
                   render={({ field: { onChange, value, ...field } }) => (
                     <FormItem>
-                      <FormLabel>File Upload:</FormLabel>
+                      <FormLabel>Attachment (Optional)</FormLabel>
                       <FormControl>
                         <Input
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                          disabled={form.formState.isSubmitting}
+                          disabled={isPending || form.formState.isSubmitting}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             handleFileChange(file ? [file] : []);
@@ -502,21 +555,40 @@ export default function CreateRebatePage() {
                 />
               </div>
 
+              {/* Remarks */}
+              <FormField
+                control={form.control}
+                name="remarks"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Remarks (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter any additional remarks..."
+                        disabled={isPending || form.formState.isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {/* Action Buttons */}
               <div className="flex justify-end gap-4 pt-4 border-t">
                 <Button
                   type="button"
                   variant="default"
                   onClick={handleClearForm}
-                  disabled={form.formState.isSubmitting}
+                  disabled={isPending || form.formState.isSubmitting}
                 >
                   Clear Form
                 </Button>
                 <Button
                   type="submit"
-                  disabled={form.formState.isSubmitting}
+                  disabled={isPending || form.formState.isSubmitting}
                 >
-                  {form.formState.isSubmitting ? (
+                  {(isPending || form.formState.isSubmitting) ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Submitting...

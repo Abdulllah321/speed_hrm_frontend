@@ -43,27 +43,38 @@ export function RebateList({ initialData = [] }: RebateListProps) {
 
   // Transform API data to row format
   const transformToRows = (rebates: any[]): RebateRow[] => {
-    return rebates.map((rebate, index) => ({
-      id: rebate.id || `temp-${index}`,
-      sNo: index + 1,
-      employeeId: rebate.employeeId || "",
-      employeeName: rebate.employee?.employeeName || rebate.employeeName || "—",
-      employeeCode: rebate.employee?.employeeId || rebate.employeeCode || "—",
-      department: rebate.employee?.department?.name || "—",
-      departmentId: rebate.employee?.department?.id,
-      subDepartment: rebate.employee?.subDepartment?.name || "—",
-      subDepartmentId: rebate.employee?.subDepartment?.id,
-      month: rebate.month || "",
-      year: rebate.year || "",
-      monthYear: formatMonthYear(rebate.month || "", rebate.year || ""),
-      rebateType: rebate.rebateType || "—",
-      rebateNature: rebate.rebateNature || "—",
-      actualInvestment: rebate.actualInvestment ? Number(rebate.actualInvestment) : null,
-      rebateAmount: rebate.rebateAmount ? Number(rebate.rebateAmount) : 0,
-      documentUrl: rebate.documentUrl || null,
-      status: rebate.status || "active",
-      createdAt: rebate.createdAt || new Date().toISOString(),
-    }));
+    return rebates.map((rebate, index) => {
+      // Parse monthYear (YYYY-MM format)
+      const monthYearParts = rebate.monthYear ? rebate.monthYear.split("-") : [];
+      const year = monthYearParts[0] || "";
+      const month = monthYearParts[1] || "";
+
+      // Determine rebate type from rebate nature
+      const rebateType = rebate.rebateNature?.type || "other";
+      const isFixed = rebateType === "fixed";
+
+      return {
+        id: rebate.id || `temp-${index}`,
+        sNo: index + 1,
+        employeeId: rebate.employeeId || "",
+        employeeName: rebate.employee?.employeeName || "—",
+        employeeCode: rebate.employee?.employeeId || "—",
+        department: rebate.employee?.department?.name || "—",
+        departmentId: rebate.employee?.department?.id,
+        subDepartment: rebate.employee?.subDepartment?.name || "—",
+        subDepartmentId: rebate.employee?.subDepartment?.id,
+        month,
+        year,
+        monthYear: rebate.monthYear ? formatMonthYear(month, year) : "—",
+        rebateType: rebateType.charAt(0).toUpperCase() + rebateType.slice(1),
+        rebateNature: rebate.rebateNature?.name || "—",
+        actualInvestment: isFixed ? null : (rebate.rebateAmount ? Number(rebate.rebateAmount) : null),
+        rebateAmount: rebate.rebateAmount ? Number(rebate.rebateAmount) : 0,
+        documentUrl: rebate.attachment || null,
+        status: rebate.status || "pending",
+        createdAt: rebate.createdAt || new Date().toISOString(),
+      };
+    });
   };
 
   // Transform initial data to row format
