@@ -4,12 +4,16 @@ import { getAccessToken } from '../auth';
 
 const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 
-async function getAuthHeaders() {
+async function getAuthHeaders(isJson = true) {
   const token = await getAccessToken();
-  return {
-    'Content-Type': 'application/json',
+  const headers: Record<string, string> = {
     ...(token && { Authorization: `Bearer ${token}` }),
   };
+
+  if (isJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
 }
 
 export interface EmployeeGrade {
@@ -25,7 +29,7 @@ export interface EmployeeGrade {
 export async function getEmployeeGrades(): Promise<{ status: boolean; data?: EmployeeGrade[]; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/employee-grades`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -37,9 +41,9 @@ export async function getEmployeeGrades(): Promise<{ status: boolean; data?: Emp
     return res.json();
   } catch (error) {
     console.error('Error fetching employee grades:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employee grades. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employee grades. Please check your connection.'
     };
   }
 }
@@ -48,7 +52,7 @@ export async function getEmployeeGrades(): Promise<{ status: boolean; data?: Emp
 export async function getEmployeeGradeById(id: string): Promise<{ status: boolean; data?: EmployeeGrade; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/employee-grades/${id}`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -60,9 +64,9 @@ export async function getEmployeeGradeById(id: string): Promise<{ status: boolea
     return res.json();
   } catch (error) {
     console.error('Error fetching employee grade:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employee grade' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employee grade'
     };
   }
 }
@@ -115,7 +119,7 @@ export async function updateEmployeeGrade(id: string, data: { grade: string; sta
     const res = await fetch(`${API_URL}/employee-grades/${id}`, {
       method: 'PUT',
       headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, id }),
     });
 
     if (!res.ok) {
@@ -135,7 +139,7 @@ export async function deleteEmployeeGrade(id: string): Promise<{ status: boolean
   try {
     const res = await fetch(`${API_URL}/employee-grades/${id}`, {
       method: 'DELETE',
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
     });
 
     if (!res.ok) {
@@ -160,7 +164,7 @@ export async function updateEmployeeGrades(items: {
     const results = await Promise.all(
       items.map(item => updateEmployeeGrade(item.id, item))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} employee grade(s) failed to update` };
@@ -179,7 +183,7 @@ export async function deleteEmployeeGrades(ids: string[]): Promise<{ status: boo
     const results = await Promise.all(
       ids.map(id => deleteEmployeeGrade(id))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} employee grade(s) failed to delete` };

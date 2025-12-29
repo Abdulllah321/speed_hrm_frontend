@@ -4,12 +4,16 @@ import { getAccessToken } from '../auth';
 
 const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 
-async function getAuthHeaders() {
+async function getAuthHeaders(isJson = true) {
   const token = await getAccessToken();
-  return {
-    'Content-Type': 'application/json',
+  const headers: Record<string, string> = {
     ...(token && { Authorization: `Bearer ${token}` }),
   };
+
+  if (isJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
 }
 
 export interface EmployeeStatus {
@@ -25,7 +29,7 @@ export interface EmployeeStatus {
 export async function getEmployeeStatuses(): Promise<{ status: boolean; data?: EmployeeStatus[]; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/employee-statuses`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -37,9 +41,9 @@ export async function getEmployeeStatuses(): Promise<{ status: boolean; data?: E
     return res.json();
   } catch (error) {
     console.error('Error fetching employee statuses:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employee statuses. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employee statuses. Please check your connection.'
     };
   }
 }
@@ -48,7 +52,7 @@ export async function getEmployeeStatuses(): Promise<{ status: boolean; data?: E
 export async function getEmployeeStatusById(id: string): Promise<{ status: boolean; data?: EmployeeStatus; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/employee-statuses/${id}`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -60,9 +64,9 @@ export async function getEmployeeStatusById(id: string): Promise<{ status: boole
     return res.json();
   } catch (error) {
     console.error('Error fetching employee status:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employee status' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employee status'
     };
   }
 }
@@ -115,7 +119,7 @@ export async function updateEmployeeStatus(id: string, data: { status: string; s
     const res = await fetch(`${API_URL}/employee-statuses/${id}`, {
       method: 'PUT',
       headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, id }),
     });
 
     if (!res.ok) {
@@ -135,7 +139,7 @@ export async function deleteEmployeeStatus(id: string): Promise<{ status: boolea
   try {
     const res = await fetch(`${API_URL}/employee-statuses/${id}`, {
       method: 'DELETE',
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
     });
 
     if (!res.ok) {
@@ -160,7 +164,7 @@ export async function updateEmployeeStatuses(items: {
     const results = await Promise.all(
       items.map(item => updateEmployeeStatus(item.id, item))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} employee status(es) failed to update` };
@@ -179,7 +183,7 @@ export async function deleteEmployeeStatuses(ids: string[]): Promise<{ status: b
     const results = await Promise.all(
       ids.map(id => deleteEmployeeStatus(id))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} employee status(es) failed to delete` };

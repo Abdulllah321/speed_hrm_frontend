@@ -4,12 +4,16 @@ import { getAccessToken } from '../auth';
 
 const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 
-async function getAuthHeaders() {
+async function getAuthHeaders(isJson = true) {
   const token = await getAccessToken();
-  return {
-    'Content-Type': 'application/json',
+  const headers: Record<string, string> = {
     ...(token && { Authorization: `Bearer ${token}` }),
   };
+
+  if (isJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
 }
 
 export interface Institute {
@@ -24,7 +28,7 @@ export interface Institute {
 export async function getInstitutes(): Promise<{ status: boolean; data?: Institute[]; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/institutes`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -36,9 +40,9 @@ export async function getInstitutes(): Promise<{ status: boolean; data?: Institu
     return res.json();
   } catch (error) {
     console.error('Error fetching institutes:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch institutes. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch institutes. Please check your connection.'
     };
   }
 }
@@ -47,7 +51,7 @@ export async function getInstitutes(): Promise<{ status: boolean; data?: Institu
 export async function getInstituteById(id: string): Promise<{ status: boolean; data?: Institute; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/institutes/${id}`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -59,9 +63,9 @@ export async function getInstituteById(id: string): Promise<{ status: boolean; d
     return res.json();
   } catch (error) {
     console.error('Error fetching institute:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch institute' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch institute'
     };
   }
 }
@@ -114,7 +118,7 @@ export async function updateInstitute(id: string, data: { name: string; status?:
     const res = await fetch(`${API_URL}/institutes/${id}`, {
       method: 'PUT',
       headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, id }),
     });
 
     if (!res.ok) {
@@ -134,7 +138,7 @@ export async function deleteInstitute(id: string): Promise<{ status: boolean; me
   try {
     const res = await fetch(`${API_URL}/institutes/${id}`, {
       method: 'DELETE',
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
     });
 
     if (!res.ok) {
@@ -159,7 +163,7 @@ export async function updateInstitutes(items: {
     const results = await Promise.all(
       items.map(item => updateInstitute(item.id, item))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} institute(s) failed to update` };
@@ -178,7 +182,7 @@ export async function deleteInstitutes(ids: string[]): Promise<{ status: boolean
     const results = await Promise.all(
       ids.map(id => deleteInstitute(id))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} institute(s) failed to delete` };

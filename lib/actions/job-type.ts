@@ -104,7 +104,7 @@ export async function updateJobType(id: string, formData: FormData): Promise<{ s
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ id, name }),
     });
     const data = await res.json();
     if (data.status) {
