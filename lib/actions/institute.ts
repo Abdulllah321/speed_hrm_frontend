@@ -132,9 +132,15 @@ export async function updateInstitute(id: string, data: { name: string; status?:
 // Delete institute
 export async function deleteInstitute(id: string): Promise<{ status: boolean; message?: string }> {
   try {
+    const token = await getAccessToken();
+    // Don't include Content-Type for DELETE requests without body
+    const headers: HeadersInit = {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+    
     const res = await fetch(`${API_URL}/institutes/${id}`, {
       method: 'DELETE',
-      headers: await getAuthHeaders(),
+      headers,
     });
 
     if (!res.ok) {

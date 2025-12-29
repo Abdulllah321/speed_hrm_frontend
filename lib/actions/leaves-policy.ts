@@ -224,12 +224,13 @@ export async function setDefaultLeavesPolicy(
 ): Promise<{ status: boolean; message: string }> {
   try {
     const token = await getAccessToken();
+    // Don't include Content-Type for PUT/PATCH requests without body
+    const headers: HeadersInit = {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
     const res = await fetch(`${API_BASE}/leaves-policies/${id}/set-default`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      method: "PUT",
+      headers,
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/leaves-policy");
