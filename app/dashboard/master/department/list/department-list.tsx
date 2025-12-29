@@ -44,10 +44,10 @@ export function DepartmentList({
     startTransition(async () => {
       const result = await deleteDepartments(ids);
       if (result.status) {
-        toast.success(result.message);
+        toast.success(result.message || "Departments deleted successfully");
         router.refresh();
       } else {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to delete departments");
       }
     });
   };
@@ -84,11 +84,11 @@ export function DepartmentList({
     startTransition(async () => {
       const result = await updateDepartments(validRows);
       if (result.status) {
-        toast.success(result.message);
+        toast.success(result.message || "Departments updated successfully");
         setBulkEditOpen(false);
         router.refresh();
       } else {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to update departments");
       }
     });
   };

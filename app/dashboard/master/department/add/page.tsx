@@ -61,10 +61,10 @@ export default function AddDepartmentPage() {
       const names = validDepartments.map((d) => d.name.trim());
       const result = await createDepartments(names);
       if (result.status) {
-        toast.success(result.message);
+        toast.success(result.message || "Departments created successfully");
         router.push("/dashboard/master/department/list");
       } else {
-        toast.error(result.message);
+        toast.error(result.message || "Failed to create departments");
       }
     });
   };

@@ -373,6 +373,7 @@ export function GeneratePayrollClient({
                                     <TableRow>
                                         <TableHead className="w-[150px]">Employee</TableHead>
                                         <TableHead>Salary Breakdown</TableHead>
+                                        <TableHead>Increment/Decrement</TableHead>
                                         <TableHead>Allowances Breakdown</TableHead>
                                         <TableHead>Overtime</TableHead>
                                         <TableHead>Bonuses</TableHead>
@@ -401,6 +402,41 @@ export function GeneratePayrollClient({
                                                     </div>
                                                 ) : (
                                                     row.basicSalary?.toLocaleString()
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {row.incrementBreakup && row.incrementBreakup.length > 0 ? (
+                                                    <div className="space-y-1 text-xs">
+                                                        {row.incrementBreakup.map((inc: any, idx: number) => (
+                                                            <div key={inc.id || idx} className="space-y-0.5">
+                                                                <div className="flex justify-between gap-4">
+                                                                    <span className={`font-medium ${inc.type === 'Increment' ? 'text-green-600' : 'text-destructive'}`}>
+                                                                        {inc.type}:
+                                                                    </span>
+                                                                    <span className={inc.type === 'Increment' ? 'text-green-600' : 'text-destructive'}>
+                                                                        {inc.method === 'Amount' 
+                                                                            ? `+${inc.amount?.toLocaleString() || '0'}`
+                                                                            : `+${inc.percentage || '0'}%`}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between gap-4 text-muted-foreground">
+                                                                    <span className="text-xs">
+                                                                        {new Date(inc.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                                    </span>
+                                                                    <span className="text-xs">
+                                                                        {inc.oldSalary?.toLocaleString()} → {inc.newSalary?.toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                                {inc.daysBefore > 0 && (
+                                                                    <div className="text-xs text-muted-foreground">
+                                                                        {inc.daysBefore} days @ old salary
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">No change</span>
                                                 )}
                                             </TableCell>
                                             <TableCell>
