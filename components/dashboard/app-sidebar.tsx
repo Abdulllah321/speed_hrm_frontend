@@ -32,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronRight, Building2 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { MenuItem, menuData } from "./sidebar-menu-data";
 import { cn } from "@/lib/utils";
 
@@ -279,8 +279,13 @@ export function AppSidebar() {
       <SidebarRail />
       <SidebarHeader className="border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm ">
         <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
-          <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-primary/10 text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
-            <Building2 className="h-5 w-5 " />
+          <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
+            <Image
+              src="/image.png"
+              alt="Logo"
+              width={30}
+              height={30}
+            />
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
             <span className="font-bold text-base leading-tight text-sidebar-foreground">

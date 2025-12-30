@@ -120,54 +120,104 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
         <head>
           <title>Payroll Report - ${filters.monthYear}</title>
           <style>
-            body { font-family: sans-serif; font-size: 10px; margin: 20px; }
-            h1 { text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ccc; padding: 5px; text-align: left; vertical-align: top; }
-            th { background-color: #f0f0f0; }
+            body { font-family: Arial, sans-serif; font-size: 9px; margin: 10px; }
+            h1 { text-align: center; font-size: 14px; margin-bottom: 10px; }
+            .header-info { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 8px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { border: 1px solid #ccc; padding: 4px; text-align: left; vertical-align: top; font-size: 8px; }
+            th { background-color: #4f46e5; color: white; font-weight: bold; }
             .text-right { text-align: right; }
             .font-bold { font-weight: bold; }
-            .bg-gray { background-color: #f9f9f9; }
+            .bg-gray { background-color: #f3f4f6; }
+            .bg-green { background-color: #dcfce7; }
+            .section-header { background-color: #e5e7eb; font-weight: bold; }
+            .breakup-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 2px 0; }
+            .breakup-label { font-weight: 500; }
+            .breakup-value { text-align: right; }
+            .total-row { background-color: #fef3c7; font-weight: bold; }
+            .net-salary { color: #16a34a; font-weight: bold; font-size: 10px; }
+            .deduction { color: #dc2626; }
+            @media print {
+              body { margin: 0; }
+              @page { size: landscape; margin: 5mm; }
+            }
           </style>
         </head>
         <body>
+          <div class="header-info">
+            <span>${new Date().toLocaleDateString()}</span>
+            <span>Payroll Report - ${filters.monthYear}</span>
+          </div>
           <h1>Payroll Report - ${filters.monthYear}</h1>
           <table>
             <thead>
               <tr>
-                <th>S.No</th>
-                <th>Employee</th>
-                <th>Details</th>
-                <th>Salary/Allowances</th>
-                <th>Tax</th>
-                <th>Deductions</th>
-                <th>Net Salary</th>
+                <th style="width: 3%">S.No</th>
+                <th style="width: 12%">Employee</th>
+                <th style="width: 15%">Emp Details</th>
+                <th style="width: 18%">Salary/Allowances</th>
+                <th style="width: 12%">Tax</th>
+                <th style="width: 15%">Deductions</th>
+                <th style="width: 8%">Net Salary</th>
+                <th style="width: 10%">Account No</th>
+                <th style="width: 7%">Payment Mode</th>
               </tr>
             </thead>
             <tbody>
-              ${data.map((row, i) => `
+              ${data.map((row, i) => {
+            const salaryBreakup = row.salaryBreakup || [];
+            const allowanceBreakup = row.allowanceBreakup || [];
+            const totalGross = Number(row.grossSalary || 0) + Number(row.totalAllowances || 0);
+            const totalDed = Number(row.totalDeductions || 0) + Number(row.attendanceDeduction || 0) +
+                Number(row.loanDeduction || 0) + Number(row.advanceSalaryDeduction || 0) +
+                Number(row.eobiDeduction || 0) + Number(row.providentFundDeduction || 0) +
+                Number(row.taxDeduction || 0);
+
+            return `
                 <tr>
                   <td>${i + 1}</td>
-                  <td><b>${row.employee.employeeName}</b><br/>${row.employee.employeeId}</td>
+                  <td><b>(${row.employee.employeeId}) ${row.employee.employeeName}</b></td>
                   <td>
-                    Dept: ${row.employee.department.name}<br/>
-                    Desig: ${row.employee.designation.name}
+                    <div><b>Country:</b> ${row.employee.country?.name || '-'}</div>
+                    <div><b>Province:</b> ${row.employee.state?.name || '-'}</div>
+                    <div><b>City:</b> ${row.employee.city?.name || '-'}</div>
+                    <div><b>Station:</b> ${row.employee.branch?.name || '-'}</div>
+                    <div><b>Dept:</b> ${row.employee.department?.name || '-'}</div>
+                    <div><b>Sub-Dept:</b> ${row.employee.subDepartment?.name || '-'}</div>
+                    <div><b>Designation:</b> ${row.employee.designation?.name || '-'}</div>
                   </td>
                   <td>
-                    Gross: ${row.grossSalary.toLocaleString()}<br/>
-                    Basic: ${row.basicSalary.toLocaleString()}
+                    ${salaryBreakup.map((b: any) => `<div class="breakup-item"><span class="breakup-label">${b.name}:</span><span class="breakup-value">${Number(b.amount).toLocaleString()}</span></div>`).join('')}
+                    <div class="section-header" style="margin-top: 4px; border-top: 1px solid #999;"><b>Gross:</b> ${Number(row.grossSalary).toLocaleString()}</div>
+                    ${allowanceBreakup.map((a: any) => `<div class="breakup-item"><span class="breakup-label">${a.name}:</span><span class="breakup-value">${Number(a.amount).toLocaleString()}</span></div>`).join('')}
+                    <div class="total-row" style="margin-top: 4px; border-top: 2px solid #333;"><b>Total Gross:</b> ${totalGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   </td>
-                  <td>Monthly: ${row.taxDeduction.toLocaleString()}</td>
-                  <td>Total: ${row.totalDeductions.toLocaleString()}</td>
-                  <td class="font-bold">${row.netSalary.toLocaleString()}</td>
+                  <td>
+                    <div><b>Taxable:</b> ${Number(row.taxBreakup?.taxableIncome || 0).toLocaleString()}</div>
+                    <div><b>Annual Tax:</b> ${(Number(row.taxDeduction || 0) * 12).toLocaleString()}</div>
+                    <div><b>Rebate:</b> ${Number(row.taxBreakup?.totalRebate || 0).toLocaleString()}</div>
+                    <div class="section-header" style="margin-top: 4px; border-top: 1px solid #999;"><b>Monthly Tax:</b> ${Number(row.taxDeduction).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  </td>
+                  <td>
+                    <div><b>PF:</b> ${Number(row.providentFundDeduction || 0).toLocaleString()}</div>
+                    <div><b>Advance:</b> ${Number(row.advanceSalaryDeduction || 0).toLocaleString()}</div>
+                    <div><b>EOBI:</b> ${Number(row.eobiDeduction || 0).toLocaleString()}</div>
+                    <div><b>Loan:</b> ${Number(row.loanDeduction || 0).toLocaleString()}</div>
+                    <div><b>Attendance:</b> ${Number(row.attendanceDeduction || 0).toLocaleString()}</div>
+                    <div class="total-row deduction" style="margin-top: 4px; border-top: 1px solid #999;"><b>Total:</b> ${totalDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  </td>
+                  <td class="net-salary">${Number(row.netSalary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td>${row.accountNumber || '-'}</td>
+                  <td>${row.paymentMode || 'Bank Transfer'}</td>
                 </tr>
-              `).join('')}
-              <tr class="font-bold bg-gray">
-                <td colspan="3" class="text-right">Grand Total:</td>
-                <td>${totals.grossSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>${totals.taxDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>${totals.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>${totals.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              `}).join('')}
+              <tr class="font-bold bg-green">
+                <td colspan="3" class="text-right"><b>Grand Total:</b></td>
+                <td><b>${totals.grossSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></td>
+                <td><b>${totals.taxDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></td>
+                <td><b>${totals.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></td>
+                <td class="net-salary"><b>${totals.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></td>
+                <td colspan="2"></td>
               </tr>
             </tbody>
           </table>
