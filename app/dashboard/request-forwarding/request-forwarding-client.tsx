@@ -150,16 +150,16 @@ export function RequestForwardingClient({
 
   // Tab configuration
   const tabs = [
-    {
-      value: "exemption" as RequestType,
-      label: "Exception",
-      icon: Settings,
-      title: "Exception Request Forwarding Configuration",
-      description: "Set up approval workflows for exception requests",
-      formData: exemptionFormData,
-      onFormDataChange: handleExemptionFormDataChange,
-      config: exemptionConfig,
-    },
+    // {
+    //   value: "exemption" as RequestType,
+    //   label: "Exception",
+    //   icon: Settings,
+    //   title: "Exception Request Forwarding Configuration",
+    //   description: "Set up approval workflows for exception requests",
+    //   formData: exemptionFormData,
+    //   onFormDataChange: handleExemptionFormDataChange,
+    //   config: exemptionConfig,
+    // },
     {
       value: "attendance" as RequestType,
       label: "Attendance",
@@ -190,16 +190,16 @@ export function RequestForwardingClient({
       onFormDataChange: handleLoanFormDataChange,
       config: loanConfig,
     },
-    {
-      value: "overtime" as RequestType,
-      label: "Overtime",
-      icon: Clock,
-      title: "Overtime Request Forwarding Configuration",
-      description: "Set up approval workflows for overtime requests",
-      formData: overtimeFormData,
-      onFormDataChange: handleOvertimeFormDataChange,
-      config: overtimeConfig,
-    },
+    // {
+    //   value: "overtime" as RequestType,
+    //   label: "Overtime",
+    //   icon: Clock,
+    //   title: "Overtime Request Forwarding Configuration",
+    //   description: "Set up approval workflows for overtime requests",
+    //   formData: overtimeFormData,
+    //   onFormDataChange: handleOvertimeFormDataChange,
+    //   config: overtimeConfig,
+    // },
     {
       value: "leave-encashment" as RequestType,
       label: "Leave Encashment",

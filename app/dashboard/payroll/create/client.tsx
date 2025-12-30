@@ -43,24 +43,24 @@ import { type EmployeeDropdownOption } from "@/lib/actions/employee";
 interface GeneratePayrollClientProps {
     initialDepartments: Department[];
     initialEmployees: EmployeeDropdownOption[];
+    currentUserId: string;
 }
 
 export function GeneratePayrollClient({
     initialDepartments,
     initialEmployees,
+    currentUserId,
 }: GeneratePayrollClientProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [departments] = useState<Department[]>(initialDepartments);
     const [employees] = useState<EmployeeDropdownOption[]>(initialEmployees);
+    // ...
     const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
     const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
     const [step, setStep] = useState<"select" | "preview">("select");
     const [previewData, setPreviewData] = useState<any[]>([]);
 
-    // Mock user - replace with real auth context
-    // const { user } = useUser();
-    const mockUserId = "user-id-placeholder";
 
     const [formData, setFormData] = useState({
         department: "all",
@@ -200,13 +200,13 @@ export function GeneratePayrollClient({
                 const result = await confirmPayroll({
                     month,
                     year,
-                    generatedBy: mockUserId,
+                    generatedBy: currentUserId,
                     details: previewData
                 });
 
                 if (result.status) {
                     toast.success(result.message);
-                    router.push("/dashboard/payroll");
+                    router.push("/dashboard/payroll/report");
                 } else {
                     toast.error(result.message);
                 }
@@ -414,7 +414,7 @@ export function GeneratePayrollClient({
                                                                         {inc.type}:
                                                                     </span>
                                                                     <span className={inc.type === 'Increment' ? 'text-green-600' : 'text-destructive'}>
-                                                                        {inc.method === 'Amount' 
+                                                                        {inc.method === 'Amount'
                                                                             ? `+${inc.amount?.toLocaleString() || '0'}`
                                                                             : `+${inc.percentage || '0'}%`}
                                                                     </span>
@@ -532,8 +532,8 @@ export function GeneratePayrollClient({
                                                             <div className="flex justify-between gap-4">
                                                                 <span className="text-muted-foreground">
                                                                     Late ({row.attendanceBreakup.late.count}
-                                                                    {row.attendanceBreakup.late.chargeableCount !== undefined && 
-                                                                     row.attendanceBreakup.late.chargeableCount !== row.attendanceBreakup.late.count && 
+                                                                    {row.attendanceBreakup.late.chargeableCount !== undefined &&
+                                                                        row.attendanceBreakup.late.chargeableCount !== row.attendanceBreakup.late.count &&
                                                                         `/${row.attendanceBreakup.late.chargeableCount}`}):
                                                                 </span>
                                                                 <span className="text-destructive">
@@ -569,28 +569,28 @@ export function GeneratePayrollClient({
                                                                 <span className="text-green-600">—</span>
                                                             </div>
                                                         )}
-                                                        {(row.attendanceBreakup.absent.count > 0 || 
-                                                          (row.attendanceBreakup.late.amount && row.attendanceBreakup.late.amount > 0) || 
-                                                          (row.attendanceBreakup.halfDay && row.attendanceBreakup.halfDay.count > 0) || 
-                                                          (row.attendanceBreakup.shortDay && row.attendanceBreakup.shortDay.count > 0)) && (
-                                                            <div className="pt-1 mt-1 border-t flex justify-between gap-4 font-semibold">
-                                                                <span>Total:</span>
-                                                                <span className="text-destructive">
-                                                                    {row.attendanceDeduction?.toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {row.attendanceBreakup.absent.count === 0 && 
-                                                         row.attendanceBreakup.late.count === 0 && 
-                                                         (!row.attendanceBreakup.halfDay || row.attendanceBreakup.halfDay.count === 0) && 
-                                                         (!row.attendanceBreakup.shortDay || row.attendanceBreakup.shortDay.count === 0) && 
-                                                         (!row.attendanceBreakup.leave || row.attendanceBreakup.leave.count === 0) && (
-                                                            <span className="text-xs text-muted-foreground">No issues</span>
-                                                        )}
+                                                        {(row.attendanceBreakup.absent.count > 0 ||
+                                                            (row.attendanceBreakup.late.amount && row.attendanceBreakup.late.amount > 0) ||
+                                                            (row.attendanceBreakup.halfDay && row.attendanceBreakup.halfDay.count > 0) ||
+                                                            (row.attendanceBreakup.shortDay && row.attendanceBreakup.shortDay.count > 0)) && (
+                                                                <div className="pt-1 mt-1 border-t flex justify-between gap-4 font-semibold">
+                                                                    <span>Total:</span>
+                                                                    <span className="text-destructive">
+                                                                        {row.attendanceDeduction?.toLocaleString()}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        {row.attendanceBreakup.absent.count === 0 &&
+                                                            row.attendanceBreakup.late.count === 0 &&
+                                                            (!row.attendanceBreakup.halfDay || row.attendanceBreakup.halfDay.count === 0) &&
+                                                            (!row.attendanceBreakup.shortDay || row.attendanceBreakup.shortDay.count === 0) &&
+                                                            (!row.attendanceBreakup.leave || row.attendanceBreakup.leave.count === 0) && (
+                                                                <span className="text-xs text-muted-foreground">No issues</span>
+                                                            )}
                                                     </div>
                                                 ) : (
                                                     <span className="text-xs text-muted-foreground">
-                                                        {row.attendanceDeduction > 0 
+                                                        {row.attendanceDeduction > 0
                                                             ? row.attendanceDeduction?.toLocaleString()
                                                             : "No deduction"}
                                                     </span>
