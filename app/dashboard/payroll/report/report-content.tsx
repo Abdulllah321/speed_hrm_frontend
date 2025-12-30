@@ -87,12 +87,24 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
     };
 
     const totals = useMemo(() => {
-        return data.reduce((acc, curr) => ({
-            grossSalary: acc.grossSalary + (curr.grossSalary || 0),
-            netSalary: acc.netSalary + (curr.netSalary || 0),
-            totalDeductions: acc.totalDeductions + (curr.totalDeductions || 0),
-            taxDeduction: acc.taxDeduction + (curr.taxDeduction || 0),
-        }), { grossSalary: 0, netSalary: 0, totalDeductions: 0, taxDeduction: 0 });
+        return data.reduce((acc, curr) => {
+            const rowGross = Number(curr.grossSalary || 0) + Number(curr.totalAllowances || 0);
+            const rowDeductions =
+                Number(curr.totalDeductions || 0) +
+                Number(curr.attendanceDeduction || 0) +
+                Number(curr.loanDeduction || 0) +
+                Number(curr.advanceSalaryDeduction || 0) +
+                Number(curr.eobiDeduction || 0) +
+                Number(curr.providentFundDeduction || 0) +
+                Number(curr.taxDeduction || 0);
+
+            return {
+                grossSalary: acc.grossSalary + rowGross,
+                netSalary: acc.netSalary + Number(curr.netSalary || 0),
+                totalDeductions: acc.totalDeductions + rowDeductions,
+                taxDeduction: acc.taxDeduction + Number(curr.taxDeduction || 0),
+            };
+        }, { grossSalary: 0, netSalary: 0, totalDeductions: 0, taxDeduction: 0 });
     }, [data]);
 
     const handlePrint = () => {
@@ -152,10 +164,10 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
               `).join('')}
               <tr class="font-bold bg-gray">
                 <td colspan="3" class="text-right">Grand Total:</td>
-                <td>${totals.grossSalary.toLocaleString()}</td>
-                <td>${totals.taxDeduction.toLocaleString()}</td>
-                <td>${totals.totalDeductions.toLocaleString()}</td>
-                <td>${totals.netSalary.toLocaleString()}</td>
+                <td>${totals.grossSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>${totals.taxDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>${totals.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                <td>${totals.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             </tbody>
           </table>
@@ -269,19 +281,27 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                         <div className="mt-4 p-4 bg-gray-50 border rounded-md grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Gross</p>
-                                <p className="text-xl font-bold">{totals.grossSalary.toLocaleString()}</p>
+                                <p className="text-xl font-bold">
+                                    {totals.grossSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Tax</p>
-                                <p className="text-xl font-bold text-destructive">{totals.taxDeduction.toLocaleString()}</p>
+                                <p className="text-xl font-bold text-destructive">
+                                    {totals.taxDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Deductions</p>
-                                <p className="text-xl font-bold text-destructive">{totals.totalDeductions.toLocaleString()}</p>
+                                <p className="text-xl font-bold text-destructive">
+                                    {totals.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Net Payout</p>
-                                <p className="text-xl font-bold text-green-600">{totals.netSalary.toLocaleString()}</p>
+                                <p className="text-xl font-bold text-green-600">
+                                    {totals.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
                             </div>
                         </div>
                     )}

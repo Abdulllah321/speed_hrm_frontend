@@ -133,7 +133,9 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                     ))}
                     <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 grid grid-cols-2">
                         <span>Total Gross:</span>
-                        <span className="text-right">{data.grossSalary?.toLocaleString()}</span>
+                        <span className="text-right">
+                            {(Number(data.grossSalary || 0) + Number(data.totalAllowances || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
                     </div>
                 </div>
             );
@@ -159,7 +161,9 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                     </div>
                     <div className="grid grid-cols-2 font-bold border-t pt-1 bg-gray-50">
                         <span>Monthly Tax:</span>
-                        <span className="text-right">{row.original.taxDeduction?.toLocaleString()}</span>
+                        <span className="text-right">
+                            {Number(row.original.taxDeduction || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
                     </div>
                 </div>
             );
@@ -193,7 +197,17 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                     </div>
                     <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 grid grid-cols-2">
                         <span>Total:</span>
-                        <span className="text-right">{data.totalDeductions?.toLocaleString()}</span>
+                        <span className="text-right">
+                            {(
+                                Number(data.totalDeductions || 0) +
+                                Number(data.attendanceDeduction || 0) +
+                                Number(data.loanDeduction || 0) +
+                                Number(data.advanceSalaryDeduction || 0) +
+                                Number(data.eobiDeduction || 0) +
+                                Number(data.providentFundDeduction || 0) +
+                                Number(data.taxDeduction || 0)
+                            ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
                     </div>
                 </div>
             );
@@ -204,7 +218,7 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
         header: "Net Salary",
         cell: ({ row }) => (
             <div className="font-bold text-green-600">
-                {row.original.netSalary?.toLocaleString()}
+                {Number(row.original.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
         ),
     },
