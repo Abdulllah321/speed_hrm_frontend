@@ -35,6 +35,7 @@ import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { updateSalaryBreakup, deleteSalaryBreakup } from "@/lib/actions/salary-breakup";
 
 export type SalaryBreakupRow = {
   id: string;
@@ -144,15 +145,33 @@ function RowActions({ row }: RowActionsProps) {
       toast.error("Percent must be between 0 and 100");
       return;
     }
-    // TODO: Implement update action when backend endpoint is available
-    toast.info("Update functionality will be available soon");
-    setEditDialog(false);
+    startTransition(async () => {
+      const result = await updateSalaryBreakup(item.id, {
+        name: editForm.salaryType.trim(),
+        percentage: percent,
+        status: item.status === "Active" ? "active" : "inactive",
+      });
+      if (result.status) {
+        toast.success(result.message || "Salary breakup updated successfully");
+        setEditDialog(false);
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to update salary breakup");
+      }
+    });
   };
 
   const handleDeleteConfirm = async () => {
-    // TODO: Implement delete action when backend endpoint is available
-    toast.info("Delete functionality will be available soon");
-    setDeleteDialog(false);
+    startTransition(async () => {
+      const result = await deleteSalaryBreakup(item.id);
+      if (result.status) {
+        toast.success(result.message || "Salary breakup deleted successfully");
+        setDeleteDialog(false);
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to delete salary breakup");
+      }
+    });
   };
 
   return (

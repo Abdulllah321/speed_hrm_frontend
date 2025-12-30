@@ -32,8 +32,21 @@ import { TimePicker } from "@/components/ui/time-picker";
 import { getEmployeesForAttendance, type EmployeeForAttendance } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
 import { createAttendance, createAttendanceForDateRange, bulkUploadAttendance, type Attendance } from "@/lib/actions/attendance";
-import { format } from "date-fns";
+import { format, eachDayOfInterval, isWeekend, isWithinInterval, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { getHolidays } from "@/lib/actions/holiday";
+import { getLeaveRequests } from "@/lib/actions/leave-requests";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AttendanceManagePage() {
   const [isPending, setIsPending] = useState(false);
@@ -45,6 +58,9 @@ export default function AttendanceManagePage() {
   const [uploadDialog, setUploadDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadPending, setUploadPending] = useState(false);
+  const [holidayConfirmDialog, setHolidayConfirmDialog] = useState(false);
+  const [holidayDates, setHolidayDates] = useState<Array<{ date: Date; type: string; name?: string }>>([]);
+  const [pendingSubmit, setPendingSubmit] = useState<((includeHolidays: boolean) => void) | null>(null);
 
   const [formData, setFormData] = useState({
     employeeId: "",
@@ -216,18 +232,86 @@ export default function AttendanceManagePage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.employeeId || !formData.dateRange.from || !formData.dateRange.to) {
+  // Check for holidays, weekends, and leave days in date range
+  const checkForHolidaysAndWeekends = async (fromDate: Date, toDate: Date, employeeId: string): Promise<Array<{ date: Date; type: string; name?: string }>> => {
+    const dates: Array<{ date: Date; type: string; name?: string }> = [];
+    const allDays = eachDayOfInterval({ start: fromDate, end: toDate });
+
+    // Get holidays
+    const holidaysResult = await getHolidays();
+    const holidays = holidaysResult.status && holidaysResult.data ? holidaysResult.data : [];
+
+    // Get leave requests for the employee
+    const leaveRequestsResult = await getLeaveRequests({
+      employeeId,
+      fromDate: format(fromDate, 'yyyy-MM-dd'),
+      toDate: format(toDate, 'yyyy-MM-dd'),
+      status: 'approved', // Only check approved leaves
+    });
+    const leaveRequests = leaveRequestsResult.status && leaveRequestsResult.data ? leaveRequestsResult.data : [];
+
+    for (const day of allDays) {
+      // Check if weekend
+      if (isWeekend(day)) {
+        dates.push({
+          date: day,
+          type: day.getDay() === 0 ? 'Sunday' : 'Saturday',
+        });
+        continue;
+      }
+
+      // Check if holiday
+      const holiday = holidays.find(h => {
+        const holidayFrom = parseISO(h.dateFrom);
+        const holidayTo = parseISO(h.dateTo);
+        // Set year to match the day's year for comparison
+        holidayFrom.setFullYear(day.getFullYear());
+        holidayTo.setFullYear(day.getFullYear());
+        return isWithinInterval(day, { start: holidayFrom, end: holidayTo });
+      });
+
+      if (holiday) {
+        dates.push({
+          date: day,
+          type: 'Holiday',
+          name: holiday.name,
+        });
+        continue;
+      }
+
+      // Check if leave day
+      const leaveRequest = leaveRequests.find(lr => {
+        const leaveFrom = parseISO(lr.fromDate);
+        const leaveTo = parseISO(lr.toDate);
+        return isWithinInterval(day, { start: leaveFrom, end: leaveTo });
+      });
+
+      if (leaveRequest) {
+        dates.push({
+          date: day,
+          type: 'Leave Day',
+          name: leaveRequest.leaveTypeName || 'Leave',
+        });
+      }
+    }
+
+    return dates;
+  };
+
+  const handleSubmitInternal = async (includeHolidays: boolean = false) => {
+    const fromDate = formData.dateRange.from;
+    const toDate = formData.dateRange.to;
+    
+    if (!fromDate || !toDate) {
       toast.error("Please fill all required fields (Employee and Date Range)");
+      setIsPending(false);
       return;
     }
+    
+    const isSingleDate = format(fromDate, 'yyyy-MM-dd') === format(toDate, 'yyyy-MM-dd');
 
     setIsPending(true);
     try {
-      const fromDate = formData.dateRange.from;
-      const toDate = formData.dateRange.to;
-      const isSingleDate = format(fromDate, 'yyyy-MM-dd') === format(toDate, 'yyyy-MM-dd');
 
       let result;
       
@@ -252,10 +336,30 @@ export default function AttendanceManagePage() {
         });
       } else {
         // Date range - use createAttendanceForDateRange
+        // If includeHolidays is false, we need to filter out holiday/weekend/leave days
+        let actualFromDate = fromDate;
+        let actualToDate = toDate;
+
+        if (includeHolidays === false && holidayDates.length > 0) {
+          // Filter out holiday/weekend/leave days
+          const holidayDateStrings = holidayDates.map(hd => format(hd.date, 'yyyy-MM-dd'));
+          const allDays = eachDayOfInterval({ start: fromDate, end: toDate });
+          const workingDays = allDays.filter(day => !holidayDateStrings.includes(format(day, 'yyyy-MM-dd')));
+
+          if (workingDays.length === 0) {
+            toast.error("No working days found in the selected date range after excluding holidays/weekends/leave days");
+            setIsPending(false);
+            return;
+          }
+
+          actualFromDate = workingDays[0];
+          actualToDate = workingDays[workingDays.length - 1];
+        }
+
         result = await createAttendanceForDateRange({
           employeeId: formData.employeeId,
-          fromDate: fromDate,
-          toDate: toDate,
+          fromDate: actualFromDate,
+          toDate: actualToDate,
           checkIn: formData.checkIn || undefined,
           checkOut: formData.checkOut || undefined,
           status: formData.status,
@@ -329,6 +433,35 @@ export default function AttendanceManagePage() {
     } finally {
       setIsPending(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.employeeId || !formData.dateRange.from || !formData.dateRange.to) {
+      toast.error("Please fill all required fields (Employee and Date Range)");
+      return;
+    }
+
+    const fromDate = formData.dateRange.from;
+    const toDate = formData.dateRange.to;
+    const isSingleDate = format(fromDate, 'yyyy-MM-dd') === format(toDate, 'yyyy-MM-dd');
+
+    // For date ranges, check for holidays/weekends/leave days before submitting
+    if (!isSingleDate) {
+      const holidayDatesFound = await checkForHolidaysAndWeekends(fromDate, toDate, formData.employeeId);
+      
+      if (holidayDatesFound.length > 0) {
+        setHolidayDates(holidayDatesFound);
+        setPendingSubmit(() => (includeHolidays: boolean) => {
+          handleSubmitInternal(includeHolidays);
+        });
+        setHolidayConfirmDialog(true);
+        return;
+      }
+    }
+
+    // No holidays/weekends/leave days found, proceed normally
+    handleSubmitInternal(true);
   };
 
   // Validate file format (CSV or XLSX) before upload
@@ -938,6 +1071,61 @@ export default function AttendanceManagePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Holiday/Weekend/Leave Day Confirmation Dialog */}
+      <AlertDialog open={holidayConfirmDialog} onOpenChange={setHolidayConfirmDialog}>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Holidays, Weekends, or Leave Days Detected</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                The selected date range includes {holidayDates.length} day(s) that are holidays, weekends, or leave days.
+              </p>
+              <div className="max-h-60 overflow-y-auto border rounded-lg p-3 space-y-2">
+                {holidayDates.map((hd, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-sm">
+                    <span className="font-medium">{format(hd.date, 'EEEE, MMM dd, yyyy')}</span>
+                    <Badge variant={hd.type === 'Saturday' || hd.type === 'Sunday' ? 'secondary' : 'default'}>
+                      {hd.type}{hd.name ? `: ${hd.name}` : ''}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+              <p className="font-medium text-foreground pt-2">
+                Do you want to mark attendance for these days as well?
+              </p>
+              <p className="text-xs text-muted-foreground">
+                If you select "Yes", attendance will be marked for all days including holidays/weekends/leave days (this may result in overtime). 
+                If you select "No", only working days will be processed.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setHolidayConfirmDialog(false);
+              if (pendingSubmit) {
+                pendingSubmit(false);
+                setPendingSubmit(null);
+              }
+              setHolidayDates([]);
+            }}>
+              No, Skip These Days
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setHolidayConfirmDialog(false);
+                if (pendingSubmit) {
+                  pendingSubmit(true);
+                  setPendingSubmit(null);
+                }
+              }}
+              className="bg-primary"
+            >
+              Yes, Include These Days
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -257,7 +257,7 @@ export function AttendanceProgressSummary({
     id: item.id || `row-${index}`,
     sNo: index + 1,
   }));
-
+  console.log(data);
   // Prepare filter options
   const departmentOptions = [
     { value: "all", label: "All Departments" },
