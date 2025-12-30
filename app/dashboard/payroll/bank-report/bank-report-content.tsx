@@ -191,7 +191,7 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                                         <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
                                         <td className="border border-gray-300 px-4 py-2 uppercase">{item.employee.employeeName}</td>
                                         <td className="border border-gray-300 px-4 py-2 font-mono">{item.accountNumber || "N/A"}</td>
-                                        <td className="border border-gray-300 px-4 py-2 text-right">{Number(item.netSalary).toLocaleString()}</td>
+                                        <td className="border border-gray-300 px-4 py-2 text-right">{Number(item.netSalary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     </tr>
                                 ))}
                                 {data.length === 0 && (
@@ -206,7 +206,7 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                                 <tr>
                                     <td colSpan={3} className="border border-gray-300 px-4 py-2 text-right">TOTAL:</td>
                                     <td className="border border-gray-300 px-4 py-2 text-right underline decoration-double">
-                                        {totalAmount.toLocaleString()}
+                                        {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </td>
                                 </tr>
                             </tfoot>
