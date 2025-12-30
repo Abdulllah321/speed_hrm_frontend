@@ -280,11 +280,12 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm ">
         <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
           <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
-            <Image
-              src="/image.png"
+            <Image 
+              src={'/image.png'}
               alt="Logo"
               width={30}
               height={30}
+              className="object-contain"
             />
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">

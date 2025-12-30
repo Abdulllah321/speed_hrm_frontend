@@ -128,29 +128,29 @@ export const columns: ColumnDef<OvertimeRow>[] = [
     },
     size: 120,
   },
-  {
-    accessorKey: "approval1",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Approval 1
-      </div>
-    ),
-    cell: ({ row }) => {
-      const status = row.original.approval1;
-      const variant =
-        status === "Approved"
-          ? "default"
-          : status === "Pending"
-          ? "secondary"
-          : "destructive";
-      return (
-        <Badge variant={variant} className="font-medium">
-          {status}
-        </Badge>
-      );
-    },
-    size: 120,
-  },
+  // {
+  //   accessorKey: "approval1",
+  //   header: () => (
+  //     <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+  //       Approval 1
+  //     </div>
+  //   ),
+  //   cell: ({ row }) => {
+  //     const status = row.original.approval1;
+  //     const variant =
+  //       status === "Approved"
+  //         ? "default"
+  //         : status === "Pending"
+  //         ? "secondary"
+  //         : "destructive";
+  //     return (
+  //       <Badge variant={variant} className="font-medium">
+  //         {status}
+  //       </Badge>
+  //     );
+  //   },
+  //   size: 120,
+  // },
   {
     id: "actions",
     header: () => (

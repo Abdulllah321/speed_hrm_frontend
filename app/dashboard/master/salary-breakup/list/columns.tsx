@@ -1,6 +1,6 @@
 "use client";
 
-import { ColumnDef, Row } from "@tanstack/react-table";
+import { ColumnDef, Row, Table } from "@tanstack/react-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { HighlightText } from "@/components/common/data-table";
@@ -31,11 +31,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
-import { useState, useTransition } from "react";
+import { EllipsisIcon, Loader2, Pencil, Trash2, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { updateSalaryBreakup, deleteSalaryBreakup } from "@/lib/actions/salary-breakup";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 export type SalaryBreakupRow = {
   id: string;
@@ -115,15 +117,18 @@ export const columns: ColumnDef<SalaryBreakupRow>[] = [
   {
     id: "actions",
     header: () => <span className="sr-only">Actions</span>,
-    cell: ({ row }) => <RowActions row={row} />,
+    cell: ({ row, table }) => <RowActions row={row} table={table} />,
     size: 60,
     enableHiding: false,
   },
 ];
 
-type RowActionsProps = { row: Row<SalaryBreakupRow> };
+type RowActionsProps = { 
+  row: Row<SalaryBreakupRow>;
+  table: Table<SalaryBreakupRow>;
+};
 
-function RowActions({ row }: RowActionsProps) {
+function RowActions({ row, table }: RowActionsProps) {
   const item = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -135,6 +140,43 @@ function RowActions({ row }: RowActionsProps) {
     isTaxable: item.isTaxable,
   });
 
+  // Calculate total percentage with the edited value
+  const projectedTotal = useMemo(() => {
+    const allRows = table.getRowModel().rows.map((r: Row<SalaryBreakupRow>) => r.original);
+    const editedPercent = parseFloat(editForm.percent) || 0;
+    
+    // Calculate total: sum of all active items, replacing current item's percent with edited value
+    const total = allRows
+      .filter((r) => r.status === "Active")
+      .reduce((sum: number, r: SalaryBreakupRow) => {
+        if (r.id === item.id) {
+          return sum + editedPercent;
+        }
+        return sum + r.percent;
+      }, 0);
+    
+    return total;
+  }, [editForm.percent, item.id, table]);
+
+  const projectedStatus = useMemo(() => {
+    const roundedTotal = Math.round(projectedTotal * 100) / 100;
+    if (roundedTotal === 100) {
+      return { status: "valid" as const, message: "Total will be exactly 100%", diff: 0 };
+    } else if (projectedTotal < 100) {
+      return { 
+        status: "under" as const, 
+        message: `Total will be ${roundedTotal}% (${(100 - roundedTotal).toFixed(2)}% missing)`, 
+        diff: 100 - roundedTotal 
+      };
+    } else {
+      return { 
+        status: "over" as const, 
+        message: `Total will be ${roundedTotal}% (${(roundedTotal - 100).toFixed(2)}% over)`, 
+        diff: roundedTotal - 100 
+      };
+    }
+  }, [projectedTotal]);
+
   const handleEditSubmit = async () => {
     if (!editForm.salaryType.trim()) {
       toast.error("Salary type is required");
@@ -145,10 +187,23 @@ function RowActions({ row }: RowActionsProps) {
       toast.error("Percent must be between 0 and 100");
       return;
     }
+    
+    // Warn if total is not 100% (only for active items)
+    if (item.status === "Active" && projectedStatus.status !== "valid") {
+      const proceed = window.confirm(
+        `Warning: The total percentage will be ${projectedTotal.toFixed(2)}%, not 100%. ` +
+        `Do you want to proceed anyway?`
+      );
+      if (!proceed) {
+        return;
+      }
+    }
+    
     startTransition(async () => {
       const result = await updateSalaryBreakup(item.id, {
         name: editForm.salaryType.trim(),
         percentage: percent,
+        isTaxable: editForm.isTaxable,
         status: item.status === "Active" ? "active" : "inactive",
       });
       if (result.status) {
@@ -202,6 +257,43 @@ function RowActions({ row }: RowActionsProps) {
             <DialogTitle>Edit Salary Breakup Entry</DialogTitle>
             <DialogDescription>Update the salary breakup entry details</DialogDescription>
           </DialogHeader>
+          
+          {/* Projected Total Indicator (only show for active items) */}
+          {item.status === "Active" && (
+            <Alert className={cn(
+              "mb-4",
+              projectedStatus.status === "valid" && "border-green-500 bg-green-50 dark:bg-green-950/20",
+              projectedStatus.status === "under" && "border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20",
+              projectedStatus.status === "over" && "border-red-500 bg-red-50 dark:bg-red-950/20"
+            )}>
+              {projectedStatus.status === "valid" && (
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              )}
+              {projectedStatus.status === "under" && (
+                <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+              )}
+              {projectedStatus.status === "over" && (
+                <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+              )}
+              <AlertTitle className={cn(
+                "text-sm",
+                projectedStatus.status === "valid" && "text-green-700 dark:text-green-300",
+                projectedStatus.status === "under" && "text-yellow-700 dark:text-yellow-300",
+                projectedStatus.status === "over" && "text-red-700 dark:text-red-300"
+              )}>
+                Projected Total: {projectedTotal.toFixed(2)}%
+              </AlertTitle>
+              <AlertDescription className={cn(
+                "text-xs",
+                projectedStatus.status === "valid" && "text-green-600 dark:text-green-400",
+                projectedStatus.status === "under" && "text-yellow-600 dark:text-yellow-400",
+                projectedStatus.status === "over" && "text-red-600 dark:text-red-400"
+              )}>
+                {projectedStatus.message}
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="edit-salary-type">Salary Type</Label>

@@ -19,10 +19,13 @@ export interface SalaryBreakup {
 
 export async function createSalaryBreakup(
   name: string,
-  entries: { typeName: string; percent: number; isTaxable: boolean }[]
+  percentage: number,
+  isTaxable: boolean = false
 ): Promise<{ status: boolean; message: string; data?: SalaryBreakup }> {
   if (!name?.trim()) return { status: false, message: "Name is required" };
-  if (!entries.length) return { status: false, message: "At least one entry is required" };
+  if (percentage === undefined || percentage === null) {
+    return { status: false, message: "Percentage is required" };
+  }
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_URL}/salary-breakups`, {
@@ -31,7 +34,12 @@ export async function createSalaryBreakup(
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name, details: entries, status: "active" }),
+      body: JSON.stringify({ 
+        name, 
+        percentage, 
+        isTaxable,
+        status: "active" 
+      }),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/salary-breakup/list");
@@ -81,10 +89,13 @@ export async function getSalaryBreakups(): Promise<{
 
 export async function updateSalaryBreakup(
   id: string,
-  data: { name: string; percentage?: number; details?: string; status?: string }
+  data: { name: string; percentage: number; isTaxable?: boolean; status?: string }
 ): Promise<{ status: boolean; message: string; data?: SalaryBreakup }> {
   if (!id?.trim()) return { status: false, message: "ID is required" };
   if (!data.name?.trim()) return { status: false, message: "Name is required" };
+  if (data.percentage === undefined || data.percentage === null) {
+    return { status: false, message: "Percentage is required" };
+  }
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_URL}/salary-breakups/${id}`, {
