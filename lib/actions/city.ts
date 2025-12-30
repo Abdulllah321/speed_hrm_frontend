@@ -6,6 +6,18 @@ import { getAccessToken } from "@/lib/auth";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api";
 
+async function getHeaders(isJson = true) {
+  const token = await getAccessToken();
+  const headers: Record<string, string> = {
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+
+  if (isJson) {
+    headers["Content-Type"] = "application/json";
+  }
+  return headers;
+}
+
 export interface Country {
   id: string;
   name: string;
@@ -49,13 +61,9 @@ export async function getCountries(): Promise<{
   message?: string;
 }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/countries`, {
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(false),
     });
 
     if (!res.ok) {
@@ -63,9 +71,6 @@ export async function getCountries(): Promise<{
         .json()
         .catch(() => ({ message: "Failed to fetch countries" }));
 
-            const data = await res.json();
-
-    console.log("////////////Backend se countries data:", data); // <-- Add this
       return {
         status: false,
         message: errorData.message || `HTTP error! status: ${res.status}`,
@@ -97,13 +102,9 @@ export async function createCountry(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/countries`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ name, code }),
     });
     const data = await res.json();
@@ -122,13 +123,9 @@ export async function createCountries(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/countries/bulk`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -151,14 +148,10 @@ export async function updateCountry(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/countries/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: JSON.stringify({ name, code }),
+      headers: await getHeaders(),
+      body: JSON.stringify({ id, name, code }),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/country");
@@ -176,13 +169,9 @@ export async function updateCountries(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/countries/bulk`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -197,12 +186,9 @@ export async function deleteCountry(
   id: string
 ): Promise<{ status: boolean; message: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/countries/${id}`, {
       method: "DELETE",
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(false),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/country");
@@ -220,13 +206,9 @@ export async function deleteCountries(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/countries/bulk`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
@@ -244,13 +226,9 @@ export async function getCities(): Promise<{
   message?: string;
 }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/cities`, {
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(false),
     });
 
     if (!res.ok) {
@@ -283,6 +261,7 @@ export async function getCitiesByCountry(
   try {
     const res = await fetch(`${API_BASE}/cities/country/${countryId}`, {
       cache: "no-store",
+      headers: await getHeaders(false),
     });
     return res.json();
   } catch (error) {
@@ -298,13 +277,9 @@ export async function getStates(): Promise<{
   message?: string;
 }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/states`, {
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(false),
     });
 
     if (!res.ok) {
@@ -335,13 +310,9 @@ export async function getStatesByCountry(
   countryId: string
 ): Promise<{ status: boolean; data?: State[]; message?: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/states/country/${countryId}`, {
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(false),
     });
 
     if (!res.ok) {
@@ -372,13 +343,9 @@ export async function getCitiesByState(
   stateId: string
 ): Promise<{ status: boolean; data?: City[]; message?: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/cities/state/${stateId}`, {
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(false),
     });
 
     if (!res.ok) {
@@ -412,9 +379,7 @@ export async function getStateById(
   try {
     const res = await fetch(`${API_BASE}/states/${id}`, {
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: await getHeaders(false),
     });
 
     if (!res.ok) {
@@ -446,13 +411,9 @@ export async function createState(data: {
   status?: string;
 }): Promise<{ status: boolean; data?: State; message?: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/states`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify(data),
     });
     const result = await res.json();
@@ -471,13 +432,9 @@ export async function createStates(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/states/bulk`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -493,14 +450,10 @@ export async function updateState(
   data: { name: string; countryId?: string; status?: string }
 ): Promise<{ status: boolean; data?: State; message?: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/states/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: JSON.stringify(data),
+      headers: await getHeaders(),
+      body: JSON.stringify({ ...data, id }),
     });
     const result = await res.json();
     if (result.status) revalidatePath("/dashboard/master/state");
@@ -514,13 +467,9 @@ export async function updateStates(
   items: { id: string; name: string; countryId?: string; status?: string }[]
 ): Promise<{ status: boolean; message?: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/states/bulk`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -535,13 +484,9 @@ export async function deleteState(
   id: string
 ): Promise<{ status: boolean; message?: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/states/${id}`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(false),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/state");
@@ -555,13 +500,9 @@ export async function deleteStates(
   ids: string[]
 ): Promise<{ status: boolean; message?: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/states/bulk`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
@@ -590,13 +531,9 @@ export async function createCity(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/cities`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ name, countryId, stateId }),
     });
     const data = await res.json();
@@ -615,13 +552,9 @@ export async function createCities(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/cities/bulk`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -648,14 +581,11 @@ export async function updateCity(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/cities/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({
+        id,
         name,
         countryId: countryId || undefined,
         stateId,
@@ -677,13 +607,9 @@ export async function updateCities(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/cities/bulk`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -698,12 +624,9 @@ export async function deleteCity(
   id: string
 ): Promise<{ status: boolean; message: string }> {
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/cities/${id}`, {
       method: "DELETE",
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(false),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/city");
@@ -721,13 +644,9 @@ export async function deleteCities(
   }
 
   try {
-    const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/cities/bulk`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      headers: await getHeaders(),
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();

@@ -4,12 +4,16 @@ import { getAccessToken } from '../auth';
 
 const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 
-async function getAuthHeaders() {
+async function getAuthHeaders(isJson = true) {
   const token = await getAccessToken();
-  return {
-    'Content-Type': 'application/json',
+  const headers: Record<string, string> = {
     ...(token && { Authorization: `Bearer ${token}` }),
   };
+
+  if (isJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
 }
 
 export interface Qualification {
@@ -24,7 +28,7 @@ export interface Qualification {
 export async function getQualifications(): Promise<{ status: boolean; data?: Qualification[]; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/qualifications`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -36,9 +40,9 @@ export async function getQualifications(): Promise<{ status: boolean; data?: Qua
     return res.json();
   } catch (error) {
     console.error('Error fetching qualifications:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch qualifications. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch qualifications. Please check your connection.'
     };
   }
 }
@@ -47,7 +51,7 @@ export async function getQualifications(): Promise<{ status: boolean; data?: Qua
 export async function getQualificationById(id: string): Promise<{ status: boolean; data?: Qualification; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/qualifications/${id}`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -59,9 +63,9 @@ export async function getQualificationById(id: string): Promise<{ status: boolea
     return res.json();
   } catch (error) {
     console.error('Error fetching qualification:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch qualification' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch qualification'
     };
   }
 }
@@ -114,7 +118,7 @@ export async function updateQualification(id: string, data: { name?: string; sta
     const res = await fetch(`${API_URL}/qualifications/${id}`, {
       method: 'PUT',
       headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, id }),
     });
 
     if (!res.ok) {
@@ -134,7 +138,7 @@ export async function deleteQualification(id: string): Promise<{ status: boolean
   try {
     const res = await fetch(`${API_URL}/qualifications/${id}`, {
       method: 'DELETE',
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
     });
 
     if (!res.ok) {
@@ -159,7 +163,7 @@ export async function updateQualifications(items: {
     const results = await Promise.all(
       items.map(item => updateQualification(item.id, item))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} qualification(s) failed to update` };

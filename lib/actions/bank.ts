@@ -56,14 +56,14 @@ export async function updateBank(id: string, formData: FormData): Promise<{ stat
   const code = formData.get("code") as string;
   const accountNumberPrefix = formData.get("accountNumberPrefix") as string;
   const status = formData.get("status") as string;
-  
+
   if (!name?.trim()) return { status: false, message: "Name is required" };
-  
-  const payload: any = { name };
+
+  const payload: any = { id, name };
   if (code) payload.code = code;
   if (accountNumberPrefix) payload.accountNumberPrefix = accountNumberPrefix;
   if (status) payload.status = status;
-  
+
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/banks/${id}`, {

@@ -80,7 +80,7 @@ export async function updateHoliday(id: string, data: { name?: string; dateFrom?
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, id }),
     });
     const result = await res.json();
     if (result.status) {

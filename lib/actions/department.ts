@@ -77,18 +77,18 @@ export async function createDepartments(names: string[]): Promise<{ status: bool
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/departments`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: JSON.stringify({ names }),
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/department");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create departments" };
@@ -98,7 +98,7 @@ export async function createDepartments(names: string[]): Promise<{ status: bool
 export async function updateDepartment(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: Department }> {
   const name = formData.get("name") as string;
   const headId = formData.get("headId") as string;
-  
+
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
@@ -107,18 +107,18 @@ export async function updateDepartment(id: string, formData: FormData): Promise<
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/departments/${id}`, {
       method: "PUT",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name, headId: headId || null }),
+      body: JSON.stringify({ id, name, headId: headId || null }),
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/department");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update department" };
@@ -135,11 +135,11 @@ export async function deleteDepartment(id: string): Promise<{ status: boolean; m
       },
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/department");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete department" };
@@ -155,7 +155,7 @@ export async function deleteDepartments(ids: string[]): Promise<{ status: boolea
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/departments/bulk`, {
       method: "DELETE",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
@@ -184,7 +184,7 @@ export async function updateDepartments(
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/departments/bulk`, {
       method: "PUT",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
@@ -234,7 +234,7 @@ export async function getSubDepartmentsByDepartment(departmentId: string): Promi
 export async function createSubDepartment(formData: FormData): Promise<{ status: boolean; message: string; data?: SubDepartment }> {
   const name = formData.get("name") as string;
   const departmentId = formData.get("departmentId") as string;
-  
+
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
@@ -246,18 +246,18 @@ export async function createSubDepartment(formData: FormData): Promise<{ status:
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/sub-departments`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: JSON.stringify({ name, departmentId }),
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/sub-department");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create sub-department" };
@@ -275,7 +275,7 @@ export async function createSubDepartments(
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
@@ -297,7 +297,7 @@ export async function updateSubDepartment(id: string, formData: FormData): Promi
   const name = formData.get("name") as string;
   const departmentId = formData.get("departmentId") as string;
   const headId = formData.get("headId") as string;
-  
+
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
@@ -306,18 +306,18 @@ export async function updateSubDepartment(id: string, formData: FormData): Promi
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/sub-departments/${id}`, {
       method: "PUT",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name, departmentId: departmentId || undefined, headId: headId || null }),
+      body: JSON.stringify({ id, name, departmentId: departmentId || undefined, headId: headId || null }),
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/sub-department");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update sub-department" };
@@ -334,11 +334,11 @@ export async function deleteSubDepartment(id: string): Promise<{ status: boolean
       },
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/sub-department");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete sub-department" };
@@ -354,7 +354,7 @@ export async function deleteSubDepartments(ids: string[]): Promise<{ status: boo
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
       method: "DELETE",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
@@ -383,7 +383,7 @@ export async function updateSubDepartments(
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
       method: "PUT",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },

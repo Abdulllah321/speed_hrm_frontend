@@ -95,7 +95,7 @@ export async function updateTaxSlab(id: string, formData: FormData): Promise<{ s
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name, minAmount, maxAmount, rate }),
+      body: JSON.stringify({ id, name, minAmount, maxAmount, rate }),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/tax-slabs");

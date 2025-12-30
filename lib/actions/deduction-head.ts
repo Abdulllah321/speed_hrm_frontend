@@ -4,12 +4,16 @@ import { getAccessToken } from '../auth';
 
 const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 
-async function getAuthHeaders() {
+async function getAuthHeaders(isJson = true) {
   const token = await getAccessToken();
-  return {
-    'Content-Type': 'application/json',
+  const headers: Record<string, string> = {
     ...(token && { Authorization: `Bearer ${token}` }),
   };
+
+  if (isJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
 }
 
 export interface DeductionHead {
@@ -25,7 +29,7 @@ export interface DeductionHead {
 export async function getDeductionHeads(): Promise<{ status: boolean; data?: DeductionHead[]; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/deduction-heads`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -37,9 +41,9 @@ export async function getDeductionHeads(): Promise<{ status: boolean; data?: Ded
     return res.json();
   } catch (error) {
     console.error('Error fetching deduction heads:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch deduction heads. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch deduction heads. Please check your connection.'
     };
   }
 }
@@ -48,7 +52,7 @@ export async function getDeductionHeads(): Promise<{ status: boolean; data?: Ded
 export async function getDeductionHeadById(id: string): Promise<{ status: boolean; data?: DeductionHead; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/deduction-heads/${id}`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -60,9 +64,9 @@ export async function getDeductionHeadById(id: string): Promise<{ status: boolea
     return res.json();
   } catch (error) {
     console.error('Error fetching deduction head:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch deduction head' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch deduction head'
     };
   }
 }
@@ -115,7 +119,7 @@ export async function updateDeductionHead(id: string, data: { name: string; stat
     const res = await fetch(`${API_URL}/deduction-heads/${id}`, {
       method: 'PUT',
       headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, id }),
     });
 
     if (!res.ok) {
@@ -135,7 +139,7 @@ export async function deleteDeductionHead(id: string): Promise<{ status: boolean
   try {
     const res = await fetch(`${API_URL}/deduction-heads/${id}`, {
       method: 'DELETE',
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
     });
 
     if (!res.ok) {
@@ -160,7 +164,7 @@ export async function updateDeductionHeads(items: {
     const results = await Promise.all(
       items.map(item => updateDeductionHead(item.id, item))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} deduction head(s) failed to update` };
@@ -179,7 +183,7 @@ export async function deleteDeductionHeads(ids: string[]): Promise<{ status: boo
     const results = await Promise.all(
       ids.map(id => deleteDeductionHead(id))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} deduction head(s) failed to delete` };

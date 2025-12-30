@@ -84,7 +84,7 @@ export async function updateLeaveType(id: string, formData: FormData): Promise<{
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ id, name }),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/leave-types");

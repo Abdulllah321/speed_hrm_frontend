@@ -4,12 +4,16 @@ import { getAccessToken } from '../auth';
 
 const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 
-async function getAuthHeaders() {
+async function getAuthHeaders(isJson = true) {
   const token = await getAccessToken();
-  return {
-    'Content-Type': 'application/json',
+  const headers: Record<string, string> = {
     ...(token && { Authorization: `Bearer ${token}` }),
   };
+
+  if (isJson) {
+    headers['Content-Type'] = 'application/json';
+  }
+  return headers;
 }
 
 export interface ProvidentFund {
@@ -26,7 +30,7 @@ export interface ProvidentFund {
 export async function getProvidentFunds(): Promise<{ status: boolean; data?: ProvidentFund[]; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/provident-funds`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -38,9 +42,9 @@ export async function getProvidentFunds(): Promise<{ status: boolean; data?: Pro
     return res.json();
   } catch (error) {
     console.error('Error fetching provident funds:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch provident funds. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch provident funds. Please check your connection.'
     };
   }
 }
@@ -49,7 +53,7 @@ export async function getProvidentFunds(): Promise<{ status: boolean; data?: Pro
 export async function getProvidentFundById(id: string): Promise<{ status: boolean; data?: ProvidentFund; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/provident-funds/${id}`, {
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
       cache: 'no-store',
     });
 
@@ -61,9 +65,9 @@ export async function getProvidentFundById(id: string): Promise<{ status: boolea
     return res.json();
   } catch (error) {
     console.error('Error fetching provident fund:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch provident fund' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch provident fund'
     };
   }
 }
@@ -116,7 +120,7 @@ export async function updateProvidentFund(id: string, data: { name: string; perc
     const res = await fetch(`${API_URL}/provident-funds/${id}`, {
       method: 'PUT',
       headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, id }),
     });
 
     if (!res.ok) {
@@ -136,7 +140,7 @@ export async function deleteProvidentFund(id: string): Promise<{ status: boolean
   try {
     const res = await fetch(`${API_URL}/provident-funds/${id}`, {
       method: 'DELETE',
-      headers: await getAuthHeaders(),
+      headers: await getAuthHeaders(false),
     });
 
     if (!res.ok) {
@@ -162,7 +166,7 @@ export async function updateProvidentFunds(items: {
     const results = await Promise.all(
       items.map(item => updateProvidentFund(item.id, item))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} provident fund(s) failed to update` };
@@ -181,7 +185,7 @@ export async function deleteProvidentFunds(ids: string[]): Promise<{ status: boo
     const results = await Promise.all(
       ids.map(id => deleteProvidentFund(id))
     );
-    
+
     const failed = results.filter(r => !r.status);
     if (failed.length > 0) {
       return { status: false, message: `${failed.length} provident fund(s) failed to delete` };

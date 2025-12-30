@@ -92,7 +92,7 @@ export async function updateEOBI(id: string, formData: FormData): Promise<{ stat
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name, amount, yearMonth }),
+      body: JSON.stringify({ id, name, amount, yearMonth }),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/eobi");

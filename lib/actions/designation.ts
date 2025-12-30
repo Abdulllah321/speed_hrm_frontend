@@ -24,7 +24,6 @@ export async function getDesignations(): Promise<{ status: boolean; data: Design
     const res = await fetch(`${API_BASE}/designations`, {
       cache: "no-store",
       headers: {
-        "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       }
     });
@@ -49,7 +48,7 @@ export async function getDesignationById(id: string): Promise<{ status: boolean;
 
 export async function createDesignation(formData: FormData): Promise<{ status: boolean; message: string; data?: Designation }> {
   const name = formData.get("name") as string;
-  
+
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
@@ -58,18 +57,18 @@ export async function createDesignation(formData: FormData): Promise<{ status: b
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/designations`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: JSON.stringify({ name }),
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/designation");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create designation" };
@@ -85,18 +84,18 @@ export async function createDesignations(names: string[]): Promise<{ status: boo
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/designations/bulk`, {
       method: "POST",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: JSON.stringify({ names }),
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/designation");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create designations" };
@@ -105,7 +104,7 @@ export async function createDesignations(names: string[]): Promise<{ status: boo
 
 export async function updateDesignation(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: Designation }> {
   const name = formData.get("name") as string;
-  
+
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
@@ -114,18 +113,18 @@ export async function updateDesignation(id: string, formData: FormData): Promise
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/designations/${id}`, {
       method: "PUT",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ id, name }),
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/designation");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update designation" };
@@ -142,11 +141,11 @@ export async function deleteDesignation(id: string): Promise<{ status: boolean; 
       },
     });
     const data = await res.json();
-    
+
     if (data.status) {
       revalidatePath("/dashboard/master/designation");
     }
-    
+
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete designation" };
@@ -162,7 +161,7 @@ export async function deleteDesignations(ids: string[]): Promise<{ status: boole
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/designations/bulk`, {
       method: "DELETE",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
@@ -191,7 +190,7 @@ export async function updateDesignations(
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/designations/bulk`, {
       method: "PUT",
-      headers: { 
+      headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },

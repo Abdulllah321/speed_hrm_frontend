@@ -243,11 +243,11 @@ export const menuData: MenuItem[] = [
           { title: "Summary", href: "/dashboard/attendance/summary" },
           { title: "Request", href: "/dashboard/attendance/request" },
           { title: "Request List", href: "/dashboard/attendance/request-list" },
-          { title: "Exemptions", href: "/dashboard/attendance/exemptions" },
-          {
-            title: "Exemptions List",
-            href: "/dashboard/attendance/exemptions-list",
-          },
+          // { title: "Exemptions", href: "/dashboard/attendance/exemptions" },
+          // {
+          //   title: "Exemptions List",
+          //   href: "/dashboard/attendance/exemptions-list",
+          // },
           {
             title: "Request Forwarding",
             href: "/dashboard/request-forwarding?type=attendance",
@@ -343,19 +343,19 @@ export const menuData: MenuItem[] = [
           { title: "Bonus Payslip", href: "/dashboard/payroll-setup/bonus/payslip" },
         ],
       },
-      {
-        title: "Overtime",
-        icon: Timer,
-        children: [
-          { title: "Create", href: "/dashboard/payroll-setup/overtime/create" },
-          { title: "List", href: "/dashboard/payroll-setup/overtime/view" },
-            
-          {
-            title: "Request Forwarding",
-            href: "/dashboard/request-forwarding?type=overtime",
-          },
-        ],
-      },
+      // {
+      //   title: "Overtime",
+      //   icon: Timer,
+      //   children: [
+      //     { title: "Create", href: "/dashboard/payroll-setup/overtime/create" },
+      //     { title: "List", href: "/dashboard/payroll-setup/overtime/view" },
+
+      //     {
+      //       title: "Request Forwarding",
+      //       href: "/dashboard/request-forwarding?type=overtime",
+      //     },
+      //   ],
+      // },
       {
         title: "Leave Encashment",
         icon: Coins,
@@ -368,7 +368,7 @@ export const menuData: MenuItem[] = [
           },
         ],
       },
-     
+
       {
         title: "PF for Employee",
         children: [
