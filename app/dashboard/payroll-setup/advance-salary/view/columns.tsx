@@ -1219,29 +1219,29 @@ export const columns: ColumnDef<AdvanceSalaryRow>[] = [
     ),
     size: 150,
   },
-  {
-    accessorKey: "approval1",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Approval 1
-      </div>
-    ),
-    cell: ({ row }) => {
-      const approval = row.original.approval1;
-      const variant =
-        approval === "Approved"
-          ? "default"
-          : approval === "Pending"
-          ? "secondary"
-          : "destructive";
-      return (
-        <Badge variant={variant} className="font-medium">
-          {approval}
-        </Badge>
-      );
-    },
-    size: 120,
-  },
+  // {
+  //   accessorKey: "approval1",
+  //   header: () => (
+  //     <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+  //       Approval 1
+  //     </div>
+  //   ),
+  //   cell: ({ row }) => {
+  //     const approval = row.original.approval1;
+  //     const variant =
+  //       approval === "Approved"
+  //         ? "default"
+  //         : approval === "Pending"
+  //         ? "secondary"
+  //         : "destructive";
+  //     return (
+  //       <Badge variant={variant} className="font-medium">
+  //         {approval}
+  //       </Badge>
+  //     );
+  //   },
+  //   size: 120,
+  // },
   {
     accessorKey: "status",
     header: () => (
