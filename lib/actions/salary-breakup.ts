@@ -78,3 +78,48 @@ export async function getSalaryBreakups(): Promise<{
     };
   }
 }
+
+export async function updateSalaryBreakup(
+  id: string,
+  data: { name: string; percentage?: number; details?: string; status?: string }
+): Promise<{ status: boolean; message: string; data?: SalaryBreakup }> {
+  if (!id?.trim()) return { status: false, message: "ID is required" };
+  if (!data.name?.trim()) return { status: false, message: "Name is required" };
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`${API_URL}/salary-breakups/${id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (result.status) revalidatePath("/dashboard/master/salary-breakup/list");
+    return result;
+  } catch (error) {
+    return { status: false, message: "Failed to update salary breakup" };
+  }
+}
+
+export async function deleteSalaryBreakup(
+  id: string
+): Promise<{ status: boolean; message: string }> {
+  if (!id?.trim()) return { status: false, message: "ID is required" };
+  try {
+    const token = await getAccessToken();
+    const headers: HeadersInit = {
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+    const res = await fetch(`${API_URL}/salary-breakups/${id}`, {
+      method: "DELETE",
+      headers,
+    });
+    const result = await res.json();
+    if (result.status) revalidatePath("/dashboard/master/salary-breakup/list");
+    return result;
+  } catch (error) {
+    return { status: false, message: "Failed to delete salary breakup" };
+  }
+}

@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, LogIn, AlertCircle } from "lucide-react";
 import { login } from "@/lib/auth";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -85,7 +86,7 @@ export default function LoginPage() {
           </div>
         </CardContent>
         
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="w-full mt-6" disabled={isPending}>
             {isPending ? (
               <>
@@ -96,6 +97,26 @@ export default function LoginPage() {
               "Sign in"
             )}
           </Button>
+          
+          <div className="w-full pt-4 mt-2 border-t border-border/50">
+            <div className="flex items-center justify-center gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                Powered by
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Image
+                  src="/logo.png"
+                  alt="Innovative Network Logo"
+                  width={20}
+                  height={20}
+                  className="object-contain"
+                />
+                <span className="text-sm font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                  Innovative Network Pvt Ltd
+                </span>
+              </div>
+            </div>
+          </div>
         </CardFooter>
       </form>
     </Card>
