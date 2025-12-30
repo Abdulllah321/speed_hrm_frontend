@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { getBankReport } from "@/lib/actions/payroll";
 import { Bank } from "@/lib/actions/bank";
 import { format } from "date-fns";
+import { Autocomplete } from "@/components/ui/autocomplete";
 
 interface BankReportContentProps {
     initialBanks: Bank[];
@@ -120,21 +121,13 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                         </div>
                         <div className="min-w-[250px] flex-1">
                             <label className="text-sm font-medium mb-2 block">Select Bank <span className="text-red-500">*</span></label>
-                            <Select
+                            <Autocomplete
+                                options={initialBanks.map(bank => ({ value: bank.name, label: bank.name }))}
                                 value={filters.bankName}
-                                onValueChange={(value) => setFilters({ ...filters, bankName: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Bank" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {initialBanks.map((bank) => (
-                                        <SelectItem key={bank.id} value={bank.name}>
-                                            {bank.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                                onValueChange={(value) => setFilters({ ...filters, bankName: value || "" })}
+                                placeholder="Select Bank"
+                                searchPlaceholder="Search bank..."
+                            />
                         </div>
                         <div className="flex gap-2 min-w-fit">
                             <Button onClick={handleSearch} disabled={isPending} className="bg-indigo-600 hover:bg-indigo-700">

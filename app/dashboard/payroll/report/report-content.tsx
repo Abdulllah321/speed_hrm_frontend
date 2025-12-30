@@ -8,13 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
-import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { Printer, Download, Search, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { getPayrollReport } from "@/lib/actions/payroll";
 import { Department, SubDepartment, getSubDepartmentsByDepartment } from "@/lib/actions/department";
 import { EmployeeDropdownOption } from "@/lib/actions/employee";
+import { Autocomplete } from "@/components/ui/autocomplete";
 
 interface ReportContentProps {
     initialDepartments: Department[];
@@ -199,42 +199,37 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div className="space-y-2">
                             <Label>Department</Label>
-                            <Select value={filters.departmentId} onValueChange={handleDepartmentChange}>
-                                <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Departments</SelectItem>
-                                    {initialDepartments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                            <Autocomplete
+                                options={initialDepartments.map(d => ({ value: d.id, label: d.name }))}
+                                value={filters.departmentId}
+                                onValueChange={handleDepartmentChange}
+                                placeholder="All Departments"
+                                searchPlaceholder="Search department..."
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <Label>Sub Department</Label>
-                            <Select
+                            <Autocomplete
+                                options={subDepartments.map(d => ({ value: d.id, label: d.name }))}
                                 value={filters.subDepartmentId}
-                                onValueChange={(val) => setFilters(p => ({ ...p, subDepartmentId: val, employeeId: "all" }))}
+                                onValueChange={(val) => setFilters(p => ({ ...p, subDepartmentId: val || "all", employeeId: "all" }))}
                                 disabled={filters.departmentId === "all" || loadingSubDepartments}
-                            >
-                                <SelectTrigger><SelectValue placeholder="Select Sub Department" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Sub Departments</SelectItem>
-                                    {subDepartments.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                                placeholder="All Sub Departments"
+                                searchPlaceholder="Search sub department..."
+                                isLoading={loadingSubDepartments}
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <Label>Employee</Label>
-                            <Select
+                            <Autocomplete
+                                options={filteredEmployees.map(e => ({ value: e.id, label: `(${e.employeeId}) ${e.employeeName}` }))}
                                 value={filters.employeeId}
-                                onValueChange={(val) => setFilters(p => ({ ...p, employeeId: val }))}
-                            >
-                                <SelectTrigger><SelectValue placeholder="Select Employee" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Employees</SelectItem>
-                                    {filteredEmployees.map(e => <SelectItem key={e.id} value={e.id}>({e.employeeId}) {e.employeeName}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
+                                onValueChange={(val) => setFilters(p => ({ ...p, employeeId: val || "all" }))}
+                                placeholder="All Employees"
+                                searchPlaceholder="Search employee..."
+                            />
                         </div>
 
                         <div className="space-y-2">
