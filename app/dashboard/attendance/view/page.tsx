@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -44,7 +44,12 @@ interface DailyAttendanceRecord {
   notes?: string | null;
 }
 
-export default function ViewEmployeeAttendanceDetailPage() {
+export default function Page() {
+  return (
+   <Suspense> <ViewEmployeeAttendanceDetailPage /></Suspense>
+  )
+}
+   function ViewEmployeeAttendanceDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   

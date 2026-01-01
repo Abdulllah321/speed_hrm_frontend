@@ -74,7 +74,7 @@ export default function CreateRebatePage() {
   const [selectedFile, setSelectedFile] = useState<File[]>([]);
 
   const form = useForm<RebateFormData>({
-    resolver: zodResolver(rebateFormSchema),
+    resolver: zodResolver(rebateFormSchema) as any,
     defaultValues: {
       departmentId: undefined,
       subDepartmentId: undefined,
@@ -477,7 +477,7 @@ export default function CreateRebatePage() {
                                       ))}
                                   </SelectGroup>
                                 ))}
-                              
+
                               {/* Other rebate natures */}
                               {groupedRebateNatures.otherNatures.length > 0 && (
                                 <SelectGroup>

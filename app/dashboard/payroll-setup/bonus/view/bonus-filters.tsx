@@ -157,7 +157,6 @@ export function BonusFilters({
                   <div className="h-10 bg-muted rounded-md animate-pulse" />
                 ) : (
                   <Autocomplete
-                    id="department-filter"
                     options={[
                       { value: "all", label: "All Departments" },
                       ...departments.map((dept) => ({
@@ -183,7 +182,6 @@ export function BonusFilters({
                   <div className="h-10 bg-muted rounded-md animate-pulse" />
                 ) : (
                   <Autocomplete
-                    id="sub-department-filter"
                     options={[
                       { value: "all", label: "All Sub Departments" },
                       ...subDepartments.map((subDept) => ({
@@ -217,7 +215,6 @@ export function BonusFilters({
                   <div className="h-10 bg-muted rounded-md animate-pulse" />
                 ) : (
                   <Autocomplete
-                    id="employee-filter"
                     options={[
                       { value: "all", label: "All Employees" },
                       ...employees.map((emp) => ({
@@ -243,7 +240,6 @@ export function BonusFilters({
                   <div className="h-10 bg-muted rounded-md animate-pulse" />
                 ) : (
                   <Autocomplete
-                    id="bonus-type-filter"
                     options={[
                       { value: "all", label: "All Bonus Types" },
                       ...bonusTypes.map((type) => ({
@@ -266,7 +262,6 @@ export function BonusFilters({
               <div className="space-y-2">
                 <Label htmlFor="status-filter">Status</Label>
                 <Autocomplete
-                  id="status-filter"
                   options={[
                     { value: "all", label: "All Status" },
                     { value: "active", label: "Active" },
@@ -287,7 +282,6 @@ export function BonusFilters({
               <div className="space-y-2">
                 <Label htmlFor="month-filter">Month</Label>
                 <Autocomplete
-                  id="month-filter"
                   options={[
                     { value: "all", label: "All Months" },
                     { value: "01", label: "January" },
@@ -317,7 +311,6 @@ export function BonusFilters({
               <div className="space-y-2">
                 <Label htmlFor="year-filter">Year</Label>
                 <Autocomplete
-                  id="year-filter"
                   options={[
                     { value: "all", label: "All Years" },
                     ...Array.from({ length: 10 }, (_, i) => {
@@ -339,7 +332,6 @@ export function BonusFilters({
               <div className="space-y-2">
                 <Label htmlFor="payment-method-filter">Payment Method</Label>
                 <Autocomplete
-                  id="payment-method-filter"
                   options={[
                     { value: "all", label: "All Methods" },
                     { value: "with_salary", label: "Pay with Salary" },

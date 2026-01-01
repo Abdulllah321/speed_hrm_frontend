@@ -221,7 +221,7 @@ export default function AttendanceManagePage() {
           ...prev,
           checkIn: policy.startWorkingHours || "",
           checkOut: policy.endWorkingHours || "",
-      }));
+        }));
       } else {
         setFormData((prev) => ({
           ...prev,
@@ -301,26 +301,26 @@ export default function AttendanceManagePage() {
   const handleSubmitInternal = async (includeHolidays: boolean = false) => {
     const fromDate = formData.dateRange.from;
     const toDate = formData.dateRange.to;
-    
+
     if (!fromDate || !toDate) {
       toast.error("Please fill all required fields (Employee and Date Range)");
       setIsPending(false);
       return;
     }
-    
+
     const isSingleDate = format(fromDate, 'yyyy-MM-dd') === format(toDate, 'yyyy-MM-dd');
 
     setIsPending(true);
     try {
 
       let result;
-      
+
       if (isSingleDate) {
         // Single date - use createAttendance
-        const checkInDateTime = formData.checkIn 
+        const checkInDateTime = formData.checkIn
           ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkIn}`)
           : undefined;
-        const checkOutDateTime = formData.checkOut 
+        const checkOutDateTime = formData.checkOut
           ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkOut}`)
           : undefined;
 
@@ -385,7 +385,7 @@ export default function AttendanceManagePage() {
           const errorCount = dateRangeResult.errors?.length || 0;
           const fromDateStr = format(fromDate, 'MMM dd, yyyy');
           const toDateStr = format(toDate, 'MMM dd, yyyy');
-          
+
           if (errorCount > 0) {
             toast.warning(
               `${successCount} records created, ${errorCount} failed`,
@@ -405,7 +405,7 @@ export default function AttendanceManagePage() {
             );
           }
         }
-        
+
         // Reset form
         setFormData({
           employeeId: "",
@@ -449,7 +449,7 @@ export default function AttendanceManagePage() {
     // For date ranges, check for holidays/weekends/leave days before submitting
     if (!isSingleDate) {
       const holidayDatesFound = await checkForHolidaysAndWeekends(fromDate, toDate, formData.employeeId);
-      
+
       if (holidayDatesFound.length > 0) {
         setHolidayDates(holidayDatesFound);
         setPendingSubmit(() => (includeHolidays: boolean) => {
@@ -476,7 +476,7 @@ export default function AttendanceManagePage() {
 
     return new Promise((resolve) => {
       const reader = new FileReader();
-      
+
       reader.onload = async (e) => {
         try {
           let headers: string[] = [];
@@ -487,7 +487,7 @@ export default function AttendanceManagePage() {
               const XLSX = await import('xlsx');
               const data = e.target?.result;
               const workbook = XLSX.read(data, { type: 'array' });
-              
+
               if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
                 resolve({ valid: false, error: "The XLSX file has no sheets" });
                 return;
@@ -496,7 +496,7 @@ export default function AttendanceManagePage() {
               // Get first sheet
               const firstSheetName = workbook.SheetNames[0];
               const worksheet = workbook.Sheets[firstSheetName];
-              
+
               if (!worksheet) {
                 resolve({ valid: false, error: "The XLSX file sheet is empty" });
                 return;
@@ -504,7 +504,7 @@ export default function AttendanceManagePage() {
 
               // Convert to JSON to get headers from first row
               const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-              
+
               if (!jsonData || jsonData.length === 0) {
                 resolve({ valid: false, error: "The XLSX file has no data" });
                 return;
@@ -513,7 +513,7 @@ export default function AttendanceManagePage() {
               // First row contains headers
               const headerRow = jsonData[0] as any[];
               headers = headerRow.map((h: any) => String(h || '').trim()).filter(h => h.length > 0);
-              
+
               if (headers.length === 0) {
                 resolve({ valid: false, error: "The XLSX file has no headers" });
                 return;
@@ -545,17 +545,17 @@ export default function AttendanceManagePage() {
             // Split by comma or semicolon, handle quoted values
             headers = headerLine.split(/[,;](?=(?:[^"]*"[^"]*")*[^"]*$)/).map(h => h.trim().replace(/^["']|["']$/g, ''));
           }
-          
+
           // Normalize headers to lowercase for comparison
           // Convert spaces to underscores, normalize multiple underscores to single
-          const normalizedHeaders = headers.map(h => 
+          const normalizedHeaders = headers.map(h =>
             h.toLowerCase()
               .trim()
               .replace(/\s+/g, '_')  // Replace spaces with underscores
               .replace(/_+/g, '_')    // Normalize multiple underscores to single
               .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
           );
-          
+
           // Required columns (case-insensitive, flexible naming)
           // Accepts: ID, EmployeeID, employeeId, Employee ID, etc.
           // Accepts: DATE, Date, date
@@ -587,7 +587,7 @@ export default function AttendanceManagePage() {
               requiredColumns: requiredColumns.map(r => r.name),
               missingColumns,
             });
-            
+
             resolve({
               valid: false,
               error: `Missing required columns: ${missingColumns.join(', ')}. Found columns: ${headers.join(', ')}`,
@@ -662,16 +662,16 @@ export default function AttendanceManagePage() {
     setUploadPending(true);
     try {
       const result = await bulkUploadAttendance(selectedFile);
-      
+
       if (result.status) {
         const successCount = result.data?.length || 0;
         const errorCount = result.errors?.length || 0;
         if (errorCount > 0) {
           // Show detailed error information
-          const errorMessages = result.errors?.slice(0, 5).map((err, idx) => 
+          const errorMessages = result.errors?.slice(0, 5).map((err, idx) =>
             `Row ${idx + 1}: ${err.error}`
           ).join('\n') || '';
-          
+
           toast.warning(
             `${successCount} records imported, ${errorCount} failed`,
             {
@@ -720,12 +720,12 @@ export default function AttendanceManagePage() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Employee Selection - All in one line */}
         <Card>
-  <CardHeader>
+          <CardHeader>
             <CardTitle>Employee Selection</CardTitle>
-    <CardDescription>
+            <CardDescription>
               Select department, sub-department, and employee (all employees shown by default)
-    </CardDescription>
-  </CardHeader>
+            </CardDescription>
+          </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Department */}
@@ -773,36 +773,36 @@ export default function AttendanceManagePage() {
               </div>
 
               {/* Employee */}
-    <div className="space-y-2">
+              <div className="space-y-2">
                 <Label>Employee <span className="text-red-500">*</span></Label>
-      {loading ? (
-        <div className="h-10 bg-muted rounded animate-pulse" />
-      ) : (
-        <Select
+                {loading ? (
+                  <div className="h-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  <Select
                     value={formData.employeeId}
-          onValueChange={handleEmployeeChange}
-          disabled={isPending || loading}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select employee" />
-          </SelectTrigger>
-          <SelectContent>
-            {employees.length === 0 ? (
-              <SelectItem value="no-employees" disabled>
-                No employees found
-              </SelectItem>
-            ) : (
-              employees.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.employeeName} ({e.employeeId})
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
-      )}
-    </div>
-    </div>
+                    onValueChange={handleEmployeeChange}
+                    disabled={isPending || loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {employees.length === 0 ? (
+                        <SelectItem value="no-employees" disabled>
+                          No employees found
+                        </SelectItem>
+                      ) : (
+                        employees.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.employeeName} ({e.employeeId})
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
 
             {/* Show selected employee info and working hours policy */}
             {selectedEmployee && (
@@ -831,12 +831,12 @@ export default function AttendanceManagePage() {
                     </p>
                   </>
                 )}
-    </div>
+              </div>
             )}
           </CardContent>
         </Card>
 
-    {/* Date Range */}
+        {/* Date Range */}
         <Card>
           <CardHeader>
             <CardTitle>Date Range</CardTitle>
@@ -847,22 +847,22 @@ export default function AttendanceManagePage() {
           <CardContent>
             <div className="space-y-2">
               <Label>Date Range <span className="text-red-500">*</span></Label>
-      <DateRangePicker
-        initialDateFrom={formData.dateRange.from}
-        initialDateTo={formData.dateRange.to}
-        showCompare={false}
-        onUpdate={(values) => {
-          if (values.range) {
-            setFormData({
-              ...formData,
-              dateRange: values.range,
-            });
-          }
-        }}
-      />
-    </div>
-  </CardContent>
-</Card>
+              <DateRangePicker
+                initialDateFrom={formData.dateRange.from}
+                initialDateTo={formData.dateRange.to}
+                showCompare={false}
+                onUpdate={(values) => {
+                  if (values.range) {
+                    setFormData({
+                      ...formData,
+                      dateRange: values.range,
+                    });
+                  }
+                }}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Attendance Details */}
         <Card>
@@ -875,7 +875,7 @@ export default function AttendanceManagePage() {
           <CardContent className="space-y-6">
             {/* Time Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Check In Time */}
+              {/* Check In Time */}
               <div className="space-y-3">
                 <div>
                   <Label className="text-sm font-semibold">Check In Time</Label>
@@ -886,14 +886,14 @@ export default function AttendanceManagePage() {
                   )}
                 </div>
                 <TimePicker
-                value={formData.checkIn}
+                  value={formData.checkIn}
                   onChange={(value: string) => setFormData({ ...formData, checkIn: value })}
-                disabled={isPending}
+                  disabled={isPending}
                   placeholder="Select check-in time"
-              />
-            </div>
+                />
+              </div>
 
-            {/* Check Out Time */}
+              {/* Check Out Time */}
               <div className="space-y-3">
                 <div>
                   <Label className="text-sm font-semibold">Check Out Time</Label>
@@ -904,11 +904,11 @@ export default function AttendanceManagePage() {
                   )}
                 </div>
                 <TimePicker
-                value={formData.checkOut}
+                  value={formData.checkOut}
                   onChange={(value: string) => setFormData({ ...formData, checkOut: value })}
-                disabled={isPending}
+                  disabled={isPending}
                   placeholder="Select check-out time"
-              />
+                />
               </div>
             </div>
 
@@ -937,34 +937,34 @@ export default function AttendanceManagePage() {
 
             {/* Additional Details Section */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t">
-            {/* Remote Work */}
+              {/* Remote Work */}
               <div className="space-y-3">
                 <Label className="text-sm font-semibold">Remote Work</Label>
                 <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
-                <Switch
-                  id="isRemote"
-                  checked={formData.isRemote}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isRemote: checked })}
-                  disabled={isPending}
-                />
+                  <Switch
+                    id="isRemote"
+                    checked={formData.isRemote}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isRemote: checked })}
+                    disabled={isPending}
+                  />
                   <Label htmlFor="isRemote" className="text-sm font-medium cursor-pointer flex-1">
                     {formData.isRemote ? "Working Remotely" : "On-Site"}
-                </Label>
+                  </Label>
+                </div>
               </div>
-            </div>
 
-            {/* Location */}
+              {/* Location */}
               <div className="space-y-3">
                 <Label htmlFor="location" className="text-sm font-semibold">Location</Label>
-              <Input
-                id="location"
-                type="text"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                <Input
+                  id="location"
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   placeholder="e.g., Office, Client Site, Remote"
-                disabled={isPending}
+                  disabled={isPending}
                   className="h-11"
-              />
+                />
               </div>
             </div>
 
@@ -1042,11 +1042,11 @@ export default function AttendanceManagePage() {
             <div className="border border-primary/20 rounded-lg p-3 bg-primary/5">
               <p className="text-sm text-primary mb-2">Need a template?</p>
               <Button asChild variant="outline" size="sm" className="bg-primary! text-white! hover:bg-primary/90!">
-  <a href="/employee_samples.xlsx" download>
-    <Download className="h-4 w-4 mr-2" />
-    Download Sample Template
-  </a>
-</Button>
+                <a href="/employee_samples.xlsx" download>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Sample Template
+                </a>
+              </Button>
             </div>
           </div>
           <DialogFooter>
@@ -1095,7 +1095,7 @@ export default function AttendanceManagePage() {
                 Do you want to mark attendance for these days as well?
               </p>
               <p className="text-xs text-muted-foreground">
-                If you select "Yes", attendance will be marked for all days including holidays/weekends/leave days (this may result in overtime). 
+                If you select "Yes", attendance will be marked for all days including holidays/weekends/leave days (this may result in overtime).
                 If you select "No", only working days will be processed.
               </p>
             </AlertDialogDescription>

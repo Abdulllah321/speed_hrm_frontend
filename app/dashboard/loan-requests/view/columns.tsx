@@ -139,7 +139,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
   const record = row.original;
 
   const form = useForm<EditLoanRequestFormData>({
-    resolver: zodResolver(editLoanRequestSchema),
+    resolver: zodResolver(editLoanRequestSchema) as any,
     defaultValues: {
       loanTypeId: "",
       amount: "",
@@ -275,7 +275,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
 
   const handlePrint = () => {
     if (!loanRequestDetails) return;
-    
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error("Please allow popups to print");
@@ -426,10 +426,10 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
               <div class="info-item">
                 <div class="info-label">Amount</div>
                 <div class="info-value">${new Intl.NumberFormat("en-PK", {
-                  style: "currency",
-                  currency: "PKR",
-                  minimumFractionDigits: 0,
-                }).format(typeof loanRequestDetails.amount === 'string' ? parseFloat(loanRequestDetails.amount) : loanRequestDetails.amount)}</div>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+    }).format(typeof loanRequestDetails.amount === 'string' ? parseFloat(loanRequestDetails.amount) : loanRequestDetails.amount)}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Requested Date</div>
@@ -560,7 +560,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          
+
           {isPendingApproval && (
             <>
               <DropdownMenuItem
@@ -638,7 +638,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
-          
+
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             disabled={isPending}
@@ -718,7 +718,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
                     <div>
                       <Label className="text-sm text-muted-foreground">Repayment Start</Label>
                       <p className="font-medium">
-                        {loanRequestDetails.repaymentStartMonthYear 
+                        {loanRequestDetails.repaymentStartMonthYear
                           ? format(new Date(`${loanRequestDetails.repaymentStartMonthYear}-01`), "MMMM yyyy")
                           : "—"}
                       </p>
@@ -789,7 +789,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
                     <div>
                       <Label className="text-sm text-muted-foreground">Created By</Label>
                       <p className="font-medium">
-                        {loanRequestDetails.createdBy 
+                        {loanRequestDetails.createdBy
                           ? `${loanRequestDetails.createdBy.firstName} ${loanRequestDetails.createdBy.lastName}`
                           : "—"}
                       </p>
@@ -811,7 +811,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
                         <div>
                           <Label className="text-sm text-muted-foreground">Approved At</Label>
                           <p className="font-medium">
-                            {loanRequestDetails.approvedAt 
+                            {loanRequestDetails.approvedAt
                               ? format(new Date(loanRequestDetails.approvedAt), "MMMM dd, yyyy 'at' hh:mm a")
                               : "—"}
                           </p>
@@ -1243,8 +1243,8 @@ export const columns: ColumnDef<LoanRequestRow>[] = [
               status === "Approved"
                 ? "default"
                 : status === "Pending"
-                ? "secondary"
-                : "destructive"
+                  ? "secondary"
+                  : "destructive"
             }
           >
             {status}
@@ -1269,8 +1269,8 @@ export const columns: ColumnDef<LoanRequestRow>[] = [
               status === "Approved" || status === "Completed" || status === "Disbursed"
                 ? "default"
                 : status === "Pending"
-                ? "secondary"
-                : "destructive"
+                  ? "secondary"
+                  : "destructive"
             }
           >
             {status}

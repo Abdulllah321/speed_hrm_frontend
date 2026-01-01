@@ -64,7 +64,7 @@ export function BonusPayslipList({ initialBonuses = [], employees = [] }: BonusP
     if (!showPayslip || !selectedEmployeeId || !monthYear) return null;
 
     const [year, month] = monthYear.split("-");
-    
+
     // Filter bonuses by employee and month-year
     const filteredBonuses = initialBonuses.filter((bonus) => {
       if (bonus.employeeId !== selectedEmployeeId) {
@@ -379,23 +379,22 @@ export function BonusPayslipList({ initialBonuses = [], employees = [] }: BonusP
                     <tr>
                       <td>${index + 1}</td>
                       <td>${bonus.bonusType}</td>
-                      <td>${
-                        bonus.calculationType === "Percentage" && bonus.percentage
-                          ? `${bonus.percentage}%`
-                          : "Fixed Amount"
-                      }</td>
+                      <td>${bonus.calculationType === "Percentage" && bonus.percentage
+        ? `${bonus.percentage}%`
+        : "Fixed Amount"
+      }</td>
                       <td class="text-right">Rs ${bonus.amount.toLocaleString("en-PK", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}</td>
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}</td>
                     </tr>
                   `).join('')}
                   <tr class="total-row">
                     <td colspan="3" class="text-right"><strong>TOTAL BONUS</strong></td>
                     <td class="text-right">Rs ${payslipData.totalAmount.toLocaleString("en-PK", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}</td>
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}</td>
                   </tr>
                 </tbody>
               </table>
@@ -479,7 +478,7 @@ export function BonusPayslipList({ initialBonuses = [], employees = [] }: BonusP
                 <MonthYearPicker
                   value={monthYear}
                   onChange={(value) => {
-                    setMonthYear(value);
+                    setMonthYear(typeof value === 'string' ? value : value[0] || '');
                     setShowPayslip(false);
                   }}
                   placeholder="Select month and year"
@@ -612,7 +611,7 @@ export function BonusPayslipList({ initialBonuses = [], employees = [] }: BonusP
                 {/* Disclaimer */}
                 <div className="mt-8 p-4 bg-yellow-50 border-l-4 border-yellow-500">
                   <p className="text-xs text-yellow-900 text-center">
-                    <strong>Note:</strong> This is a system-generated bonus payslip. Please verify all details. 
+                    <strong>Note:</strong> This is a system-generated bonus payslip. Please verify all details.
                     For any discrepancies, please contact the HR department immediately.
                   </p>
                 </div>

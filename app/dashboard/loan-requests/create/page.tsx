@@ -89,7 +89,7 @@ export default function CreateLoanRequestPage() {
   const [loanTypes, setLoanTypes] = useState<LoanType[]>([]);
 
   const form = useForm<LoanRequestFormData>({
-    resolver: zodResolver(loanRequestFormSchema),
+    resolver: zodResolver(loanRequestFormSchema) as any,
     defaultValues: {
       departmentId: undefined,
       subDepartmentId: undefined,
@@ -242,7 +242,7 @@ export default function CreateLoanRequestPage() {
         reason: data.reason,
         additionalDetails: data.additionalDetails || undefined,
       });
-      
+
       if (result.status) {
         toast.success(result.message || "Loan request created successfully");
         router.push("/dashboard/loan-requests/view");

@@ -55,16 +55,28 @@ const formSchema = z.object({
   maxInvestmentAmount: z.coerce.number().min(0).optional(),
   details: z.string().optional(),
   underSection: z.string().optional(),
-  isAgeDependent: z.boolean().default(false),
-  status: z.string().default("active"),
+  isAgeDependent: z.boolean().optional().default(false),
+  status: z.string().optional().default("active"),
 });
+
+type FormSchemaType = {
+  name: string;
+  type?: "fixed" | "other";
+  category?: string;
+  maxInvestmentPercentage?: number;
+  maxInvestmentAmount?: number;
+  details?: string;
+  underSection?: string;
+  isAgeDependent?: boolean;
+  status?: string;
+};
 
 export default function AddRebateNaturePage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FormSchemaType>({
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       name: "",
       type: "other",
@@ -80,7 +92,7 @@ export default function AddRebateNaturePage() {
 
   const selectedType = form.watch("type");
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
+  const onSubmit = (values: FormSchemaType) => {
     startTransition(async () => {
       const result = await createRebateNature(values);
       if (result.status) {

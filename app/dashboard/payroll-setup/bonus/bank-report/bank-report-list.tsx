@@ -58,7 +58,7 @@ export function BankReportList({ initialBonuses = [], banks = [] }: BankReportLi
     if (!showReport || !monthYear) return [];
 
     const [year, month] = monthYear.split("-");
-    
+
     // Filter bonuses by month and year only (no bank restriction)
     const filteredBonuses = initialBonuses.filter((bonus) => {
       // Month-Year filter
@@ -79,7 +79,7 @@ export function BankReportList({ initialBonuses = [], banks = [] }: BankReportLi
 
     filteredBonuses.forEach((bonus) => {
       const employeeId = bonus.employeeId;
-      
+
       if (!employeeMap.has(employeeId)) {
         employeeMap.set(employeeId, {
           sNo: employeeMap.size + 1,
@@ -96,7 +96,7 @@ export function BankReportList({ initialBonuses = [], banks = [] }: BankReportLi
     });
 
     // Sort by employee ID
-    return Array.from(employeeMap.values()).sort((a, b) => 
+    return Array.from(employeeMap.values()).sort((a, b) =>
       a.employeeId.localeCompare(b.employeeId)
     );
   }, [initialBonuses, monthYear, showReport]);
@@ -112,7 +112,7 @@ export function BankReportList({ initialBonuses = [], banks = [] }: BankReportLi
       toast.error("Please select cheque date");
       return;
     }
-    
+
     setShowReport(true);
   };
 
@@ -406,7 +406,7 @@ export function BankReportList({ initialBonuses = [], banks = [] }: BankReportLi
                 </Label>
                 <MonthYearPicker
                   value={monthYear}
-                  onChange={setMonthYear}
+                  onChange={(value) => setMonthYear(typeof value === 'string' ? value : value[0] || '')}
                   placeholder="Select month and year"
                 />
               </div>
@@ -417,7 +417,7 @@ export function BankReportList({ initialBonuses = [], banks = [] }: BankReportLi
                 </Label>
                 <DatePicker
                   value={chequeDate}
-                  onChange={setChequeDate}
+                  onChange={(value) => setChequeDate(typeof value === 'string' ? value : value || '')}
                   placeholder="Select cheque date"
                 />
               </div>

@@ -114,7 +114,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
   const record = row.original;
 
   const form = useForm<EditAdvanceSalaryFormData>({
-    resolver: zodResolver(editAdvanceSalarySchema),
+    resolver: zodResolver(editAdvanceSalarySchema) as any,
     defaultValues: {
       amount: "",
       neededOn: "",
@@ -223,7 +223,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
 
   const handlePrint = () => {
     if (!advanceSalaryDetails) return;
-    
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       toast.error("Please allow popups to print");
@@ -351,10 +351,10 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
               <div class="info-item">
                 <div class="info-label">Amount</div>
                 <div class="info-value">${new Intl.NumberFormat("en-PK", {
-                  style: "currency",
-                  currency: "PKR",
-                  minimumFractionDigits: 0,
-                }).format(typeof advanceSalaryDetails.amount === 'string' ? parseFloat(advanceSalaryDetails.amount) : advanceSalaryDetails.amount)}</div>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+    }).format(typeof advanceSalaryDetails.amount === 'string' ? parseFloat(advanceSalaryDetails.amount) : advanceSalaryDetails.amount)}</div>
               </div>
               <div class="info-item">
                 <div class="info-label">Needed On</div>
@@ -467,7 +467,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          
+
           {isPendingApproval && (
             <>
               <DropdownMenuItem
@@ -536,7 +536,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                 }
                 setLoadingDetails(false);
               }
-              
+
               // Use the details to print
               if (details) {
                 const printWindow = window.open('', '_blank');
@@ -666,10 +666,10 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                           <div class="info-item">
                             <div class="info-label">Amount</div>
                             <div class="info-value">${new Intl.NumberFormat("en-PK", {
-                              style: "currency",
-                              currency: "PKR",
-                              minimumFractionDigits: 0,
-                            }).format(typeof details.amount === 'string' ? parseFloat(details.amount) : details.amount)}</div>
+                  style: "currency",
+                  currency: "PKR",
+                  minimumFractionDigits: 0,
+                }).format(typeof details.amount === 'string' ? parseFloat(details.amount) : details.amount)}</div>
                           </div>
                           <div class="info-item">
                             <div class="info-label">Needed On</div>
@@ -760,7 +760,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
           </DropdownMenuItem>
 
           <DropdownMenuSeparator />
-          
+
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             disabled={isPending}
@@ -889,7 +889,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                     <div>
                       <Label className="text-sm text-muted-foreground">Created By</Label>
                       <p className="font-medium">
-                        {advanceSalaryDetails.createdBy 
+                        {advanceSalaryDetails.createdBy
                           ? `${advanceSalaryDetails.createdBy.firstName} ${advanceSalaryDetails.createdBy.lastName}`
                           : "—"}
                       </p>
@@ -911,7 +911,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
                         <div>
                           <Label className="text-sm text-muted-foreground">Approved At</Label>
                           <p className="font-medium">
-                            {advanceSalaryDetails.approvedAt 
+                            {advanceSalaryDetails.approvedAt
                               ? format(new Date(advanceSalaryDetails.approvedAt), "MMMM dd, yyyy 'at' hh:mm a")
                               : "—"}
                           </p>
@@ -1255,8 +1255,8 @@ export const columns: ColumnDef<AdvanceSalaryRow>[] = [
         status === "Active" || status === "Approved"
           ? "default"
           : status === "Pending"
-          ? "secondary"
-          : "destructive";
+            ? "secondary"
+            : "destructive";
       return (
         <Badge variant={variant} className="font-medium">
           {status}

@@ -71,7 +71,7 @@ export default function CreateAdvanceSalaryPage() {
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
 
   const form = useForm<AdvanceSalaryFormData>({
-    resolver: zodResolver(advanceSalaryFormSchema),
+    resolver: zodResolver(advanceSalaryFormSchema) as any,
     defaultValues: {
       departmentId: undefined,
       subDepartmentId: undefined,
@@ -186,7 +186,7 @@ export default function CreateAdvanceSalaryPage() {
         deductionMonthYear: data.deductionMonthYear,
         reason: data.reason,
       });
-      
+
       if (result.status) {
         toast.success(result.message || "Advance salary request created successfully");
         router.push("/dashboard/payroll-setup/advance-salary/view");

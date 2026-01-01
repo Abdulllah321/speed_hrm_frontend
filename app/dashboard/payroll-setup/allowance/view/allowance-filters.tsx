@@ -155,7 +155,6 @@ export function AllowanceFilters({
                   <div className="h-10 bg-muted rounded-md animate-pulse" />
                 ) : (
                   <Autocomplete
-                    id="department-filter"
                     options={[
                       { value: "all", label: "All Departments" },
                       ...departments.map((dept) => ({
@@ -181,7 +180,6 @@ export function AllowanceFilters({
                   <div className="h-10 bg-muted rounded-md animate-pulse" />
                 ) : (
                   <Autocomplete
-                    id="sub-department-filter"
                     options={[
                       { value: "all", label: "All Sub Departments" },
                       ...subDepartments.map((subDept) => ({
@@ -215,7 +213,6 @@ export function AllowanceFilters({
                   <div className="h-10 bg-muted rounded-md animate-pulse" />
                 ) : (
                   <Autocomplete
-                    id="employee-filter"
                     options={[
                       { value: "all", label: "All Employees" },
                       ...employees.map((emp) => ({
@@ -241,7 +238,6 @@ export function AllowanceFilters({
                   <div className="h-10 bg-muted rounded-md animate-pulse" />
                 ) : (
                   <Autocomplete
-                    id="allowance-type-filter"
                     options={[
                       { value: "all", label: "All Allowance Types" },
                       ...allowanceHeads.map((head) => ({
@@ -264,7 +260,6 @@ export function AllowanceFilters({
               <div className="space-y-2">
                 <Label htmlFor="status-filter">Status</Label>
                 <Autocomplete
-                  id="status-filter"
                   options={[
                     { value: "all", label: "All Status" },
                     { value: "active", label: "Active" },
@@ -285,7 +280,6 @@ export function AllowanceFilters({
               <div className="space-y-2">
                 <Label htmlFor="month-filter">Month</Label>
                 <Autocomplete
-                  id="month-filter"
                   options={[
                     { value: "all", label: "All Months" },
                     { value: "01", label: "January" },
@@ -315,7 +309,6 @@ export function AllowanceFilters({
               <div className="space-y-2">
                 <Label htmlFor="year-filter">Year</Label>
                 <Autocomplete
-                  id="year-filter"
                   options={[
                     { value: "all", label: "All Years" },
                     ...Array.from({ length: 10 }, (_, i) => {
@@ -337,7 +330,6 @@ export function AllowanceFilters({
               <div className="space-y-2">
                 <Label htmlFor="taxable-filter">Taxable Status</Label>
                 <Autocomplete
-                  id="taxable-filter"
                   options={[
                     { value: "all", label: "All" },
                     { value: "true", label: "Taxable" },

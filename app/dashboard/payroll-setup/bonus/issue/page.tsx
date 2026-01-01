@@ -161,7 +161,7 @@ export default function IssueBonusPage() {
   );
 
   const form = useForm<BonusIssueFormData>({
-    resolver: zodResolver(bonusIssueFormSchema),
+    resolver: zodResolver(bonusIssueFormSchema) as any,
     defaultValues: {
       departmentId: undefined,
       subDepartmentId: undefined,
@@ -364,11 +364,10 @@ export default function IssueBonusPage() {
   const bonusTypeOptions = useMemo(() => {
     return bonusTypes.map((bt) => ({
       value: bt.id,
-      label: `${bt.name} (${
-        bt.calculationType === "Amount"
+      label: `${bt.name} (${bt.calculationType === "Amount"
           ? `Fixed: ${bt.amount || "N/A"}`
           : `Percentage: ${bt.percentage || "N/A"}%`
-      })`,
+        })`,
     }));
   }, [bonusTypes]);
 
@@ -556,8 +555,7 @@ export default function IssueBonusPage() {
           0
         );
         toast.success(
-          `Bonuses issued successfully for ${
-            employeeBonuses.length
+          `Bonuses issued successfully for ${employeeBonuses.length
           } employee(s). Total amount: PKR ${totalAmount.toLocaleString(
             "en-PK",
             { minimumFractionDigits: 2 }
@@ -850,190 +848,190 @@ export default function IssueBonusPage() {
                     )}
                   />
                 ) : null}
-              {/* Bonus Month-Year */}
-              <FormField
-                control={form.control}
-                name="bonusMonthYear"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4" />
-                      Bonus Month & Year{" "}
-                      <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <MonthYearPicker
-                        value={field.value}
-                        onChange={field.onChange}
-                        disabled={form.formState.isSubmitting || submitting}
-                        placeholder="Select month and year"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                {/* Bonus Month-Year */}
+                <FormField
+                  control={form.control}
+                  name="bonusMonthYear"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Bonus Month & Year{" "}
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <MonthYearPicker
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={form.formState.isSubmitting || submitting}
+                          placeholder="Select month and year"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
 
-              {/* Payment Method */}
-              <FormField
-                control={form.control}
-                name="paymentMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Wallet className="h-4 w-4" />
-                      Payment Method <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={form.formState.isSubmitting || submitting}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Select payment method">
-                            {field.value === "with_salary" ? (
-                              <span className="flex items-center gap-2">
-                                <Wallet className="h-4 w-4 text-primary" />
-                                Pay with Salary
-                              </span>
-                            ) : field.value === "separately" ? (
-                              <span className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-primary" />
-                                Separately
-                              </span>
-                            ) : (
-                              "Select payment method"
-                            )}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="min-w-[300px]">
-                          <SelectItem
-                            value="with_salary"
-                            className="py-3 cursor-pointer"
-                          >
-                            <div className="flex items-start gap-3 w-full">
-                              <Wallet className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                              <div className="flex flex-col gap-1 flex-1">
-                                <span className="font-semibold text-sm">
+                {/* Payment Method */}
+                <FormField
+                  control={form.control}
+                  name="paymentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        Payment Method <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={form.formState.isSubmitting || submitting}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select payment method">
+                              {field.value === "with_salary" ? (
+                                <span className="flex items-center gap-2">
+                                  <Wallet className="h-4 w-4 text-primary" />
                                   Pay with Salary
                                 </span>
-                                <span className="text-xs text-muted-foreground leading-relaxed">
-                                  Bonus will be included in the monthly salary
-                                  payment
-                                </span>
-                              </div>
-                            </div>
-                          </SelectItem>
-                          <SelectItem
-                            value="separately"
-                            className="py-3 cursor-pointer"
-                          >
-                            <div className="flex items-start gap-3 w-full">
-                              <DollarSign className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                              <div className="flex flex-col gap-1 flex-1">
-                                <span className="font-semibold text-sm">
+                              ) : field.value === "separately" ? (
+                                <span className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4 text-primary" />
                                   Separately
                                 </span>
-                                <span className="text-xs text-muted-foreground leading-relaxed">
-                                  Bonus will be paid as a separate transaction
-                                </span>
+                              ) : (
+                                "Select payment method"
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="min-w-[300px]">
+                            <SelectItem
+                              value="with_salary"
+                              className="py-3 cursor-pointer"
+                            >
+                              <div className="flex items-start gap-3 w-full">
+                                <Wallet className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                                <div className="flex flex-col gap-1 flex-1">
+                                  <span className="font-semibold text-sm">
+                                    Pay with Salary
+                                  </span>
+                                  <span className="text-xs text-muted-foreground leading-relaxed">
+                                    Bonus will be included in the monthly salary
+                                    payment
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormDescription>
-                      Choose how the bonus should be paid to employees.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                            </SelectItem>
+                            <SelectItem
+                              value="separately"
+                              className="py-3 cursor-pointer"
+                            >
+                              <div className="flex items-start gap-3 w-full">
+                                <DollarSign className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                                <div className="flex flex-col gap-1 flex-1">
+                                  <span className="font-semibold text-sm">
+                                    Separately
+                                  </span>
+                                  <span className="text-xs text-muted-foreground leading-relaxed">
+                                    Bonus will be paid as a separate transaction
+                                  </span>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        Choose how the bonus should be paid to employees.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              {/* Adjustment Method */}
-              <FormField
-                control={form.control}
-                name="adjustmentMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <CalendarDays className="h-4 w-4" />
-                      Adjustment Method{" "}
-                      <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={form.formState.isSubmitting || submitting}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Select adjustment method">
-                            {field.value === "distributed-remaining-months" ? (
-                              <span className="flex items-center gap-2">
-                                <CalendarDays className="h-4 w-4 text-primary" />
-                                Distributed in Remaining Months
-                              </span>
-                            ) : field.value === "deduct-current-month" ? (
-                              <span className="flex items-center gap-2">
-                                <Minus className="h-4 w-4 text-destructive" />
-                                Deduct from Current Month
-                              </span>
-                            ) : (
-                              "Select adjustment method"
-                            )}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent className="min-w-[320px]">
-                          <SelectItem
-                            value="distributed-remaining-months"
-                            className="py-3 cursor-pointer"
-                          >
-                            <div className="flex items-start gap-3 w-full">
-                              <CalendarDays className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                              <div className="flex flex-col gap-1 flex-1">
-                                <span className="font-semibold text-sm">
+                {/* Adjustment Method */}
+                <FormField
+                  control={form.control}
+                  name="adjustmentMethod"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4" />
+                        Adjustment Method{" "}
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={form.formState.isSubmitting || submitting}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select adjustment method">
+                              {field.value === "distributed-remaining-months" ? (
+                                <span className="flex items-center gap-2">
+                                  <CalendarDays className="h-4 w-4 text-primary" />
                                   Distributed in Remaining Months
                                 </span>
-                                <span className="text-xs text-muted-foreground leading-relaxed">
-                                  Bonus will be distributed across remaining
-                                  months of the year
-                                </span>
-                              </div>
-                            </div>
-                          </SelectItem>
-                          <SelectItem
-                            value="deduct-current-month"
-                            className="py-3 cursor-pointer"
-                          >
-                            <div className="flex items-start gap-3 w-full">
-                              <Minus className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
-                              <div className="flex flex-col gap-1 flex-1">
-                                <span className="font-semibold text-sm">
+                              ) : field.value === "deduct-current-month" ? (
+                                <span className="flex items-center gap-2">
+                                  <Minus className="h-4 w-4 text-destructive" />
                                   Deduct from Current Month
                                 </span>
-                                <span className="text-xs text-muted-foreground leading-relaxed">
-                                  Bonus will be deducted from the current
-                                  month&apos;s salary
-                                </span>
+                              ) : (
+                                "Select adjustment method"
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent className="min-w-[320px]">
+                            <SelectItem
+                              value="distributed-remaining-months"
+                              className="py-3 cursor-pointer"
+                            >
+                              <div className="flex items-start gap-3 w-full">
+                                <CalendarDays className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                                <div className="flex flex-col gap-1 flex-1">
+                                  <span className="font-semibold text-sm">
+                                    Distributed in Remaining Months
+                                  </span>
+                                  <span className="text-xs text-muted-foreground leading-relaxed">
+                                    Bonus will be distributed across remaining
+                                    months of the year
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormDescription>
-                      Choose how the bonus adjustment should be handled when an
-                      existing bonus is found.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                            </SelectItem>
+                            <SelectItem
+                              value="deduct-current-month"
+                              className="py-3 cursor-pointer"
+                            >
+                              <div className="flex items-start gap-3 w-full">
+                                <Minus className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+                                <div className="flex flex-col gap-1 flex-1">
+                                  <span className="font-semibold text-sm">
+                                    Deduct from Current Month
+                                  </span>
+                                  <span className="text-xs text-muted-foreground leading-relaxed">
+                                    Bonus will be deducted from the current
+                                    month&apos;s salary
+                                  </span>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        Choose how the bonus adjustment should be handled when an
+                        existing bonus is found.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               {/* Search Button */}

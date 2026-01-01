@@ -6,6 +6,7 @@ import { ListError } from "@/components/dashboard/list-error";
 
 export const dynamic = "force-dynamic";
 
+
 export default async function AttendanceProgressSummaryPage({
   searchParams,
 }: {
