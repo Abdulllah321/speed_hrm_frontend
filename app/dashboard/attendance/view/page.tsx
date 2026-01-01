@@ -46,13 +46,13 @@ interface DailyAttendanceRecord {
 
 export default function Page() {
   return (
-   <Suspense> <ViewEmployeeAttendanceDetailPage /></Suspense>
+    <Suspense> <ViewEmployeeAttendanceDetailPage /></Suspense>
   )
 }
-   function ViewEmployeeAttendanceDetailPage() {
+function ViewEmployeeAttendanceDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
@@ -62,7 +62,7 @@ export default function Page() {
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  
+
   // Editing state
   const [editingRecord, setEditingRecord] = useState<{
     serialNo: number;
@@ -198,17 +198,17 @@ export default function Page() {
   const isHolidayDate = (date: Date): { isHoliday: boolean; name?: string } => {
     const month = date.getMonth() + 1;
     const day = date.getDate();
-    
+
     for (const holiday of holidays) {
       if (holiday.status !== 'active') continue;
-      
+
       const from = new Date(holiday.dateFrom);
       const to = new Date(holiday.dateTo);
       const fromMonth = from.getMonth() + 1;
       const fromDay = from.getDate();
       const toMonth = to.getMonth() + 1;
       const toDay = to.getDate();
-      
+
       if (fromMonth === toMonth) {
         if (month === fromMonth && day >= fromDay && day <= toDay) {
           return { isHoliday: true, name: holiday.name };
@@ -229,12 +229,12 @@ export default function Page() {
     }
 
     const days = eachDayOfInterval({ start: dateRange.from, end: dateRange.to });
-    
+
     return days.map((date, index) => {
       const dayOfWeek = format(date, 'EEEE');
       const holidayInfo = isHolidayDate(date);
       const isWeeklyOffDay = isWeekend(date); // TODO: Check employee's working hours policy for custom weekly offs
-      
+
       // Find attendance record for this date
       const attendanceRecord = attendanceRecords.find((record) => {
         const recordDate = new Date(record.date);
@@ -246,7 +246,7 @@ export default function Page() {
 
       if (attendanceRecord) {
         const recordStatus = attendanceRecord.status?.toLowerCase() || '';
-        
+
         if (holidayInfo.isHoliday || isWeeklyOffDay) {
           // Employee worked on a holiday or weekly off
           isOvertime = true;
@@ -425,7 +425,7 @@ export default function Page() {
 
     const currentTime = record[field];
     let timeValue = '';
-    
+
     if (currentTime) {
       try {
         const date = new Date(currentTime);
@@ -458,12 +458,7 @@ export default function Page() {
 
   // Handle editing status (only between absent and present)
   const handleEditStatus = (record: DailyAttendanceRecord) => {
-    // Only allow editing if status is absent or present
-    if (record.status !== 'absent' && record.status !== 'present') {
-      toast.error("Status can only be changed between 'Absent' and 'Present'. Other statuses are managed by the system.");
-      return;
-    }
-
+    // Allow editing for all statuses including holiday and weekly-off
     if (!filters.employeeId) {
       toast.error("Employee not selected");
       return;
@@ -483,7 +478,7 @@ export default function Page() {
           return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
         } catch { return ''; }
       })() : '',
-      status: record.status === 'absent' ? 'present' : 'absent',
+      status: (record.status === 'present') ? 'absent' : 'present', // Default toggle logic: if present -> absent, else (absent/holiday/off) -> present
     });
   };
 
@@ -503,9 +498,9 @@ export default function Page() {
       dateObj.setHours(0, 0, 0, 0);
 
       // Prepare data for create or update
-      const attendanceData: { 
-        checkIn?: string; 
-        checkOut?: string; 
+      const attendanceData: {
+        checkIn?: string;
+        checkOut?: string;
         status?: string;
       } = {};
 
@@ -631,8 +626,8 @@ export default function Page() {
                   ]}
                   value={filters.department}
                   onValueChange={(value) => {
-                    updateFilters({ 
-                      department: value || "all", 
+                    updateFilters({
+                      department: value || "all",
                       subDepartment: "all",
                       employeeId: "", // Reset employee when department changes
                     });
@@ -659,7 +654,7 @@ export default function Page() {
                   ]}
                   value={filters.subDepartment}
                   onValueChange={(value) => {
-                    updateFilters({ 
+                    updateFilters({
                       subDepartment: value || "all",
                       employeeId: "", // Reset employee when sub-department changes
                     });
@@ -855,8 +850,8 @@ export default function Page() {
                 </thead>
                 <tbody>
                   {dailyRecords.map((record, index) => (
-                    <tr 
-                      key={record.serialNo} 
+                    <tr
+                      key={record.serialNo}
                       className={cn(
                         "border-b transition-colors",
                         index % 2 === 0 ? "bg-transparent" : "bg-muted/10",
@@ -1034,8 +1029,8 @@ export default function Page() {
                         ) : (
                           <div className="flex items-center gap-2 group">
                             {getStatusBadge(record)}
-                            {/* Allow editing status for absent/present even without attendanceId */}
-                            {(record.status === 'absent' || record.status === 'present') && (
+                            {/* Allow editing status for all types */}
+                            {(true) && (
                               <button
                                 onClick={() => handleEditStatus(record)}
                                 className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-accent rounded"

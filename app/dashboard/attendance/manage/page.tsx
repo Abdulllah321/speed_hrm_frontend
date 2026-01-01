@@ -58,9 +58,9 @@ export default function AttendanceManagePage() {
   const [uploadDialog, setUploadDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadPending, setUploadPending] = useState(false);
-  const [holidayConfirmDialog, setHolidayConfirmDialog] = useState(false);
-  const [holidayDates, setHolidayDates] = useState<Array<{ date: Date; type: string; name?: string }>>([]);
-  const [pendingSubmit, setPendingSubmit] = useState<((includeHolidays: boolean) => void) | null>(null);
+  const [leaveConfirmDialog, setLeaveConfirmDialog] = useState(false);
+  const [leaveDates, setLeaveDates] = useState<Array<{ date: Date; type: string; name?: string }>>([]);
+  const [pendingSubmit, setPendingSubmit] = useState<((includeLeaves: boolean) => void) | null>(null);
 
   const [formData, setFormData] = useState({
     employeeId: "",
@@ -232,14 +232,10 @@ export default function AttendanceManagePage() {
     }
   };
 
-  // Check for holidays, weekends, and leave days in date range
-  const checkForHolidaysAndWeekends = async (fromDate: Date, toDate: Date, employeeId: string): Promise<Array<{ date: Date; type: string; name?: string }>> => {
+  // Check for leave days in date range
+  const checkForLeaveDays = async (fromDate: Date, toDate: Date, employeeId: string): Promise<Array<{ date: Date; type: string; name?: string }>> => {
     const dates: Array<{ date: Date; type: string; name?: string }> = [];
     const allDays = eachDayOfInterval({ start: fromDate, end: toDate });
-
-    // Get holidays
-    const holidaysResult = await getHolidays();
-    const holidays = holidaysResult.status && holidaysResult.data ? holidaysResult.data : [];
 
     // Get leave requests for the employee
     const leaveRequestsResult = await getLeaveRequests({
@@ -251,34 +247,6 @@ export default function AttendanceManagePage() {
     const leaveRequests = leaveRequestsResult.status && leaveRequestsResult.data ? leaveRequestsResult.data : [];
 
     for (const day of allDays) {
-      // Check if weekend
-      if (isWeekend(day)) {
-        dates.push({
-          date: day,
-          type: day.getDay() === 0 ? 'Sunday' : 'Saturday',
-        });
-        continue;
-      }
-
-      // Check if holiday
-      const holiday = holidays.find(h => {
-        const holidayFrom = parseISO(h.dateFrom);
-        const holidayTo = parseISO(h.dateTo);
-        // Set year to match the day's year for comparison
-        holidayFrom.setFullYear(day.getFullYear());
-        holidayTo.setFullYear(day.getFullYear());
-        return isWithinInterval(day, { start: holidayFrom, end: holidayTo });
-      });
-
-      if (holiday) {
-        dates.push({
-          date: day,
-          type: 'Holiday',
-          name: holiday.name,
-        });
-        continue;
-      }
-
       // Check if leave day
       const leaveRequest = leaveRequests.find(lr => {
         const leaveFrom = parseISO(lr.fromDate);
@@ -298,7 +266,8 @@ export default function AttendanceManagePage() {
     return dates;
   };
 
-  const handleSubmitInternal = async (includeHolidays: boolean = false) => {
+
+  const handleSubmitInternal = async (includeLeaves: boolean = false) => {
     const fromDate = formData.dateRange.from;
     const toDate = formData.dateRange.to;
 
@@ -336,30 +305,11 @@ export default function AttendanceManagePage() {
         });
       } else {
         // Date range - use createAttendanceForDateRange
-        // If includeHolidays is false, we need to filter out holiday/weekend/leave days
-        let actualFromDate = fromDate;
-        let actualToDate = toDate;
-
-        if (includeHolidays === false && holidayDates.length > 0) {
-          // Filter out holiday/weekend/leave days
-          const holidayDateStrings = holidayDates.map(hd => format(hd.date, 'yyyy-MM-dd'));
-          const allDays = eachDayOfInterval({ start: fromDate, end: toDate });
-          const workingDays = allDays.filter(day => !holidayDateStrings.includes(format(day, 'yyyy-MM-dd')));
-
-          if (workingDays.length === 0) {
-            toast.error("No working days found in the selected date range after excluding holidays/weekends/leave days");
-            setIsPending(false);
-            return;
-          }
-
-          actualFromDate = workingDays[0];
-          actualToDate = workingDays[workingDays.length - 1];
-        }
-
+        // Backend handles weekend skipping automatically
         result = await createAttendanceForDateRange({
           employeeId: formData.employeeId,
-          fromDate: actualFromDate,
-          toDate: actualToDate,
+          fromDate: fromDate,
+          toDate: toDate,
           checkIn: formData.checkIn || undefined,
           checkOut: formData.checkOut || undefined,
           status: formData.status,
@@ -446,21 +396,21 @@ export default function AttendanceManagePage() {
     const toDate = formData.dateRange.to;
     const isSingleDate = format(fromDate, 'yyyy-MM-dd') === format(toDate, 'yyyy-MM-dd');
 
-    // For date ranges, check for holidays/weekends/leave days before submitting
+    // For date ranges, check for leave days before submitting
     if (!isSingleDate) {
-      const holidayDatesFound = await checkForHolidaysAndWeekends(fromDate, toDate, formData.employeeId);
+      const leaveDatesFound = await checkForLeaveDays(fromDate, toDate, formData.employeeId);
 
-      if (holidayDatesFound.length > 0) {
-        setHolidayDates(holidayDatesFound);
-        setPendingSubmit(() => (includeHolidays: boolean) => {
-          handleSubmitInternal(includeHolidays);
+      if (leaveDatesFound.length > 0) {
+        setLeaveDates(leaveDatesFound);
+        setPendingSubmit(() => (includeLeaves: boolean) => {
+          handleSubmitInternal(includeLeaves);
         });
-        setHolidayConfirmDialog(true);
+        setLeaveConfirmDialog(true);
         return;
       }
     }
 
-    // No holidays/weekends/leave days found, proceed normally
+    // No leave days found, proceed normally
     handleSubmitInternal(true);
   };
 
@@ -546,78 +496,6 @@ export default function AttendanceManagePage() {
             headers = headerLine.split(/[,;](?=(?:[^"]*"[^"]*")*[^"]*$)/).map(h => h.trim().replace(/^["']|["']$/g, ''));
           }
 
-          // Normalize headers to lowercase for comparison
-          // Convert spaces to underscores, normalize multiple underscores to single
-          const normalizedHeaders = headers.map(h =>
-            h.toLowerCase()
-              .trim()
-              .replace(/\s+/g, '_')  // Replace spaces with underscores
-              .replace(/_+/g, '_')    // Normalize multiple underscores to single
-              .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
-          );
-
-          // Required columns (case-insensitive, flexible naming)
-          // Accepts: ID, EmployeeID, employeeId, Employee ID, etc.
-          // Accepts: DATE, Date, date
-          const requiredColumns = [
-            { variants: ['id', 'employeeid', 'employee_id'], name: 'ID' },
-            { variants: ['date'], name: 'DATE' },
-          ];
-
-          // Check for required columns
-          const missingColumns: string[] = [];
-          for (const required of requiredColumns) {
-            // Check if any variant matches any normalized header
-            const found = required.variants.some(variant => {
-              // Direct match
-              if (normalizedHeaders.includes(variant)) return true;
-              // Also check if header contains the variant (for cases like "employee_id" matching "id")
-              return normalizedHeaders.some(h => h === variant || h.includes(variant) || variant.includes(h));
-            });
-            if (!found) {
-              missingColumns.push(required.name);
-            }
-          }
-
-          if (missingColumns.length > 0) {
-            // Debug: log what was found for troubleshooting
-            console.log('CSV Validation Debug:', {
-              originalHeaders: headers,
-              normalizedHeaders: normalizedHeaders,
-              requiredColumns: requiredColumns.map(r => r.name),
-              missingColumns,
-            });
-
-            resolve({
-              valid: false,
-              error: `Missing required columns: ${missingColumns.join(', ')}. Found columns: ${headers.join(', ')}`,
-              headers,
-            });
-            return;
-          }
-
-          // Optional but recommended columns
-          // Accepts: CLOCK_IN, ClockIn, check_in, Check In, etc.
-          // Accepts: CLOCK_OUT, ClockOut, check_out, Check Out, etc.
-          const optionalColumns = [
-            { variants: ['clock_in', 'clockin', 'checkin', 'check_in'], name: 'CLOCK_IN' },
-            { variants: ['clock_out', 'clockout', 'checkout', 'check_out'], name: 'CLOCK_OUT' },
-            { variants: ['status'], name: 'Status' },
-          ];
-
-          const foundOptional: string[] = [];
-          for (const optional of optionalColumns) {
-            const found = optional.variants.some(variant => {
-              // Direct match
-              if (normalizedHeaders.includes(variant)) return true;
-              // Also check if header contains the variant or vice versa
-              return normalizedHeaders.some(h => h === variant || h.includes(variant) || variant.includes(h));
-            });
-            if (found) {
-              foundOptional.push(optional.name);
-            }
-          }
-
           resolve({ valid: true, headers });
         } catch (error) {
           resolve({
@@ -701,6 +579,8 @@ export default function AttendanceManagePage() {
       setUploadPending(false);
     }
   };
+
+
 
   return (
     <div className="max-w-4xl mx-auto pb-10">
@@ -1072,48 +952,48 @@ export default function AttendanceManagePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Holiday/Weekend/Leave Day Confirmation Dialog */}
-      <AlertDialog open={holidayConfirmDialog} onOpenChange={setHolidayConfirmDialog}>
+      {/* Leave Day Confirmation Dialog */}
+      <AlertDialog open={leaveConfirmDialog} onOpenChange={setLeaveConfirmDialog}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Holidays, Weekends, or Leave Days Detected</AlertDialogTitle>
+            <AlertDialogTitle>Leave Days Detected</AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                The selected date range includes {holidayDates.length} day(s) that are holidays, weekends, or leave days.
+                The selected date range includes {leaveDates.length} day(s) that are approved Leave Days.
               </p>
               <div className="max-h-60 overflow-y-auto border rounded-lg p-3 space-y-2">
-                {holidayDates.map((hd, idx) => (
+                {leaveDates.map((ld, idx) => (
                   <div key={idx} className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{format(hd.date, 'EEEE, MMM dd, yyyy')}</span>
-                    <Badge variant={hd.type === 'Saturday' || hd.type === 'Sunday' ? 'secondary' : 'default'}>
-                      {hd.type}{hd.name ? `: ${hd.name}` : ''}
+                    <span className="font-medium">{format(ld.date, 'EEEE, MMM dd, yyyy')}</span>
+                    <Badge variant="default">
+                      {ld.type}{ld.name ? `: ${ld.name}` : ''}
                     </Badge>
                   </div>
                 ))}
               </div>
-              <p className="font-medium text-foreground pt-2">
+              <p className="font-medium mt-2">
                 Do you want to mark attendance for these days as well?
               </p>
               <p className="text-xs text-muted-foreground">
-                If you select "Yes", attendance will be marked for all days including holidays/weekends/leave days (this may result in overtime).
-                If you select "No", only working days will be processed.
+                If you select "Yes", attendance will be marked for all days including leave days (overwriting the leave).
+                If you select "No", leave days will be skipped.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
-              setHolidayConfirmDialog(false);
+              setLeaveConfirmDialog(false);
               if (pendingSubmit) {
                 pendingSubmit(false);
                 setPendingSubmit(null);
               }
-              setHolidayDates([]);
+              setLeaveDates([]);
             }}>
-              No, Skip These Days
+              No, Skip Leave Days
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                setHolidayConfirmDialog(false);
+                setLeaveConfirmDialog(false);
                 if (pendingSubmit) {
                   pendingSubmit(true);
                   setPendingSubmit(null);
@@ -1121,7 +1001,7 @@ export default function AttendanceManagePage() {
               }}
               className="bg-primary"
             >
-              Yes, Include These Days
+              Yes, Overwrite Leave
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1129,3 +1009,4 @@ export default function AttendanceManagePage() {
     </div>
   );
 }
+
