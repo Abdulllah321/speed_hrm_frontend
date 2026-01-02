@@ -44,6 +44,7 @@ import type { Institute } from "@/lib/actions/institute";
 import { createEmployee, updateEmployee, getEmployees, type Employee } from "@/lib/actions/employee";
 import { BasicInfoSection } from "@/app/dashboard/employee/create/components/basic-info-section";
 import { QualificationSection } from "@/app/dashboard/employee/create/components/qualification-section";
+import { SocialSecuritySection } from "@/app/dashboard/employee/create/components/social-security-section";
 import { uploadFile } from "@/lib/upload";
 import { DateSection } from "@/app/dashboard/employee/create/components/date-section";
 import { getCountries } from "@/lib/actions/city";
@@ -266,7 +267,7 @@ const employeeFormSchema = z.object({
   
   branch: z
     .string()
-    .min(1, "Branch is required"),
+    .min(1, "Location is required"),
   
   leavesPolicy: z
     .string()
@@ -317,6 +318,24 @@ const employeeFormSchema = z.object({
   avatarUrl: z.string().optional(),
   eobiDocumentUrl: z.string().optional(),
   
+  // Social Security (SESSI/PESSE/IESSI)
+  socialSecurityRegistrations: z
+    .array(
+      z.object({
+        institutionId: z.string().min(1, "Institution is required"),
+        registrationNumber: z.string().optional(),
+        cardNumber: z.string().optional(),
+        registrationDate: z.string().optional(),
+        expiryDate: z.string().optional(),
+        contributionRate: z.union([z.string(), z.number()]).optional(),
+        baseSalary: z.union([z.string(), z.number()]).optional(),
+        monthlyContribution: z.union([z.string(), z.number()]).optional(),
+        status: z.string().optional(),
+      })
+    )
+    .default([])
+    .optional(),
+  
   // Equipment
   selectedEquipments: z
     .array(z.string())
@@ -358,6 +377,7 @@ interface EmployeeFormProps {
   leavesPolicies: LeavesPolicy[];
   qualifications?: Qualification[];
   institutes?: Institute[];
+  socialSecurityInstitutions?: any[];
   loadingData: boolean;
   onQualificationAdded?: (qualification: { id: string; name: string }) => void;
   onInstituteAdded?: (institute: { id: string; name: string }) => void;
@@ -383,6 +403,7 @@ export function EmployeeForm({
   leavesPolicies,
   qualifications = [],
   institutes = [],
+  socialSecurityInstitutions = [],
   loadingData,
   onQualificationAdded,
   onInstituteAdded,
@@ -1183,6 +1204,19 @@ export function EmployeeForm({
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
             qualifications: qualificationsToSubmit,
+            socialSecurityRegistrations: data.socialSecurityRegistrations && Array.isArray(data.socialSecurityRegistrations) && data.socialSecurityRegistrations.length > 0
+              ? data.socialSecurityRegistrations.map((reg: any) => ({
+                  institutionId: reg.institutionId,
+                  registrationNumber: reg.registrationNumber || undefined,
+                  cardNumber: reg.cardNumber || undefined,
+                  registrationDate: reg.registrationDate || undefined,
+                  expiryDate: reg.expiryDate || undefined,
+                  contributionRate: reg.contributionRate ? parseFloat(String(reg.contributionRate)) : undefined,
+                  baseSalary: reg.baseSalary ? parseFloat(String(reg.baseSalary)) : undefined,
+                  monthlyContribution: reg.monthlyContribution ? parseFloat(String(reg.monthlyContribution)) : undefined,
+                  status: reg.status || "active",
+                }))
+              : undefined,
           };
 
           const result = await createEmployee(employeeData);
@@ -1614,6 +1648,25 @@ export function EmployeeForm({
                       <p className="text-xs text-red-500">{errors.accountTitle.message}</p>
                     )}
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Social Security Registration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Social Security Registration</CardTitle>
+                  <CardDescription>
+                    Register employee with SESSI, PESSE, IESSI or other social security institutions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <SocialSecuritySection
+                    form={form}
+                    isPending={isPending}
+                    loadingData={loadingData}
+                    socialSecurityInstitutions={socialSecurityInstitutions}
+                    errors={errors}
+                  />
                 </CardContent>
               </Card>
 

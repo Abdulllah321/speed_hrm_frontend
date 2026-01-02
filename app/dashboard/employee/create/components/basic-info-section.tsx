@@ -344,13 +344,13 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
           {errors?.workingHoursPolicy && <p className="text-xs text-red-500">{errors.workingHoursPolicy.message}</p>}
         </div>
         <div className="space-y-2">
-          <Label>Branch <span className="text-destructive">*</span></Label>
+          <Label>Location <span className="text-destructive">*</span></Label>
           <Controller name="branch" control={control} render={({ field }) => (
             <Autocomplete 
               options={branches.map((b) => ({ value: b.id, label: `${b.name}${b.isDefault ? " (Default)" : ""}` }))} 
               value={field.value as string | undefined} 
               onValueChange={field.onChange} 
-              placeholder="Select Branch" 
+              placeholder="Select Location" 
               disabled={isPending || loadingData} 
             />
           )} />

@@ -9,7 +9,7 @@ export async function GET() {
     const headers: HeadersInit = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    const [depts, grades, designations, marital, statuses, branches, states, equipments, workingHours, leaves, qualifications, institutes] = await Promise.all([
+    const [depts, grades, designations, marital, statuses, branches, states, equipments, workingHours, leaves, qualifications, institutes, socialSecurity] = await Promise.all([
       fetch(`${API_BASE}/departments`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/employee-grades`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/designations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
@@ -22,6 +22,7 @@ export async function GET() {
       fetch(`${API_BASE}/leaves-policies`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/qualifications`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/institutes`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
+      fetch(`${API_BASE}/social-security-institutions`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
     ]);
     return NextResponse.json({
       status: true,
@@ -38,6 +39,7 @@ export async function GET() {
         leavesPolicies: leaves.data || [],
         qualifications: qualifications.data || [],
         institutes: institutes.data || [],
+        socialSecurityInstitutions: socialSecurity.data || [],
       },
     });
   } catch (error: any) {
