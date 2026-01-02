@@ -9,19 +9,20 @@ export async function GET() {
     const headers: HeadersInit = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    const [depts, grades, designations, marital, statuses, branches, states, equipments, workingHours, leaves, qualifications, institutes] = await Promise.all([
+    const [depts, grades, designations, marital, statuses, locations, states, equipments, workingHours, leaves, qualifications, institutes, allocations] = await Promise.all([
       fetch(`${API_BASE}/departments`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/employee-grades`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/designations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/marital-statuses`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/employee-statuses`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/branches`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
+      fetch(`${API_BASE}/locations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/states`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/equipments`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/working-hours-policies`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/leaves-policies`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/qualifications`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/institutes`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
+      fetch(`${API_BASE}/allocations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
     ]);
     return NextResponse.json({
       status: true,
@@ -31,13 +32,14 @@ export async function GET() {
         designations: designations.data || [],
         maritalStatuses: marital.data || [],
         employeeStatuses: statuses.data || [],
-        branches: branches.data || [],
+        locations: locations.data || [],
         states: states.data || [],
         equipments: equipments.data || [],
         workingHoursPolicies: workingHours.data || [],
         leavesPolicies: leaves.data || [],
         qualifications: qualifications.data || [],
         institutes: institutes.data || [],
+        allocations: allocations.data || [],
       },
     });
   } catch (error: any) {

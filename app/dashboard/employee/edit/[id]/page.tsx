@@ -25,7 +25,7 @@ import {
   getEmployeeStatuses,
   type EmployeeStatus,
 } from "@/lib/actions/employee-status";
-import { getBranches, type Branch } from "@/lib/actions/branch";
+import { getLocations, type Location } from "@/lib/actions/location";
 import {
   getStates,
   getCitiesByState,
@@ -59,7 +59,7 @@ export default function EditEmployeePage() {
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [maritalStatuses, setMaritalStatuses] = useState<MaritalStatus[]>([]);
   const [employeeStatuses, setEmployeeStatuses] = useState<EmployeeStatus[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
@@ -75,7 +75,7 @@ export default function EditEmployeePage() {
       try {
         setLoadingEmployee(true);
         const result = await getEmployeeById(employeeId);
-        
+
         if (result.status && result.data) {
           setEmployee(result.data);
         } else {
@@ -105,7 +105,7 @@ export default function EditEmployeePage() {
           designationsRes,
           maritalRes,
           statusesRes,
-          branchesRes,
+          locationsRes,
           statesRes,
           equipmentsRes,
           workingHoursRes,
@@ -118,7 +118,7 @@ export default function EditEmployeePage() {
           getDesignations(),
           getMaritalStatuses(),
           getEmployeeStatuses(),
-          getBranches(),
+          getLocations(),
           getStates(),
           getEquipments(),
           getWorkingHoursPolicies(),
@@ -132,7 +132,7 @@ export default function EditEmployeePage() {
         if (designationsRes.status) setDesignations(designationsRes.data || []);
         if (maritalRes.status) setMaritalStatuses(maritalRes.data || []);
         if (statusesRes.status) setEmployeeStatuses(statusesRes.data || []);
-        if (branchesRes.status) setBranches(branchesRes.data || []);
+        if (locationsRes.status) setLocations(locationsRes.data || []);
         if (statesRes.status) setStates(statesRes.data || []);
         if (equipmentsRes.status) setEquipments(equipmentsRes.data || []);
         if (workingHoursRes.status) setWorkingHoursPolicies(workingHoursRes.data || []);
@@ -154,11 +154,11 @@ export default function EditEmployeePage() {
   // Note: employee.department should now be an ID string from the backend
   useEffect(() => {
     if (!employee?.department) return;
-    const departmentId = typeof employee.department === 'string' 
-      ? employee.department 
+    const departmentId = typeof employee.department === 'string'
+      ? employee.department
       : (employee.department as any)?.id;
     if (!departmentId) return;
-    
+
     const fetchSubDepartments = async () => {
       try {
         const res = await getSubDepartmentsByDepartment(departmentId);
@@ -210,7 +210,7 @@ export default function EditEmployeePage() {
       designations={designations}
       maritalStatuses={maritalStatuses}
       employeeStatuses={employeeStatuses}
-      branches={branches}
+      locations={locations}
       states={states}
       cities={cities}
       equipments={equipments}

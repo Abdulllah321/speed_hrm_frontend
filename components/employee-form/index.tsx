@@ -34,13 +34,14 @@ import type { EmployeeGrade } from "@/lib/actions/employee-grade";
 import type { Designation } from "@/lib/actions/designation";
 import type { MaritalStatus } from "@/lib/actions/marital-status";
 import type { EmployeeStatus } from "@/lib/actions/employee-status";
-import type { Branch } from "@/lib/actions/branch";
+import type { Location } from "@/lib/actions/location";
 import type { State, City } from "@/lib/actions/city";
 import type { Equipment } from "@/lib/actions/equipment";
 import type { WorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
 import type { LeavesPolicy } from "@/lib/actions/leaves-policy";
 import type { Qualification } from "@/lib/actions/qualification";
 import type { Institute } from "@/lib/actions/institute";
+import type { Allocation } from "@/lib/actions/allocation";
 import { createEmployee, updateEmployee, getEmployees, type Employee } from "@/lib/actions/employee";
 import { BasicInfoSection } from "@/app/dashboard/employee/create/components/basic-info-section";
 import { QualificationSection } from "@/app/dashboard/employee/create/components/qualification-section";
@@ -83,53 +84,53 @@ const employeeFormSchema = z.object({
     .min(1, "Employee ID is required")
     .min(5, "Employee ID must be at least 5 characters")
     .max(20, "Employee ID must not exceed 20 characters"),
-  
+
   employeeName: z
     .string()
     .min(1, "Employee Name is required")
     .min(3, "Employee Name must be at least 3 characters")
     .max(100, "Employee Name must not exceed 100 characters"),
-  
+
   fatherHusbandName: z
     .string()
     .min(1, "Father/Husband Name is required")
     .min(3, "Father/Husband Name must be at least 3 characters")
     .max(100, "Father/Husband Name must not exceed 100 characters"),
-  
+
   department: z
     .string()
     .min(1, "Department is required"),
-  
+
   subDepartment: z
     .string()
     .optional(),
-  
+
   employeeGrade: z
     .string()
     .min(1, "Employee Grade is required"),
-  
+
   attendanceId: z
     .string()
     .min(1, "Attendance ID is required")
     .min(3, "Attendance ID must be at least 3 characters")
     .max(20, "Attendance ID must not exceed 20 characters"),
-  
+
   designation: z
     .string()
     .min(1, "Designation is required"),
-  
+
   maritalStatus: z
     .string()
     .min(1, "Marital Status is required"),
-  
+
   employmentStatus: z
     .string()
     .min(1, "Employment Status is required"),
-  
+
   probationExpiryDate: z
     .string()
     .optional(),
-  
+
   cnicNumber: z
     .string()
     .min(1, "CNIC Number is required")
@@ -137,15 +138,15 @@ const employeeFormSchema = z.object({
       (value) => validateCNIC(value),
       "CNIC must be in format: 00000-0000000-0"
     ),
-  
+
   cnicExpiryDate: z
     .string()
     .optional(),
-  
+
   lifetimeCnic: z
     .boolean()
     .default(false),
-  
+
   joiningDate: z
     .string()
     .min(1, "Joining Date is required")
@@ -156,7 +157,7 @@ const employeeFormSchema = z.object({
       },
       "Joining Date cannot be in the future"
     ),
-  
+
   dateOfBirth: z
     .string()
     .min(1, "Date of Birth is required")
@@ -169,15 +170,15 @@ const employeeFormSchema = z.object({
       },
       "Employee must be at least 18 years old"
     ),
-  
+
   nationality: z
     .string()
     .min(1, "Nationality is required"),
-  
+
   gender: z
     .string()
     .min(1, "Gender is required"),
-  
+
   contactNumber: z
     .string()
     .min(1, "Contact Number is required")
@@ -185,16 +186,16 @@ const employeeFormSchema = z.object({
       (value) => /^03\d{2}-\d{7}$|^\+92\d{10}$/.test(value.replace(/\s/g, "")),
       "Contact Number must be in format: 03XX-XXXXXXX"
     ),
-  
+
   emergencyContactNumber: z
     .string()
     .optional()
-   ,
-  
+  ,
+
   emergencyContactPersonName: z
     .string()
     .optional(),
-  
+
   personalEmail: z
     .string()
     .optional()
@@ -202,24 +203,24 @@ const employeeFormSchema = z.object({
       (value) => !value || emailRegex.test(value),
       "Personal Email must be a valid email address"
     ),
-  
+
   officialEmail: z
     .string()
     .min(1, "Official Email is required")
     .email("Official Email must be a valid email address"),
-  
+
   country: z
     .string()
     .min(1, "Country is required"),
-  
+
   state: z
     .string()
     .min(1, "State is required"),
-  
+
   city: z
     .string()
     .min(1, "City is required"),
-  
+
   employeeSalary: z
     .string()
     .min(1, "Employee Salary is required")
@@ -230,12 +231,12 @@ const employeeFormSchema = z.object({
       },
       "Employee Salary must be a positive number"
     ),
-  
+
   // Benefits
   eobi: z
     .boolean()
     .default(false),
-  
+
   eobiNumber: z
     .string()
     .optional()
@@ -243,48 +244,52 @@ const employeeFormSchema = z.object({
       (value) => !value || value.trim() === "" || /^\d{7,10}$/.test(value.trim()),
       "EOBI Number must be 7-10 digits"
     ),
-  
+
   providentFund: z
     .boolean()
     .default(false),
-  
+
   overtimeApplicable: z
     .boolean()
     .default(false),
-  
+
   daysOff: z
     .string()
     .optional(),
-  
+
   reportingManager: z
     .string()
     .optional(),
-  
+
   workingHoursPolicy: z
     .string()
     .min(1, "Working Hours Policy is required"),
-  
-  branch: z
+
+  location: z
     .string()
-    .min(1, "Branch is required"),
-  
+    .min(1, "Location is required"),
+
   leavesPolicy: z
     .string()
     .min(1, "Leaves Policy is required"),
-  
+
+  allocation: z
+    .string()
+    .min(1, "Allocation is required"),
+
   allowRemoteAttendance: z
     .boolean()
     .default(false),
-  
+
   // Address Information
   currentAddress: z
     .string()
     .optional(),
-  
+
   permanentAddress: z
     .string()
     .optional(),
-  
+
   // Bank Account Details
   bankName: z
     .string()
@@ -316,7 +321,7 @@ const employeeFormSchema = z.object({
 
   avatarUrl: z.string().optional(),
   eobiDocumentUrl: z.string().optional(),
-  
+
   // Equipment
   selectedEquipments: z
     .array(z.string())
@@ -350,12 +355,13 @@ interface EmployeeFormProps {
   designations: Designation[];
   maritalStatuses: MaritalStatus[];
   employeeStatuses: EmployeeStatus[];
-  branches: Branch[];
+  locations: Location[];
   states: State[];
   cities: City[];
   equipments: Equipment[];
   workingHoursPolicies: WorkingHoursPolicy[];
   leavesPolicies: LeavesPolicy[];
+  allocations: Allocation[];
   qualifications?: Qualification[];
   institutes?: Institute[];
   loadingData: boolean;
@@ -375,12 +381,13 @@ export function EmployeeForm({
   designations,
   maritalStatuses,
   employeeStatuses,
-  branches,
+  locations,
   states,
   cities: initialCities,
   equipments,
   workingHoursPolicies,
   leavesPolicies,
+  allocations,
   qualifications = [],
   institutes = [],
   loadingData,
@@ -420,7 +427,7 @@ export function EmployeeForm({
       personalEmail: initialData.personalEmail || "",
       officialEmail: initialData.officialEmail || "",
       country: (initialData as any).countryId || (typeof initialData.country === 'string' ? initialData.country : (initialData.country as any)?.id) || "Pakistan",
-      state: (initialData as any).stateId || (typeof initialData.province === 'string' ? initialData.province : (initialData.province as any)?.id) || (typeof initialData.state === 'string' ? initialData.state : (initialData.state as any)?.id) || "",
+      state: (initialData as any).stateId || (typeof (initialData as any).province === 'string' ? (initialData as any).province : (initialData as any).province?.id) || (typeof (initialData as any).state === 'string' ? (initialData as any).state : (initialData as any).state?.id) || "",
       city: (initialData as any).cityId || (typeof initialData.city === 'string' ? initialData.city : (initialData.city as any)?.id) || "",
       employeeSalary: initialData.employeeSalary?.toString() || "",
       eobi: initialData.eobi || false,
@@ -430,38 +437,39 @@ export function EmployeeForm({
       daysOff: initialData.daysOff || "",
       reportingManager: initialData.reportingManager || "",
       workingHoursPolicy: (initialData as any).workingHoursPolicyId || (typeof initialData.workingHoursPolicy === 'string' ? initialData.workingHoursPolicy : (initialData.workingHoursPolicy as any)?.id) || "",
-      branch: (initialData as any).branchId || (typeof initialData.branch === 'string' ? initialData.branch : (initialData.branch as any)?.id) || "",
+      location: (initialData as any).locationId || (typeof (initialData as any).location === 'string' ? (initialData as any).location : (initialData as any).location?.id) || (initialData as any).branchId || (typeof (initialData as any).branch === 'string' ? (initialData as any).branch : (initialData as any).branch?.id) || "",
       leavesPolicy: (initialData as any).leavesPolicyId || (typeof initialData.leavesPolicy === 'string' ? initialData.leavesPolicy : (initialData.leavesPolicy as any)?.id) || "",
+      allocation: (initialData as any).allocationId || (typeof (initialData as any).allocation === 'string' ? (initialData as any).allocation : (initialData as any).allocation?.id) || (initialData as any).allocationId || "",
       allowRemoteAttendance: initialData.allowRemoteAttendance || false,
       currentAddress: initialData.currentAddress ?? "",
       permanentAddress: initialData.permanentAddress ?? "",
       bankName: initialData.bankName || "",
       accountNumber: initialData.accountNumber || "",
       accountTitle: initialData.accountTitle || "",
-      selectedEquipments: (initialData as any).equipmentAssignments 
+      selectedEquipments: (initialData as any).equipmentAssignments
         ? (initialData as any).equipmentAssignments.map((ea: any) => ea.equipment?.id || ea.equipmentId).filter(Boolean)
         : [],
       avatarUrl: (initialData as any).avatarUrl || "",
       eobiDocumentUrl: (initialData as any).eobiDocumentUrl || "",
       qualifications: (initialData as any).qualifications && Array.isArray((initialData as any).qualifications) && (initialData as any).qualifications.length > 0
         ? (initialData as any).qualifications.map((q: any) => ({
-            qualification: q.qualificationId || q.qualification || "",
-            instituteId: q.instituteId || "",
-            stateId: q.stateId || "",
-            cityId: q.cityId || "",
-            year: q.year?.toString() || "",
-            grade: q.grade || "",
-            documentUrl: q.documentUrl || "",
-          }))
+          qualification: q.qualificationId || q.qualification || "",
+          instituteId: q.instituteId || "",
+          stateId: q.stateId || "",
+          cityId: q.cityId || "",
+          year: q.year?.toString() || "",
+          grade: q.grade || "",
+          documentUrl: q.documentUrl || "",
+        }))
         : [{
-            qualification: "",
-            instituteId: "",
-            stateId: "",
-            cityId: "",
-            year: "",
-            grade: "",
-            documentUrl: "",
-          }],
+          qualification: "",
+          instituteId: "",
+          stateId: "",
+          cityId: "",
+          year: "",
+          grade: "",
+          documentUrl: "",
+        }],
     } : {
       employeeId: "",
       employeeName: "",
@@ -497,8 +505,9 @@ export function EmployeeForm({
       daysOff: "",
       reportingManager: "",
       workingHoursPolicy: "",
-      branch: "",
+      location: "",
       leavesPolicy: "",
+      allocation: "",
       allowRemoteAttendance: false,
       currentAddress: "",
       permanentAddress: "",
@@ -653,7 +662,7 @@ export function EmployeeForm({
     }
   }
   const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>(initialDocumentUrls);
-  
+
   // Qualification document URLs - keyed by qualification index
   const initialQualificationDocumentUrls: Record<number, string> = {};
   if (mode === "edit" && (initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
@@ -685,12 +694,12 @@ export function EmployeeForm({
   useEffect(() => {
     if (mode === "edit") {
       const updatedUrls: { [key: string]: string } = {};
-      
+
       // Add EOBI document URL
       if ((initialData as any)?.eobiDocumentUrl) {
         updatedUrls.eobi = (initialData as any).eobiDocumentUrl;
       }
-      
+
       // Add all other document URLs from documentUrls JSON field
       if ((initialData as any)?.documentUrls && typeof (initialData as any).documentUrls === 'object') {
         const existingDocs = (initialData as any).documentUrls;
@@ -700,7 +709,7 @@ export function EmployeeForm({
           }
         });
       }
-      
+
       // Add qualification documents to documentUrls object (same pattern)
       if ((initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
         (initialData as any).qualifications.forEach((q: any, index: number) => {
@@ -710,7 +719,7 @@ export function EmployeeForm({
           }
         });
       }
-      
+
       if (Object.keys(updatedUrls).length > 0) {
         setDocumentUrls((prev) => ({
           ...prev,
@@ -785,8 +794,8 @@ export function EmployeeForm({
   // Initialize sub-departments when editing with initialData
   useEffect(() => {
     if (mode === "edit" && initialData?.department && departments.length > 0) {
-      const deptId = typeof initialData.department === 'string' 
-        ? initialData.department 
+      const deptId = typeof initialData.department === 'string'
+        ? initialData.department
         : (initialData.department as any)?.id;
       if (deptId) {
         const selected = departments.find((d) => d.id === deptId);
@@ -837,8 +846,8 @@ export function EmployeeForm({
   // Initialize cities when editing with initialData
   useEffect(() => {
     if (mode === "edit" && initialData?.province && states.length > 0) {
-      const stateId = typeof initialData.province === 'string' 
-        ? initialData.province 
+      const stateId = typeof initialData.province === 'string'
+        ? initialData.province
         : (initialData.province as any)?.id;
       if (stateId) {
         const fetchCities = async () => {
@@ -946,7 +955,7 @@ export function EmployeeForm({
       const uploaded = await uploadFile(file);
       setValue("avatarUrl", uploaded.url);
       toast.success("Profile picture uploaded");
-      
+
       // Close dialog - state will be reset by handleCropDialogClose
       handleCropDialogClose(false);
     } catch (err: any) {
@@ -962,16 +971,16 @@ export function EmployeeForm({
     if (file) {
       try {
         const uploaded = await uploadFile(file);
-        
+
         // Store all documents (including qualification documents) in documentUrls object
         // Same pattern as Equipments & Documents section
         setDocumentUrls((prev) => ({ ...prev, [key]: uploaded.url }));
-        
+
         // Check if this is a qualification document (format: qualification_0, qualification_1, etc.)
         if (key.startsWith("qualification_")) {
           const index = parseInt(key.replace("qualification_", ""));
           if (!isNaN(index)) {
-           
+
             // Also update qualificationDocumentUrls for quick access
             setQualificationDocumentUrls((prev) => ({
               ...prev,
@@ -1064,12 +1073,13 @@ export function EmployeeForm({
         "reportingManager",
         "employeeSalary",
         "cnicNumber",
+        "allocation",
       ];
-      
+
       const results = await Promise.all(
         fields.map(field => trigger(field as keyof EmployeeFormData))
       );
-      
+
       return results.every(result => result);
     }
 
@@ -1110,7 +1120,7 @@ export function EmployeeForm({
   const onSubmit = async (data: EmployeeFormData) => {
     // Get latest form values including qualification document URLs
     const latestQualifications = watch("qualifications");
-    
+
     startTransition(async () => {
       try {
         if (mode === "create") {
@@ -1118,20 +1128,20 @@ export function EmployeeForm({
           // Same pattern as Equipments & Documents section
           const qualificationsToSubmit = latestQualifications && Array.isArray(latestQualifications) && latestQualifications.length > 0
             ? latestQualifications.map((q: any, index: number) => {
-                // Get document URL from documentUrls object (same pattern as other documents)
-                const qualKey = `qualification_${index}`;
-                const docUrl = documentUrls[qualKey] || q.documentUrl || qualificationDocumentUrls[index] || undefined;
-                return {
-                  qualification: q.qualification || "",
-                  instituteId: q.instituteId || undefined,
-                  countryId: q.countryId || undefined,
-                  stateId: q.stateId || undefined,
-                  cityId: q.cityId || undefined,
-                  year: q.year ? String(q.year) : undefined,
-                  grade: q.grade || undefined,
-                  documentUrl: docUrl,
-                };
-              })
+              // Get document URL from documentUrls object (same pattern as other documents)
+              const qualKey = `qualification_${index}`;
+              const docUrl = documentUrls[qualKey] || q.documentUrl || qualificationDocumentUrls[index] || undefined;
+              return {
+                qualification: q.qualification || "",
+                instituteId: q.instituteId || undefined,
+                countryId: q.countryId || undefined,
+                stateId: q.stateId || undefined,
+                cityId: q.cityId || undefined,
+                year: q.year ? String(q.year) : undefined,
+                grade: q.grade || undefined,
+                documentUrl: docUrl,
+              };
+            })
             : undefined;
 
           const employeeData = {
@@ -1170,7 +1180,7 @@ export function EmployeeForm({
             daysOff: data.daysOff || undefined,
             reportingManager: data.reportingManager || "",
             workingHoursPolicy: data.workingHoursPolicy,
-            branch: data.branch,
+            location: data.location,
             leavesPolicy: data.leavesPolicy,
             allowRemoteAttendance: data.allowRemoteAttendance,
             currentAddress: data.currentAddress || undefined,
@@ -1230,7 +1240,7 @@ export function EmployeeForm({
             daysOff: data.daysOff || undefined,
             reportingManager: data.reportingManager || "",
             workingHoursPolicy: data.workingHoursPolicy,
-            branch: data.branch,
+            location: data.location,
             leavesPolicy: data.leavesPolicy,
             allowRemoteAttendance: data.allowRemoteAttendance,
             currentAddress: data.currentAddress || undefined,
@@ -1241,7 +1251,7 @@ export function EmployeeForm({
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
           };
-          
+
           await onRejoinSubmit(rejoinData);
         } else if (mode === "edit" && initialData) {
           // Get latest form values including qualification document URLs
@@ -1249,20 +1259,20 @@ export function EmployeeForm({
           const latestQualifications = watch("qualifications");
           const qualificationsToSubmit = latestQualifications && Array.isArray(latestQualifications) && latestQualifications.length > 0
             ? latestQualifications.map((q: any, index: number) => {
-                // Get document URL from documentUrls object (same pattern as other documents)
-                const qualKey = `qualification_${index}`;
-                const docUrl = documentUrls[qualKey] || q.documentUrl || qualificationDocumentUrls[index] || undefined;
-                return {
-                  qualification: q.qualification || "",
-                  instituteId: q.instituteId || undefined,
-                  countryId: q.countryId || undefined,
-                  stateId: q.stateId || undefined,
-                  cityId: q.cityId || undefined,
-                  year: q.year ? String(q.year) : undefined,
-                  grade: q.grade || undefined,
-                  documentUrl: docUrl,
-                };
-              })
+              // Get document URL from documentUrls object (same pattern as other documents)
+              const qualKey = `qualification_${index}`;
+              const docUrl = documentUrls[qualKey] || q.documentUrl || qualificationDocumentUrls[index] || undefined;
+              return {
+                qualification: q.qualification || "",
+                instituteId: q.instituteId || undefined,
+                countryId: q.countryId || undefined,
+                stateId: q.stateId || undefined,
+                cityId: q.cityId || undefined,
+                year: q.year ? String(q.year) : undefined,
+                grade: q.grade || undefined,
+                documentUrl: docUrl,
+              };
+            })
             : undefined;
 
           const employeeData = {
@@ -1301,7 +1311,7 @@ export function EmployeeForm({
             daysOff: data.daysOff || undefined,
             reportingManager: data.reportingManager,
             workingHoursPolicy: data.workingHoursPolicy,
-            branch: data.branch,
+            location: data.location,
             leavesPolicy: data.leavesPolicy,
             allowRemoteAttendance: data.allowRemoteAttendance,
             currentAddress: data.currentAddress || undefined,
@@ -1326,10 +1336,10 @@ export function EmployeeForm({
           }
         }
       } catch (error) {
-        const errorMessage = error instanceof Error 
-          ? error.message 
-          : mode === "create" 
-            ? "Failed to create employee. Please check console for details." 
+        const errorMessage = error instanceof Error
+          ? error.message
+          : mode === "create"
+            ? "Failed to create employee. Please check console for details."
             : "Failed to update employee. Please check console for details.";
         toast.error(errorMessage);
       }
@@ -1338,31 +1348,30 @@ export function EmployeeForm({
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
-     
+
       <div className="rounded-2xl bg-card shadow-sm p-6">
-        <form 
+        <form
           onSubmit={handleSubmit(
             onSubmit,
             (errors) => {
               toast.error("Please fix all validation errors before submitting");
             }
-          )} 
+          )}
           className="space-y-6"
         >
-          <div className="flex flex-wrap items-center gap-3">   
+          <div className="flex flex-wrap items-center gap-3">
             {stepLabels.map((label, idx) => {
               const isActive = idx === step;
               const isDone = idx < step;
               return (
                 <div
                   key={label}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
-                    isActive
-                      ? "bg-primary/15 text-primary ring-1 ring-primary/40"
-                      : isDone
+                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${isActive
+                    ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                    : isDone
                       ? "bg-muted text-foreground ring-1 ring-border"
                       : "bg-muted text-muted-foreground ring-1 ring-border"
-                  }`}
+                    }`}
                 >
                   <span className="h-6 w-6 rounded-full bg-background border flex items-center justify-center">
                     {idx + 1}
@@ -1376,7 +1385,7 @@ export function EmployeeForm({
           {step === 0 && (
             <>
               {/* Profile Picture Upload */}
-           <Card className="border-0 shadow-none bg-muted/50">
+              <Card className="border-0 shadow-none bg-muted/50">
                 <CardHeader>
                   <CardTitle className="text-lg font-semibold">
                     Profile Picture
@@ -1384,7 +1393,7 @@ export function EmployeeForm({
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-col items-center gap-6">
-                    <div 
+                    <div
                       className="relative cursor-pointer group"
                       onClick={() => document.getElementById("profile-pic-input")?.click()}
                     >
@@ -1416,36 +1425,36 @@ export function EmployeeForm({
                       accept="image/*"
                       onChange={handleProfilePicChange}
                       className="hidden"
-                disabled={isPending}
-              />
-            </div>
-            <Dialog open={cropDialogOpen} onOpenChange={handleCropDialogClose}>
-              <DialogContent className="sm:max-w-[480px]">
-                <DialogHeader>
-                  <DialogTitle>Crop Profile Picture</DialogTitle>
-                </DialogHeader>
-                <div className="relative w-full h-80 bg-muted rounded-md overflow-hidden">
-                  {cropSrc && (
-                    <Cropper
-                      image={cropSrc}
-                      crop={crop}
-                      zoom={zoom}
-                      aspect={1}
-                      onCropChange={setCrop}
-                      onZoomChange={setZoom}
-                      onCropComplete={onCropComplete}
+                      disabled={isPending}
                     />
-                  )}
-                </div>
-                <DialogFooter>
-                  <div className="flex w-full justify-end gap-2">
-                    <Button variant="outline" onClick={() => handleCropDialogClose(false)}>Cancel</Button>
-                    <Button onClick={confirmCropAndUpload}>Save</Button>
                   </div>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          </CardContent>
+                  <Dialog open={cropDialogOpen} onOpenChange={handleCropDialogClose}>
+                    <DialogContent className="sm:max-w-[480px]">
+                      <DialogHeader>
+                        <DialogTitle>Crop Profile Picture</DialogTitle>
+                      </DialogHeader>
+                      <div className="relative w-full h-80 bg-muted rounded-md overflow-hidden">
+                        {cropSrc && (
+                          <Cropper
+                            image={cropSrc}
+                            crop={crop}
+                            zoom={zoom}
+                            aspect={1}
+                            onCropChange={setCrop}
+                            onZoomChange={setZoom}
+                            onCropComplete={onCropComplete}
+                          />
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <div className="flex w-full justify-end gap-2">
+                          <Button variant="outline" onClick={() => handleCropDialogClose(false)}>Cancel</Button>
+                          <Button onClick={confirmCropAndUpload}>Save</Button>
+                        </div>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardContent>
               </Card>
 
 
@@ -1480,8 +1489,9 @@ export function EmployeeForm({
                     loadingCities={loadingCities}
                     daysOff={daysOff}
                     workingHoursPolicies={workingHoursPolicies}
-                    branches={branches}
+                    locations={locations}
                     leavesPolicies={leavesPolicies}
+                    allocations={allocations}
                     documents={documents}
                     handleFileChange={handleFileChange}
                     employees={employees}
@@ -1803,9 +1813,9 @@ export function EmployeeForm({
               </Button>
             )}
             {step === stepLabels.length - 1 && (
-              <Button 
-                type="submit" 
-                disabled={isPending} 
+              <Button
+                type="submit"
+                disabled={isPending}
                 className="flex-1"
               >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

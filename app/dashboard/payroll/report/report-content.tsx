@@ -88,7 +88,7 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
 
     const totals = useMemo(() => {
         return data.reduce((acc, curr) => {
-            const rowGross = Number(curr.grossSalary || 0) + Number(curr.totalAllowances || 0);
+            const rowGross = Number(curr.grossSalary || 0);
             const rowDeductions =
                 Number(curr.totalDeductions || 0) +
                 Number(curr.attendanceDeduction || 0) +
@@ -167,7 +167,7 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
               ${data.map((row, i) => {
             const salaryBreakup = row.salaryBreakup || [];
             const allowanceBreakup = row.allowanceBreakup || [];
-            const totalGross = Number(row.grossSalary || 0) + Number(row.totalAllowances || 0);
+            const totalGross = Number(row.grossSalary || 0);
             const totalDed = Number(row.totalDeductions || 0) + Number(row.attendanceDeduction || 0) +
                 Number(row.loanDeduction || 0) + Number(row.advanceSalaryDeduction || 0) +
                 Number(row.eobiDeduction || 0) + Number(row.providentFundDeduction || 0) +
@@ -188,9 +188,8 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                   </td>
                   <td>
                     ${salaryBreakup.map((b: any) => `<div class="breakup-item"><span class="breakup-label">${b.name}:</span><span class="breakup-value">${Number(b.amount).toLocaleString()}</span></div>`).join('')}
-                    <div class="section-header" style="margin-top: 4px; border-top: 1px solid #999;"><b>Gross:</b> ${Number(row.grossSalary).toLocaleString()}</div>
                     ${allowanceBreakup.map((a: any) => `<div class="breakup-item"><span class="breakup-label">${a.name}:</span><span class="breakup-value">${Number(a.amount).toLocaleString()}</span></div>`).join('')}
-                    <div class="total-row" style="margin-top: 4px; border-top: 2px solid #333;"><b>Total Gross:</b> ${totalGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div class="total-row" style="margin-top: 4px; border-top: 2px solid #333;"><b>Gross:</b> ${totalGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                   </td>
                   <td>
                     <div><b>Taxable:</b> ${Number(row.taxBreakup?.taxableIncome || 0).toLocaleString()}</div>

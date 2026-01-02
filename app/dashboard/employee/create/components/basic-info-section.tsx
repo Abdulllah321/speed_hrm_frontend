@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Upload } from "lucide-react";
 
-type Option = { id: string; name: string };
+type Option = { id: string; name: string; allocationId?: string | null };
 
 // Phone number formatting function - formats like CNIC (03XX-XXXXXXX)
 const formatPhone = (value: string): string => {
@@ -18,7 +18,7 @@ const formatPhone = (value: string): string => {
   const digits = value.replace(/\D/g, "");
   if (digits.length <= 4) {
     return digits;
-     
+
   } else if (digits.length <= 11) {
     return `${digits.slice(0, 4)}-${digits.slice(4)}`;
   } else {
@@ -26,7 +26,7 @@ const formatPhone = (value: string): string => {
   }
 };
 
-export function BasicInfoSection({ form, isPending, loadingData, departments, subDepartments, department, loadingSubDepartments, employeeGrades, designations, maritalStatuses, employeeStatuses, errors, formatCNIC, nationalities, genders, states, cities, state, loadingCities, daysOff, workingHoursPolicies, branches, leavesPolicies, documents, handleFileChange, employees, documentUrls, mode }: {
+export function BasicInfoSection({ form, isPending, loadingData, departments, subDepartments, department, loadingSubDepartments, employeeGrades, designations, maritalStatuses, employeeStatuses, errors, formatCNIC, nationalities, genders, states, cities, state, loadingCities, daysOff, workingHoursPolicies, locations, leavesPolicies, allocations, documents, handleFileChange, employees, documentUrls, mode }: {
   form: UseFormReturn<any>;
   isPending: boolean;
   loadingData: boolean;
@@ -48,8 +48,9 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
   loadingCities: boolean;
   daysOff: string[];
   workingHoursPolicies: { id: string; name: string; isDefault?: boolean }[];
-  branches: { id: string; name: string; isDefault?: boolean }[];
+  locations: { id: string; name: string; isDefault?: boolean }[];
   leavesPolicies: { id: string; name: string; isDefault?: boolean }[];
+  allocations: { id: string; name: string }[];
   documents: Record<string, File | null>;
   handleFileChange: (key: string, file: File | null) => void;
   employees: { id: string; employeeName: string; employeeId: string }[];
@@ -59,11 +60,17 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
   const { register, control } = form;
   const lifetimeCnic = useWatch({ control, name: "lifetimeCnic" });
   const isEobi = useWatch({ control, name: "eobi" });
+  const allocation = useWatch({ control, name: "allocation" });
+
+  // Filter departments based on selected allocation
+  const filteredDepartments = allocation
+    ? departments.filter((d) => d.allocationId === allocation)
+    : departments;
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-     <div className="col-span-1 md:col-span-3 text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2">
-  Employment Details
-</div>
+      <div className="col-span-1 md:col-span-3 text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2">
+        Employment Details
+      </div>
 
       <div className="space-y-2">
         <Label>Employee ID <span className="text-destructive">*</span></Label>
@@ -83,7 +90,17 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
       <div className="space-y-2">
         <Label>Department <span className="text-destructive">*</span></Label>
         <Controller name="department" control={control} render={({ field }) => (
-          <Autocomplete options={departments.map(d => ({ value: d.id, label: d.name }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder="Select Department" disabled={isPending || loadingData} />
+          <Autocomplete
+            options={filteredDepartments.map(d => ({ value: d.id, label: d.name }))}
+            value={field.value as string | undefined}
+            onValueChange={(val) => {
+              field.onChange(val);
+              // Reset dependent field
+              form.setValue("subDepartment", "");
+            }}
+            placeholder={allocation ? "Select Department" : "Select Allocation first"}
+            disabled={isPending || !allocation || loadingData}
+          />
         )} />
         {errors?.department && <p className="text-xs text-red-500">{errors.department.message}</p>}
       </div>
@@ -92,6 +109,24 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         <Controller name="subDepartment" control={control} render={({ field }) => (
           <Autocomplete options={subDepartments.map(sd => ({ value: sd.id, label: sd.name }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder={department ? "Select Sub Department" : "Select Department first"} disabled={isPending || !department || loadingData || loadingSubDepartments} isLoading={loadingSubDepartments} />
         )} />
+      </div>
+      <div className="space-y-2">
+        <Label>Allocation <span className="text-destructive">*</span></Label>
+        <Controller name="allocation" control={control} render={({ field }) => (
+          <Autocomplete
+            options={allocations.map(a => ({ value: a.id, label: a.name }))}
+            value={field.value as string | undefined}
+            onValueChange={(val) => {
+              field.onChange(val);
+              // Reset dependent fields
+              form.setValue("department", "");
+              form.setValue("subDepartment", "");
+            }}
+            placeholder="Select Allocation"
+            disabled={isPending || loadingData}
+          />
+        )} />
+        {errors?.allocation && <p className="text-xs text-red-500">{errors.allocation.message}</p>}
       </div>
       <div className="space-y-2">
         <Label>Employee Grade <span className="text-destructive">*</span></Label>
@@ -126,7 +161,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         )} />
         {errors?.employmentStatus && <p className="text-xs text-red-500">{errors.employmentStatus.message}</p>}
       </div>
-     
+
       <div className="space-y-2">
         <Label>Probation / Internship Expiry Date</Label>
         <Controller name="probationExpiryDate" control={control} render={({ field }) => (
@@ -134,79 +169,79 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         )} />
       </div>
 
-        <div className="space-y-2">
-          <Label>CNIC Number <span className="text-destructive">*</span></Label>
-          <Controller name="cnicNumber" control={control} render={({ field }) => (
-            <Input
-              placeholder="00000-0000000-0"
-              value={(field.value as string | undefined) || ""}
-              onChange={(e) => field.onChange(formatCNIC(e.target.value))}
-              maxLength={15}
-              disabled={isPending || mode === "rejoin"}
-              readOnly={mode === "rejoin"}
-              className={mode === "rejoin" ? "bg-muted cursor-not-allowed" : ""}
-            />
+      <div className="space-y-2">
+        <Label>CNIC Number <span className="text-destructive">*</span></Label>
+        <Controller name="cnicNumber" control={control} render={({ field }) => (
+          <Input
+            placeholder="00000-0000000-0"
+            value={(field.value as string | undefined) || ""}
+            onChange={(e) => field.onChange(formatCNIC(e.target.value))}
+            maxLength={15}
+            disabled={isPending || mode === "rejoin"}
+            readOnly={mode === "rejoin"}
+            className={mode === "rejoin" ? "bg-muted cursor-not-allowed" : ""}
+          />
+        )} />
+        {errors?.cnicNumber && <p className="text-xs text-red-500">{errors.cnicNumber.message}</p>}
+        {mode === "rejoin" && <p className="text-xs text-muted-foreground">CNIC cannot be changed on rejoin</p>}
+      </div>
+      <div className="space-y-2">
+        <Label>CNIC Expiry Date</Label>
+        <Controller name="cnicExpiryDate" control={control} render={({ field }) => (
+          <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending || !!lifetimeCnic} />
+        )} />
+        <div className="flex items-center gap-2 mt-1">
+          <Controller name="lifetimeCnic" control={control} render={({ field }) => (
+            <Switch id="lifetimeCnic" checked={!!field.value} onCheckedChange={field.onChange} />
           )} />
-          {errors?.cnicNumber && <p className="text-xs text-red-500">{errors.cnicNumber.message}</p>}
-          {mode === "rejoin" && <p className="text-xs text-muted-foreground">CNIC cannot be changed on rejoin</p>}
+          <label htmlFor="lifetimeCnic" className="text-sm cursor-pointer">Lifetime CNIC</label>
         </div>
-        <div className="space-y-2">
-          <Label>CNIC Expiry Date</Label>
-          <Controller name="cnicExpiryDate" control={control} render={({ field }) => (
-            <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending || !!lifetimeCnic} />
-          )} />
-          <div className="flex items-center gap-2 mt-1">
-            <Controller name="lifetimeCnic" control={control} render={({ field }) => (
-              <Switch id="lifetimeCnic" checked={!!field.value} onCheckedChange={field.onChange} />
-            )} />
-            <label htmlFor="lifetimeCnic" className="text-sm cursor-pointer">Lifetime CNIC</label>
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label>Joining Date <span className="text-destructive">*</span></Label>
-          <Controller name="joiningDate" control={control} render={({ field }) => (
-            <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending} />
-          )} />
-          {errors?.joiningDate && <p className="text-xs text-red-500">{errors.joiningDate.message}</p>}
-       
+      </div>
+      <div className="space-y-2">
+        <Label>Joining Date <span className="text-destructive">*</span></Label>
+        <Controller name="joiningDate" control={control} render={({ field }) => (
+          <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending} />
+        )} />
+        {errors?.joiningDate && <p className="text-xs text-red-500">{errors.joiningDate.message}</p>}
+
       </div>
 
-        <div className="space-y-2">
-          <Label>Nationality <span className="text-destructive">*</span></Label>
-          <Controller name="nationality" control={control} render={({ field }) => (
-            <Select value={field.value as string | undefined} onValueChange={field.onChange} disabled={isPending}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>{nationalities.map((n) => (<SelectItem key={n} value={n}>{n}</SelectItem>))}</SelectContent>
-            </Select>
-          )} />
-          {errors?.nationality && <p className="text-xs text-red-500">{errors.nationality.message}</p>}
-        </div>
+      <div className="space-y-2">
+        <Label>Nationality <span className="text-destructive">*</span></Label>
+        <Controller name="nationality" control={control} render={({ field }) => (
+          <Select value={field.value as string | undefined} onValueChange={field.onChange} disabled={isPending}>
+            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+            <SelectContent>{nationalities.map((n) => (<SelectItem key={n} value={n}>{n}</SelectItem>))}</SelectContent>
+          </Select>
+        )} />
+        {errors?.nationality && <p className="text-xs text-red-500">{errors.nationality.message}</p>}
+      </div>
 
-     
-      
-        <div className="space-y-2">
-          <Label>Gender <span className="text-destructive">*</span></Label>
-          <Controller name="gender" control={control} render={({ field }) => (
-            <Select value={field.value as string | undefined} onValueChange={field.onChange} disabled={isPending}>
-              <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-              <SelectContent>{genders.map((g) => (<SelectItem key={g} value={g}>{g}</SelectItem>))}</SelectContent>
-            </Select>
-          )} />
-          {errors?.gender && <p className="text-xs text-red-500">{errors.gender.message}</p>}
-        </div>
 
-        <div className="space-y-2">
-          <Label>Date of Birth <span className="text-destructive">*</span></Label>
-          <Controller name="dateOfBirth" control={control} render={({ field }) => (
-            <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending} />
-          )} />
-          {errors?.dateOfBirth && <p className="text-xs text-red-500">{errors.dateOfBirth.message}</p>}
-        </div>
-     
-<div className="col-span-1 md:col-span-3 text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2">
- Contact
-</div>
-     
+
+      <div className="space-y-2">
+        <Label>Gender <span className="text-destructive">*</span></Label>
+        <Controller name="gender" control={control} render={({ field }) => (
+          <Select value={field.value as string | undefined} onValueChange={field.onChange} disabled={isPending}>
+            <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+            <SelectContent>{genders.map((g) => (<SelectItem key={g} value={g}>{g}</SelectItem>))}</SelectContent>
+          </Select>
+        )} />
+        {errors?.gender && <p className="text-xs text-red-500">{errors.gender.message}</p>}
+      </div>
+
+      <div className="space-y-2">
+        <Label>Date of Birth <span className="text-destructive">*</span></Label>
+        <Controller name="dateOfBirth" control={control} render={({ field }) => (
+          <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending} />
+        )} />
+        {errors?.dateOfBirth && <p className="text-xs text-red-500">{errors.dateOfBirth.message}</p>}
+      </div>
+
+      <div className="col-span-1 md:col-span-3 text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2">
+        Contact
+      </div>
+
       <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-2">
           <Label>Contact Number <span className="text-destructive">*</span></Label>
@@ -246,7 +281,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
           <Input placeholder="(eg jone@gmail.com)" type="email" {...register("officialEmail")} disabled={isPending} />
           {errors?.officialEmail && <p className="text-xs text-red-500">{errors.officialEmail.message}</p>}
         </div>
-      
+
         <div className="space-y-2">
           <Label>State <span className="text-destructive">*</span></Label>
           <Controller name="state" control={control} render={({ field }) => (
@@ -263,28 +298,28 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         </div>
       </div>
 
-      
+
       <div className="col-span-1 md:col-span-3 text-lg font-bold text-muted-foreground border-b border-muted-foreground pb-2">
- Compensation & Policies
-</div>
+        Compensation & Policies
+      </div>
 
       <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-2">
-  <Label>
-    Employee Salary (Compensation) <span className="text-destructive">*</span>
-  </Label>
-  <Input
-    type="number"
-    placeholder="Enter employee salary"
-    {...register("employeeSalary")}
-    disabled={isPending}
-  />
-  {errors?.employeeSalary && (
-    <p className="text-xs text-red-500">{errors.employeeSalary.message}</p>
-  )}
-</div>
+          <Label>
+            Employee Salary (Compensation) <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            type="number"
+            placeholder="Enter employee salary"
+            {...register("employeeSalary")}
+            disabled={isPending}
+          />
+          {errors?.employeeSalary && (
+            <p className="text-xs text-red-500">{errors.employeeSalary.message}</p>
+          )}
+        </div>
 
-        
+
         <div className="space-y-2">
           <Label>Days Off</Label>
           <Controller name="daysOff" control={control} render={({ field }) => (
@@ -297,64 +332,64 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
 
 
         <div className="space-y-2">
-  <Label>
-    Reporting Manager
-  </Label>
+          <Label>
+            Reporting Manager
+          </Label>
 
-  <Controller
-    name="reportingManager"
-    control={control}
-    render={({ field }) => (
-      <Autocomplete
-        options={employees.map((emp) => ({
-          value: emp.id,
-          label: `${emp.employeeName} (${emp.employeeId})`,
-        }))}
-        value={field.value as string | undefined}
-        onValueChange={field.onChange}
-        placeholder="Select Reporting Manager"
-        searchPlaceholder="Search employee..."
-        emptyMessage="No employees found."
-        disabled={isPending || loadingData}
-        isLoading={loadingData}
-      />
-    )}
-  />
+          <Controller
+            name="reportingManager"
+            control={control}
+            render={({ field }) => (
+              <Autocomplete
+                options={employees.map((emp) => ({
+                  value: emp.id,
+                  label: `${emp.employeeName} (${emp.employeeId})`,
+                }))}
+                value={field.value as string | undefined}
+                onValueChange={field.onChange}
+                placeholder="Select Reporting Manager"
+                searchPlaceholder="Search employee..."
+                emptyMessage="No employees found."
+                disabled={isPending || loadingData}
+                isLoading={loadingData}
+              />
+            )}
+          />
 
-  {errors?.reportingManager && (
-    <p className="text-xs text-destructive">
-      {errors.reportingManager.message}
-    </p>
-  )}
-</div>
+          {errors?.reportingManager && (
+            <p className="text-xs text-destructive">
+              {errors.reportingManager.message}
+            </p>
+          )}
+        </div>
 
 
 
         <div className="space-y-2">
           <Label>Working Hours Policy <span className="text-destructive">*</span></Label>
           <Controller name="workingHoursPolicy" control={control} render={({ field }) => (
-            <Autocomplete 
-              options={workingHoursPolicies.map((p) => ({ value: p.id, label: `${p.name}${p.isDefault ? " (Default)" : ""}` }))} 
-              value={field.value as string | undefined} 
-              onValueChange={field.onChange} 
-              placeholder="Select Working Hours Policy" 
-              disabled={isPending || loadingData} 
+            <Autocomplete
+              options={workingHoursPolicies.map((p) => ({ value: p.id, label: `${p.name}${p.isDefault ? " (Default)" : ""}` }))}
+              value={field.value as string | undefined}
+              onValueChange={field.onChange}
+              placeholder="Select Working Hours Policy"
+              disabled={isPending || loadingData}
             />
           )} />
           {errors?.workingHoursPolicy && <p className="text-xs text-red-500">{errors.workingHoursPolicy.message}</p>}
         </div>
         <div className="space-y-2">
-          <Label>Branch <span className="text-destructive">*</span></Label>
-          <Controller name="branch" control={control} render={({ field }) => (
-            <Autocomplete 
-              options={branches.map((b) => ({ value: b.id, label: `${b.name}${b.isDefault ? " (Default)" : ""}` }))} 
-              value={field.value as string | undefined} 
-              onValueChange={field.onChange} 
-              placeholder="Select Branch" 
-              disabled={isPending || loadingData} 
+          <Label>Location <span className="text-destructive">*</span></Label>
+          <Controller name="location" control={control} render={({ field }) => (
+            <Autocomplete
+              options={locations.map((b) => ({ value: b.id, label: `${b.name}${b.isDefault ? " (Default)" : ""}` }))}
+              value={field.value as string | undefined}
+              onValueChange={field.onChange}
+              placeholder="Select Location"
+              disabled={isPending || loadingData}
             />
           )} />
-          {errors?.branch && <p className="text-xs text-red-500">{errors.branch.message}</p>}
+          {errors?.location && <p className="text-xs text-red-500">{errors.location.message}</p>}
         </div>
         <div className="space-y-2">
           <Label>Leaves Policy <span className="text-destructive">*</span></Label>

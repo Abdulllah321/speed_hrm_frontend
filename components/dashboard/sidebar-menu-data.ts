@@ -96,10 +96,17 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-    title: "Branch",
+    title: "Location",
     children: [
-      { title: "Add", href: "/dashboard/master/branch/add" },
-      { title: "View", href: "/dashboard/master/branch/list" },
+      { title: "Add", href: "/dashboard/master/location/add" },
+      { title: "View", href: "/dashboard/master/location/list" },
+    ],
+  },
+  {
+    title: "Allocation",
+    children: [
+      { title: "Add", href: "/dashboard/master/allocation/add" },
+      { title: "View", href: "/dashboard/master/allocation/list" },
     ],
   },
   {

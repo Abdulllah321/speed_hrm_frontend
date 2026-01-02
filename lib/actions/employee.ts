@@ -49,7 +49,7 @@ export interface Employee {
   daysOff?: string | null;
   reportingManager: string;
   workingHoursPolicy: string;
-  branch: string;
+  location: string;
   leavesPolicy: string;
   allowRemoteAttendance: boolean;
   currentAddress?: string | null;
@@ -76,7 +76,7 @@ export interface Employee {
   subDepartmentName?: string | null;
   designationName?: string;
   employeeGradeName?: string;
-  branchName?: string;
+  locationName?: string;
   provinceName?: string;
   cityName?: string;
   maritalStatusName?: string;
@@ -112,9 +112,9 @@ export async function getEmployees(): Promise<{ status: boolean; data?: Employee
     return res.json();
   } catch (error) {
     console.error('Error fetching employees:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employees. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employees. Please check your connection.'
     };
   }
 }
@@ -145,9 +145,9 @@ export async function getEmployeesForDropdown(): Promise<{ status: boolean; data
     return res.json();
   } catch (error) {
     console.error('Error fetching employees for dropdown:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employees.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employees.'
     };
   }
 }
@@ -168,9 +168,9 @@ export async function getEmployeeById(id: string): Promise<{ status: boolean; da
     return res.json();
   } catch (error) {
     console.error('Error fetching employee:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employee' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employee'
     };
   }
 }
@@ -211,7 +211,7 @@ export async function createEmployee(data: {
   daysOff?: string;
   reportingManager: string;
   workingHoursPolicy: string;
-  branch: string;
+  location: string;
   leavesPolicy: string;
   allowRemoteAttendance: boolean;
   currentAddress?: string;
@@ -262,7 +262,7 @@ export async function createEmployee(data: {
 
 // Update employee
 export async function updateEmployee(
-  id: string, 
+  id: string,
   data: Partial<Employee> & {
     qualifications?: Array<{
       qualification: string;
@@ -372,9 +372,9 @@ export async function getEmployeesForAttendance(filters?: { departmentId?: strin
     return res.json();
   } catch (error) {
     console.error('Error fetching employees for attendance:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employees. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employees. Please check your connection.'
     };
   }
 }
@@ -458,8 +458,8 @@ export async function rejoinEmployee(data: {
   reportingManager?: string;
   workingHoursPolicyId?: string;
   workingHoursPolicy?: string;
-  branchId?: string;
-  branch?: string;
+  locationId?: string;
+  location?: string;
   leavesPolicyId?: string;
   leavesPolicy?: string;
   allowRemoteAttendance?: boolean;
@@ -526,8 +526,8 @@ export async function rejoinEmployee(data: {
     if (data.reportingManager !== undefined) payload.reportingManager = data.reportingManager;
     if (data.workingHoursPolicyId !== undefined) payload.workingHoursPolicyId = data.workingHoursPolicyId;
     if (data.workingHoursPolicy !== undefined) payload.workingHoursPolicy = data.workingHoursPolicy;
-    if (data.branchId !== undefined) payload.branchId = data.branchId;
-    if (data.branch !== undefined) payload.branch = data.branch;
+    if (data.locationId !== undefined) payload.locationId = data.locationId;
+    if (data.location !== undefined) payload.location = data.location;
     if (data.leavesPolicyId !== undefined) payload.leavesPolicyId = data.leavesPolicyId;
     if (data.leavesPolicy !== undefined) payload.leavesPolicy = data.leavesPolicy;
     if (data.allowRemoteAttendance !== undefined) payload.allowRemoteAttendance = data.allowRemoteAttendance;
