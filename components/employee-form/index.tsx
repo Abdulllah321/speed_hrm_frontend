@@ -149,9 +149,10 @@ const employeeFormSchema = z.object({
 
   joiningDate: z
     .string()
-    .min(1, "Joining Date is required")
+    .optional()
     .refine(
       (date) => {
+        if (!date) return true;
         const selectedDate = new Date(date);
         return selectedDate <= new Date();
       },
@@ -206,8 +207,11 @@ const employeeFormSchema = z.object({
 
   officialEmail: z
     .string()
-    .min(1, "Official Email is required")
-    .email("Official Email must be a valid email address"),
+    .optional()
+    .refine(
+      (val) => !val || emailRegex.test(val),
+      "Official Email must be a valid email address"
+    ),
 
   country: z
     .string()
@@ -267,7 +271,7 @@ const employeeFormSchema = z.object({
 
   location: z
     .string()
-    .min(1, "Location is required"),
+    .optional(),
 
   leavesPolicy: z
     .string()
@@ -1068,7 +1072,7 @@ export function EmployeeForm({
         "state",
         "city",
         "workingHoursPolicy",
-        "branch",
+        "location",
         "leavesPolicy",
         "reportingManager",
         "employeeSalary",

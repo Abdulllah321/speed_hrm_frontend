@@ -198,7 +198,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         </div>
       </div>
       <div className="space-y-2">
-        <Label>Joining Date <span className="text-destructive">*</span></Label>
+        <Label>Joining Date</Label>
         <Controller name="joiningDate" control={control} render={({ field }) => (
           <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending} />
         )} />
@@ -277,7 +277,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
           <Input placeholder="(eg jone@gmail.com)" type="email" {...register("personalEmail")} disabled={isPending} />
         </div>
         <div className="space-y-2">
-          <Label>Official Email <span className="text-destructive">*</span></Label>
+          <Label>Official Email</Label>
           <Input placeholder="(eg jone@gmail.com)" type="email" {...register("officialEmail")} disabled={isPending} />
           {errors?.officialEmail && <p className="text-xs text-red-500">{errors.officialEmail.message}</p>}
         </div>
@@ -379,13 +379,13 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
           {errors?.workingHoursPolicy && <p className="text-xs text-red-500">{errors.workingHoursPolicy.message}</p>}
         </div>
         <div className="space-y-2">
-          <Label>Location <span className="text-destructive">*</span></Label>
+          <Label>Location</Label>
           <Controller name="location" control={control} render={({ field }) => (
             <Autocomplete
               options={locations.map((b) => ({ value: b.id, label: `${b.name}${b.isDefault ? " (Default)" : ""}` }))}
               value={field.value as string | undefined}
               onValueChange={field.onChange}
-              placeholder="Select Location"
+              placeholder="Select Location (Optional)"
               disabled={isPending || loadingData}
             />
           )} />
