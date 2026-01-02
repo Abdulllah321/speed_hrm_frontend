@@ -111,6 +111,7 @@ export function EmployeeStatusList({
         searchFields={[{ key: "status", label: "Status" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="employee-status-list"
       />
 
       {/* Bulk Edit Dialog */}

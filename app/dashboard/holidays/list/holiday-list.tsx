@@ -122,6 +122,7 @@ export function HolidayList({ initialHolidays, newItemId }: HolidayListProps) {
         ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="holiday-list"
       />
 
       <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>

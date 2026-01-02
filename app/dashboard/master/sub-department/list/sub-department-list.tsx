@@ -149,6 +149,7 @@ export function SubDepartmentList({
         filters={[departmentFilter]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="sub-department-list"
       />
 
       {/* Bulk Edit Dialog */}

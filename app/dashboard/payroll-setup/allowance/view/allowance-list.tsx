@@ -322,6 +322,7 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
           { key: "department", label: "Department" },
           { key: "allowanceHeadName", label: "Allowance Type" },
         ]}
+        tableId="allowance-list"
       />
     </div>
   );

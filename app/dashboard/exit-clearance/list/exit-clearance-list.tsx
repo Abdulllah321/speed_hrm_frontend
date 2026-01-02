@@ -55,6 +55,7 @@ export function ExitClearanceList({ initialData, newItemId }: ExitClearanceListP
           { key: "department", label: "Department" },
         ]}
         onMultiDelete={handleMultiDelete}
+        tableId="exit-clearance-list"
       />
     </div>
   );

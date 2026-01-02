@@ -265,6 +265,7 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
         ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="salary-breakup-list"
       />
 
       <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>

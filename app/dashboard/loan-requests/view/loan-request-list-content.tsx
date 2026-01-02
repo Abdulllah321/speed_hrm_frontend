@@ -401,6 +401,7 @@ export function LoanRequestListContent({ initialData = [] }: LoanRequestListCont
             { key: "department", label: "Department" },
             { key: "loanType", label: "Loan Type" },
           ]}
+          tableId="loan-request-list-content"
         />
       </div>
     </div>

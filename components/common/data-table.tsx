@@ -125,6 +125,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ScrollArea } from "../ui/scroll-area";
 import { motion } from "motion/react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface DataTableRow {
   id: string;
@@ -154,6 +155,7 @@ type DataTableProps<TData extends DataTableRow> = {
   filters?: FilterConfig[];
   onFilterChange?: (key: string, value: string) => void;
   resetFilterKey?: string; // Key to reset a specific filter when it changes
+  tableId?: string; // Unique identifier for localStorage persistence
 };
 
 export default function DataTable<TData extends DataTableRow>({
@@ -169,6 +171,7 @@ export default function DataTable<TData extends DataTableRow>({
   filters,
   onFilterChange,
   resetFilterKey,
+  tableId,
 }: DataTableProps<TData>) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -179,7 +182,20 @@ export default function DataTable<TData extends DataTableRow>({
     pageSize: 10,
   });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  
+  // Get preferences from AuthProvider
+  const { getPreference, updatePreference } = useAuth();
+  
+  // Storage key for column visibility
+  const storageKey = tableId ? `table-column-visibility-${tableId}` : null;
+  const isInitialMount = useRef(true);
+  
+  // Initialize column visibility from AuthProvider preferences
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    if (!storageKey) return {};
+    const saved = getPreference(storageKey);
+    return saved || {};
+  });
   const [highlightedId, setHighlightedId] = useState<string | null>(
     newItemId || null
   );
@@ -270,6 +286,17 @@ export default function DataTable<TData extends DataTableRow>({
     setData(initialData);
   }, [initialData]);
 
+  // Load column visibility from AuthProvider preferences on mount and when preferences change
+  useEffect(() => {
+    if (!storageKey) return;
+    const saved = getPreference(storageKey);
+    if (saved) {
+      setColumnVisibility(saved);
+      // Reset initial mount flag if we loaded preferences
+      isInitialMount.current = false;
+    }
+  }, [storageKey, getPreference]);
+
   // Track previous resetFilterKey to detect changes
   const prevResetFilterKeyRef = useRef<string | undefined>(undefined);
 
@@ -303,6 +330,19 @@ export default function DataTable<TData extends DataTableRow>({
       return () => clearTimeout(timeout);
     }
   }, [newItemId]);
+
+  // Save column visibility to AuthProvider whenever it changes
+  useEffect(() => {
+    // Skip saving on initial mount to avoid overwriting with loaded state
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    
+    if (!storageKey) return;
+    
+    updatePreference(storageKey, columnVisibility);
+  }, [columnVisibility, storageKey, updatePreference]);
 
   const handleDeleteRows = () => {
     const selectedRows = table.getSelectedRowModel().rows;

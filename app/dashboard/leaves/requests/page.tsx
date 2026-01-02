@@ -704,6 +704,7 @@ export default function LeaveRequestsPage() {
               { key: "employeeName", label: "Employee Name" },
               { key: "employeeCode", label: "Employee ID" },
             ]}
+            tableId="leave-request-list"
           />
         </CardContent>
       </Card>

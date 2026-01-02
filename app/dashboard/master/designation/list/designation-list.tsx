@@ -111,6 +111,7 @@ export function DesignationList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="designation-list"
       />
 
       {/* Bulk Edit Dialog */}

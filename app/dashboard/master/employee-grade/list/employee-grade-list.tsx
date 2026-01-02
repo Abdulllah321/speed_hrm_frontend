@@ -111,6 +111,7 @@ export function EmployeeGradeList({
         searchFields={[{ key: "grade", label: "Grade" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="employee-grade-list"
       />
 
       {/* Bulk Edit Dialog */}

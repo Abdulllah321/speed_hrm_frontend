@@ -105,6 +105,7 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
             { key: "empId", label: "Employee ID" },
             { key: "department", label: "Department" },
           ]}
+          tableId="increment-list"
         />
       </div>
     </div>

@@ -680,6 +680,7 @@ export function BonusList({ initialData = [] }: BonusListProps) {
           { key: "department", label: "Department" },
           { key: "bonusTypeName", label: "Bonus Type" },
         ]}
+        tableId="bonus-list"
       />
     </div>
   );

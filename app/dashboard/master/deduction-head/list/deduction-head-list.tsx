@@ -111,6 +111,7 @@ export function DeductionHeadList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="deduction-head-list"
       />
 
       {/* Bulk Edit Dialog */}

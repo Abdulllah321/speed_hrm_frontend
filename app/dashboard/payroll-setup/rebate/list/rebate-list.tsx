@@ -274,6 +274,7 @@ export function RebateList({ initialData = [] }: RebateListProps) {
           { key: "employeeCode", label: "Employee Code" },
           { key: "department", label: "Department" },
         ]}
+        tableId="rebate-list"
       />
     </div>
   );

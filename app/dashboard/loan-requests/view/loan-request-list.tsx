@@ -422,6 +422,7 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
             { key: "department", label: "Department" },
             { key: "loanType", label: "Loan Type" },
           ]}
+          tableId="loan-request-list"
         />
       </div>
     </div>

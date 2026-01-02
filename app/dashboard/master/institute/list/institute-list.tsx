@@ -111,6 +111,7 @@ export function InstituteList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="institute-list"
       />
 
       {/* Bulk Edit Dialog */}

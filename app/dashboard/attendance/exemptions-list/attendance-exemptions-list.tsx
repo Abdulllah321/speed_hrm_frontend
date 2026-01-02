@@ -238,6 +238,7 @@ export function AttendanceExemptionsList({
           { key: "employeeName", label: "Employee" },
           { key: "reason", label: "Reason" },
         ]}
+        tableId="attendance-exemptions-list"
       />
     </div>
   );

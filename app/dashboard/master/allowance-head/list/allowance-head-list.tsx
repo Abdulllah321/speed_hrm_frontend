@@ -111,6 +111,7 @@ export function AllowanceHeadList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="allowance-head"
       />
 
       {/* Bulk Edit Dialog */}

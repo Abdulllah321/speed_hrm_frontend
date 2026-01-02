@@ -93,6 +93,7 @@ export function JobTypeList({ initialJobTypes, newItemId }: JobTypeListProps) {
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="job-type-list"
       />
 
       <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>

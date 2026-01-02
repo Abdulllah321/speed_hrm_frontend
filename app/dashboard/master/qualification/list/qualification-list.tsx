@@ -111,6 +111,7 @@ export function QualificationList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="qualification-list"
       />
 
       {/* Bulk Edit Dialog */}

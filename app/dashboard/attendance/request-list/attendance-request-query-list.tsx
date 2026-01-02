@@ -111,6 +111,7 @@ export function AttendanceRequestQueryList({
         ]}
         onFilterChange={handleFilterChange}
         resetFilterKey={selectedDepartment}
+        tableId="attendance-request-query-list"
       />
     </div>
   );

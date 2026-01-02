@@ -185,6 +185,7 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
         filters={[countryFilter]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="city-list"
       />
 
       {/* Bulk Edit Dialog */}

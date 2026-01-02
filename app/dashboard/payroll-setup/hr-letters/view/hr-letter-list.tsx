@@ -384,6 +384,7 @@ export function HrLetterList({ initialData = [] }: HrLetterListProps) {
               { key: "empId", label: "Employee ID" },
               { key: "letterType", label: "Letter Type" },
             ]}
+            tableId="hr-letter-list"
           />
         )}
       </div>

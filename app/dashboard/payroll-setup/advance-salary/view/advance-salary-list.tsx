@@ -425,6 +425,7 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
           ]}
           actionText="Create Advance Salary"
           toggleAction={() => router.push("/dashboard/payroll-setup/advance-salary/create")}
+          tableId="advance-salary-list"
         />
       </div>
     </div>

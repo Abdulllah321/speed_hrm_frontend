@@ -4,14 +4,35 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Search, ArrowLeft, Plus, Minus, Printer, Download } from "lucide-react";
+import {
+  Search,
+  ArrowLeft,
+  Plus,
+  Minus,
+  Printer,
+  Download,
+} from "lucide-react";
 import Link from "next/link";
-import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
-import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
+import {
+  getEmployeesForDropdown,
+  type EmployeeDropdownOption,
+} from "@/lib/actions/employee";
+import {
+  getDepartments,
+  getSubDepartmentsByDepartment,
+  type Department,
+  type SubDepartment,
+} from "@/lib/actions/department";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import DataTable, { HighlightText } from "@/components/common/data-table";
@@ -103,7 +124,9 @@ export default function CreateLeaveEncashmentPage() {
       if (filters.departmentId) {
         setLoadingSubDepartments(true);
         try {
-          const result = await getSubDepartmentsByDepartment(filters.departmentId);
+          const result = await getSubDepartmentsByDepartment(
+            filters.departmentId
+          );
           if (result.status && result.data) {
             setSubDepartments(result.data);
           } else {
@@ -129,11 +152,15 @@ export default function CreateLeaveEncashmentPage() {
     let filtered = [...employees];
 
     if (filters.departmentId) {
-      filtered = filtered.filter((emp) => emp.departmentId === filters.departmentId);
+      filtered = filtered.filter(
+        (emp) => emp.departmentId === filters.departmentId
+      );
     }
 
     if (filters.subDepartmentId) {
-      filtered = filtered.filter((emp) => emp.subDepartmentId === filters.subDepartmentId);
+      filtered = filtered.filter(
+        (emp) => emp.subDepartmentId === filters.subDepartmentId
+      );
     }
 
     return filtered;
@@ -165,33 +192,37 @@ export default function CreateLeaveEncashmentPage() {
       // });
 
       // Temporary sample data for frontend-only implementation
-      const selectedEmployees = filters.employeeId 
-        ? filteredEmployees.filter(e => e.id === filters.employeeId)
+      const selectedEmployees = filters.employeeId
+        ? filteredEmployees.filter((e) => e.id === filters.employeeId)
         : filteredEmployees;
 
-      const sampleResults: LeaveEncashmentResult[] = selectedEmployees.map((emp) => ({
-        id: emp.id,
-        employeeId: emp.employeeId,
-        employeeCode: emp.employeeId,
-        employeeName: emp.employeeName,
-        country: "Pakistan",
-        province: "Sindh",
-        city: "Karachi",
-        area: "Karachi",
-        station: "HeadOffice",
-        department: emp.departmentName || "—",
-        subDepartment: "",
-        designation: "—",
-        encashmentDate: filters.encashmentDate,
-        encashmentDays: 12,
-        gross: 0,
-        annual: 0,
-        perDay: 0,
-        totalEncashment: 0,
-      }));
+      const sampleResults: LeaveEncashmentResult[] = selectedEmployees.map(
+        (emp) => ({
+          id: emp.id,
+          employeeId: emp.employeeId,
+          employeeCode: emp.employeeId,
+          employeeName: emp.employeeName,
+          country: "Pakistan",
+          province: "Sindh",
+          city: "Karachi",
+          area: "Karachi",
+          station: "HeadOffice",
+          department: emp.departmentName || "—",
+          subDepartment: "",
+          designation: "—",
+          encashmentDate: filters.encashmentDate,
+          encashmentDays: 12,
+          gross: 0,
+          annual: 0,
+          perDay: 0,
+          totalEncashment: 0,
+        })
+      );
 
       setSearchResults(sampleResults);
-      toast.success(`Found ${sampleResults.length} employee(s). Backend integration pending.`);
+      toast.success(
+        `Found ${sampleResults.length} employee(s). Backend integration pending.`
+      );
     } catch (error) {
       console.error("Error:", error);
       toast.error("Failed to search leave encashment records");
@@ -252,7 +283,9 @@ export default function CreateLeaveEncashmentPage() {
       index + 1,
       `(${result.employeeCode}) ${result.employeeName}`,
       result.employeeCode,
-      result.encashmentDate ? format(new Date(result.encashmentDate), "dd-MMM-yyyy") : "—",
+      result.encashmentDate
+        ? format(new Date(result.encashmentDate), "dd-MMM-yyyy")
+        : "—",
       result.encashmentDays.toString(),
       result.totalEncashment.toString(),
     ]);
@@ -348,7 +381,9 @@ export default function CreateLeaveEncashmentPage() {
               variant="outline"
               size="icon"
               className="h-8 w-8"
-              onClick={() => handleEncashmentDaysChangeById(row.original.id, -1)}
+              onClick={() =>
+                handleEncashmentDaysChangeById(row.original.id, -1)
+              }
             >
               <Minus className="h-3 w-3" />
             </Button>
@@ -356,7 +391,10 @@ export default function CreateLeaveEncashmentPage() {
               type="number"
               value={row.original.encashmentDays}
               onChange={(e) =>
-                handleEncashmentDaysInputChangeById(row.original.id, e.target.value)
+                handleEncashmentDaysInputChangeById(
+                  row.original.id,
+                  e.target.value
+                )
               }
               className="w-16 h-8 text-center"
               min="0"
@@ -418,38 +456,30 @@ export default function CreateLeaveEncashmentPage() {
       </div>
 
       <Card className="border-0 shadow-none">
-       <CardHeader className="pb-4 bg-background">
-  <div className="flex items-center justify-between">
-    <div>
-      <CardTitle className="text-2xl font-bold text-foreground">
-        Leave Encashment Form
-      </CardTitle>
-      <CardDescription className="mt-1 text-muted-foreground">
-        Filter and view leave encashment records
-      </CardDescription>
-    </div>
+        <CardHeader className="pb-4 bg-background">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-2xl font-bold text-foreground">
+                Leave Encashment Form
+              </CardTitle>
+              <CardDescription className="mt-1 text-muted-foreground">
+                Filter and view leave encashment records
+              </CardDescription>
+            </div>
 
-    <div className="flex gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handlePrint}
-      >
-        <Printer className="h-4 w-4 mr-2" />
-        Print
-      </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+              </Button>
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleExportCSV}
-      >
-        <Download className="h-4 w-4 mr-2" />
-        Export CSV
-      </Button>
-    </div>
-  </div>
-</CardHeader>
+              <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
 
         <CardContent className="space-y-6 pt-6">
           {/* Filter Section */}
@@ -492,7 +522,13 @@ export default function CreateLeaveEncashmentPage() {
               ) : (
                 <Autocomplete
                   options={[
-                    { value: "", label: subDepartments.length === 0 ? "No Record Found" : "Select Sub Department" },
+                    {
+                      value: "",
+                      label:
+                        subDepartments.length === 0
+                          ? "No Record Found"
+                          : "Select Sub Department",
+                    },
                     ...subDepartments.map((subDept) => ({
                       value: subDept.id,
                       label: subDept.name,
@@ -506,10 +542,18 @@ export default function CreateLeaveEncashmentPage() {
                       employeeId: "",
                     });
                   }}
-                  placeholder={!filters.departmentId ? "Select department first" : subDepartments.length === 0 ? "No Record Found" : "Select Sub Department"}
+                  placeholder={
+                    !filters.departmentId
+                      ? "Select department first"
+                      : subDepartments.length === 0
+                      ? "No Record Found"
+                      : "Select Sub Department"
+                  }
                   searchPlaceholder="Search sub department..."
                   emptyMessage="No sub departments found"
-                  disabled={!filters.departmentId || subDepartments.length === 0}
+                  disabled={
+                    !filters.departmentId || subDepartments.length === 0
+                  }
                 />
               )}
             </div>
@@ -525,7 +569,11 @@ export default function CreateLeaveEncashmentPage() {
                 onValueChange={(value) => {
                   setFilters({ ...filters, employeeId: value || "" });
                 }}
-                placeholder={filters.employeeId ? `All selected (${filteredEmployees.length})` : "Select Employee"}
+                placeholder={
+                  filters.employeeId
+                    ? `All selected (${filteredEmployees.length})`
+                    : "Select Employee"
+                }
                 searchPlaceholder="Search employees..."
                 emptyMessage="No employees found"
               />
@@ -548,7 +596,11 @@ export default function CreateLeaveEncashmentPage() {
 
           {/* Search Button */}
           <div className="flex justify-end">
-            <Button onClick={handleSearch} disabled={isSearching} className="bg-blue-600 hover:bg-blue-700">
+            <Button
+              onClick={handleSearch}
+              disabled={isSearching}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
               <Search className="h-4 w-4 mr-2" />
               {isSearching ? "Searching..." : "Search"}
             </Button>
@@ -562,6 +614,7 @@ export default function CreateLeaveEncashmentPage() {
                 { key: "employeeName", label: "Employee Name" },
                 { key: "employeeCode", label: "Employee Code" },
               ]}
+              tableId="leave-encashment-create"
             />
           )}
         </CardContent>
@@ -569,4 +622,3 @@ export default function CreateLeaveEncashmentPage() {
     </div>
   );
 }
-

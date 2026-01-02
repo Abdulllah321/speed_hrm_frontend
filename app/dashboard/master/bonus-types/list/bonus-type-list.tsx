@@ -149,6 +149,7 @@ export function BonusTypeList({ initialBonusTypes, newItemId }: BonusTypeListPro
             searchFields={[{ key: "name", label: "Name" }]}
             onMultiDelete={handleMultiDelete}
             onBulkEdit={handleBulkEdit}
+            tableId="bonus-type-list"
           />
         </CardContent>
       </Card>
