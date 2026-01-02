@@ -93,6 +93,7 @@ export function MaritalStatusList({ initialMaritalStatuses, newItemId }: Marital
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="marital-status-list"
       />
 
       <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>

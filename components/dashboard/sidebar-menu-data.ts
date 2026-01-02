@@ -149,6 +149,13 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
+    title: "Social Security",
+    children: [
+      { title: "Add", href: "/dashboard/master/social-security/add" },
+      { title: "View", href: "/dashboard/master/social-security/list" },
+    ],
+  },
+  {
     title: "Tax Slabs",
     children: [
       { title: "Add", href: "/dashboard/master/tax-slabs/add" },

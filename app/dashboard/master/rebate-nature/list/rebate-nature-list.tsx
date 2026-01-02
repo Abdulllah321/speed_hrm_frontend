@@ -71,6 +71,7 @@ export function RebateNatureList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="rebate-nature-list"
       />
     </div>
   );

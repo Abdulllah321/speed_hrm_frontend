@@ -111,6 +111,7 @@ export function LeaveEncashmentList({ initialData = [] }: LeaveEncashmentListPro
           { key: "employeeName", label: "Employee Name" },
           { key: "employeeCode", label: "Employee Code" },
         ]}
+        tableId="leave-encashment-list"
       />
     </div>
   );

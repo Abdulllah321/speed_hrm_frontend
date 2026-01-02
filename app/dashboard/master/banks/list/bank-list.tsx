@@ -129,6 +129,7 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
             searchFields={[{ key: "name", label: "Name" }]}
             onMultiDelete={handleMultiDelete}
             onBulkEdit={handleBulkEdit}
+            tableId="bank-list"
           />
         </CardContent>
       </Card>

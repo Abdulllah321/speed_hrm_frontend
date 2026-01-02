@@ -219,6 +219,7 @@ export function WorkingHoursPolicyList({
               { key: "endWorkingHours", label: "End Time" },
             ]}
             onMultiDelete={handleMultiDelete}
+            tableId="working-hours-policy-list"
           />
         </CardContent>
       </Card>

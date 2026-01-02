@@ -324,6 +324,7 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                             columns={columns}
                             data={data}
                             searchFields={[{ key: "employee.employeeName", label: "Employee Name" }]}
+                            tableId="report-content"
                         />
                     </div>
 

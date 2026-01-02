@@ -215,6 +215,7 @@ export function PayslipsContent({ departments, subDepartments, employees }: Pays
                         { key: "employee.employeeName", label: "Employee Name" },
                         { key: "employee.employeeId", label: "Employee ID" },
                     ]}
+                    tableId="payslip-content"
                 />
             </Card>
 

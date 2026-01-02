@@ -319,7 +319,7 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
                 { key: "department", label: "Department" },
                 { key: "deductionHeadName", label: "Deduction Type" },
               ]}
-            />
+            tableId="deduction-list"/>
     </div>
   );
 }

@@ -110,6 +110,7 @@ export function LoanTypeList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="loan-type-list"
       />
 
       <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>

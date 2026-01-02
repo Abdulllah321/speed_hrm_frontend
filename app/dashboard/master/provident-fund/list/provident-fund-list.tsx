@@ -131,6 +131,7 @@ export function ProvidentFundList({
         ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="provident-fund-list"
       />
 
       {/* Bulk Edit Dialog */}

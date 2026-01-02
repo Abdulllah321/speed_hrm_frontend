@@ -144,6 +144,7 @@ export function BranchList({ initialBranches, cities, newItemId }: BranchListPro
         filters={[statusFilter, cityFilter]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="branch-list"
       />
 
       {/* Bulk Edit Dialog */}

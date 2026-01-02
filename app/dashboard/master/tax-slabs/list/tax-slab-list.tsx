@@ -91,6 +91,7 @@ export function TaxSlabList({ initialTaxSlabs, newItemId }: TaxSlabListProps) {
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="tax-slab-list"
       />
 
       <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>

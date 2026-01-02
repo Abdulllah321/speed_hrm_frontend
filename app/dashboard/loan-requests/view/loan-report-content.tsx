@@ -410,6 +410,7 @@ export function LoanReportContent({ initialData = [], summary }: LoanReportConte
             { key: "department", label: "Department" },
             { key: "loanType", label: "Loan Type" },
           ]}
+          tableId="loan-report-content"
         />
       </div>
     </div>

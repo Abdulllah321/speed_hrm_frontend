@@ -87,7 +87,7 @@ export function OvertimeList({ initialData = [] }: OvertimeListProps) {
           searchFields={[
             { key: "employeeName", label: "Employee Name" },
             { key: "overtimeType", label: "Overtime Type" },
-          ]}
+          ]}tableId="overtime-list"
         />
       </div>
     </div>

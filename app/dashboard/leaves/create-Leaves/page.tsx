@@ -394,6 +394,7 @@ export default function CreateLeavePage() {
                 columns={columns}
                 data={leaveInfo.leaveBalances}
                 searchFields={[{ key: "leaveTypeName", label: "Leave Type" }]}
+                tableId="leave-balance"
               />
             </CardContent>
           </Card>
@@ -520,6 +521,7 @@ export default function CreateLeavePage() {
                     { key: "leaveTypeName", label: "Leave Type" },
                     { key: "status", label: "Status" },
                   ]}
+                  tableId="my-leave-request"
                 />
               )}
             </CardContent>

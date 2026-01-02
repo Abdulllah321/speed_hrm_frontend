@@ -458,6 +458,7 @@ export function AttendanceProgressSummary({
             { key: "employeeName", label: "Employee" },
             { key: "employeeId", label: "Employee ID" },
           ]}
+          tableId="attendance-progress-summary"
         />
       </div>
     </div>

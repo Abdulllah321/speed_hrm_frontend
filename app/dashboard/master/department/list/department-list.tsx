@@ -117,6 +117,7 @@ export function DepartmentList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        tableId="department-list"
       />
 
       {/* Bulk Edit Dialog */}
