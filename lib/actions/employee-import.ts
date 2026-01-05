@@ -24,6 +24,11 @@ export interface EmployeeCsvImportResponse {
     inserted?: number;
     total?: number;
   };
+  errors?: Array<{
+    row: Record<string, string>;
+    error: string;
+    stack?: string;
+  }>;
   message?: string;
 }
 
@@ -48,6 +53,7 @@ export async function uploadEmployeeCsv(
       return {
         status: false,
         message: json?.message || `Upload failed with status ${res.status}`,
+        errors: json.errors,
       };
     }
 

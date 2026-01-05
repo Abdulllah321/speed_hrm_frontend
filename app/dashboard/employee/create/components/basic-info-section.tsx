@@ -148,14 +148,14 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         {errors?.designation && <p className="text-xs text-red-500">{errors.designation.message}</p>}
       </div>
       <div className="space-y-2">
-        <Label>Marital Status <span className="text-destructive">*</span></Label>
+        <Label>Marital Status</Label>
         <Controller name="maritalStatus" control={control} render={({ field }) => (
           <Autocomplete options={maritalStatuses.map(ms => ({ value: ms.id, label: ms.name }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder="Select Marital Status" disabled={isPending || loadingData} />
         )} />
         {errors?.maritalStatus && <p className="text-xs text-red-500">{errors.maritalStatus.message}</p>}
       </div>
       <div className="space-y-2">
-        <Label>Employment Status <span className="text-destructive">*</span></Label>
+        <Label>Employment Status</Label>
         <Controller name="employmentStatus" control={control} render={({ field }) => (
           <Autocomplete options={employeeStatuses.map(es => ({ value: es.id, label: es.status }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder="Select Employment Status" disabled={isPending || loadingData} />
         )} />
@@ -231,7 +231,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
       </div>
 
       <div className="space-y-2">
-        <Label>Date of Birth <span className="text-destructive">*</span></Label>
+        <Label>Date of Birth</Label>
         <Controller name="dateOfBirth" control={control} render={({ field }) => (
           <DatePicker value={field.value as string | undefined} onChange={field.onChange} disabled={isPending} />
         )} />

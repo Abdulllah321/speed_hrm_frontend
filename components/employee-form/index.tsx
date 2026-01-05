@@ -121,11 +121,13 @@ const employeeFormSchema = z.object({
 
   maritalStatus: z
     .string()
-    .min(1, "Marital Status is required"),
+    .optional()
+    .or(z.literal("")),
 
   employmentStatus: z
     .string()
-    .min(1, "Employment Status is required"),
+    .optional()
+    .or(z.literal("")),
 
   probationExpiryDate: z
     .string()
@@ -161,9 +163,10 @@ const employeeFormSchema = z.object({
 
   dateOfBirth: z
     .string()
-    .min(1, "Date of Birth is required")
+    .optional()
     .refine(
       (date) => {
+        if (!date) return true;
         const dob = new Date(date);
         const today = new Date();
         const age = today.getFullYear() - dob.getFullYear();
@@ -1185,6 +1188,7 @@ export function EmployeeForm({
             reportingManager: data.reportingManager || "",
             workingHoursPolicy: data.workingHoursPolicy,
             location: data.location,
+            allocation: data.allocation,
             leavesPolicy: data.leavesPolicy,
             allowRemoteAttendance: data.allowRemoteAttendance,
             currentAddress: data.currentAddress || undefined,
@@ -1232,7 +1236,7 @@ export function EmployeeForm({
             emergencyContactNumber: data.emergencyContactNumber || undefined,
             emergencyContactPersonName: data.emergencyContactPersonName || undefined,
             personalEmail: data.personalEmail || undefined,
-            officialEmail: data.officialEmail,
+            officialEmail: data.officialEmail || undefined,
             country: data.country,
             state: data.state,
             city: data.city,
@@ -1245,6 +1249,7 @@ export function EmployeeForm({
             reportingManager: data.reportingManager || "",
             workingHoursPolicy: data.workingHoursPolicy,
             location: data.location,
+            allocation: data.allocation,
             leavesPolicy: data.leavesPolicy,
             allowRemoteAttendance: data.allowRemoteAttendance,
             currentAddress: data.currentAddress || undefined,
@@ -1303,7 +1308,7 @@ export function EmployeeForm({
             emergencyContactPersonName:
               data.emergencyContactPersonName || undefined,
             personalEmail: data.personalEmail || undefined,
-            officialEmail: data.officialEmail,
+            officialEmail: data.officialEmail || undefined,
             country: data.country,
             state: data.state,
             city: data.city,
@@ -1316,6 +1321,7 @@ export function EmployeeForm({
             reportingManager: data.reportingManager,
             workingHoursPolicy: data.workingHoursPolicy,
             location: data.location,
+            allocation: data.allocation,
             leavesPolicy: data.leavesPolicy,
             allowRemoteAttendance: data.allowRemoteAttendance,
             currentAddress: data.currentAddress || undefined,
@@ -1494,8 +1500,8 @@ export function EmployeeForm({
                     daysOff={daysOff}
                     workingHoursPolicies={workingHoursPolicies}
                     locations={locations}
-                    leavesPolicies={leavesPolicies}
                     allocations={allocations}
+                    leavesPolicies={leavesPolicies}
                     documents={documents}
                     handleFileChange={handleFileChange}
                     employees={employees}

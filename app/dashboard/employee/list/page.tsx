@@ -80,6 +80,12 @@ export default function EmployeeListPage() {
     null
   );
 
+  const [errorDialog, setErrorDialog] = useState(false);
+  const [importErrors, setImportErrors] = useState<Array<{
+    row: Record<string, string>;
+    error: string;
+  }>>([]);
+
   // Dropdown data for mapping IDs to names
   const [departments, setDepartments] = useState<Department[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
@@ -94,7 +100,7 @@ export default function EmployeeListPage() {
     const fetchAllData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch employees, departments, and designations in parallel
         const [employeesRes, deptsRes, designationsRes] = await Promise.all([
           getEmployees(),
@@ -109,13 +115,13 @@ export default function EmployeeListPage() {
         // Set employees
         if (employeesRes.status && employeesRes.data) {
           setEmployees(employeesRes.data);
-          
+
           // Fetch cities only for unique provinces found in employee data
           const uniqueProvinces = [...new Set(employeesRes.data.map(e => e.province).filter(Boolean))];
-          
+
           if (uniqueProvinces.length > 0) {
             const citiesData: Record<string, City[]> = {};
-            
+
             await Promise.all(
               uniqueProvinces.map(async (province) => {
                 if (!province) return;
@@ -129,7 +135,7 @@ export default function EmployeeListPage() {
                 }
               })
             );
-            
+
             setCitiesMap(citiesData);
           }
         } else {
@@ -224,10 +230,8 @@ export default function EmployeeListPage() {
       <tbody>${filteredEmployees
         .map(
           (e, i) =>
-            `<tr><td>${i + 1}</td><td>${e.employeeId}</td><td>${
-              e.employeeName
-            }</td><td>${getDepartmentName(e.department)}</td><td>${
-              getDesignationName(e.designation)
+            `<tr><td>${i + 1}</td><td>${e.employeeId}</td><td>${e.employeeName
+            }</td><td>${getDepartmentName(e.department)}</td><td>${getDesignationName(e.designation)
             }</td><td>${e.contactNumber}</td><td>${e.bankName}</td><td>${Number(
               e.employeeSalary
             ).toLocaleString()}</td><td>${e.status}</td></tr>`
@@ -301,6 +305,10 @@ export default function EmployeeListPage() {
         }
         setUploadDialog(false);
       } else {
+        if (res.errors && res.errors.length > 0) {
+          setImportErrors(res.errors);
+          setErrorDialog(true);
+        }
         toast.error(res.message || "Upload failed");
       }
     } catch (error) {
@@ -541,11 +549,11 @@ export default function EmployeeListPage() {
             <div className="border border-primary/20 rounded-lg p-3 bg-primary/5">
               <p className="text-sm text-primary mb-2">Need a template?</p>
               <Button asChild variant="outline" size="sm" className="!bg-primary !text-white hover:!bg-primary/90">
-  <a href="/employee_samples.xlsx" download>
-    <Download className="h-4 w-4 mr-2" />
-    Download Sample Template
-  </a>
-</Button>
+                <a href="/employee_samples.xlsx" download>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Sample Template
+                </a>
+              </Button>
 
             </div>
           </div>
@@ -567,6 +575,48 @@ export default function EmployeeListPage() {
             >
               {uploadPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Upload
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={errorDialog} onOpenChange={setErrorDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Import Errors</DialogTitle>
+            <DialogDescription>
+              {importErrors.length} records failed to import. Please review the errors below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="border rounded-md overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]">Row</TableHead>
+                    <TableHead>Key Data</TableHead>
+                    <TableHead>Error Reason</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {importErrors.map((err, i) => (
+                    <TableRow key={i} className="bg-destructive/5">
+                      <TableCell>{i + 1}</TableCell>
+                      <TableCell className="font-mono text-xs max-w-[300px] truncate" title={JSON.stringify(err.row, null, 2)}>
+                        {err.row['Employee ID'] || err.row['Employee Name'] || 'Unknown'}
+                      </TableCell>
+                      <TableCell className="text-destructive font-medium">
+                        {err.error}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setErrorDialog(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

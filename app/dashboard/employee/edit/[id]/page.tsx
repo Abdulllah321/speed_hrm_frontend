@@ -43,6 +43,7 @@ import {
 } from "@/lib/actions/leaves-policy";
 import { getQualifications, type Qualification } from "@/lib/actions/qualification";
 import { getInstitutes, type Institute } from "@/lib/actions/institute";
+import { getAllocations, type Allocation } from "@/lib/actions/allocation";
 import type { Employee } from "@/lib/actions/employee";
 
 export default function EditEmployeePage() {
@@ -60,6 +61,7 @@ export default function EditEmployeePage() {
   const [maritalStatuses, setMaritalStatuses] = useState<MaritalStatus[]>([]);
   const [employeeStatuses, setEmployeeStatuses] = useState<EmployeeStatus[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
@@ -112,6 +114,7 @@ export default function EditEmployeePage() {
           leavesRes,
           qualificationsRes,
           institutesRes,
+          allocationsRes,
         ] = await Promise.all([
           getDepartments(),
           getEmployeeGrades(),
@@ -125,6 +128,7 @@ export default function EditEmployeePage() {
           getLeavesPolicies(),
           getQualifications(),
           getInstitutes(),
+          getAllocations(),
         ]);
 
         if (deptsRes.status) setDepartments(deptsRes.data || []);
@@ -139,6 +143,7 @@ export default function EditEmployeePage() {
         if (leavesRes.status) setLeavesPolicies(leavesRes.data || []);
         if (qualificationsRes.status) setQualifications(qualificationsRes.data || []);
         if (institutesRes.status) setInstitutes(institutesRes.data || []);
+        if (allocationsRes.status) setAllocations(allocationsRes.data || []);
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load form data");
@@ -211,6 +216,7 @@ export default function EditEmployeePage() {
       maritalStatuses={maritalStatuses}
       employeeStatuses={employeeStatuses}
       locations={locations}
+      allocations={allocations}
       states={states}
       cities={cities}
       equipments={equipments}

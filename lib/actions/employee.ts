@@ -23,21 +23,21 @@ export interface Employee {
   employeeGrade: string;
   attendanceId: string;
   designation: string;
-  maritalStatus: string;
-  employmentStatus: string;
+  maritalStatus?: string | null;
+  employmentStatus: string | null;
   probationExpiryDate?: string | null;
   cnicNumber: string;
   cnicExpiryDate?: string | null;
   lifetimeCnic: boolean;
-  joiningDate: string;
-  dateOfBirth: string;
+  joiningDate?: string | null;
+  dateOfBirth?: string | null;
   nationality: string;
   gender: string;
   contactNumber: string;
   emergencyContactNumber?: string | null;
   emergencyContactPerson?: string | null;
   personalEmail?: string | null;
-  officialEmail: string;
+  officialEmail?: string | null;
   country: string;
   province: string;
   city: string;
@@ -47,7 +47,7 @@ export interface Employee {
   providentFund: boolean;
   overtimeApplicable: boolean;
   daysOff?: string | null;
-  reportingManager: string;
+  reportingManager: string | null;
   workingHoursPolicy: string;
   location: string;
   leavesPolicy: string;
@@ -185,21 +185,21 @@ export async function createEmployee(data: {
   employeeGrade: string;
   attendanceId: string;
   designation: string;
-  maritalStatus: string;
-  employmentStatus: string;
+  maritalStatus?: string;
+  employmentStatus?: string;
   probationExpiryDate?: string;
   cnicNumber: string;
   cnicExpiryDate?: string;
   lifetimeCnic: boolean;
-  joiningDate: string;
-  dateOfBirth: string;
+  joiningDate?: string;
+  dateOfBirth?: string;
   nationality: string;
   gender: string;
   contactNumber: string;
   emergencyContactNumber?: string;
   emergencyContactPersonName?: string;
   personalEmail?: string;
-  officialEmail: string;
+  officialEmail?: string;
   country: string;
   state: string;
   city: string;
@@ -209,9 +209,9 @@ export async function createEmployee(data: {
   providentFund: boolean;
   overtimeApplicable: boolean;
   daysOff?: string;
-  reportingManager: string;
+  reportingManager?: string;
   workingHoursPolicy: string;
-  location: string;
+  location?: string;
   leavesPolicy: string;
   allowRemoteAttendance: boolean;
   currentAddress?: string;
@@ -476,8 +476,9 @@ export async function rejoinEmployee(data: {
       cnic: data.cnic,
       employeeId: data.employeeId,
       attendanceId: data.attendanceId,
-      joiningDate: data.joiningDate instanceof Date ? data.joiningDate.toISOString() : data.joiningDate,
     };
+
+    if (data.joiningDate !== undefined) payload.joiningDate = data.joiningDate instanceof Date ? data.joiningDate.toISOString() : data.joiningDate;
 
     // Add all optional fields if provided
     if (data.employeeName !== undefined) payload.employeeName = data.employeeName;
