@@ -32,7 +32,7 @@ import { TimePicker } from "@/components/ui/time-picker";
 import { getEmployeesForAttendance, type EmployeeForAttendance } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
 import { createAttendance, createAttendanceForDateRange, bulkUploadAttendance, type Attendance } from "@/lib/actions/attendance";
-import { format, eachDayOfInterval, isWeekend, isWithinInterval, parseISO } from "date-fns";
+import { format, eachDayOfInterval, isWeekend, isWithinInterval, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { getHolidays } from "@/lib/actions/holiday";
@@ -738,6 +738,10 @@ export default function AttendanceManagePage() {
                       dateRange: values.range,
                     });
                   }
+                }}
+                dateRange={{
+                  oldestDate: startOfMonth(new Date()),
+                  latestDate: endOfMonth(new Date()),
                 }}
               />
             </div>

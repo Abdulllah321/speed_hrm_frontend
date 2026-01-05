@@ -8,13 +8,14 @@ import type { EmployeeGrade } from "@/lib/actions/employee-grade";
 import type { Designation } from "@/lib/actions/designation";
 import type { MaritalStatus } from "@/lib/actions/marital-status";
 import type { EmployeeStatus } from "@/lib/actions/employee-status";
-import type { Branch } from "@/lib/actions/branch";
+import type { Location } from "@/lib/actions/location";
 import type { State, City } from "@/lib/actions/city";
 import type { Equipment } from "@/lib/actions/equipment";
 import type { WorkingHoursPolicy } from "@/lib/actions/working-hours-policy";
 import type { LeavesPolicy } from "@/lib/actions/leaves-policy";
 import type { Qualification } from "@/lib/actions/qualification";
 import type { Institute } from "@/lib/actions/institute";
+import type { Allocation } from "@/lib/actions/allocation";
 import type { Employee } from "@/lib/actions/employee";
 import {
   searchEmployeeForRejoin,
@@ -59,7 +60,7 @@ export default function CreateEmployeePage() {
   const [employeeStatuses, setEmployeeStatuses] = useState<EmployeeStatus[]>(
     []
   );
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [states, setStates] = useState<State[]>([]);
   const [cities] = useState<City[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
@@ -70,6 +71,7 @@ export default function CreateEmployeePage() {
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [socialSecurityInstitutions, setSocialSecurityInstitutions] = useState<any[]>([]);
+  const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [, setEmployeeList] = useState<EmployeeDropdownOption[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -97,7 +99,7 @@ export default function CreateEmployeePage() {
           setDesignations(d.designations || []);
           setMaritalStatuses(d.maritalStatuses || []);
           setEmployeeStatuses(d.employeeStatuses || []);
-          setBranches(d.branches || []);
+          setLocations(d.locations || []);
           setStates(d.states || []);
           setEquipments(d.equipments || []);
           setWorkingHoursPolicies(d.workingHoursPolicies || []);
@@ -105,6 +107,7 @@ export default function CreateEmployeePage() {
           setQualifications(d.qualifications || []);
           setInstitutes(d.institutes || []);
           setSocialSecurityInstitutions(d.socialSecurityInstitutions || []);
+          setAllocations(d.allocations || []);
         } else {
           toast.error(json.message || "Failed to load form data");
         }
@@ -235,7 +238,7 @@ export default function CreateEmployeePage() {
             designations={designations}
             maritalStatuses={maritalStatuses}
             employeeStatuses={employeeStatuses}
-            branches={branches}
+            locations={locations}
             states={states}
             cities={cities}
             equipments={equipments}
@@ -244,6 +247,7 @@ export default function CreateEmployeePage() {
             qualifications={qualifications}
             institutes={institutes}
             socialSecurityInstitutions={socialSecurityInstitutions}
+            allocations={allocations}
             loadingData={loadingData}
             onQualificationAdded={handleQualificationAdded}
             onInstituteAdded={handleInstituteAdded}
@@ -347,7 +351,7 @@ export default function CreateEmployeePage() {
                   designations={designations}
                   maritalStatuses={maritalStatuses}
                   employeeStatuses={employeeStatuses}
-                  branches={branches}
+                  locations={locations}
                   states={states}
                   cities={cities}
                   equipments={equipments}
@@ -356,6 +360,7 @@ export default function CreateEmployeePage() {
                   qualifications={qualifications}
                   institutes={institutes}
                   socialSecurityInstitutions={socialSecurityInstitutions}
+                  allocations={allocations}
                   loadingData={loadingData}
                   onQualificationAdded={handleQualificationAdded}
                   onInstituteAdded={handleInstituteAdded}

@@ -37,28 +37,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Autocomplete } from "@/components/ui/autocomplete";
 import { Label } from "@/components/ui/label";
 import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Branch, updateBranch, deleteBranch } from "@/lib/actions/branch";
+import { Location, updateLocations, deleteLocation } from "@/lib/actions/location";
+import { getCities, City } from "@/lib/actions/city";
 
-export type BranchRow = Branch & { id: string };
+export type LocationRow = Location & { id: string };
 
-export interface City {
-  id: string;
-  name: string;
-  country?: { id: string; name: string };
-}
-
-let citiesStore: City[] = [];
-export const setCitiesStore = (cities: City[]) => {
-  citiesStore = cities;
-};
-
-export const columns: ColumnDef<BranchRow>[] = [
+export const columns: ColumnDef<LocationRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -90,18 +79,17 @@ export const columns: ColumnDef<BranchRow>[] = [
     cell: ({ row }) => <HighlightText text={row.original.name} />,
   },
   {
+    header: "City",
+    accessorKey: "city.name",
+    size: 150,
+    enableSorting: true,
+    cell: ({ row }) => row.original.city?.name || <span className="text-muted-foreground italic">N/A</span>,
+  },
+  {
     header: "Address",
     accessorKey: "address",
     size: 250,
-    cell: ({ row }) => row.original.address || "—",
-  },
-  {
-    header: "City",
-    accessorKey: "cityName",
-    accessorFn: (row) => row.city?.name || "—",
-    size: 150,
-    enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.city?.name || "—"} />,
+    cell: ({ row }) => <span className="truncate max-w-[240px] block">{row.original.address || <span className="text-muted-foreground italic">No address</span>}</span>,
   },
   {
     header: "Status",
@@ -131,27 +119,34 @@ export const columns: ColumnDef<BranchRow>[] = [
 ];
 
 type RowActionsProps = {
-  row: Row<BranchRow>;
+  row: Row<LocationRow>;
 };
 
 function RowActions({ row }: RowActionsProps) {
-  const branch = row.original;
+  const location = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
-  const [cityId, setCityId] = useState(branch.cityId || "");
+  const [cities, setCities] = useState<City[]>([]);
+
+  const fetchCities = async () => {
+    const result = await getCities();
+    if (result.status && result.data) {
+      setCities(result.data);
+    }
+  };
 
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await updateBranch(branch.id, {
+      const result = await updateLocations([{
+        id: location.id,
         name: formData.get("name") as string,
         address: formData.get("address") as string,
         cityId: formData.get("cityId") as string,
-        status: formData.get("status") as string,
-      });
+      }]);
       if (result.status) {
         toast.success(result.message);
         setEditDialog(false);
@@ -164,7 +159,7 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
-      const result = await deleteBranch(branch.id);
+      const result = await deleteLocation(location.id);
       if (result.status) {
         toast.success(result.message);
         setDeleteDialog(false);
@@ -186,7 +181,10 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
+          <DropdownMenuItem onClick={() => {
+            fetchCities();
+            setEditDialog(true);
+          }}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
           </DropdownMenuItem>
@@ -204,43 +202,31 @@ function RowActions({ row }: RowActionsProps) {
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Branch</DialogTitle>
-            <DialogDescription>Update the branch details</DialogDescription>
+            <DialogTitle>Edit Location</DialogTitle>
+            <DialogDescription>Update the location details</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-name">Name</Label>
-                <Input id="edit-name" name="name" defaultValue={branch.name} disabled={isPending} required />
+                <Input id="edit-name" name="name" defaultValue={location.name} disabled={isPending} required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-address">Address</Label>
-                <Input id="edit-address" name="address" defaultValue={branch.address || ""} disabled={isPending} />
+                <Input id="edit-address" name="address" defaultValue={location.address || ""} disabled={isPending} />
               </div>
               <div className="space-y-2">
-                <Label>City</Label>
-                <Autocomplete
-                  options={citiesStore.map((city) => ({
-                    value: city.id,
-                    label: city.name + (city.country ? ` (${city.country.name})` : ""),
-                  }))}
-                  value={cityId}
-                  onValueChange={setCityId}
-                  placeholder="Select a city..."
-                  searchPlaceholder="Search city..."
-                  disabled={isPending}
-                />
-                <input type="hidden" name="cityId" value={cityId} />
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select name="status" defaultValue={branch.status}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
+                <Label htmlFor="edit-city">City</Label>
+                <Select name="cityId" defaultValue={location.cityId || ""} disabled={isPending}>
+                  <SelectTrigger id="edit-city">
+                    <SelectValue placeholder="Select City" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    {cities.map((city) => (
+                      <SelectItem key={city.id} value={city.id}>
+                        {city.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -262,9 +248,9 @@ function RowActions({ row }: RowActionsProps) {
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Branch</AlertDialogTitle>
+            <AlertDialogTitle>Delete Location</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{branch.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{location.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -283,4 +269,3 @@ function RowActions({ row }: RowActionsProps) {
     </>
   );
 }
-

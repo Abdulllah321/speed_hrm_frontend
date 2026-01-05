@@ -18,6 +18,7 @@ export interface Department {
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
+  allocationId?: string | null;
   subDepartments?: SubDepartment[];
 }
 

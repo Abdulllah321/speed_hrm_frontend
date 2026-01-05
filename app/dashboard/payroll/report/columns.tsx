@@ -121,10 +121,6 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                             <span className="text-right">{b.amount?.toLocaleString()}</span>
                         </div>
                     ))}
-                    <div className="border-t border-gray-200 my-1 pt-1 font-bold grid grid-cols-2">
-                        <span>Gross:</span>
-                        <span className="text-right">{data.grossSalary?.toLocaleString()}</span>
-                    </div>
                     {data.allowanceBreakup?.map((a: any) => (
                         <div key={a.id} className="grid grid-cols-2">
                             <span className="font-bold">{a.name}:</span>
@@ -132,9 +128,9 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                         </div>
                     ))}
                     <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 grid grid-cols-2">
-                        <span>Total Gross:</span>
+                        <span>Gross:</span>
                         <span className="text-right">
-                            {(Number(data.grossSalary || 0) + Number(data.totalAllowances || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {Number(data.grossSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
                 </div>
