@@ -1,5 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, Clock, Wallet, Calendar } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Dashboard | HR Management System",
+  description: "Overview of your HR dashboard with employee statistics, attendance, leaves, and payroll information",
+};
 
 export default function DashboardPage() {
   return (

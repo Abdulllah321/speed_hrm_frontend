@@ -70,6 +70,7 @@ export default function CreateEmployeePage() {
   const [leavesPolicies, setLeavesPolicies] = useState<LeavesPolicy[]>([]);
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
+  const [socialSecurityInstitutions, setSocialSecurityInstitutions] = useState<any[]>([]);
   const [allocations, setAllocations] = useState<Allocation[]>([]);
   const [, setEmployeeList] = useState<EmployeeDropdownOption[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -105,6 +106,7 @@ export default function CreateEmployeePage() {
           setLeavesPolicies(d.leavesPolicies || []);
           setQualifications(d.qualifications || []);
           setInstitutes(d.institutes || []);
+          setSocialSecurityInstitutions(d.socialSecurityInstitutions || []);
           setAllocations(d.allocations || []);
         } else {
           toast.error(json.message || "Failed to load form data");
@@ -244,6 +246,7 @@ export default function CreateEmployeePage() {
             leavesPolicies={leavesPolicies}
             qualifications={qualifications}
             institutes={institutes}
+            socialSecurityInstitutions={socialSecurityInstitutions}
             allocations={allocations}
             loadingData={loadingData}
             onQualificationAdded={handleQualificationAdded}
@@ -356,6 +359,7 @@ export default function CreateEmployeePage() {
                   leavesPolicies={leavesPolicies}
                   qualifications={qualifications}
                   institutes={institutes}
+                  socialSecurityInstitutions={socialSecurityInstitutions}
                   allocations={allocations}
                   loadingData={loadingData}
                   onQualificationAdded={handleQualificationAdded}
