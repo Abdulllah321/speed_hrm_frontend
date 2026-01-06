@@ -55,8 +55,8 @@ export const columns: ColumnDef<EOBIRow>[] = [
     enableHiding: false,
     size: 28,
   },
-  { header: "Name", accessorKey: "name", size: 200, enableSorting: true, cell: ({ row }) => <HighlightText text={row.original.name} /> },
-  { header: "Amount", accessorKey: "amount", size: 120, enableSorting: true, cell: ({ row }) => row.original.amount.toLocaleString() },
+  { header: "Employer Contribution", accessorKey: "employerContribution", size: 150, enableSorting: true, cell: ({ row }) => row.original.employerContribution.toLocaleString() },
+  { header: "Employee Contribution", accessorKey: "employeeContribution", size: 150, enableSorting: true, cell: ({ row }) => row.original.employeeContribution.toLocaleString() },
   { header: "Year & Month", accessorKey: "yearMonth", size: 150, enableSorting: true },
   { header: "Created By", accessorKey: "createdBy", size: 120, enableSorting: true, cell: ({ row }) => row.original.createdBy || "—" },
   { header: "Created At", accessorKey: "createdAt", size: 120, cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(), enableSorting: true },
@@ -105,8 +105,8 @@ function RowActions({ row }: { row: Row<EOBIRow> }) {
           <DialogHeader><DialogTitle>Edit EOBI</DialogTitle><DialogDescription>Update the EOBI details</DialogDescription></DialogHeader>
           <form action={handleEditSubmit}>
             <div className="space-y-4 py-4">
-              <div className="space-y-2"><Label>Name</Label><Input name="name" defaultValue={e.name} disabled={isPending} required /></div>
-              <div className="space-y-2"><Label>Amount</Label><Input name="amount" type="number" defaultValue={e.amount} disabled={isPending} required /></div>
+              <div className="space-y-2"><Label>Employer Contribution</Label><Input name="employerContribution" type="number" defaultValue={e.employerContribution} disabled={isPending} required /></div>
+              <div className="space-y-2"><Label>Employee Contribution</Label><Input name="employeeContribution" type="number" defaultValue={e.employeeContribution} disabled={isPending} required /></div>
               <div className="space-y-2"><Label>Year & Month</Label><Input name="yearMonth" defaultValue={e.yearMonth} disabled={isPending} required /></div>
             </div>
             <DialogFooter>
@@ -119,7 +119,7 @@ function RowActions({ row }: { row: Row<EOBIRow> }) {
 
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Delete EOBI</AlertDialogTitle><AlertDialogDescription>Are you sure you want to delete &quot;{e.name}&quot;? This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader><AlertDialogTitle>Delete EOBI</AlertDialogTitle><AlertDialogDescription>Are you sure you want to delete this EOBI record for {e.yearMonth}? This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} disabled={isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Delete</AlertDialogAction>

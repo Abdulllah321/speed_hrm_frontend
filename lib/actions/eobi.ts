@@ -8,7 +8,11 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/
 export interface EOBI {
   id: string;
   name: string;
-  amount: number;
+  eobiId?: string | null;
+  eobiCode?: string | null;
+  amount?: number | null;
+  employerContribution: number;
+  employeeContribution: number;
   yearMonth: string;
   status: string;
   createdBy?: string;
@@ -57,7 +61,14 @@ export async function createEOBI(formData: FormData): Promise<{ status: boolean;
 }
 
 export async function createEOBIs(
-  items: { name: string; amount: number; yearMonth: string }[]
+  items: { 
+    name: string; 
+    eobiId?: string; 
+    eobiCode?: string; 
+    employerContribution: number; 
+    employeeContribution: number; 
+    yearMonth: string 
+  }[]
 ): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "At least one EOBI is required" };
   try {
@@ -80,10 +91,16 @@ export async function createEOBIs(
 
 export async function updateEOBI(id: string, formData: FormData): Promise<{ status: boolean; message: string; data?: EOBI }> {
   const name = formData.get("name") as string;
-  const amount = parseFloat(formData.get("amount") as string);
+  const eobiId = formData.get("eobiId") as string;
+  const eobiCode = formData.get("eobiCode") as string;
+  const employerContribution = parseFloat(formData.get("employerContribution") as string);
+  const employeeContribution = parseFloat(formData.get("employeeContribution") as string);
   const yearMonth = formData.get("yearMonth") as string;
 
   if (!name?.trim()) return { status: false, message: "Name is required" };
+  if (isNaN(employerContribution) || isNaN(employeeContribution)) {
+    return { status: false, message: "Employer and Employee contributions are required" };
+  }
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/eobis/${id}`, {
@@ -92,7 +109,15 @@ export async function updateEOBI(id: string, formData: FormData): Promise<{ stat
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ id, name, amount, yearMonth }),
+      body: JSON.stringify({ 
+        id, 
+        name, 
+        eobiId: eobiId || undefined, 
+        eobiCode: eobiCode || undefined, 
+        employerContribution, 
+        employeeContribution, 
+        yearMonth 
+      }),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/dashboard/master/eobi");
@@ -138,7 +163,15 @@ export async function deleteEOBIs(ids: string[]): Promise<{ status: boolean; mes
 }
 
 export async function updateEOBIs(
-  items: { id: string; name: string; amount: number; yearMonth: string }[]
+  items: { 
+    id: string; 
+    name: string; 
+    eobiId?: string; 
+    eobiCode?: string; 
+    employerContribution: number; 
+    employeeContribution: number; 
+    yearMonth: string 
+  }[]
 ): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "No items to update" };
   try {

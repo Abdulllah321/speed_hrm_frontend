@@ -28,7 +28,7 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
-  const [editRows, setEditRows] = useState<{ id: string; name: string; amount: number; yearMonth: string }[]>([]);
+  const [editRows, setEditRows] = useState<{ id: string; employerContribution: number; employeeContribution: number; yearMonth: string }[]>([]);
 
   const handleToggle = () => {
     router.push("/dashboard/master/eobi/add");
@@ -47,7 +47,12 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   };
 
   const handleBulkEdit = (items: EOBIRow[]) => {
-    setEditRows(items.map((item) => ({ id: item.id, name: item.name, amount: item.amount, yearMonth: item.yearMonth })));
+    setEditRows(items.map((item) => ({ 
+      id: item.id, 
+      employerContribution: item.employerContribution, 
+      employeeContribution: item.employeeContribution, 
+      yearMonth: item.yearMonth 
+    })));
     setBulkEditOpen(true);
   };
 
@@ -106,12 +111,12 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
                 <p className="font-medium text-sm">EOBI {index + 1}</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">Name</Label>
-                    <Input value={row.name} onChange={(e) => updateEditRow(row.id, "name", e.target.value)} disabled={isPending} />
+                    <Label className="text-xs">Employer Contribution</Label>
+                    <Input type="number" value={row.employerContribution} onChange={(e) => updateEditRow(row.id, "employerContribution", parseFloat(e.target.value))} disabled={isPending} />
                   </div>
                   <div>
-                    <Label className="text-xs">Amount</Label>
-                    <Input type="number" value={row.amount} onChange={(e) => updateEditRow(row.id, "amount", parseFloat(e.target.value))} disabled={isPending} />
+                    <Label className="text-xs">Employee Contribution</Label>
+                    <Input type="number" value={row.employeeContribution} onChange={(e) => updateEditRow(row.id, "employeeContribution", parseFloat(e.target.value))} disabled={isPending} />
                   </div>
                   <div className="col-span-2">
                     <Label className="text-xs">Year & Month</Label>

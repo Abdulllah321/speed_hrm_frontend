@@ -77,9 +77,9 @@ export default async function ViewEmployeePage({ params }: PageProps) {
     return (employmentStatus && typeof employmentStatus === 'object' && employmentStatus.status) ? employmentStatus.status : "N/A";
   };
 
-  const getBranchName = () => {
-    const branch = (employee as any).branchRelation || (employee as any).branch;
-    return (branch && typeof branch === 'object' && branch.name) ? branch.name : "N/A";
+  const getLocationName = () => {
+    const location = (employee as any).locationRelation || (employee as any).location;
+    return (location && typeof location === 'object' && location.name) ? location.name : "N/A";
   };
 
   const getWorkingHoursPolicyName = () => {
@@ -90,6 +90,11 @@ export default async function ViewEmployeePage({ params }: PageProps) {
   const getLeavesPolicyName = () => {
     const policy = (employee as any).leavesPolicyRelation || (employee as any).leavesPolicy;
     return (policy && typeof policy === 'object' && policy.name) ? policy.name : "N/A";
+  };
+
+  const getAllocationName = () => {
+    const allocation = (employee as any).allocationRelation || (employee as any).allocation;
+    return (allocation && typeof allocation === 'object' && allocation.name) ? allocation.name : "N/A";
   };
 
   const getReportingManagerName = () => {
@@ -236,9 +241,9 @@ export default async function ViewEmployeePage({ params }: PageProps) {
       return (employmentStatus && typeof employmentStatus === 'object' && employmentStatus.status) ? employmentStatus.status : historicalEmployee.employmentStatusId || "N/A";
     };
 
-    const getHistoricalBranchName = () => {
-      const branch = historicalEmployee.branchRelation || historicalEmployee.branch;
-      return (branch && typeof branch === 'object' && branch.name) ? branch.name : historicalEmployee.branchId || "N/A";
+    const getHistoricalLocationName = () => {
+      const location = historicalEmployee.locationRelation || historicalEmployee.location;
+      return (location && typeof location === 'object' && location.name) ? location.name : historicalEmployee.locationId || "N/A";
     };
 
     const getHistoricalWorkingHoursPolicyName = () => {
@@ -249,6 +254,11 @@ export default async function ViewEmployeePage({ params }: PageProps) {
     const getHistoricalLeavesPolicyName = () => {
       const policy = historicalEmployee.leavesPolicyRelation || historicalEmployee.leavesPolicy;
       return (policy && typeof policy === 'object' && policy.name) ? policy.name : historicalEmployee.leavesPolicyId || "N/A";
+    };
+
+    const getHistoricalAllocationName = () => {
+      const allocation = historicalEmployee.allocationRelation || historicalEmployee.allocation;
+      return (allocation && typeof allocation === 'object' && allocation.name) ? allocation.name : historicalEmployee.allocationId || "N/A";
     };
 
     const getHistoricalStateName = () => {
@@ -299,6 +309,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                   { label: "Employee ID", value: historicalEmployee.employeeId || "N/A" },
                   { label: "Employee Name", value: historicalEmployee.employeeName || "N/A" },
                   { label: "Father / Husband Name", value: historicalEmployee.fatherHusbandName || "N/A" },
+                  { label: "Allocation", value: getHistoricalAllocationName() },
                   { label: "Department", value: getHistoricalDepartmentName() },
                   { label: "Sub Department", value: getHistoricalSubDepartmentName() },
                   { label: "Employee Grade", value: getHistoricalEmployeeGradeName() },
@@ -318,8 +329,8 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                   { label: "State / Province", value: getHistoricalStateName() },
                   { label: "City", value: getHistoricalCityName() },
                   { label: "Employee Salary", value: historicalEmployee.employeeSalary ? `PKR ${Number(historicalEmployee.employeeSalary).toLocaleString()}` : "N/A" },
-                  { label: "Branch", value: getHistoricalBranchName() },
                   { label: "Working Hours Policy", value: getHistoricalWorkingHoursPolicyName() },
+                  { label: "Location", value: getHistoricalLocationName() },
                   { label: "Leaves Policy", value: getHistoricalLeavesPolicyName() },
                   { label: "Status", value: historicalEmployee.status || "N/A" },
                 ].map((item, idx) => (
@@ -517,6 +528,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                 { label: "Employee ID", value: employee.employeeId },
                 { label: "Employee Name", value: employee.employeeName },
                 { label: "Father / Husband Name", value: employee.fatherHusbandName || "N/A" },
+                { label: "Allocation", value: getAllocationName() },
                 { label: "Department", value: getDepartmentName() },
                 { label: "Sub Department", value: getSubDepartmentName() },
                 { label: "Employee Grade", value: getEmployeeGradeName() },
@@ -562,7 +574,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                 { label: "Days Off", value: employee.daysOff || "N/A" },
                 { label: "Reporting Manager", value: getReportingManagerName() },
                 { label: "Working Hours Policy", value: getWorkingHoursPolicyName() },
-                { label: "Branch", value: getBranchName() },
+                { label: "Location", value: getLocationName() },
                 { label: "Leaves Policy", value: getLeavesPolicyName() },
                 { label: "Allow Remote Attendance", value: employee.allowRemoteAttendance ? "Yes" : "No" },
               ].map((item, index) => (

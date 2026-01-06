@@ -27,8 +27,8 @@ import { cn } from "@/lib/utils";
 
 interface EOBIRow {
   id: number;
-  name: string;
-  amount: string;
+  employerContribution: string;
+  employeeContribution: string;
   yearMonth: string;
   selectedDate?: Date;
 }
@@ -37,13 +37,13 @@ export default function AddEOBIPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [eobis, setEobis] = useState<EOBIRow[]>([
-    { id: 1, name: "", amount: "", yearMonth: "", selectedDate: undefined },
+    { id: 1, employerContribution: "", employeeContribution: "", yearMonth: "", selectedDate: undefined },
   ]);
 
   const addRow = () => {
     setEobis([
       ...eobis,
-      { id: Date.now(), name: "", amount: "", yearMonth: "", selectedDate: undefined },
+      { id: Date.now(), employerContribution: "", employeeContribution: "", yearMonth: "", selectedDate: undefined },
     ]);
   };
 
@@ -69,10 +69,11 @@ export default function AddEOBIPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const items = eobis
-      .filter((e) => e.name.trim() && e.amount && e.yearMonth.trim())
+      .filter((e) => e.employerContribution && e.employeeContribution && e.yearMonth.trim())
       .map((e) => ({
-        name: e.name.trim(),
-        amount: parseFloat(e.amount),
+        name: `EOBI ${e.yearMonth}`, // Auto-generate name from yearMonth
+        employerContribution: parseFloat(e.employerContribution),
+        employeeContribution: parseFloat(e.employeeContribution),
         yearMonth: e.yearMonth.trim(),
       }));
 
@@ -128,24 +129,25 @@ export default function AddEOBIPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Name *</Label>
+                    <Label>Employer Contribution *</Label>
                     <Input
-                      placeholder="EOBI name"
-                      value={eobi.name}
+                      type="number"
+                      placeholder="2000"
+                      value={eobi.employerContribution}
                       onChange={(e) =>
-                        updateField(eobi.id, "name", e.target.value)
+                        updateField(eobi.id, "employerContribution", e.target.value)
                       }
                       disabled={isPending}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Amount *</Label>
+                    <Label>Employee Contribution *</Label>
                     <Input
                       type="number"
-                      placeholder="500"
-                      value={eobi.amount}
+                      placeholder="400"
+                      value={eobi.employeeContribution}
                       onChange={(e) =>
-                        updateField(eobi.id, "amount", e.target.value)
+                        updateField(eobi.id, "employeeContribution", e.target.value)
                       }
                       disabled={isPending}
                     />

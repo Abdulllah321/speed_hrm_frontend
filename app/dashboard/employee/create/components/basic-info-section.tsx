@@ -61,10 +61,12 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
   const lifetimeCnic = useWatch({ control, name: "lifetimeCnic" });
   const isEobi = useWatch({ control, name: "eobi" });
   const allocation = useWatch({ control, name: "allocation" });
+  const currentDepartment = useWatch({ control, name: "department" });
 
   // Filter departments based on selected allocation
+  // In edit mode, always include the current department even if it doesn't match the allocation filter
   const filteredDepartments = allocation
-    ? departments.filter((d) => d.allocationId === allocation)
+    ? departments.filter((d) => d.allocationId === allocation || (mode === "edit" && d.id === currentDepartment))
     : departments;
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -88,29 +90,6 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         {errors?.fatherHusbandName && <p className="text-xs text-red-500">{errors.fatherHusbandName.message}</p>}
       </div>
       <div className="space-y-2">
-        <Label>Department <span className="text-destructive">*</span></Label>
-        <Controller name="department" control={control} render={({ field }) => (
-          <Autocomplete
-            options={filteredDepartments.map(d => ({ value: d.id, label: d.name }))}
-            value={field.value as string | undefined}
-            onValueChange={(val) => {
-              field.onChange(val);
-              // Reset dependent field
-              form.setValue("subDepartment", "");
-            }}
-            placeholder={allocation ? "Select Department" : "Select Allocation first"}
-            disabled={isPending || !allocation || loadingData}
-          />
-        )} />
-        {errors?.department && <p className="text-xs text-red-500">{errors.department.message}</p>}
-      </div>
-      <div className="space-y-2">
-        <Label>Sub Department</Label>
-        <Controller name="subDepartment" control={control} render={({ field }) => (
-          <Autocomplete options={subDepartments.map(sd => ({ value: sd.id, label: sd.name }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder={department ? "Select Sub Department" : "Select Department first"} disabled={isPending || !department || loadingData || loadingSubDepartments} isLoading={loadingSubDepartments} />
-        )} />
-      </div>
-      <div className="space-y-2">
         <Label>Allocation <span className="text-destructive">*</span></Label>
         <Controller name="allocation" control={control} render={({ field }) => (
           <Autocomplete
@@ -127,6 +106,29 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
           />
         )} />
         {errors?.allocation && <p className="text-xs text-red-500">{errors.allocation.message}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label>Department <span className="text-destructive">*</span></Label>
+        <Controller name="department" control={control} render={({ field }) => (
+          <Autocomplete
+            options={filteredDepartments.map(d => ({ value: d.id, label: d.name }))}
+            value={field.value as string | undefined}
+            onValueChange={(val) => {
+              field.onChange(val);
+              // Reset dependent field
+              form.setValue("subDepartment", "");
+            }}
+            placeholder={allocation || mode === "edit" ? "Select Department" : "Select Allocation first"}
+            disabled={isPending || (!allocation && mode !== "edit") || loadingData}
+          />
+        )} />
+        {errors?.department && <p className="text-xs text-red-500">{errors.department.message}</p>}
+      </div>
+      <div className="space-y-2">
+        <Label>Sub Department</Label>
+        <Controller name="subDepartment" control={control} render={({ field }) => (
+          <Autocomplete options={subDepartments.map(sd => ({ value: sd.id, label: sd.name }))} value={field.value as string | undefined} onValueChange={field.onChange} placeholder={department ? "Select Sub Department" : "Select Department first"} disabled={isPending || !department || loadingData || loadingSubDepartments} isLoading={loadingSubDepartments} />
+        )} />
       </div>
       <div className="space-y-2">
         <Label>Employee Grade <span className="text-destructive">*</span></Label>
@@ -431,8 +433,12 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         {isEobi ? (
           <>
             <div className="space-y-2">
-              <Label>EOBI Number</Label>
-              <Input placeholder="Enter EOBI Number" {...register("eobiNumber")} disabled={isPending} />
+              <Label>EOBI ID</Label>
+              <Input placeholder="0800B656361" {...register("eobiId")} disabled={isPending} />
+            </div>
+            <div className="space-y-2">
+              <Label>EOBI Code</Label>
+              <Input placeholder="AA001" {...register("eobiCode")} disabled={isPending} />
             </div>
             <div className="space-y-2">
               <Label>EOBI Document</Label>

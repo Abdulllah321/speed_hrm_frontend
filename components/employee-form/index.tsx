@@ -245,6 +245,20 @@ const employeeFormSchema = z.object({
     .boolean()
     .default(false),
 
+  eobiId: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || value.trim() === "" || value.trim().length > 0,
+      "EOBI ID is required if provided"
+    ),
+  eobiCode: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || value.trim() === "" || value.trim().length > 0,
+      "EOBI Code is required if provided"
+    ),
   eobiNumber: z
     .string()
     .optional()
@@ -460,6 +474,8 @@ export function EmployeeForm({
       city: (initialData as any).cityId || (typeof initialData.city === 'string' ? initialData.city : (initialData.city as any)?.id) || "",
       employeeSalary: initialData.employeeSalary?.toString() || "",
       eobi: initialData.eobi || false,
+      eobiId: (initialData as any).eobiId || "",
+      eobiCode: (initialData as any).eobiCode || "",
       eobiNumber: initialData.eobiNumber || "",
       providentFund: initialData.providentFund || false,
       overtimeApplicable: initialData.overtimeApplicable || false,
@@ -528,6 +544,8 @@ export function EmployeeForm({
       city: "",
       employeeSalary: "",
       eobi: false,
+      eobiId: "",
+      eobiCode: "",
       eobiNumber: "",
       providentFund: false,
       overtimeApplicable: false,
@@ -1203,6 +1221,8 @@ export function EmployeeForm({
             city: data.city,
             employeeSalary: data.employeeSalary,
             eobi: data.eobi,
+            eobiId: data.eobiId || undefined,
+            eobiCode: data.eobiCode || undefined,
             eobiNumber: data.eobiNumber || undefined,
             providentFund: data.providentFund,
             overtimeApplicable: data.overtimeApplicable,
@@ -1277,6 +1297,8 @@ export function EmployeeForm({
             city: data.city,
             employeeSalary: data.employeeSalary,
             eobi: data.eobi,
+            eobiId: data.eobiId || undefined,
+            eobiCode: data.eobiCode || undefined,
             eobiNumber: data.eobiNumber || undefined,
             providentFund: data.providentFund,
             overtimeApplicable: data.overtimeApplicable,
@@ -1349,6 +1371,8 @@ export function EmployeeForm({
             city: data.city,
             employeeSalary: parseFloat(data.employeeSalary) || 0,
             eobi: data.eobi,
+            eobiId: data.eobiId || undefined,
+            eobiCode: data.eobiCode || undefined,
             eobiNumber: data.eobiNumber || undefined,
             providentFund: data.providentFund,
             overtimeApplicable: data.overtimeApplicable,
