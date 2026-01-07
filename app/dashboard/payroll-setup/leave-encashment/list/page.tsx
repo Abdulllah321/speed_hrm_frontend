@@ -1,19 +1,13 @@
 import { LeaveEncashmentList } from "./leave-encashment-list";
 import { ListError } from "@/components/dashboard/list-error";
+import { getLeaveEncashments } from "@/lib/actions/leave-encashment";
 
 export const dynamic = "force-dynamic";
 
-// TODO: Replace with actual API call when backend is ready
-// import { getAllLeaveEncashments } from "@/lib/actions/leave-encashment";
-
 export default async function LeaveEncashmentListPage() {
   try {
-    // TODO: Uncomment when backend is ready
-    // const result = await getAllLeaveEncashments();
-    // const initialData = result.status && result.data ? result.data : [];
-
-    // Temporary empty data for frontend-only implementation
-    const initialData: any[] = [];
+    const result = await getLeaveEncashments();
+    const initialData = result.status && result.data ? result.data : [];
 
     return <LeaveEncashmentList initialData={initialData} />;
   } catch (error) {

@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import {
   getEmployeesForDropdown,
+  getEmployeeById,
   type EmployeeDropdownOption,
 } from "@/lib/actions/employee";
 import {
@@ -33,6 +34,7 @@ import {
   type Department,
   type SubDepartment,
 } from "@/lib/actions/department";
+import { createLeaveEncashment } from "@/lib/actions/leave-encashment";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import DataTable, { HighlightText } from "@/components/common/data-table";
@@ -47,6 +49,7 @@ export default function CreateLeaveEncashmentPage() {
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sample data structure for results
   interface LeaveEncashmentResult {
@@ -183,46 +186,75 @@ export default function CreateLeaveEncashmentPage() {
 
     setIsSearching(true);
     try {
-      // TODO: Replace with actual API call when backend is ready
-      // const result = await searchLeaveEncashment({
-      //   employeeIds: filters.employeeId ? [filters.employeeId] : filteredEmployees.map(e => e.id),
-      //   encashmentDate: filters.encashmentDate,
-      //   departmentId: filters.departmentId || undefined,
-      //   subDepartmentId: filters.subDepartmentId || undefined,
-      // });
-
-      // Temporary sample data for frontend-only implementation
       const selectedEmployees = filters.employeeId
         ? filteredEmployees.filter((e) => e.id === filters.employeeId)
         : filteredEmployees;
 
-      const sampleResults: LeaveEncashmentResult[] = selectedEmployees.map(
-        (emp) => ({
-          id: emp.id,
-          employeeId: emp.employeeId,
-          employeeCode: emp.employeeId,
-          employeeName: emp.employeeName,
-          country: "Pakistan",
-          province: "Sindh",
-          city: "Karachi",
-          area: "Karachi",
-          station: "HeadOffice",
-          department: emp.departmentName || "—",
-          subDepartment: "",
-          designation: "—",
-          encashmentDate: filters.encashmentDate,
-          encashmentDays: 12,
-          gross: 0,
-          annual: 0,
-          perDay: 0,
-          totalEncashment: 0,
+      if (selectedEmployees.length === 0) {
+        toast.error("No employees found for the selected filters");
+        setIsSearching(false);
+        return;
+      }
+
+      // Fetch employee details including salary
+      const results: LeaveEncashmentResult[] = await Promise.all(
+        selectedEmployees.map(async (emp) => {
+          try {
+            const empResult = await getEmployeeById(emp.id);
+            const employeeData = empResult.data;
+            
+            const grossSalary = employeeData?.employeeSalary || 0;
+            const annualSalary = grossSalary * 12;
+            const perDayAmount = annualSalary / 365; // Per day calculation
+
+            return {
+              id: emp.id,
+              employeeId: emp.id,
+              employeeCode: emp.employeeId,
+              employeeName: emp.employeeName,
+              country: employeeData?.country || "—",
+              province: employeeData?.province || "—",
+              city: employeeData?.city || "—",
+              area: employeeData?.locationName || "—",
+              station: employeeData?.locationName || "—",
+              department: emp.departmentName || "—",
+              subDepartment: emp.subDepartmentName || "—",
+              designation: emp.designationName || "—",
+              encashmentDate: filters.encashmentDate,
+              encashmentDays: 0,
+              gross: grossSalary,
+              annual: annualSalary,
+              perDay: perDayAmount,
+              totalEncashment: 0,
+            };
+          } catch (error) {
+            console.error(`Error fetching employee ${emp.id}:`, error);
+            return {
+              id: emp.id,
+              employeeId: emp.id,
+              employeeCode: emp.employeeId,
+              employeeName: emp.employeeName,
+              country: "—",
+              province: "—",
+              city: "—",
+              area: "—",
+              station: "—",
+              department: emp.departmentName || "—",
+              subDepartment: emp.subDepartmentName || "—",
+              designation: "—",
+              encashmentDate: filters.encashmentDate,
+              encashmentDays: 0,
+              gross: 0,
+              annual: 0,
+              perDay: 0,
+              totalEncashment: 0,
+            };
+          }
         })
       );
 
-      setSearchResults(sampleResults);
-      toast.success(
-        `Found ${sampleResults.length} employee(s). Backend integration pending.`
-      );
+      setSearchResults(results);
+      toast.success(`Found ${results.length} employee(s)`);
     } catch (error) {
       console.error("Error:", error);
       toast.error("Failed to search leave encashment records");
@@ -256,8 +288,68 @@ export default function CreateLeaveEncashmentPage() {
   const handleTotalEncashmentChangeById = (id: string, value: string) => {
     const amount = parseFloat(value) || 0;
     setSearchResults((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, totalEncashment: amount } : r))
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        // If total encashment is changed, update days based on per day amount
+        const newDays = r.perDay > 0 ? amount / r.perDay : r.encashmentDays;
+        return { ...r, totalEncashment: amount, encashmentDays: newDays };
+      })
     );
+  };
+
+  const handleSubmit = async () => {
+    if (searchResults.length === 0) {
+      toast.error("No leave encashment records to submit");
+      return;
+    }
+
+    // Validate all records have required data
+    const invalidRecords = searchResults.filter(
+      (r) => !r.encashmentDays || r.encashmentDays <= 0 || !r.totalEncashment || r.totalEncashment <= 0
+    );
+
+    if (invalidRecords.length > 0) {
+      toast.error("Please fill in all encashment days and amounts");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      // Get payment month/year from encashment date
+      const encashmentDate = new Date(searchResults[0].encashmentDate);
+      const paymentYear = encashmentDate.getFullYear().toString();
+      const paymentMonth = String(encashmentDate.getMonth() + 1).padStart(2, '0');
+      const paymentMonthYear = `${paymentYear}-${paymentMonth}`;
+
+      const leaveEncashments = searchResults.map((r) => ({
+        employeeId: r.employeeId,
+        encashmentDate: r.encashmentDate,
+        encashmentDays: r.encashmentDays,
+        encashmentAmount: r.totalEncashment,
+        paymentMonthYear: paymentMonthYear,
+        grossSalary: r.gross,
+        annualSalary: r.annual,
+        perDayAmount: r.perDay,
+      }));
+
+      const result = await createLeaveEncashment({ leaveEncashments });
+
+      if (result.status) {
+        toast.success(
+          `Successfully created ${result.data?.length || leaveEncashments.length} leave encashment record(s)`
+        );
+        // Clear form and redirect
+        handleClearForm();
+        router.push("/dashboard/payroll-setup/leave-encashment/list");
+      } else {
+        toast.error(result.message || "Failed to create leave encashment records");
+      }
+    } catch (error) {
+      console.error("Error submitting leave encashment:", error);
+      toast.error("Failed to submit leave encashment records");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handlePrint = () => {
@@ -419,9 +511,9 @@ export default function CreateLeaveEncashmentPage() {
         enableSorting: false,
         cell: ({ row }) => (
           <div className="text-xs space-y-0.5">
-            <div>Gross: {row.original.gross.toLocaleString("en-US")}</div>
-            <div>Annual: {row.original.annual.toLocaleString("en-US")}</div>
-            <div>PerDay: {row.original.perDay.toLocaleString("en-US")}</div>
+            <div>Gross: {row.original.gross.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+            <div>Annual: {row.original.annual.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+            <div>PerDay: {row.original.perDay.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
           </div>
         ),
       },
@@ -595,15 +687,24 @@ export default function CreateLeaveEncashmentPage() {
           </div>
 
           {/* Search Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <Button
               onClick={handleSearch}
               disabled={isSearching}
-              className="bg-blue-600 hover:bg-blue-700"
+              variant="outline"
             >
               <Search className="h-4 w-4 mr-2" />
               {isSearching ? "Searching..." : "Search"}
             </Button>
+            {searchResults.length > 0 && (
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isSubmitting ? "Submitting..." : "Submit Leave Encashment"}
+              </Button>
+            )}
           </div>
 
           {tableData.length > 0 && (

@@ -28,6 +28,7 @@ export type PayrollReportRow = {
     taxDeduction: number;
     overtimeAmount: number;
     bonusAmount: number;
+    leaveEncashmentAmount: number;
     grossSalary: number;
     netSalary: number;
     salaryBreakup: any[];
@@ -118,19 +119,37 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                     {data.salaryBreakup?.map((b: any) => (
                         <div key={b.id} className="grid grid-cols-2">
                             <span className="font-bold">{b.name}:</span>
-                            <span className="text-right">{b.amount?.toLocaleString()}</span>
+                            <span className="text-right">{Math.round(Number(b.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     ))}
                     {data.allowanceBreakup?.map((a: any) => (
                         <div key={a.id} className="grid grid-cols-2">
                             <span className="font-bold">{a.name}:</span>
-                            <span className="text-right">{a.amount?.toLocaleString()}</span>
+                            <span className="text-right">{Math.round(Number(a.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     ))}
+                    {data.overtimeAmount > 0 && (
+                        <div className="grid grid-cols-2">
+                            <span className="font-bold">Overtime:</span>
+                            <span className="text-right">{Math.round(Number(data.overtimeAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        </div>
+                    )}
+                    {data.bonusAmount > 0 && (
+                        <div className="grid grid-cols-2">
+                            <span className="font-bold">Bonus:</span>
+                            <span className="text-right">{Math.round(Number(data.bonusAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        </div>
+                    )}
+                    {data.leaveEncashmentAmount > 0 && (
+                        <div className="grid grid-cols-2">
+                            <span className="font-bold">Leave Encashment:</span>
+                            <span className="text-right">{Math.round(Number(data.leaveEncashmentAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        </div>
+                    )}
                     <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 grid grid-cols-2">
                         <span>Gross:</span>
                         <span className="text-right">
-                            {Number(data.grossSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {Math.round(Number(data.grossSalary || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
                     </div>
                 </div>
@@ -146,32 +165,32 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                 <div className="text-[10px] space-y-0.5 min-w-[120px]">
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Taxable:</span>
-                        <span className="text-right">{tax?.taxableIncome?.toLocaleString() || "0"}</span>
+                        <span className="text-right">{Math.round(Number(tax?.taxableIncome || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                     </div>
                     {tax?.fixedAmountTax > 0 && (
                         <div className="grid grid-cols-2">
                             <span className="font-bold">Fixed Tax:</span>
-                            <span className="text-right">{tax?.fixedAmountTax?.toLocaleString() || "0"}</span>
+                            <span className="text-right">{Math.round(Number(tax?.fixedAmountTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                         </div>
                     )}
                     {tax?.percentageTax > 0 && (
                         <div className="grid grid-cols-2">
                             <span className="font-bold">% Tax:</span>
-                            <span className="text-right">{tax?.percentageTax?.toLocaleString() || "0"}</span>
+                            <span className="text-right">{Math.round(Number(tax?.percentageTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                         </div>
                     )}
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Annual Tax:</span>
-                        <span className="text-right">{annualTax?.toLocaleString() || "0"}</span>
+                        <span className="text-right">{Math.round(Number(annualTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                     </div>
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Rebate:</span>
-                        <span className="text-right">{tax?.totalRebate?.toLocaleString() || "0"}</span>
+                        <span className="text-right">{Math.round(Number(tax?.totalRebate || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                     </div>
                     <div className="grid grid-cols-2 font-bold border-t pt-1 bg-gray-50">
                         <span>Monthly Tax:</span>
                         <span className="text-right">
-                            {Number(row.original.taxDeduction || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {Math.round(Number(row.original.taxDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
                     </div>
                 </div>
@@ -187,34 +206,34 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                 <div className="text-[10px] space-y-0.5 min-w-[120px]">
                     <div className="grid grid-cols-2">
                         <span className="font-bold">PF:</span>
-                        <span className="text-right">{data.providentFundDeduction?.toLocaleString()}</span>
+                        <span className="text-right">{Math.round(Number(data.providentFundDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Advance:</span>
-                        <span className="text-right">{data.advanceSalaryDeduction?.toLocaleString()}</span>
+                        <span className="text-right">{Math.round(Number(data.advanceSalaryDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
                     <div className="grid grid-cols-2">
                         <span className="font-bold">EOBI:</span>
-                        <span className="text-right">{data.eobiDeduction?.toLocaleString()}</span>
+                        <span className="text-right">{Math.round(Number(data.eobiDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Loan:</span>
-                        <span className="text-right">{data.loanDeduction?.toLocaleString()}</span>
+                        <span className="text-right">{Math.round(Number(data.loanDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
                     {data.deductionBreakup?.map((d: any) => (
                         <div key={d.id} className="grid grid-cols-2">
                             <span className="font-bold">{d.name}:</span>
-                            <span className="text-right">{Number(d.amount || 0).toLocaleString()}</span>
+                            <span className="text-right">{Math.round(Number(d.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     ))}
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Attendance:</span>
-                        <span className="text-right">{data.attendanceDeduction?.toLocaleString()}</span>
+                        <span className="text-right">{Math.round(Number(data.attendanceDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
                     <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 grid grid-cols-2">
                         <span>Total:</span>
                         <span className="text-right">
-                            {(
+                            {Math.round(
                                 Number(data.attendanceDeduction || 0) +
                                 Number(data.loanDeduction || 0) +
                                 Number(data.advanceSalaryDeduction || 0) +
@@ -222,7 +241,7 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                                 Number(data.providentFundDeduction || 0) +
                                 Number(data.taxDeduction || 0) +
                                 deductionBreakupTotal
-                            ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
                     </div>
                 </div>
@@ -234,7 +253,7 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
         header: "Net Salary",
         cell: ({ row }) => (
             <div className="font-bold text-green-600">
-                {Number(row.original.netSalary || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {Math.round(Number(row.original.netSalary || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </div>
         ),
     },
