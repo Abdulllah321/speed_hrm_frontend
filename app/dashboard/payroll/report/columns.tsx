@@ -141,15 +141,28 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
         header: "Tax",
         cell: ({ row }) => {
             const tax = row.original.taxBreakup;
+            const annualTax = (tax?.monthlyTax || 0) * 12;
             return (
                 <div className="text-[10px] space-y-0.5 min-w-[120px]">
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Taxable:</span>
                         <span className="text-right">{tax?.taxableIncome?.toLocaleString() || "0"}</span>
                     </div>
+                    {tax?.fixedAmountTax > 0 && (
+                        <div className="grid grid-cols-2">
+                            <span className="font-bold">Fixed Tax:</span>
+                            <span className="text-right">{tax?.fixedAmountTax?.toLocaleString() || "0"}</span>
+                        </div>
+                    )}
+                    {tax?.percentageTax > 0 && (
+                        <div className="grid grid-cols-2">
+                            <span className="font-bold">% Tax:</span>
+                            <span className="text-right">{tax?.percentageTax?.toLocaleString() || "0"}</span>
+                        </div>
+                    )}
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Annual Tax:</span>
-                        <span className="text-right">{(tax?.monthlyTax * 12)?.toLocaleString() || "0"}</span>
+                        <span className="text-right">{annualTax?.toLocaleString() || "0"}</span>
                     </div>
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Rebate:</span>
@@ -169,6 +182,7 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
         header: "Deductions",
         cell: ({ row }) => {
             const data = row.original;
+            const deductionBreakupTotal = (data.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
             return (
                 <div className="text-[10px] space-y-0.5 min-w-[120px]">
                     <div className="grid grid-cols-2">
@@ -187,6 +201,12 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                         <span className="font-bold">Loan:</span>
                         <span className="text-right">{data.loanDeduction?.toLocaleString()}</span>
                     </div>
+                    {data.deductionBreakup?.map((d: any) => (
+                        <div key={d.id} className="grid grid-cols-2">
+                            <span className="font-bold">{d.name}:</span>
+                            <span className="text-right">{Number(d.amount || 0).toLocaleString()}</span>
+                        </div>
+                    ))}
                     <div className="grid grid-cols-2">
                         <span className="font-bold">Attendance:</span>
                         <span className="text-right">{data.attendanceDeduction?.toLocaleString()}</span>
@@ -195,13 +215,13 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                         <span>Total:</span>
                         <span className="text-right">
                             {(
-                                Number(data.totalDeductions || 0) +
                                 Number(data.attendanceDeduction || 0) +
                                 Number(data.loanDeduction || 0) +
                                 Number(data.advanceSalaryDeduction || 0) +
                                 Number(data.eobiDeduction || 0) +
                                 Number(data.providentFundDeduction || 0) +
-                                Number(data.taxDeduction || 0)
+                                Number(data.taxDeduction || 0) +
+                                deductionBreakupTotal
                             ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                     </div>
