@@ -315,6 +315,8 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/dashboard/payroll-setup/allowance/create" },
           { title: "View", href: "/dashboard/payroll-setup/allowance/view" },
+          { title: "Bank Report", href: "/dashboard/payroll-setup/allowance/bank-report" },
+          { title: "Allowance Payslip", href: "/dashboard/payroll-setup/allowance/payslip" },
         ],
       },
       {
@@ -426,13 +428,13 @@ export const menuData: MenuItem[] = [
           },
         ],
       },
-      {
-        title: "Rebate",
-        children: [
-          { title: "Create", href: "/dashboard/payroll-setup/rebate/create" },
-          { title: "List", href: "/dashboard/payroll-setup/rebate/list" },
-        ],
-      },
+      // {
+      //   title: "Rebate",
+      //   children: [
+      //     { title: "Create", href: "/dashboard/payroll-setup/rebate/create" },
+      //     { title: "List", href: "/dashboard/payroll-setup/rebate/list" },
+      //   ],
+      // },
     ],
   },
   {

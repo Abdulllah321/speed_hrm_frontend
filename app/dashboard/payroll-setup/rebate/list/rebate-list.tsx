@@ -228,9 +228,9 @@ export function RebateList({ initialData = [] }: RebateListProps) {
     });
   };
 
-  const handleToggle = () => {
-    router.push("/dashboard/payroll-setup/rebate/create");
-  };
+  // const handleToggle = () => {
+  //   router.push("/dashboard/payroll-setup/rebate/create");
+  // };
 
   return (
     <div className="space-y-6">

@@ -77,77 +77,78 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
         cell: ({ row }) => {
             const emp = row.original.employee;
             return (
-                <div className="text-[10px] space-y-0.5 min-w-[150px]">
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Country:</span>
-                        <span>{emp.country?.name}</span>
+                <div className="text-[10px] space-y-0.5 min-w-[200px]">
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold shrink-0">Country:</span>
+                        <span className="text-right">{emp.country?.name}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Province:</span>
-                        <span>{emp.state?.name}</span>
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold shrink-0">Province:</span>
+                        <span className="text-right">{emp.state?.name}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">City:</span>
-                        <span>{emp.city?.name}</span>
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold shrink-0">City:</span>
+                        <span className="text-right">{emp.city?.name}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Station:</span>
-                        <span>{emp.branch?.name}</span>
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold shrink-0">Station:</span>
+                        <span className="text-right">{emp.branch?.name}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Dept:</span>
-                        <span>{emp.department?.name}</span>
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold shrink-0">Dept:</span>
+                        <span className="text-right">{emp.department?.name}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Sub-Dept:</span>
-                        <span>{emp.subDepartment?.name || "-"}</span>
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold shrink-0">Sub-Dept:</span>
+                        <span className="text-right">{emp.subDepartment?.name || "-"}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Designation:</span>
-                        <span>{emp.designation?.name}</span>
+                    <div className="flex justify-between items-start gap-2">
+                        <span className="font-bold shrink-0">Designation:</span>
+                        <span className="text-right">{emp.designation?.name}</span>
                     </div>
                 </div>
             );
         },
     },
     {
+        
         header: "Salary/Allowances",
         cell: ({ row }) => {
             const data = row.original;
             return (
-                <div className="text-[10px] space-y-0.5 min-w-[150px]">
+                <div className="text-[10px] space-y-0.5 min-w-[200px]">
                     {data.salaryBreakup?.map((b: any) => (
-                        <div key={b.id} className="grid grid-cols-2">
-                            <span className="font-bold">{b.name}:</span>
+                        <div key={b.id} className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">{b.name}:</span>
                             <span className="text-right">{Math.round(Number(b.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     ))}
                     {data.allowanceBreakup?.map((a: any) => (
-                        <div key={a.id} className="grid grid-cols-2">
-                            <span className="font-bold">{a.name}:</span>
+                        <div key={a.id} className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">{a.name}:</span>
                             <span className="text-right">{Math.round(Number(a.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     ))}
                     {data.overtimeAmount > 0 && (
-                        <div className="grid grid-cols-2">
-                            <span className="font-bold">Overtime:</span>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">Overtime:</span>
                             <span className="text-right">{Math.round(Number(data.overtimeAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     )}
                     {data.bonusAmount > 0 && (
-                        <div className="grid grid-cols-2">
-                            <span className="font-bold">Bonus:</span>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">Bonus:</span>
                             <span className="text-right">{Math.round(Number(data.bonusAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     )}
                     {data.leaveEncashmentAmount > 0 && (
-                        <div className="grid grid-cols-2">
-                            <span className="font-bold">Leave Encashment:</span>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">Leave Encashment:</span>
                             <span className="text-right">{Math.round(Number(data.leaveEncashmentAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     )}
-                    <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 grid grid-cols-2">
-                        <span>Gross:</span>
+                    <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
+                        <span className="shrink-0">Gross:</span>
                         <span className="text-right">
                             {Math.round(Number(data.grossSalary || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
@@ -162,33 +163,33 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
             const tax = row.original.taxBreakup;
             const annualTax = (tax?.monthlyTax || 0) * 12;
             return (
-                <div className="text-[10px] space-y-0.5 min-w-[120px]">
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Taxable:</span>
+                <div className="text-[10px] space-y-0.5 min-w-[160px]">
+                    <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold shrink-0">Taxable:</span>
                         <span className="text-right">{Math.round(Number(tax?.taxableIncome || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                     </div>
                     {tax?.fixedAmountTax > 0 && (
-                        <div className="grid grid-cols-2">
-                            <span className="font-bold">Fixed Tax:</span>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">Fixed Tax:</span>
                             <span className="text-right">{Math.round(Number(tax?.fixedAmountTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                         </div>
                     )}
                     {tax?.percentageTax > 0 && (
-                        <div className="grid grid-cols-2">
-                            <span className="font-bold">% Tax:</span>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">% Tax:</span>
                             <span className="text-right">{Math.round(Number(tax?.percentageTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                         </div>
                     )}
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Annual Tax:</span>
+                    <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold shrink-0">Annual Tax:</span>
                         <span className="text-right">{Math.round(Number(annualTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Rebate:</span>
+                    <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold shrink-0">Rebate:</span>
                         <span className="text-right">{Math.round(Number(tax?.totalRebate || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                     </div>
-                    <div className="grid grid-cols-2 font-bold border-t pt-1 bg-gray-50">
-                        <span>Monthly Tax:</span>
+                    <div className="flex justify-between items-center gap-2 font-bold border-t pt-1 bg-gray-50">
+                        <span className="shrink-0">Monthly Tax:</span>
                         <span className="text-right">
                             {Math.round(Number(row.original.taxDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
@@ -203,35 +204,35 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
             const data = row.original;
             const deductionBreakupTotal = (data.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
             return (
-                <div className="text-[10px] space-y-0.5 min-w-[120px]">
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">PF:</span>
+                <div className="text-[10px] space-y-0.5 min-w-[160px]">
+                    <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold shrink-0">PF:</span>
                         <span className="text-right">{Math.round(Number(data.providentFundDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Advance:</span>
+                    <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold shrink-0">Advance:</span>
                         <span className="text-right">{Math.round(Number(data.advanceSalaryDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">EOBI:</span>
+                    <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold shrink-0">EOBI:</span>
                         <span className="text-right">{Math.round(Number(data.eobiDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Loan:</span>
+                    <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold shrink-0">Loan:</span>
                         <span className="text-right">{Math.round(Number(data.loanDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
                     {data.deductionBreakup?.map((d: any) => (
-                        <div key={d.id} className="grid grid-cols-2">
-                            <span className="font-bold">{d.name}:</span>
+                        <div key={d.id} className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">{d.name}:</span>
                             <span className="text-right">{Math.round(Number(d.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     ))}
-                    <div className="grid grid-cols-2">
-                        <span className="font-bold">Attendance:</span>
+                    <div className="flex justify-between items-center gap-2">
+                        <span className="font-bold shrink-0">Attendance:</span>
                         <span className="text-right">{Math.round(Number(data.attendanceDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                     </div>
-                    <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 grid grid-cols-2">
-                        <span>Total:</span>
+                    <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
+                        <span className="shrink-0">Total:</span>
                         <span className="text-right">
                             {Math.round(
                                 Number(data.attendanceDeduction || 0) +

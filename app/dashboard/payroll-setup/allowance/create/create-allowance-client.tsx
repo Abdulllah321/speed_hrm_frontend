@@ -31,11 +31,13 @@ import {
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Search, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Search, Plus, Trash2, DollarSign, Percent, Wallet } from "lucide-react";
 import Link from "next/link";
 import {
   getEmployeesForDropdown,
+  getEmployeeById,
   type EmployeeDropdownOption,
+  type Employee,
 } from "@/lib/actions/employee";
 import {
   getSubDepartmentsByDepartment,
@@ -43,6 +45,9 @@ import {
   type SubDepartment,
 } from "@/lib/actions/department";
 import { bulkCreateAllowances, type AllowanceHead } from "@/lib/actions/allowance";
+import { Autocomplete } from "@/components/ui/autocomplete";
+import { useMemo } from "react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface EmployeeAllowanceItem {
   id: string;
@@ -53,6 +58,7 @@ interface EmployeeAllowanceItem {
   allowanceHeadName: string;
   amount: number;
   type: string; // "recurring" | "specific"
+  paymentMethod: string; // "with_salary" | "separately"
   adjustmentMethod: string; // "distributed-remaining-months" | "deduct-current-month"
   isTaxable: boolean;
   taxPercentage: number;
@@ -78,15 +84,20 @@ export function CreateAllowanceClient({
   const [allowanceHeads] = useState<AllowanceHead[]>(initialAllowanceHeads);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
+  const [selectedAllowanceHead, setSelectedAllowanceHead] = useState<AllowanceHead | null>(null);
+  const [employeeDetails, setEmployeeDetails] = useState<{ [key: string]: Employee }>({});
+  const [incentiveCalculationType, setIncentiveCalculationType] = useState<"Amount" | "Percentage">("Percentage");
 
   const [formData, setFormData] = useState({
     department: "all",
     subDepartment: "all",
     remarks: "",
     allowanceAmount: "",
+    allowancePercentage: "",
     allowanceType: "",
     allowanceTypeCategory: "specific", // "recurring" | "specific"
     monthYear: "" as string | string[], // Can be single string or array for multiple months
+    paymentMethod: "with_salary", // "with_salary" | "separately"
     isTaxable: "Yes",
     taxPercentage: "",
     adjustmentMethod: "distributed-remaining-months", // "distributed-remaining-months" | "deduct-current-month"
@@ -133,6 +144,75 @@ export function CreateAllowanceClient({
     return true;
   });
 
+  // Fetch employee details when employees are selected
+  useEffect(() => {
+    const fetchEmployeeDetails = async () => {
+      const newEmployeeIds = selectedEmployeeIds.filter(
+        (id) => !employeeDetails[id]
+      );
+      if (newEmployeeIds.length === 0) return;
+
+      for (const empId of newEmployeeIds) {
+        try {
+          const result = await getEmployeeById(empId);
+          if (result.status && result.data) {
+            setEmployeeDetails((prev) => ({
+              ...prev,
+              [empId]: result.data as Employee,
+            }));
+          }
+        } catch (error) {
+          console.error(`Failed to fetch employee ${empId}:`, error);
+        }
+      }
+    };
+
+    fetchEmployeeDetails();
+  }, [selectedEmployeeIds, employeeDetails]);
+
+  // Update selected allowance head when allowanceType changes
+  useEffect(() => {
+    if (formData.allowanceType) {
+      const allowanceHead = allowanceHeads.find((h) => h.id === formData.allowanceType);
+      setSelectedAllowanceHead(allowanceHead || null);
+
+      // Special handling for Incentive - allow user to choose
+      if (allowanceHead?.name === "Incentive") {
+        // Don't auto-fill, let user choose Amount or Percentage
+        setFormData((prev) => ({
+          ...prev,
+          allowanceAmount: "",
+          allowancePercentage: "",
+        }));
+      } else if (allowanceHead?.calculationType === "Amount") {
+        setFormData((prev) => ({
+          ...prev,
+          allowancePercentage: "",
+          allowanceAmount: allowanceHead.amount ? allowanceHead.amount.toString() : "",
+        }));
+      } else if (allowanceHead?.calculationType === "Percentage") {
+        setFormData((prev) => ({
+          ...prev,
+          allowanceAmount: "",
+          allowancePercentage: allowanceHead.percentage ? allowanceHead.percentage.toString() : "",
+        }));
+      }
+    } else {
+      setSelectedAllowanceHead(null);
+    }
+  }, [formData.allowanceType, allowanceHeads]);
+
+  // Allowance head options for Autocomplete
+  const allowanceHeadOptions = useMemo(() => {
+    return allowanceHeads.map((head) => ({
+      value: head.id,
+      label: `${head.name} (${head.calculationType === "Amount"
+        ? `Fixed: ${head.amount || "N/A"}`
+        : `Percentage: ${head.percentage || "N/A"}%`
+        })`,
+    }));
+  }, [allowanceHeads]);
+
   const handleDepartmentChange = (departmentId: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -161,72 +241,126 @@ export function CreateAllowanceClient({
     description: `${emp.employeeId}${emp.departmentName ? ` • ${emp.departmentName}` : ""}`,
   }));
 
-    const handleSearch = () => {
-      if (!formData.allowanceAmount || !formData.allowanceType) {
-        toast.error("Please fill all required fields (Allowance Amount, Allowance Type)");
-        return;
-      }
+  const handleSearch = () => {
+    if (!formData.allowanceType) {
+      toast.error("Please select an allowance type");
+      return;
+    }
 
-      if (formData.allowanceTypeCategory === "specific") {
-        if (Array.isArray(formData.monthYear) && formData.monthYear.length === 0) {
-          toast.error("Please select at least one month for specific allowance");
+    if (selectedAllowanceHead) {
+      // Special handling for Incentive - user can choose Amount or Percentage
+      if (selectedAllowanceHead.name === "Incentive") {
+        if (incentiveCalculationType === "Amount" && !formData.allowanceAmount) {
+          toast.error("Amount is required for Incentive");
           return;
-        } else if (!formData.monthYear) {
-          toast.error("Please select month and year for specific allowance");
+        }
+        if (incentiveCalculationType === "Percentage" && !formData.allowancePercentage) {
+          toast.error("Percentage is required for Incentive");
+          return;
+        }
+      } else {
+        // For other allowances, use their fixed calculationType
+        if (selectedAllowanceHead.calculationType === "Amount" && !formData.allowanceAmount) {
+          toast.error("Amount is required for this allowance type");
+          return;
+        }
+        if (selectedAllowanceHead.calculationType === "Percentage" && !formData.allowancePercentage) {
+          toast.error("Percentage is required for this allowance type");
           return;
         }
       }
+    }
 
-      const amount = parseFloat(formData.allowanceAmount);
-      if (isNaN(amount) || amount <= 0) {
-        toast.error("Please enter a valid amount");
+    if (formData.allowanceTypeCategory === "specific") {
+      if (Array.isArray(formData.monthYear) && formData.monthYear.length === 0) {
+        toast.error("Please select at least one month for specific allowance");
+        return;
+      } else if (!formData.monthYear) {
+        toast.error("Please select month and year for specific allowance");
         return;
       }
+    }
 
-      if (selectedEmployeeIds.length === 0) {
-        toast.error("Please select at least one employee");
-        return;
+    if (selectedEmployeeIds.length === 0) {
+      toast.error("Please select at least one employee");
+      return;
+    }
+
+    if (!selectedAllowanceHead) {
+      toast.error("Invalid allowance type selected");
+      return;
+    }
+
+    // Get selected months - handle both single string and array
+    const selectedMonths = Array.isArray(formData.monthYear)
+      ? formData.monthYear
+      : formData.monthYear
+        ? [formData.monthYear]
+        : [];
+
+    // Create allowance items for all selected employees and months
+    const newAllowances: EmployeeAllowanceItem[] = [];
+    selectedEmployeeIds.forEach((empId) => {
+      const employee = employees.find((e) => e.id === empId);
+      let calculatedAmount = 0;
+
+      // Special handling for Incentive - use user's choice
+      if (selectedAllowanceHead?.name === "Incentive") {
+        if (incentiveCalculationType === "Amount") {
+          calculatedAmount = parseFloat(formData.allowanceAmount || "0");
+        } else {
+          const percentage = parseFloat(formData.allowancePercentage || "0");
+          const emp = employeeDetails[empId];
+          if (emp?.employeeSalary) {
+            calculatedAmount = (Number(emp.employeeSalary) * percentage) / 100;
+          }
+        }
+      } else if (selectedAllowanceHead?.calculationType === "Amount") {
+        calculatedAmount = parseFloat(formData.allowanceAmount || "0");
+      } else if (selectedAllowanceHead?.calculationType === "Percentage") {
+        const percentage = parseFloat(formData.allowancePercentage || "0");
+        const emp = employeeDetails[empId];
+        if (emp?.employeeSalary) {
+          calculatedAmount = (Number(emp.employeeSalary) * percentage) / 100;
+        }
       }
 
-      const selectedAllowanceHead = allowanceHeads.find((h) => h.id === formData.allowanceType);
-      if (!selectedAllowanceHead) {
-        toast.error("Invalid allowance type selected");
-        return;
-      }
-
-      // Get selected months - handle both single string and array
-      const selectedMonths = Array.isArray(formData.monthYear) 
-        ? formData.monthYear 
-        : formData.monthYear 
-          ? [formData.monthYear] 
-          : [];
-
-      // Create allowance items for all selected employees and months
-      const newAllowances: EmployeeAllowanceItem[] = [];
-      selectedEmployeeIds.forEach((empId) => {
-        const employee = employees.find((e) => e.id === empId);
-        selectedMonths.forEach((monthYear, monthIndex) => {
-          newAllowances.push({
-            id: `${empId}-${formData.allowanceType}-${monthYear}-${Date.now()}-${monthIndex}`,
-            employeeId: empId,
-            employeeName: employee?.employeeName || "",
-            employeeCode: employee?.employeeId || "",
-            allowanceHeadId: formData.allowanceType,
-            allowanceHeadName: selectedAllowanceHead.name,
-            amount: amount,
-            type: formData.allowanceTypeCategory, // "recurring" or "specific"
-            adjustmentMethod: formData.adjustmentMethod,
-            isTaxable: formData.isTaxable === "Yes",
-            taxPercentage: parseFloat(formData.taxPercentage) || 0,
-            notes: formData.remarks || "",
-            monthYear: monthYear, // Store the month-year for this specific allowance
-          });
+      selectedMonths.forEach((monthYear, monthIndex) => {
+        newAllowances.push({
+          id: `${empId}-${formData.allowanceType}-${monthYear}-${Date.now()}-${monthIndex}`,
+          employeeId: empId,
+          employeeName: employee?.employeeName || "",
+          employeeCode: employee?.employeeId || "",
+          allowanceHeadId: formData.allowanceType,
+          allowanceHeadName: selectedAllowanceHead.name,
+          amount: calculatedAmount,
+          type: formData.allowanceTypeCategory, // "recurring" or "specific"
+          paymentMethod: formData.paymentMethod,
+          adjustmentMethod: formData.adjustmentMethod,
+          isTaxable: formData.isTaxable === "Yes",
+          taxPercentage: parseFloat(formData.taxPercentage) || 0,
+          notes: formData.remarks || "",
+          monthYear: monthYear, // Store the month-year for this specific allowance
         });
       });
+    });
 
-      setEmployeeAllowances([...employeeAllowances, ...newAllowances]);
-      toast.success(`Added allowances for ${selectedEmployeeIds.length} employee(s) across ${selectedMonths.length} month(s)`);
-    };
+    // Filter out duplicates (same employee + allowance type + month-year combination)
+    const existingIds = new Set(
+      employeeAllowances.map((a) => `${a.employeeId}-${a.allowanceHeadId}-${a.monthYear}`)
+    );
+    const uniqueNewAllowances = newAllowances.filter(
+      (a) => !existingIds.has(`${a.employeeId}-${a.allowanceHeadId}-${a.monthYear}`)
+    );
+
+    if (uniqueNewAllowances.length === 0) {
+      toast.warning("All selected employees already have allowances added for the selected month(s)");
+      return;
+    }
+
+    setEmployeeAllowances([...employeeAllowances, ...uniqueNewAllowances]);
+    toast.success(`Added allowances for ${uniqueNewAllowances.length} employee-month combination(s)`);
+  };
 
   const handleUpdateAllowance = (id: string, field: keyof EmployeeAllowanceItem, value: any) => {
     setEmployeeAllowances(
@@ -252,7 +386,7 @@ export function CreateAllowanceClient({
       try {
         // Group allowances by month-year to create multiple bulk requests
         const allowancesByMonth = new Map<string, typeof employeeAllowances>();
-        
+
         employeeAllowances.forEach((item) => {
           const monthYear = item.monthYear || new Date().toISOString().slice(0, 7);
           if (!allowancesByMonth.has(monthYear)) {
@@ -274,6 +408,7 @@ export function CreateAllowanceClient({
                 allowanceHeadId: item.allowanceHeadId,
                 amount: item.amount,
                 type: item.type || "specific",
+                paymentMethod: item.paymentMethod || "with_salary",
                 adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
                 notes: item.notes || undefined,
                 isTaxable: item.isTaxable,
@@ -363,10 +498,10 @@ export function CreateAllowanceClient({
                         loadingSubDepartments
                           ? "Loading..."
                           : formData.department === "all" || !formData.department
-                          ? "Select department first"
-                          : subDepartments.length === 0
-                          ? "No sub departments available"
-                          : "Select Sub Department"
+                            ? "Select department first"
+                            : subDepartments.length === 0
+                              ? "No sub departments available"
+                              : "Select Sub Department"
                       }
                     />
                   </SelectTrigger>
@@ -423,59 +558,234 @@ export function CreateAllowanceClient({
               />
             </div>
 
-            {/* Third Row - 4 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Allowance Amount */}
-              <div className="space-y-2">
-                <Label htmlFor="allowanceAmount">
-                  Allowance Amount: <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="allowanceAmount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.allowanceAmount}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, allowanceAmount: e.target.value }))
-                  }
-                  placeholder="0.00"
-                  disabled={isPending}
-                  required
-                />
-              </div>
-
+            {/* Third Row - Allowance Type and Amount/Percentage */}
+            <div className={`grid grid-cols-1 gap-4 ${selectedAllowanceHead?.calculationType ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
               {/* Allowance Type */}
               <div className="space-y-2">
                 <Label htmlFor="allowanceType">
                   Select Allowance Type: <span className="text-destructive">*</span>
                 </Label>
-                <Select
+                <Autocomplete
+                  options={allowanceHeadOptions}
                   value={formData.allowanceType}
                   onValueChange={(value) =>
                     setFormData((prev) => ({ ...prev, allowanceType: value }))
                   }
+                  placeholder="Select Allowance Type"
+                  searchPlaceholder="Search allowance type..."
+                  emptyMessage="No allowance types found"
+                  disabled={isPending}
+                />
+              </div>
+
+              {/* Amount or Percentage based on allowance type */}
+              {selectedAllowanceHead?.name === "Incentive" ? (
+                // Special UI for Incentive - user can choose Amount or Percentage
+                <>
+                  <div className="space-y-2">
+                    <Label>Calculation Type <span className="text-destructive">*</span></Label>
+                    <div className="flex items-center h-10 border rounded-md px-3 bg-background">
+                      <RadioGroup
+                        value={incentiveCalculationType}
+                        onValueChange={(value: "Amount" | "Percentage") => {
+                          setIncentiveCalculationType(value);
+                          setFormData((prev) => ({
+                            ...prev,
+                            allowanceAmount: value === "Amount" ? prev.allowanceAmount : "",
+                            allowancePercentage: value === "Percentage" ? prev.allowancePercentage : "",
+                          }));
+                        }}
+                        disabled={isPending}
+                        className="flex gap-6"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="Amount" id="incentive-amount" />
+                          <Label htmlFor="incentive-amount" className="cursor-pointer font-normal text-sm">
+                            Amount
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="Percentage" id="incentive-percentage" />
+                          <Label htmlFor="incentive-percentage" className="cursor-pointer font-normal text-sm">
+                            Percentage
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  </div>
+                  {incentiveCalculationType === "Amount" ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="allowanceAmount" className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Allowance Amount <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="allowanceAmount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.allowanceAmount}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, allowanceAmount: e.target.value }))
+                        }
+                        placeholder="0.00"
+                        disabled={isPending}
+                        required
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="allowancePercentage" className="flex items-center gap-2">
+                        <Percent className="h-4 w-4" />
+                        Allowance Percentage <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="allowancePercentage"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={formData.allowancePercentage}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === "" || (parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
+                            setFormData((prev) => ({ ...prev, allowancePercentage: val }));
+                          }
+                        }}
+                        placeholder="0.00"
+                        disabled={isPending}
+                        required
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Amount will be calculated based on each employee's salary.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : selectedAllowanceHead?.calculationType === "Amount" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="allowanceAmount" className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Allowance Amount <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="allowanceAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.allowanceAmount}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, allowanceAmount: e.target.value }))
+                    }
+                    placeholder={
+                      selectedAllowanceHead.amount
+                        ? selectedAllowanceHead.amount.toString()
+                        : "0.00"
+                    }
+                    disabled={isPending || !!selectedAllowanceHead.amount}
+                    required
+                  />
+                  {selectedAllowanceHead.amount && (
+                    <p className="text-xs text-muted-foreground">
+                      Fixed amount: {selectedAllowanceHead.amount} (pre-filled from allowance type)
+                    </p>
+                  )}
+                </div>
+              ) : selectedAllowanceHead?.calculationType === "Percentage" ? (
+                <div className="space-y-2">
+                  <Label htmlFor="allowancePercentage" className="flex items-center gap-2">
+                    <Percent className="h-4 w-4" />
+                    Allowance Percentage <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="allowancePercentage"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={formData.allowancePercentage}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "" || (parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
+                        setFormData((prev) => ({ ...prev, allowancePercentage: val }));
+                      }
+                    }}
+                    placeholder={
+                      selectedAllowanceHead.percentage
+                        ? selectedAllowanceHead.percentage.toString()
+                        : "0.00"
+                    }
+                    disabled={isPending || !!selectedAllowanceHead.percentage}
+                    required
+                  />
+                  {selectedAllowanceHead.percentage && (
+                    <p className="text-xs text-muted-foreground">
+                      Fixed percentage: {selectedAllowanceHead.percentage}% (pre-filled from allowance type). Amount will be calculated based on each employee's salary.
+                    </p>
+                  )}
+                </div>
+              ) : null}
+
+            </div>
+
+            {/* Fourth Row - Payment Method, Category, Month-Year, and Search */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Payment Method */}
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethod" className="flex items-center gap-2">
+                  <Wallet className="h-4 w-4" />
+                  Payment Method <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={formData.paymentMethod}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, paymentMethod: value }))
+                  }
                   disabled={isPending}
                 >
-                  <SelectTrigger id="allowanceType">
-                    <SelectValue placeholder="Select Allowance Type" />
+                  <SelectTrigger id="paymentMethod" className="h-11">
+                    <SelectValue placeholder="Select payment method">
+                      {formData.paymentMethod === "with_salary" ? (
+                        <span className="flex items-center gap-2">
+                          <Wallet className="h-4 w-4 text-primary" />
+                          Pay with Salary
+                        </span>
+                      ) : formData.paymentMethod === "separately" ? (
+                        <span className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                          Separately
+                        </span>
+                      ) : (
+                        "Select payment method"
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
-                    {allowanceHeads.length > 0 ? (
-                      allowanceHeads.map((head) => (
-                        <SelectItem key={head.id} value={head.id}>
-                          {head.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <SelectItem value="no-heads" disabled>
-                        No allowance types available
-                      </SelectItem>
-                    )}
+                  <SelectContent className="min-w-[300px]">
+                    <SelectItem value="with_salary" className="py-3 cursor-pointer">
+                      <div className="flex items-start gap-3 w-full">
+                        <Wallet className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                        <div className="flex flex-col gap-1 flex-1">
+                          <span className="font-semibold text-sm">Pay with Salary</span>
+                          <span className="text-xs text-muted-foreground leading-relaxed">
+                            Allowance will be included in the monthly salary payment
+                          </span>
+                        </div>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="separately" className="py-3 cursor-pointer">
+                      <div className="flex items-start gap-3 w-full">
+                        <DollarSign className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                        <div className="flex flex-col gap-1 flex-1">
+                          <span className="font-semibold text-sm">Separately</span>
+                          <span className="text-xs text-muted-foreground leading-relaxed">
+                            Allowance will be paid as a separate transaction
+                          </span>
+                        </div>
+                      </div>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               {/* Allowance Type Category (Recurring/Specific) */}
               <div className="space-y-2">
                 <Label htmlFor="allowanceTypeCategory">
@@ -563,9 +873,12 @@ export function CreateAllowanceClient({
                   min="0"
                   max="100"
                   value={formData.taxPercentage}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, taxPercentage: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "" || (parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
+                      setFormData((prev) => ({ ...prev, taxPercentage: val }));
+                    }
+                  }}
                   placeholder="Enter tax percentage"
                   disabled={isPending || formData.isTaxable === "No"}
                 />
@@ -616,6 +929,7 @@ export function CreateAllowanceClient({
                           <TableHead>Month-Year</TableHead>
                           <TableHead>Allowance Type</TableHead>
                           <TableHead>Amount</TableHead>
+                          <TableHead>Payment Method</TableHead>
                           <TableHead>Taxable</TableHead>
                           <TableHead>Tax %</TableHead>
                           <TableHead>Notes</TableHead>
@@ -636,118 +950,138 @@ export function CreateAllowanceClient({
                           };
 
                           return (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">
-                              <div className="flex flex-col">
-                                <span>{item.employeeName}</span>
-                                <span className="text-xs text-muted-foreground">
-                                  {item.employeeCode}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-sm">{formatMonthYear(item.monthYear)}</span>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={item.allowanceHeadId}
-                                onValueChange={(value) => {
-                                  const head = allowanceHeads.find((h) => h.id === value);
-                                  handleUpdateAllowance(item.id, "allowanceHeadId", value);
-                                  if (head) {
-                                    handleUpdateAllowance(item.id, "allowanceHeadName", head.name);
+                            <TableRow key={item.id}>
+                              <TableCell className="font-medium">
+                                <div className="flex flex-col">
+                                  <span>{item.employeeName}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {item.employeeCode}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm">{formatMonthYear(item.monthYear)}</span>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={item.allowanceHeadId}
+                                  onValueChange={(value) => {
+                                    const head = allowanceHeads.find((h) => h.id === value);
+                                    handleUpdateAllowance(item.id, "allowanceHeadId", value);
+                                    if (head) {
+                                      handleUpdateAllowance(item.id, "allowanceHeadName", head.name);
+                                    }
+                                  }}
+                                  disabled={isPending}
+                                >
+                                  <SelectTrigger className="w-[180px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {allowanceHeads.map((head) => (
+                                      <SelectItem key={head.id} value={head.id}>
+                                        {head.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.amount}
+                                  onChange={(e) =>
+                                    handleUpdateAllowance(
+                                      item.id,
+                                      "amount",
+                                      parseFloat(e.target.value) || 0
+                                    )
                                   }
-                                }}
-                                disabled={isPending}
-                              >
-                                <SelectTrigger className="w-[180px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {allowanceHeads.map((head) => (
-                                    <SelectItem key={head.id} value={head.id}>
-                                      {head.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.amount}
-                                onChange={(e) =>
-                                  handleUpdateAllowance(
-                                    item.id,
-                                    "amount",
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                disabled={isPending}
-                                className="w-[120px]"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={item.isTaxable ? "Yes" : "No"}
-                                onValueChange={(value) =>
-                                  handleUpdateAllowance(item.id, "isTaxable", value === "Yes")
-                                }
-                                disabled={isPending}
-                              >
-                                <SelectTrigger className="w-[100px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Yes">Yes</SelectItem>
-                                  <SelectItem value="No">No</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="100"
-                                value={item.taxPercentage}
-                                onChange={(e) =>
-                                  handleUpdateAllowance(
-                                    item.id,
-                                    "taxPercentage",
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                disabled={isPending || !item.isTaxable}
-                                className="w-[100px]"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={item.notes}
-                                onChange={(e) =>
-                                  handleUpdateAllowance(item.id, "notes", e.target.value)
-                                }
-                                placeholder="Notes"
-                                disabled={isPending}
-                                className="w-[200px]"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveAllowance(item.id)}
-                                disabled={isPending}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
+                                  disabled={isPending}
+                                  className="w-[120px]"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={item.paymentMethod || "with_salary"}
+                                  onValueChange={(value) =>
+                                    handleUpdateAllowance(item.id, "paymentMethod", value)
+                                  }
+                                  disabled={isPending}
+                                >
+                                  <SelectTrigger className="w-[150px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="with_salary">Pay with Salary</SelectItem>
+                                    <SelectItem value="separately">Separately</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Select
+                                  value={item.isTaxable ? "Yes" : "No"}
+                                  onValueChange={(value) =>
+                                    handleUpdateAllowance(item.id, "isTaxable", value === "Yes")
+                                  }
+                                  disabled={isPending}
+                                >
+                                  <SelectTrigger className="w-[100px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Yes">Yes</SelectItem>
+                                    <SelectItem value="No">No</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  max="100"
+                                  value={item.taxPercentage}
+                                  onChange={(e) => {
+                                    let val = parseFloat(e.target.value);
+                                    if (val > 100) val = 100;
+                                    if (val < 0) val = 0;
+                                    handleUpdateAllowance(
+                                      item.id,
+                                      "taxPercentage",
+                                      val || 0
+                                    );
+                                  }}
+                                  disabled={isPending || !item.isTaxable}
+                                  className="w-[100px]"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={item.notes}
+                                  onChange={(e) =>
+                                    handleUpdateAllowance(item.id, "notes", e.target.value)
+                                  }
+                                  placeholder="Notes"
+                                  disabled={isPending}
+                                  className="w-[200px]"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveAllowance(item.id)}
+                                  disabled={isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
                         })}
                       </TableBody>
                     </Table>
