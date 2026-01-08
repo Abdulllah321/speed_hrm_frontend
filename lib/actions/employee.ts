@@ -251,7 +251,7 @@ export async function createEmployee(data: {
 
     const result = await res.json();
     if (result.status) {
-      revalidatePath('/dashboard/employee/list');
+      revalidatePath('/hr/employee/list');
     }
     return result;
   } catch (error) {
@@ -290,7 +290,7 @@ export async function updateEmployee(
 
     const result = await res.json();
     if (result.status) {
-      revalidatePath('/dashboard/employee/list');
+      revalidatePath('/hr/employee/list');
     }
     return result;
   } catch (error) {
@@ -314,7 +314,7 @@ export async function deleteEmployee(id: string): Promise<{ status: boolean; mes
 
     const result = await res.json();
     if (result.status) {
-      revalidatePath('/dashboard/employee/list');
+      revalidatePath('/hr/employee/list');
     }
     return result;
   } catch (error) {
@@ -552,7 +552,7 @@ export async function rejoinEmployee(data: {
 
     const result = await res.json();
     if (result.status) {
-      revalidatePath('/dashboard/employee');
+      revalidatePath('/hr/employee');
     }
     return result;
   } catch (error) {

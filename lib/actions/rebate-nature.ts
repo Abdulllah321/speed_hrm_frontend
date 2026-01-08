@@ -58,7 +58,7 @@ export async function createRebateNature(data: Partial<RebateNature>): Promise<{
 
     const result = await res.json();
 
-    revalidatePath("/dashboard/master/rebate-nature");
+    revalidatePath("/master/rebate-nature");
     return { status: true, message: "Rebate Nature created successfully", data: result };
   } catch (error: any) {
     return { status: false, message: error.message || "Failed to create rebate nature" };
@@ -84,7 +84,7 @@ export async function updateRebateNature(id: string, data: Partial<RebateNature>
 
     const result = await res.json();
 
-    revalidatePath("/dashboard/master/rebate-nature");
+    revalidatePath("/master/rebate-nature");
     return { status: true, message: "Rebate Nature updated successfully", data: result };
   } catch (error: any) {
     return { status: false, message: error.message || "Failed to update rebate nature" };
@@ -106,7 +106,7 @@ export async function deleteRebateNature(id: string): Promise<{ status: boolean;
         throw new Error(error.message || "Failed to delete");
     }
 
-    revalidatePath("/dashboard/master/rebate-nature");
+    revalidatePath("/master/rebate-nature");
     return { status: true, message: "Rebate Nature deleted successfully" };
   } catch (error: any) {
     return { status: false, message: error.message || "Failed to delete rebate nature" };

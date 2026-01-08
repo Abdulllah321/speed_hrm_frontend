@@ -44,7 +44,7 @@ export async function createBanks(items: { name: string; code?: string; accountN
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/banks");
+    if (data.status) revalidatePath("/master/banks");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create banks" };
@@ -75,7 +75,7 @@ export async function updateBank(id: string, formData: FormData): Promise<{ stat
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/banks");
+    if (data.status) revalidatePath("/master/banks");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update bank" };
@@ -90,7 +90,7 @@ export async function deleteBank(id: string): Promise<{ status: boolean; message
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/banks");
+    if (data.status) revalidatePath("/master/banks");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete bank" };
@@ -110,7 +110,7 @@ export async function deleteBanks(ids: string[]): Promise<{ status: boolean; mes
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/banks");
+    if (data.status) revalidatePath("/master/banks");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete banks" };
@@ -130,7 +130,7 @@ export async function updateBanks(items: { id: string; name: string; code?: stri
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/banks");
+    if (data.status) revalidatePath("/master/banks");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update banks" };

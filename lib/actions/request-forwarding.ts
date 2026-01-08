@@ -138,7 +138,7 @@ export async function createRequestForwarding(data: CreateRequestForwardingData)
       };
     }
 
-    revalidatePath('/dashboard/request-forwarding');
+    revalidatePath('/hr/request-forwarding');
     return result;
   } catch (error) {
     console.error('Error creating request forwarding configuration:', error);
@@ -173,7 +173,7 @@ export async function updateRequestForwarding(
       };
     }
 
-    revalidatePath('/dashboard/request-forwarding');
+    revalidatePath('/hr/request-forwarding');
     return result;
   } catch (error) {
     console.error('Error updating request forwarding configuration:', error);
@@ -200,7 +200,7 @@ export async function deleteRequestForwarding(requestType: string) {
       };
     }
 
-    revalidatePath('/dashboard/request-forwarding');
+    revalidatePath('/hr/request-forwarding');
     return result;
   } catch (error) {
     console.error('Error deleting request forwarding configuration:', error);

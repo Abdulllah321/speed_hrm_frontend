@@ -174,8 +174,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Logout
   const logout = useCallback(async () => {
-    const { logout: serverLogout } = await import("@/lib/auth");
-    await serverLogout();
+    const { logoutClient } = await import("@/lib/client-auth");
+    await logoutClient();
     setUser(null);
     setPreferences({});
     router.push("/login");

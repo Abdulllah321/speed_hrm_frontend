@@ -63,7 +63,7 @@ export async function createHoliday(data: { name: string; dateFrom: string; date
     });
     const result = await res.json();
     if (result.status) {
-      revalidatePath("/dashboard/holidays/list");
+      revalidatePath(/holidays/list");
     }
     return result;
   } catch (error) {
@@ -84,7 +84,7 @@ export async function updateHoliday(id: string, data: { name?: string; dateFrom?
     });
     const result = await res.json();
     if (result.status) {
-      revalidatePath("/dashboard/holidays/list");
+      revalidatePath(/holidays/list");
     }
     return result;
   } catch (error) {
@@ -101,7 +101,7 @@ export async function deleteHoliday(id: string): Promise<{ status: boolean; mess
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/holidays/list");
+      revalidatePath(/holidays/list");
     }
     return data;
   } catch (error) {
@@ -125,7 +125,7 @@ export async function deleteHolidays(ids: string[]): Promise<{ status: boolean; 
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/holidays/list");
+      revalidatePath(/holidays/list");
     }
     return data;
   } catch (error) {
@@ -149,7 +149,7 @@ export async function updateHolidays(items: { id: string; name?: string; dateFro
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/holidays/list");
+      revalidatePath(/holidays/list");
     }
     return data;
   } catch (error) {

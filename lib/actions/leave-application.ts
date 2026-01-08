@@ -85,7 +85,7 @@ export async function createLeaveApplication(data: CreateLeaveApplicationData): 
 
     const result = await res.json();
     if (result.status && result.data) {
-      revalidatePath('/dashboard/leaves/requests');
+      revalidatePath('/hr/leaves/requests');
       return { status: true, data: result.data };
     }
     return { status: false, message: result.message || 'Failed to create leave application' };

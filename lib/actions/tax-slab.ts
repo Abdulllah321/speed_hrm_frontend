@@ -51,7 +51,7 @@ export async function createTaxSlab(formData: FormData): Promise<{ status: boole
       body: JSON.stringify({ name, minAmount, maxAmount, rate }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/tax-slabs");
+    if (data.status) revalidatePath("/master/tax-slabs");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create tax slab" };
@@ -73,7 +73,7 @@ export async function createTaxSlabs(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/tax-slabs");
+    if (data.status) revalidatePath("/master/tax-slabs");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create tax slabs" };
@@ -98,7 +98,7 @@ export async function updateTaxSlab(id: string, formData: FormData): Promise<{ s
       body: JSON.stringify({ id, name, minAmount, maxAmount, rate }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/tax-slabs");
+    if (data.status) revalidatePath("/master/tax-slabs");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update tax slab" };
@@ -113,7 +113,7 @@ export async function deleteTaxSlab(id: string): Promise<{ status: boolean; mess
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/tax-slabs");
+    if (data.status) revalidatePath("/master/tax-slabs");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete tax slab" };
@@ -133,7 +133,7 @@ export async function deleteTaxSlabs(ids: string[]): Promise<{ status: boolean; 
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/tax-slabs");
+    if (data.status) revalidatePath("/master/tax-slabs");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete tax slabs" };
@@ -155,7 +155,7 @@ export async function updateTaxSlabs(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/tax-slabs");
+    if (data.status) revalidatePath("/master/tax-slabs");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update tax slabs" };

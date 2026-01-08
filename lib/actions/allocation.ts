@@ -64,7 +64,7 @@ export async function createAllocations(names: string[]): Promise<{ status: bool
         const data = await res.json();
 
         if (data.status) {
-            revalidatePath("/dashboard/master/allocation");
+            revalidatePath("/master/allocation");
         }
 
         return data;
@@ -93,7 +93,7 @@ export async function updateAllocation(id: string, formData: FormData): Promise<
         const data = await res.json();
 
         if (data.status) {
-            revalidatePath("/dashboard/master/allocation");
+            revalidatePath("/master/allocation");
         }
 
         return data;
@@ -114,7 +114,7 @@ export async function deleteAllocation(id: string): Promise<{ status: boolean; m
         const data = await res.json();
 
         if (data.status) {
-            revalidatePath("/dashboard/master/allocation");
+            revalidatePath("/master/allocation");
         }
 
         return data;
@@ -141,7 +141,7 @@ export async function deleteAllocations(ids: string[]): Promise<{ status: boolea
         const data = await res.json();
 
         if (data.status) {
-            revalidatePath("/dashboard/master/allocation");
+            revalidatePath("/master/allocation");
         }
 
         return data;
@@ -170,7 +170,7 @@ export async function updateAllocations(
         const data = await res.json();
 
         if (data.status) {
-            revalidatePath("/dashboard/master/allocation");
+            revalidatePath("/master/allocation");
         }
 
         return data;

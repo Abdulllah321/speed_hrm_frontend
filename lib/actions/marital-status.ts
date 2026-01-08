@@ -59,7 +59,7 @@ export async function createMaritalStatus(formData: FormData): Promise<{ status:
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/marital-status");
+      revalidatePath("/master/marital-status");
     }
     return data;
   } catch (error) {
@@ -83,7 +83,7 @@ export async function createMaritalStatuses(names: string[]): Promise<{ status: 
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/marital-status");
+      revalidatePath("/master/marital-status");
     }
     return data;
   } catch (error) {
@@ -108,7 +108,7 @@ export async function updateMaritalStatus(id: string, formData: FormData): Promi
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/marital-status");
+      revalidatePath("/master/marital-status");
     }
     return data;
   } catch (error) {
@@ -125,7 +125,7 @@ export async function deleteMaritalStatus(id: string): Promise<{ status: boolean
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/marital-status");
+      revalidatePath("/master/marital-status");
     }
     return data;
   } catch (error) {
@@ -149,7 +149,7 @@ export async function deleteMaritalStatuses(ids: string[]): Promise<{ status: bo
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/marital-status");
+      revalidatePath("/master/marital-status");
     }
     return data;
   } catch (error) {
@@ -173,7 +173,7 @@ export async function updateMaritalStatuses(items: { id: string; name: string }[
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/marital-status");
+      revalidatePath("/master/marital-status");
     }
     return data;
   } catch (error) {

@@ -151,9 +151,9 @@ export async function createAttendance(data: {
 
     const result = await res.json();
     if (result.status) {
-      revalidatePath('/dashboard/attendance');
-      revalidatePath('/dashboard/attendance/manage');
-      revalidatePath('/dashboard/attendance/view');
+      revalidatePath('/hr/attendance');
+      revalidatePath('/hr/attendance/manage');
+      revalidatePath('/hr/attendance/view');
     }
     return result;
   } catch (error) {
@@ -205,8 +205,8 @@ export async function createAttendanceForDateRange(data: {
 
     const result = await res.json();
     if (result.status) {
-      revalidatePath('/dashboard/attendance');
-      revalidatePath('/dashboard/attendance/manage');
+      revalidatePath('/hr/attendance');
+      revalidatePath('/hr/attendance/manage');
     }
     return result;
   } catch (error) {
@@ -258,9 +258,9 @@ export async function updateAttendance(
 
     const result = await res.json();
     if (result.status) {
-      revalidatePath('/dashboard/attendance');
-      revalidatePath('/dashboard/attendance/manage');
-      revalidatePath('/dashboard/attendance/view');
+      revalidatePath('/hr/attendance');
+      revalidatePath('/hr/attendance/manage');
+      revalidatePath('/hr/attendance/view');
     }
     return result;
   } catch (error) {
@@ -284,8 +284,8 @@ export async function deleteAttendance(id: string): Promise<{ status: boolean; m
 
     const result = await res.json();
     if (result.status) {
-      revalidatePath('/dashboard/attendance');
-      revalidatePath('/dashboard/attendance/manage');
+      revalidatePath('/hr/attendance');
+      revalidatePath('/hr/attendance/manage');
     }
     return result;
   } catch (error) {
@@ -322,8 +322,8 @@ export async function bulkUploadAttendance(file: File): Promise<{
       };
     }
 
-    revalidatePath('/dashboard/attendance');
-    revalidatePath('/dashboard/attendance/manage');
+    revalidatePath('/hr/attendance');
+    revalidatePath('/hr/attendance/manage');
 
     return json;
   } catch (error) {

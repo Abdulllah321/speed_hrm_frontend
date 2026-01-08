@@ -141,7 +141,7 @@ export async function createExitClearance(data: Omit<ExitClearance, 'id' | 'crea
     const result = await res.json();
     // Backend returns { status: true, data: ExitClearance }
     if (result.status && result.data) {
-      revalidatePath('/dashboard/exit-clearance/list');
+      revalidatePath('/hr/exit-clearance/list');
       return { status: true, data: result.data };
     }
     return { status: false, message: result.message || 'Failed to create exit clearance' };
@@ -171,7 +171,7 @@ export async function updateExitClearance(id: string, data: Partial<ExitClearanc
     const result = await res.json();
     // Backend returns { status: true, data: ExitClearance }
     if (result.status && result.data) {
-      revalidatePath('/dashboard/exit-clearance/list');
+      revalidatePath('/hr/exit-clearance/list');
       return { status: true, data: result.data };
     }
     return { status: false, message: result.message || 'Failed to update exit clearance' };
@@ -197,7 +197,7 @@ export async function deleteExitClearance(id: string): Promise<{ status: boolean
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    revalidatePath('/dashboard/exit-clearance/list');
+    revalidatePath('/hr/exit-clearance/list');
     return { status: true, message: 'Exit clearance deleted successfully' };
   } catch (error) {
     console.error('Error deleting exit clearance:', error);
@@ -226,7 +226,7 @@ export async function deleteExitClearances(ids: string[]): Promise<{ status: boo
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    revalidatePath('/dashboard/exit-clearance/list');
+    revalidatePath('/hr/exit-clearance/list');
     return { status: true, message: 'Records deleted successfully' };
   } catch (error) {
     console.error('Error deleting exit clearances:', error);

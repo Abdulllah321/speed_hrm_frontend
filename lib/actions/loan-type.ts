@@ -44,7 +44,7 @@ export async function createLoanType(formData: FormData): Promise<{ status: bool
       body: JSON.stringify({ name }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/loan-types");
+    if (data.status) revalidatePath("/master/loan-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create loan type" };
@@ -66,7 +66,7 @@ export async function createLoanTypes(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/loan-types");
+    if (data.status) revalidatePath("/master/loan-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create loan types" };
@@ -87,7 +87,7 @@ export async function updateLoanType(id: string, formData: FormData): Promise<{ 
       body: JSON.stringify({ name }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/loan-types");
+    if (data.status) revalidatePath("/master/loan-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update loan type" };
@@ -102,7 +102,7 @@ export async function deleteLoanType(id: string): Promise<{ status: boolean; mes
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/loan-types");
+    if (data.status) revalidatePath("/master/loan-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete loan type" };
@@ -122,7 +122,7 @@ export async function deleteLoanTypes(ids: string[]): Promise<{ status: boolean;
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/loan-types");
+    if (data.status) revalidatePath("/master/loan-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete loan types" };
@@ -144,7 +144,7 @@ export async function updateLoanTypes(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/loan-types");
+    if (data.status) revalidatePath("/master/loan-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update loan types" };

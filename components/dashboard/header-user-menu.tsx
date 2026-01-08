@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -14,9 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User, Settings, LogOut, Shield, History, Key } from "lucide-react";
+import { createNavigationHandler } from "@/lib/navigation";
 
 export function HeaderUserMenu() {
   const { user, logout, isAdmin, loading } = useAuth();
+  const router = useRouter();
+  
+  // Create navigation handler with router
+  const navigate = createNavigationHandler(router);
 
   if (loading || !user) {
     return (
@@ -55,40 +60,30 @@ export function HeaderUserMenu() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings/profile">
-              <User className="mr-2 h-4 w-4" />
-              Profile
-            </Link>
+          <DropdownMenuItem onClick={() => navigate("/hr/settings/profile")}>
+            <User className="mr-2 h-4 w-4" />
+            Profile
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings/password">
-              <Key className="mr-2 h-4 w-4" />
-              Change Password
-            </Link>
+          <DropdownMenuItem onClick={() => navigate("/hr/settings/password")}>
+            <Key className="mr-2 h-4 w-4" />
+            Change Password
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings/sessions">
-              <History className="mr-2 h-4 w-4" />
-              Active Sessions
-            </Link>
+          <DropdownMenuItem onClick={() => navigate("/hr/settings/sessions")}>
+            <History className="mr-2 h-4 w-4" />
+            Active Sessions
           </DropdownMenuItem>
         </DropdownMenuGroup>
         {isAdmin() && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/admin/activity-logs">
-                  <Shield className="mr-2 h-4 w-4" />
-                  Activity Logs
-                </Link>
+              <DropdownMenuItem onClick={() => navigate("/admin/activity-logs")}>
+                <Shield className="mr-2 h-4 w-4" />
+                Activity Logs
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/admin/users">
-                  <Settings className="mr-2 h-4 w-4" />
-                  User Management
-                </Link>
+              <DropdownMenuItem onClick={() => navigate("/admin/users")}>
+                <Settings className="mr-2 h-4 w-4" />
+                User Management
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </>

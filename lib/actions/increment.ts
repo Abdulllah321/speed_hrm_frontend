@@ -85,7 +85,7 @@ export async function bulkCreateIncrements(data: {
     }
 
     const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/increment');
+    revalidatePath('/hr/payroll-setup/increment');
     return result;
   } catch (error) {
     console.error('Error creating increments:', error);
@@ -163,7 +163,7 @@ export async function updateIncrement(id: string, data: UpdateIncrementData): Pr
     }
 
     const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/increment');
+    revalidatePath('/hr/payroll-setup/increment');
     return result;
   } catch (error) {
     console.error('Error updating increment:', error);
@@ -185,7 +185,7 @@ export async function deleteIncrement(id: string): Promise<{ status: boolean; me
     }
 
     const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/increment');
+    revalidatePath('/hr/payroll-setup/increment');
     return result;
   } catch (error) {
     console.error('Error deleting increment:', error);

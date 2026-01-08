@@ -108,7 +108,7 @@ export async function createCountry(
       body: JSON.stringify({ name, code }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/country");
+    if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create country" };
@@ -129,7 +129,7 @@ export async function createCountries(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/country");
+    if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create countries" };
@@ -154,7 +154,7 @@ export async function updateCountry(
       body: JSON.stringify({ id, name, code }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/country");
+    if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update country" };
@@ -175,7 +175,7 @@ export async function updateCountries(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/country");
+    if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update countries" };
@@ -191,7 +191,7 @@ export async function deleteCountry(
       headers: await getHeaders(false),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/country");
+    if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete country" };
@@ -212,7 +212,7 @@ export async function deleteCountries(
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/country");
+    if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete countries" };
@@ -417,7 +417,7 @@ export async function createState(data: {
       body: JSON.stringify(data),
     });
     const result = await res.json();
-    if (result.status) revalidatePath("/dashboard/master/state");
+    if (result.status) revalidatePath("/master/state");
     return result;
   } catch (error) {
     return { status: false, message: "Failed to create state" };
@@ -438,7 +438,7 @@ export async function createStates(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/state");
+    if (data.status) revalidatePath("/master/state");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create states" };
@@ -456,7 +456,7 @@ export async function updateState(
       body: JSON.stringify({ ...data, id }),
     });
     const result = await res.json();
-    if (result.status) revalidatePath("/dashboard/master/state");
+    if (result.status) revalidatePath("/master/state");
     return result;
   } catch (error) {
     return { status: false, message: "Failed to update state" };
@@ -473,7 +473,7 @@ export async function updateStates(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/state");
+    if (data.status) revalidatePath("/master/state");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update states" };
@@ -489,7 +489,7 @@ export async function deleteState(
       headers: await getHeaders(false),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/state");
+    if (data.status) revalidatePath("/master/state");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete state" };
@@ -506,7 +506,7 @@ export async function deleteStates(
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/state");
+    if (data.status) revalidatePath("/master/state");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete states" };
@@ -537,7 +537,7 @@ export async function createCity(
       body: JSON.stringify({ name, countryId, stateId }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/city");
+    if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create city" };
@@ -558,7 +558,7 @@ export async function createCities(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/city");
+    if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create cities" };
@@ -592,7 +592,7 @@ export async function updateCity(
       }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/city");
+    if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update city" };
@@ -613,7 +613,7 @@ export async function updateCities(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/city");
+    if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update cities" };
@@ -629,7 +629,7 @@ export async function deleteCity(
       headers: await getHeaders(false),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/city");
+    if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete city" };
@@ -650,7 +650,7 @@ export async function deleteCities(
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/city");
+    if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete cities" };

@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 const API_BASE = process.env.API_URL || "http://localhost:5000/api";
-console.log(API_BASE);
 
 export interface User {
   id: number;
@@ -81,8 +80,12 @@ function isTokenExpiringSoon(token: string | null | undefined): boolean {
   return expirationTime - now < thirtyMinutes && expirationTime > now;
 }
 
-// Login action
-export async function login(formData: FormData): Promise<{ status: boolean; message: string }> {
+// Login action - for server-side use, calls backend directly
+// For client-side login, use loginClient from client-auth.ts
+export async function login(formData: FormData): Promise<{ 
+  status: boolean; 
+  message: string;
+}> {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -95,55 +98,18 @@ export async function login(formData: FormData): Promise<{ status: boolean; mess
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+      credentials: "include",
     });
 
     const data: AuthResponse = await res.json();
 
     if (data.status && data.data) {
-      const cookieStore = await cookies();
-      
-      // Set HTTP-only cookies for tokens
-      cookieStore.set("accessToken", data.data.accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 2 * 60 * 60, // 2 hours (matches JWT expiry)
-        path: "/",
-      });
-
-      cookieStore.set("refreshToken", data.data.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 30 * 24 * 60 * 60, // 30 days to match backend refresh token expiry
-        path: "/",
-      });
-
-      // Set user info (non-sensitive) for client access
-      cookieStore.set("userRole", data.data.user.role || "user", {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 30 * 24 * 60 * 60, // 30 days to match refresh token
-        path: "/",
-      });
-
-      cookieStore.set("user", JSON.stringify({
-        id: data.data.user.id,
-        email: data.data.user.email,
-        firstName: data.data.user.firstName,
-        lastName: data.data.user.lastName,
-        role: data.data.user.role,
-        permissions: data.data.user.permissions,
-      }), {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 30 * 24 * 60 * 60, // 30 days to match refresh token
-        path: "/",
-      });
-
-      return { status: true, message: "Login successful" };
+      // Note: This server action cannot set cookies in the browser
+      // Use loginClient from client-auth.ts for proper cookie handling
+      return { 
+        status: true, 
+        message: "Login successful"
+      };
     }
 
     return { status: false, message: data.message || "Login failed" };
@@ -153,30 +119,17 @@ export async function login(formData: FormData): Promise<{ status: boolean; mess
   }
 }
 
-// Logout action
+// Logout action - now calls Next.js API route
 export async function logout(): Promise<void> {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("accessToken")?.value;
-
   try {
-    if (accessToken) {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-    }
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
   } catch (error) {
     console.error("Logout error:", error);
   }
-
-  // Clear all auth cookies
-  cookieStore.delete("accessToken");
-  cookieStore.delete("refreshToken");
-  cookieStore.delete("userRole");
-  cookieStore.delete("user");
 
   redirect("/login");
 }
@@ -240,18 +193,17 @@ export async function getAccessToken(): Promise<string | null> {
   return accessToken;
 }
 
-// Refresh token (NextAuth-like approach with security checks)
-// SECURITY: Never refresh if tokens are expired
+// Refresh token - calls backend directly for server-side use
+// For client-side refresh, use refreshTokenClient from client-auth.ts
 export async function refreshAccessToken(): Promise<boolean> {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get("refreshToken")?.value || null;
-  const accessToken = cookieStore.get("accessToken")?.value || null;
 
   if (!refreshToken) return false;
 
-  // SECURITY CHECK 1: Verify refresh token is not expired
+  // SECURITY CHECK: Verify refresh token is not expired
   if (isTokenExpired(refreshToken)) {
-    // Refresh token expired, clear everything (security: expired tokens cannot be refreshed)
+    // Refresh token expired, clear everything
     cookieStore.delete("accessToken");
     cookieStore.delete("refreshToken");
     cookieStore.delete("userRole");
@@ -259,64 +211,24 @@ export async function refreshAccessToken(): Promise<boolean> {
     return false;
   }
 
-  // SECURITY CHECK 2: If access token exists and is expired, don't refresh
-  // This prevents refreshing with an expired access token
-  if (accessToken && isTokenExpired(accessToken)) {
-    // Access token is expired - this is expected, but we only refresh if refresh token is valid
-    // The refresh token check above already passed, so we can proceed
-  }
-
   try {
     const res = await fetch(`${API_BASE}/auth/refresh-token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
+      credentials: "include",
     });
 
     const data = await res.json();
 
     if (data.status && data.data) {
-      // SECURITY CHECK 3: Verify new tokens are valid before storing
-      const newAccessToken = data.data.accessToken;
-      const newRefreshToken = data.data.refreshToken;
-
-      // Validate new tokens are not expired (shouldn't happen, but security check)
-      if (isTokenExpired(newAccessToken) || isTokenExpired(newRefreshToken)) {
-        console.error("Security: Received expired tokens from refresh endpoint");
-        cookieStore.delete("accessToken");
-        cookieStore.delete("refreshToken");
-        cookieStore.delete("userRole");
-        cookieStore.delete("user");
-        return false;
-      }
-
-      cookieStore.set("accessToken", newAccessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 2 * 60 * 60, // 2 hours (matches backend access token expiry)
-        path: "/",
-      });
-
-      cookieStore.set("refreshToken", newRefreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 30 * 24 * 60 * 60, // 30 days to match backend refresh token expiry
-        path: "/",
-      });
-
+      // Note: Server actions cannot set cookies in browser
+      // This is mainly for server-side token validation
       return true;
     }
   } catch (error) {
     console.error("Token refresh error:", error);
   }
-
-  // If refresh failed, clear tokens (security: failed refresh = invalid session)
-  cookieStore.delete("accessToken");
-  cookieStore.delete("refreshToken");
-  cookieStore.delete("userRole");
-  cookieStore.delete("user");
 
   return false;
 }
@@ -349,6 +261,7 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
   const makeRequest = async (token: string | null) => {
     return fetch(`${API_BASE}${url}`, {
       ...options,
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -482,6 +395,7 @@ export async function checkSession(): Promise<{ valid: boolean; user?: User }> {
   try {
     const res = await fetch(`${API_BASE}/auth/check-session`, {
       headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     });
 
     if (res.status === 401) {
@@ -501,6 +415,7 @@ export async function checkSession(): Promise<{ valid: boolean; user?: User }> {
         if (newToken && !isTokenExpired(newToken)) {
           const retryRes = await fetch(`${API_BASE}/auth/check-session`, {
             headers: { Authorization: `Bearer ${newToken}` },
+            credentials: "include",
           });
           if (retryRes.ok) {
             const user = await getCurrentUser();

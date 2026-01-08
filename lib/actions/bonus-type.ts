@@ -59,7 +59,7 @@ export async function createBonusType(formData: FormData): Promise<{ status: boo
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/bonus-types");
+    if (data.status) revalidatePath("/master/bonus-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create bonus type" };
@@ -79,7 +79,7 @@ export async function createBonusTypes(items: { name: string; calculationType?: 
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/bonus-types");
+    if (data.status) revalidatePath("/master/bonus-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create bonus types" };
@@ -112,7 +112,7 @@ export async function updateBonusType(id: string, formData: FormData): Promise<{
       body: JSON.stringify(payload),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/bonus-types");
+    if (data.status) revalidatePath("/master/bonus-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update bonus type" };
@@ -127,7 +127,7 @@ export async function deleteBonusType(id: string): Promise<{ status: boolean; me
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/bonus-types");
+    if (data.status) revalidatePath("/master/bonus-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete bonus type" };
@@ -147,7 +147,7 @@ export async function deleteBonusTypes(ids: string[]): Promise<{ status: boolean
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/bonus-types");
+    if (data.status) revalidatePath("/master/bonus-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete bonus types" };
@@ -167,7 +167,7 @@ export async function updateBonusTypes(items: { id: string; name: string; calcul
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/bonus-types");
+    if (data.status) revalidatePath("/master/bonus-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update bonus types" };

@@ -95,11 +95,11 @@ export async function createAttendanceExemption(data: Omit<AttendanceExemption, 
 
     const result = await res.json();
     if (result.status && result.data) {
-      revalidatePath('/dashboard/attendance/exemptions-list');
+      revalidatePath('/hr/attendance/exemptions-list');
       return { status: true, data: result.data };
     }
     if (result.id || result.status) {
-      revalidatePath('/dashboard/attendance/exemptions-list');
+      revalidatePath('/hr/attendance/exemptions-list');
     }
     return { status: true, data: result.data || result };
   } catch (error) {
@@ -127,11 +127,11 @@ export async function updateAttendanceExemption(id: string, data: Partial<Attend
 
     const result = await res.json();
     if (result.status && result.data) {
-      revalidatePath('/dashboard/attendance/exemptions-list');
+      revalidatePath('/hr/attendance/exemptions-list');
       return { status: true, data: result.data };
     }
     if (result.id || result.status) {
-      revalidatePath('/dashboard/attendance/exemptions-list');
+      revalidatePath('/hr/attendance/exemptions-list');
     }
     return { status: true, data: result.data || result };
   } catch (error) {
@@ -156,7 +156,7 @@ export async function deleteAttendanceExemption(id: string): Promise<{ status: b
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    revalidatePath('/dashboard/attendance/exemptions-list');
+    revalidatePath('/hr/attendance/exemptions-list');
     return { status: true, message: 'Attendance exemption deleted successfully' };
   } catch (error) {
     console.error('Error deleting attendance exemption:', error);
