@@ -396,7 +396,7 @@ export function GeneratePayrollClient({
                                                         {row.salaryBreakup.map((b: any) => (
                                                             <div key={b.id} className="flex justify-between gap-4">
                                                                 <span className="text-muted-foreground">{b.name} ({b.percentage ? b.percentage + '%' : '-'}):</span>
-                                                                <span>{b.amount?.toLocaleString()}</span>
+                                                                <span>{Math.round(b.amount || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 })}</span>
                                                             </div>
                                                         ))}
                                                     </div>

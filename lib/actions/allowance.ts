@@ -15,6 +15,9 @@ async function getAuthHeaders() {
 export interface AllowanceHead {
   id: string;
   name: string;
+  calculationType?: string; // "Amount" | "Percentage"
+  amount?: number | null;
+  percentage?: number | null;
   status: string;
   createdAt: string;
   updatedAt: string;

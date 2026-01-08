@@ -89,14 +89,15 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
     const totals = useMemo(() => {
         return data.reduce((acc, curr) => {
             const rowGross = Number(curr.grossSalary || 0);
+            const deductionBreakupTotal = (curr.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
             const rowDeductions =
-                Number(curr.totalDeductions || 0) +
                 Number(curr.attendanceDeduction || 0) +
                 Number(curr.loanDeduction || 0) +
                 Number(curr.advanceSalaryDeduction || 0) +
                 Number(curr.eobiDeduction || 0) +
                 Number(curr.providentFundDeduction || 0) +
-                Number(curr.taxDeduction || 0);
+                Number(curr.taxDeduction || 0) +
+                deductionBreakupTotal;
 
             return {
                 grossSalary: acc.grossSalary + rowGross,
@@ -167,11 +168,13 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
               ${data.map((row, i) => {
             const salaryBreakup = row.salaryBreakup || [];
             const allowanceBreakup = row.allowanceBreakup || [];
+            const deductionBreakup = row.deductionBreakup || [];
+            const deductionBreakupTotal = deductionBreakup.reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
             const totalGross = Number(row.grossSalary || 0);
-            const totalDed = Number(row.totalDeductions || 0) + Number(row.attendanceDeduction || 0) +
+            const totalDed = Number(row.attendanceDeduction || 0) +
                 Number(row.loanDeduction || 0) + Number(row.advanceSalaryDeduction || 0) +
                 Number(row.eobiDeduction || 0) + Number(row.providentFundDeduction || 0) +
-                Number(row.taxDeduction || 0);
+                Number(row.taxDeduction || 0) + deductionBreakupTotal;
 
             return `
                 <tr>
@@ -187,35 +190,39 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                     <div><b>Designation:</b> ${row.employee.designation?.name || '-'}</div>
                   </td>
                   <td>
-                    ${salaryBreakup.map((b: any) => `<div class="breakup-item"><span class="breakup-label">${b.name}:</span><span class="breakup-value">${Number(b.amount).toLocaleString()}</span></div>`).join('')}
-                    ${allowanceBreakup.map((a: any) => `<div class="breakup-item"><span class="breakup-label">${a.name}:</span><span class="breakup-value">${Number(a.amount).toLocaleString()}</span></div>`).join('')}
-                    <div class="total-row" style="margin-top: 4px; border-top: 2px solid #333;"><b>Gross:</b> ${totalGross.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    ${salaryBreakup.map((b: any) => `<div class="breakup-item"><span class="breakup-label">${b.name}:</span><span class="breakup-value">${Math.round(Number(b.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')}
+                    ${allowanceBreakup.map((a: any) => `<div class="breakup-item"><span class="breakup-label">${a.name}:</span><span class="breakup-value">${Math.round(Number(a.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')}
+                    ${Number(row.leaveEncashmentAmount || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Leave Encashment:</span><span class="breakup-value">${Math.round(Number(row.leaveEncashmentAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : ''}
+                    <div class="total-row" style="margin-top: 4px; border-top: 2px solid #333;"><b>Gross:</b> ${Math.round(totalGross).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                   </td>
                   <td>
-                    <div><b>Taxable:</b> ${Number(row.taxBreakup?.taxableIncome || 0).toLocaleString()}</div>
-                    <div><b>Annual Tax:</b> ${(Number(row.taxDeduction || 0) * 12).toLocaleString()}</div>
-                    <div><b>Rebate:</b> ${Number(row.taxBreakup?.totalRebate || 0).toLocaleString()}</div>
-                    <div class="section-header" style="margin-top: 4px; border-top: 1px solid #999;"><b>Monthly Tax:</b> ${Number(row.taxDeduction).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div><b>Taxable:</b> ${Math.round(Number(row.taxBreakup?.taxableIncome || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    ${row.taxBreakup?.fixedAmountTax > 0 ? `<div><b>Fixed Tax:</b> ${Math.round(Number(row.taxBreakup?.fixedAmountTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>` : ''}
+                    ${row.taxBreakup?.percentageTax > 0 ? `<div><b>% Tax:</b> ${Math.round(Number(row.taxBreakup?.percentageTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>` : ''}
+                    <div><b>Annual Tax:</b> ${Math.round(Number(row.taxDeduction || 0) * 12).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div><b>Rebate:</b> ${Math.round(Number(row.taxBreakup?.totalRebate || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div class="section-header" style="margin-top: 4px; border-top: 1px solid #999;"><b>Monthly Tax:</b> ${Math.round(Number(row.taxDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                   </td>
                   <td>
-                    <div><b>PF:</b> ${Number(row.providentFundDeduction || 0).toLocaleString()}</div>
-                    <div><b>Advance:</b> ${Number(row.advanceSalaryDeduction || 0).toLocaleString()}</div>
-                    <div><b>EOBI:</b> ${Number(row.eobiDeduction || 0).toLocaleString()}</div>
-                    <div><b>Loan:</b> ${Number(row.loanDeduction || 0).toLocaleString()}</div>
-                    <div><b>Attendance:</b> ${Number(row.attendanceDeduction || 0).toLocaleString()}</div>
-                    <div class="total-row deduction" style="margin-top: 4px; border-top: 1px solid #999;"><b>Total:</b> ${totalDed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    <div><b>PF:</b> ${Math.round(Number(row.providentFundDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div><b>Advance:</b> ${Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div><b>EOBI:</b> ${Math.round(Number(row.eobiDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div><b>Loan:</b> ${Math.round(Number(row.loanDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    ${deductionBreakup.map((d: any) => `<div><b>${d.name}:</b> ${Math.round(Number(d.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>`).join('')}
+                    <div><b>Attendance:</b> ${Math.round(Number(row.attendanceDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div class="total-row deduction" style="margin-top: 4px; border-top: 1px solid #999;"><b>Total:</b> ${Math.round(totalDed).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                   </td>
-                  <td class="net-salary">${Number(row.netSalary).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  <td class="net-salary">${Math.round(Number(row.netSalary || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                   <td>${row.accountNumber || '-'}</td>
                   <td>${row.paymentMode || 'Bank Transfer'}</td>
                 </tr>
               `}).join('')}
               <tr class="font-bold bg-green">
                 <td colspan="3" class="text-right"><b>Grand Total:</b></td>
-                <td><b>${totals.grossSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></td>
-                <td><b>${totals.taxDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></td>
-                <td><b>${totals.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></td>
-                <td class="net-salary"><b>${totals.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b></td>
+                <td><b>${Math.round(totals.grossSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
+                <td><b>${Math.round(totals.taxDeduction).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
+                <td><b>${Math.round(totals.totalDeductions).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
+                <td class="net-salary"><b>${Math.round(totals.netSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
                 <td colspan="2"></td>
               </tr>
             </tbody>
@@ -332,25 +339,25 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Gross</p>
                                 <p className="text-xl font-bold">
-                                    {totals.grossSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {Math.round(totals.grossSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                 </p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Tax</p>
                                 <p className="text-xl font-bold text-destructive">
-                                    {totals.taxDeduction.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {Math.round(totals.taxDeduction).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                 </p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Deductions</p>
                                 <p className="text-xl font-bold text-destructive">
-                                    {totals.totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {Math.round(totals.totalDeductions).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                 </p>
                             </div>
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Net Payout</p>
                                 <p className="text-xl font-bold text-green-600">
-                                    {totals.netSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    {Math.round(totals.netSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                 </p>
                             </div>
                         </div>

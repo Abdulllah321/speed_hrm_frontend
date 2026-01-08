@@ -19,6 +19,9 @@ async function getAuthHeaders(isJson = true) {
 export interface AllowanceHead {
   id: string;
   name: string;
+  calculationType: string; // "Amount" | "Percentage"
+  amount?: number | null;
+  percentage?: number | null;
   status: string;
   createdBy?: string;
   createdAt: string;
@@ -72,7 +75,7 @@ export async function getAllowanceHeadById(id: string): Promise<{ status: boolea
 }
 
 // Create allowance head
-export async function createAllowanceHead(data: { name: string; status?: string }): Promise<{ status: boolean; data?: AllowanceHead; message?: string }> {
+export async function createAllowanceHead(data: { name: string; calculationType?: string; amount?: number; percentage?: number; status?: string }): Promise<{ status: boolean; data?: AllowanceHead; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/allowance-heads`, {
       method: 'POST',
@@ -93,7 +96,7 @@ export async function createAllowanceHead(data: { name: string; status?: string 
 }
 
 // Create allowance heads bulk
-export async function createAllowanceHeadsBulk(items: { name: string; status?: string }[]): Promise<{ status: boolean; message?: string }> {
+export async function createAllowanceHeadsBulk(items: { name: string; calculationType?: string; amount?: number; percentage?: number; status?: string }[]): Promise<{ status: boolean; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/allowance-heads/bulk`, {
       method: 'POST',
@@ -114,7 +117,7 @@ export async function createAllowanceHeadsBulk(items: { name: string; status?: s
 }
 
 // Update allowance head
-export async function updateAllowanceHead(id: string, data: { name: string; status?: string }): Promise<{ status: boolean; data?: AllowanceHead; message?: string }> {
+export async function updateAllowanceHead(id: string, data: { name: string; calculationType?: string; amount?: number; percentage?: number; status?: string }): Promise<{ status: boolean; data?: AllowanceHead; message?: string }> {
   try {
     const res = await fetch(`${API_URL}/allowance-heads/${id}`, {
       method: 'PUT',
@@ -158,6 +161,9 @@ export async function deleteAllowanceHead(id: string): Promise<{ status: boolean
 export async function updateAllowanceHeads(items: {
   id: string;
   name: string;
+  calculationType?: string;
+  amount?: number;
+  percentage?: number;
   status?: string;
 }[]): Promise<{ status: boolean; message?: string }> {
   try {
@@ -180,16 +186,19 @@ export async function updateAllowanceHeads(items: {
 // Delete allowance heads bulk
 export async function deleteAllowanceHeads(ids: string[]): Promise<{ status: boolean; message?: string }> {
   try {
-    const results = await Promise.all(
-      ids.map(id => deleteAllowanceHead(id))
-    );
+    const token = await getAccessToken();
+    const res = await fetch(`${API_URL}/allowance-heads/bulk`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ ids }),
+    });
 
-    const failed = results.filter(r => !r.status);
-    if (failed.length > 0) {
-      return { status: false, message: `${failed.length} allowance head(s) failed to delete` };
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: 'Failed to delete allowance heads' }));
+      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    return { status: true, message: `${results.length} allowance head(s) deleted successfully` };
+    return res.json();
   } catch (error) {
     console.error('Error deleting allowance heads:', error);
     return { status: false, message: error instanceof Error ? error.message : 'Failed to delete allowance heads' };

@@ -12,6 +12,9 @@ import { Bank } from "@/lib/actions/bank";
 import { format } from "date-fns";
 import { Autocomplete } from "@/components/ui/autocomplete";
 
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
+import { DatePicker } from "@/components/ui/date-picker";
+
 interface BankReportContentProps {
     initialBanks: Bank[];
 }
@@ -105,18 +108,16 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                     <div className="flex flex-wrap gap-4 items-end">
                         <div className="min-w-[200px] flex-1">
                             <label className="text-sm font-medium mb-2 block">Month-Year</label>
-                            <Input
-                                type="month"
+                            <MonthYearPicker
                                 value={filters.monthYear}
-                                onChange={(e) => setFilters({ ...filters, monthYear: e.target.value })}
+                                onChange={(val) => setFilters({ ...filters, monthYear: Array.isArray(val) ? val[0] : val })}
                             />
                         </div>
                         <div className="min-w-[200px] flex-1">
                             <label className="text-sm font-medium mb-2 block">Cheque Date</label>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={filters.chequeDate}
-                                onChange={(e) => setFilters({ ...filters, chequeDate: e.target.value })}
+                                onChange={(val) => setFilters({ ...filters, chequeDate: val })}
                             />
                         </div>
                         <div className="min-w-[250px] flex-1">

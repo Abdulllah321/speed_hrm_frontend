@@ -21,12 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { EllipsisIcon, Eye, Loader2, Pencil, Trash2 } from "lucide-react";
+import { EllipsisIcon, Eye, Loader2, Pencil, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { format } from "date-fns";
+import { deleteLeaveEncashment, approveLeaveEncashment, rejectLeaveEncashment } from "@/lib/actions/leave-encashment";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export type LeaveEncashmentRow = {
   id: string;
@@ -148,23 +151,51 @@ function RowActions({ row }: RowActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const [approveDialog, setApproveDialog] = useState(false);
+  const [rejectDialog, setRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const handleDeleteConfirm = async () => {
-    // TODO: Replace with actual API call when backend is ready
-    // startTransition(async () => {
-    //   const result = await deleteLeaveEncashment(record.id);
-    //   if (result.status) {
-    //     toast.success(result.message || "Record deleted successfully");
-    //     setDeleteDialog(false);
-    //     router.refresh();
-    //   } else {
-    //     toast.error(result.message || "Failed to delete record");
-    //   }
-    // });
-
-    toast.success("Delete functionality will be available when backend is ready");
-    setDeleteDialog(false);
+    startTransition(async () => {
+      const result = await deleteLeaveEncashment(record.id);
+      if (result.status) {
+        toast.success(result.message || "Record deleted successfully");
+        setDeleteDialog(false);
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to delete record");
+      }
+    });
   };
+
+  const handleApproveConfirm = async () => {
+    startTransition(async () => {
+      const result = await approveLeaveEncashment(record.id);
+      if (result.status) {
+        toast.success(result.message || "Leave encashment approved successfully");
+        setApproveDialog(false);
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to approve leave encashment");
+      }
+    });
+  };
+
+  const handleRejectConfirm = async () => {
+    startTransition(async () => {
+      const result = await rejectLeaveEncashment(record.id, rejectionReason || undefined);
+      if (result.status) {
+        toast.success(result.message || "Leave encashment rejected successfully");
+        setRejectDialog(false);
+        setRejectionReason("");
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to reject leave encashment");
+      }
+    });
+  };
+
+  const isPendingStatus = record.approvalStatus === "pending";
 
   return (
     <>
@@ -183,12 +214,32 @@ function RowActions({ row }: RowActionsProps) {
               View
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/hr/payroll-setup/leave-encashment/edit/${record.id}`}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </DropdownMenuItem>
+          {isPendingStatus && (
+            <DropdownMenuItem asChild>
+              <Link href={`/hr/payroll-setup/leave-encashment/edit/${record.id}`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {isPendingStatus && (
+            <>
+              <DropdownMenuItem
+                onClick={() => setApproveDialog(true)}
+                className="text-green-600 focus:text-green-600"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Approve
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setRejectDialog(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Reject
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             className="text-destructive focus:text-destructive"
@@ -216,6 +267,67 @@ function RowActions({ row }: RowActionsProps) {
             >
               {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={approveDialog} onOpenChange={setApproveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve Leave Encashment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to approve leave encashment for &quot;{record.employeeName}&quot;?
+              <br />
+              <span className="font-semibold mt-2 block">
+                Amount: {record.encashmentAmount.toLocaleString("en-US")} PKR
+              </span>
+              <span className="font-semibold">
+                Days: {record.encashmentDays}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleApproveConfirm}
+              disabled={isPending}
+              className="bg-green-600 text-white hover:bg-green-700"
+            >
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={rejectDialog} onOpenChange={setRejectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject Leave Encashment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reject leave encashment for &quot;{record.employeeName}&quot;?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label htmlFor="rejectionReason">Rejection Reason (Optional)</Label>
+            <Input
+              id="rejectionReason"
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              placeholder="Enter reason for rejection..."
+              className="mt-2"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setRejectionReason("")}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRejectConfirm}
+              disabled={isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Reject
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
