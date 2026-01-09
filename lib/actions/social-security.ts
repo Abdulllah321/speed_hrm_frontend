@@ -65,7 +65,7 @@ export async function createSocialSecurityInstitution(formData: FormData): Promi
       }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/social-security");
+    if (data.status) revalidatePath("/master/social-security");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create social security institution" };
@@ -93,7 +93,7 @@ export async function createSocialSecurityInstitutions(
     );
     const results = await Promise.all(promises);
     const data = await results[0].json();
-    if (data.status) revalidatePath("/dashboard/master/social-security");
+    if (data.status) revalidatePath("/master/social-security");
     return { status: true, message: `Created ${items.length} institution(s) successfully` };
   } catch (error) {
     return { status: false, message: "Failed to create social security institutions" };
@@ -132,7 +132,7 @@ export async function updateSocialSecurityInstitution(id: string, formData: Form
       }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/social-security");
+    if (data.status) revalidatePath("/master/social-security");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update social security institution" };
@@ -147,7 +147,7 @@ export async function deleteSocialSecurityInstitution(id: string): Promise<{ sta
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/social-security");
+    if (data.status) revalidatePath("/master/social-security");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete social security institution" };
@@ -165,7 +165,7 @@ export async function deleteSocialSecurityInstitutions(ids: string[]): Promise<{
       })
     );
     await Promise.all(promises);
-    revalidatePath("/dashboard/master/social-security");
+    revalidatePath("/master/social-security");
     return { status: true, message: `Deleted ${ids.length} institution(s) successfully` };
   } catch (error) {
     return { status: false, message: "Failed to delete social security institutions" };
@@ -189,7 +189,7 @@ export async function updateSocialSecurityInstitutions(
       })
     );
     await Promise.all(promises);
-    revalidatePath("/dashboard/master/social-security");
+    revalidatePath("/master/social-security");
     return { status: true, message: `Updated ${items.length} institution(s) successfully` };
   } catch (error) {
     return { status: false, message: "Failed to update social security institutions" };

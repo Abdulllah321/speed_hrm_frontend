@@ -44,7 +44,7 @@ export async function createEquipment(formData: FormData): Promise<{ status: boo
       body: JSON.stringify({ name }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/equipment");
+    if (data.status) revalidatePath("/master/equipment");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create equipment" };
@@ -66,7 +66,7 @@ export async function createEquipments(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/equipment");
+    if (data.status) revalidatePath("/master/equipment");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create equipments" };
@@ -87,7 +87,7 @@ export async function updateEquipment(id: string, formData: FormData): Promise<{
       body: JSON.stringify({ name }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/equipment");
+    if (data.status) revalidatePath("/master/equipment");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update equipment" };
@@ -102,7 +102,7 @@ export async function deleteEquipment(id: string): Promise<{ status: boolean; me
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/equipment");
+    if (data.status) revalidatePath("/master/equipment");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete equipment" };
@@ -122,7 +122,7 @@ export async function deleteEquipments(ids: string[]): Promise<{ status: boolean
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/equipment");
+    if (data.status) revalidatePath("/master/equipment");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete equipments" };
@@ -144,7 +144,7 @@ export async function updateEquipments(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/equipment");
+    if (data.status) revalidatePath("/master/equipment");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update equipments" };

@@ -59,7 +59,7 @@ export async function createJobType(formData: FormData): Promise<{ status: boole
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/job-type");
+      revalidatePath("/master/job-type");
     }
     return data;
   } catch (error) {
@@ -83,7 +83,7 @@ export async function createJobTypes(names: string[]): Promise<{ status: boolean
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/job-type");
+      revalidatePath("/master/job-type");
     }
     return data;
   } catch (error) {
@@ -108,7 +108,7 @@ export async function updateJobType(id: string, formData: FormData): Promise<{ s
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/job-type");
+      revalidatePath("/master/job-type");
     }
     return data;
   } catch (error) {
@@ -125,7 +125,7 @@ export async function deleteJobType(id: string): Promise<{ status: boolean; mess
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/job-type");
+      revalidatePath("/master/job-type");
     }
     return data;
   } catch (error) {
@@ -149,7 +149,7 @@ export async function deleteJobTypes(ids: string[]): Promise<{ status: boolean; 
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/job-type");
+      revalidatePath("/master/job-type");
     }
     return data;
   } catch (error) {
@@ -173,7 +173,7 @@ export async function updateJobTypes(items: { id: string; name: string }[]): Pro
     });
     const data = await res.json();
     if (data.status) {
-      revalidatePath("/dashboard/master/job-type");
+      revalidatePath("/master/job-type");
     }
     return data;
   } catch (error) {

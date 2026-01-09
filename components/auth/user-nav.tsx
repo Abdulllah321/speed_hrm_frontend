@@ -52,19 +52,19 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/profile">
+            <Link href="/hr/profile">
               <User className="mr-2 h-4 w-4" />
               Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/settings">
+            <Link href="/hr/settings">
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/login-history">
+            <Link href="/hr/login-history">
               <History className="mr-2 h-4 w-4" />
               Login History
             </Link>
@@ -75,7 +75,7 @@ export function UserNav() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/dashboard/admin/activity-logs">
+                <Link href="/admin/activity-logs">
                   <Shield className="mr-2 h-4 w-4" />
                   Activity Logs
                 </Link>

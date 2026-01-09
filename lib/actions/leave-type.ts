@@ -44,7 +44,7 @@ export async function createLeaveType(formData: FormData): Promise<{ status: boo
       body: JSON.stringify({ name }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leave-types");
+    if (data.status) revalidatePath("/master/leave-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create leave type" };
@@ -66,7 +66,7 @@ export async function createLeaveTypes(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leave-types");
+    if (data.status) revalidatePath("/master/leave-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create leave types" };
@@ -87,7 +87,7 @@ export async function updateLeaveType(id: string, formData: FormData): Promise<{
       body: JSON.stringify({ id, name }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leave-types");
+    if (data.status) revalidatePath("/master/leave-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update leave type" };
@@ -102,7 +102,7 @@ export async function deleteLeaveType(id: string): Promise<{ status: boolean; me
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leave-types");
+    if (data.status) revalidatePath("/master/leave-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete leave type" };
@@ -122,7 +122,7 @@ export async function deleteLeaveTypes(ids: string[]): Promise<{ status: boolean
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leave-types");
+    if (data.status) revalidatePath("/master/leave-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete leave types" };
@@ -144,7 +144,7 @@ export async function updateLeaveTypes(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leave-types");
+    if (data.status) revalidatePath("/master/leave-types");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update leave types" };

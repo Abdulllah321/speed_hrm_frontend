@@ -94,11 +94,11 @@ export async function createAttendanceRequestQuery(data: Omit<AttendanceRequestQ
 
     const result = await res.json();
     if (result.status && result.data) {
-      revalidatePath('/dashboard/attendance/request-list');
+      revalidatePath('/hr/attendance/request-list');
       return { status: true, data: result.data };
     }
     if (result.id || result.status) {
-      revalidatePath('/dashboard/attendance/request-list');
+      revalidatePath('/hr/attendance/request-list');
     }
     return { status: true, data: result.data || result };
   } catch (error) {
@@ -126,11 +126,11 @@ export async function updateAttendanceRequestQuery(id: string, data: Partial<Att
 
     const result = await res.json();
     if (result.status && result.data) {
-      revalidatePath('/dashboard/attendance/request-list');
+      revalidatePath('/hr/attendance/request-list');
       return { status: true, data: result.data };
     }
     if (result.id || result.status) {
-      revalidatePath('/dashboard/attendance/request-list');
+      revalidatePath('/hr/attendance/request-list');
     }
     return { status: true, data: result.data || result };
   } catch (error) {
@@ -155,7 +155,7 @@ export async function deleteAttendanceRequestQuery(id: string): Promise<{ status
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
 
-    revalidatePath('/dashboard/attendance/request-list');
+    revalidatePath('/hr/attendance/request-list');
     return { status: true, message: 'Attendance request query deleted successfully' };
   } catch (error) {
     console.error('Error deleting attendance request query:', error);

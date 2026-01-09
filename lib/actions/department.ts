@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getAccessToken } from "@/lib/auth";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+const API_BASE = process.env.API_URL || "http://localhost:8080/api";
 
 export interface Department {
   id: string;
@@ -87,7 +87,7 @@ export async function createDepartments(names: string[]): Promise<{ status: bool
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/department");
+      revalidatePath("/master/department");
     }
 
     return data;
@@ -117,7 +117,7 @@ export async function updateDepartment(id: string, formData: FormData): Promise<
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/department");
+      revalidatePath("/master/department");
     }
 
     return data;
@@ -138,7 +138,7 @@ export async function deleteDepartment(id: string): Promise<{ status: boolean; m
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/department");
+      revalidatePath("/master/department");
     }
 
     return data;
@@ -165,7 +165,7 @@ export async function deleteDepartments(ids: string[]): Promise<{ status: boolea
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/department");
+      revalidatePath("/master/department");
     }
 
     return data;
@@ -194,7 +194,7 @@ export async function updateDepartments(
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/department");
+      revalidatePath("/master/department");
     }
 
     return data;
@@ -256,7 +256,7 @@ export async function createSubDepartment(formData: FormData): Promise<{ status:
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/sub-department");
+      revalidatePath("/master/sub-department");
     }
 
     return data;
@@ -285,7 +285,7 @@ export async function createSubDepartments(
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/sub-department");
+      revalidatePath("/master/sub-department");
     }
 
     return data;
@@ -316,7 +316,7 @@ export async function updateSubDepartment(id: string, formData: FormData): Promi
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/sub-department");
+      revalidatePath("/master/sub-department");
     }
 
     return data;
@@ -337,7 +337,7 @@ export async function deleteSubDepartment(id: string): Promise<{ status: boolean
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/sub-department");
+      revalidatePath("/master/sub-department");
     }
 
     return data;
@@ -364,7 +364,7 @@ export async function deleteSubDepartments(ids: string[]): Promise<{ status: boo
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/sub-department");
+      revalidatePath("/master/sub-department");
     }
 
     return data;
@@ -393,7 +393,7 @@ export async function updateSubDepartments(
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/sub-department");
+      revalidatePath("/master/sub-department");
     }
 
     return data;

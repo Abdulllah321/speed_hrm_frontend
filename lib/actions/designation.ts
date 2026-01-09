@@ -66,7 +66,7 @@ export async function createDesignation(formData: FormData): Promise<{ status: b
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/designation");
+      revalidatePath("/master/designation");
     }
 
     return data;
@@ -93,7 +93,7 @@ export async function createDesignations(names: string[]): Promise<{ status: boo
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/designation");
+      revalidatePath("/master/designation");
     }
 
     return data;
@@ -122,7 +122,7 @@ export async function updateDesignation(id: string, formData: FormData): Promise
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/designation");
+      revalidatePath("/master/designation");
     }
 
     return data;
@@ -143,7 +143,7 @@ export async function deleteDesignation(id: string): Promise<{ status: boolean; 
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/designation");
+      revalidatePath("/master/designation");
     }
 
     return data;
@@ -170,7 +170,7 @@ export async function deleteDesignations(ids: string[]): Promise<{ status: boole
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/designation");
+      revalidatePath("/master/designation");
     }
 
     return data;
@@ -199,7 +199,7 @@ export async function updateDesignations(
     const data = await res.json();
 
     if (data.status) {
-      revalidatePath("/dashboard/master/designation");
+      revalidatePath("/master/designation");
     }
 
     return data;

@@ -42,7 +42,7 @@ export async function createSalaryBreakup(
       }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/salary-breakup/list");
+    if (data.status) revalidatePath("/master/salary-breakup/list");
     return data;
   } catch {
     return { status: false, message: "Failed to create salary breakup" };
@@ -107,7 +107,7 @@ export async function updateSalaryBreakup(
       body: JSON.stringify(data),
     });
     const result = await res.json();
-    if (result.status) revalidatePath("/dashboard/master/salary-breakup/list");
+    if (result.status) revalidatePath("/master/salary-breakup/list");
     return result;
   } catch (error) {
     return { status: false, message: "Failed to update salary breakup" };
@@ -128,7 +128,7 @@ export async function deleteSalaryBreakup(
       headers,
     });
     const result = await res.json();
-    if (result.status) revalidatePath("/dashboard/master/salary-breakup/list");
+    if (result.status) revalidatePath("/master/salary-breakup/list");
     return result;
   } catch (error) {
     return { status: false, message: "Failed to delete salary breakup" };

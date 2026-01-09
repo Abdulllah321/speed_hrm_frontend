@@ -51,8 +51,8 @@ export function SessionChecker() {
   }, [performCheck]);
 
   const handleLogin = () => {
-    const callbackUrl = encodeURIComponent(pathname || "/dashboard");
-    router.push(`/login?callbackUrl=${callbackUrl}`);
+    const callbackUrl = encodeURIComponent(pathname || "/hr");
+    router.push(`/auth/login?callbackUrl=${callbackUrl}`);
   };
 
   return (

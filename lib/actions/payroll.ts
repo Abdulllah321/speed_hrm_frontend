@@ -65,7 +65,7 @@ export async function confirmPayroll(data: {
             };
         }
 
-        revalidatePath("/dashboard/payroll");
+        revalidatePath("/hr/payroll");
         return {
             status: true,
             message: "Payroll confirmed and saved successfully",

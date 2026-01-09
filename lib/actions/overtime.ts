@@ -72,7 +72,7 @@ export async function createOvertimeRequest(
     }
 
     const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/overtime');
+    revalidatePath('/hr/payroll-setup/overtime');
     return { status: result.status, data: result.data, message: result.message };
   } catch (error) {
     console.error('Error creating overtime request:', error);
@@ -159,7 +159,7 @@ export async function updateOvertimeRequest(
     }
 
     const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/overtime');
+    revalidatePath('/hr/payroll-setup/overtime');
     return { status: result.status, data: result.data, message: result.message };
   } catch (error) {
     console.error('Error updating overtime request:', error);
@@ -181,7 +181,7 @@ export async function deleteOvertimeRequest(id: string): Promise<{ status: boole
     }
 
     const result = await res.json();
-    revalidatePath('/dashboard/payroll-setup/overtime');
+    revalidatePath('/hr/payroll-setup/overtime');
     return { status: result.status, message: result.message };
   } catch (error) {
     console.error('Error deleting overtime request:', error);

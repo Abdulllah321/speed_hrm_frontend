@@ -53,7 +53,7 @@ export async function createEOBI(formData: FormData): Promise<{ status: boolean;
       body: JSON.stringify({ name, amount, yearMonth }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/eobi");
+    if (data.status) revalidatePath("/master/eobi");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create EOBI" };
@@ -82,7 +82,7 @@ export async function createEOBIs(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/eobi");
+    if (data.status) revalidatePath("/master/eobi");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create EOBIs" };
@@ -120,7 +120,7 @@ export async function updateEOBI(id: string, formData: FormData): Promise<{ stat
       }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/eobi");
+    if (data.status) revalidatePath("/master/eobi");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update EOBI" };
@@ -135,7 +135,7 @@ export async function deleteEOBI(id: string): Promise<{ status: boolean; message
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/eobi");
+    if (data.status) revalidatePath("/master/eobi");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete EOBI" };
@@ -155,7 +155,7 @@ export async function deleteEOBIs(ids: string[]): Promise<{ status: boolean; mes
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/eobi");
+    if (data.status) revalidatePath("/master/eobi");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete EOBIs" };
@@ -185,7 +185,7 @@ export async function updateEOBIs(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/eobi");
+    if (data.status) revalidatePath("/master/eobi");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update EOBIs" };

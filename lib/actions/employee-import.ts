@@ -60,7 +60,7 @@ export async function uploadEmployeeCsv(
     const path = json.data?.path?.replace(/\\/g, '/');
     const url = path ? `${PUBLIC_BASE}/${path}` : undefined;
 
-    revalidatePath('/dashboard/employee/list');
+    revalidatePath('/hr/employee/list');
 
     return {
       status: true,

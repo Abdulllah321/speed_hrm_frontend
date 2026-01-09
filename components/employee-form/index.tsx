@@ -43,11 +43,11 @@ import type { Qualification } from "@/lib/actions/qualification";
 import type { Institute } from "@/lib/actions/institute";
 import type { Allocation } from "@/lib/actions/allocation";
 import { createEmployee, updateEmployee, getEmployees, type Employee } from "@/lib/actions/employee";
-import { BasicInfoSection } from "@/app/dashboard/employee/create/components/basic-info-section";
-import { QualificationSection } from "@/app/dashboard/employee/create/components/qualification-section";
-import { SocialSecuritySection } from "@/app/dashboard/employee/create/components/social-security-section";
+import { BasicInfoSection } from "@/app/hr/employee/create/components/basic-info-section";
+import { QualificationSection } from "@/app/hr/employee/create/components/qualification-section";
+import { SocialSecuritySection } from "@/app/hr/employee/create/components/social-security-section";
 import { uploadFile } from "@/lib/upload";
-import { DateSection } from "@/app/dashboard/employee/create/components/date-section";
+import { DateSection } from "@/app/hr/employee/create/components/date-section";
 import { getCountries } from "@/lib/actions/city";
 import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -1262,7 +1262,7 @@ export function EmployeeForm({
 
           if (result.status) {
             toast.success(result.message || "Employee created successfully");
-            router.push("/dashboard/employee/list");
+            router.push(/employee/list");
           } else {
             toast.error(result.message || "Failed to create employee");
           }
@@ -1399,7 +1399,7 @@ export function EmployeeForm({
 
           if (result.status) {
             toast.success(result.message || "Employee updated successfully");
-            router.push("/dashboard/employee/list");
+            router.push(/employee/list");
           } else {
             toast.error(result.message || "Failed to update employee");
           }

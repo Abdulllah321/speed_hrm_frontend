@@ -93,7 +93,7 @@ export async function createLocations(items: { name: string; address?: string; c
         const data = await res.json();
 
         if (data.status) {
-            revalidatePath("/dashboard/master/location");
+            revalidatePath("/master/location");
         }
 
         return data;
@@ -119,7 +119,7 @@ export async function updateLocations(
         const data = await res.json();
 
         if (data.status) {
-            revalidatePath("/dashboard/master/location");
+            revalidatePath("/master/location");
         }
 
         return data;
@@ -143,7 +143,7 @@ export async function deleteLocations(ids: string[]): Promise<{ status: boolean;
         const data = await res.json();
 
         if (data.status) {
-            revalidatePath("/dashboard/master/location");
+            revalidatePath("/master/location");
         }
 
         return data;
@@ -160,7 +160,7 @@ export async function deleteLocation(id: string): Promise<{ status: boolean; mes
             headers: await getAuthHeaders(false),
         });
         const data = await res.json();
-        if (data.status) revalidatePath("/dashboard/master/location");
+        if (data.status) revalidatePath("/master/location");
         return data;
     } catch (error) {
         return { status: false, message: 'Failed to delete location' };

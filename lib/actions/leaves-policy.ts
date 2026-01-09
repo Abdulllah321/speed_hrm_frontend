@@ -96,7 +96,7 @@ export async function createLeavesPolicy(data: {
       body: JSON.stringify(data),
     });
     const result = await res.json();
-    if (result.status) revalidatePath("/dashboard/master/leaves-policy");
+    if (result.status) revalidatePath("/master/leaves-policy");
     return result;
   } catch (error) {
     return { status: false, message: "Failed to create leave policy" };
@@ -119,7 +119,7 @@ export async function createLeavesPolicies(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leaves-policy");
+    if (data.status) revalidatePath("/master/leaves-policy");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to create leave policies" };
@@ -151,7 +151,7 @@ export async function updateLeavesPolicy(
       body: JSON.stringify(data),
     });
     const result = await res.json();
-    if (result.status) revalidatePath("/dashboard/master/leaves-policy");
+    if (result.status) revalidatePath("/master/leaves-policy");
     return result;
   } catch (error) {
     return { status: false, message: "Failed to update leave policy" };
@@ -168,7 +168,7 @@ export async function deleteLeavesPolicy(
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leaves-policy");
+    if (data.status) revalidatePath("/master/leaves-policy");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete leave policy" };
@@ -190,7 +190,7 @@ export async function deleteLeavesPolicies(
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leaves-policy");
+    if (data.status) revalidatePath("/master/leaves-policy");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to delete leave policies" };
@@ -212,7 +212,7 @@ export async function updateLeavesPolicies(
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leaves-policy");
+    if (data.status) revalidatePath("/master/leaves-policy");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to update leave policies" };
@@ -233,7 +233,7 @@ export async function setDefaultLeavesPolicy(
       headers,
     });
     const data = await res.json();
-    if (data.status) revalidatePath("/dashboard/master/leaves-policy");
+    if (data.status) revalidatePath("/master/leaves-policy");
     return data;
   } catch (error) {
     return { status: false, message: "Failed to set default leave policy" };

@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,9 +19,10 @@ import {
 } from "@/components/ui/collapsible";
 import { Database, ChevronRight, Search } from "lucide-react";
 import { masterMenuData, MenuItem } from "./sidebar-menu-data";
+import { createNavigationHandler } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
-function MasterMenuItem({ item, pathname, onNavigate }: { item: MenuItem; pathname: string; onNavigate: () => void }) {
+function MasterMenuItem({ item, pathname, onNavigate }: { item: MenuItem; pathname: string; onNavigate: (href: string, e: React.MouseEvent) => void }) {
   const hasChildren = item.children && item.children.length > 0;
   const isChildActive = item.children?.some((child) => child.href === pathname);
 
@@ -36,17 +36,16 @@ function MasterMenuItem({ item, pathname, onNavigate }: { item: MenuItem; pathna
         <CollapsibleContent>
           <div className="ml-4 border-l pl-2 mt-1 space-y-1">
             {item.children?.map((child) => (
-              <Link
+              <button
                 key={child.href}
-                href={child.href || "#"}
-                onClick={onNavigate}
+                onClick={(e) => child.href && onNavigate(child.href, e)}
                 className={cn(
-                  "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                  "flex items-center rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground w-full text-left",
                   pathname === child.href && "bg-accent text-accent-foreground font-medium"
                 )}
               >
                 {child.title}
-              </Link>
+              </button>
             ))}
           </div>
         </CollapsibleContent>
@@ -55,24 +54,27 @@ function MasterMenuItem({ item, pathname, onNavigate }: { item: MenuItem; pathna
   }
 
   return (
-    <Link
-      href={item.href || "#"}
-      onClick={onNavigate}
+    <button
+      onClick={(e) => item.href && onNavigate(item.href, e)}
       className={cn(
-        "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+        "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground w-full text-left",
         pathname === item.href && "bg-accent text-accent-foreground font-medium"
       )}
     >
       <span>{item.title}</span>
       <ChevronRight className="h-4 w-4 opacity-50" />
-    </Link>
+    </button>
   );
 }
 
 export function HeaderMasterMenu() {
   const pathname = usePathname();
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+
+  // Create navigation handler with router
+  const navigate = createNavigationHandler(router);
 
   const filteredMenu = useMemo(() => {
     if (!search) return masterMenuData;
@@ -85,6 +87,12 @@ export function HeaderMasterMenu() {
       return titleMatch || childMatch;
     });
   }, [search]);
+
+  const handleClick = (href: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate(href);
+    setOpen(false);
+  };
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -117,7 +125,7 @@ export function HeaderMasterMenu() {
               </p>
             ) : (
               filteredMenu.map((item) => (
-                <MasterMenuItem key={item.title} item={item} pathname={pathname} onNavigate={() => setOpen(false)} />
+                <MasterMenuItem key={item.title} item={item} pathname={pathname} onNavigate={handleClick} />
               ))
             )}
           </div>

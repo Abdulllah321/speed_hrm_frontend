@@ -3,6 +3,17 @@ import { NextResponse } from "next/server";
 
 const API_BASE = process.env.API_URL || "http://localhost:5000/api";
 
+// Get cookie domain for cross-subdomain authentication
+// In production, set to base domain (e.g., ".example.com") to share cookies across subdomains
+// In development, try ".localhost" - if browser doesn't support it, cookies won't be shared
+function getCookieDomain(): string | undefined {
+  if (process.env.NODE_ENV === "production" && process.env.COOKIE_DOMAIN) {
+    return process.env.COOKIE_DOMAIN; // e.g., ".example.com"
+  }
+  // Try ".localhost" for development
+  return ".localhost";
+}
+
 // Decode JWT token to check expiration (without verification)
 function decodeToken(token: string): { exp?: number; iat?: number } | null {
   try {
@@ -187,20 +198,25 @@ async function tryRefresh(refreshToken: string | undefined, cookieStore: any): P
       }
 
       // Update cookies with new tokens
-      cookieStore.set("accessToken", newAccessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: 2 * 60 * 60, // 2 hours (matches backend access token expiry)
+      const cookieDomain = getCookieDomain();
+      const isDevelopment = process.env.NODE_ENV !== "production";
+      const cookieOptions = {
+        domain: cookieDomain,
+        secure: !isDevelopment, // false in dev (HTTP), true in prod (HTTPS)
+        sameSite: "lax" as const,
         path: "/",
+      };
+
+      cookieStore.set("accessToken", newAccessToken, {
+        ...cookieOptions,
+        httpOnly: true,
+        maxAge: 2 * 60 * 60, // 2 hours (matches backend access token expiry)
       });
 
       cookieStore.set("refreshToken", newRefreshToken, {
+        ...cookieOptions,
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
         maxAge: 30 * 24 * 60 * 60, // 30 days to match backend refresh token expiry
-        path: "/",
       });
 
       return true;
