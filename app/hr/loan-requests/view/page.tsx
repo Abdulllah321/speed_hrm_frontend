@@ -1,5 +1,5 @@
 import { LoanRequestUnified } from "./loan-request-unified";
-import { ListError } from "@/components/hr/list-error";
+import { ListError } from "@/components/dashboard/list-error";
 import { getLoanRequests } from "@/lib/actions/loan-request";
 import type { LoanRequestRow } from "./columns";
 import type { LoanReportRow } from "../report/columns";
