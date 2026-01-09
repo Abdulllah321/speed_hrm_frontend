@@ -130,34 +130,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [mounted, fetchUser]);
 
-  // Update preference - update local state immediately, save to database in background
-  // No need to refresh from /api/auth/me since we update local state optimistically
+  // Update preference - only update local state since preferences are handled by /api/auth/me
   const updatePreference = useCallback(async (key: string, value: any) => {
     // Update local state immediately for instant UI feedback
     setPreferences((prev) => ({
       ...prev,
       [key]: value,
     }));
-    
-    // Save to database in background without blocking UI
-    // This ensures persistence but doesn't affect responsiveness
-    const valueString = JSON.stringify(value);
-    fetch("/api/user-preferences", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-      body: JSON.stringify({ key, value: valueString }),
-    }).catch((error) => {
-      console.error("Error saving preference:", error);
-      // On error, revert the optimistic update
-      setPreferences((prev) => {
-        const updated = { ...prev };
-        delete updated[key];
-        return updated;
-      });
-    });
   }, []);
 
   // Get preference by key
