@@ -388,7 +388,7 @@ export const menuData: MenuItem[] = [
       {
         title: "PF for Employee",
         children: [
-          { title: "Create PF", href: "/dashboard/payroll-setup/pf-employee/create" },
+          // { title: "Create PF", href: "/dashboard/payroll-setup/pf-employee/create" },
           { title: "View PF", href: "/dashboard/payroll-setup/pf-employee/view" },
           {
             title: "Create Withdraw",
