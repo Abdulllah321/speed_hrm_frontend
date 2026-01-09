@@ -1262,7 +1262,7 @@ export function EmployeeForm({
 
           if (result.status) {
             toast.success(result.message || "Employee created successfully");
-            router.push(/employee/list");
+            router.push("/hr/employee/list");
           } else {
             toast.error(result.message || "Failed to create employee");
           }
@@ -1399,7 +1399,7 @@ export function EmployeeForm({
 
           if (result.status) {
             toast.success(result.message || "Employee updated successfully");
-            router.push(/employee/list");
+            router.push("/hr/employee/list");
           } else {
             toast.error(result.message || "Failed to update employee");
           }

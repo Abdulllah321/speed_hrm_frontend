@@ -1,6 +1,6 @@
 import { getHolidays } from "@/lib/actions/holiday";
 import { HolidayList } from "./holiday-list";
-import { ListError } from "@/components/hr/list-error";
+import { ListError } from "@/components/dashboard/list-error";
 
 export const dynamic = "force-dynamic";
 

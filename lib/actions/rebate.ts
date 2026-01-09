@@ -155,7 +155,7 @@ export async function createRebate(data: {
       };
     }
 
-    revalidatePath(/payroll-setup/rebate");
+    revalidatePath("/hr/payroll-setup/rebate");
     return {
       status: true,
       data: result.data,
@@ -208,7 +208,7 @@ export async function updateRebate(
       };
     }
 
-    revalidatePath(/payroll-setup/rebate");
+    revalidatePath("/hr/payroll-setup/rebate");
     return {
       status: true,
       data: result.data,
@@ -240,7 +240,7 @@ export async function deleteRebate(id: string): Promise<{ status: boolean; messa
       };
     }
 
-    revalidatePath(/payroll-setup/rebate");
+    revalidatePath("/hr/payroll-setup/rebate");
     return {
       status: true,
       message: result.message || "Rebate deleted successfully",
