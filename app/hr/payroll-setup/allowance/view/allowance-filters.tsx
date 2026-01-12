@@ -34,9 +34,9 @@ interface AllowanceFiltersProps {
     employeeId: string;
     allowanceHeadId: string;
     status: string;
+    paymentMethod: string;
     month: string;
     year: string;
-    isTaxable: string;
   };
   onFiltersChange: (filters: {
     departmentId: string;
@@ -44,9 +44,9 @@ interface AllowanceFiltersProps {
     employeeId: string;
     allowanceHeadId: string;
     status: string;
+    paymentMethod: string;
     month: string;
     year: string;
-    isTaxable: string;
   }) => void;
   onReset: () => void;
 }
@@ -69,7 +69,8 @@ export function AllowanceFilters({
     filters.subDepartmentId !== "all" ||
     filters.employeeId !== "all" ||
     filters.allowanceHeadId !== "all" ||
-    filters.status !== "all";
+    filters.status !== "all" ||
+    filters.paymentMethod !== "all";
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
     const newFilters = { ...filters };
@@ -105,9 +106,9 @@ export function AllowanceFilters({
                         filters.employeeId !== "all",
                         filters.allowanceHeadId !== "all",
                         filters.status !== "all",
+                        filters.paymentMethod !== "all",
                         filters.month !== "all",
                         filters.year !== "all",
-                        filters.isTaxable !== "all",
                       ].filter(Boolean).length
                     }
                   </span>
@@ -276,6 +277,25 @@ export function AllowanceFilters({
                 />
               </div>
 
+              {/* Payment Method Filter */}
+              <div className="space-y-2">
+                <Label htmlFor="payment-method-filter">Payment Method</Label>
+                <Autocomplete
+                  options={[
+                    { value: "all", label: "All Payment Methods" },
+                    { value: "with_salary", label: "With Salary" },
+                    { value: "separately", label: "Separately" },
+                  ]}
+                  value={filters.paymentMethod}
+                  onValueChange={(value) =>
+                    handleFilterChange("paymentMethod", value || "all")
+                  }
+                  placeholder="Select Payment Method"
+                  searchPlaceholder="Search payment method..."
+                  emptyMessage="No payment method found"
+                />
+              </div>
+
               {/* Month Filter */}
               <div className="space-y-2">
                 <Label htmlFor="month-filter">Month</Label>
@@ -323,25 +343,6 @@ export function AllowanceFilters({
                   placeholder="Select Year"
                   searchPlaceholder="Search year..."
                   emptyMessage="No year found"
-                />
-              </div>
-
-              {/* Taxable Status Filter */}
-              <div className="space-y-2">
-                <Label htmlFor="taxable-filter">Taxable Status</Label>
-                <Autocomplete
-                  options={[
-                    { value: "all", label: "All" },
-                    { value: "true", label: "Taxable" },
-                    { value: "false", label: "Non-Taxable" },
-                  ]}
-                  value={filters.isTaxable}
-                  onValueChange={(value) =>
-                    handleFilterChange("isTaxable", value || "all")
-                  }
-                  placeholder="Select Taxable Status"
-                  searchPlaceholder="Search..."
-                  emptyMessage="No option found"
                 />
               </div>
             </div>

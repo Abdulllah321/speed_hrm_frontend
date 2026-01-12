@@ -36,16 +36,16 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
   const [allowanceHeads, setAllowanceHeads] = useState<AllowanceHead[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
-  
+
   const [filters, setFilters] = useState({
     departmentId: "all",
     subDepartmentId: "all",
     employeeId: "all",
     allowanceHeadId: "all",
     status: "all",
+    paymentMethod: "all",
     month: "all",
     year: "all",
-    isTaxable: "all",
   });
 
   // Transform API data to row format
@@ -67,9 +67,7 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
       year: allowance.year || "",
       monthYear: formatMonthYear(allowance.month || "", allowance.year || ""),
       type: allowance.type || "specific",
-      adjustmentMethod: allowance.adjustmentMethod || undefined,
-      isTaxable: allowance.isTaxable || false,
-      taxPercentage: allowance.taxPercentage ? Number(allowance.taxPercentage) : null,
+      paymentMethod: allowance.paymentMethod || "with_salary",
       notes: allowance.notes || null,
       status: allowance.status || "active",
       createdAt: allowance.createdAt,
@@ -88,47 +86,44 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
           return false;
         }
       }
-      
+
       // Sub Department filter: only apply if department is selected and matches
       if (filters.subDepartmentId !== "all") {
         if (!row.subDepartmentId || row.subDepartmentId !== filters.subDepartmentId) {
           return false;
         }
       }
-      
+
       // Employee filter
       if (filters.employeeId !== "all" && row.employeeId !== filters.employeeId) {
         return false;
       }
-      
+
       // Allowance Head filter
       if (filters.allowanceHeadId !== "all" && row.allowanceHeadId !== filters.allowanceHeadId) {
         return false;
       }
-      
+
       // Status filter
       if (filters.status !== "all" && row.status?.toLowerCase() !== filters.status.toLowerCase()) {
         return false;
       }
-      
+
+      // Payment Method filter
+      if (filters.paymentMethod !== "all" && row.paymentMethod !== filters.paymentMethod) {
+        return false;
+      }
+
       // Month filter
       if (filters.month !== "all" && row.month !== filters.month) {
         return false;
       }
-      
+
       // Year filter
       if (filters.year !== "all" && row.year !== filters.year) {
         return false;
       }
-      
-      // Taxable status filter
-      if (filters.isTaxable !== "all") {
-        const isTaxable = filters.isTaxable === "true";
-        if (row.isTaxable !== isTaxable) {
-          return false;
-        }
-      }
-      
+
       return true;
     });
   }, [allData, filters]);
@@ -220,8 +215,7 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
       "Sub Department",
       "Allowance Type",
       "Amount",
-      "Taxable",
-      "Tax %",
+      "Payment Method",
       "Month-Year",
       "Status",
       "Notes",
@@ -235,8 +229,7 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
       row.subDepartment,
       row.allowanceHeadName,
       row.amount.toString(),
-      row.isTaxable ? "Yes" : "No",
-      row.taxPercentage?.toString() || "—",
+      row.paymentMethod === "with_salary" ? "With Salary" : "Separately",
       row.monthYear,
       row.status,
       row.notes || "—",
@@ -266,9 +259,9 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
       employeeId: "all",
       allowanceHeadId: "all",
       status: "all",
+      paymentMethod: "all",
       month: "all",
       year: "all",
-      isTaxable: "all",
     });
   };
 

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {Autocomplete} from "@/components/ui/autocomplete";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronUp, X } from "lucide-react";
 import type { EmployeeDropdownOption } from "@/lib/actions/employee";
@@ -26,7 +26,6 @@ interface DeductionFiltersProps {
     status: string;
     month: string;
     year: string;
-    isTaxable: string;
   };
   onFiltersChange: (filters: {
     departmentId: string;
@@ -36,7 +35,6 @@ interface DeductionFiltersProps {
     status: string;
     month: string;
     year: string;
-    isTaxable: string;
   }) => void;
   onReset: () => void;
 }
@@ -61,8 +59,7 @@ export function DeductionFilters({
     filters.deductionHeadId !== "all" ||
     filters.status !== "all" ||
     filters.month !== "all" ||
-    filters.year !== "all" ||
-    filters.isTaxable !== "all";
+    filters.year !== "all";
 
   const handleFilterChange = (key: keyof typeof filters, value: string) => {
     const newFilters = { ...filters };
@@ -100,14 +97,13 @@ export function DeductionFilters({
                         filters.status !== "all",
                         filters.month !== "all",
                         filters.year !== "all",
-                        filters.isTaxable !== "all",
                       ].filter(Boolean).length
                     }
                   </span>
                 )}
               </CardTitle>
               <CardDescription>
-                Filter deduction records by department, employee, type, status, month, year, or taxable status
+                Filter deduction records by department, employee, type, status, month, or year
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -319,26 +315,6 @@ export function DeductionFilters({
                   placeholder="Select Year"
                   searchPlaceholder="Search year..."
                   emptyMessage="No year found"
-                />
-              </div>
-
-              {/* Taxable Status Filter */}
-              <div className="space-y-2">
-                <Label htmlFor="taxable-filter">Taxable Status</Label>
-                <Autocomplete
-                  id="taxable-filter"
-                  options={[
-                    { value: "all", label: "All" },
-                    { value: "true", label: "Taxable" },
-                    { value: "false", label: "Non-Taxable" },
-                  ]}
-                  value={filters.isTaxable}
-                  onValueChange={(value) =>
-                    handleFilterChange("isTaxable", value || "all")
-                  }
-                  placeholder="Select Taxable Status"
-                  searchPlaceholder="Search..."
-                  emptyMessage="No option found"
                 />
               </div>
             </div>

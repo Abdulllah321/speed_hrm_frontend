@@ -7,28 +7,26 @@ import { format } from "date-fns";
 
 export const columns: ColumnDef<PFWithdrawal>[] = [
     {
-        accessorKey: "employee.employeeId",
-        header: "Employee ID",
+        id: "serialNumber",
+        header: "S.No",
+        cell: ({ row }) => <div className="text-center">{row.index + 1}</div>,
+    },
+    {
+        id: "employeeDetails",
+        accessorFn: (row) => `${row.employee.employeeName} ${row.employee.employeeId} ${row.employee.department.name} ${row.employee.subDepartment?.name || ''}`,
+        header: "Employee Details",
         cell: ({ row }) => (
-            <div className="font-medium">{row.original.employee.employeeId}</div>
+            <div className="space-y-1">
+                <div className="font-medium">{row.original.employee.employeeName}</div>
+                <div className="text-xs text-muted-foreground">
+                    {row.original.employee.employeeId}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                    {row.original.employee.department.name}
+                    {row.original.employee.subDepartment?.name ? ` • ${row.original.employee.subDepartment.name}` : ""}
+                </div>
+            </div>
         ),
-    },
-    {
-        accessorKey: "employee.employeeName",
-        header: "Employee Name",
-        cell: ({ row }) => (
-            <div className="font-medium">{row.original.employee.employeeName}</div>
-        ),
-    },
-    {
-        accessorKey: "employee.department.name",
-        header: "Department",
-        cell: ({ row }) => row.original.employee.department.name,
-    },
-    {
-        accessorKey: "employee.subDepartment.name",
-        header: "Sub Department",
-        cell: ({ row }) => row.original.employee.subDepartment?.name || "N/A",
     },
     {
         accessorKey: "withdrawalAmount",

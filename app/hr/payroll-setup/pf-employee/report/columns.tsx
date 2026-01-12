@@ -1,14 +1,13 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { PFEmployee } from "@/lib/actions/pf-employee";
-import { Badge } from "@/components/ui/badge";
+import { PFReportItem } from "@/lib/actions/pf-report";
 
-export const columns: ColumnDef<PFEmployee>[] = [
+export const columns: ColumnDef<PFReportItem>[] = [
     {
         id: "serialNumber",
         header: "S.No",
-        cell: ({ row }) => <div className="text-center">{row.index + 1}</div>,
+        cell: ({ row }) => row.index + 1,
     },
     {
         id: "employeeDetails",
@@ -28,40 +27,8 @@ export const columns: ColumnDef<PFEmployee>[] = [
         ),
     },
     {
-        accessorKey: "designation",
-        header: "Designation",
-    },
-    {
-        accessorKey: "employeeContribution",
-        header: "Employee Contribution",
-        cell: ({ row }) => {
-            const amount = parseFloat(row.getValue("employeeContribution"));
-            const formatted = new Intl.NumberFormat("en-PK", {
-                style: "currency",
-                currency: "PKR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-            }).format(amount);
-            return <div className="font-medium">{formatted}</div>;
-        },
-    },
-    {
-        accessorKey: "employerContribution",
-        header: "Employer Contribution",
-        cell: ({ row }) => {
-            const amount = parseFloat(row.getValue("employerContribution"));
-            const formatted = new Intl.NumberFormat("en-PK", {
-                style: "currency",
-                currency: "PKR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-            }).format(amount);
-            return <div className="font-medium">{formatted}</div>;
-        },
-    },
-    {
         accessorKey: "totalPFBalance",
-        header: "Total PF Balance",
+        header: "Total PF",
         cell: ({ row }) => {
             const amount = parseFloat(row.getValue("totalPFBalance"));
             const formatted = new Intl.NumberFormat("en-PK", {
@@ -70,25 +37,35 @@ export const columns: ColumnDef<PFEmployee>[] = [
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0,
             }).format(amount);
-            return (
-                <div className="font-bold text-green-600">{formatted}</div>
-            );
+            return <div className="font-medium">{formatted}</div>;
         },
     },
     {
-        accessorKey: "lastContributionMonth",
-        header: "Last Contribution",
-        cell: ({ row }) => (
-            <Badge variant="outline">{row.getValue("lastContributionMonth")}</Badge>
-        ),
+        accessorKey: "totalWithdrawal",
+        header: "PF Withdrawal",
+        cell: ({ row }) => {
+            const amount = parseFloat(row.getValue("totalWithdrawal"));
+            const formatted = new Intl.NumberFormat("en-PK", {
+                style: "currency",
+                currency: "PKR",
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            }).format(amount);
+            return <div className="font-medium">{formatted}</div>;
+        },
     },
     {
-        accessorKey: "totalMonths",
-        header: "Total Months",
-        cell: ({ row }) => (
-            <div className="text-center">
-                <Badge variant="secondary">{row.getValue("totalMonths")}</Badge>
-            </div>
-        ),
+        accessorKey: "closingBalance",
+        header: "PF Closing Amount",
+        cell: ({ row }) => {
+            const amount = parseFloat(row.getValue("closingBalance"));
+            const formatted = new Intl.NumberFormat("en-PK", {
+                style: "currency",
+                currency: "PKR",
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+            }).format(amount);
+            return <div className="font-bold text-green-600">{formatted}</div>;
+        },
     },
 ];

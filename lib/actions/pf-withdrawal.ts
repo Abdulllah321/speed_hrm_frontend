@@ -57,10 +57,11 @@ export async function createPFWithdrawal(data: {
 }): Promise<{ status: boolean; data?: PFWithdrawal; message?: string }> {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/payroll/pf-withdrawals`, {
+        const response = await fetch(`${API_URL}/pf/withdrawals`, {
             method: 'POST',
             headers,
             body: JSON.stringify(data),
+            cache: 'no-store',
         });
 
         if (!response.ok) {
@@ -80,26 +81,19 @@ export async function createPFWithdrawal(data: {
 }
 
 // Get all PF withdrawals
-export async function getPFWithdrawals(params?: {
-    employeeId?: string;
-    departmentId?: string;
-    month?: string;
-    year?: string;
-    status?: string;
-}): Promise<{ status: boolean; data?: PFWithdrawal[]; message?: string }> {
+export async function getPFWithdrawals(filters?: any): Promise<{ status: boolean; data?: PFWithdrawal[]; message?: string }> {
     try {
         const headers = await getAuthHeaders();
         const queryParams = new URLSearchParams();
+        if (filters) {
+            Object.keys(filters).forEach(key => {
+                if (filters[key]) {
+                    queryParams.append(key, filters[key]);
+                }
+            });
+        }
 
-        if (params?.employeeId) queryParams.append('employeeId', params.employeeId);
-        if (params?.departmentId) queryParams.append('departmentId', params.departmentId);
-        if (params?.month) queryParams.append('month', params.month);
-        if (params?.year) queryParams.append('year', params.year);
-        if (params?.status) queryParams.append('status', params.status);
-
-        const url = `${API_URL}/payroll/pf-withdrawals${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-
-        const response = await fetch(url, {
+        const response = await fetch(`${API_URL}/pf/withdrawals?${queryParams.toString()}`, {
             method: 'GET',
             headers,
             cache: 'no-store',

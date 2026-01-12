@@ -75,7 +75,7 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
             View Promotion List
           </h2>
           <p className="text-muted-foreground">
-            View employee promotion/increment records
+            View employee promotion/increment & decrement records
           </p>
         </div>
         <div className="flex gap-2">

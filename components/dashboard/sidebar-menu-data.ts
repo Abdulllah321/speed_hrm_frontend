@@ -388,7 +388,7 @@ export const menuData: MenuItem[] = [
       {
         title: "PF for Employee",
         children: [
-          { title: "Create PF", href: "/hr/payroll-setup/pf-employee/create" },
+          // { title: "Create PF", href: "/hr/payroll-setup/pf-employee/create" },
           { title: "View PF", href: "/hr/payroll-setup/pf-employee/view" },
           {
             title: "Create Withdraw",
@@ -409,15 +409,15 @@ export const menuData: MenuItem[] = [
           { title: "List", href: "/hr/payroll-setup/final-settlement/list" },
         ],
       },
-      {
-        title: "HR Letters",
-        icon: FileText,
-        children: [
-          { title: "Create", href: "/hr/payroll-setup/hr-letters/create" },
-          { title: "View", href: "/hr/payroll-setup/hr-letters/view" },
-          { title: "Upload", href: "/hr/payroll-setup/hr-letters/upload" },
-        ],
-      },
+      // {
+      //   title: "HR Letters",
+      //   icon: FileText,
+      //   children: [
+      //     { title: "Create", href: "/hr/payroll-setup/hr-letters/create" },
+      //     { title: "View", href: "/hr/payroll-setup/hr-letters/view" },
+      //     { title: "Upload", href: "/hr/payroll-setup/hr-letters/upload" },
+      //   ],
+      // },
       {
         title: "Salary Sheet",
         icon: Receipt,

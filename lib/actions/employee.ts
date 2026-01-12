@@ -77,6 +77,7 @@ export interface Employee {
   designationName?: string;
   employeeGradeName?: string;
   locationName?: string;
+  countryName?: string;
   provinceName?: string;
   cityName?: string;
   maritalStatusName?: string;
@@ -127,6 +128,8 @@ export interface EmployeeDropdownOption {
   departmentId: string | null;
   subDepartmentId: string | null;
   departmentName: string | null;
+  subDepartmentName?: string | null;
+  designationName?: string | null;
   providentFund?: boolean;
 }
 

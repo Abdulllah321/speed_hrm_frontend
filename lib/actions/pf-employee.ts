@@ -30,10 +30,10 @@ export interface PFEmployee {
 export async function getPFEmployees(): Promise<{ status: boolean; data?: PFEmployee[]; message?: string }> {
     try {
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_URL}/payroll/pf-employees`, {
+        const response = await fetch(`${API_URL}/pf/employees`, {
             method: 'GET',
             headers,
-            cache: 'no-store',
+            cache: 'no-store'
         });
 
         if (!response.ok) {

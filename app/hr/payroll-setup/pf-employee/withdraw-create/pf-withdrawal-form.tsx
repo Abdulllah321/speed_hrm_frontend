@@ -13,6 +13,7 @@ import { Printer, FileDown } from "lucide-react";
 import { getDepartments, getSubDepartmentsByDepartment } from "@/lib/actions/department";
 import { getEmployeesForDropdown } from "@/lib/actions/employee";
 import { createPFWithdrawal } from "@/lib/actions/pf-withdrawal";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 
 export function PFWithdrawalForm() {
     const router = useRouter();
@@ -93,7 +94,7 @@ export function PFWithdrawalForm() {
 
             if (result.status) {
                 toast.success(result.message || "PF withdrawal created successfully");
-                router.push("/dashboard/payroll-setup/pf-employee/withdraw-view");
+                router.push("/hr/payroll-setup/pf-employee/withdraw-view");
             } else {
                 toast.error(result.message || "Failed to create PF withdrawal");
             }
@@ -209,14 +210,11 @@ export function PFWithdrawalForm() {
                             <Label htmlFor="monthYear">
                                 Month Year <span className="text-destructive">*</span>
                             </Label>
-                            <Input
-                                id="monthYear"
-                                type="month"
+                            <MonthYearPicker
                                 value={formData.monthYear}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, monthYear: e.target.value })
+                                onChange={(value) =>
+                                    setFormData({ ...formData, monthYear: value as string })
                                 }
-                                required
                             />
                         </div>
                     </div>
