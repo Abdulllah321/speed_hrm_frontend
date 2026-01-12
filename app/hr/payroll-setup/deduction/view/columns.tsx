@@ -62,8 +62,6 @@ export interface DeductionRow {
   month: string;
   year: string;
   monthYear: string;
-  isTaxable: boolean;
-  taxPercentage: number | null;
   notes: string | null;
   status: string;
   createdAt: string;
@@ -165,27 +163,6 @@ export const columns: ColumnDef<DeductionRow>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: "taxInfo",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-        Tax Info
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="space-y-0.5">
-        <Badge variant={row.original.isTaxable ? "default" : "secondary"} className="text-xs">
-          {row.original.isTaxable ? "Taxable" : "Non-Taxable"}
-        </Badge>
-        {row.original.isTaxable && row.original.taxPercentage && (
-          <div className="text-xs text-muted-foreground">
-            {Number(row.original.taxPercentage).toFixed(2)}%
-          </div>
-        )}
-      </div>
-    ),
-    size: 120,
-  },
-  {
     accessorKey: "monthYear",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
@@ -213,8 +190,8 @@ export const columns: ColumnDef<DeductionRow>[] = [
         status === "active"
           ? "default"
           : status === "inactive"
-          ? "secondary"
-          : "destructive";
+            ? "secondary"
+            : "destructive";
       return (
         <Badge variant={variant} className="font-medium capitalize">
           {row.original.status || "Active"}
@@ -259,12 +236,10 @@ function RowActions({ row }: { row: Row<DeductionRow> }) {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deductionHeads, setDeductionHeads] = useState<DeductionHead[]>([]);
   const [loadingHeads, setLoadingHeads] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     deductionHeadId: item.deductionHeadId || "",
     amount: item.amount?.toString() || "",
-    isTaxable: item.isTaxable ? "Yes" : "No",
-    taxPercentage: item.taxPercentage?.toString() || "",
     notes: item.notes || "",
     status: item.status || "active",
   });
@@ -302,22 +277,10 @@ function RowActions({ row }: { row: Row<DeductionRow> }) {
       return;
     }
 
-    if (formData.isTaxable === "Yes" && formData.taxPercentage) {
-      const taxPercent = parseFloat(formData.taxPercentage);
-      if (isNaN(taxPercent) || taxPercent < 0 || taxPercent > 100) {
-        toast.error("Tax percentage must be between 0 and 100");
-        return;
-      }
-    }
-
     startTransition(async () => {
       const result = await updateDeduction(item.id, {
         deductionHeadId: formData.deductionHeadId,
         amount: amount,
-        isTaxable: formData.isTaxable === "Yes",
-        taxPercentage: formData.isTaxable === "Yes" && formData.taxPercentage 
-          ? parseFloat(formData.taxPercentage) 
-          : null,
         notes: formData.notes || undefined,
         status: formData.status,
       });
@@ -363,8 +326,6 @@ function RowActions({ row }: { row: Row<DeductionRow> }) {
                 setFormData({
                   deductionHeadId: item.deductionHeadId || "",
                   amount: item.amount?.toString() || "",
-                  isTaxable: item.isTaxable ? "Yes" : "No",
-                  taxPercentage: item.taxPercentage?.toString() || "",
                   notes: item.notes || "",
                   status: item.status || "active",
                 });
@@ -443,50 +404,6 @@ function RowActions({ row }: { row: Row<DeductionRow> }) {
                     placeholder="0.00"
                     disabled={isPending}
                     required
-                  />
-                </div>
-
-                {/* Is Taxable */}
-                <div className="space-y-2">
-                  <Label htmlFor="edit-is-taxable">
-                    Is Taxable <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.isTaxable}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        isTaxable: value,
-                        taxPercentage: value === "No" ? "" : formData.taxPercentage,
-                      })
-                    }
-                    disabled={isPending}
-                  >
-                    <SelectTrigger id="edit-is-taxable">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Yes">Yes</SelectItem>
-                      <SelectItem value="No">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Tax Percentage */}
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tax-percentage">Tax Percentage</Label>
-                  <Input
-                    id="edit-tax-percentage"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    value={formData.taxPercentage}
-                    onChange={(e) =>
-                      setFormData({ ...formData, taxPercentage: e.target.value })
-                    }
-                    placeholder="0.00"
-                    disabled={isPending || formData.isTaxable === "No"}
                   />
                 </div>
 

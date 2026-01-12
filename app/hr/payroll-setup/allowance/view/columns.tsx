@@ -63,9 +63,7 @@ export interface AllowanceRow {
   year: string;
   monthYear: string;
   type?: string; // "recurring" | "specific"
-  adjustmentMethod?: string; // "distributed-remaining-months" | "deduct-current-month"
-  isTaxable: boolean;
-  taxPercentage: number | null;
+  paymentMethod?: string; // "with_salary" | "separately"
   notes: string | null;
   status: string;
   createdAt: string;
@@ -182,36 +180,6 @@ export const columns: ColumnDef<AllowanceRow>[] = [
     enableSorting: true,
   },
   {
-    accessorKey: "taxInfo",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
-        Tax Info
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="space-y-0.5">
-        <Badge variant={row.original.isTaxable ? "default" : "secondary"} className="text-xs">
-          {row.original.isTaxable ? "Taxable" : "Non-Taxable"}
-        </Badge>
-        {row.original.isTaxable && row.original.taxPercentage && (
-          <div className="text-xs text-muted-foreground">
-            {Number(row.original.taxPercentage).toFixed(2)}%
-          </div>
-        )}
-      </div>
-    ),
-    size: 120,
-    enableSorting: true,
-    sortingFn: (rowA, rowB) => {
-      const aTaxable = rowA.original.isTaxable ? 1 : 0;
-      const bTaxable = rowB.original.isTaxable ? 1 : 0;
-      if (aTaxable !== bTaxable) return aTaxable - bTaxable;
-      const aTax = rowA.original.taxPercentage || 0;
-      const bTax = rowB.original.taxPercentage || 0;
-      return Number(aTax) - Number(bTax);
-    },
-  },
-  {
     accessorKey: "monthYear",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
@@ -227,6 +195,21 @@ export const columns: ColumnDef<AllowanceRow>[] = [
     enableSorting: true,
   },
   {
+    accessorKey: "paymentMethod",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
+        Payment Method
+      </div>
+    ),
+    cell: ({ row }) => (
+      <Badge variant={row.original.paymentMethod === "with_salary" ? "default" : "secondary"} className="text-xs">
+        {row.original.paymentMethod === "with_salary" ? "With Salary" : row.original.paymentMethod === "separately" ? "Separately" : "—"}
+      </Badge>
+    ),
+    size: 130,
+    enableSorting: true,
+  },
+  {
     accessorKey: "status",
     header: () => (
       <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
@@ -239,8 +222,8 @@ export const columns: ColumnDef<AllowanceRow>[] = [
         status === "active"
           ? "default"
           : status === "inactive"
-          ? "secondary"
-          : "destructive";
+            ? "secondary"
+            : "destructive";
       return (
         <Badge variant={variant} className="font-medium capitalize">
           {row.original.status || "Active"}
@@ -285,14 +268,11 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [allowanceHeads, setAllowanceHeads] = useState<AllowanceHead[]>([]);
   const [loadingHeads, setLoadingHeads] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     allowanceHeadId: item.allowanceHeadId || "",
     amount: item.amount?.toString() || "",
     type: item.type || "specific",
-    adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
-    isTaxable: item.isTaxable ? "Yes" : "No",
-    taxPercentage: item.taxPercentage?.toString() || "",
     notes: item.notes || "",
     status: item.status || "active",
   });
@@ -330,24 +310,11 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
       return;
     }
 
-    if (formData.isTaxable === "Yes" && formData.taxPercentage) {
-      const taxPercent = parseFloat(formData.taxPercentage);
-      if (isNaN(taxPercent) || taxPercent < 0 || taxPercent > 100) {
-        toast.error("Tax percentage must be between 0 and 100");
-        return;
-      }
-    }
-
     startTransition(async () => {
       const result = await updateAllowance(item.id, {
         allowanceHeadId: formData.allowanceHeadId,
         amount: amount,
         type: formData.type,
-        adjustmentMethod: formData.adjustmentMethod,
-        isTaxable: formData.isTaxable === "Yes",
-        taxPercentage: formData.isTaxable === "Yes" && formData.taxPercentage 
-          ? parseFloat(formData.taxPercentage) 
-          : null,
         notes: formData.notes || undefined,
         status: formData.status,
       });
@@ -394,9 +361,6 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
                   allowanceHeadId: item.allowanceHeadId || "",
                   amount: item.amount?.toString() || "",
                   type: item.type || "specific",
-                  adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
-                  isTaxable: item.isTaxable ? "Yes" : "No",
-                  taxPercentage: item.taxPercentage?.toString() || "",
                   notes: item.notes || "",
                   status: item.status || "active",
                 });
@@ -498,76 +462,6 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
                       <SelectItem value="recurring">Recurring</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                {/* Adjustment Method */}
-                <div className="space-y-2">
-                  <Label htmlFor="edit-adjustment-method">
-                    Adjustment Method <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.adjustmentMethod}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, adjustmentMethod: value })
-                    }
-                    disabled={isPending}
-                  >
-                    <SelectTrigger id="edit-adjustment-method">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="distributed-remaining-months">
-                        Distributed in Remaining Months
-                      </SelectItem>
-                      <SelectItem value="deduct-current-month">
-                        Deduct from Current Month
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Is Taxable */}
-                <div className="space-y-2">
-                  <Label htmlFor="edit-is-taxable">
-                    Is Taxable <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={formData.isTaxable}
-                    onValueChange={(value) =>
-                      setFormData({
-                        ...formData,
-                        isTaxable: value,
-                        taxPercentage: value === "No" ? "" : formData.taxPercentage,
-                      })
-                    }
-                    disabled={isPending}
-                  >
-                    <SelectTrigger id="edit-is-taxable">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Yes">Yes</SelectItem>
-                      <SelectItem value="No">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Tax Percentage */}
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tax-percentage">Tax Percentage</Label>
-                  <Input
-                    id="edit-tax-percentage"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    value={formData.taxPercentage}
-                    onChange={(e) =>
-                      setFormData({ ...formData, taxPercentage: e.target.value })
-                    }
-                    placeholder="0.00"
-                    disabled={isPending || formData.isTaxable === "No"}
-                  />
                 </div>
 
                 {/* Status */}

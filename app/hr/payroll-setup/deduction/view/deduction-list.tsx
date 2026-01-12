@@ -43,7 +43,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
     status: "all",
     month: "all",
     year: "all",
-    isTaxable: "all",
   });
 
   // Transform API data to row format
@@ -64,8 +63,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
       month: deduction.month || "",
       year: deduction.year || "",
       monthYear: formatMonthYear(deduction.month || "", deduction.year || ""),
-      isTaxable: deduction.isTaxable || false,
-      taxPercentage: deduction.taxPercentage ? Number(deduction.taxPercentage) : null,
       notes: deduction.notes || null,
       status: deduction.status || "active",
       createdAt: deduction.createdAt,
@@ -84,47 +81,39 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
           return false;
         }
       }
-      
+
       // Sub Department filter: only apply if department is selected and matches
       if (filters.subDepartmentId !== "all") {
         if (!row.subDepartmentId || row.subDepartmentId !== filters.subDepartmentId) {
           return false;
         }
       }
-      
+
       // Employee filter
       if (filters.employeeId !== "all" && row.employeeId !== filters.employeeId) {
         return false;
       }
-      
+
       // Deduction Head filter
       if (filters.deductionHeadId !== "all" && row.deductionHeadId !== filters.deductionHeadId) {
         return false;
       }
-      
+
       // Status filter
       if (filters.status !== "all" && row.status?.toLowerCase() !== filters.status.toLowerCase()) {
         return false;
-    }
-      
+      }
+
       // Month filter
       if (filters.month !== "all" && row.month !== filters.month) {
         return false;
       }
-      
+
       // Year filter
       if (filters.year !== "all" && row.year !== filters.year) {
         return false;
       }
-      
-      // Taxable status filter
-      if (filters.isTaxable !== "all") {
-        const isTaxable = filters.isTaxable === "true";
-        if (row.isTaxable !== isTaxable) {
-          return false;
-        }
-      }
-      
+
       return true;
     });
   }, [allData, filters]);
@@ -211,7 +200,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
       status: "all",
       month: "all",
       year: "all",
-      isTaxable: "all",
     });
   };
 
@@ -233,8 +221,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
       "Sub Department",
       "Deduction Type",
       "Amount",
-      "Taxable",
-      "Tax %",
       "Month-Year",
       "Status",
       "Notes",
@@ -248,8 +234,6 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
       row.subDepartment,
       row.deductionHeadName,
       row.amount.toString(),
-      row.isTaxable ? "Yes" : "No",
-      row.taxPercentage?.toString() || "—",
       row.monthYear,
       row.status,
       row.notes || "—",
@@ -311,15 +295,15 @@ export function DeductionList({ initialData = [] }: DeductionListProps) {
       />
 
       <DataTable<DeductionRow>
-              columns={columns}
-              data={data}
-              searchFields={[
-                { key: "employeeName", label: "Employee Name" },
-                { key: "employeeCode", label: "Employee ID" },
-                { key: "department", label: "Department" },
-                { key: "deductionHeadName", label: "Deduction Type" },
-              ]}
-            tableId="deduction-list"/>
+        columns={columns}
+        data={data}
+        searchFields={[
+          { key: "employeeName", label: "Employee Name" },
+          { key: "employeeCode", label: "Employee ID" },
+          { key: "department", label: "Department" },
+          { key: "deductionHeadName", label: "Deduction Type" },
+        ]}
+        tableId="deduction-list" />
     </div>
   );
 }

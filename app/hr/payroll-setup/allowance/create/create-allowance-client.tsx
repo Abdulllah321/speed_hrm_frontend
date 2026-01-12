@@ -59,9 +59,6 @@ interface EmployeeAllowanceItem {
   amount: number;
   type: string; // "recurring" | "specific"
   paymentMethod: string; // "with_salary" | "separately"
-  adjustmentMethod: string; // "distributed-remaining-months" | "deduct-current-month"
-  isTaxable: boolean;
-  taxPercentage: number;
   notes: string;
   monthYear: string; // Format: "YYYY-MM" - stored for each allowance item
 }
@@ -98,9 +95,6 @@ export function CreateAllowanceClient({
     allowanceTypeCategory: "specific", // "recurring" | "specific"
     monthYear: "" as string | string[], // Can be single string or array for multiple months
     paymentMethod: "with_salary", // "with_salary" | "separately"
-    isTaxable: "Yes",
-    taxPercentage: "",
-    adjustmentMethod: "distributed-remaining-months", // "distributed-remaining-months" | "deduct-current-month"
   });
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
@@ -336,9 +330,6 @@ export function CreateAllowanceClient({
           amount: calculatedAmount,
           type: formData.allowanceTypeCategory, // "recurring" or "specific"
           paymentMethod: formData.paymentMethod,
-          adjustmentMethod: formData.adjustmentMethod,
-          isTaxable: formData.isTaxable === "Yes",
-          taxPercentage: parseFloat(formData.taxPercentage) || 0,
           notes: formData.remarks || "",
           monthYear: monthYear, // Store the month-year for this specific allowance
         });
@@ -409,10 +400,7 @@ export function CreateAllowanceClient({
                 amount: item.amount,
                 type: item.type || "specific",
                 paymentMethod: item.paymentMethod || "with_salary",
-                adjustmentMethod: item.adjustmentMethod || "distributed-remaining-months",
                 notes: item.notes || undefined,
-                isTaxable: item.isTaxable,
-                taxPercentage: item.taxPercentage > 0 ? item.taxPercentage : undefined,
               })),
             });
           })
@@ -839,78 +827,6 @@ export function CreateAllowanceClient({
               </div>
             </div>
 
-            {/* Fourth Row - 3 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Is Taxable */}
-              <div className="space-y-2">
-                <Label htmlFor="isTaxable">
-                  Is Taxable: <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.isTaxable}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, isTaxable: value }))
-                  }
-                  disabled={isPending}
-                >
-                  <SelectTrigger id="isTaxable">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Yes">Yes</SelectItem>
-                    <SelectItem value="No">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Tax Percentage */}
-              <div className="space-y-2">
-                <Label htmlFor="taxPercentage">Tax Percentage:</Label>
-                <Input
-                  id="taxPercentage"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={formData.taxPercentage}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "" || (parseFloat(val) >= 0 && parseFloat(val) <= 100)) {
-                      setFormData((prev) => ({ ...prev, taxPercentage: val }));
-                    }
-                  }}
-                  placeholder="Enter tax percentage"
-                  disabled={isPending || formData.isTaxable === "No"}
-                />
-              </div>
-
-              {/* Adjustment Method */}
-              <div className="space-y-2">
-                <Label htmlFor="adjustmentMethod">
-                  Adjustment Method: <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.adjustmentMethod}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, adjustmentMethod: value }))
-                  }
-                  disabled={isPending}
-                >
-                  <SelectTrigger id="adjustmentMethod">
-                    <SelectValue placeholder="Select adjustment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="distributed-remaining-months">
-                      Distributed in Remaining Months
-                    </SelectItem>
-                    <SelectItem value="deduct-current-month">
-                      Deduct from Current Month
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             {/* Employee Allowances Table */}
             {employeeAllowances.length > 0 && (
               <Card className="border-dashed">
@@ -930,8 +846,6 @@ export function CreateAllowanceClient({
                           <TableHead>Allowance Type</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Payment Method</TableHead>
-                          <TableHead>Taxable</TableHead>
-                          <TableHead>Tax %</TableHead>
                           <TableHead>Notes</TableHead>
                           <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
@@ -1019,44 +933,6 @@ export function CreateAllowanceClient({
                                     <SelectItem value="separately">Separately</SelectItem>
                                   </SelectContent>
                                 </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Select
-                                  value={item.isTaxable ? "Yes" : "No"}
-                                  onValueChange={(value) =>
-                                    handleUpdateAllowance(item.id, "isTaxable", value === "Yes")
-                                  }
-                                  disabled={isPending}
-                                >
-                                  <SelectTrigger className="w-[100px]">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Yes">Yes</SelectItem>
-                                    <SelectItem value="No">No</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </TableCell>
-                              <TableCell>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  max="100"
-                                  value={item.taxPercentage}
-                                  onChange={(e) => {
-                                    let val = parseFloat(e.target.value);
-                                    if (val > 100) val = 100;
-                                    if (val < 0) val = 0;
-                                    handleUpdateAllowance(
-                                      item.id,
-                                      "taxPercentage",
-                                      val || 0
-                                    );
-                                  }}
-                                  disabled={isPending || !item.isTaxable}
-                                  className="w-[100px]"
-                                />
                               </TableCell>
                               <TableCell>
                                 <Input

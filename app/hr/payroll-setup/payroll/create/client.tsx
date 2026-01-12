@@ -206,7 +206,7 @@ export function GeneratePayrollClient({
 
                 if (result.status) {
                     toast.success(result.message);
-                    router.push("/hr/payroll/report");
+                    router.push("/hr/payroll-setup/payroll/create");
                 } else {
                     toast.error(result.message);
                 }

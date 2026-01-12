@@ -36,8 +36,7 @@ export function PFWithdrawalList({ initialData }: PFWithdrawalListProps) {
                         columns={columns}
                         data={data}
                         searchFields={[
-                            { key: "employee.employeeName", label: "Employee Name" },
-                            { key: "employee.employeeId", label: "Employee ID" },
+                            { key: "employeeDetails", label: "Employee" },
                         ]}
                         tableId="pf-withdrawal-list"
                     />

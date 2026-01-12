@@ -105,8 +105,7 @@ export function PFEmployeeList({ initialData }: PFEmployeeListProps) {
                         columns={columns}
                         data={data}
                         searchFields={[
-                            { key: "employeeName", label: "Employee Name" },
-                            { key: "employeeId", label: "Employee ID" },
+                            { key: "employeeDetails", label: "Employee" },
                         ]}
                         tableId="pf-employee-list"
                     />

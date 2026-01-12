@@ -51,6 +51,7 @@ export interface Allowance {
   month?: string;
   year?: string;
   type?: string; // "recurring" | "specific"
+  paymentMethod?: string; // "with_salary" | "separately"
   adjustmentMethod?: string; // "distributed-remaining-months" | "deduct-current-month"
   isTaxable?: boolean;
   taxPercentage?: number | string | null;
@@ -85,9 +86,9 @@ export async function getAllowanceHeads(): Promise<{ status: boolean; data?: All
     return res.json();
   } catch (error) {
     console.error('Error fetching allowance heads:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch allowance heads. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch allowance heads. Please check your connection.'
     };
   }
 }
@@ -109,9 +110,9 @@ export async function getEmployeesForAllowance(): Promise<{ status: boolean; dat
     return result;
   } catch (error) {
     console.error('Error fetching employees:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch employees. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch employees. Please check your connection.'
     };
   }
 }
@@ -221,9 +222,9 @@ export async function getAllowances(params?: {
     return res.json();
   } catch (error) {
     console.error('Error fetching allowances:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch allowances. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch allowances. Please check your connection.'
     };
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import { useState, useEffect, useTransition } from "react";
@@ -54,8 +55,6 @@ interface EmployeeDeductionItem {
   deductionHeadId: string;
   deductionHeadName: string;
   amount: number;
-  isTaxable: boolean;
-  taxPercentage: number;
   notes: string;
   monthYear: string; // Format: "YYYY-MM" - stored for each deduction item
 }
@@ -86,8 +85,6 @@ export function CreateDeductionClient({
     deductionAmount: "",
     deductionType: "",
     monthYear: "" as string | string[], // Can be single string or array for multiple months
-    isTaxable: "Yes",
-    taxPercentage: "",
   });
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
@@ -188,10 +185,10 @@ export function CreateDeductionClient({
     }
 
     // Get selected months - handle both single string and array
-    const selectedMonths = Array.isArray(formData.monthYear) 
-      ? formData.monthYear 
-      : formData.monthYear 
-        ? [formData.monthYear] 
+    const selectedMonths = Array.isArray(formData.monthYear)
+      ? formData.monthYear
+      : formData.monthYear
+        ? [formData.monthYear]
         : [];
 
     // Create deduction items for all selected employees and months
@@ -207,8 +204,6 @@ export function CreateDeductionClient({
           deductionHeadId: formData.deductionType,
           deductionHeadName: selectedDeductionHead.name,
           amount: amount,
-          isTaxable: formData.isTaxable === "Yes",
-          taxPercentage: parseFloat(formData.taxPercentage) || 0,
           notes: formData.remarks || "",
           monthYear: monthYear, // Store the month-year for this specific deduction
         });
@@ -243,7 +238,7 @@ export function CreateDeductionClient({
       try {
         // Group deductions by month-year to create multiple bulk requests
         const deductionsByMonth = new Map<string, typeof employeeDeductions>();
-        
+
         employeeDeductions.forEach((item) => {
           const monthYear = item.monthYear || new Date().toISOString().slice(0, 7);
           if (!deductionsByMonth.has(monthYear)) {
@@ -265,8 +260,6 @@ export function CreateDeductionClient({
                 deductionHeadId: item.deductionHeadId,
                 amount: item.amount,
                 notes: item.notes || undefined,
-                isTaxable: item.isTaxable,
-                taxPercentage: item.taxPercentage > 0 ? item.taxPercentage : undefined,
               })),
             });
           })
@@ -352,10 +345,10 @@ export function CreateDeductionClient({
                         loadingSubDepartments
                           ? "Loading..."
                           : formData.department === "all" || !formData.department
-                          ? "Select department first"
-                          : subDepartments.length === 0
-                          ? "No sub departments available"
-                          : "Select Sub Department"
+                            ? "Select department first"
+                            : subDepartments.length === 0
+                              ? "No sub departments available"
+                              : "Select Sub Department"
                       }
                     />
                   </SelectTrigger>
@@ -412,7 +405,7 @@ export function CreateDeductionClient({
               />
             </div>
 
-            {/* Third Row - 4 columns */}
+            {/* Third Row - 3 columns */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Deduction Amount */}
               <div className="space-y-2">
@@ -480,65 +473,23 @@ export function CreateDeductionClient({
                   multiple={true}
                 />
               </div>
-
-      
             </div>
 
-            {/* Fourth Row - 2 columns */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Is Taxable */}
-              <div className="space-y-2">
-                <Label htmlFor="isTaxable">
-                  Is Taxable: <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={formData.isTaxable}
-                  onValueChange={(value) =>
-                    setFormData((prev) => ({ ...prev, isTaxable: value }))
-                  }
-                  disabled={isPending}
-                >
-                  <SelectTrigger id="isTaxable">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Yes">Yes</SelectItem>
-                    <SelectItem value="No">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Tax Fields Removed */}
 
-              {/* Tax Percentage */}
-              <div className="space-y-2">
-                <Label htmlFor="taxPercentage">Tax Percentage:</Label>
-                <Input
-                  id="taxPercentage"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={formData.taxPercentage}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, taxPercentage: e.target.value }))
-                  }
-                  placeholder="Enter tax percentage"
-                  disabled={isPending || formData.isTaxable === "No"}
-                />
-              </div>
+            {/* Search Button */}
+            <div className="space-y-2 flex justify-end">
+              <Label>&nbsp;</Label>
+              <Button
+                type="button"
+                onClick={handleSearch}
+                disabled={isPending}
+                className="w-fit self-end"
+              >
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </Button>
             </div>
-{/* Search Button */}
-<div className="space-y-2 flex justify-end">
-                <Label>&nbsp;</Label>
-                <Button
-                  type="button"
-                  onClick={handleSearch}
-                  disabled={isPending}
-                  className="w-fit self-end"
-                >
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </Button>
-              </div>
             {/* Employee Deductions Table */}
             {employeeDeductions.length > 0 && (
               <Card className="border-dashed">
@@ -557,8 +508,6 @@ export function CreateDeductionClient({
                           <TableHead>Deduction Type</TableHead>
                           <TableHead>Amount</TableHead>
                           <TableHead>Month-Year</TableHead>
-                          <TableHead>Taxable</TableHead>
-                          <TableHead>Tax %</TableHead>
                           <TableHead>Notes</TableHead>
                           <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
@@ -617,48 +566,13 @@ export function CreateDeductionClient({
                             </TableCell>
                             <TableCell>
                               <div className="text-sm font-medium">
-                                {item.monthYear 
+                                {item.monthYear
                                   ? (() => {
-                                      const [year, month] = item.monthYear.split("-").map(Number);
-                                      return format(new Date(year, month - 1, 1), "MMM yyyy", { locale: enUS });
-                                    })()
+                                    const [year, month] = item.monthYear.split("-").map(Number);
+                                    return format(new Date(year, month - 1, 1), "MMM yyyy", { locale: enUS });
+                                  })()
                                   : "—"}
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={item.isTaxable ? "Yes" : "No"}
-                                onValueChange={(value) =>
-                                  handleUpdateDeduction(item.id, "isTaxable", value === "Yes")
-                                }
-                                disabled={isPending}
-                              >
-                                <SelectTrigger className="w-[100px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Yes">Yes</SelectItem>
-                                  <SelectItem value="No">No</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                max="100"
-                                value={item.taxPercentage}
-                                onChange={(e) =>
-                                  handleUpdateDeduction(
-                                    item.id,
-                                    "taxPercentage",
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                disabled={isPending || !item.isTaxable}
-                                className="w-[100px]"
-                              />
                             </TableCell>
                             <TableCell>
                               <Input
