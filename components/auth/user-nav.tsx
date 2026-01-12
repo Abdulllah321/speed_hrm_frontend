@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,15 +12,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { User, Settings, LogOut, Shield, History } from "lucide-react";
 import Link from "next/link";
 
 export function UserNav() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout } = useAuth();
 
   if (!user) return null;
 
   const initials = `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+  const isAdmin = user.role?.name === "admin" || user.role?.name === "super_admin";
 
   return (
     <DropdownMenu>
@@ -44,7 +56,7 @@ export function UserNav() {
             </p>
             {user.role && (
               <p className="text-xs leading-none text-blue-500 capitalize mt-1">
-                {user.role.replace("_", " ")}
+                {user.role.name.replace("_", " ")}
               </p>
             )}
           </div>
@@ -70,7 +82,7 @@ export function UserNav() {
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        {isAdmin() && (
+        {isAdmin && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
@@ -84,10 +96,34 @@ export function UserNav() {
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout} className="text-red-500 focus:text-red-500">
-          <LogOut className="mr-2 h-4 w-4" />
-          Log out
-        </DropdownMenuItem>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <DropdownMenuItem 
+              onSelect={(e) => e.preventDefault()} 
+              className="text-red-500 focus:text-red-500 cursor-pointer"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Log out
+            </DropdownMenuItem>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to log out? You will need to sign in again to access your account.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={logout}
+                className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
+              >
+                Log out
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DropdownMenuContent>
     </DropdownMenu>
   );

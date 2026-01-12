@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ShieldX } from "lucide-react";
 
@@ -17,16 +17,23 @@ export function RequirePermission({
   fallback,
   requireAll = false,
 }: RequirePermissionProps) {
-  const { hasPermission, hasAnyPermission, hasAllPermissions, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return null;
   }
 
+  // Helper function to check permissions
+  const hasPermission = (permissionName: string): boolean => {
+    if (!user?.role?.permissions) return false;
+    return user.role.permissions.some(p => p.permission.name === permissionName);
+  };
+
   const permissions = Array.isArray(permission) ? permission : [permission];
+  
   const hasAccess = requireAll
-    ? hasAllPermissions(permissions)
-    : hasAnyPermission(permissions);
+    ? permissions.every(p => hasPermission(p))
+    : permissions.some(p => hasPermission(p));
 
   if (!hasAccess) {
     if (fallback) return <>{fallback}</>;

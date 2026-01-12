@@ -305,9 +305,9 @@ export const menuData: MenuItem[] = [
         title: "Payroll",
         children: [
           { title: "Create", href: "/hr/payroll-setup/payroll/create" },
-          { title: "View Report", href: "/hr/payroll/report" },
-          { title: "Bank Report", href: "/hr/payroll/bank-report" },
-          { title: "Payslips Emails", href: "/hr/payroll/payslips" },
+          { title: "View Report", href: "/hr/payroll-setup/payroll/report" },
+          { title: "Bank Report", href: "/hr/payroll-setup/payroll/bank-report" },
+          { title: "Payslips Emails", href: "/hr/payroll-setup/payroll/payslips" },
         ],
       },
       {

@@ -282,12 +282,15 @@ export default function middleware(request: NextRequest): NextResponse {
   if (currentSubdomain && currentSubdomain !== "auth") {
     // If path doesn't start with subdomain prefix and it's not a system path
     if (!pathname.startsWith(`/${currentSubdomain}`) && !pathname.startsWith("/_next") && !pathname.startsWith("/api")) {
-      // Add subdomain prefix internally
-      // hr.localtest.me/attendance/manage -> /hr/attendance/manage
-      // master.localtest.me/department/add -> /master/department/add
+      // Add subdomain prefix internally for Next.js routing
+      // hr.localtest.me/payroll-setup/payroll/report -> /hr/payroll-setup/payroll/report (internal)
+      // But the URL stays clean: hr.localtest.me/payroll-setup/payroll/report
       const rewritePath = `/${currentSubdomain}${pathname}`;
       return NextResponse.rewrite(new URL(rewritePath + request.nextUrl.search, request.url));
     }
+    
+    // If path already has subdomain prefix, just continue (don't redirect)
+    // This allows URLs like hr.localtest.me/hr/payroll-setup/payroll/report to work
   }
 
   // Determine target subdomain for this path
