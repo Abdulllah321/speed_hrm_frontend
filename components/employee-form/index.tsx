@@ -356,6 +356,8 @@ const employeeFormSchema = z.object({
         contributionRate: z.union([z.string(), z.number()]).optional(),
         baseSalary: z.union([z.string(), z.number()]).optional(),
         monthlyContribution: z.union([z.string(), z.number()]).optional(),
+        employeeContribution: z.union([z.string(), z.number()]).optional(),
+        employerContribution: z.union([z.string(), z.number()]).optional(),
         status: z.string().optional(),
       })
     )
@@ -514,6 +516,21 @@ export function EmployeeForm({
           grade: "",
           documentUrl: "",
         }],
+      socialSecurityRegistrations: (initialData as any).socialSecurityRegistrations && Array.isArray((initialData as any).socialSecurityRegistrations)
+        ? (initialData as any).socialSecurityRegistrations.map((reg: any) => ({
+          institutionId: reg.institutionId || "",
+          registrationNumber: reg.registrationNumber || "",
+          cardNumber: reg.cardNumber || "",
+          registrationDate: reg.registrationDate ? new Date(reg.registrationDate).toISOString().split('T')[0] : "",
+          expiryDate: reg.expiryDate ? new Date(reg.expiryDate).toISOString().split('T')[0] : "",
+          contributionRate: reg.contributionRate?.toString() || "",
+          baseSalary: reg.baseSalary?.toString() || "",
+          monthlyContribution: reg.monthlyContribution?.toString() || "",
+          employeeContribution: reg.employeeContribution?.toString() || "",
+          employerContribution: reg.employerContribution?.toString() || "",
+          status: reg.status || "active",
+        }))
+        : [],
     } : {
       employeeId: "",
       employeeName: "",
@@ -572,6 +589,7 @@ export function EmployeeForm({
         grade: "",
         documentUrl: "",
       }],
+      socialSecurityRegistrations: [],
     },
     mode: "onChange",
     reValidateMode: "onBlur",

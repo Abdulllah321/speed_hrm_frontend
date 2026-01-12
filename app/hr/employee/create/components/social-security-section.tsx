@@ -62,6 +62,8 @@ export function SocialSecuritySection({
       contributionRate: "",
       baseSalary: "",
       monthlyContribution: "",
+      employeeContribution: "",
+      employerContribution: "",
       status: "active",
     });
   };
@@ -148,11 +150,11 @@ export function SocialSecuritySection({
                     />
                   )}
                 />
-                 {errors?.socialSecurityRegistrations?.[index]?.institutionId && (
-                   <p className="text-xs text-red-500">
-                     {errors.socialSecurityRegistrations[index]?.institutionId?.message}
-                   </p>
-                 )}
+                {errors?.socialSecurityRegistrations?.[index]?.institutionId && (
+                  <p className="text-xs text-red-500">
+                    {errors.socialSecurityRegistrations[index]?.institutionId?.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -274,6 +276,28 @@ export function SocialSecuritySection({
                   type="number"
                   step="0.01"
                   placeholder="e.g., 3000"
+                  disabled={isPending}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Employee Contribution</Label>
+                <Input
+                  {...register(`socialSecurityRegistrations.${index}.employeeContribution`)}
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g., 500"
+                  disabled={isPending}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Company Contribution</Label>
+                <Input
+                  {...register(`socialSecurityRegistrations.${index}.employerContribution`)}
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g., 2500"
                   disabled={isPending}
                 />
               </div>
