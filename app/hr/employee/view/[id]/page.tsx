@@ -36,7 +36,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
     getEmployees(), // Only needed for reporting manager name lookup
     getEmployeeRejoiningHistory(employeeId),
   ]);
-
+  console.log(employeeRes)
   if (!employeeRes.status || !employeeRes.data) {
     notFound();
   }

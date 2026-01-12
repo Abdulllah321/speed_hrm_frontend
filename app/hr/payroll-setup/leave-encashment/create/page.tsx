@@ -340,7 +340,7 @@ export default function CreateLeaveEncashmentPage() {
         );
         // Clear form and redirect
         handleClearForm();
-        router.push("/dashboard/payroll-setup/leave-encashment/list");
+        router.push("/hr/payroll-setup/leave-encashment/list");
       } else {
         toast.error(result.message || "Failed to create leave encashment records");
       }

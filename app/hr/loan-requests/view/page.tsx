@@ -78,10 +78,10 @@ const calculatePaymentProgress = (
     const [startYear, startMonth] = repaymentStartMonthYear.split("-").map(Number);
     const startDate = new Date(startYear, startMonth - 1, 1);
     const now = new Date();
-    
+
     // Calculate months elapsed
-    const monthsElapsed = Math.max(0, 
-      (now.getFullYear() - startDate.getFullYear()) * 12 + 
+    const monthsElapsed = Math.max(0,
+      (now.getFullYear() - startDate.getFullYear()) * 12 +
       (now.getMonth() - startDate.getMonth())
     );
 
@@ -90,8 +90,8 @@ const calculatePaymentProgress = (
     const installmentAmount = loanAmount / totalInstallments;
     const paidAmount = paidInstallments * installmentAmount;
     const remainingAmount = loanAmount - paidAmount;
-    const progressPercentage = totalInstallments > 0 
-      ? Math.round((paidInstallments / totalInstallments) * 100) 
+    const progressPercentage = totalInstallments > 0
+      ? Math.round((paidInstallments / totalInstallments) * 100)
       : 0;
 
     return {
@@ -116,7 +116,7 @@ const calculatePaymentProgress = (
 export default async function ViewLoanRequestPage() {
   try {
     const result = await getLoanRequests();
-    
+
     if (!result.status || !result.data) {
       return (
         <ListError
@@ -127,42 +127,62 @@ export default async function ViewLoanRequestPage() {
     }
 
     // Transform API data to LoanRequestRow format (for List View)
-    const listData: LoanRequestRow[] = result.data.map((loanRequest, index) => ({
-      id: loanRequest.id,
-      sNo: index + 1,
-      empId: loanRequest.employee?.employeeId || loanRequest.employeeId || "—",
-      empName: loanRequest.employee?.employeeName || "—",
-      department: loanRequest.employee?.department?.name || "—",
-      loanType: loanRequest.loanType?.name || "—",
-      amount: typeof loanRequest.amount === 'string' ? parseFloat(loanRequest.amount) : loanRequest.amount,
-      requestedDate: loanRequest.requestedDate ? new Date(loanRequest.requestedDate).toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      }) : "—",
-      repaymentStartMonthYear: formatMonthYear(loanRequest.repaymentStartMonthYear),
-      numberOfInstallments: loanRequest.numberOfInstallments || "—",
-      approvalStatus: loanRequest.approvalStatus === 'approved' ? 'Approved' : 
-                     loanRequest.approvalStatus === 'rejected' ? 'Rejected' : 'Pending',
-      status: loanRequest.status === 'approved' ? 'Approved' :
-              loanRequest.status === 'disbursed' ? 'Disbursed' :
-              loanRequest.status === 'completed' ? 'Completed' :
-              loanRequest.status === 'cancelled' ? 'Cancelled' :
-              loanRequest.status === 'rejected' ? 'Rejected' : 'Pending',
-    }));
+    const listData: LoanRequestRow[] = result.data.map((loanRequest, index) => {
+      const loanAmount = typeof loanRequest.amount === 'string' ? parseFloat(loanRequest.amount) : loanRequest.amount;
 
-    // Transform API data to LoanReportRow format (for Report View)
-    const reportData: LoanReportRow[] = result.data.map((loanRequest, index) => {
-      const loanAmount = typeof loanRequest.amount === 'string' 
-        ? parseFloat(loanRequest.amount) 
-        : loanRequest.amount;
-      
       const paymentProgress = calculatePaymentProgress(
         loanAmount,
         loanRequest.numberOfInstallments,
         loanRequest.repaymentStartMonthYear || null,
         loanRequest.status
       );
+
+      return {
+        id: loanRequest.id,
+        sNo: index + 1,
+        empId: loanRequest.employee?.employeeId || loanRequest.employeeId || "—",
+        empName: loanRequest.employee?.employeeName || "—",
+        department: loanRequest.employee?.department?.name || "—",
+        loanType: loanRequest.loanType?.name || "—",
+        amount: loanAmount,
+        requestedDate: loanRequest.requestedDate ? new Date(loanRequest.requestedDate).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        }) : "—",
+        repaymentStartMonthYear: formatMonthYear(loanRequest.repaymentStartMonthYear),
+        numberOfInstallments: loanRequest.numberOfInstallments || "—",
+        approvalStatus: loanRequest.approvalStatus === 'approved' ? 'Approved' :
+          loanRequest.approvalStatus === 'rejected' ? 'Rejected' : 'Pending',
+        status: loanRequest.status === 'approved' ? 'Approved' :
+          loanRequest.status === 'disbursed' ? 'Disbursed' :
+            loanRequest.status === 'completed' ? 'Completed' :
+              loanRequest.status === 'cancelled' ? 'Cancelled' :
+                loanRequest.status === 'rejected' ? 'Rejected' : 'Pending',
+        paidAmount: paymentProgress.paidAmount,
+        remainingAmount: paymentProgress.remainingAmount,
+      };
+    });
+
+    // Transform API data to LoanReportRow format (for Report View)
+    const reportData: LoanReportRow[] = result.data.map((loanRequest: any, index: number) => {
+      const loanAmount = typeof loanRequest.amount === 'string'
+        ? parseFloat(loanRequest.amount)
+        : loanRequest.amount;
+
+      const paidAmount = loanRequest.paidAmount || 0;
+      const remainingAmount = Math.max(0, loanAmount - paidAmount);
+
+      // Estimate paid installments (since we don't track installments in payroll yet)
+      const totalInstallments = loanRequest.numberOfInstallments || 1;
+      const installmentAmount = loanAmount / totalInstallments;
+      const paidInstallments = installmentAmount > 0
+        ? Math.round(paidAmount / installmentAmount)
+        : 0;
+
+      const progressPercentage = loanAmount > 0
+        ? Math.round((paidAmount / loanAmount) * 100)
+        : 0;
 
       return {
         id: loanRequest.id,
@@ -180,21 +200,19 @@ export default async function ViewLoanRequestPage() {
         }) : "—",
         repaymentStartMonthYear: formatMonthYear(loanRequest.repaymentStartMonthYear),
         numberOfInstallments: loanRequest.numberOfInstallments || 0,
-        installmentAmount: paymentProgress.totalInstallments > 0 
-          ? Math.round((loanAmount / paymentProgress.totalInstallments) * 100) / 100 
-          : loanAmount,
-        paidAmount: paymentProgress.paidAmount,
-        remainingAmount: paymentProgress.remainingAmount,
-        paidInstallments: paymentProgress.paidInstallments,
-        totalInstallments: paymentProgress.totalInstallments,
-        progressPercentage: paymentProgress.progressPercentage,
+        installmentAmount: Math.round(installmentAmount * 100) / 100,
+        paidAmount: paidAmount,
+        remainingAmount: remainingAmount,
+        paidInstallments: paidInstallments,
+        totalInstallments: totalInstallments,
+        progressPercentage: progressPercentage,
         status: loanRequest.status === 'approved' ? 'Approved' :
-                loanRequest.status === 'disbursed' ? 'Disbursed' :
-                loanRequest.status === 'completed' ? 'Completed' :
-                loanRequest.status === 'cancelled' ? 'Cancelled' :
+          loanRequest.status === 'disbursed' ? 'Disbursed' :
+            loanRequest.status === 'completed' ? 'Completed' :
+              loanRequest.status === 'cancelled' ? 'Cancelled' :
                 loanRequest.status === 'rejected' ? 'Rejected' : 'Pending',
-        approvalStatus: loanRequest.approvalStatus === 'approved' ? 'Approved' : 
-                       loanRequest.approvalStatus === 'rejected' ? 'Rejected' : 'Pending',
+        approvalStatus: loanRequest.approvalStatus === 'approved' ? 'Approved' :
+          loanRequest.approvalStatus === 'rejected' ? 'Rejected' : 'Pending',
       };
     });
 

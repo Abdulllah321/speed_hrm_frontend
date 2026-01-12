@@ -289,7 +289,6 @@ const employeeFormSchema = z.object({
 
   location: z
     .string()
-    .min(1, "Location is required")
     .optional(),
 
   leavesPolicy: z
@@ -462,7 +461,7 @@ export function EmployeeForm({
       lifetimeCnic: initialData.lifetimeCnic || false,
       joiningDate: initialData.joiningDate || "",
       dateOfBirth: initialData.dateOfBirth || "",
-      nationality: initialData.nationality || "",
+      nationality: initialData.nationality || "Pakistani",
       gender: initialData.gender || "",
       contactNumber: initialData.contactNumber || "",
       emergencyContactNumber: initialData.emergencyContactNumber || "",
@@ -532,7 +531,7 @@ export function EmployeeForm({
       lifetimeCnic: false,
       joiningDate: "",
       dateOfBirth: "",
-      nationality: "",
+      nationality: "Pakistani",
       gender: "",
       contactNumber: "",
       emergencyContactNumber: "",
@@ -1125,7 +1124,6 @@ export function EmployeeForm({
         "state",
         "city",
         "workingHoursPolicy",
-        "location",
         "leavesPolicy",
         "reportingManager",
         "employeeSalary",
