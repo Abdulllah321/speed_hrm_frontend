@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -17,7 +17,7 @@ import { User, Settings, LogOut, Shield, History, Key } from "lucide-react";
 import { createNavigationHandler } from "@/lib/navigation";
 
 export function HeaderUserMenu() {
-  const { user, logout, isAdmin, loading } = useAuth();
+  const { user, logout, loading } = useAuth();
   const router = useRouter();
   
   // Create navigation handler with router
@@ -36,6 +36,7 @@ export function HeaderUserMenu() {
   }
 
   const initials = `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+  const isAdmin = user.role?.name === "admin" || user.role?.name === "super_admin";
 
   return (
     <DropdownMenu>
@@ -54,7 +55,7 @@ export function HeaderUserMenu() {
             <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
             {user.role && (
-              <p className="text-xs text-blue-500 capitalize">{user.role.replace("_", " ")}</p>
+              <p className="text-xs text-blue-500 capitalize">{user.role.name.replace("_", " ")}</p>
             )}
           </div>
         </DropdownMenuLabel>
@@ -73,7 +74,7 @@ export function HeaderUserMenu() {
             Active Sessions
           </DropdownMenuItem>
         </DropdownMenuGroup>
-        {isAdmin() && (
+        {isAdmin && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>

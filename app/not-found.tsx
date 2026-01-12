@@ -3,251 +3,257 @@
 import { motion } from 'motion/react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Home, ArrowLeft, Search, Zap } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Home, ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+const funFacts = [
+  // Light & Friendly
+  "This page is on vacation. Permanently.",
+  "Even our 404s are working hard.",
+  "You've discovered a page that doesn't exist (yet).",
+  "This URL went out for coffee and never came back.",
+  "This page is playing hide and seek... and winning.",
+  "Our page took a wrong turn at the internet.",
+  "This page decided to become a mystery.",
+  "The page you're looking for is in another castle.",
+  "This URL is currently unavailable for comment.",
+  "Page not found, but your sense of adventure is intact.",
+  "This page went on a digital walkabout.",
+  "Our page is having an identity crisis.",
+  "This URL is taking a mental health day.",
+  "The page escaped! We're still looking for it.",
+  "This page is socially distancing from the internet.",
+
+  // Tech / Developer Humor
+  "404 errors have a 100% uptime.",
+  "This page failed successfully.",
+  "The server is fine. The page… not so much.",
+  "This request returned undefined.",
+  "Error 404: Page not found. Humor still intact.",
+  "This page exists in a parallel universe.",
+  "Console.log('Where did this page go?')",
+  "This page threw an exception and never caught it.",
+  "HTTP Status: 404. Mood Status: Confused.",
+  "This page has been garbage collected.",
+  "Null pointer exception: Page reference not found.",
+  "This page is stuck in an infinite loop... somewhere else.",
+  "The page you requested has been deprecated.",
+  "This URL returned a promise that was never resolved.",
+  "Stack overflow: Too many redirects to nowhere.",
+  "This page is experiencing a runtime error.",
+  "The requested resource has been moved to /dev/null.",
+
+  // Product / Startup Style
+  "Great products still have 404s.",
+  "Every click teaches us something — this one too.",
+  "You're closer than you think. Just not here.",
+  "This page doesn't exist, but your journey continues.",
+  "Innovation happens everywhere, except here.",
+  "This URL is under construction... indefinitely.",
+  "We're iterating on this page. Forever.",
+  "This page is in our backlog. Very, very deep.",
+  "User story: As a page, I want to exist. Status: Blocked.",
+  "This page failed our A/B test. Permanently.",
+  "We pivoted away from this page.",
+  "This URL is not part of our MVP.",
+  "This page didn't make it past the design review.",
+
+  // Slightly Clever
+  "This page exists only as a lesson.",
+  "You found a shortcut to nowhere.",
+  "Not all who wander find pages.",
+  "This URL is no longer with us.",
+  "You've reached the edge of our digital world.",
+  "This page went to find itself and got lost.",
+  "The page you seek is in another dimension.",
+  "This URL has achieved enlightenment and disappeared.",
+  "You've discovered the internet's best kept secret: nothing.",
+  "This page is Schrödinger's content - it both exists and doesn't.",
+  "The page you want is probably in the last place you'd look.",
+  "This URL is playing hard to get.",
+  "You've found the digital equivalent of a unicorn.",
+
+  // Witty & Sarcastic
+  "Congratulations! You've found our most exclusive page.",
+  "This page is so exclusive, it doesn't even exist.",
+  "You've unlocked the achievement: Master of Lost URLs.",
+  "This page is on a need-to-know basis. You don't need to know.",
+  "The page you're looking for is probably overrated anyway.",
+  "This URL is having trust issues.",
+  "You've reached the end of the internet. Just kidding.",
+  "This page is in witness protection.",
+  "The page you want is probably having lunch.",
+  "This URL is currently in a meeting.",
+
+  // Philosophical
+  "If a page doesn't exist, did you really visit it?",
+  "This page is contemplating its existence.",
+  "In the grand scheme of the internet, this page chose not to be.",
+  "This URL is exploring the concept of digital minimalism.",
+  "The absence of this page is its greatest feature.",
+  "This page is practicing the art of being invisible.",
+  "Sometimes the best page is no page at all.",
+
+  // Pop Culture References
+  "This page has left the building.",
+  "The page you're looking for is not the page you're looking for.",
+  "This URL has gone to a farm upstate.",
+  "Houston, we have a problem. The page is missing.",
+  "This page has been snapped out of existence.",
+  "The page is out there... somewhere in cyberspace.",
+  "This URL is in another castle, princess.",
+
+  // Meta Humor
+  "This 404 page is working perfectly, though.",
+  "At least this error page exists!",
+  "You've successfully found our 404 page. Mission accomplished?",
+  "This page is so meta, it's commenting on its own absence.",
+  "The real treasure was the 404 pages we found along the way.",
+  "Plot twist: You were looking for a 404 page all along.",
+
+  // Time & Space
+  "This page exists only on Tuesdays. Today is not Tuesday.",
+  "The page you want is scheduled for next century.",
+  "This URL is stuck in a time loop from 1999.",
+  "The page you're looking for is in a different timezone.",
+  "This page is currently traveling through time.",
+  "Your page is in another dimension, probably having fun.",
+
+  // Office & Work Humor (Perfect for HR system!)
+  "This page called in sick today.",
+  "The page you want is in a meeting until further notice.",
+  "This URL is currently on its lunch break.",
+  "The page has submitted its two weeks' notice.",
+  "This page is working from home... permanently.",
+  "Your requested page is in HR. Good luck.",
+  "This URL is attending a mandatory training session.",
+  "The page you want has been promoted to a different server.",
+  "This page is currently in performance review.",
+  "Your page is stuck in the approval process.",
+];
 
 export default function NotFound() {
   const router = useRouter();
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [currentFact, setCurrentFact] = useState('');
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    // Get a random fun fact on component mount
+    const randomIndex = Math.floor(Math.random() * funFacts.length);
+    setCurrentFact(funFacts[randomIndex]);
   }, []);
 
-  const floatingElements = Array.from({ length: 6 }, (_, i) => (
-    <motion.div
-      key={i}
-      className="absolute w-4 h-4 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full opacity-20"
-      animate={{
-        x: [0, 100, 0],
-        y: [0, -100, 0],
-        rotate: [0, 360],
-      }}
-      transition={{
-        duration: 3 + i * 0.5,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay: i * 0.2,
-      }}
-      style={{
-        left: `${10 + i * 15}%`,
-        top: `${20 + i * 10}%`,
-      }}
-    />
-  ));
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center relative overflow-hidden">
-      {/* Animated background elements */}
-      {floatingElements}
-      
-      {/* Mouse follower effect */}
-      <motion.div
-        className="fixed w-6 h-6 bg-blue-400 rounded-full pointer-events-none z-10 opacity-30 blur-sm"
-        animate={{
-          x: mousePosition.x - 12,
-          y: mousePosition.y - 12,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 500,
-          damping: 28,
-        }}
-      />
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+      <div className="text-center max-w-md mx-auto">
 
-      <div className="text-center z-20 px-4 max-w-2xl mx-auto">
-        {/* Main 404 Animation */}
+        {/* 404 Number */}
         <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
+          initial={{ y: -30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
           transition={{
             type: "spring",
-            stiffness: 260,
-            damping: 20,
-            duration: 1,
+            stiffness: 200,
+            damping: 15,
+            delay: 0.1
           }}
           className="mb-8"
         >
           <motion.h1
-            className="text-8xl md:text-9xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent"
-            animate={{
-              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-            style={{
-              backgroundSize: "200% 200%",
+            className="text-8xl md:text-9xl font-bold text-foreground/90"
+            whileHover={{
+              scale: 1.02,
+              transition: { duration: 0.2 }
             }}
           >
-            404
+            4
+            <motion.span
+              animate={{
+                rotate: [0, 8, -8, 0]
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="inline-block text-primary"
+            >
+              0
+            </motion.span>
+            4
           </motion.h1>
         </motion.div>
 
-        {/* Glitch effect on subtitle */}
+        {/* Title and description */}
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.8 }}
-          className="mb-6"
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="mb-8 space-y-3"
         >
-          <motion.h2
-            className="text-2xl md:text-3xl font-semibold text-white mb-4"
-            animate={{
-              textShadow: [
-                "0 0 0px #3b82f6",
-                "0 0 10px #3b82f6",
-                "0 0 0px #3b82f6",
-              ],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            Oops! Page Not Found
-          </motion.h2>
-          
-          <motion.p
-            className="text-gray-300 text-lg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8, duration: 0.6 }}
-          >
-            The page you're looking for seems to have vanished into the digital void.
-          </motion.p>
+          <h2 className="text-2xl font-semibold text-foreground">
+            Page Not Found
+          </h2>
+          <p className="text-muted-foreground">
+            The page you're looking for doesn't exist.
+          </p>
         </motion.div>
 
-        {/* Animated search icon */}
+        {/* Buttons */}
         <motion.div
-          initial={{ opacity: 0, scale: 0 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1, duration: 0.5 }}
-          className="mb-8"
-        >
-          <motion.div
-            animate={{
-              rotate: [0, 10, -10, 0],
-              scale: [1, 1.1, 1],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="inline-block p-4 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full"
-          >
-            <Search className="w-12 h-12 text-white" />
-          </motion.div>
-        </motion.div>
-
-        {/* Action buttons with stagger animation */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.2, duration: 0.6 }}
-          className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+          transition={{ delay: 0.5, duration: 0.5 }}
+          className="flex flex-col sm:flex-row gap-3 justify-center"
         >
           <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
           >
             <Button
               onClick={() => router.push('/')}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="px-6"
             >
-              <Home className="w-5 h-5 mr-2" />
+              <Home className="w-4 h-4 mr-2" />
               Go Home
             </Button>
           </motion.div>
 
           <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
           >
             <Button
               onClick={() => router.back()}
               variant="outline"
-              className="border-2 border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white px-8 py-3 rounded-full font-semibold transition-all duration-300"
+              className="px-6"
             >
-              <ArrowLeft className="w-5 h-5 mr-2" />
+              <ArrowLeft className="w-4 h-4 mr-2" />
               Go Back
             </Button>
           </motion.div>
         </motion.div>
 
-        {/* Fun fact animation */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.8, duration: 0.8 }}
-          className="mt-12 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10"
-        >
+        {/* Random Fun fact */}
+        {currentFact && (
           <motion.div
-            animate={{
-              rotate: [0, 5, -5, 0],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="inline-block mb-3"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.6 }}
+            className="mt-12 px-6 py-3 bg-card border border-border rounded-xl shadow-sm"
           >
-            <Zap className="w-8 h-8 text-yellow-400" />
-          </motion.div>
-          
-          <motion.p
-            className="text-gray-300 text-sm"
-            animate={{
-              opacity: [0.7, 1, 0.7],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            Fun fact: The first 404 error was discovered at CERN in 1992. 
-            <br />
-            You're now part of internet history!
-          </motion.p>
-        </motion.div>
-      </div>
+            <motion.div
+              className="flex items-center justify-center gap-3"
 
-      {/* Animated particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {Array.from({ length: 20 }, (_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 bg-white rounded-full opacity-30"
-            animate={{
-              x: [0, window.innerWidth || 1920],
-              y: [
-                Math.random() * (window.innerHeight || 1080),
-                Math.random() * (window.innerHeight || 1080),
-              ],
-            }}
-            transition={{
-              duration: 10 + Math.random() * 10,
-              repeat: Infinity,
-              ease: "linear",
-              delay: Math.random() * 5,
-            }}
-            style={{
-              left: -10,
-              top: Math.random() * 100 + '%',
-            }}
-          />
-        ))}
+            >
+
+
+              <p className="text-sm text-muted-foreground leading-relaxed text-center">
+                {currentFact}
+              </p>
+
+            </motion.div>
+          </motion.div>
+        )}
       </div>
     </div>
   );

@@ -41,6 +41,15 @@ interface AuthContextType {
   updatePreference: (key: string, value: any) => Promise<void>;
   getPreference: (key: string) => any;
   logout: () => Promise<void>;
+  // Permission helpers
+  hasPermission: (permission: string) => boolean;
+  hasAnyPermission: (permissions: string[]) => boolean;
+  hasAllPermissions: (permissions: string[]) => boolean;
+  isAdmin: () => boolean;
+  // Token management
+  refreshToken: () => Promise<boolean>;
+  checkAndRefreshSession: () => Promise<boolean>;
+  fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -68,16 +77,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return obj;
   }, []);
 
+  // Token refresh function
+  const refreshToken = useCallback(async (): Promise<boolean> => {
+    try {
+      const { refreshTokenClient } = await import("@/lib/client-auth");
+      const success = await refreshTokenClient();
+      
+      if (!success) {
+        // Refresh failed, user needs to login again
+        setUser(null);
+        setPreferences({});
+        // router.push("/auth/login");
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Token refresh error:", error);
+      setUser(null);
+      setPreferences({});
+      router.push("/auth/login");
+      return false;
+    }
+  }, [router]);
+
+  // Enhanced fetch with automatic token refresh
+  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
+    let response = await fetch(url, {
+      credentials: "include",
+      cache: "no-store",
+      ...options,
+    });
+
+    // If we get 401, try to refresh token once
+    if (response.status === 401) {
+      const refreshSuccess = await refreshToken();
+      
+      if (refreshSuccess) {
+        // Retry the original request with new token
+        response = await fetch(url, {
+          credentials: "include",
+          cache: "no-store",
+          ...options,
+        });
+      }
+    }
+
+    return response;
+  }, [refreshToken]);
+
   // Fetch user data including preferences from /api/auth/me
   const fetchUser = useCallback(async () => {
     try {
       setLoadingMessage("Connecting to server...");
       setLoadingProgress(10);
 
-      const res = await fetch("/api/auth/me", {
-        credentials: "include",
-        cache: "no-store",
-      });
+      const res = await fetchWithAuth("/api/auth/me");
 
       setLoadingProgress(50);
 
@@ -116,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [preferencesToObject]);
+  }, [preferencesToObject, fetchWithAuth]);
 
   // Set mounted flag to prevent hydration mismatch
   useEffect(() => {
@@ -129,6 +184,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fetchUser();
     }
   }, [mounted, fetchUser]);
+
+  // Set up automatic token refresh interval
+  useEffect(() => {
+    if (!user) return;
+
+    // Refresh token every 90 minutes (before 2h expiry)
+    const refreshInterval = setInterval(() => {
+      refreshToken();
+    }, 90 * 60 * 1000); // 90 minutes
+
+    // Also refresh on window focus (user returns to tab)
+    const handleFocus = () => {
+      refreshToken();
+    };
+
+    // Add event listeners
+    window.addEventListener('focus', handleFocus);
+
+    // Cleanup
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [user, refreshToken]);
+
+  // Proactive session check - refresh token if needed
+  const checkAndRefreshSession = useCallback(async () => {
+    if (!user) return false;
+
+    try {
+      const res = await fetch("/api/auth/check-session", {
+        credentials: "include",
+      });
+
+      if (res.status === 401) {
+        // Token expired, try to refresh
+        return await refreshToken();
+      }
+
+      return res.ok;
+    } catch (error) {
+      console.error("Session check failed:", error);
+      return false;
+    }
+  }, [user, refreshToken]);
 
   // Update preference - only update local state since preferences are handled by /api/auth/me
   const updatePreference = useCallback(async (key: string, value: any) => {
@@ -157,8 +257,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await logoutClient();
     setUser(null);
     setPreferences({});
-    router.push("/login");
+    router.push("/auth/login");
   }, [router]);
+
+  // Permission helpers
+  const hasPermission = useCallback((permission: string): boolean => {
+    if (!user?.role?.permissions) return false;
+    return user.role.permissions.some(p => p.permission.name === permission);
+  }, [user]);
+
+  const hasAnyPermission = useCallback((permissions: string[]): boolean => {
+    if (!user?.role?.permissions) return false;
+    return permissions.some(permission => 
+      user.role?.permissions?.some(p => p.permission.name === permission)
+    );
+  }, [user]);
+
+  const hasAllPermissions = useCallback((permissions: string[]): boolean => {
+    if (!user?.role?.permissions) return false;
+    return permissions.every(permission => 
+      user.role?.permissions?.some(p => p.permission.name === permission)
+    );
+  }, [user]);
+
+  const isAdmin = useCallback((): boolean => {
+    return user?.role?.name === "admin" || user?.role?.name === "super_admin";
+  }, [user]);
 
   // Don't render children until mounted and initial load is complete
   // This prevents hydration mismatch between server and client
@@ -174,6 +298,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updatePreference,
           getPreference,
           logout,
+          hasPermission: () => false,
+          hasAnyPermission: () => false,
+          hasAllPermissions: () => false,
+          isAdmin: () => false,
+          refreshToken: async () => false,
+          checkAndRefreshSession: async () => false,
+          fetchWithAuth: async (url: string, options?: RequestInit) => fetch(url, options),
         }}
       >
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />
@@ -192,6 +323,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updatePreference,
         getPreference,
         logout,
+        hasPermission,
+        hasAnyPermission,
+        hasAllPermissions,
+        isAdmin,
+        refreshToken,
+        checkAndRefreshSession,
+        fetchWithAuth,
       }}
     >
       {children}
