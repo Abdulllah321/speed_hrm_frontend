@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -46,6 +46,7 @@ import { createEmployee, updateEmployee, getEmployees, type Employee } from "@/l
 import { BasicInfoSection } from "@/app/hr/employee/create/components/basic-info-section";
 import { QualificationSection } from "@/app/hr/employee/create/components/qualification-section";
 import { SocialSecuritySection } from "@/app/hr/employee/create/components/social-security-section";
+import { EquipmentSection } from "@/app/hr/employee/create/components/equipment-section";
 import { uploadFile } from "@/lib/upload";
 import { DateSection } from "@/app/hr/employee/create/components/date-section";
 import { getCountries } from "@/lib/actions/city";
@@ -365,8 +366,15 @@ const employeeFormSchema = z.object({
     .optional(),
 
   // Equipment
-  selectedEquipments: z
-    .array(z.string())
+  equipmentAssignments: z
+    .array(
+      z.object({
+        equipmentId: z.string().min(1, "Item type is required"),
+        productId: z.string().optional(),
+        assignedDate: z.string().optional(),
+        notes: z.string().optional(),
+      })
+    )
     .default([]),
 
   // Qualifications
@@ -492,8 +500,13 @@ export function EmployeeForm({
       bankName: initialData.bankName || "",
       accountNumber: initialData.accountNumber || "",
       accountTitle: initialData.accountTitle || "",
-      selectedEquipments: (initialData as any).equipmentAssignments
-        ? (initialData as any).equipmentAssignments.map((ea: any) => ea.equipment?.id || ea.equipmentId).filter(Boolean)
+      equipmentAssignments: (initialData as any).equipmentAssignments
+        ? (initialData as any).equipmentAssignments.map((ea: any) => ({
+          equipmentId: ea.equipment?.id || ea.equipmentId || "",
+          productId: ea.productId || "",
+          assignedDate: ea.assignedDate ? new Date(ea.assignedDate).toISOString() : new Date().toISOString(),
+          notes: ea.notes || "",
+        }))
         : [],
       avatarUrl: (initialData as any).avatarUrl || "",
       eobiDocumentUrl: (initialData as any).eobiDocumentUrl || "",
@@ -577,7 +590,14 @@ export function EmployeeForm({
       bankName: "",
       accountNumber: "",
       accountTitle: "",
-      selectedEquipments: [],
+      equipmentAssignments: (initialData as any).equipmentAssignments
+        ? (initialData as any).equipmentAssignments.map((ea: any) => ({
+          equipmentId: ea.equipment?.id || ea.equipmentId || "",
+          productId: ea.productId || "",
+          assignedDate: ea.assignedDate ? new Date(ea.assignedDate).toISOString() : new Date().toISOString(),
+          notes: ea.notes || "",
+        }))
+        : [],
       avatarUrl: "",
       eobiDocumentUrl: "",
       qualifications: [{
@@ -1264,7 +1284,7 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
-            selectedEquipments: data.selectedEquipments,
+            equipmentAssignments: data.equipmentAssignments,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
@@ -1414,7 +1434,7 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
-            selectedEquipments: data.selectedEquipments,
+            equipmentAssignments: data.equipmentAssignments,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
@@ -1442,511 +1462,472 @@ export function EmployeeForm({
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-10">
+    <FormProvider {...form}>
+      <div className="max-w-6xl mx-auto pb-10">
 
-      <div className="rounded-2xl bg-card shadow-sm p-6">
-        <form
-          onSubmit={handleSubmit(
-            onSubmit,
-            (errors) => {
-              toast.error("Please fix all validation errors before submitting");
-            }
-          )}
-          className="space-y-6"
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            {stepLabels.map((label, idx) => {
-              const isActive = idx === step;
-              const isDone = idx < step;
-              return (
-                <div
-                  key={label}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${isActive
-                    ? "bg-primary/15 text-primary ring-1 ring-primary/40"
-                    : isDone
-                      ? "bg-muted text-foreground ring-1 ring-border"
-                      : "bg-muted text-muted-foreground ring-1 ring-border"
-                    }`}
-                >
-                  <span className="h-6 w-6 rounded-full bg-background border flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <span>{label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {step === 0 && (
-            <>
-              {/* Profile Picture Upload */}
-              <Card className="border-0 shadow-none bg-muted/50">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">
-                    Profile Picture
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-col items-center gap-6">
-                    <div
-                      className="relative cursor-pointer group"
-                      onClick={() => document.getElementById("profile-pic-input")?.click()}
-                    >
-                      {profilePicPreview ? (
-                        <img
-                          src={profilePicPreview}
-                          alt="Profile preview"
-                          className="w-40 h-40 rounded-full object-cover border-4 border-border group-hover:opacity-80 transition-opacity"
-                          onError={(e) => {
-                            setProfilePicPreview(null);
-                          }}
-                        />
-                      ) : (
-                        <div className="w-40 h-40 rounded-full bg-muted flex items-center justify-center border-4 border-border group-hover:bg-muted/80 transition-colors">
-                          <img
-                            src="/profileicon.svg"
-                            alt="Default profile"
-                            className="w-20 h-20 dark:invert"
-                          />
-                        </div>
-                      )}
-                      <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Upload className="h-8 w-8 text-white" />
-                      </div>
-                    </div>
-                    <input
-                      id="profile-pic-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleProfilePicChange}
-                      className="hidden"
-                      disabled={isPending}
-                    />
+        <div className="rounded-2xl bg-card shadow-sm p-6">
+          <form
+            onSubmit={handleSubmit(
+              onSubmit,
+              (errors) => {
+                toast.error("Please fix all validation errors before submitting");
+              }
+            )}
+            className="space-y-6"
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              {stepLabels.map((label, idx) => {
+                const isActive = idx === step;
+                const isDone = idx < step;
+                return (
+                  <div
+                    key={label}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${isActive
+                      ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                      : isDone
+                        ? "bg-muted text-foreground ring-1 ring-border"
+                        : "bg-muted text-muted-foreground ring-1 ring-border"
+                      }`}
+                  >
+                    <span className="h-6 w-6 rounded-full bg-background border flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <span>{label}</span>
                   </div>
-                  <Dialog open={cropDialogOpen} onOpenChange={handleCropDialogClose}>
-                    <DialogContent className="sm:max-w-[480px]">
-                      <DialogHeader>
-                        <DialogTitle>Crop Profile Picture</DialogTitle>
-                      </DialogHeader>
-                      <div className="relative w-full h-80 bg-muted rounded-md overflow-hidden">
-                        {cropSrc && (
-                          <Cropper
-                            image={cropSrc}
-                            crop={crop}
-                            zoom={zoom}
-                            aspect={1}
-                            onCropChange={setCrop}
-                            onZoomChange={setZoom}
-                            onCropComplete={onCropComplete}
+                );
+              })}
+            </div>
+
+            {step === 0 && (
+              <>
+                {/* Profile Picture Upload */}
+                <Card className="border-0 shadow-none bg-muted/50">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">
+                      Profile Picture
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col items-center gap-6">
+                      <div
+                        className="relative cursor-pointer group"
+                        onClick={() => document.getElementById("profile-pic-input")?.click()}
+                      >
+                        {profilePicPreview ? (
+                          <img
+                            src={profilePicPreview}
+                            alt="Profile preview"
+                            className="w-40 h-40 rounded-full object-cover border-4 border-border group-hover:opacity-80 transition-opacity"
+                            onError={(e) => {
+                              setProfilePicPreview(null);
+                            }}
                           />
+                        ) : (
+                          <div className="w-40 h-40 rounded-full bg-muted flex items-center justify-center border-4 border-border group-hover:bg-muted/80 transition-colors">
+                            <img
+                              src="/profileicon.svg"
+                              alt="Default profile"
+                              className="w-20 h-20 dark:invert"
+                            />
+                          </div>
                         )}
-                      </div>
-                      <DialogFooter>
-                        <div className="flex w-full justify-end gap-2">
-                          <Button variant="outline" onClick={() => handleCropDialogClose(false)}>Cancel</Button>
-                          <Button onClick={confirmCropAndUpload}>Save</Button>
+                        <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Upload className="h-8 w-8 text-white" />
                         </div>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </CardContent>
-              </Card>
+                      </div>
+                      <input
+                        id="profile-pic-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePicChange}
+                        className="hidden"
+                        disabled={isPending}
+                      />
+                    </div>
+                    <Dialog open={cropDialogOpen} onOpenChange={handleCropDialogClose}>
+                      <DialogContent className="sm:max-w-[480px]">
+                        <DialogHeader>
+                          <DialogTitle>Crop Profile Picture</DialogTitle>
+                        </DialogHeader>
+                        <div className="relative w-full h-80 bg-muted rounded-md overflow-hidden">
+                          {cropSrc && (
+                            <Cropper
+                              image={cropSrc}
+                              crop={crop}
+                              zoom={zoom}
+                              aspect={1}
+                              onCropChange={setCrop}
+                              onZoomChange={setZoom}
+                              onCropComplete={onCropComplete}
+                            />
+                          )}
+                        </div>
+                        <DialogFooter>
+                          <div className="flex w-full justify-end gap-2">
+                            <Button variant="outline" onClick={() => handleCropDialogClose(false)}>Cancel</Button>
+                            <Button onClick={confirmCropAndUpload}>Save</Button>
+                          </div>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </CardContent>
+                </Card>
 
 
-              {/* Basic Information */}
-              <Card className="border-0 shadow-none bg-muted/50">
-                <CardHeader>
-                  <CardTitle className="text-lg font-semibold">
-                    Basic Information
-                  </CardTitle>
-                  <CardDescription>Enter employee&apos;s basic details</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <BasicInfoSection
-                    form={form}
-                    isPending={isPending}
-                    loadingData={loadingData}
-                    departments={departments}
-                    subDepartments={subDepartments}
-                    department={department}
-                    loadingSubDepartments={loadingSubDepartments}
-                    employeeGrades={employeeGrades}
-                    designations={designations}
-                    maritalStatuses={maritalStatuses}
-                    employeeStatuses={employeeStatuses}
-                    errors={errors}
-                    formatCNIC={formatCNIC}
-                    nationalities={nationalities}
-                    genders={genders}
-                    states={states}
-                    cities={cities}
-                    state={state}
-                    loadingCities={loadingCities}
-                    daysOff={daysOff}
-                    workingHoursPolicies={workingHoursPolicies}
-                    locations={locations}
-                    allocations={allocations}
-                    leavesPolicies={leavesPolicies}
-                    documents={documents}
-                    handleFileChange={handleFileChange}
-                    employees={employees}
-                    documentUrls={documentUrls}
-                    mode={mode}
-                  />
-                  <DateSection form={form} isPending={isPending} errors={errors} />
-                </CardContent>
-              </Card>
-            </>
-          )}
+                {/* Basic Information */}
+                <Card className="border-0 shadow-none bg-muted/50">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold">
+                      Basic Information
+                    </CardTitle>
+                    <CardDescription>Enter employee&apos;s basic details</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <BasicInfoSection
+                      form={form}
+                      isPending={isPending}
+                      loadingData={loadingData}
+                      departments={departments}
+                      subDepartments={subDepartments}
+                      department={department}
+                      loadingSubDepartments={loadingSubDepartments}
+                      employeeGrades={employeeGrades}
+                      designations={designations}
+                      maritalStatuses={maritalStatuses}
+                      employeeStatuses={employeeStatuses}
+                      errors={errors}
+                      formatCNIC={formatCNIC}
+                      nationalities={nationalities}
+                      genders={genders}
+                      states={states}
+                      cities={cities}
+                      state={state}
+                      loadingCities={loadingCities}
+                      daysOff={daysOff}
+                      workingHoursPolicies={workingHoursPolicies}
+                      locations={locations}
+                      allocations={allocations}
+                      leavesPolicies={leavesPolicies}
+                      documents={documents}
+                      handleFileChange={handleFileChange}
+                      employees={employees}
+                      documentUrls={documentUrls}
+                      mode={mode}
+                    />
+                    <DateSection form={form} isPending={isPending} errors={errors} />
+                  </CardContent>
+                </Card>
+              </>
+            )}
 
-          {step === 1 && (
-            <>
-              {/* Qualification Section */}
-              <Card className="border-0 shadow-none bg-muted/50">
-                <CardHeader>
-                  {/* <CardTitle className="text-lg font-semibold">
+            {step === 1 && (
+              <>
+                {/* Qualification Section */}
+                <Card className="border-0 shadow-none bg-muted/50">
+                  <CardHeader>
+                    {/* <CardTitle className="text-lg font-semibold">
                     Qualifications
                   </CardTitle>
                   <CardDescription>Add employee qualifications</CardDescription> */}
-                </CardHeader>
-                <CardContent>
-                  <QualificationSection
-                    form={form}
-                    isPending={isPending}
-                    loadingData={loadingData}
-                    qualifications={(qualifications || []).map(q => ({ id: q.id, name: q.name }))}
-                    institutes={(institutes || []).map(i => ({ id: i.id, name: i.name }))}
-                    states={states.map(s => ({ id: s.id, name: s.name }))}
-                    cities={cities.map(c => ({ id: c.id, name: c.name, stateId: (c as any).stateId }))}
-                    errors={errors}
-                    onQualificationAdded={onQualificationAdded}
-                    onInstituteAdded={onInstituteAdded}
-                    handleFileChange={handleFileChange}
-                    qualificationDocumentUrls={qualificationDocumentUrls}
-                    documentUrls={documentUrls}
-                  />
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {step === 2 && (
-            <>
-              {/* Address Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Address Information</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Current Address</Label>
-                    <Textarea
-                      placeholder="(e.g., House No. 123, Street Name, City, Province)"
-                      {...register("currentAddress")}
-                      disabled={isPending}
-                      rows={3}
+                  </CardHeader>
+                  <CardContent>
+                    <QualificationSection
+                      form={form}
+                      isPending={isPending}
+                      loadingData={loadingData}
+                      qualifications={(qualifications || []).map(q => ({ id: q.id, name: q.name }))}
+                      institutes={(institutes || []).map(i => ({ id: i.id, name: i.name }))}
+                      states={states.map(s => ({ id: s.id, name: s.name }))}
+                      cities={cities.map(c => ({ id: c.id, name: c.name, stateId: (c as any).stateId }))}
+                      errors={errors}
+                      onQualificationAdded={onQualificationAdded}
+                      onInstituteAdded={onInstituteAdded}
+                      handleFileChange={handleFileChange}
+                      qualificationDocumentUrls={qualificationDocumentUrls}
+                      documentUrls={documentUrls}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Permanent Address</Label>
-                    <Textarea
-                      placeholder="(e.g., House No. 456, Street Name, City, Province)"
-                      {...register("permanentAddress")}
-                      disabled={isPending}
-                      rows={3}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
+                  </CardContent>
+                </Card>
+              </>
+            )}
 
-          {step === 3 && (
-            <>
-              {/* Bank Account Details */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Bank Account Details</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Bank Name *</RequiredLabel></Label>
-                    <Controller
-                      name="bankName"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          disabled={isPending}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {banks.map((b) => (
-                              <SelectItem key={b} value={b}>
-                                {b}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+            {step === 2 && (
+              <>
+                {/* Address Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Address Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Current Address</Label>
+                      <Textarea
+                        placeholder="(e.g., House No. 123, Street Name, City, Province)"
+                        {...register("currentAddress")}
+                        disabled={isPending}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Permanent Address</Label>
+                      <Textarea
+                        placeholder="(e.g., House No. 456, Street Name, City, Province)"
+                        {...register("permanentAddress")}
+                        disabled={isPending}
+                        rows={3}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                {/* Bank Account Details */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Bank Account Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label><RequiredLabel>Bank Name *</RequiredLabel></Label>
+                      <Controller
+                        name="bankName"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={isPending}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {banks.map((b) => (
+                                <SelectItem key={b} value={b}>
+                                  {b}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      {errors.bankName && (
+                        <p className="text-xs text-red-500">{errors.bankName.message}</p>
                       )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label><RequiredLabel>Account Number *</RequiredLabel></Label>
+                      <Input
+                        {...register("accountNumber")}
+                        disabled={isPending}
+                      />
+                      {errors.accountNumber && (
+                        <p className="text-xs text-red-500">{errors.accountNumber.message}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label><RequiredLabel>Account Title *</RequiredLabel></Label>
+                      <Input
+                        {...register("accountTitle")}
+                        disabled={isPending}
+                      />
+                      {errors.accountTitle && (
+                        <p className="text-xs text-red-500">{errors.accountTitle.message}</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Social Security Registration */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Social Security Registration</CardTitle>
+                    <CardDescription>
+                      Register employee with SESSI, PESSE, IESSI or other social security institutions
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <SocialSecuritySection
+                      form={form}
+                      isPending={isPending}
+                      loadingData={loadingData}
+                      socialSecurityInstitutions={socialSecurityInstitutions}
+                      errors={errors}
                     />
-                    {errors.bankName && (
-                      <p className="text-xs text-red-500">{errors.bankName.message}</p>
-                    )}
-                  </div>
+                  </CardContent>
+                </Card>
 
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Account Number *</RequiredLabel></Label>
-                    <Input
-                      {...register("accountNumber")}
-                      disabled={isPending}
-                    />
-                    {errors.accountNumber && (
-                      <p className="text-xs text-red-500">{errors.accountNumber.message}</p>
-                    )}
-                  </div>
+              </>
+            )}
 
-                  <div className="space-y-2">
-                    <Label><RequiredLabel>Account Title *</RequiredLabel></Label>
-                    <Input
-                      {...register("accountTitle")}
-                      disabled={isPending}
-                    />
-                    {errors.accountTitle && (
-                      <p className="text-xs text-red-500">{errors.accountTitle.message}</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+            {step === 4 && (
+              <>
+                {/* Employee Items Issued */}
+                <EquipmentSection
+                  equipments={equipments}
+                  disabled={isPending || loadingData}
+                />
 
-              {/* Social Security Registration */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Social Security Registration</CardTitle>
-                  <CardDescription>
-                    Register employee with SESSI, PESSE, IESSI or other social security institutions
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <SocialSecuritySection
-                    form={form}
-                    isPending={isPending}
-                    loadingData={loadingData}
-                    socialSecurityInstitutions={socialSecurityInstitutions}
-                    errors={errors}
-                  />
-                </CardContent>
-              </Card>
+                {/* Document Uploads */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Employee Document Uploads</CardTitle>
+                    <CardDescription>Upload required documents</CardDescription>
+                  </CardHeader>
 
-            </>
-          )}
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Upload CV</Label>
+                      <FileUpload
+                        id="cv"
+                        onChange={(files) => handleFileChange("cv", files?.[0] || null)}
+                        existingFileUrl={documentUrls.cv}
+                      />
+                    </div>
 
-          {step === 4 && (
-            <>
-              {/* Employee Items Issued */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Employee Items Issued</CardTitle>
-                  <CardDescription>
-                    Select items issued to the employee from master equipments
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-6">
-                    {equipments.map((equipment) => (
-                      <div key={equipment.id} className="flex items-center gap-2">
-                        <Controller
-                          name="selectedEquipments"
-                          control={control}
-                          render={({ field }) => (
-                            <Switch
-                              id={equipment.id}
-                              checked={(field.value ?? []).includes(equipment.id)}
-                              onCheckedChange={(checked) => {
-                                const current = Array.isArray(field.value) ? field.value : [];
-                                const newValue = checked
-                                  ? [...current, equipment.id]
-                                  : current.filter((id) => id !== equipment.id);
-                                field.onChange(newValue);
-                              }}
-                              disabled={isPending || loadingData}
-                            />
-                          )}
-                        />
-                        <label
-                          htmlFor={equipment.id}
-                          className="text-sm cursor-pointer"
-                        >
-                          {equipment.name}
-                        </label>
-                      </div>
-                    ))}
-                    {equipments.length === 0 && !loadingData && (
-                      <p className="text-sm text-muted-foreground">
-                        No equipments available. Please add equipments in master data.
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Upload Passport Size Photos (2)</Label>
+                      <FileUpload
+                        id="passportPhotos"
+                        onChange={(files) =>
+                          handleFileChange("passportPhotos", files?.[0] || null)
+                        }
+                        existingFileUrl={documentUrls.passportPhotos}
+                      />
+                    </div>
 
-              {/* Document Uploads */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Employee Document Uploads</CardTitle>
-                  <CardDescription>Upload required documents</CardDescription>
-                </CardHeader>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Upload CNIC</Label>
+                      <FileUpload
+                        id="cnic"
+                        onChange={(files) => handleFileChange("cnic", files?.[0] || null)}
+                        existingFileUrl={documentUrls.cnic}
+                      />
+                    </div>
 
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Upload CV</Label>
-                    <FileUpload
-                      id="cv"
-                      onChange={(files) => handleFileChange("cv", files?.[0] || null)}
-                      existingFileUrl={documentUrls.cv}
-                    />
-                  </div>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Clearance Letter (if any)</Label>
+                      <FileUpload
+                        id="clearanceLetter"
+                        onChange={(files) =>
+                          handleFileChange("clearanceLetter", files?.[0] || null)
+                        }
+                        existingFileUrl={documentUrls.clearanceLetter}
+                      />
+                    </div>
 
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Upload Passport Size Photos (2)</Label>
-                    <FileUpload
-                      id="passportPhotos"
-                      onChange={(files) =>
-                        handleFileChange("passportPhotos", files?.[0] || null)
-                      }
-                      existingFileUrl={documentUrls.passportPhotos}
-                    />
-                  </div>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Fit & Proper Criteria Form</Label>
+                      <FileUpload
+                        id="fitProperCriteria"
+                        onChange={(files) =>
+                          handleFileChange("fitProperCriteria", files?.[0] || null)
+                        }
+                        existingFileUrl={documentUrls.fitProperCriteria}
+                      />
+                    </div>
 
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Upload CNIC</Label>
-                    <FileUpload
-                      id="cnic"
-                      onChange={(files) => handleFileChange("cnic", files?.[0] || null)}
-                      existingFileUrl={documentUrls.cnic}
-                    />
-                  </div>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Affirmation – Company Service Rules</Label>
+                      <FileUpload
+                        id="serviceRulesAffirmation"
+                        onChange={(files) =>
+                          handleFileChange("serviceRulesAffirmation", files?.[0] || null)
+                        }
+                        existingFileUrl={documentUrls.serviceRulesAffirmation}
+                      />
+                    </div>
 
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Clearance Letter (if any)</Label>
-                    <FileUpload
-                      id="clearanceLetter"
-                      onChange={(files) =>
-                        handleFileChange("clearanceLetter", files?.[0] || null)
-                      }
-                      existingFileUrl={documentUrls.clearanceLetter}
-                    />
-                  </div>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Affirmation – VIS Code of Conduct 2019</Label>
+                      <FileUpload
+                        id="codeOfConduct"
+                        onChange={(files) =>
+                          handleFileChange("codeOfConduct", files?.[0] || null)
+                        }
+                        existingFileUrl={documentUrls.codeOfConduct}
+                      />
+                    </div>
 
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Fit & Proper Criteria Form</Label>
-                    <FileUpload
-                      id="fitProperCriteria"
-                      onChange={(files) =>
-                        handleFileChange("fitProperCriteria", files?.[0] || null)
-                      }
-                      existingFileUrl={documentUrls.fitProperCriteria}
-                    />
-                  </div>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Upload Non-Disclosure Agreement (NDA)</Label>
+                      <FileUpload
+                        id="nda"
+                        onChange={(files) => handleFileChange("nda", files?.[0] || null)}
+                        existingFileUrl={documentUrls.nda}
+                      />
+                    </div>
 
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Affirmation – Company Service Rules</Label>
-                    <FileUpload
-                      id="serviceRulesAffirmation"
-                      onChange={(files) =>
-                        handleFileChange("serviceRulesAffirmation", files?.[0] || null)
-                      }
-                      existingFileUrl={documentUrls.serviceRulesAffirmation}
-                    />
-                  </div>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Information Secrecy / Confidentiality Form</Label>
+                      <FileUpload
+                        id="secrecyForm"
+                        onChange={(files) =>
+                          handleFileChange("secrecyForm", files?.[0] || null)
+                        }
+                        existingFileUrl={documentUrls.secrecyForm}
+                      />
+                    </div>
 
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Affirmation – VIS Code of Conduct 2019</Label>
-                    <FileUpload
-                      id="codeOfConduct"
-                      onChange={(files) =>
-                        handleFileChange("codeOfConduct", files?.[0] || null)
-                      }
-                      existingFileUrl={documentUrls.codeOfConduct}
-                    />
-                  </div>
+                    <div className="flex flex-col items-center">
+                      <Label className="text-center">Investment Disclosure Form</Label>
+                      <FileUpload
+                        id="investmentDisclosure"
+                        onChange={(files) =>
+                          handleFileChange("investmentDisclosure", files?.[0] || null)
+                        }
+                        existingFileUrl={documentUrls.investmentDisclosure}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
 
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Upload Non-Disclosure Agreement (NDA)</Label>
-                    <FileUpload
-                      id="nda"
-                      onChange={(files) => handleFileChange("nda", files?.[0] || null)}
-                      existingFileUrl={documentUrls.nda}
-                    />
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Information Secrecy / Confidentiality Form</Label>
-                    <FileUpload
-                      id="secrecyForm"
-                      onChange={(files) =>
-                        handleFileChange("secrecyForm", files?.[0] || null)
-                      }
-                      existingFileUrl={documentUrls.secrecyForm}
-                    />
-                  </div>
-
-                  <div className="flex flex-col items-center">
-                    <Label className="text-center">Investment Disclosure Form</Label>
-                    <FileUpload
-                      id="investmentDisclosure"
-                      onChange={(files) =>
-                        handleFileChange("investmentDisclosure", files?.[0] || null)
-                      }
-                      existingFileUrl={documentUrls.investmentDisclosure}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* Submit / Navigation Buttons */}
-          <div className="flex gap-2 justify-end">
-            {step > 0 && (
+            {/* Submit / Navigation Buttons */}
+            <div className="flex gap-2 justify-end">
+              {step > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goBack}
+                  disabled={isPending}
+                >
+                  Back
+                </Button>
+              )}
+              {step < stepLabels.length - 1 && (
+                <Button type="button" onClick={goNext} disabled={isPending}>
+                  Next
+                </Button>
+              )}
+              {step === stepLabels.length - 1 && (
+                <Button
+                  type="submit"
+                  disabled={isPending}
+                  className="flex-1"
+                >
+                  {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  {mode === "create" ? "Create Employee" : "Update Employee"}
+                </Button>
+              )}
               <Button
                 type="button"
-                variant="outline"
-                onClick={goBack}
+                variant="ghost"
+                onClick={() => router.back()}
                 disabled={isPending}
               >
-                Back
+                Cancel
               </Button>
-            )}
-            {step < stepLabels.length - 1 && (
-              <Button type="button" onClick={goNext} disabled={isPending}>
-                Next
-              </Button>
-            )}
-            {step === stepLabels.length - 1 && (
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="flex-1"
-              >
-                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {mode === "create" ? "Create Employee" : "Update Employee"}
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => router.back()}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </FormProvider>
   );
 }

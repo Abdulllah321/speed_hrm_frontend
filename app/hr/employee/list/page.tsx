@@ -3,15 +3,33 @@
 import { useState, useEffect, useTransition, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Plus,
+  Pencil,
+  Trash2,
+  Loader2,
+  Eye,
+  History,
+  UserX,
+  Upload,
+  MoreHorizontal,
+  Download,
+} from "lucide-react";
+import {
+  getEmployees,
+  deleteEmployee,
+  updateEmployee,
+  type Employee,
+} from "@/lib/actions/employee";
+import { uploadEmployeeCsv } from "@/lib/actions/employee-import";
+import { FileUpload } from "@/components/ui/file-upload";
+import { getDepartments, type Department } from "@/lib/actions/department";
+import { getDesignations, type Designation } from "@/lib/actions/designation";
+import { getCitiesByState, type City } from "@/lib/actions/city";
+import DataTable from "@/components/common/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +46,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -37,39 +54,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import {
-  Plus,
-  Pencil,
-  Trash2,
-  Loader2,
-  Search,
-  Printer,
-  Download,
-  MoreHorizontal,
-  Eye,
-  History,
-  UserX,
-  Upload,
-} from "lucide-react";
-import {
-  getEmployees,
-  deleteEmployee,
-  type Employee,
-} from "@/lib/actions/employee";
-import { uploadEmployeeCsv } from "@/lib/actions/employee-import";
-import { FileUpload } from "@/components/ui/file-upload";
-import { getDepartments, type Department } from "@/lib/actions/department";
-import { getDesignations, type Designation } from "@/lib/actions/designation";
-import { getCitiesByState, type City } from "@/lib/actions/city";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function EmployeeListPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
   const [isPending, startTransition] = useTransition();
-  const tableRef = useRef<HTMLTableElement>(null);
   const hasFetchedRef = useRef(false);
   const [uploadDialog, setUploadDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -90,6 +87,144 @@ export default function EmployeeListPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [citiesMap, setCitiesMap] = useState<Record<string, City[]>>({});
+
+  // Define columns for DataTable
+  const columns: ColumnDef<Employee>[] = [
+    {
+      accessorKey: "employeeId",
+      header: "Employee ID",
+      cell: ({ row }) => (
+        <div className="font-medium">{row.getValue("employeeId")}</div>
+      ),
+    },
+    {
+      accessorKey: "employeeName",
+      header: "Employee Details",
+      cell: ({ row }) => {
+        const employee = row.original;
+        return (
+          <div className="space-y-1">
+            <div className="font-medium">{employee.employeeName}</div>
+            <div className="text-xs text-muted-foreground">
+              {employee.employeeId}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {getDepartmentName(employee.department)} • {getDesignationName(employee.designation)}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {employee.contactNumber}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "bankDetails",
+      header: "Bank Details",
+      cell: ({ row }) => {
+        const employee = row.original;
+        return (
+          <div className="space-y-1">
+            <div className="text-sm">{employee.bankName}</div>
+            <div className="text-xs text-muted-foreground">
+              {employee.accountNumber}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {employee.accountTitle}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "address",
+      header: "Address",
+      cell: ({ row }) => {
+        const employee = row.original;
+        return (
+          <div className="space-y-1">
+            <div className="text-sm">{getCityName(employee.city, employee.province)}</div>
+            <div className="text-xs text-muted-foreground">
+              {employee.currentAddress}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "employeeSalary",
+      header: "Salary",
+      cell: ({ row }) => {
+        const salary = parseFloat(row.getValue("employeeSalary"));
+        return (
+          <div className="font-medium">
+            {new Intl.NumberFormat("en-PK", {
+              style: "currency",
+              currency: "PKR",
+            }).format(salary)}
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+        return (
+          <Badge
+            variant={
+              status === "active"
+                ? "default"
+                : status === "inactive"
+                ? "secondary"
+                : "destructive"
+            }
+          >
+            {status}
+          </Badge>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const employee = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/hr/employee/view/${employee.id}`}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/hr/employee/edit/${employee.id}`}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => handleStatusToggle(employee)}
+                disabled={isPending}
+              >
+                <UserX className="h-4 w-4 mr-2" />
+                {employee.status === "active" ? "Deactivate" : "Activate"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
 
   // Fetch all data in a single useEffect to avoid multiple API calls
   useEffect(() => {
@@ -174,12 +309,31 @@ export default function EmployeeListPage() {
     return city?.name || id;
   };
 
-  const filteredEmployees = employees.filter(
-    (e) =>
-      e.employeeName.toLowerCase().includes(search.toLowerCase()) ||
-      e.employeeId.toLowerCase().includes(search.toLowerCase()) ||
-      getDepartmentName(e.department).toLowerCase().includes(search.toLowerCase())
-  );
+  const handleStatusToggle = (employee: Employee) => {
+    const newStatus = employee.status === "active" ? "inactive" : "active";
+    startTransition(async () => {
+      try {
+        const result = await updateEmployee(employee.id, {
+          status: newStatus,
+        });
+        if (result.status) {
+          setEmployees(
+            employees.map((e) =>
+              e.id === employee.id ? { ...e, status: newStatus } : e
+            )
+          );
+          toast.success(
+            `Employee ${newStatus === "active" ? "activated" : "deactivated"} successfully`
+          );
+        } else {
+          toast.error(result.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error toggling employee status:", error);
+        toast.error("Failed to update status");
+      }
+    });
+  };
 
   const handleDelete = (employee: Employee) => {
     setDeletingEmployee(employee);
@@ -205,20 +359,6 @@ export default function EmployeeListPage() {
     });
   };
 
-  const handleToggleStatus = (employee: Employee) => {
-    // TODO: Implement API call to update employee status
-    setEmployees(
-      employees.map((e) =>
-        e.id === employee.id
-          ? { ...e, status: e.status === "active" ? "inactive" : "active" }
-          : e
-      )
-    );
-    toast.success(
-      `Employee ${employee.status === "active" ? "deactivated" : "activated"}`
-    );
-  };
-
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
@@ -227,7 +367,7 @@ export default function EmployeeListPage() {
       <style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;text-align:left}th{background:#f4f4f4}h1{text-align:center}</style>
       </head><body><h1>Employee List</h1>
       <table><thead><tr><th>S.No</th><th>Emp ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Contact</th><th>Bank</th><th>Salary</th><th>Status</th></tr></thead>
-      <tbody>${filteredEmployees
+      <tbody>${employees
         .map(
           (e, i) =>
             `<tr><td>${i + 1}</td><td>${e.employeeId}</td><td>${e.employeeName
@@ -410,166 +550,18 @@ export default function EmployeeListPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle>Employee List</CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePrint}
-                title="Print"
-              >
-                <Printer className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleExportCSV}
-                title="Export CSV"
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredEmployees.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {search
-                ? "No employees found"
-                : "No employees. Create one to get started."}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table ref={tableRef}>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-14">S.No</TableHead>
-                    <TableHead>Employee Details</TableHead>
-                    <TableHead>Bank Details</TableHead>
-                    <TableHead>Address</TableHead>
-                    <TableHead>Employee Salary</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEmployees.map((emp, index) => (
-                    <TableRow key={emp.id}>
-                      <TableCell className="font-medium">{index + 1}</TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">{emp.employeeName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {emp.employeeId}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {getDepartmentName(emp.department)}{" "}
-                            •{" "}
-                            {getDesignationName(emp.designation)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {emp.contactNumber}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="text-sm">{emp.bankName || "N/A"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {emp.accountNumber || "N/A"}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1 max-w-[200px]">
-                          <div className="text-sm truncate">
-                            {emp.currentAddress || "N/A"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {getCityName(emp.city, emp.province)}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium">
-                          PKR {Number(emp.employeeSalary).toLocaleString()}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            emp.status === "active" ? "default" : "secondary"
-                          }
-                        >
-                          {emp.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <History className="h-4 w-4 mr-2" />
-                              View Log
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/hr/employee/view/${emp.id}`}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/hr/employee/edit/${emp.id}`}>
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Edit
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(emp)}
-                            >
-                              <UserX className="h-4 w-4 mr-2" />
-                              {emp.status === "active"
-                                ? "Deactivate"
-                                : "Activate"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(emp)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <DataTable
+          data={employees}
+          columns={columns}
+          toggleAction={() => setUploadDialog(true)}
+          actionText="Upload CSV"
+        />
+      )}
 
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
@@ -617,7 +609,7 @@ export default function EmployeeListPage() {
             />
             <div className="border border-primary/20 rounded-lg p-3 bg-primary/5">
               <p className="text-sm text-primary mb-2">Need a template?</p>
-              <Button asChild variant="outline" size="sm" className="!bg-primary !text-white hover:!bg-primary/90">
+              <Button asChild variant="outline" size="sm" className="bg-primary! text-white! hover:bg-primary/90!">
                 <a href="/employee_samples.xlsx" download>
                   <Download className="h-4 w-4 mr-2" />
                   Download Sample Template
