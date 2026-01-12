@@ -202,7 +202,7 @@ export default function CreateLeaveEncashmentPage() {
           try {
             const empResult = await getEmployeeById(emp.id);
             const employeeData = empResult.data;
-            
+
             const grossSalary = employeeData?.employeeSalary || 0;
             const annualSalary = grossSalary * 12;
             const perDayAmount = annualSalary / 365; // Per day calculation
@@ -212,9 +212,9 @@ export default function CreateLeaveEncashmentPage() {
               employeeId: emp.id,
               employeeCode: emp.employeeId,
               employeeName: emp.employeeName,
-              country: employeeData?.country || "—",
-              province: employeeData?.province || "—",
-              city: employeeData?.city || "—",
+              country: employeeData?.countryName || "—",
+              province: employeeData?.provinceName || "—",
+              city: employeeData?.cityName || "—",
               area: employeeData?.locationName || "—",
               station: employeeData?.locationName || "—",
               department: emp.departmentName || "—",
@@ -340,7 +340,7 @@ export default function CreateLeaveEncashmentPage() {
         );
         // Clear form and redirect
         handleClearForm();
-        router.push("/dashboard/payroll-setup/leave-encashment/list");
+        router.push("/hr/payroll-setup/leave-encashment/list");
       } else {
         toast.error(result.message || "Failed to create leave encashment records");
       }
@@ -456,10 +456,9 @@ export default function CreateLeaveEncashmentPage() {
         accessorKey: "encashmentDate",
         size: 160,
         cell: ({ row }) =>
-          `Effected Date: ${
-            row.original.encashmentDate
-              ? format(new Date(row.original.encashmentDate), "dd-MMM-yyyy")
-              : "—"
+          `Effected Date: ${row.original.encashmentDate
+            ? format(new Date(row.original.encashmentDate), "dd-MMM-yyyy")
+            : "—"
           }`,
       },
       {
@@ -548,7 +547,7 @@ export default function CreateLeaveEncashmentPage() {
       </div>
 
       <Card className="border-0 shadow-none">
-        <CardHeader className="pb-4 bg-background">
+        <CardHeader className="pb-4 ">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-2xl font-bold text-foreground">
@@ -638,8 +637,8 @@ export default function CreateLeaveEncashmentPage() {
                     !filters.departmentId
                       ? "Select department first"
                       : subDepartments.length === 0
-                      ? "No Record Found"
-                      : "Select Sub Department"
+                        ? "No Record Found"
+                        : "Select Sub Department"
                   }
                   searchPlaceholder="Search sub department..."
                   emptyMessage="No sub departments found"

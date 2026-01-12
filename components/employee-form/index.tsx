@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -289,7 +289,6 @@ const employeeFormSchema = z.object({
 
   location: z
     .string()
-    .min(1, "Location is required")
     .optional(),
 
   leavesPolicy: z
@@ -344,7 +343,7 @@ const employeeFormSchema = z.object({
 
   avatarUrl: z.string().optional(),
   eobiDocumentUrl: z.string().optional(),
-  
+
   // Social Security (SESSI/PESSE/IESSI)
   socialSecurityRegistrations: z
     .array(
@@ -362,7 +361,7 @@ const employeeFormSchema = z.object({
     )
     .default([])
     .optional(),
-  
+
   // Equipment
   selectedEquipments: z
     .array(z.string())
@@ -462,7 +461,7 @@ export function EmployeeForm({
       lifetimeCnic: initialData.lifetimeCnic || false,
       joiningDate: initialData.joiningDate || "",
       dateOfBirth: initialData.dateOfBirth || "",
-      nationality: initialData.nationality || "",
+      nationality: initialData.nationality || "Pakistani",
       gender: initialData.gender || "",
       contactNumber: initialData.contactNumber || "",
       emergencyContactNumber: initialData.emergencyContactNumber || "",
@@ -532,7 +531,7 @@ export function EmployeeForm({
       lifetimeCnic: false,
       joiningDate: "",
       dateOfBirth: "",
-      nationality: "",
+      nationality: "Pakistani",
       gender: "",
       contactNumber: "",
       emergencyContactNumber: "",
@@ -632,7 +631,9 @@ export function EmployeeForm({
     "Other",
   ];
   const genders = ["Male", "Female", "Other"];
-  const banks = [
+
+
+  const defaultBanks = [
     "HBL",
     "UBL",
     "MCB",
@@ -641,6 +642,14 @@ export function EmployeeForm({
     "Meezan Bank",
     "Standard Chartered",
   ];
+
+  const banks = useMemo(() => {
+    const bankList = [...defaultBanks];
+    if (initialData?.bankName && !bankList.includes(initialData.bankName)) {
+      bankList.push(initialData.bankName);
+    }
+    return bankList;
+  }, [initialData?.bankName]);
   const daysOff = ["Sunday", "Saturday-Sunday", "Friday", "Friday-Saturday"];
 
   // Profile pic and documents state
@@ -1115,7 +1124,6 @@ export function EmployeeForm({
         "state",
         "city",
         "workingHoursPolicy",
-        "location",
         "leavesPolicy",
         "reportingManager",
         "employeeSalary",
@@ -1245,16 +1253,16 @@ export function EmployeeForm({
             qualifications: qualificationsToSubmit,
             socialSecurityRegistrations: data.socialSecurityRegistrations && Array.isArray(data.socialSecurityRegistrations) && data.socialSecurityRegistrations.length > 0
               ? data.socialSecurityRegistrations.map((reg: any) => ({
-                  institutionId: reg.institutionId,
-                  registrationNumber: reg.registrationNumber || undefined,
-                  cardNumber: reg.cardNumber || undefined,
-                  registrationDate: reg.registrationDate || undefined,
-                  expiryDate: reg.expiryDate || undefined,
-                  contributionRate: reg.contributionRate ? parseFloat(String(reg.contributionRate)) : undefined,
-                  baseSalary: reg.baseSalary ? parseFloat(String(reg.baseSalary)) : undefined,
-                  monthlyContribution: reg.monthlyContribution ? parseFloat(String(reg.monthlyContribution)) : undefined,
-                  status: reg.status || "active",
-                }))
+                institutionId: reg.institutionId,
+                registrationNumber: reg.registrationNumber || undefined,
+                cardNumber: reg.cardNumber || undefined,
+                registrationDate: reg.registrationDate || undefined,
+                expiryDate: reg.expiryDate || undefined,
+                contributionRate: reg.contributionRate ? parseFloat(String(reg.contributionRate)) : undefined,
+                baseSalary: reg.baseSalary ? parseFloat(String(reg.baseSalary)) : undefined,
+                monthlyContribution: reg.monthlyContribution ? parseFloat(String(reg.monthlyContribution)) : undefined,
+                status: reg.status || "active",
+              }))
               : undefined,
           };
 

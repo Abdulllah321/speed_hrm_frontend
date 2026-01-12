@@ -36,7 +36,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
     getEmployees(), // Only needed for reporting manager name lookup
     getEmployeeRejoiningHistory(employeeId),
   ]);
-
+  console.log(employeeRes)
   if (!employeeRes.status || !employeeRes.data) {
     notFound();
   }
@@ -131,7 +131,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
 
   // Build timeline events
   // Add rejoining history events (sorted by date, oldest first)
-  const sortedHistory = [...rejoiningHistory].sort((a, b) => 
+  const sortedHistory = [...rejoiningHistory].sort((a, b) =>
     new Date(a.rejoiningDate).getTime() - new Date(b.rejoiningDate).getTime()
   );
 
@@ -354,8 +354,8 @@ export default async function ViewEmployeePage({ params }: PageProps) {
   // Helper function to get qualification name from relation object
   const getQualificationName = (qual: any) => {
     const qualification = qual?.qualification;
-    return (qualification && typeof qualification === 'object' && qualification.name) 
-      ? qualification.name 
+    return (qualification && typeof qualification === 'object' && qualification.name)
+      ? qualification.name
       : "N/A";
   };
 
@@ -426,17 +426,16 @@ export default async function ViewEmployeePage({ params }: PageProps) {
               <div className="relative">
                 {/* Timeline line */}
                 <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border"></div>
-                
+
                 {/* Timeline events */}
                 <div className="space-y-6">
                   {timelineEvents.map((event, index) => (
                     <div key={index} className="relative flex items-start gap-4">
                       {/* Icon */}
-                      <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background ${
-                        event.iconType === 'joined' ? 'border-green-500' :
-                        event.iconType === 'rejoined' ? 'border-blue-500' :
-                        'border-red-500'
-                      }`}>
+                      <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background ${event.iconType === 'joined' ? 'border-green-500' :
+                          event.iconType === 'rejoined' ? 'border-blue-500' :
+                            'border-red-500'
+                        }`}>
                         {event.iconType === 'joined' ? (
                           <LogIn className="h-5 w-5 text-green-600" />
                         ) : event.iconType === 'rejoined' ? (
@@ -445,7 +444,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                           <LogOut className="h-5 w-5 text-red-600" />
                         )}
                       </div>
-                      
+
                       {/* Content */}
                       <div className="flex-1 pt-1">
                         <div className="flex items-center justify-between gap-4 mb-1">
@@ -455,12 +454,12 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground">{event.description}</p>
-                        
+
                         {/* Show changed fields and view old data button for rejoining events */}
                         {event.type === 'rejoined' && event.historyEvent && (() => {
                           const historyEvent = event.historyEvent;
                           const hasPreviousState = historyEvent?.previousState && typeof historyEvent.previousState === 'object';
-                          
+
                           return (
                             <div className="mt-3 space-y-2 flex items-start justify-between">
                               {historyEvent?.keyChanges && Array.isArray(historyEvent.keyChanges) && historyEvent.keyChanges.length > 0 && (
@@ -477,7 +476,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                                   )}
                                 </div>
                               )}
-                              
+
                               {hasPreviousState && (
                                 <Dialog>
                                   <DialogTrigger asChild>
@@ -553,7 +552,11 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                 { label: "City", value: getCityName() },
                 { label: "Employee Salary", value: `PKR ${Number(employee.employeeSalary).toLocaleString()}` },
                 { label: "EOBI", value: employee.eobi ? "Yes" : "No" },
-                ...(employee.eobi ? [{ label: "EOBI Number", value: employee.eobiNumber || "N/A" }] : []),
+                ...(employee.eobi ? [
+                  { label: "EOBI ID", value: employee.eobiId || "N/A" },
+                  { label: "EOBI Code", value: employee.eobiCode || "N/A" },
+                  { label: "EOBI Number", value: employee.eobiNumber || "N/A" }
+                ] : []),
                 ...(employee.eobi && employee.eobiDocumentUrl ? [{
                   label: "EOBI Document",
                   value: (
@@ -631,11 +634,11 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                     {/* Qualification Document */}
                     {(() => {
                       // Check documentUrl from qualification object first, then from documentUrls
-                      const docUrl = qual.documentUrl || 
-                        (employee.documentUrls && typeof employee.documentUrls === 'object' 
-                          ? (employee.documentUrls as Record<string, string>)[`qualification_${index}`] 
+                      const docUrl = qual.documentUrl ||
+                        (employee.documentUrls && typeof employee.documentUrls === 'object'
+                          ? (employee.documentUrls as Record<string, string>)[`qualification_${index}`]
                           : null);
-                      
+
                       return docUrl ? (
                         <div className="mt-4 p-4 border rounded-lg bg-muted/10">
                           <p className="text-xs text-muted-foreground mb-2">Degree Document</p>
@@ -739,9 +742,9 @@ export default async function ViewEmployeePage({ params }: PageProps) {
           // Filter out qualification documents (they're shown in Qualification section)
           const filteredDocs = Object.entries(employee.documentUrls as Record<string, string>)
             .filter(([key]) => !key.startsWith('qualification_'));
-          
+
           if (filteredDocs.length === 0) return null;
-          
+
           return (
             <Card className="border-none shadow-none">
               <CardHeader>
@@ -764,10 +767,10 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                       secrecyForm: "Information Secrecy / Confidentiality Form",
                       investmentDisclosure: "Investment Disclosure Form",
                     };
-                    
+
                     const label = documentLabels[key] || key;
                     const fileName = url.split('/').pop() || 'Document';
-                    
+
                     return (
                       <div
                         key={key}

@@ -77,6 +77,8 @@ export interface LoanRequestRow {
   numberOfInstallments: string | number;
   approvalStatus: string;
   status: string;
+  paidAmount?: number;
+  remainingAmount?: number;
 }
 
 // Edit form schema
@@ -1191,6 +1193,40 @@ export const columns: ColumnDef<LoanRequestRow>[] = [
           currency: "PKR",
           minimumFractionDigits: 0,
         }).format(row.original.amount)}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "paidAmount",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+        Paid Amount
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm font-medium text-right text-green-600">
+        {row.original.paidAmount !== undefined ? new Intl.NumberFormat("en-PK", {
+          style: "currency",
+          currency: "PKR",
+          minimumFractionDigits: 0,
+        }).format(row.original.paidAmount) : "—"}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "remainingAmount",
+    header: () => (
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+        Remaining
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-sm font-medium text-right text-destructive">
+        {row.original.remainingAmount !== undefined ? new Intl.NumberFormat("en-PK", {
+          style: "currency",
+          currency: "PKR",
+          minimumFractionDigits: 0,
+        }).format(row.original.remainingAmount) : "—"}
       </div>
     ),
   },

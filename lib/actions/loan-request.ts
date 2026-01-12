@@ -41,6 +41,7 @@ export interface LoanRequest {
   additionalDetails?: string;
   status: string; // 'pending' | 'approved' | 'rejected' | 'disbursed' | 'completed' | 'cancelled'
   approvalStatus: string; // 'pending' | 'approved' | 'rejected'
+  paidAmount?: number;
   approvedById?: string;
   approvedBy?: {
     id: string;
@@ -99,9 +100,9 @@ export async function getLoanRequests(params?: {
     return res.json();
   } catch (error) {
     console.error('Error fetching loan requests:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch loan requests. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch loan requests. Please check your connection.'
     };
   }
 }
@@ -122,9 +123,9 @@ export async function getLoanRequestById(id: string): Promise<{ status: boolean;
     return res.json();
   } catch (error) {
     console.error('Error fetching loan request:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch loan request. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch loan request. Please check your connection.'
     };
   }
 }
