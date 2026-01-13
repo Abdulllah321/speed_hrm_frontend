@@ -79,6 +79,13 @@ export const columns: ColumnDef<DepartmentRow>[] = [
     cell: ({ row }) => row.original.headName || "—",
   },
   {
+    header: "Allocation",
+    accessorKey: "allocationName",
+    size: 200,
+    enableSorting: true,
+    cell: ({ row }) => row.original.allocationName || "—",
+  },
+  {
     header: "Sub-departments",
     accessorKey: "subDepartmentsCount",
     accessorFn: (row) => row.subDepartments?.length || 0,

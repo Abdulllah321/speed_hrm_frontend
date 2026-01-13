@@ -19,6 +19,11 @@ export interface Department {
   createdAt: string;
   updatedAt: string;
   allocationId?: string | null;
+  allocation?: {
+    id: string;
+    name: string;
+  } | null;
+  allocationName?: string | null;
   subDepartments?: SubDepartment[];
 }
 
@@ -69,9 +74,9 @@ export async function getDepartmentById(id: string): Promise<{ status: boolean; 
   }
 }
 
-export async function createDepartments(names: string[]): Promise<{ status: boolean; message: string; data?: Department[] }> {
-  if (!names.length) {
-    return { status: false, message: "At least one name is required" };
+export async function createDepartments(items: { name: string; allocationId?: string; headId?: string }[]): Promise<{ status: boolean; message: string; data?: Department[] }> {
+  if (!items.length) {
+    return { status: false, message: "At least one department is required" };
   }
 
   try {
@@ -82,7 +87,7 @@ export async function createDepartments(names: string[]): Promise<{ status: bool
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ names }),
+      body: JSON.stringify({ items }),
     });
     const data = await res.json();
 
