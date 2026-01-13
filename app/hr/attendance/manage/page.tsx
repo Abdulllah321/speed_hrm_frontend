@@ -47,6 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Autocomplete, type AutocompleteOption } from "@/components/ui/autocomplete";
 
 export default function AttendanceManagePage() {
   const [isPending, setIsPending] = useState(false);
@@ -658,28 +659,18 @@ export default function AttendanceManagePage() {
                 {loading ? (
                   <div className="h-10 bg-muted rounded animate-pulse" />
                 ) : (
-                  <Select
+                  <Autocomplete
+                    options={employees.map((e) => ({
+                      value: e.id,
+                      label: `${e.employeeName} (${e.employeeId})`,
+                      description: `${e.department?.name || 'No Dept'} - ${e.subDepartment?.name || 'No Sub-Dept'}`
+                    }))}
                     value={formData.employeeId}
                     onValueChange={handleEmployeeChange}
+                    placeholder="Search and select employee..."
+                    searchPlaceholder="Type name or ID..."
                     disabled={isPending || loading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select employee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {employees.length === 0 ? (
-                        <SelectItem value="no-employees" disabled>
-                          No employees found
-                        </SelectItem>
-                      ) : (
-                        employees.map((e) => (
-                          <SelectItem key={e.id} value={e.id}>
-                            {e.employeeName} ({e.employeeId})
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  />
                 )}
               </div>
             </div>

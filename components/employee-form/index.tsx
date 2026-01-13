@@ -313,14 +313,9 @@ const employeeFormSchema = z.object({
     .string()
     .optional(),
 
-  // Bank Account Details
   bankName: z
     .string()
-    .optional()
-    .refine(
-      (val) => !val || val.trim().length > 0,
-      "Bank Name cannot be empty if provided"
-    ),
+    .optional(),
 
   accountNumber: z
     .string()
@@ -590,14 +585,7 @@ export function EmployeeForm({
       bankName: "",
       accountNumber: "",
       accountTitle: "",
-      equipmentAssignments: (initialData as any).equipmentAssignments
-        ? (initialData as any).equipmentAssignments.map((ea: any) => ({
-          equipmentId: ea.equipment?.id || ea.equipmentId || "",
-          productId: ea.productId || "",
-          assignedDate: ea.assignedDate ? new Date(ea.assignedDate).toISOString() : new Date().toISOString(),
-          notes: ea.notes || "",
-        }))
-        : [],
+      equipmentAssignments: [],
       avatarUrl: "",
       eobiDocumentUrl: "",
       qualifications: [{
@@ -1691,7 +1679,7 @@ export function EmployeeForm({
                   </CardHeader>
                   <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-2">
-                      <Label><RequiredLabel>Bank Name *</RequiredLabel></Label>
+                      <Label>Bank Name</Label>
                       <Controller
                         name="bankName"
                         control={control}
@@ -1720,7 +1708,7 @@ export function EmployeeForm({
                     </div>
 
                     <div className="space-y-2">
-                      <Label><RequiredLabel>Account Number *</RequiredLabel></Label>
+                      <Label>Account Number</Label>
                       <Input
                         {...register("accountNumber")}
                         disabled={isPending}
@@ -1731,7 +1719,7 @@ export function EmployeeForm({
                     </div>
 
                     <div className="space-y-2">
-                      <Label><RequiredLabel>Account Title *</RequiredLabel></Label>
+                      <Label>Account Title</Label>
                       <Input
                         {...register("accountTitle")}
                         disabled={isPending}

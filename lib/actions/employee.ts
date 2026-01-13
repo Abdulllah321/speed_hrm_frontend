@@ -54,9 +54,9 @@ export interface Employee {
   allowRemoteAttendance: boolean;
   currentAddress?: string | null;
   permanentAddress?: string | null;
-  bankName: string;
-  accountNumber: string;
-  accountTitle: string;
+  bankName?: string | null;
+  accountNumber?: string | null;
+  accountTitle?: string | null;
   status: string;
   equipmentAssignments?: Array<{
     id: string;
@@ -220,9 +220,9 @@ export async function createEmployee(data: {
   allowRemoteAttendance: boolean;
   currentAddress?: string;
   permanentAddress?: string;
-  bankName: string;
-  accountNumber: string;
-  accountTitle: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountTitle?: string;
   selectedEquipments?: string[];
   accountType?: string;
   password?: string;

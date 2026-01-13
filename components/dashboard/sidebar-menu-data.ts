@@ -204,13 +204,13 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/banks/list" },
     ],
   },
-  {
-    title: "Rebate Nature",
-    children: [
-      { title: "Add", href: "/master/rebate-nature/add" },
-      { title: "View", href: "/master/rebate-nature/list" },
-    ],
-  },
+  // {
+  //   title: "Rebate Nature",
+  //   children: [
+  //     { title: "Add", href: "/master/rebate-nature/add" },
+  //     { title: "View", href: "/master/rebate-nature/list" },
+  //   ],
+  // },
 ];
 
 export const menuData: MenuItem[] = [
@@ -231,7 +231,7 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/hr/employee/create" },
           { title: "List", href: "/hr/employee/list" },
-          { title: "User Accounts", href: "/hr/employee/accounts" },
+          // { title: "User Accounts", href: "/hr/employee/accounts" },
         ],
       },
       {
@@ -437,35 +437,16 @@ export const menuData: MenuItem[] = [
       // },
     ],
   },
-  {
-    title: "Profile Settings",
-    icon: Settings,
-    children: [
-      {
-        title: "Settings",
-        children: [
-          { title: "Change Password", href: "/hr/settings/password" },
-          { title: "Edit Profile", href: "/hr/settings/profile" },
-        ],
-      },
-      {
-        title: "Roles",
-        icon: Shield,
-        children: [
-          { title: "Add Role", href: "/hr/roles/add" },
-          { title: "View Role", href: "/hr/roles/view" },
-        ],
-      },
-      {
-        title: "Sub Menu",
-        icon: Menu,
-        children: [
-          { title: "Add and View", href: "/hr/submenu/manage" },
-        ],
-      },
-    ],
-  },
+{
+  title: "Profile Settings",
+  icon: Settings,
+  children: [
+    { title: "Change Password", href: "/hr/settings/password" },
+    { title: "Edit Profile", href: "/hr/settings/profile" },
+  ],
+},
 ];
+
 
 export function flattenMenu(
   items: MenuItem[],

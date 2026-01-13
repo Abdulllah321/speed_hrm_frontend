@@ -94,7 +94,7 @@ export function SubDepartmentAddForm({ departments, defaultDepartmentId }: SubDe
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
-              <Label>Sub-Departments</Label>
+              <Label>Departments</Label>
               {rows.map((row, index) => (
                 <div key={row.id} className="space-y-2">
                   <div className="flex gap-2">
