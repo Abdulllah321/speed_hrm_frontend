@@ -1348,6 +1348,8 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
+            equipmentAssignments: data.equipmentAssignments,
+            avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
           };

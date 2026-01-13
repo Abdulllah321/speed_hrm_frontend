@@ -223,7 +223,12 @@ export async function createEmployee(data: {
   bankName?: string;
   accountNumber?: string;
   accountTitle?: string;
-  selectedEquipments?: string[];
+  equipmentAssignments?: Array<{
+    equipmentId: string;
+    productId?: string;
+    assignedDate?: string;
+    notes?: string;
+  }>;
   accountType?: string;
   password?: string;
   roles?: string;
@@ -473,6 +478,12 @@ export async function rejoinEmployee(data: {
   accountNumber?: string;
   accountTitle?: string;
   remarks?: string;
+  equipmentAssignments?: Array<{
+    equipmentId: string;
+    productId?: string;
+    assignedDate?: string;
+    notes?: string;
+  }>;
 }): Promise<{ status: boolean; data?: Employee; message?: string; changedFields?: string[] }> {
   try {
     // Prepare the data for the API
@@ -542,6 +553,7 @@ export async function rejoinEmployee(data: {
     if (data.accountNumber !== undefined) payload.accountNumber = data.accountNumber;
     if (data.accountTitle !== undefined) payload.accountTitle = data.accountTitle;
     if (data.remarks !== undefined) payload.remarks = data.remarks;
+    if (data.equipmentAssignments !== undefined) payload.equipmentAssignments = data.equipmentAssignments;
 
     const res = await fetch(`${API_URL}/employees/rejoin`, {
       method: 'POST',
