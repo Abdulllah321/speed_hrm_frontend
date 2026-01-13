@@ -14,6 +14,13 @@ export interface User {
   employeeId?: string | null;
   status?: string;
   roleId?: string | null;
+  isFirstPassword?: boolean;
+  employee?: {
+    id: string;
+    employeeId: string;
+    designation: { name: string };
+    department: { name: string };
+  } | null;
   role?: {
     id: string;
     name: string;
@@ -82,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { refreshTokenClient } = await import("@/lib/client-auth");
       const success = await refreshTokenClient();
-      
+
       if (!success) {
         // Refresh failed, user needs to login again
         setUser(null);
@@ -90,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // router.push("/auth/login");
         return false;
       }
-      
+
       return true;
     } catch (error) {
       console.error("Token refresh error:", error);
@@ -112,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // If we get 401, try to refresh token once
     if (response.status === 401) {
       const refreshSuccess = await refreshToken();
-      
+
       if (refreshSuccess) {
         // Retry the original request with new token
         response = await fetch(url, {
@@ -150,7 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoadingProgress(70);
 
       const data = await res.json();
-      
+
       setLoadingProgress(85);
 
       if (data.status && data.data) {
@@ -160,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setLoadingMessage("Almost done...");
       setLoadingProgress(100);
-      
+
       // Small delay to show 100% before hiding
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
@@ -208,6 +215,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('focus', handleFocus);
     };
   }, [user, refreshToken]);
+
+  // Check for first password status
+  useEffect(() => {
+    if (user?.isFirstPassword) {
+      // You can implement forced redirect here if needed
+      // if (pathname !== '/hr/settings/password') router.push('/hr/settings/password');
+
+      // For now, let's show a toast
+      const { toast } = require("sonner");
+      toast.warning("Please change your password", {
+        description: "You are using a temporary password. Please update it immediately.",
+        duration: Infinity,
+        action: {
+          label: "Change Now",
+          onClick: () => router.push("/hr/settings/password"),
+        },
+      });
+    }
+  }, [user, router]);
 
   // Proactive session check - refresh token if needed
   const checkAndRefreshSession = useCallback(async () => {
@@ -268,14 +294,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasAnyPermission = useCallback((permissions: string[]): boolean => {
     if (!user?.role?.permissions) return false;
-    return permissions.some(permission => 
+    return permissions.some(permission =>
       user.role?.permissions?.some(p => p.permission.name === permission)
     );
   }, [user]);
 
   const hasAllPermissions = useCallback((permissions: string[]): boolean => {
     if (!user?.role?.permissions) return false;
-    return permissions.every(permission => 
+    return permissions.every(permission =>
       user.role?.permissions?.some(p => p.permission.name === permission)
     );
   }, [user]);
