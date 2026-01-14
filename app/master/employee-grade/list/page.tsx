@@ -1,6 +1,7 @@
 import { getEmployeeGrades } from "@/lib/actions/employee-grade";
 import { EmployeeGradeList } from "./employee-grade-list";
 import { ListError } from "@/components/dashboard/list-error";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,12 @@ export default async function EmployeeGradeListPage({
     }
 
     return (
-      <EmployeeGradeList
-        initialEmployeeGrades={result.data || []}
-        newItemId={newItemId}
-      />
+      <PermissionGuard permissions="employee-grade.read">
+        <EmployeeGradeList
+          initialEmployeeGrades={result.data || []}
+          newItemId={newItemId}
+        />
+      </PermissionGuard>
     );
   } catch (error) {
     console.error("Error in EmployeeGradeListPage:", error);

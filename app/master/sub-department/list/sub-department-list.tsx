@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import DataTable, { FilterConfig } from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, setDepartmentsStore, SubDepartmentRow } from "./columns";
 import {
   Department,
@@ -54,6 +55,9 @@ export function SubDepartmentList({
     setDepartmentsStore(departments);
   }, [departments]);
 
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("sub-department.create");
+
   const handleToggle = () => {
     router.push("/master/sub-department/add");
   };
@@ -90,7 +94,7 @@ export function SubDepartmentList({
       rows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
   };
-  
+
 
   const handleBulkEditSubmit = async () => {
     const validRows = editRows.filter((r) => r.name.trim() && r.departmentId);
@@ -139,8 +143,8 @@ export function SubDepartmentList({
       <DataTable<SubDepartmentRow>
         columns={columns}
         data={data}
-        actionText="Add Sub-Department"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Sub-Department" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[
           { key: "name", label: "Name" },

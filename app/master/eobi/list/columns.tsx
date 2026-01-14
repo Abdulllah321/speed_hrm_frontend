@@ -35,6 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EOBI, updateEOBI, deleteEOBI } from "@/lib/actions/eobi";
+import { useAuth } from "@/hooks/use-auth";
 
 export type EOBIRow = EOBI & { id: string };
 
@@ -66,9 +67,17 @@ export const columns: ColumnDef<EOBIRow>[] = [
 function RowActions({ row }: { row: Row<EOBIRow> }) {
   const e = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+
+  const canEdit = hasPermission("eobi.update");
+  const canDelete = hasPermission("eobi.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {
@@ -95,8 +104,8 @@ function RowActions({ row }: { row: Row<EOBIRow> }) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}><Pencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
+          {canEdit && <DropdownMenuItem onClick={() => setEditDialog(true)}><Pencil className="h-4 w-4 mr-2" />Edit</DropdownMenuItem>}
+          {canDelete && <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive"><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
 

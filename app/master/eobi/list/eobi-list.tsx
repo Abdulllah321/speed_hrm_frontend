@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, EOBIRow } from "./columns";
 import { EOBI, deleteEOBIs, updateEOBIs } from "@/lib/actions/eobi";
 import { toast } from "sonner";
@@ -29,6 +30,8 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; employerContribution: number; employeeContribution: number; yearMonth: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("eobi.create");
 
   const handleToggle = () => {
     router.push("/master/eobi/add");
@@ -47,11 +50,11 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   };
 
   const handleBulkEdit = (items: EOBIRow[]) => {
-    setEditRows(items.map((item) => ({ 
-      id: item.id, 
-      employerContribution: item.employerContribution, 
-      employeeContribution: item.employeeContribution, 
-      yearMonth: item.yearMonth 
+    setEditRows(items.map((item) => ({
+      id: item.id,
+      employerContribution: item.employerContribution,
+      employeeContribution: item.employeeContribution,
+      yearMonth: item.yearMonth
     })));
     setBulkEditOpen(true);
   };
@@ -90,8 +93,8 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
       <DataTable<EOBIRow>
         columns={columns}
         data={data}
-        actionText="Add EOBI"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add EOBI" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

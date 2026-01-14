@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import DataTable, { FilterConfig } from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, setCountriesStore, CityRow } from "./columns";
 import { City, Country, State, deleteCities, updateCities, getStatesByCountry } from "@/lib/actions/city";
 import { toast } from "sonner";
@@ -39,6 +40,9 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
     setCountriesStore(countries);
   }, [countries]);
 
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("city.create");
+
   const handleToggle = () => {
     router.push("/master/city/add");
   };
@@ -63,7 +67,7 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
       stateId: item.stateId,
     }));
     setEditRows(editRowsData);
-    
+
     // Load states for all unique countries
     const uniqueCountryIds = [...new Set(editRowsData.map(r => r.countryId).filter(Boolean))];
     for (const countryId of uniqueCountryIds) {
@@ -81,14 +85,14 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
         }
       }
     }
-    
+
     setBulkEditOpen(true);
   };
 
   const handleCountryChangeInEdit = async (rowId: string, countryId: string) => {
     updateEditRow(rowId, "countryId", countryId);
     updateEditRow(rowId, "stateId", ""); // Reset state when country changes
-    
+
     if (!countryId) {
       return;
     }
@@ -174,8 +178,8 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
       <DataTable<CityRow>
         columns={columns}
         data={data}
-        actionText="Add City"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add City" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[
           { key: "name", label: "Name" },

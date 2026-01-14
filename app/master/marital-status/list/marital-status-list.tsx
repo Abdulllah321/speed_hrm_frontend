@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, MaritalStatusRow } from "./columns";
 import { MaritalStatus, deleteMaritalStatuses, updateMaritalStatuses } from "@/lib/actions/marital-status";
 import { toast } from "sonner";
@@ -28,6 +29,8 @@ export function MaritalStatusList({ initialMaritalStatuses, newItemId }: Marital
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("marital-status.create");
 
   const handleToggle = () => {
     router.push("/master/marital-status/add");
@@ -87,8 +90,8 @@ export function MaritalStatusList({ initialMaritalStatuses, newItemId }: Marital
       <DataTable<MaritalStatusRow>
         columns={columns}
         data={data}
-        actionText="Add Marital Status"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Marital Status" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

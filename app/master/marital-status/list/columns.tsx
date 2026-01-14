@@ -35,6 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MaritalStatus, updateMaritalStatus, deleteMaritalStatus } from "@/lib/actions/marital-status";
+import { useAuth } from "@/hooks/use-auth";
 
 export type MaritalStatusRow = MaritalStatus & { id: string };
 
@@ -94,9 +95,17 @@ type RowActionsProps = { row: Row<MaritalStatusRow> };
 function RowActions({ row }: RowActionsProps) {
   const ms = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+
+  const canEdit = hasPermission("marital-status.update");
+  const canDelete = hasPermission("marital-status.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {
@@ -135,14 +144,14 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
+          {canEdit && <DropdownMenuItem onClick={() => setEditDialog(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
+          </DropdownMenuItem>}
+          {canDelete && <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
 

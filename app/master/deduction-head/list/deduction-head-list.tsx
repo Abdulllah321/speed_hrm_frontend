@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, DeductionHeadRow } from "./columns";
 import {
   DeductionHead,
@@ -35,6 +36,8 @@ export function DeductionHeadList({
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("deduction-head.create");
 
   const handleToggle = () => {
     router.push("/master/deduction-head/add");
@@ -105,8 +108,8 @@ export function DeductionHeadList({
       <DataTable<DeductionHeadRow>
         columns={columns}
         data={data}
-        actionText="Add Deduction Head"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Deduction Head" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

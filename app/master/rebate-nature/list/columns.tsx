@@ -35,6 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { RebateNature, updateRebateNature, deleteRebateNature } from "@/lib/actions/rebate-nature";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Select,
   SelectContent,
@@ -166,10 +167,18 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const item = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
-  
+
+  const canEdit = hasPermission("rebate-nature.update");
+  const canDelete = hasPermission("rebate-nature.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
+
   const getInitialFormData = () => ({
     name: item.name,
     type: item.type || "other",
@@ -181,7 +190,7 @@ function RowActions({ row }: RowActionsProps) {
     isAgeDependent: item.isAgeDependent,
     status: item.status || "active",
   });
-  
+
   const [formData, setFormData] = useState(getInitialFormData());
 
   // Reset form data when dialog opens
@@ -194,7 +203,7 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     startTransition(async () => {
       const result = await updateRebateNature(item.id, {
         name: formData.name,
@@ -246,17 +255,17 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => handleEditDialogOpen(true)}>
+          {canEdit && <DropdownMenuItem onClick={() => handleEditDialogOpen(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
+          </DropdownMenuItem>}
+          {canDelete && <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
 

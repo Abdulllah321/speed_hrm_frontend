@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, LeavesPolicyRow } from "./columns";
 import {
   LeavesPolicy,
@@ -37,6 +38,8 @@ export function LeavesPolicyList({
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string; details?: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("leaves-policy.create");
 
   const handleToggle = () => {
     router.push("/master/leaves-policy/add");
@@ -107,8 +110,8 @@ export function LeavesPolicyList({
       <DataTable<LeavesPolicyRow>
         columns={columns}
         data={data}
-        actionText="Add Leave Policy"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Leave Policy" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

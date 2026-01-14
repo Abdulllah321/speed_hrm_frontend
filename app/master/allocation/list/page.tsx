@@ -1,6 +1,7 @@
 import { getAllocations } from "@/lib/actions/allocation";
 import { AllocationList } from "./allocation-list";
 import { ListError } from "@/components/dashboard/list-error";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,12 @@ export default async function AllocationListPage({
         }
 
         return (
-            <AllocationList
-                initialAllocations={result.data || []}
-                newItemId={newItemId}
-            />
+            <PermissionGuard permissions="allocation.read">
+                <AllocationList
+                    initialAllocations={result.data || []}
+                    newItemId={newItemId}
+                />
+            </PermissionGuard>
         );
     } catch (error) {
         console.error("Error in AllocationListPage:", error);

@@ -74,6 +74,7 @@ import { Badge } from "@/components/ui/badge";
 import { getLeaveTypes, LeaveType } from "@/lib/actions/leave-type";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 interface LeaveTypeRow {
   id: number;
@@ -175,8 +176,22 @@ export const columns: ColumnDef<LeavesPolicyRow>[] = [
 function RowActions({ row }: { row: Row<LeavesPolicyRow> }) {
   const lp = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
+
+  const canEdit = hasPermission("leaves-policy.update");
+  const canDelete = hasPermission("leaves-policy.delete");
+  // Assuming view is generally allowed, or maybe reuse read permission if strict, but ignoring for now or using 'leaves-policy.read' implicitly via page access.
+  // Actually, let's keep View always visible or based on read permission if we want. But usually list access implies read.
+  // The prompt asked for Add, Edit, Delete.
+
+  // If we wanted to hide the whole menu if no actions:
+  // if (!canEdit && !canDelete) { ... }
+  // But here we might have View or Set Default as well.
+  // 'Set as Default' probably falls under update.
+
+  const canUpdate = canEdit; // Reuse update for Set Default
   const [viewDialog, setViewDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
   const [policyDetails, setPolicyDetails] = useState<LeavesPolicy | null>(null);
@@ -385,7 +400,7 @@ function RowActions({ row }: { row: Row<LeavesPolicyRow> }) {
       }
     });
   };
-console.log(policyDetails);
+  console.log(policyDetails);
   return (
     <>
       <DropdownMenu>
@@ -406,23 +421,23 @@ console.log(policyDetails);
             <Eye className="h-4 w-4 mr-2" />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
+          {canEdit && <DropdownMenuItem onClick={() => setEditDialog(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
-          </DropdownMenuItem>
-          {!lp.isDefault && (
+          </DropdownMenuItem>}
+          {canUpdate && !lp.isDefault && (
             <DropdownMenuItem onClick={handleSetDefault}>
               <Star className="h-4 w-4 mr-2" />
               Set as Default
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem
+          {canDelete && <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -456,9 +471,9 @@ console.log(policyDetails);
                   <p className="text-base">
                     {policyDetails.policyDateFrom
                       ? format(
-                          new Date(policyDetails.policyDateFrom),
-                          "MM/dd/yyyy"
-                        )
+                        new Date(policyDetails.policyDateFrom),
+                        "MM/dd/yyyy"
+                      )
                       : "—"}
                   </p>
                 </div>
@@ -469,9 +484,9 @@ console.log(policyDetails);
                   <p className="text-base">
                     {policyDetails.policyDateTill
                       ? format(
-                          new Date(policyDetails.policyDateTill),
-                          "MM/dd/yyyy"
-                        )
+                        new Date(policyDetails.policyDateTill),
+                        "MM/dd/yyyy"
+                      )
                       : "—"}
                   </p>
                 </div>

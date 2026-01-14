@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, QualificationRow } from "./columns";
 import {
   Qualification,
@@ -35,6 +36,8 @@ export function QualificationList({
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("qualification.create");
 
   const handleToggle = () => {
     router.push("/master/qualification/add");
@@ -105,8 +108,8 @@ export function QualificationList({
       <DataTable<QualificationRow>
         columns={columns}
         data={data}
-        actionText="Add Qualification"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Qualification" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

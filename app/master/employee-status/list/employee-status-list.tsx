@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, EmployeeStatusRow } from "./columns";
 import {
   EmployeeStatus,
@@ -105,8 +106,8 @@ export function EmployeeStatusList({
       <DataTable<EmployeeStatusRow>
         columns={columns}
         data={data}
-        actionText="Add Employement Status"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Employement Status" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "status", label: "Status" }]}
         onMultiDelete={handleMultiDelete}

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, RebateNatureRow } from "./columns";
 import {
   RebateNature,
@@ -21,6 +22,8 @@ export function RebateNatureList({
 }: RebateNatureListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("rebate-nature.create");
 
   const handleToggle = () => {
     router.push("/master/rebate-nature/add");
@@ -65,8 +68,8 @@ export function RebateNatureList({
       <DataTable<RebateNatureRow>
         columns={columns}
         data={data}
-        actionText="Add Rebate Nature"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Rebate Nature" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

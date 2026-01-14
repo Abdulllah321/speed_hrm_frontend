@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, AllowanceHeadRow } from "./columns";
 import {
   AllowanceHead,
@@ -32,19 +33,22 @@ interface AllowanceHeadListProps {
 
 export function AllowanceHeadList({ initialAllowanceHeads, newItemId }: AllowanceHeadListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
-  const [editRows, setEditRows] = useState<{ 
-    id: string; 
-    name: string; 
-    calculationType: string; 
-    amount: string; 
+  const [editRows, setEditRows] = useState<{
+    id: string;
+    name: string;
+    calculationType: string;
+    amount: string;
     percentage: string;
   }[]>([]);
 
   const handleToggle = () => {
     router.push("/master/allowance-head/add");
   };
+
+  const showAddAction = hasPermission("allowance-head.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -59,8 +63,8 @@ export function AllowanceHeadList({ initialAllowanceHeads, newItemId }: Allowanc
   };
 
   const handleBulkEdit = (items: AllowanceHeadRow[]) => {
-    setEditRows(items.map((item) => ({ 
-      id: item.id, 
+    setEditRows(items.map((item) => ({
+      id: item.id,
       name: item.name,
       calculationType: item.calculationType || "Amount",
       amount: item.amount?.toString() || "",
@@ -70,7 +74,7 @@ export function AllowanceHeadList({ initialAllowanceHeads, newItemId }: Allowanc
   };
 
   const updateEditRow = (id: string, field: string, value: string) => {
-    setEditRows((rows) => 
+    setEditRows((rows) =>
       rows.map((r) => {
         if (r.id === id) {
           const updated = { ...r, [field]: value };
@@ -149,8 +153,8 @@ export function AllowanceHeadList({ initialAllowanceHeads, newItemId }: Allowanc
           <DataTable<AllowanceHeadRow>
             columns={columns}
             data={data}
-            actionText="Add Allowance Head"
-            toggleAction={handleToggle}
+            actionText={showAddAction ? "Add Allowance Head" : undefined}
+            toggleAction={showAddAction ? handleToggle : undefined}
             newItemId={newItemId}
             searchFields={[{ key: "name", label: "Name" }]}
             onMultiDelete={handleMultiDelete}

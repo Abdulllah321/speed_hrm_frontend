@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, EmployeeGradeRow } from "./columns";
 import {
   EmployeeGrade,
@@ -32,6 +33,7 @@ export function EmployeeGradeList({
   newItemId,
 }: EmployeeGradeListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; grade: string }[]>([]);
@@ -39,6 +41,8 @@ export function EmployeeGradeList({
   const handleToggle = () => {
     router.push("/master/employee-grade/add");
   };
+
+  const showAddAction = hasPermission("employee-grade.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -105,8 +109,8 @@ export function EmployeeGradeList({
       <DataTable<EmployeeGradeRow>
         columns={columns}
         data={data}
-        actionText="Add Employee Grade"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Employee Grade" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "grade", label: "Grade" }]}
         onMultiDelete={handleMultiDelete}

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, EquipmentRow } from "./columns";
 import {
   Equipment,
@@ -35,6 +36,8 @@ export function EquipmentList({
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("equipment.create");
 
   const handleToggle = () => {
     router.push("/master/equipment/add");
@@ -104,8 +107,8 @@ export function EquipmentList({
       <DataTable<EquipmentRow>
         columns={columns}
         data={data}
-        actionText="Add Equipment"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Equipment" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

@@ -35,6 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { TaxSlab, updateTaxSlab, deleteTaxSlab } from "@/lib/actions/tax-slab";
+import { useAuth } from "@/hooks/use-auth";
 
 export type TaxSlabRow = TaxSlab & { id: string };
 
@@ -67,9 +68,17 @@ export const columns: ColumnDef<TaxSlabRow>[] = [
 function RowActions({ row }: { row: Row<TaxSlabRow> }) {
   const ts = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+
+  const canEdit = hasPermission("tax-slab.update");
+  const canDelete = hasPermission("tax-slab.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {

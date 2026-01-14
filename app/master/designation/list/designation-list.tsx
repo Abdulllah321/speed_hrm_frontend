@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, DesignationRow } from "./columns";
 import {
   Designation,
@@ -32,6 +33,7 @@ export function DesignationList({
   newItemId,
 }: DesignationListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
@@ -39,6 +41,8 @@ export function DesignationList({
   const handleToggle = () => {
     router.push("/master/designation/add");
   };
+
+  const showAddAction = hasPermission("designation.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -105,8 +109,8 @@ export function DesignationList({
       <DataTable<DesignationRow>
         columns={columns}
         data={data}
-        actionText="Add Designation"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Designation" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
