@@ -29,6 +29,7 @@ export type PayrollReportRow = {
     overtimeAmount: number;
     bonusAmount: number;
     leaveEncashmentAmount: number;
+    socialSecurityContributionAmount: number;
     grossSalary: number;
     netSalary: number;
     salaryBreakup: any[];
@@ -245,6 +246,25 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                             ).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
                     </div>
+                </div>
+            );
+        },
+    },
+    {
+        header: "Social Security",
+        cell: ({ row }) => {
+            const data = row.original;
+            const amount = Number(data.socialSecurityContributionAmount || 0);
+            return (
+                <div className="text-[10px] min-w-[120px]">
+                    {amount > 0 ? (
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="font-bold shrink-0">Contribution:</span>
+                            <span className="text-right">{Math.round(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                        </div>
+                    ) : (
+                        <span className="text-muted-foreground">-</span>
+                    )}
                 </div>
             );
         },

@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2, Upload, Key } from "lucide-react";
 import Link from "next/link";
 import { FileUpload } from "@/components/ui/file-upload";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import type { Department, SubDepartment } from "@/lib/actions/department";
 import type { EmployeeGrade } from "@/lib/actions/employee-grade";
 import type { Designation } from "@/lib/actions/designation";
@@ -299,6 +300,7 @@ const employeeFormSchema = z.object({
   allocation: z
     .string()
     .min(1, "Allocation is required"),
+  socialSecurityInstitutionId: z.string().optional(),
 
   allowRemoteAttendance: z
     .boolean()
@@ -348,12 +350,8 @@ const employeeFormSchema = z.object({
         registrationNumber: z.string().optional(),
         cardNumber: z.string().optional(),
         registrationDate: z.string().optional(),
-        expiryDate: z.string().optional(),
-        contributionRate: z.union([z.string(), z.number()]).optional(),
         baseSalary: z.union([z.string(), z.number()]).optional(),
         monthlyContribution: z.union([z.string(), z.number()]).optional(),
-        employeeContribution: z.union([z.string(), z.number()]).optional(),
-        employerContribution: z.union([z.string(), z.number()]).optional(),
         status: z.string().optional(),
       })
     )
@@ -489,6 +487,7 @@ export function EmployeeForm({
       location: (initialData as any).locationId || (typeof (initialData as any).location === 'string' ? (initialData as any).location : (initialData as any).location?.id) || (initialData as any).branchId || (typeof (initialData as any).branch === 'string' ? (initialData as any).branch : (initialData as any).branch?.id) || "",
       leavesPolicy: (initialData as any).leavesPolicyId || (typeof initialData.leavesPolicy === 'string' ? initialData.leavesPolicy : (initialData.leavesPolicy as any)?.id) || "",
       allocation: (initialData as any).allocationId || (typeof (initialData as any).allocation === 'string' ? (initialData as any).allocation : (initialData as any).allocation?.id) || (initialData as any).allocationId || "",
+      socialSecurityInstitutionId: (initialData as any).socialSecurityInstitutionId || "",
       allowRemoteAttendance: initialData.allowRemoteAttendance || false,
       currentAddress: initialData.currentAddress ?? "",
       permanentAddress: initialData.permanentAddress ?? "",
@@ -530,12 +529,8 @@ export function EmployeeForm({
           registrationNumber: reg.registrationNumber || "",
           cardNumber: reg.cardNumber || "",
           registrationDate: reg.registrationDate ? new Date(reg.registrationDate).toISOString().split('T')[0] : "",
-          expiryDate: reg.expiryDate ? new Date(reg.expiryDate).toISOString().split('T')[0] : "",
-          contributionRate: reg.contributionRate?.toString() || "",
           baseSalary: reg.baseSalary?.toString() || "",
           monthlyContribution: reg.monthlyContribution?.toString() || "",
-          employeeContribution: reg.employeeContribution?.toString() || "",
-          employerContribution: reg.employerContribution?.toString() || "",
           status: reg.status || "active",
         }))
         : [],
@@ -579,6 +574,7 @@ export function EmployeeForm({
       location: "",
       leavesPolicy: "",
       allocation: "",
+      socialSecurityInstitutionId: "",
       allowRemoteAttendance: false,
       currentAddress: "",
       permanentAddress: "",
@@ -1272,6 +1268,7 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
+            socialSecurityInstitutionId: data.socialSecurityInstitutionId || undefined,
             equipmentAssignments: data.equipmentAssignments,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
@@ -1348,6 +1345,9 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
+            socialSecurityInstitutionId: data.socialSecurityInstitutionId || undefined,
+            equipmentAssignments: data.equipmentAssignments,
+            avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
           };
@@ -1422,11 +1422,25 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
+            socialSecurityInstitutionId: data.socialSecurityInstitutionId || undefined,
             equipmentAssignments: data.equipmentAssignments,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
             qualifications: qualificationsToSubmit,
+            socialSecurityRegistrations: data.socialSecurityRegistrations && Array.isArray(data.socialSecurityRegistrations) && data.socialSecurityRegistrations.length > 0
+              ? data.socialSecurityRegistrations.map((reg: any) => ({
+                institutionId: reg.institutionId,
+                registrationNumber: reg.registrationNumber || undefined,
+                cardNumber: reg.cardNumber || undefined,
+                registrationDate: reg.registrationDate || undefined,
+                expiryDate: reg.expiryDate || undefined,
+                contributionRate: reg.contributionRate ? parseFloat(String(reg.contributionRate)) : undefined,
+                baseSalary: reg.baseSalary ? parseFloat(String(reg.baseSalary)) : undefined,
+                monthlyContribution: reg.monthlyContribution ? parseFloat(String(reg.monthlyContribution)) : undefined,
+                status: reg.status || "active",
+              }))
+              : [],
           };
 
           const result = await updateEmployee(initialData.id, employeeData as any);
@@ -1727,6 +1741,26 @@ export function EmployeeForm({
                       {errors.accountTitle && (
                         <p className="text-xs text-red-500">{errors.accountTitle.message}</p>
                       )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Social Security Institution</Label>
+                      <Controller
+                        name="socialSecurityInstitutionId"
+                        control={control}
+                        render={({ field }) => (
+                          <Autocomplete
+                            options={socialSecurityInstitutions.map((i: any) => ({
+                              value: i.id,
+                              label: i.name,
+                            }))}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Select Institution"
+                            disabled={isPending}
+                          />
+                        )}
+                      />
                     </div>
                   </CardContent>
                 </Card>

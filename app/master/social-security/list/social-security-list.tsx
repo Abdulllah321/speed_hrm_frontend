@@ -28,7 +28,7 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
-  const [editRows, setEditRows] = useState<{ id: string; code: string; name: string; province?: string; status?: string }[]>([]);
+  const [editRows, setEditRows] = useState<{ id: string; code: string; name: string; province?: string; status?: string; contributionRate?: number }[]>([]);
 
   const handleToggle = () => {
     router.push("/master/social-security/add");
@@ -47,12 +47,13 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
   };
 
   const handleBulkEdit = (items: SocialSecurityInstitutionRow[]) => {
-    setEditRows(items.map((item) => ({ 
-      id: item.id, 
-      code: item.code, 
-      name: item.name, 
+    setEditRows(items.map((item) => ({
+      id: item.id,
+      code: item.code,
+      name: item.name,
       province: item.province || "",
-      status: item.status 
+      status: item.status,
+      contributionRate: item.contributionRate
     })));
     setBulkEditOpen(true);
   };
@@ -117,34 +118,44 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs">Code *</Label>
-                    <Input 
-                      value={row.code} 
-                      onChange={(e) => updateEditRow(row.id, "code", e.target.value)} 
-                      disabled={isPending} 
+                    <Input
+                      value={row.code}
+                      onChange={(e) => updateEditRow(row.id, "code", e.target.value)}
+                      disabled={isPending}
                     />
                   </div>
                   <div>
                     <Label className="text-xs">Name *</Label>
-                    <Input 
-                      value={row.name} 
-                      onChange={(e) => updateEditRow(row.id, "name", e.target.value)} 
-                      disabled={isPending} 
+                    <Input
+                      value={row.name}
+                      onChange={(e) => updateEditRow(row.id, "name", e.target.value)}
+                      disabled={isPending}
                     />
                   </div>
                   <div>
                     <Label className="text-xs">Province</Label>
-                    <Input 
-                      value={row.province || ""} 
-                      onChange={(e) => updateEditRow(row.id, "province", e.target.value)} 
-                      disabled={isPending} 
+                    <Input
+                      value={row.province || ""}
+                      onChange={(e) => updateEditRow(row.id, "province", e.target.value)}
+                      disabled={isPending}
                     />
                   </div>
                   <div>
                     <Label className="text-xs">Status</Label>
-                    <Input 
-                      value={row.status || "active"} 
-                      onChange={(e) => updateEditRow(row.id, "status", e.target.value)} 
-                      disabled={isPending} 
+                    <Input
+                      value={row.status || "active"}
+                      onChange={(e) => updateEditRow(row.id, "status", e.target.value)}
+                      disabled={isPending}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Rate (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={row.contributionRate || 0}
+                      onChange={(e) => updateEditRow(row.id, "contributionRate", e.target.value)}
+                      disabled={isPending}
                     />
                   </div>
                 </div>

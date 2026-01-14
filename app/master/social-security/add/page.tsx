@@ -26,19 +26,20 @@ interface InstitutionRow {
   website: string;
   contactNumber: string;
   address: string;
+  contributionRate: string;
 }
 
 export default function AddSocialSecurityPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [institutions, setInstitutions] = useState<InstitutionRow[]>([
-    { id: 1, code: "", name: "", province: "", description: "", website: "", contactNumber: "", address: "" },
+    { id: 1, code: "", name: "", province: "", description: "", website: "", contactNumber: "", address: "", contributionRate: "" },
   ]);
 
   const addRow = () => {
     setInstitutions([
       ...institutions,
-      { id: Date.now(), code: "", name: "", province: "", description: "", website: "", contactNumber: "", address: "" },
+      { id: Date.now(), code: "", name: "", province: "", description: "", website: "", contactNumber: "", address: "", contributionRate: "" },
     ]);
   };
 
@@ -62,6 +63,7 @@ export default function AddSocialSecurityPage() {
         website: i.website.trim() || undefined,
         contactNumber: i.contactNumber.trim() || undefined,
         address: i.address.trim() || undefined,
+        contributionRate: i.contributionRate ? parseFloat(i.contributionRate) : 0,
       }));
 
     if (items.length === 0) {
@@ -169,6 +171,17 @@ export default function AddSocialSecurityPage() {
                       placeholder="Karachi, Pakistan"
                       value={institution.address}
                       onChange={(e) => updateField(institution.id, "address", e.target.value)}
+                      disabled={isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Contribution Rate (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="6.0"
+                      value={institution.contributionRate}
+                      onChange={(e) => updateField(institution.id, "contributionRate", e.target.value)}
                       disabled={isPending}
                     />
                   </div>

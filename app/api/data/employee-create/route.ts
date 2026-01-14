@@ -9,7 +9,7 @@ export async function GET() {
     const headers: HeadersInit = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    const [depts, grades, designations, marital, statuses, locations, states, equipments, workingHours, leaves, qualifications, institutes, socialSecurity,allocations] = await Promise.all([
+    const [depts, grades, designations, marital, statuses, locations, states, equipments, workingHours, leaves, qualifications, institutes, socialSecurity, allocations] = await Promise.all([
       fetch(`${API_BASE}/departments`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/employee-grades`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/designations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
@@ -25,6 +25,8 @@ export async function GET() {
       fetch(`${API_BASE}/social-security-institutions`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/allocations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
     ]);
+    console.log(`[API Data] socialSecurityInstitutions length: ${socialSecurity.data?.length || 0}`);
+
     return NextResponse.json({
       status: true,
       data: {

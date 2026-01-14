@@ -44,6 +44,7 @@ import {
 import { getQualifications, type Qualification } from "@/lib/actions/qualification";
 import { getInstitutes, type Institute } from "@/lib/actions/institute";
 import { getAllocations, type Allocation } from "@/lib/actions/allocation";
+import { getSocialSecurityInstitutions } from "@/lib/actions/social-security";
 import type { Employee } from "@/lib/actions/employee";
 
 export default function EditEmployeePage() {
@@ -69,6 +70,7 @@ export default function EditEmployeePage() {
   const [leavesPolicies, setLeavesPolicies] = useState<LeavesPolicy[]>([]);
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
+  const [socialSecurityInstitutions, setSocialSecurityInstitutions] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   // Load employee data
   useEffect(() => {
@@ -115,6 +117,7 @@ export default function EditEmployeePage() {
           qualificationsRes,
           institutesRes,
           allocationsRes,
+          socialSecurityRes,
         ] = await Promise.all([
           getDepartments(),
           getEmployeeGrades(),
@@ -129,6 +132,7 @@ export default function EditEmployeePage() {
           getQualifications(),
           getInstitutes(),
           getAllocations(),
+          getSocialSecurityInstitutions(),
         ]);
 
         if (deptsRes.status) setDepartments(deptsRes.data || []);
@@ -144,6 +148,7 @@ export default function EditEmployeePage() {
         if (qualificationsRes.status) setQualifications(qualificationsRes.data || []);
         if (institutesRes.status) setInstitutes(institutesRes.data || []);
         if (allocationsRes.status) setAllocations(allocationsRes.data || []);
+        if (socialSecurityRes.status) setSocialSecurityInstitutions(socialSecurityRes.data || []);
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load form data");
@@ -224,6 +229,7 @@ export default function EditEmployeePage() {
       leavesPolicies={leavesPolicies}
       qualifications={qualifications}
       institutes={institutes}
+      socialSecurityInstitutions={socialSecurityInstitutions}
       loadingData={loadingData}
     />
   );
