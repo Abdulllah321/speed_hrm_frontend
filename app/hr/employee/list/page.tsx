@@ -28,7 +28,7 @@ import { FileUpload } from "@/components/ui/file-upload";
 import { getDepartments, type Department } from "@/lib/actions/department";
 import { getDesignations, type Designation } from "@/lib/actions/designation";
 import { getCitiesByState, type City } from "@/lib/actions/city";
-import DataTable from "@/components/common/data-table";
+import DataTable, { type FilterConfig } from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -560,6 +560,11 @@ export default function EmployeeListPage() {
           columns={columns}
           toggleAction={() => setUploadDialog(true)}
           actionText="Upload CSV"
+          searchFields={[
+            { key: "employeeName", label: "Employee Name" },
+            { key: "employeeId", label: "Employee ID" },
+            { key: "contactNumber", label: "Contact Number" },
+          ]}
         />
       )}
 

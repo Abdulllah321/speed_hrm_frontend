@@ -35,9 +35,28 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight } from "lucide-react";
 import { MenuItem, menuData } from "./sidebar-menu-data";
 import { cn } from "@/lib/utils";
+import { getCurrentSubdomain } from "@/lib/navigation";
+
+// Normalize path by stripping subdomain prefix for comparison
+function normalizePathForComparison(path: string, currentSubdomain: string | null): string {
+  if (!path) return path;
+  if (!currentSubdomain) return path;
+  
+  // Strip subdomain prefix if present (e.g., /hr/dashboard -> /dashboard)
+  const prefix = `/${currentSubdomain}`;
+  if (path.startsWith(prefix)) {
+    const remaining = path.slice(prefix.length);
+    return remaining || "/";
+  }
+  
+  return path;
+}
 
 function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
-  const isActive = item.href === pathname;
+  const currentSubdomain = getCurrentSubdomain();
+  const normalizedPathname = normalizePathForComparison(pathname, currentSubdomain);
+  const normalizedHref = normalizePathForComparison(item.href || "", currentSubdomain);
+  const isActive = normalizedHref === normalizedPathname;
 
   if (item.children) {
     return (
@@ -79,7 +98,10 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
 
 function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: string }) {
   const Icon = item.icon;
-  const isActive = item.href === pathname;
+  const currentSubdomain = getCurrentSubdomain();
+  const normalizedPathname = normalizePathForComparison(pathname, currentSubdomain);
+  const normalizedHref = normalizePathForComparison(item.href || "", currentSubdomain);
+  const isActive = normalizedHref === normalizedPathname;
   const { state } = useSidebar();
 
   if (item.children) {
@@ -187,8 +209,13 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
           )}
           <span className="relative z-10">{item.title}</span>
           {isActive && (
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary transition-all duration-200" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-3 rounded-r-full bg-primary transition-all duration-200" />
           )}
+          {
+            isActive && (
+              <div className="absolute right-[0.3rem] top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent transition-all duration-200" />
+            )
+          }
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -196,7 +223,10 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
 }
 
 function SubMenuItemInPopover({ item, pathname }: { item: MenuItem; pathname: string }) {
-  const isActive = item.href === pathname;
+  const currentSubdomain = getCurrentSubdomain();
+  const normalizedPathname = normalizePathForComparison(pathname, currentSubdomain);
+  const normalizedHref = normalizePathForComparison(item.href || "", currentSubdomain);
+  const isActive = normalizedHref === normalizedPathname;
 
   if (item.children) {
     const [isOpen, setIsOpen] = React.useState(false);

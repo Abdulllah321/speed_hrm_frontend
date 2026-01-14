@@ -217,10 +217,7 @@ export const menuData: MenuItem[] = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
-    children: [
-      { title: "Main Dashboard", href: "/hr" },
-      { title: "User Dashboard", href: "/hr/user" },
-    ],
+    href: "/hr",
   },
   {
     title: "Employee Setup",
