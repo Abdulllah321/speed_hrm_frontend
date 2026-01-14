@@ -203,6 +203,16 @@ export default function AttendanceManagePage() {
   };
 
   const handleEmployeeChange = (employeeId: string) => {
+    if (employeeId === "all") {
+      setFormData((prev) => ({
+        ...prev,
+        employeeId: "all",
+        employeeName: "All Employees",
+      }));
+      setSelectedEmployee(null); // No specific employee details to show
+      return;
+    }
+
     // Search in all employees, not just filtered ones
     const selected = allEmployees.find((e) => e.id === employeeId);
     if (selected) {
@@ -282,7 +292,116 @@ export default function AttendanceManagePage() {
 
     setIsPending(true);
     try {
+      // Handle "All Employees" selection
+      if (formData.employeeId === "all") {
+        const employeesToProcess = employees.filter(e => e.id); // Use filtered employees
 
+        if (employeesToProcess.length === 0) {
+          toast.error("No employees found to create attendance for");
+          setIsPending(false);
+          return;
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+        const errors: Array<{ employee: string; error: string }> = [];
+
+        for (const employee of employeesToProcess) {
+          try {
+            if (isSingleDate) {
+              const checkInDateTime = formData.checkIn
+                ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkIn}`)
+                : undefined;
+              const checkOutDateTime = formData.checkOut
+                ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkOut}`)
+                : undefined;
+
+              const result = await createAttendance({
+                employeeId: employee.id,
+                date: fromDate,
+                checkIn: checkInDateTime,
+                checkOut: checkOutDateTime,
+                status: formData.status,
+                isRemote: formData.isRemote,
+                location: formData.location || undefined,
+                notes: formData.notes || undefined,
+              });
+
+              if (result.status) {
+                successCount++;
+              } else {
+                errorCount++;
+                errors.push({ employee: employee.employeeName, error: result.message || "Unknown error" });
+              }
+            } else {
+              const result = await createAttendanceForDateRange({
+                employeeId: employee.id,
+                fromDate: fromDate,
+                toDate: toDate,
+                checkIn: formData.checkIn || undefined,
+                checkOut: formData.checkOut || undefined,
+                status: formData.status,
+                isRemote: formData.isRemote,
+                location: formData.location || undefined,
+                notes: formData.notes || undefined,
+              });
+
+              if (result.status) {
+                successCount += result.data?.length || 0;
+                errorCount += result.errors?.length || 0;
+              } else {
+                errorCount++;
+                errors.push({ employee: employee.employeeName, error: result.message || "Unknown error" });
+              }
+            }
+          } catch (error) {
+            errorCount++;
+            errors.push({ employee: employee.employeeName, error: error instanceof Error ? error.message : "Unknown error" });
+          }
+        }
+
+        if (errorCount > 0) {
+          toast.warning(
+            `${successCount} records created, ${errorCount} failed`,
+            {
+              description: `Processed ${employeesToProcess.length} employees. Check console for details.`,
+              duration: 6000,
+            }
+          );
+          console.error("Failed records:", errors);
+        } else {
+          toast.success(
+            `${successCount} attendance records created successfully!`,
+            {
+              description: `Processed ${employeesToProcess.length} employees`,
+              duration: 5000,
+            }
+          );
+        }
+
+        // Reset form
+        setFormData({
+          employeeId: "",
+          employeeName: "",
+          departmentId: "",
+          subDepartmentId: "",
+          dateRange: {
+            from: new Date(),
+            to: new Date(),
+          } as DateRange,
+          checkIn: "",
+          checkOut: "",
+          status: "present",
+          isRemote: false,
+          location: "",
+          notes: "",
+        });
+        setSelectedEmployee(null);
+        setIsPending(false);
+        return;
+      }
+
+      // Single employee logic (existing code)
       let result;
 
       if (isSingleDate) {
@@ -660,11 +779,13 @@ export default function AttendanceManagePage() {
                   <div className="h-10 bg-muted rounded animate-pulse" />
                 ) : (
                   <Autocomplete
-                    options={employees.map((e) => ({
-                      value: e.id,
-                      label: `${e.employeeName} (${e.employeeId})`,
-                      description: `${e.department?.name || 'No Dept'} - ${e.subDepartment?.name || 'No Sub-Dept'}`
-                    }))}
+                    options={[
+                      { value: "all", label: "All Employees", description: "Apply to all currently filtered employees" },
+                      ...employees.map((e) => ({
+                        value: e.id,
+                        label: `${e.employeeName} (${e.employeeId})`,
+                        description: `${e.department?.name || 'No Dept'} - ${e.subDepartment?.name || 'No Sub-Dept'}`
+                      }))]}
                     value={formData.employeeId}
                     onValueChange={handleEmployeeChange}
                     placeholder="Search and select employee..."
@@ -730,10 +851,7 @@ export default function AttendanceManagePage() {
                     });
                   }
                 }}
-                dateRange={{
-                  oldestDate: startOfMonth(new Date()),
-                  latestDate: endOfMonth(new Date()),
-                }}
+                dateRange={undefined}
               />
             </div>
           </CardContent>

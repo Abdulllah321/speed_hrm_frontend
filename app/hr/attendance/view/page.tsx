@@ -674,11 +674,13 @@ function ViewEmployeeAttendanceDetailPage() {
                 <div className="h-10 bg-muted rounded animate-pulse" />
               ) : (
                 <Autocomplete
-                  options={filteredEmployees.map((emp) => ({
-                    value: emp.id,
-                    label: `${emp.employeeName} (${emp.employeeId})`,
-                    description: emp.departmentName,
-                  }))}
+                  options={[
+                    { value: "all", label: "All Employees", description: "View all filtered employees" },
+                    ...filteredEmployees.map((emp) => ({
+                      value: emp.id,
+                      label: `${emp.employeeName} (${emp.employeeId})`,
+                      description: emp.departmentName,
+                    }))]}
                   value={filters.employeeId}
                   onValueChange={(value) => updateFilters({ employeeId: value || "" })}
                   placeholder="Select employee"

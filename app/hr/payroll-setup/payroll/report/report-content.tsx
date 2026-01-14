@@ -241,26 +241,140 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
         printWindow.print();
     };
 
-    const handleExportCSV = () => {
-        if (data.length === 0) return;
-        const headers = ["S.No", "Employee ID", "Employee Name", "Department", "Designation", "Gross Salary", "Tax", "Deductions", "Net Salary"];
-        const rows = data.map((row, i) => [
-            i + 1,
-            `"${row.employee.employeeId}"`,
-            `"${row.employee.employeeName}"`,
-            `"${row.employee.department.name}"`,
-            `"${row.employee.designation.name}"`,
-            row.grossSalary,
-            row.taxDeduction,
-            row.totalDeductions,
-            row.netSalary,
-        ]);
-        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = `payroll-report-${filters.monthYear}.csv`;
-        link.click();
+    const handleExportCSV = async () => {
+        if (data.length === 0) {
+            toast.error("No data to export");
+            return;
+        }
+
+        try {
+            toast.info("Fetching all records for export...");
+
+            // Fetch ALL records matching current filters
+            const [year, month] = filters.monthYear.split("-");
+            const result = await getPayrollReport({
+                month,
+                year,
+                departmentId: filters.departmentId !== "all" ? filters.departmentId : undefined,
+                subDepartmentId: filters.subDepartmentId !== "all" ? filters.subDepartmentId : undefined,
+                employeeId: filters.employeeId !== "all" ? filters.employeeId : undefined,
+            });
+
+            if (!result.status || !result.data || result.data.length === 0) {
+                toast.error("No records found to export");
+                return;
+            }
+
+            const exportData = result.data as PayrollReportRow[];
+
+            // 1. Identify all dynamic columns
+            const salaryHeads = new Set<string>();
+            const allowanceHeads = new Set<string>();
+            const bonusHeads = new Set<string>();
+            const deductionHeads = new Set<string>();
+
+            exportData.forEach(row => {
+                (row.salaryBreakup || []).forEach(b => salaryHeads.add(b.name));
+                (row.allowanceBreakup || []).forEach(a => allowanceHeads.add(a.name));
+                (row.bonusBreakup || []).forEach(b => bonusHeads.add(b.name));
+                (row.deductionBreakup || []).forEach(d => deductionHeads.add(d.name));
+            });
+
+            const sortedSalaryHeads = Array.from(salaryHeads).sort();
+            const sortedAllowanceHeads = Array.from(allowanceHeads).sort();
+            const sortedBonusHeads = Array.from(bonusHeads).sort();
+            const sortedDeductionHeads = Array.from(deductionHeads).sort();
+
+            // 2. Generate Headers
+            const staticHeadersPre = [
+                "S.No", "Employee ID", "Employee Name", "Department", "Sub-Department", "Designation",
+                "Country", "Province", "City", "Station"
+            ];
+
+            const staticHeadersPost = [
+                "Leave Encashment",
+                "Gross Salary",
+                "Taxable Income",
+                "Tax Deduction",
+                "PF Deduction",
+                "EOBI Deduction",
+                "Loan Deduction",
+                "Advance Salary Deduction",
+                "Attendance Deduction",
+                "Social Security Contribution",
+                "Net Salary",
+                "Bank Name",
+                "Account No",
+                "Payment Mode"
+            ];
+
+            const headers = [
+                ...staticHeadersPre,
+                ...sortedSalaryHeads.map(h => `Salary: ${h}`),
+                ...sortedAllowanceHeads.map(h => `Allowance: ${h}`),
+                ...sortedBonusHeads.map(h => `Bonus: ${h}`),
+                ...sortedDeductionHeads.map(h => `Deduction: ${h}`),
+                ...staticHeadersPost
+            ];
+
+            // 3. Generate Rows
+            const rows = exportData.map((row, i) => {
+                const emp = row.employee;
+
+                // Helper to get component amount
+                const getAmount = (list: any[], name: string) => {
+                    const found = list.find(item => item.name === name);
+                    return found ? Number(found.amount || 0) : 0;
+                };
+
+                const dynamicValues = [
+                    ...sortedSalaryHeads.map(h => getAmount(row.salaryBreakup || [], h)),
+                    ...sortedAllowanceHeads.map(h => getAmount(row.allowanceBreakup || [], h)),
+                    ...sortedBonusHeads.map(h => getAmount(row.bonusBreakup || [], h)),
+                    ...sortedDeductionHeads.map(h => getAmount(row.deductionBreakup || [], h))
+                ];
+
+                return [
+                    i + 1,
+                    `"${emp.employeeId}"`,
+                    `"${emp.employeeName}"`,
+                    `"${emp.department?.name || ""}"`,
+                    `"${emp.subDepartment?.name || ""}"`,
+                    `"${emp.designation?.name || ""}"`,
+                    `"${emp.country?.name || ""}"`,
+                    `"${emp.state?.name || ""}"`,
+                    `"${emp.city?.name || ""}"`,
+                    `"${emp.branch?.name || ""}"`,
+                    ...dynamicValues,
+                    Number(row.leaveEncashmentAmount || 0),
+                    Number(row.grossSalary || 0),
+                    Number(row.taxBreakup?.taxableIncome || 0),
+                    Number(row.taxDeduction || 0),
+                    Number(row.providentFundDeduction || 0),
+                    Number(row.eobiDeduction || 0),
+                    Number(row.loanDeduction || 0),
+                    Number(row.advanceSalaryDeduction || 0),
+                    Number(row.attendanceDeduction || 0),
+                    Number(row.socialSecurityContributionAmount || 0),
+                    Number(row.netSalary || 0),
+                    `"${row.bankName || ""}"`,
+                    `"${row.accountNumber || ""}"`,
+                    `"${row.paymentMode || "Bank Transfer"}"`
+                ];
+            });
+
+            const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `payroll-report-${filters.monthYear}-detailed.csv`;
+            link.click();
+
+            toast.success(`Exported ${exportData.length} records successfully`);
+        } catch (error) {
+            console.error("Export error:", error);
+            toast.error("Failed to export records");
+        }
     };
 
     return (

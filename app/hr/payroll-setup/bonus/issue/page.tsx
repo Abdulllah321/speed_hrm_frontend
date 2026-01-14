@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
@@ -122,6 +123,8 @@ const bonusIssueFormSchema = z.object({
     .string()
     .max(1000, "Notes must not exceed 1000 characters")
     .optional(),
+  isTaxable: z.boolean().default(false),
+  taxPercentage: z.string().optional(),
 });
 
 type BonusIssueFormData = z.infer<typeof bonusIssueFormSchema>;
@@ -138,6 +141,8 @@ interface EmployeeBonusItem {
   paymentMethod: string;
   adjustmentMethod: string;
   notes: string;
+  isTaxable: boolean;
+  taxPercentage: number;
 }
 
 export default function IssueBonusPage() {
@@ -173,6 +178,8 @@ export default function IssueBonusPage() {
       paymentMethod: "with_salary",
       adjustmentMethod: "distributed-remaining-months",
       notes: "",
+      isTaxable: false,
+      taxPercentage: "0",
     },
     mode: "onBlur",
   });
@@ -365,8 +372,8 @@ export default function IssueBonusPage() {
     return bonusTypes.map((bt) => ({
       value: bt.id,
       label: `${bt.name} (${bt.calculationType === "Amount"
-          ? `Fixed: ${bt.amount || "N/A"}`
-          : `Percentage: ${bt.percentage || "N/A"}%`
+        ? `Fixed: ${bt.amount || "N/A"}`
+        : `Percentage: ${bt.percentage || "N/A"}%`
         })`,
     }));
   }, [bonusTypes]);
@@ -434,6 +441,8 @@ export default function IssueBonusPage() {
         paymentMethod: paymentMethod,
         adjustmentMethod: adjustmentMethod,
         notes: notes,
+        isTaxable: form.getValues("isTaxable"),
+        taxPercentage: parseFloat(form.getValues("taxPercentage") || "0"),
       };
     });
 
@@ -490,6 +499,8 @@ export default function IssueBonusPage() {
               employeeId: string;
               amount: number;
               percentage?: number;
+              isTaxable?: boolean;
+              taxPercentage?: number;
             }>,
             paymentMethod: bonus.paymentMethod,
             adjustmentMethod: bonus.adjustmentMethod,
@@ -500,6 +511,8 @@ export default function IssueBonusPage() {
           employeeId: bonus.employeeId,
           amount: bonus.amount,
           percentage: bonus.percentage,
+          isTaxable: bonus.isTaxable,
+          taxPercentage: bonus.taxPercentage,
         });
         return acc;
       },
@@ -512,6 +525,8 @@ export default function IssueBonusPage() {
             employeeId: string;
             amount: number;
             percentage?: number;
+            isTaxable?: boolean;
+            taxPercentage?: number;
           }>;
           paymentMethod: string;
           adjustmentMethod: string;
@@ -532,6 +547,8 @@ export default function IssueBonusPage() {
               employeeId: string;
               amount: number;
               percentage?: number;
+              isTaxable?: boolean;
+              taxPercentage?: number;
             }>;
             paymentMethod: string;
             adjustmentMethod: string;
@@ -951,6 +968,31 @@ export default function IssueBonusPage() {
                     </FormItem>
                   )}
                 />
+
+                {/* Tax Settings */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start border p-4 rounded-md bg-muted/20 my-4">
+                  <FormField
+                    control={form.control}
+                    name="isTaxable"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm bg-background">
+                        <div className="space-y-0.5">
+                          <FormLabel>Taxable Bonus</FormLabel>
+                          <FormDescription>
+                            Include this bonus in taxable income calculation
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={form.formState.isSubmitting || submitting}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 {/* Adjustment Method */}
                 <FormField
