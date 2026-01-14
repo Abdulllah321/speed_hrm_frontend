@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { Department, updateDepartment, deleteDepartment } from "@/lib/actions/department";
 import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { Autocomplete } from "@/components/ui/autocomplete";
+import { useAuth } from "@/hooks/use-auth";
 
 export type DepartmentRow = Department & { id: string };
 
@@ -128,6 +129,15 @@ function RowActions({ row }: RowActionsProps) {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [selectedHeadId, setSelectedHeadId] = useState<string>(dept.headId || "");
+  const { hasPermission } = useAuth();
+
+  const canEdit = hasPermission("department.update");
+  const canDelete = hasPermission("department.delete");
+  const canAddSubDept = hasPermission("sub-department.create");
+
+  if (!canEdit && !canDelete && !canAddSubDept) {
+    return null;
+  }
 
   // Load employees when dialog opens
   useEffect(() => {
@@ -183,23 +193,29 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/master/sub-department/add?departmentId=${dept.id}`)}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Sub-Department
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => setEditDialog(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+          )}
+          {canAddSubDept && (
+            <DropdownMenuItem
+              onClick={() => router.push(`/dashboard/master/sub-department/add?departmentId=${dept.id}`)}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Sub-Department
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <DropdownMenuItem
+              onClick={() => setDeleteDialog(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

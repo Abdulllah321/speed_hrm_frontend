@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, TaxSlabRow } from "./columns";
 import { TaxSlab, deleteTaxSlabs, updateTaxSlabs } from "@/lib/actions/tax-slab";
 import { toast } from "sonner";
@@ -29,6 +30,8 @@ export function TaxSlabList({ initialTaxSlabs, newItemId }: TaxSlabListProps) {
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string; minAmount: number; maxAmount: number; rate: number }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("tax-slab.create");
 
   const handleToggle = () => {
     router.push("/master/tax-slabs/add");
@@ -85,8 +88,8 @@ export function TaxSlabList({ initialTaxSlabs, newItemId }: TaxSlabListProps) {
       <DataTable<TaxSlabRow>
         columns={columns}
         data={data}
-        actionText="Add Tax Slab"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Tax Slab" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

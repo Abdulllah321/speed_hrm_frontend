@@ -49,6 +49,7 @@ import {
 } from "@/lib/actions/department";
 import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { Autocomplete } from "@/components/ui/autocomplete";
+import { useAuth } from "@/hooks/use-auth";
 
 export type SubDepartmentRow = SubDepartment & { id: string };
 
@@ -133,11 +134,19 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const subDept = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [selectedHeadId, setSelectedHeadId] = useState<string>(subDept.headId || "");
+
+  const canEdit = hasPermission("sub-department.update");
+  const canDelete = hasPermission("sub-department.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   useEffect(() => {
     if (editDialog) {
@@ -192,17 +201,17 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
+          {canEdit && <DropdownMenuItem onClick={() => setEditDialog(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
+          </DropdownMenuItem>}
+          {canDelete && <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
 

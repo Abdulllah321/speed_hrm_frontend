@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, DepartmentRow } from "./columns";
 import {
   Department,
@@ -35,6 +36,8 @@ export function DepartmentList({
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("department.create");
 
   const handleToggle = () => {
     router.push("/master/department/add");
@@ -111,8 +114,8 @@ export function DepartmentList({
       <DataTable<DepartmentRow>
         columns={columns}
         data={data}
-        actionText="Add Department"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Department" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

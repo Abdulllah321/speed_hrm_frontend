@@ -36,6 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DeductionHead, updateDeductionHead, deleteDeductionHead } from "@/lib/actions/deduction-head";
+import { useAuth } from "@/hooks/use-auth";
 
 export type DeductionHeadRow = DeductionHead & { id: string; sno?: number };
 
@@ -119,6 +120,7 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const deductionHead = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -126,6 +128,13 @@ function RowActions({ row }: RowActionsProps) {
     name: deductionHead.name,
     status: deductionHead.status,
   });
+
+  const canEdit = hasPermission("deduction-head.update");
+  const canDelete = hasPermission("deduction-head.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   const handleEditSubmit = async () => {
     if (!editData.name.trim()) {
@@ -174,17 +183,21 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => setEditDialog(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <DropdownMenuItem
+              onClick={() => setDeleteDialog(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

@@ -1,6 +1,7 @@
 import { getDesignations } from "@/lib/actions/designation";
 import { DesignationList } from "./designation-list";
 import { ListError } from "@/components/dashboard/list-error";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,12 @@ export default async function DesignationListPage({
     }
 
     return (
-      <DesignationList
-        initialDesignations={result.data || []}
-        newItemId={newItemId}
-      />
+      <PermissionGuard permissions="designation.read">
+        <DesignationList
+          initialDesignations={result.data || []}
+          newItemId={newItemId}
+        />
+      </PermissionGuard>
     );
   } catch (error) {
     console.error("Error in DesignationListPage:", error);

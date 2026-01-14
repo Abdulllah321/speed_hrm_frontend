@@ -13,6 +13,7 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export default function AddDepartmentPage() {
   const router = useRouter();
@@ -84,112 +85,114 @@ export default function AddDepartmentPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <Link href="/master/department/list">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to List
-          </Button>
-        </Link>
-      </div>
+    <PermissionGuard permissions="department.create">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6">
+          <Link href="/master/department/list">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to List
+            </Button>
+          </Link>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add Departments</CardTitle>
-          <CardDescription>Create one or more departments for your organization</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-3">
-              <Label>Departments</Label>
-              {departments.map((dept, index) => (
-                <div key={dept.id} className="space-y-2 p-4 border rounded-md">
-                  <div className="flex gap-2 items-start">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Name</Label>
-                        <Input
-                          placeholder={`Department Name`}
-                          value={dept.name}
-                          onChange={(e) => updateName(dept.id, e.target.value)}
-                          disabled={isPending}
-                        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Departments</CardTitle>
+            <CardDescription>Create one or more departments for your organization</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-3">
+                <Label>Departments</Label>
+                {departments.map((dept, index) => (
+                  <div key={dept.id} className="space-y-2 p-4 border rounded-md">
+                    <div className="flex gap-2 items-start">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Name</Label>
+                          <Input
+                            placeholder={`Department Name`}
+                            value={dept.name}
+                            onChange={(e) => updateName(dept.id, e.target.value)}
+                            disabled={isPending}
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Head (Optional)</Label>
+                          <Autocomplete
+                            options={[
+                              { value: "", label: "No Head" },
+                              ...employees.map((emp) => ({
+                                value: emp.id,
+                                label: `${emp.employeeName} (${emp.employeeId})`,
+                              })),
+                            ]}
+                            value={dept.headId}
+                            onValueChange={(value) => updateHeadId(dept.id, value || "")}
+                            placeholder="Select head"
+                            searchPlaceholder="Search employee..."
+                            emptyMessage="No employees found"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Allocation (Optional)</Label>
+                          <Autocomplete
+                            options={[
+                              { value: "", label: "No Allocation" },
+                              ...allocations.map((alloc) => ({
+                                value: alloc.id,
+                                label: alloc.name,
+                              })),
+                            ]}
+                            value={dept.allocationId}
+                            onValueChange={(value) => updateAllocationId(dept.id, value || "")}
+                            placeholder="Select allocation"
+                            searchPlaceholder="Search allocation..."
+                            emptyMessage="No allocations found"
+                          />
+                        </div>
                       </div>
 
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Head (Optional)</Label>
-                        <Autocomplete
-                          options={[
-                            { value: "", label: "No Head" },
-                            ...employees.map((emp) => ({
-                              value: emp.id,
-                              label: `${emp.employeeName} (${emp.employeeId})`,
-                            })),
-                          ]}
-                          value={dept.headId}
-                          onValueChange={(value) => updateHeadId(dept.id, value || "")}
-                          placeholder="Select head"
-                          searchPlaceholder="Search employee..."
-                          emptyMessage="No employees found"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Allocation (Optional)</Label>
-                        <Autocomplete
-                          options={[
-                            { value: "", label: "No Allocation" },
-                            ...allocations.map((alloc) => ({
-                              value: alloc.id,
-                              label: alloc.name,
-                            })),
-                          ]}
-                          value={dept.allocationId}
-                          onValueChange={(value) => updateAllocationId(dept.id, value || "")}
-                          placeholder="Select allocation"
-                          searchPlaceholder="Search allocation..."
-                          emptyMessage="No allocations found"
-                        />
-                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeRow(dept.id)}
+                        disabled={departments.length === 1 || isPending}
+                        className="mt-6"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeRow(dept.id)}
-                      disabled={departments.length === 1 || isPending}
-                      className="mt-6"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
                   </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 justify-between">
-              <div className="flex gap-2">
-                <Button type="submit" disabled={isPending}>
-                  {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Create {departments.length > 1 ? `${departments.length} Departments` : "Department"}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => router.back()}>
-                  Cancel
-                </Button>
+                ))}
               </div>
-              <button
-                type="button"
-                onClick={addRow}
-                disabled={isPending}
-                className="text-sm text-primary hover:underline disabled:opacity-50"
-              >
-                + Add more
-              </button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+              <div className="flex gap-2 justify-between">
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={isPending}>
+                    {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Create {departments.length > 1 ? `${departments.length} Departments` : "Department"}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => router.back()}>
+                    Cancel
+                  </Button>
+                </div>
+                <button
+                  type="button"
+                  onClick={addRow}
+                  disabled={isPending}
+                  className="text-sm text-primary hover:underline disabled:opacity-50"
+                >
+                  + Add more
+                </button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </PermissionGuard>
   );
 }

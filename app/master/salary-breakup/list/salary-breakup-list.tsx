@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, SalaryBreakupRow } from "./columns";
 import { SalaryBreakup } from "@/lib/actions/salary-breakup";
 import { toast } from "sonner";
@@ -36,10 +37,10 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
 
   // Convert salary breakups to rows (one row per salary breakup)
   const data: SalaryBreakupRow[] = initialSalaryBreakups.map((sb) => {
-    const percentage = sb.percentage 
+    const percentage = sb.percentage
       ? (typeof sb.percentage === 'string' ? parseFloat(sb.percentage) : sb.percentage)
       : 0;
-    
+
     // Parse isTaxable from details field
     let isTaxable = false;
     if (sb.details) {
@@ -53,7 +54,7 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
         isTaxable = false;
       }
     }
-    
+
     return {
       id: sb.id,
       salaryType: sb.name,
@@ -76,23 +77,26 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
   const percentageStatus = useMemo(() => {
     const diff = Math.abs(100 - totalPercentage);
     const roundedTotal = Math.round(totalPercentage * 100) / 100;
-    
+
     if (roundedTotal === 100) {
       return { status: "valid" as const, message: "Total is exactly 100%", diff: 0 };
     } else if (totalPercentage < 100) {
-      return { 
-        status: "under" as const, 
-        message: `Total is ${roundedTotal}% (${(100 - roundedTotal).toFixed(2)}% missing)`, 
-        diff: 100 - roundedTotal 
+      return {
+        status: "under" as const,
+        message: `Total is ${roundedTotal}% (${(100 - roundedTotal).toFixed(2)}% missing)`,
+        diff: 100 - roundedTotal
       };
     } else {
-      return { 
-        status: "over" as const, 
-        message: `Total is ${roundedTotal}% (${(roundedTotal - 100).toFixed(2)}% over)`, 
-        diff: roundedTotal - 100 
+      return {
+        status: "over" as const,
+        message: `Total is ${roundedTotal}% (${(roundedTotal - 100).toFixed(2)}% over)`,
+        diff: roundedTotal - 100
       };
     }
   }, [totalPercentage]);
+
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("salary-breakup.create");
 
   const handleToggle = () => {
     router.push("/master/salary-breakup/add");
@@ -126,12 +130,12 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
     const editedPercentages = editRows
       .filter((r) => r.salaryType.trim() && !isNaN(parseFloat(r.percent)))
       .reduce((sum, r) => sum + parseFloat(r.percent || "0"), 0);
-    
+
     // Get percentages of items NOT being edited (active items)
     const nonEditedTotal = data
       .filter((row) => row.status === "Active" && !editRows.some((er) => er.id === row.id))
       .reduce((sum, row) => sum + row.percent, 0);
-    
+
     return editedPercentages + nonEditedTotal;
   }, [editRows, data]);
 
@@ -140,16 +144,16 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
     if (roundedTotal === 100) {
       return { status: "valid" as const, message: "Total will be exactly 100%", diff: 0 };
     } else if (bulkEditTotal < 100) {
-      return { 
-        status: "under" as const, 
-        message: `Total will be ${roundedTotal}% (${(100 - roundedTotal).toFixed(2)}% missing)`, 
-        diff: 100 - roundedTotal 
+      return {
+        status: "under" as const,
+        message: `Total will be ${roundedTotal}% (${(100 - roundedTotal).toFixed(2)}% missing)`,
+        diff: 100 - roundedTotal
       };
     } else {
-      return { 
-        status: "over" as const, 
-        message: `Total will be ${roundedTotal}% (${(roundedTotal - 100).toFixed(2)}% over)`, 
-        diff: roundedTotal - 100 
+      return {
+        status: "over" as const,
+        message: `Total will be ${roundedTotal}% (${(roundedTotal - 100).toFixed(2)}% over)`,
+        diff: roundedTotal - 100
       };
     }
   }, [bulkEditTotal]);
@@ -160,7 +164,7 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
       toast.error("Please fill in all fields correctly");
       return;
     }
-    
+
     // Warn if total is not 100%
     if (bulkEditStatus.status !== "valid") {
       const proceed = window.confirm(
@@ -171,7 +175,7 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
         return;
       }
     }
-    
+
     // TODO: Implement bulk update when backend endpoint is available
     toast.info("Bulk edit functionality will be available soon");
     setBulkEditOpen(false);
@@ -239,8 +243,8 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
       <DataTable<SalaryBreakupRow>
         columns={columns}
         data={data}
-        actionText="Add Salary Breakup"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Salary Breakup" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[
           { key: "salaryType", label: "Name" },
@@ -274,7 +278,7 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
             <DialogTitle>Edit Salary Breakup Entries</DialogTitle>
             <DialogDescription>Update {editRows.length} salary breakup entry(ies)</DialogDescription>
           </DialogHeader>
-          
+
           {/* Bulk Edit Total Indicator */}
           <Alert className={cn(
             "mb-4",

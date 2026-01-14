@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, LoanTypeRow } from "./columns";
 import {
   LoanType,
@@ -35,6 +36,8 @@ export function LoanTypeList({
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("loan-type.create");
 
   const handleToggle = () => {
     router.push("/master/loan-types/add");
@@ -104,8 +107,8 @@ export function LoanTypeList({
       <DataTable<LoanTypeRow>
         columns={columns}
         data={data}
-        actionText="Add Loan Type"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Loan Type" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}

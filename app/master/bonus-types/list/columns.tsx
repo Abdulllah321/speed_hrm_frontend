@@ -37,6 +37,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { BonusType, updateBonusType, deleteBonusType } from "@/lib/actions/bonus-type";
+import { useAuth } from "@/hooks/use-auth";
 
 export type BonusTypeRow = BonusType & { id: string };
 
@@ -57,12 +58,12 @@ export const columns: ColumnDef<BonusTypeRow>[] = [
     enableHiding: false,
     size: 28,
   },
-  { 
-    header: "Name", 
-    accessorKey: "name", 
-    size: 200, 
-    enableSorting: true, 
-    cell: ({ row }) => <HighlightText text={row.original.name} /> 
+  {
+    header: "Name",
+    accessorKey: "name",
+    size: 200,
+    enableSorting: true,
+    cell: ({ row }) => <HighlightText text={row.original.name} />
   },
   {
     header: "Calculation Type",
@@ -106,10 +107,10 @@ export const columns: ColumnDef<BonusTypeRow>[] = [
       return <span className="text-muted-foreground">—</span>;
     },
   },
-  { 
-    header: "Status", 
-    accessorKey: "status", 
-    size: 100, 
+  {
+    header: "Status",
+    accessorKey: "status",
+    size: 100,
     enableSorting: true,
     cell: ({ row }) => {
       const status = row.original.status || "active";
@@ -120,12 +121,12 @@ export const columns: ColumnDef<BonusTypeRow>[] = [
       );
     },
   },
-  { 
-    header: "Created At", 
-    accessorKey: "createdAt", 
-    size: 120, 
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(), 
-    enableSorting: true 
+  {
+    header: "Created At",
+    accessorKey: "createdAt",
+    size: 120,
+    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    enableSorting: true
   },
   { id: "actions", header: () => <span className="sr-only">Actions</span>, cell: ({ row }) => <RowActions row={row} />, size: 60, enableHiding: false },
 ];
@@ -133,6 +134,7 @@ export const columns: ColumnDef<BonusTypeRow>[] = [
 function RowActions({ row }: { row: Row<BonusTypeRow> }) {
   const item = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -142,6 +144,13 @@ function RowActions({ row }: { row: Row<BonusTypeRow> }) {
     amount: item.amount?.toString() || "",
     percentage: item.percentage?.toString() || "",
   });
+
+  const canEdit = hasPermission("bonus-type.update");
+  const canDelete = hasPermission("bonus-type.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,20 +199,24 @@ function RowActions({ row }: { row: Row<BonusTypeRow> }) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => {
-            setFormData({
-              name: item.name || "",
-              calculationType: item.calculationType || "Amount",
-              amount: item.amount?.toString() || "",
-              percentage: item.percentage?.toString() || "",
-            });
-            setEditDialog(true);
-          }}>
-            <Pencil className="h-4 w-4 mr-2" />Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" />Delete
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => {
+              setFormData({
+                name: item.name || "",
+                calculationType: item.calculationType || "Amount",
+                amount: item.amount?.toString() || "",
+                percentage: item.percentage?.toString() || "",
+              });
+              setEditDialog(true);
+            }}>
+              <Pencil className="h-4 w-4 mr-2" />Edit
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

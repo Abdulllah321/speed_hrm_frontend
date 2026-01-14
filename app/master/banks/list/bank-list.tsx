@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, BankRow } from "./columns";
 import {
   Bank,
@@ -31,12 +32,13 @@ interface BankListProps {
 
 export function BankList({ initialBanks, newItemId }: BankListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
-  const [editRows, setEditRows] = useState<{ 
-    id: string; 
-    name: string; 
-    code: string; 
+  const [editRows, setEditRows] = useState<{
+    id: string;
+    name: string;
+    code: string;
     accountNumberPrefix: string;
     status: string;
   }[]>([]);
@@ -44,6 +46,8 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
   const handleToggle = () => {
     router.push("/master/banks/add");
   };
+
+  const showAddAction = hasPermission("bank.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -58,8 +62,8 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
   };
 
   const handleBulkEdit = (items: BankRow[]) => {
-    setEditRows(items.map((item) => ({ 
-      id: item.id, 
+    setEditRows(items.map((item) => ({
+      id: item.id,
       name: item.name,
       code: item.code || "",
       accountNumberPrefix: item.accountNumberPrefix || "",
@@ -69,7 +73,7 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
   };
 
   const updateEditRow = (id: string, field: string, value: string) => {
-    setEditRows((rows) => 
+    setEditRows((rows) =>
       rows.map((r) => {
         if (r.id === id) {
           return { ...r, [field]: value };
@@ -123,8 +127,8 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
           <DataTable<BankRow>
             columns={columns}
             data={data}
-            actionText="Add Bank"
-            toggleAction={handleToggle}
+            actionText={showAddAction ? "Add Bank" : undefined}
+            toggleAction={showAddAction ? handleToggle : undefined}
             newItemId={newItemId}
             searchFields={[{ key: "name", label: "Name" }]}
             onMultiDelete={handleMultiDelete}

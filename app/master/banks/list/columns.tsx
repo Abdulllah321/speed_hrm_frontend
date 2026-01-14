@@ -36,6 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bank, updateBank, deleteBank } from "@/lib/actions/bank";
+import { useAuth } from "@/hooks/use-auth";
 
 export type BankRow = Bank & { id: string };
 
@@ -56,12 +57,12 @@ export const columns: ColumnDef<BankRow>[] = [
     enableHiding: false,
     size: 28,
   },
-  { 
-    header: "Name", 
-    accessorKey: "name", 
-    size: 250, 
-    enableSorting: true, 
-    cell: ({ row }) => <HighlightText text={row.original.name} /> 
+  {
+    header: "Name",
+    accessorKey: "name",
+    size: 250,
+    enableSorting: true,
+    cell: ({ row }) => <HighlightText text={row.original.name} />
   },
   {
     header: "Code",
@@ -77,10 +78,10 @@ export const columns: ColumnDef<BankRow>[] = [
     enableSorting: true,
     cell: ({ row }) => row.original.accountNumberPrefix || <span className="text-muted-foreground">—</span>,
   },
-  { 
-    header: "Status", 
-    accessorKey: "status", 
-    size: 100, 
+  {
+    header: "Status",
+    accessorKey: "status",
+    size: 100,
     enableSorting: true,
     cell: ({ row }) => {
       const status = row.original.status || "active";
@@ -91,12 +92,12 @@ export const columns: ColumnDef<BankRow>[] = [
       );
     },
   },
-  { 
-    header: "Created At", 
-    accessorKey: "createdAt", 
-    size: 120, 
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(), 
-    enableSorting: true 
+  {
+    header: "Created At",
+    accessorKey: "createdAt",
+    size: 120,
+    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    enableSorting: true
   },
   { id: "actions", header: () => <span className="sr-only">Actions</span>, cell: ({ row }) => <RowActions row={row} />, size: 60, enableHiding: false },
 ];
@@ -104,6 +105,7 @@ export const columns: ColumnDef<BankRow>[] = [
 function RowActions({ row }: { row: Row<BankRow> }) {
   const item = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -113,6 +115,13 @@ function RowActions({ row }: { row: Row<BankRow> }) {
     accountNumberPrefix: item.accountNumberPrefix || "",
     status: item.status || "active",
   });
+
+  const canEdit = hasPermission("bank.update");
+  const canDelete = hasPermission("bank.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,20 +167,24 @@ function RowActions({ row }: { row: Row<BankRow> }) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => {
-            setFormData({
-              name: item.name || "",
-              code: item.code || "",
-              accountNumberPrefix: item.accountNumberPrefix || "",
-              status: item.status || "active",
-            });
-            setEditDialog(true);
-          }}>
-            <Pencil className="h-4 w-4 mr-2" />Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" />Delete
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => {
+              setFormData({
+                name: item.name || "",
+                code: item.code || "",
+                accountNumberPrefix: item.accountNumberPrefix || "",
+                status: item.status || "active",
+              });
+              setEditDialog(true);
+            }}>
+              <Pencil className="h-4 w-4 mr-2" />Edit
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

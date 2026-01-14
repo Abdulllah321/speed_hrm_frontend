@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, LocationRow } from "./columns";
 import {
     Location,
@@ -35,6 +36,8 @@ export function LocationList({
     const [isPending, startTransition] = useTransition();
     const [bulkEditOpen, setBulkEditOpen] = useState(false);
     const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+    const { hasPermission } = useAuth();
+    const showAddAction = hasPermission("location.create");
 
     const handleToggle = () => {
         router.push("/master/location/add");
@@ -105,8 +108,8 @@ export function LocationList({
             <DataTable<LocationRow>
                 columns={columns}
                 data={data}
-                actionText="Add Location"
-                toggleAction={handleToggle}
+                actionText={showAddAction ? "Add Location" : undefined}
+                toggleAction={showAddAction ? handleToggle : undefined}
                 newItemId={newItemId}
                 searchFields={[{ key: "name", label: "Name" }]}
                 onMultiDelete={handleMultiDelete}

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, AllocationRow } from "./columns";
 import {
     Allocation,
@@ -32,6 +33,7 @@ export function AllocationList({
     newItemId,
 }: AllocationListProps) {
     const router = useRouter();
+    const { hasPermission } = useAuth();
     const [isPending, startTransition] = useTransition();
     const [bulkEditOpen, setBulkEditOpen] = useState(false);
     const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
@@ -39,6 +41,8 @@ export function AllocationList({
     const handleToggle = () => {
         router.push("/master/allocation/add");
     };
+
+    const showAddAction = hasPermission("allocation.create");
 
     const handleMultiDelete = (ids: string[]) => {
         startTransition(async () => {
@@ -105,8 +109,8 @@ export function AllocationList({
             <DataTable<AllocationRow>
                 columns={columns}
                 data={data}
-                actionText="Add Allocation"
-                toggleAction={handleToggle}
+                actionText={showAddAction ? "Add Allocation" : undefined}
+                toggleAction={showAddAction ? handleToggle : undefined}
                 newItemId={newItemId}
                 searchFields={[{ key: "name", label: "Name" }]}
                 onMultiDelete={handleMultiDelete}

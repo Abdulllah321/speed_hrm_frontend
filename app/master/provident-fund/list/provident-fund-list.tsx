@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, ProvidentFundRow } from "./columns";
 import {
   ProvidentFund,
@@ -36,6 +37,8 @@ export function ProvidentFundList({
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string; percentage: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("provident-fund.create");
 
   const handleToggle = () => {
     router.push("/master/provident-fund/add");
@@ -122,8 +125,8 @@ export function ProvidentFundList({
       <DataTable<ProvidentFundRow>
         columns={columns}
         data={data}
-        actionText="Add Provident Fund"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Provident Fund" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[
           { key: "name", label: "Name" },

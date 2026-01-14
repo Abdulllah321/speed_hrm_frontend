@@ -44,6 +44,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Location, updateLocations, deleteLocation } from "@/lib/actions/location";
 import { getCities, City } from "@/lib/actions/city";
+import { useAuth } from "@/hooks/use-auth";
 
 export type LocationRow = Location & { id: string };
 
@@ -125,10 +126,18 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const location = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
+
+  const canEdit = hasPermission("location.update");
+  const canDelete = hasPermission("location.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   const fetchCities = async () => {
     const result = await getCities();
@@ -181,20 +190,24 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => {
-            fetchCities();
-            setEditDialog(true);
-          }}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => {
+              fetchCities();
+              setEditDialog(true);
+            }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <DropdownMenuItem
+              onClick={() => setDeleteDialog(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

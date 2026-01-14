@@ -36,6 +36,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { City, Country, State, updateCity, deleteCity, getStatesByCountry } from "@/lib/actions/city";
+import { useAuth } from "@/hooks/use-auth";
 
 export type CityRow = City & { id: string };
 
@@ -114,11 +115,19 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const city = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [countryId, setCountryId] = useState(city.countryId);
   const [stateId, setStateId] = useState(city.stateId);
+
+  const canEdit = hasPermission("city.update");
+  const canDelete = hasPermission("city.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
   const [states, setStates] = useState<State[]>([]);
   const [loadingStates, setLoadingStates] = useState(false);
 
@@ -189,24 +198,28 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => {
-            setEditDialog(true);
-            setCountryId(city.countryId);
-            setStateId(city.stateId);
-            if (city.countryId) {
-              loadStates(city.countryId);
-            }
-          }}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => {
+              setEditDialog(true);
+              setCountryId(city.countryId);
+              setStateId(city.stateId);
+              if (city.countryId) {
+                loadStates(city.countryId);
+              }
+            }}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <DropdownMenuItem
+              onClick={() => setDeleteDialog(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

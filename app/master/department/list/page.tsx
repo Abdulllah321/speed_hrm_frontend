@@ -1,6 +1,7 @@
 import { getDepartments } from "@/lib/actions/department";
 import { DepartmentList } from "./department-list";
 import { ListError } from "@/components/dashboard/list-error";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,11 @@ export default async function DepartmentListPage({
   searchParams: Promise<{ newItemId?: string }>;
 }) {
   console.log("🔍 DepartmentListPage: Starting to load...");
-  
+
   try {
     const { newItemId } = await searchParams;
     console.log("🔍 DepartmentListPage: searchParams resolved, newItemId:", newItemId);
-    
+
     console.log("🔍 DepartmentListPage: Calling getDepartments()...");
     const result = await getDepartments();
     console.log("🔍 DepartmentListPage: getDepartments() result:", result);
@@ -31,10 +32,12 @@ export default async function DepartmentListPage({
 
     console.log("✅ DepartmentListPage: Rendering DepartmentList with data:", result.data.length, "items");
     return (
-      <DepartmentList
-        initialDepartments={result.data || []}
-        newItemId={newItemId}
-      />
+      <PermissionGuard permissions="department.read">
+        <DepartmentList
+          initialDepartments={result.data || []}
+          newItemId={newItemId}
+        />
+      </PermissionGuard>
     );
   } catch (error) {
     console.error("❌ Error in DepartmentListPage:", error);

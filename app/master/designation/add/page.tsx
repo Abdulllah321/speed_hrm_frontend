@@ -16,6 +16,7 @@ import { createDesignations } from "@/lib/actions/designation";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export default function AddDesignationPage() {
   const router = useRouter();
@@ -59,78 +60,80 @@ export default function AddDesignationPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <Link href="/master/designation/list">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to List
-          </Button>
-        </Link>
-      </div>
+    <PermissionGuard permissions="designation.create">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6">
+          <Link href="/master/designation/list">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to List
+            </Button>
+          </Link>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add Designations</CardTitle>
-          <CardDescription>
-            Create one or more designations for your organization
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-3">
-              <Label>Designation Names</Label>
-              {designations.map((item, index) => (
-                <div key={item.id} className="flex gap-2">
-                  <Input
-                    placeholder={`Designation ${index + 1}`}
-                    value={item.name}
-                    onChange={(e) => updateName(item.id, e.target.value)}
-                    disabled={isPending}
-                  />
+        <Card>
+          <CardHeader>
+            <CardTitle>Add Designations</CardTitle>
+            <CardDescription>
+              Create one or more designations for your organization
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-3">
+                <Label>Designation Names</Label>
+                {designations.map((item, index) => (
+                  <div key={item.id} className="flex gap-2">
+                    <Input
+                      placeholder={`Designation ${index + 1}`}
+                      value={item.name}
+                      onChange={(e) => updateName(item.id, e.target.value)}
+                      disabled={isPending}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeRow(item.id)}
+                      disabled={designations.length === 1 || isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2 justify-between">
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={isPending}>
+                    {isPending && (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    )}
+                    Create{" "}
+                    {designations.length > 1
+                      ? `${designations.length} Designations`
+                      : "Designation"}
+                  </Button>
                   <Button
                     type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeRow(item.id)}
-                    disabled={designations.length === 1 || isPending}
+                    variant="outline"
+                    onClick={() => router.back()}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    Cancel
                   </Button>
                 </div>
-              ))}
-            </div>
-            <div className="flex gap-2 justify-between">
-              <div className="flex gap-2">
-                <Button type="submit" disabled={isPending}>
-                  {isPending && (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  )}
-                  Create{" "}
-                  {designations.length > 1
-                    ? `${designations.length} Designations`
-                    : "Designation"}
-                </Button>
-                <Button
+                <button
                   type="button"
-                  variant="outline"
-                  onClick={() => router.back()}
+                  onClick={addRow}
+                  disabled={isPending}
+                  className="text-sm text-primary hover:underline disabled:opacity-50"
                 >
-                  Cancel
-                </Button>
+                  + Add more
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={addRow}
-                disabled={isPending}
-                className="text-sm text-primary hover:underline disabled:opacity-50"
-              >
-                + Add more
-              </button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </PermissionGuard>
   );
 }

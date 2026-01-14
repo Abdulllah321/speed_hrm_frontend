@@ -36,6 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Qualification, updateQualification, deleteQualification } from "@/lib/actions/qualification";
+import { useAuth } from "@/hooks/use-auth";
 
 export type QualificationRow = Qualification & { id: string };
 
@@ -110,6 +111,7 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const qual = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -117,6 +119,13 @@ function RowActions({ row }: RowActionsProps) {
     name: qual.name,
     status: qual.status,
   });
+
+  const canEdit = hasPermission("qualification.update");
+  const canDelete = hasPermission("qualification.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
 
   const handleEditSubmit = async () => {
     if (!editData.name.trim()) {
@@ -165,17 +174,17 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
+          {canEdit && <DropdownMenuItem onClick={() => setEditDialog(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
+          </DropdownMenuItem>}
+          {canDelete && <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
 

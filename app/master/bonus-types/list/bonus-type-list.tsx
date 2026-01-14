@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, BonusTypeRow } from "./columns";
 import {
   BonusType,
@@ -32,19 +33,22 @@ interface BonusTypeListProps {
 
 export function BonusTypeList({ initialBonusTypes, newItemId }: BonusTypeListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
-  const [editRows, setEditRows] = useState<{ 
-    id: string; 
-    name: string; 
-    calculationType: string; 
-    amount: string; 
+  const [editRows, setEditRows] = useState<{
+    id: string;
+    name: string;
+    calculationType: string;
+    amount: string;
     percentage: string;
   }[]>([]);
 
   const handleToggle = () => {
     router.push("/master/bonus-types/add");
   };
+
+  const showAddAction = hasPermission("bonus-type.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -59,8 +63,8 @@ export function BonusTypeList({ initialBonusTypes, newItemId }: BonusTypeListPro
   };
 
   const handleBulkEdit = (items: BonusTypeRow[]) => {
-    setEditRows(items.map((item) => ({ 
-      id: item.id, 
+    setEditRows(items.map((item) => ({
+      id: item.id,
       name: item.name,
       calculationType: item.calculationType || "Amount",
       amount: item.amount?.toString() || "",
@@ -70,7 +74,7 @@ export function BonusTypeList({ initialBonusTypes, newItemId }: BonusTypeListPro
   };
 
   const updateEditRow = (id: string, field: string, value: string) => {
-    setEditRows((rows) => 
+    setEditRows((rows) =>
       rows.map((r) => {
         if (r.id === id) {
           const updated = { ...r, [field]: value };
@@ -143,8 +147,8 @@ export function BonusTypeList({ initialBonusTypes, newItemId }: BonusTypeListPro
           <DataTable<BonusTypeRow>
             columns={columns}
             data={data}
-            actionText="Add Bonus Type"
-            toggleAction={handleToggle}
+            actionText={showAddAction ? "Add Bonus Type" : undefined}
+            toggleAction={showAddAction ? handleToggle : undefined}
             newItemId={newItemId}
             searchFields={[{ key: "name", label: "Name" }]}
             onMultiDelete={handleMultiDelete}

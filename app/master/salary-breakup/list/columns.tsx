@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { updateSalaryBreakup, deleteSalaryBreakup } from "@/lib/actions/salary-breakup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
 
 export type SalaryBreakupRow = {
   id: string;
@@ -123,7 +124,7 @@ export const columns: ColumnDef<SalaryBreakupRow>[] = [
   },
 ];
 
-type RowActionsProps = { 
+type RowActionsProps = {
   row: Row<SalaryBreakupRow>;
   table: Table<SalaryBreakupRow>;
 };
@@ -131,9 +132,17 @@ type RowActionsProps = {
 function RowActions({ row, table }: RowActionsProps) {
   const item = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+
+  const canEdit = hasPermission("salary-breakup.update");
+  const canDelete = hasPermission("salary-breakup.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
   const [editForm, setEditForm] = useState({
     salaryType: item.salaryType,
     percent: item.percent.toString(),
@@ -144,7 +153,7 @@ function RowActions({ row, table }: RowActionsProps) {
   const projectedTotal = useMemo(() => {
     const allRows = table.getRowModel().rows.map((r: Row<SalaryBreakupRow>) => r.original);
     const editedPercent = parseFloat(editForm.percent) || 0;
-    
+
     // Calculate total: sum of all active items, replacing current item's percent with edited value
     const total = allRows
       .filter((r) => r.status === "Active")
@@ -154,7 +163,7 @@ function RowActions({ row, table }: RowActionsProps) {
         }
         return sum + r.percent;
       }, 0);
-    
+
     return total;
   }, [editForm.percent, item.id, table]);
 
@@ -163,16 +172,16 @@ function RowActions({ row, table }: RowActionsProps) {
     if (roundedTotal === 100) {
       return { status: "valid" as const, message: "Total will be exactly 100%", diff: 0 };
     } else if (projectedTotal < 100) {
-      return { 
-        status: "under" as const, 
-        message: `Total will be ${roundedTotal}% (${(100 - roundedTotal).toFixed(2)}% missing)`, 
-        diff: 100 - roundedTotal 
+      return {
+        status: "under" as const,
+        message: `Total will be ${roundedTotal}% (${(100 - roundedTotal).toFixed(2)}% missing)`,
+        diff: 100 - roundedTotal
       };
     } else {
-      return { 
-        status: "over" as const, 
-        message: `Total will be ${roundedTotal}% (${(roundedTotal - 100).toFixed(2)}% over)`, 
-        diff: roundedTotal - 100 
+      return {
+        status: "over" as const,
+        message: `Total will be ${roundedTotal}% (${(roundedTotal - 100).toFixed(2)}% over)`,
+        diff: roundedTotal - 100
       };
     }
   }, [projectedTotal]);
@@ -187,7 +196,7 @@ function RowActions({ row, table }: RowActionsProps) {
       toast.error("Percent must be between 0 and 100");
       return;
     }
-    
+
     // Warn if total is not 100% (only for active items)
     if (item.status === "Active" && projectedStatus.status !== "valid") {
       const proceed = window.confirm(
@@ -198,7 +207,7 @@ function RowActions({ row, table }: RowActionsProps) {
         return;
       }
     }
-    
+
     startTransition(async () => {
       const result = await updateSalaryBreakup(item.id, {
         name: editForm.salaryType.trim(),
@@ -240,14 +249,14 @@ function RowActions({ row, table }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
+          {canEdit && <DropdownMenuItem onClick={() => setEditDialog(true)}>
             <Pencil className="h-4 w-4 mr-2" />
             Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
+          </DropdownMenuItem>}
+          {canDelete && <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
-          </DropdownMenuItem>
+          </DropdownMenuItem>}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -257,7 +266,7 @@ function RowActions({ row, table }: RowActionsProps) {
             <DialogTitle>Edit Salary Breakup Entry</DialogTitle>
             <DialogDescription>Update the salary breakup entry details</DialogDescription>
           </DialogHeader>
-          
+
           {/* Projected Total Indicator (only show for active items) */}
           {item.status === "Active" && (
             <Alert className={cn(

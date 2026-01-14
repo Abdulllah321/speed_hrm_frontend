@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
+import { useAuth } from "@/hooks/use-auth";
 import { columns, JobTypeRow } from "./columns";
 import { JobType, deleteJobTypes, updateJobTypes } from "@/lib/actions/job-type";
 import { toast } from "sonner";
@@ -28,6 +29,8 @@ export function JobTypeList({ initialJobTypes, newItemId }: JobTypeListProps) {
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
+  const { hasPermission } = useAuth();
+  const showAddAction = hasPermission("job-type.create");
 
   const handleToggle = () => {
     router.push("/master/job-type/add");
@@ -87,8 +90,8 @@ export function JobTypeList({ initialJobTypes, newItemId }: JobTypeListProps) {
       <DataTable<JobTypeRow>
         columns={columns}
         data={data}
-        actionText="Add Job Type"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Job Type" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
