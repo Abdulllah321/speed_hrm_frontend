@@ -43,8 +43,14 @@ function getBaseDomain(host: string): string {
   if (hostWithoutPort.includes("localtest.me")) {
     return "localtest.me";
   }
+
+  // Use configured base domain if available
+  const configuredBase = process.env.NEXT_PUBLIC_BASE_DOMAIN;
+  if (configuredBase && hostWithoutPort.endsWith(configuredBase)) {
+    return configuredBase;
+  }
   
-  // Extract base domain (e.g., "example.com" from "hr.example.com")
+  // Fallback: Extract base domain (e.g., "example.com" from "hr.example.com")
   const parts = hostWithoutPort.split(".");
   if (parts.length >= 2) {
     return parts.slice(-2).join("."); // Get last two parts (e.g., "example.com")
@@ -75,8 +81,19 @@ function getSubdomain(host: string): string | null {
     }
     return null; // Just "localtest.me" without subdomain
   }
+
+  // Use configured base domain logic
+  const configuredBase = process.env.NEXT_PUBLIC_BASE_DOMAIN;
+  if (configuredBase && hostWithoutPort.endsWith(configuredBase)) {
+    // If host is exactly the base domain, no subdomain
+    if (hostWithoutPort === configuredBase) return null;
+    
+    // Remove base domain and trailing dot to get subdomain part
+    const subdomainPart = hostWithoutPort.replace(`.${configuredBase}`, "");
+    return subdomainPart;
+  }
   
-  // Production subdomains
+  // Fallback production subdomains logic
   const parts = hostWithoutPort.split(".");
   if (parts.length > 2) {
     return parts[0]; // First part is subdomain
