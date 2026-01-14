@@ -15,6 +15,7 @@ export interface SocialSecurityInstitution {
   website?: string | null;
   contactNumber?: string | null;
   address?: string | null;
+  contributionRate: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +42,7 @@ export async function createSocialSecurityInstitution(formData: FormData): Promi
   const website = formData.get("website") as string;
   const contactNumber = formData.get("contactNumber") as string;
   const address = formData.get("address") as string;
+  const contributionRate = formData.get("contributionRate") ? parseFloat(formData.get("contributionRate") as string) : 0;
 
   if (!code?.trim() || !name?.trim()) {
     return { status: false, message: "Code and name are required" };
@@ -61,6 +63,7 @@ export async function createSocialSecurityInstitution(formData: FormData): Promi
         website: website?.trim() || undefined,
         contactNumber: contactNumber?.trim() || undefined,
         address: address?.trim() || undefined,
+        contributionRate,
         status: "active",
       }),
     });
@@ -73,7 +76,7 @@ export async function createSocialSecurityInstitution(formData: FormData): Promi
 }
 
 export async function createSocialSecurityInstitutions(
-  items: { code: string; name: string; province?: string; description?: string; website?: string; contactNumber?: string; address?: string }[]
+  items: { code: string; name: string; province?: string; description?: string; website?: string; contactNumber?: string; address?: string; contributionRate?: number }[]
 ): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "At least one institution is required" };
   try {
@@ -108,6 +111,7 @@ export async function updateSocialSecurityInstitution(id: string, formData: Form
   const website = formData.get("website") as string;
   const contactNumber = formData.get("contactNumber") as string;
   const address = formData.get("address") as string;
+  const contributionRate = formData.get("contributionRate") ? parseFloat(formData.get("contributionRate") as string) : 0;
   const status = formData.get("status") as string;
 
   if (!code?.trim() || !name?.trim()) return { status: false, message: "Code and name are required" };
@@ -128,6 +132,7 @@ export async function updateSocialSecurityInstitution(id: string, formData: Form
         website: website?.trim() || undefined,
         contactNumber: contactNumber?.trim() || undefined,
         address: address?.trim() || undefined,
+        contributionRate,
         status: status || "active",
       }),
     });
@@ -173,7 +178,7 @@ export async function deleteSocialSecurityInstitutions(ids: string[]): Promise<{
 }
 
 export async function updateSocialSecurityInstitutions(
-  items: { id: string; code: string; name: string; province?: string; description?: string; website?: string; contactNumber?: string; address?: string; status?: string }[]
+  items: { id: string; code: string; name: string; province?: string; description?: string; website?: string; contactNumber?: string; address?: string; status?: string; contributionRate?: number }[]
 ): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "No items to update" };
   try {

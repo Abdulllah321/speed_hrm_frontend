@@ -58,12 +58,8 @@ export function SocialSecuritySection({
       registrationNumber: "",
       cardNumber: "",
       registrationDate: "",
-      expiryDate: "",
-      contributionRate: "",
       baseSalary: "",
       monthlyContribution: "",
-      employeeContribution: "",
-      employerContribution: "",
       status: "active",
     });
   };
@@ -99,7 +95,6 @@ export function SocialSecuritySection({
       {fields.map((field, index) => {
         const institutionId = watch(`socialSecurityRegistrations.${index}.institutionId`);
         const registrationDate = watch(`socialSecurityRegistrations.${index}.registrationDate`);
-        const expiryDate = watch(`socialSecurityRegistrations.${index}.expiryDate`);
         const selectedInstitution = socialSecurityInstitutions.find(
           (inst) => inst.id === institutionId
         );
@@ -212,53 +207,6 @@ export function SocialSecuritySection({
               </div>
 
               <div className="space-y-2">
-                <Label>Expiry Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal",
-                        !expiryDate && "text-muted-foreground"
-                      )}
-                      disabled={isPending}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {expiryDate ? (
-                        format(new Date(expiryDate), "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={expiryDate ? new Date(expiryDate) : undefined}
-                      onSelect={(date) =>
-                        setValue(
-                          `socialSecurityRegistrations.${index}.expiryDate`,
-                          date ? format(date, "yyyy-MM-dd") : ""
-                        )
-                      }
-                      disabled={isPending}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Contribution Rate (%)</Label>
-                <Input
-                  {...register(`socialSecurityRegistrations.${index}.contributionRate`)}
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 6.0"
-                  disabled={isPending}
-                />
-              </div>
-
-              <div className="space-y-2">
                 <Label>Base Salary</Label>
                 <Input
                   {...register(`socialSecurityRegistrations.${index}.baseSalary`)}
@@ -276,28 +224,6 @@ export function SocialSecuritySection({
                   type="number"
                   step="0.01"
                   placeholder="e.g., 3000"
-                  disabled={isPending}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Employee Contribution</Label>
-                <Input
-                  {...register(`socialSecurityRegistrations.${index}.employeeContribution`)}
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 500"
-                  disabled={isPending}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Company Contribution</Label>
-                <Input
-                  {...register(`socialSecurityRegistrations.${index}.employerContribution`)}
-                  type="number"
-                  step="0.01"
-                  placeholder="e.g., 2500"
                   disabled={isPending}
                 />
               </div>

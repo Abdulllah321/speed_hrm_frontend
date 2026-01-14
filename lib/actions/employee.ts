@@ -57,6 +57,7 @@ export interface Employee {
   bankName?: string | null;
   accountNumber?: string | null;
   accountTitle?: string | null;
+  socialSecurityInstitutionId?: string | null;
   status: string;
   equipmentAssignments?: Array<{
     id: string;
@@ -223,6 +224,7 @@ export async function createEmployee(data: {
   bankName?: string;
   accountNumber?: string;
   accountTitle?: string;
+  socialSecurityInstitutionId?: string;
   equipmentAssignments?: Array<{
     equipmentId: string;
     productId?: string;
@@ -477,6 +479,7 @@ export async function rejoinEmployee(data: {
   bankName?: string;
   accountNumber?: string;
   accountTitle?: string;
+  socialSecurityInstitutionId?: string;
   remarks?: string;
   equipmentAssignments?: Array<{
     equipmentId: string;
@@ -552,6 +555,7 @@ export async function rejoinEmployee(data: {
     if (data.bankName !== undefined) payload.bankName = data.bankName;
     if (data.accountNumber !== undefined) payload.accountNumber = data.accountNumber;
     if (data.accountTitle !== undefined) payload.accountTitle = data.accountTitle;
+    if (data.socialSecurityInstitutionId !== undefined) payload.socialSecurityInstitutionId = data.socialSecurityInstitutionId;
     if (data.remarks !== undefined) payload.remarks = data.remarks;
     if (data.equipmentAssignments !== undefined) payload.equipmentAssignments = data.equipmentAssignments;
 

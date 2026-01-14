@@ -55,61 +55,67 @@ export const columns: ColumnDef<SocialSecurityInstitutionRow>[] = [
     enableHiding: false,
     size: 28,
   },
-  { 
-    header: "Code", 
-    accessorKey: "code", 
-    size: 120, 
-    enableSorting: true, 
-    cell: ({ row }) => <HighlightText text={row.original.code} /> 
+  {
+    header: "Code",
+    accessorKey: "code",
+    size: 120,
+    enableSorting: true,
+    cell: ({ row }) => <HighlightText text={row.original.code} />
   },
-  { 
-    header: "Name", 
-    accessorKey: "name", 
-    size: 250, 
-    enableSorting: true, 
-    cell: ({ row }) => <HighlightText text={row.original.name} /> 
+  {
+    header: "Name",
+    accessorKey: "name",
+    size: 250,
+    enableSorting: true,
+    cell: ({ row }) => <HighlightText text={row.original.name} />
   },
-  { 
-    header: "Province", 
-    accessorKey: "province", 
-    size: 120, 
-    enableSorting: true, 
-    cell: ({ row }) => row.original.province || "—" 
+  {
+    header: "Province",
+    accessorKey: "province",
+    size: 120,
+    enableSorting: true,
+    cell: ({ row }) => row.original.province || "—"
   },
-  { 
-    header: "Status", 
-    accessorKey: "status", 
-    size: 100, 
+  {
+    header: "Rate (%)",
+    accessorKey: "contributionRate",
+    size: 100,
+    enableSorting: true,
+    cell: ({ row }) => row.original.contributionRate ? `${row.original.contributionRate}%` : "0%"
+  },
+  {
+    header: "Status",
+    accessorKey: "status",
+    size: 100,
     enableSorting: true,
     cell: ({ row }) => (
-      <span className={`px-2 py-1 text-xs rounded-full ${
-        row.original.status === "active" 
-          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
-          : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
-      }`}>
+      <span className={`px-2 py-1 text-xs rounded-full ${row.original.status === "active"
+        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        : "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200"
+        }`}>
         {row.original.status}
       </span>
     )
   },
-  { 
-    header: "Contact", 
-    accessorKey: "contactNumber", 
-    size: 150, 
-    cell: ({ row }) => row.original.contactNumber || "—" 
+  {
+    header: "Contact",
+    accessorKey: "contactNumber",
+    size: 150,
+    cell: ({ row }) => row.original.contactNumber || "—"
   },
-  { 
-    header: "Created At", 
-    accessorKey: "createdAt", 
-    size: 120, 
-    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(), 
-    enableSorting: true 
+  {
+    header: "Created At",
+    accessorKey: "createdAt",
+    size: 120,
+    cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(),
+    enableSorting: true
   },
-  { 
-    id: "actions", 
-    header: () => <span className="sr-only">Actions</span>, 
-    cell: ({ row }) => <RowActions row={row} />, 
-    size: 60, 
-    enableHiding: false 
+  {
+    id: "actions",
+    header: () => <span className="sr-only">Actions</span>,
+    cell: ({ row }) => <RowActions row={row} />,
+    size: 60,
+    enableHiding: false
   },
 ];
 
@@ -123,10 +129,10 @@ function RowActions({ row }: { row: Row<SocialSecurityInstitutionRow> }) {
   const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {
       const result = await updateSocialSecurityInstitution(institution.id, formData);
-      if (result.status) { 
-        toast.success(result.message); 
-        setEditDialog(false); 
-        router.refresh(); 
+      if (result.status) {
+        toast.success(result.message);
+        setEditDialog(false);
+        router.refresh();
       } else {
         toast.error(result.message);
       }
@@ -136,10 +142,10 @@ function RowActions({ row }: { row: Row<SocialSecurityInstitutionRow> }) {
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
       const result = await deleteSocialSecurityInstitution(institution.id);
-      if (result.status) { 
-        toast.success(result.message); 
-        setDeleteDialog(false); 
-        router.refresh(); 
+      if (result.status) {
+        toast.success(result.message);
+        setDeleteDialog(false);
+        router.refresh();
       } else {
         toast.error(result.message);
       }
@@ -198,6 +204,10 @@ function RowActions({ row }: { row: Row<SocialSecurityInstitutionRow> }) {
                 <div className="space-y-2">
                   <Label>Contact Number</Label>
                   <Input name="contactNumber" defaultValue={institution.contactNumber || ""} disabled={isPending} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contribution Rate (%)</Label>
+                  <Input name="contributionRate" type="number" step="0.01" defaultValue={institution.contributionRate} disabled={isPending} />
                 </div>
                 <div className="space-y-2 col-span-2">
                   <Label>Address</Label>
