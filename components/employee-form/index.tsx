@@ -1428,6 +1428,19 @@ export function EmployeeForm({
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
             documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
             qualifications: qualificationsToSubmit,
+            socialSecurityRegistrations: data.socialSecurityRegistrations && Array.isArray(data.socialSecurityRegistrations) && data.socialSecurityRegistrations.length > 0
+              ? data.socialSecurityRegistrations.map((reg: any) => ({
+                institutionId: reg.institutionId,
+                registrationNumber: reg.registrationNumber || undefined,
+                cardNumber: reg.cardNumber || undefined,
+                registrationDate: reg.registrationDate || undefined,
+                expiryDate: reg.expiryDate || undefined,
+                contributionRate: reg.contributionRate ? parseFloat(String(reg.contributionRate)) : undefined,
+                baseSalary: reg.baseSalary ? parseFloat(String(reg.baseSalary)) : undefined,
+                monthlyContribution: reg.monthlyContribution ? parseFloat(String(reg.monthlyContribution)) : undefined,
+                status: reg.status || "active",
+              }))
+              : [],
           };
 
           const result = await updateEmployee(initialData.id, employeeData as any);

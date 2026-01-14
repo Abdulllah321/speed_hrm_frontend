@@ -380,6 +380,7 @@ export function GeneratePayrollClient({
                                         <TableHead>Deductions Breakdown</TableHead>
                                         <TableHead>Attendance</TableHead>
                                         <TableHead>Tax</TableHead>
+                                        <TableHead>Social Security</TableHead>
                                         <TableHead>Net Salary</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -641,6 +642,18 @@ export function GeneratePayrollClient({
                                                     </div>
                                                 ) : (
                                                     <span>{row.taxDeduction?.toFixed(2) || "0.00"}</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell>
+                                                {row.socialSecurityContributionAmount && row.socialSecurityContributionAmount > 0 ? (
+                                                    <div className="space-y-1 text-xs">
+                                                        <div className="flex justify-between gap-4">
+                                                            <span className="text-muted-foreground">Contribution:</span>
+                                                            <span>{Math.round(row.socialSecurityContributionAmount || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 })}</span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-muted-foreground">-</span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="font-bold text-green-600">
