@@ -15,22 +15,22 @@ async function getAuthHeaders() {
 export interface Bonus {
   id: string;
   employeeId: string;
-         employee?: {
-           id: string;
-           employeeId: string;
-           employeeName: string;
-           bankName?: string;
-           accountNumber?: string;
-           accountTitle?: string;
-           department?: {
-             id: string;
-             name: string;
-           };
-           subDepartment?: {
-             id: string;
-             name: string;
-           };
-         };
+  employee?: {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    bankName?: string;
+    accountNumber?: string;
+    accountTitle?: string;
+    department?: {
+      id: string;
+      name: string;
+    };
+    subDepartment?: {
+      id: string;
+      name: string;
+    };
+  };
   bonusTypeId: string;
   bonusType?: {
     id: string;
@@ -83,9 +83,9 @@ export async function getBonuses(params?: {
     return res.json();
   } catch (error) {
     console.error('Error fetching bonuses:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to fetch bonuses. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch bonuses. Please check your connection.'
     };
   }
 }
@@ -115,9 +115,9 @@ export async function searchBonusesByEmployees(params: {
     return res.json();
   } catch (error) {
     console.error('Error searching bonuses:', error);
-    return { 
-      status: false, 
-      message: error instanceof Error ? error.message : 'Failed to search bonuses. Please check your connection.' 
+    return {
+      status: false,
+      message: error instanceof Error ? error.message : 'Failed to search bonuses. Please check your connection.'
     };
   }
 }
@@ -130,6 +130,8 @@ export async function createBonuses(data: {
     employeeId: string;
     amount: number;
     percentage?: number;
+    isTaxable?: boolean;
+    taxPercentage?: number;
   }>;
   paymentMethod?: string;
   adjustmentMethod?: string;

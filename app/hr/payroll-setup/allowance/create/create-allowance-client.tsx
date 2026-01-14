@@ -48,6 +48,7 @@ import { bulkCreateAllowances, type AllowanceHead } from "@/lib/actions/allowanc
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { useMemo } from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 
 interface EmployeeAllowanceItem {
   id: string;
@@ -61,6 +62,8 @@ interface EmployeeAllowanceItem {
   paymentMethod: string; // "with_salary" | "separately"
   notes: string;
   monthYear: string; // Format: "YYYY-MM" - stored for each allowance item
+  isTaxable: boolean;
+  taxPercentage: number;
 }
 
 interface CreateAllowanceClientProps {
@@ -95,6 +98,8 @@ export function CreateAllowanceClient({
     allowanceTypeCategory: "specific", // "recurring" | "specific"
     monthYear: "" as string | string[], // Can be single string or array for multiple months
     paymentMethod: "with_salary", // "with_salary" | "separately"
+    isTaxable: true,
+    taxPercentage: "0",
   });
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
@@ -332,6 +337,8 @@ export function CreateAllowanceClient({
           paymentMethod: formData.paymentMethod,
           notes: formData.remarks || "",
           monthYear: monthYear, // Store the month-year for this specific allowance
+          isTaxable: formData.isTaxable,
+          taxPercentage: parseFloat(formData.taxPercentage || "0"),
         });
       });
     });
@@ -343,11 +350,6 @@ export function CreateAllowanceClient({
     const uniqueNewAllowances = newAllowances.filter(
       (a) => !existingIds.has(`${a.employeeId}-${a.allowanceHeadId}-${a.monthYear}`)
     );
-
-    if (uniqueNewAllowances.length === 0) {
-      toast.warning("All selected employees already have allowances added for the selected month(s)");
-      return;
-    }
 
     setEmployeeAllowances([...employeeAllowances, ...uniqueNewAllowances]);
     toast.success(`Added allowances for ${uniqueNewAllowances.length} employee-month combination(s)`);
@@ -401,6 +403,8 @@ export function CreateAllowanceClient({
                 type: item.type || "specific",
                 paymentMethod: item.paymentMethod || "with_salary",
                 notes: item.notes || undefined,
+                isTaxable: item.isTaxable,
+                taxPercentage: item.taxPercentage ? item.taxPercentage : undefined,
               })),
             });
           })
@@ -810,6 +814,21 @@ export function CreateAllowanceClient({
                   placeholder={formData.allowanceTypeCategory === "recurring" ? "Not required for recurring" : "Select month(s) and year"}
                   multiple={formData.allowanceTypeCategory === "specific"}
                 />
+              </div>
+
+              {/* Taxable Allowance */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="isTaxable">Taxable Allowance</Label>
+                  <Switch
+                    id="isTaxable"
+                    checked={formData.isTaxable}
+                    onCheckedChange={(checked) =>
+                      setFormData((prev) => ({ ...prev, isTaxable: checked }))
+                    }
+                    disabled={isPending}
+                  />
+                </div>
               </div>
 
               {/* Search Button */}
