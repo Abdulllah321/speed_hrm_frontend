@@ -206,7 +206,7 @@ export function GeneratePayrollClient({
 
                 if (result.status) {
                     toast.success(result.message);
-                    router.push("/hr/payroll-setup/payroll/create");
+                    router.push("/hr/payroll-setup/payroll/report");
                 } else {
                     toast.error(result.message);
                 }
@@ -214,8 +214,8 @@ export function GeneratePayrollClient({
                 console.error(error);
                 toast.error("Failed to confirm payroll");
             }
-        })
-    }
+        });
+    };
 
     return (
         <div className="max-w-6xl mx-auto pb-10">
