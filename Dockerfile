@@ -22,14 +22,15 @@ RUN bun run build
 FROM node:20-slim AS runner
 WORKDIR /app
 
-# Copy bun binary if needed for any post-start scripts
+# Copy bun binary
 COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN groupadd --system --gid 1001 nodejs
-RUN useradd --system --uid 1001 nextjs
+# Debian commands for user management
+RUN groupadd --system --gid 1001 nodejs || true
+RUN useradd --system --uid 1001 nextjs || true
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
