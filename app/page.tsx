@@ -1,12 +1,8 @@
-"use client";
 
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
-import { DashboardContent } from "@/components/dashboard/dashboard-content";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function Home() {
-  return (
-    <DashboardLayout>
-      <DashboardContent />
-    </DashboardLayout>
-  );
+export default async function Home() {
+  const user = await getCurrentUser()  
+  redirect(user?"/hr" : "/login")
 }
