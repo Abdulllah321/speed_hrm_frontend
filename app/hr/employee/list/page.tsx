@@ -177,8 +177,8 @@ export default function EmployeeListPage() {
               status === "active"
                 ? "default"
                 : status === "inactive"
-                ? "secondary"
-                : "destructive"
+                  ? "secondary"
+                  : "destructive"
             }
           >
             {status}
@@ -558,6 +558,10 @@ export default function EmployeeListPage() {
         <DataTable
           data={employees}
           columns={columns}
+          searchFields={[
+            { key: "employeeName", label: "Name" },
+            { key: "employeeId", label: "ID" },
+          ]}
           toggleAction={() => setUploadDialog(true)}
           actionText="Upload CSV"
           searchFields={[
