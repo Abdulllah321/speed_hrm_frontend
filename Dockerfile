@@ -1,38 +1,44 @@
-# Stage 1: Dependencies (Bun for speed)
+# Stage 1: Dependencies
 FROM oven/bun:1 AS deps
 WORKDIR /app
 COPY package.json bun.lock* ./
 RUN bun install --frozen-lockfile
 
-# Stage 2: Build (Bun)
+# Stage 2: Build
 FROM oven/bun:1 AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_BASE_DOMAIN
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_BASE_DOMAIN=$NEXT_PUBLIC_BASE_DOMAIN
+
 RUN bun run build
 
-# Stage 3: Production (Bun)
-FROM oven/bun:1 AS runner
+# Stage 3: Production Runner
+FROM node:20-slim AS runner
 WORKDIR /app
+
+# Copy bun binary if needed for any post-start scripts
+COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 bunjs
-RUN adduser --system --uid 1001 bunjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 nextjs
 
 COPY --from=builder /app/public ./public
-COPY --from=builder --chown=bunjs:bunjs /app/.next/standalone ./
-COPY --from=builder --chown=bunjs:bunjs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-USER bunjs
+USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["bun", "server.js"]
-
+# Next.js standalone works perfectly with the node binary
+CMD ["node", "server.js"]
