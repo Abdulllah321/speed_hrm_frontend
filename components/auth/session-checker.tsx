@@ -21,13 +21,28 @@ export function SessionChecker() {
 
   const performCheck = useCallback(async () => {
     try {
-      const res = await fetch("/api/auth/check-session");
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
+      const res = await fetch(`${API_BASE}/auth/check-session`, {
+        credentials: "include", // ensure cookies (accessToken) are sent to Nest backend
+        cache: "no-store",
+      });
+
+      // If backend says unauthorized/forbidden or endpoint missing, treat as expired
+      if (!res.ok) {
+        setSessionExpired(true);
+        return;
+      }
+
       const data = await res.json();
+
       if (!data.valid) {
         setSessionExpired(true);
       }
     } catch (error) {
       console.error("Session check failed:", error);
+      // Network or parsing error → assume session is not valid
+      setSessionExpired(true);
     }
   }, []);
 

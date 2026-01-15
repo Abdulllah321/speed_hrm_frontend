@@ -108,38 +108,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [router]);
 
-  // Enhanced fetch with automatic token refresh
-  const fetchWithAuth = useCallback(async (url: string, options: RequestInit = {}): Promise<Response> => {
-    let response = await fetch(url, {
-      credentials: "include",
-      cache: "no-store",
-      ...options,
-    });
+  const fetchWithAuth = useCallback(
+    async (url: string, options: RequestInit = {}): Promise<Response> => {
+      let response = await fetch(url, {
+        ...options,
+        credentials: "include", // ✅ sends ALL cookies automatically
+        cache: "no-store",
+      });
 
-    // If we get 401, try to refresh token once
-    if (response.status === 401) {
-      const refreshSuccess = await refreshToken();
+      // If unauthorized, try refresh once
+      if (response.status === 401) {
+        const refreshSuccess = await refreshToken();
 
-      if (refreshSuccess) {
-        // Retry the original request with new token
-        response = await fetch(url, {
-          credentials: "include",
-          cache: "no-store",
-          ...options,
-        });
+        if (refreshSuccess) {
+          response = await fetch(url, {
+            ...options,
+            credentials: "include",
+            cache: "no-store",
+          });
+        }
       }
-    }
 
-    return response;
-  }, [refreshToken]);
+      return response;
+    },
+    [refreshToken]
+  );
 
-  // Fetch user data including preferences from /api/auth/me
+
+  // Fetch user data including preferences from backend /api/auth/me
   const fetchUser = useCallback(async () => {
     try {
       setLoadingMessage("Connecting to server...");
       setLoadingProgress(10);
 
-      const res = await fetchWithAuth("/api/auth/me");
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetchWithAuth(`${API_BASE}/auth/me`);
 
       setLoadingProgress(50);
 
@@ -240,7 +243,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
 
     try {
-      const res = await fetch("/api/auth/check-session", {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${API_BASE}/auth/check-session`, {
         credentials: "include",
       });
 
