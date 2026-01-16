@@ -10,7 +10,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { menuData, masterMenuData, flattenMenu } from "./sidebar-menu-data";
+import { menuData, masterMenuData, flattenMenu, filterMenuByPermissions } from "./sidebar-menu-data";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface HeaderSearchProps {
   onNavigate?: () => void;
@@ -20,8 +21,33 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const router = useRouter();
-  const flatMenu = useMemo(() => flattenMenu(menuData), []);
-  const flatMasterMenu = useMemo(() => flattenMenu(masterMenuData, "Master Menu"), []);
+  const { hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
+
+  const filteredMenuTree = useMemo(
+    () =>
+      filterMenuByPermissions(menuData, {
+        hasAnyPermission,
+        hasAllPermissions,
+        isAdmin,
+      }),
+    [hasAnyPermission, hasAllPermissions, isAdmin]
+  );
+
+  const flatMenu = useMemo(() => flattenMenu(filteredMenuTree), [filteredMenuTree]);
+  const filteredMasterMenuTree = useMemo(
+    () =>
+      filterMenuByPermissions(masterMenuData, {
+        hasAnyPermission,
+        hasAllPermissions,
+        isAdmin,
+      }),
+    [hasAnyPermission, hasAllPermissions, isAdmin]
+  );
+
+  const flatMasterMenu = useMemo(
+    () => flattenMenu(filteredMasterMenuTree, "Master Menu"),
+    [filteredMasterMenuTree]
+  );
 
   const filteredNav = useMemo(() => {
     if (!search) return flatMenu.slice(0, 6);

@@ -141,6 +141,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoadingMessage("Connecting to server...");
       setLoadingProgress(10);
 
+      // Try to get user from cookie first for immediate UI update
+      try {
+        const userCookie = document.cookie
+          .split('; ')
+          .find(row => row.startsWith('user='));
+        
+        if (userCookie) {
+          const userData = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
+          // Transform simple permission array from cookie to the structure expected by User interface if needed
+          // The cookie usually has { ...user, permissions: string[] }
+          // But our User interface expects role.permissions to be populated for helper methods
+          
+          if (userData && userData.permissions && Array.isArray(userData.permissions)) {
+            // Ensure role structure exists
+            if (!userData.role) userData.role = { name: "", permissions: [] };
+            else if (typeof userData.role === 'string') userData.role = { name: userData.role, permissions: [] };
+            
+            // Map flat permissions to object structure if not already done
+            if (!userData.role.permissions || userData.role.permissions.length === 0) {
+              userData.role.permissions = userData.permissions.map((p: string) => ({
+                permission: { name: p }
+              }));
+            }
+          }
+          
+          setUser(userData);
+          // If we have data from cookie, we can show UI immediately while fetching fresh data
+          setLoading(false); 
+        }
+      } catch (e) {
+        console.warn("Failed to parse user cookie", e);
+      }
+
       const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const res = await fetchWithAuth(`${API_BASE}/auth/me`);
 
@@ -164,8 +197,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoadingProgress(85);
 
       if (data.status && data.data) {
-        setUser(data.data);
-        setPreferences(preferencesToObject(data.data.preferences));
+        const userData = data.data;
+        
+        // Ensure permissions are accessible in both formats for compatibility
+        // The API returns role.permissions as objects, but we also need flat array for fallback
+        if (userData.role?.permissions && Array.isArray(userData.role.permissions) && userData.role.permissions.length > 0) {
+          // Extract flat permissions array if not already present
+          if (!userData.permissions || !Array.isArray(userData.permissions)) {
+            userData.permissions = userData.role.permissions.map((p: any) => 
+              p.permission?.name || p.name || p
+            ).filter(Boolean);
+          }
+        }
+        
+        if (process.env.NODE_ENV === 'development') {
+          const permissionNames = userData.role?.permissions?.map((p: any) => p.permission?.name || p.name || p).filter(Boolean) || [];
+          console.log('RBAC - User data from /auth/me:', {
+            role: userData.role,
+            roleName: userData.role?.name,
+            permissionsFromRole: userData.role?.permissions,
+            flatPermissions: userData.permissions,
+            permissionsCount: userData.permissions?.length || 0,
+            actualPermissionNames: permissionNames
+          });
+        }
+        
+        setUser(userData);
+        setPreferences(preferencesToObject(userData.preferences));
       }
 
       setLoadingMessage("Almost done...");
@@ -292,26 +350,144 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Permission helpers
   const hasPermission = useCallback((permission: string): boolean => {
-    if (!user?.role?.permissions) return false;
-    return user.role.permissions.some(p => p.permission.name === permission);
+    // Check in role.permissions object structure (from API /me)
+    if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
+       // Check if permissions are in object format { permission: { name: "..." } }
+       if (user.role.permissions[0].permission) {
+         return user.role.permissions.some(p => p.permission?.name === permission);
+       }
+       // Handle case where permissions might be strings in role.permissions
+       if (typeof user.role.permissions[0] === 'string') {
+          return (user.role.permissions as any as string[]).includes(permission);
+       }
+    }
+    
+    // Fallback: Check flat permissions array (from cookie or simplified user object)
+    // The user interface defines permissions?: string[] on the root object in some contexts (like lib/auth.ts)
+    // casting to any to bypass strict type checking for this fallback
+    const flatPermissions = (user as any)?.permissions;
+    if (flatPermissions && Array.isArray(flatPermissions)) {
+      return flatPermissions.includes(permission);
+    }
+    
+    return false;
   }, [user]);
 
   const hasAnyPermission = useCallback((permissions: string[]): boolean => {
-    if (!user?.role?.permissions) return false;
-    return permissions.some(permission =>
-      user.role?.permissions?.some(p => p.permission.name === permission)
-    );
+    if (!user) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('RBAC hasAnyPermission: No user', { required: permissions });
+      }
+      return false;
+    }
+
+    // Debug logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('RBAC hasAnyPermission check:', { 
+        required: permissions,
+        userRolePermissions: user?.role?.permissions,
+        userFlatPermissions: (user as any)?.permissions,
+        userRole: user?.role
+      });
+    }
+
+    // Check in role.permissions object structure (from API /me)
+    if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
+       // Check if permissions are in object format { permission: { name: "..." } }
+       if (user.role.permissions[0].permission) {
+         const userPermissionNames = user.role.permissions.map((p: any) => p.permission?.name).filter(Boolean);
+         const hasPermission = permissions.some(permission => userPermissionNames.includes(permission));
+         if (process.env.NODE_ENV === 'development') {
+           console.log('RBAC hasAnyPermission result (object format):', hasPermission, {
+             required: permissions,
+             userPermissions: userPermissionNames,
+             match: permissions.filter(p => userPermissionNames.includes(p))
+           });
+         }
+         return hasPermission;
+       }
+       // Handle case where permissions might be strings in role.permissions
+       if (typeof user.role.permissions[0] === 'string') {
+          const hasPermission = permissions.some(permission => 
+            (user.role?.permissions as any as string[]).includes(permission)
+          );
+          if (process.env.NODE_ENV === 'development') {
+            console.log('RBAC hasAnyPermission result (string format):', hasPermission, {
+              required: permissions,
+              userPermissions: user.role.permissions
+            });
+          }
+          return hasPermission;
+       }
+    }
+
+    // Fallback: Check flat permissions array (from cookie)
+    const flatPermissions = (user as any)?.permissions;
+    if (flatPermissions && Array.isArray(flatPermissions)) {
+      const hasPermission = permissions.some(p => flatPermissions.includes(p));
+      if (process.env.NODE_ENV === 'development') {
+        console.log('RBAC hasAnyPermission result (flat array):', hasPermission, { 
+          userPermissions: flatPermissions,
+          required: permissions 
+        });
+      }
+      return hasPermission;
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('RBAC hasAnyPermission: No permissions found, returning false');
+    }
+    return false;
   }, [user]);
 
   const hasAllPermissions = useCallback((permissions: string[]): boolean => {
-    if (!user?.role?.permissions) return false;
-    return permissions.every(permission =>
-      user.role?.permissions?.some(p => p.permission.name === permission)
-    );
+    // Check in role.permissions object structure
+    if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
+       if (user.role.permissions[0].permission) {
+         return permissions.every(permission =>
+           user.role?.permissions?.some(p => p.permission?.name === permission)
+         );
+       }
+       // Handle case where permissions might be strings in role.permissions
+       if (typeof user.role.permissions[0] === 'string') {
+          return permissions.every(permission => 
+            (user.role?.permissions as any as string[]).includes(permission)
+          );
+       }
+    }
+
+    // Fallback: Check flat permissions array
+    const flatPermissions = (user as any)?.permissions;
+    if (flatPermissions && Array.isArray(flatPermissions)) {
+      return permissions.every(p => flatPermissions.includes(p));
+    }
+
+    return false;
   }, [user]);
 
   const isAdmin = useCallback((): boolean => {
-    return user?.role?.name === "admin" || user?.role?.name === "super_admin";
+    // Check role name from nested object or string property
+    const roleName = user?.role?.name || (user as any)?.role;
+    
+    // Debug logging for admin check
+    if (process.env.NODE_ENV === 'development') {
+      console.log('RBAC isAdmin check:', { 
+        roleName, 
+        userRole: user?.role,
+        isString: typeof roleName === 'string',
+        isSuperAdmin: roleName === "super_admin",
+        isAdmin: roleName === "admin",
+        result: roleName === "super_admin" || roleName === "admin"
+      });
+    }
+
+    // Return true for both super_admin and admin roles
+    // This allows admins to see and access everything
+    if (typeof roleName === 'string') {
+      return roleName === "super_admin" || roleName === "admin";
+    }
+    
+    return false;
   }, [user]);
 
   // Don't render children until mounted and initial load is complete

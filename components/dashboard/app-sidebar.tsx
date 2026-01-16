@@ -33,9 +33,10 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight } from "lucide-react";
-import { MenuItem, menuData } from "./sidebar-menu-data";
+import { MenuItem, menuData, filterMenuByPermissions } from "./sidebar-menu-data";
 import { cn } from "@/lib/utils";
 import { getCurrentSubdomain } from "@/lib/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
 
 // Normalize path by stripping subdomain prefix for comparison
 function normalizePathForComparison(path: string, currentSubdomain: string | null): string {
@@ -303,6 +304,38 @@ function SubMenuItemInPopover({ item, pathname }: { item: MenuItem; pathname: st
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { user, hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
+
+  const filteredMenu = React.useMemo(() => {
+    // Debug logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('RBAC Debug - AppSidebar:', {
+        role: user?.role,
+        roleName: user?.role?.name || (user as any)?.role,
+        isAdmin: isAdmin(),
+        permissionsFromRole: user?.role?.permissions,
+        permissionsFlat: (user as any)?.permissions,
+        userObject: user,
+        menuItemsCount: menuData.length
+      });
+    }
+
+    const filtered = filterMenuByPermissions(menuData, {
+      hasAnyPermission,
+      hasAllPermissions,
+      isAdmin,
+    });
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('RBAC Filtered Menu:', {
+        originalCount: menuData.length,
+        filteredCount: filtered.length,
+        filteredItems: filtered.map(item => item.title)
+      });
+    }
+
+    return filtered;
+  }, [hasAnyPermission, hasAllPermissions, isAdmin, user]);
 
   return (
     <Sidebar collapsible="icon" className="border-0 overflow-hidden">
@@ -336,7 +369,7 @@ export function AppSidebar() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
-                {menuData.map((item) => (
+                {filteredMenu.map((item) => (
                   <MenuItemComponent key={item.title} item={item} pathname={pathname} />
                 ))}
               </SidebarMenu>

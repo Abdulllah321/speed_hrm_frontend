@@ -18,9 +18,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Database, ChevronRight, Search } from "lucide-react";
-import { masterMenuData, MenuItem } from "./sidebar-menu-data";
+import { masterMenuData, MenuItem, filterMenuByPermissions } from "./sidebar-menu-data";
 import { createNavigationHandler } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-provider";
 
 function MasterMenuItem({ item, pathname, onNavigate }: { item: MenuItem; pathname: string; onNavigate: (href: string, e: React.MouseEvent) => void }) {
   const hasChildren = item.children && item.children.length > 0;
@@ -72,21 +73,32 @@ export function HeaderMasterMenu() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const { hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
 
   // Create navigation handler with router
   const navigate = createNavigationHandler(router);
 
+  const filteredMasterMenu = useMemo(
+    () =>
+      filterMenuByPermissions(masterMenuData, {
+        hasAnyPermission,
+        hasAllPermissions,
+        isAdmin,
+      }),
+    [hasAnyPermission, hasAllPermissions, isAdmin]
+  );
+
   const filteredMenu = useMemo(() => {
-    if (!search) return masterMenuData;
+    if (!search) return filteredMasterMenu;
     const searchLower = search.toLowerCase();
-    return masterMenuData.filter((item) => {
+    return filteredMasterMenu.filter((item) => {
       const titleMatch = item.title.toLowerCase().includes(searchLower);
       const childMatch = item.children?.some((child) =>
         child.title.toLowerCase().includes(searchLower)
       );
       return titleMatch || childMatch;
     });
-  }, [search]);
+  }, [search, filteredMasterMenu]);
 
   const handleClick = (href: string, e: React.MouseEvent) => {
     e.preventDefault();

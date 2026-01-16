@@ -134,15 +134,43 @@ export async function logout(): Promise<void> {
   redirect("/login");
 }
 
-// Get current user from cookie
 export async function getCurrentUser(): Promise<User | null> {
   const cookieStore = await cookies();
   const userCookie = cookieStore.get("user")?.value;
 
-  if (!userCookie) return null;
+  if (userCookie) {
+    try {
+      return JSON.parse(userCookie);
+    } catch {
+    }
+  }
+
+  const accessToken = await getAccessToken();
+  if (!accessToken) return null;
 
   try {
-    return JSON.parse(userCookie);
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data?.status || !data.data) return null;
+
+    const apiUser = data.data;
+    const permissions =
+      apiUser.role?.permissions?.map((p: any) => p.permission?.name).filter(Boolean) ?? [];
+
+    return {
+      id: apiUser.id,
+      email: apiUser.email,
+      firstName: apiUser.firstName,
+      lastName: apiUser.lastName,
+      role: apiUser.role?.name ?? null,
+      permissions,
+    };
   } catch {
     return null;
   }
