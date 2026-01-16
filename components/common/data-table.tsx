@@ -148,9 +148,12 @@ type DataTableProps<TData extends DataTableRow> = {
   sortingColumns?: SortingState;
   toggleAction?: () => void;
   actionText?: string;
+  title?: string;
   newItemId?: string;
   onMultiDelete?: (ids: string[]) => void;
   onBulkEdit?: (items: TData[]) => void;
+  onRowEdit?: (item: TData) => void;
+  onRowDelete?: (item: TData) => void;
   searchFields?: { key: string; label: string }[];
   filters?: FilterConfig[];
   onFilterChange?: (key: string, value: string) => void;
@@ -164,9 +167,12 @@ export default function DataTable<TData extends DataTableRow>({
   sortingColumns = [],
   toggleAction,
   actionText = "Add",
+  title,
   newItemId,
   onMultiDelete,
   onBulkEdit,
+  onRowEdit,
+  onRowDelete,
   searchFields,
   filters,
   onFilterChange,
@@ -208,9 +214,46 @@ export default function DataTable<TData extends DataTableRow>({
   // Combine search and filters into a single global filter value to trigger re-filtering
   const globalFilterValue = JSON.stringify({ search, activeFilters });
 
+  const tableColumns = React.useMemo(() => {
+    if (!onRowEdit && !onRowDelete) return columns;
+
+    return [
+      ...columns,
+      {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }: { row: any }) => (
+          <div className="flex items-center gap-2">
+            {onRowEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onRowEdit(row.original)}
+                title="Edit"
+              >
+                <PencilIcon size={16} />
+              </Button>
+            )}
+            {onRowDelete && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                onClick={() => onRowDelete(row.original)}
+                title="Delete"
+              >
+                <TrashIcon size={16} />
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ];
+  }, [columns, onRowEdit, onRowDelete]);
+
   const table = useReactTable({
     data,
-    columns,
+    columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,

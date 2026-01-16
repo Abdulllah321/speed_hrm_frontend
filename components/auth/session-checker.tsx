@@ -28,21 +28,23 @@ export function SessionChecker() {
         cache: "no-store",
       });
 
-      // If backend says unauthorized/forbidden or endpoint missing, treat as expired
-      if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
         setSessionExpired(true);
+        return;
+      }
+
+      if (!res.ok) {
+        console.error("Session check HTTP error:", res.status);
         return;
       }
 
       const data = await res.json();
 
-      if (!data.valid) {
+      if (data && (data.resetCookies || data.valid === false)) {
         setSessionExpired(true);
       }
     } catch (error) {
       console.error("Session check failed:", error);
-      // Network or parsing error → assume session is not valid
-      setSessionExpired(true);
     }
   }, []);
 

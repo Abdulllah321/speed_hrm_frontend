@@ -8,7 +8,7 @@ interface AccessDeniedProps {
 
 export function AccessDenied({ message = "You do not have permission to access this resource." }: AccessDeniedProps) {
     return (
-        <div className="flex flex-col items-center justify-center p-8 text-center min-h-[400px] border rounded-lg bg-gray-50 dark:bg-gray-900/50 dashed border-gray-200 dark:border-gray-800">
+        <div className="flex flex-col items-center justify-center p-8 text-center min-h-[400px] border rounded-lg bg-card dark:bg-card/50 dashed border-card dark:border-card">
             <div className="h-16 w-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mb-6">
                 <ShieldAlert className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
@@ -18,7 +18,7 @@ export function AccessDenied({ message = "You do not have permission to access t
             </p>
             <div className="flex gap-4">
                 <Button asChild variant="outline">
-                    <Link href="/dashboard">Return to Dashboard</Link>
+                    <Link href="/">Return to Dashboard</Link>
                 </Button>
             </div>
         </div>

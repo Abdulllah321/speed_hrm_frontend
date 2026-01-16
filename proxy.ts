@@ -377,10 +377,10 @@ export default function middleware(request: NextRequest): NextResponse {
     "Strict-Transport-Security",
     "max-age=31536000; includeSubDomains"
   );
-  // CSP: Allow API calls to localhost in development
+  // CSP: Allow API calls to localhost and localtest.me subdomains in development
   // ⭐ IMPORTANT: connect-src must come BEFORE default-src to override it
   const cspDirective = isDevelopment
-    ? "connect-src 'self' http://localhost:* ws://localhost:* wss://localhost:*; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:*; font-src 'self' data:;"
+    ? "connect-src 'self' http://localhost:* http://*.localtest.me:* ws://localhost:* ws://*.localtest.me:* wss://localhost:* wss://*.localtest.me:*; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:* http://*.localtest.me:*; font-src 'self' data:;"
     : "connect-src 'self'; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;";
   
   response.headers.set("Content-Security-Policy", cspDirective);

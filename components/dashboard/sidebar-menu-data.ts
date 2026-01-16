@@ -228,7 +228,7 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/hr/employee/create" },
           { title: "List", href: "/hr/employee/list" },
-          // { title: "User Accounts", href: "/hr/employee/accounts" },
+          { title: "User Accounts", href: "/hr/employee/user-account" },
         ],
       },
       {
