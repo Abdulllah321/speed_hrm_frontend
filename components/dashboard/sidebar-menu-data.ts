@@ -472,6 +472,12 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
+        title: "Social Security",
+        children: [
+          { title: "View Social Security", href: "/hr/payroll-setup/social-security-employee/view" },
+        ],
+      },
+      {
         title: "Final Settlement",
         children: [
           { title: "Create", href: "/hr/payroll-setup/final-settlement/create" },
