@@ -50,8 +50,34 @@ export function Autocomplete({
   isLoading = false,
 }: AutocompleteProps) {
   const [open, setOpen] = React.useState(false)
+  const [search, setSearch] = React.useState("")
 
   const selectedOption = options.find((option) => option.value === value)
+
+  const normalizedSearch = search.trim().toLowerCase()
+
+  const filteredOptions = React.useMemo(
+    () =>
+      normalizedSearch.length === 0
+        ? options
+        : options.filter((option) => {
+            const haystack = [
+              option.value,
+              option.label,
+              option.description || "",
+            ]
+              .join(" ")
+              .toLowerCase()
+            return haystack.includes(normalizedSearch)
+          }),
+    [options, normalizedSearch]
+  )
+
+  React.useEffect(() => {
+    if (!open) {
+      setSearch("")
+    }
+  }, [open])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -95,6 +121,8 @@ export function Autocomplete({
           <CommandInput 
             placeholder={searchPlaceholder} 
             disabled={isLoading}
+            value={search}
+            onValueChange={setSearch}
           />
           <CommandList className="max-h-[280px]">
             <div className={cn(
@@ -113,12 +141,17 @@ export function Autocomplete({
                       {emptyMessage}
                     </CommandEmpty>
                     <CommandGroup className="p-1">
-                      {options.map((option) => {
+                      {filteredOptions.map((option) => {
                         const isSelected = value === option.value;
+                        const searchValue = [
+                          option.value,
+                          option.label,
+                          option.description || ""
+                        ].join(" ");
                         return (
                           <CommandItem
                             key={option.value}
-                            value={`${option.value} ${option.label}`}
+                            value={searchValue}
                             onSelect={() => {
                               const newValue = isSelected ? "" : option.value;
                               onValueChange?.(newValue);

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getAccessToken } from "@/lib/auth";
 
-const API_BASE = process.env.API_URL || "http://localhost:8080/api";
+const API_BASE = process.env.API_URL || "http://localhost:5000/api";
 
 export interface Department {
   id: string;

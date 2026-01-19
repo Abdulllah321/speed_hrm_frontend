@@ -31,8 +31,23 @@ export async function getRoles(): Promise<{ status: boolean; data: Role[]; messa
       cache: "no-store",
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
-    const data = await res.json();
-    return { status: true, data: Array.isArray(data) ? data : [] };
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return { status: true, data };
+      }
+    }
+    // Fallback: /auth/roles (Jwt only, no PermissionsGuard)
+    const res2 = await fetch(`${API_BASE}/auth/roles`, {
+      cache: "no-store",
+      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    });
+    if (res2.ok) {
+      const payload = await res2.json();
+      const roles = Array.isArray(payload?.data) ? payload.data : [];
+      return { status: true, data: roles };
+    }
+    return { status: false, data: [], message: "Unable to load roles" };
   } catch (error) {
     console.error("Failed to fetch roles:", error);
     return { status: false, data: [], message: "Failed to fetch roles" };

@@ -66,8 +66,18 @@ export async function createUser(data: {
     });
 
     if (!res.ok) {
-        const error = await res.json();
-        return { status: false, message: error.message || "Failed to create user" };
+        let message = "Failed to create user";
+        try {
+            const error = await res.json();
+            message = error.message || message;
+        } catch {
+            try {
+                const text = await res.text();
+                // Common server message when route not found
+                message = text || message;
+            } catch {}
+        }
+        return { status: false, message };
     }
 
     revalidatePath("/hr/employee/user-account");
@@ -77,7 +87,7 @@ export async function createUser(data: {
   }
 }
 
-export async function updateUserRole(userId: string, roleId: string) {
+export async function updateUserRole(userId: string, roleId: string | null) {
   try {
     const token = await getAccessToken();
     const res = await fetch(`${API_BASE}/users/${userId}`, {

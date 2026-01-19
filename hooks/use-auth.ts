@@ -46,7 +46,9 @@ export function useAuth() {
   }, [user]);
 
   const isAdmin = useCallback((): boolean => {
-    return user?.role === "admin" || user?.role === "super_admin";
+    // Only return true for super_admin, not regular admin
+    // This ensures role-based permissions work for all users, including regular admins
+    return user?.role === "super_admin";
   }, [user]);
 
   const logout = useCallback(async () => {

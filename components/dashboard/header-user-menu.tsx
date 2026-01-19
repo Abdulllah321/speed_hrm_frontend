@@ -84,7 +84,7 @@ export function HeaderUserMenu() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/admin/users")}>
                 <Settings className="mr-2 h-4 w-4" />
-                User Management
+                User Managements
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </>
@@ -92,7 +92,7 @@ export function HeaderUserMenu() {
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
           <LogOut className="mr-2 h-4 w-4" />
-          Log out
+          Logout
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

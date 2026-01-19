@@ -22,11 +22,14 @@ export type MenuItem = {
   icon?: React.ElementType;
   href?: string;
   children?: MenuItem[];
+  permissions?: string[];
+  requireAllPermissions?: boolean;
 };
 
 export const masterMenuData: MenuItem[] = [
   {
     title: "Department",
+    permissions: ["department.read", "department.create"],
     children: [
       { title: "Add", href: "/master/department/add" },
       { title: "View", href: "/master/department/list" },
@@ -34,6 +37,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Sub Department",
+    permissions: ["sub-department.read", "sub-department.create"],
     children: [
       { title: "Add", href: "/master/sub-department/add" },
       { title: "View", href: "/master/sub-department/list" },
@@ -41,6 +45,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Institute",
+    permissions: ["institute.read", "institute.create"],
     children: [
       { title: "Add", href: "/master/institute/add" },
       { title: "View", href: "/master/institute/list" },
@@ -48,6 +53,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Designation",
+    permissions: ["designation.read", "designation.create"],
     children: [
       { title: "Add", href: "/master/designation/add" },
       { title: "View", href: "/master/designation/list" },
@@ -55,6 +61,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Job Type",
+    permissions: ["job-type.read", "job-type.create"],
     children: [
       { title: "Add", href: "/master/job-type/add" },
       { title: "View", href: "/master/job-type/list" },
@@ -62,6 +69,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Marital Status",
+    permissions: ["marital-status.read", "marital-status.create"],
     children: [
       { title: "Add", href: "/master/marital-status/add" },
       { title: "View", href: "/master/marital-status/list" },
@@ -69,6 +77,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Employee Grade",
+    permissions: ["employee-grade.read", "employee-grade.create"],
     children: [
       { title: "Add", href: "/master/employee-grade/add" },
       { title: "View", href: "/master/employee-grade/list" },
@@ -76,6 +85,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Employement Status",
+    permissions: ["employee-status.read", "employee-status.create"],
     children: [
       { title: "Add", href: "/master/employee-status/add" },
       { title: "View", href: "/master/employee-status/list" },
@@ -83,6 +93,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Qualification",
+    permissions: ["qualification.read", "qualification.create"],
     children: [
       { title: "Add", href: "/master/qualification/add" },
       { title: "View", href: "/master/qualification/list" },
@@ -90,6 +101,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "City",
+    permissions: ["city.read", "city.create"],
     children: [
       { title: "Add", href: "/master/city/add" },
       { title: "View", href: "/master/city/list" },
@@ -97,6 +109,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Location",
+    permissions: ["location.read", "location.create"],
     children: [
       { title: "Add", href: "/master/location/add" },
       { title: "View", href: "/master/location/list" },
@@ -104,6 +117,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Allocation",
+    permissions: ["allocation.read", "allocation.create"],
     children: [
       { title: "Add", href: "/master/allocation/add" },
       { title: "View", href: "/master/allocation/list" },
@@ -111,6 +125,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Loan Types",
+    permissions: ["loan-type.read", "loan-type.create"],
     children: [
       { title: "Add", href: "/master/loan-types/add" },
       { title: "View", href: "/master/loan-types/list" },
@@ -118,6 +133,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Leave Types",
+    permissions: ["leave-type.read", "leave-type.create"],
     children: [
       { title: "Add", href: "/master/leave-types/add" },
       { title: "View", href: "/master/leave-types/list" },
@@ -125,6 +141,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Leaves Policy",
+    permissions: ["leaves-policy.read", "leaves-policy.create"],
     children: [
       { title: "Add", href: "/master/leaves-policy/add" },
       { title: "View", href: "/master/leaves-policy/list" },
@@ -136,6 +153,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Equipment",
+    permissions: ["equipment.read", "equipment.create"],
     children: [
       { title: "Add", href: "/master/equipment/add" },
       { title: "View", href: "/master/equipment/list" },
@@ -143,6 +161,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Salary Breakup",
+    permissions: ["salary-breakup.read", "salary-breakup.create"],
     children: [
       { title: "Add", href: "/master/salary-breakup/add" },
       { title: "View", href: "/master/salary-breakup/list" },
@@ -150,6 +169,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "EOBI",
+    permissions: ["eobi.read", "eobi.create"],
     children: [
       { title: "Add", href: "/master/eobi/add" },
       { title: "View", href: "/master/eobi/list" },
@@ -157,6 +177,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Social Security",
+    permissions: ["social-security.read", "social-security.create"],
     children: [
       { title: "Add", href: "/master/social-security/add" },
       { title: "View", href: "/master/social-security/list" },
@@ -164,6 +185,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Tax Slabs",
+    permissions: ["tax-slab.read", "tax-slab.create"],
     children: [
       { title: "Add", href: "/master/tax-slabs/add" },
       { title: "View", href: "/master/tax-slabs/list" },
@@ -171,6 +193,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Provident Fund",
+    permissions: ["provident-fund.read", "provident-fund.create"],
     children: [
       { title: "Add", href: "/master/provident-fund/add" },
       { title: "View", href: "/master/provident-fund/list" },
@@ -178,6 +201,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Bonus Types",
+    permissions: ["bonus-type.read", "bonus-type.create"],
     children: [
       { title: "Add", href: "/master/bonus-types/add" },
       { title: "View", href: "/master/bonus-types/list" },
@@ -185,6 +209,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Allowance",
+    permissions: ["allowance-head.read", "allowance-head.create"],
     children: [
       { title: "Add", href: "/master/allowance-head/add" },
       { title: "View", href: "/master/allowance-head/list" },
@@ -192,6 +217,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Deduction",
+    permissions: ["deduction-head.read", "deduction-head.create"],
     children: [
       { title: "Add", href: "/master/deduction-head/add" },
       { title: "View", href: "/master/deduction-head/list" },
@@ -199,6 +225,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Bank",
+    permissions: ["bank.read", "bank.create"],
     children: [
       { title: "Add", href: "/master/banks/add" },
       { title: "View", href: "/master/banks/list" },
@@ -222,6 +249,12 @@ export const menuData: MenuItem[] = [
   {
     title: "Employee Setup",
     icon: Users,
+    permissions: [
+      "employee.read",
+      "employee.create",
+      "user.read",
+      "user.create",
+    ],
     children: [
       {
         title: "Employee",
@@ -245,42 +278,58 @@ export const menuData: MenuItem[] = [
   {
     title: "Attendance Setup",
     icon: Clock,
+    permissions: [
+      "attendance.read",
+      "attendance.update",
+      "attendance-exemption.read",
+      "attendance-request-query.read",
+    ],
     children: [
       {
         title: "Attendance",
+        permissions: ["attendance.read", "attendance.update"],
         children: [
-          { title: "Manage", href: "/hr/attendance/manage" },
-          { title: "View", href: "/hr/attendance/view" },
-          { title: "Summary", href: "/hr/attendance/summary" },
-          { title: "Request", href: "/hr/attendance/request" },
-          { title: "Request List", href: "/hr/attendance/request-list" },
-          // { title: "Exemptions", href: "/hr/attendance/exemptions" },
-          // {
-          //   title: "Exemptions List",
-          //   href: "/hr/attendance/exemptions-list",
-          // },
+          { title: "Manage", href: "/hr/attendance/manage", permissions: ["attendance.update"] },
+          { title: "View", href: "/hr/attendance/view", permissions: ["attendance.read"] },
+          { title: "Summary", href: "/hr/attendance/summary", permissions: ["attendance.read"] },
+          { title: "Request", href: "/hr/attendance/request", permissions: ["attendance.read"] },
+          { title: "Request List", href: "/hr/attendance/request-list", permissions: ["attendance.read"] },
+          {
+            title: "Exemptions",
+            href: "/hr/attendance/exemptions",
+            permissions: ["attendance-exemption.read"],
+          },
+          {
+            title: "Exemptions List",
+            href: "/hr/attendance/exemptions-list",
+            permissions: ["attendance-exemption.read"],
+          },
           {
             title: "Request Forwarding",
             href: "/hr/request-forwarding?type=attendance",
+            permissions: ["attendance.read"],
           },
         ],
       },
       {
         title: "Working Hours Policy",
+        permissions: ["attendance.read"],
         children: [
-          { title: "Create", href: "/hr/working-hours/create" },
-          { title: "View", href: "/hr/working-hours/view" },
+          { title: "Create", href: "/hr/working-hours/create", permissions: ["attendance.read"] },
+          { title: "View", href: "/hr/working-hours/view", permissions: ["attendance.read"] },
           {
             title: "Assign Policy",
             href: "/hr/working-hours/assign-policy",
+            permissions: ["attendance.read"],
           },
         ],
       },
       {
         title: "Holidays",
+        permissions: ["attendance.read"],
         children: [
-          { title: "Create", href: "/hr/holidays/add" },
-          { title: "List", href: "/hr/holidays/list" },
+          { title: "Create", href: "/hr/holidays/add", permissions: ["attendance.read"] },
+          { title: "List", href: "/hr/holidays/list", permissions: ["attendance.read"] },
         ],
       },
     ],
@@ -288,6 +337,10 @@ export const menuData: MenuItem[] = [
   {
     title: "Leaves Setup",
     icon: Palmtree,
+    permissions: [
+      "leave-application.read",
+      "leave-application.create",
+    ],
     children: [
       { title: "Create Leave", href: "/hr/leaves/create-leaves" },
       { title: "View Requests", href: "/hr/leaves/requests" },
@@ -297,38 +350,57 @@ export const menuData: MenuItem[] = [
   {
     title: "Payroll Setup",
     icon: Wallet,
+    permissions: [
+      "payroll.read",
+      "payroll.create",
+      "allowance.read",
+      "allowance.create",
+      "deduction.read",
+      "deduction.create",
+      "advance-salary.read",
+      "advance-salary.create",
+      "loan-request.read",
+      "loan-request.create",
+      "bonus.read",
+      "bonus.create",
+      "provident-fund.read",
+    ],
     children: [
       {
         title: "Payroll",
+        permissions: ["payroll.read", "payroll.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/payroll/create" },
-          { title: "View Report", href: "/hr/payroll-setup/payroll/report" },
-          { title: "Bank Report", href: "/hr/payroll-setup/payroll/bank-report" },
-          { title: "Payslips Emails", href: "/hr/payroll-setup/payroll/payslips" },
+          { title: "Create", href: "/hr/payroll-setup/payroll/create", permissions: ["payroll.create"] },
+          { title: "View Report", href: "/hr/payroll-setup/payroll/report", permissions: ["payroll.read"] },
+          { title: "Bank Report", href: "/hr/payroll-setup/payroll/bank-report", permissions: ["payroll.read"] },
+          { title: "Payslips Emails", href: "/hr/payroll-setup/payroll/payslips", permissions: ["payroll.read"] },
         ],
       },
       {
         title: "Allowance",
+        permissions: ["allowance.read", "allowance.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/allowance/create" },
-          { title: "View", href: "/hr/payroll-setup/allowance/view" },
-          { title: "Bank Report", href: "/hr/payroll-setup/allowance/bank-report" },
-          { title: "Allowance Payslip", href: "/hr/payroll-setup/allowance/payslip" },
+          { title: "Create", href: "/hr/payroll-setup/allowance/create", permissions: ["allowance.create"] },
+          { title: "View", href: "/hr/payroll-setup/allowance/view", permissions: ["allowance.read"] },
+          { title: "Bank Report", href: "/hr/payroll-setup/allowance/bank-report", permissions: ["allowance.read"] },
+          { title: "Allowance Payslip", href: "/hr/payroll-setup/allowance/payslip", permissions: ["allowance.read"] },
         ],
       },
       {
         title: "Deduction",
+        permissions: ["deduction.read", "deduction.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/deduction/create" },
-          { title: "View", href: "/hr/payroll-setup/deduction/view" },
+          { title: "Create", href: "/hr/payroll-setup/deduction/create", permissions: ["deduction.create"] },
+          { title: "View", href: "/hr/payroll-setup/deduction/view", permissions: ["deduction.read"] },
         ],
       },
       {
         title: "Advance Salary",
+        permissions: ["advance-salary.read", "advance-salary.create"],
         children: [
-          { title: "Create Request", href: "/hr/payroll-setup/advance-salary/create" },
-          { title: "View Requests", href: "/hr/payroll-setup/advance-salary/view" },
-          { title: "Request Forwarding", href: "/hr/request-forwarding?type=advance-salary" },
+          { title: "Create Request", href: "/hr/payroll-setup/advance-salary/create", permissions: ["advance-salary.create"] },
+          { title: "View Requests", href: "/hr/payroll-setup/advance-salary/view", permissions: ["advance-salary.read"] },
+          { title: "Request Forwarding", href: "/hr/request-forwarding?type=advance-salary", permissions: ["advance-salary.read"] },
         ],
       },
       {
@@ -400,6 +472,12 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
+        title: "Social Security",
+        children: [
+          { title: "View Social Security", href: "/hr/payroll-setup/social-security-employee/view" },
+        ],
+      },
+      {
         title: "Final Settlement",
         children: [
           { title: "Create", href: "/hr/payroll-setup/final-settlement/create" },
@@ -462,4 +540,111 @@ export function flattenMenu(
     }
   }
   return result;
+}
+
+export function filterMenuByPermissions(
+  items: MenuItem[],
+  options: {
+    hasAnyPermission: (permissions: string[]) => boolean;
+    hasAllPermissions: (permissions: string[]) => boolean;
+    isAdmin: () => boolean;
+  }
+): MenuItem[] {
+  const { hasAnyPermission, hasAllPermissions, isAdmin } = options;
+
+  // Only bypass permission checks for super_admin role
+  // Regular admin roles and all other roles must respect their assigned permissions
+  // This ensures role-based access control works correctly
+  if (isAdmin()) {
+    // isAdmin() now only returns true for super_admin
+    return items;
+  }
+
+  const filterItems = (source: MenuItem[]): MenuItem[] => {
+    const result: MenuItem[] = [];
+
+    for (const item of source) {
+      const hasOwnPermissions = item.permissions && item.permissions.length > 0;
+      
+      // For items with children, filter children FIRST
+      // Then decide if parent should be shown based on accessible children
+      let children = item.children ? filterItems(item.children) : undefined;
+      
+      // If item has children and all children were filtered out, hide parent
+      if (item.children && (!children || children.length === 0) && !item.href) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`RBAC Filter Parent: ${item.title} - All children filtered out, hiding parent`);
+        }
+        continue;
+      }
+      
+      // Now check if parent itself should be shown
+      let allowed = true; // Default to true for items without permissions
+      
+      // If item has permissions defined, check them
+      if (hasOwnPermissions) {
+        // Use normal OR/AND logic - if user has ANY of the required permissions, show the menu
+        allowed = item.requireAllPermissions
+          ? hasAllPermissions(item.permissions!)
+          : hasAnyPermission(item.permissions!);
+          
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`RBAC Filter Item: ${item.title}`, {
+            required: item.permissions,
+            allowed,
+            hasOwnPermissions,
+            hasAnyPermission: hasAnyPermission(item.permissions!),
+            hasAllPermissions: hasAllPermissions(item.permissions!),
+            accessibleChildren: children?.length || 0
+          });
+        }
+
+        // If user doesn't have required permissions, skip this item
+        // UNLESS it has accessible children (in which case we already checked above)
+        if (!allowed && (!item.children || !children || children.length === 0)) {
+          continue;
+        }
+        
+        // If parent doesn't have permissions but has accessible children, show it
+        if (!allowed && children && children.length > 0) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`RBAC Filter Parent: ${item.title} - Showing parent because user has access to ${children.length} child(ren) even without parent permissions`);
+          }
+          allowed = true; // Override to show parent
+        }
+      } else {
+        // Items without permissions are only allowed if they have no children OR
+        // if they're explicitly public items like Dashboard
+        // For security, we'll hide items without permissions unless they're explicitly marked
+        // Dashboard is an exception - it should be visible to all authenticated users
+        if (item.title === "Dashboard" || item.title === "Profile Settings") {
+          allowed = true; // Allow Dashboard and Profile Settings for all authenticated users
+        } else if (item.children && (!children || children.length === 0)) {
+          // Hide items without permissions if they have no accessible children
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`RBAC Filter Item: ${item.title} - No permissions defined and no accessible children, hiding for security`);
+          }
+          continue;
+        } else if (item.children && children && children.length > 0) {
+          // Item has no permissions but has accessible children - show it
+          allowed = true;
+        } else {
+          // Hide other items without permissions for security
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`RBAC Filter Item: ${item.title} - No permissions defined, hiding for security`);
+          }
+          continue;
+        }
+      }
+
+      result.push({
+        ...item,
+        children,
+      });
+    }
+
+    return result;
+  };
+
+  return filterItems(items);
 }

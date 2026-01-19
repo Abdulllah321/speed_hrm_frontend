@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { ReactNode } from "react";
 
 import { AccessDenied } from "./access-denied";
