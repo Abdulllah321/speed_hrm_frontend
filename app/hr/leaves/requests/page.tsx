@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Autocomplete } from "@/components/ui/autocomplete";
-import DataTable, { FilterConfig } from "@/components/common/data-table";
+import DataTable from "@/components/common/data-table";
 import { Printer, Download, Search, Check, X } from "lucide-react";
 import { toast } from "sonner";
-import { getLeaveRequests, approveLeaveApplication, rejectLeaveApplication, type LeaveRequest } from "@/lib/actions/leave-requests";
+import { getLeaveRequests, approveLeaveApplication, rejectLeaveApplication, type LeaveRequest, type LeaveRequestFilters } from "@/lib/actions/leave-requests";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
 import { getEmployees, type Employee } from "@/lib/actions/employee";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useAuth } from "@/components/providers/auth-provider";
 
 const leaveStatusOptions = [
   { value: "all", label: "All" },
@@ -24,8 +25,9 @@ const leaveStatusOptions = [
 ];
 
 export default function LeaveRequestsPage() {
+  const { user } = useAuth();
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   
@@ -112,7 +114,7 @@ export default function LeaveRequestsPage() {
     const fetchFilteredRequests = async () => {
       try {
         setLoading(true);
-        const filters: any = {};
+        const filters: LeaveRequestFilters = {};
         
         if (selectedDepartment && selectedDepartment !== "all") {
           filters.departmentId = selectedDepartment;
@@ -244,7 +246,7 @@ export default function LeaveRequestsPage() {
   const handleSearch = async () => {
     try {
       setLoading(true);
-      const filters: any = {};
+      const filters: LeaveRequestFilters = {};
       
       if (selectedDepartment && selectedDepartment !== "all") {
         filters.departmentId = selectedDepartment;
@@ -301,6 +303,8 @@ export default function LeaveRequestsPage() {
         <td>${req.dayType}</td>
         <td>${dateRange}</td>
         <td>${req.approval1Status || "-"}</td>
+        <td>${req.approval2 ? (req.approval2Status || "-") : "N/A"}</td>
+        <td>${req.status || "-"}</td>
         <td>${req.remarks || "-"}</td>
       </tr>
     `;
@@ -326,6 +330,8 @@ export default function LeaveRequestsPage() {
             <th>Day Type</th>
             <th>Date Range</th>
             <th>Approval 1</th>
+            <th>Approval 2</th>
+            <th>Status</th>
             <th>Remarks</th>
           </tr>
         </thead>
@@ -339,7 +345,7 @@ export default function LeaveRequestsPage() {
 
   // Handle CSV export
   const handleExportCSV = () => {
-    const headers = ["S No.", "Employee", "Leave Type", "Day Type", "Date Range", "Approval 1", "Remarks"];
+    const headers = ["S No.", "Employee", "Leave Type", "Day Type", "Date Range", "Approval 1", "Approval 2", "Status", "Remarks"];
     const rows = leaveRequests.map((req, index) => {
       const employeeId = req.employeeCode || req.employeeId || "";
       const employeeName = req.employeeName || "-";
@@ -355,6 +361,8 @@ export default function LeaveRequestsPage() {
         req.dayType,
         dateRange,
         req.approval1Status || "-",
+        req.approval2 ? (req.approval2Status || "-") : "N/A",
+        req.status || "-",
         req.remarks || "-",
       ];
     });
@@ -369,14 +377,14 @@ export default function LeaveRequestsPage() {
   };
 
   // Handle approve
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (id: string, level: 1 | 2) => {
     try {
       setProcessingId(id);
-      const result = await approveLeaveApplication(id);
+      const result = await approveLeaveApplication(id, level);
       if (result.status) {
         toast.success("Leave application approved successfully");
         // Refresh the list
-        const filters: any = {};
+        const filters: LeaveRequestFilters = {};
         if (selectedDepartment && selectedDepartment !== "all") filters.departmentId = selectedDepartment;
         if (selectedSubDepartment && selectedSubDepartment !== "all") filters.subDepartmentId = selectedSubDepartment;
         if (selectedEmployee && selectedEmployee !== "all") filters.employeeId = selectedEmployee;
@@ -400,17 +408,17 @@ export default function LeaveRequestsPage() {
   };
 
   // Handle reject
-  const handleReject = async (id: string) => {
+  const handleReject = async (id: string, level: 1 | 2) => {
     const remarks = prompt("Enter rejection remarks (optional):");
     if (remarks === null) return; // User cancelled
     
     try {
       setProcessingId(id);
-      const result = await rejectLeaveApplication(id, remarks || undefined);
+      const result = await rejectLeaveApplication(id, remarks || undefined, level);
       if (result.status) {
         toast.success("Leave application rejected successfully");
         // Refresh the list
-        const filters: any = {};
+        const filters: LeaveRequestFilters = {};
         if (selectedDepartment && selectedDepartment !== "all") filters.departmentId = selectedDepartment;
         if (selectedSubDepartment && selectedSubDepartment !== "all") filters.subDepartmentId = selectedSubDepartment;
         if (selectedEmployee && selectedEmployee !== "all") filters.employeeId = selectedEmployee;
@@ -433,7 +441,29 @@ export default function LeaveRequestsPage() {
     }
   };
 
-  // Status badge variant
+  const normalizeStatus = (status?: string | null) => (status || "").toLowerCase();
+
+  const renderApprovalStatus = (status?: string | null) => {
+    const s = normalizeStatus(status);
+    if (!s) return <span className="text-muted-foreground">-</span>;
+    if (s === "approved") return <Badge variant="default">Approved</Badge>;
+    if (s === "auto-approved") return <Badge variant="default">Auto Approved</Badge>;
+    if (s === "rejected") return <Badge variant="destructive">Rejected</Badge>;
+    if (s === "pending") return <Badge variant="secondary">Pending</Badge>;
+    return <Badge variant="secondary">{status}</Badge>;
+  };
+
+  const getPendingApprovalLevel = (request: LeaveRequest): 1 | 2 | null => {
+    const overall = normalizeStatus(request.status);
+    if (overall === "approved" || overall === "rejected") return null;
+
+    if (normalizeStatus(request.approval1Status) !== "approved") return 1;
+
+    if (request.approval2 && normalizeStatus(request.approval2Status) !== "approved") return 2;
+
+    return null;
+  };
+
   const getStatusVariant = (status?: string | null) => {
     if (!status) return "secondary";
     const statusLower = status.toLowerCase();
@@ -443,7 +473,7 @@ export default function LeaveRequestsPage() {
   };
 
   // Table columns
-  const columns: ColumnDef<LeaveRequest>[] = useMemo(() => [
+  const columns: ColumnDef<LeaveRequest>[] = [
     {
       accessorKey: "index",
       header: "S No.",
@@ -487,12 +517,15 @@ export default function LeaveRequestsPage() {
       accessorKey: "approval1Status",
       header: "Approval 1",
       cell: ({ row }) => {
-        // Always show "Approved" by default
-        return (
-          <Badge variant="default">
-            Approved
-          </Badge>
-        );
+        return renderApprovalStatus(row.original.approval1Status);
+      },
+    },
+    {
+      accessorKey: "approval2Status",
+      header: "Approval 2",
+      cell: ({ row }) => {
+        if (!row.original.approval2) return <span className="text-muted-foreground">N/A</span>;
+        return renderApprovalStatus(row.original.approval2Status);
       },
     },
     {
@@ -505,44 +538,57 @@ export default function LeaveRequestsPage() {
       header: "Action",
       cell: ({ row }) => {
         const request = row.original;
-        const isPending = request.status === "pending";
+        const isPending = normalizeStatus(request.status) === "pending";
         const isProcessing = processingId === request.id;
+        const pendingLevel = getPendingApprovalLevel(request);
+        const canAct =
+          pendingLevel === 1
+            ? request.approval1 === user?.id
+            : pendingLevel === 2
+              ? request.approval2 === user?.id
+              : false;
         
         return (
           <div className="flex items-center gap-2">
-            {isPending ? (
+            {isPending && pendingLevel && canAct ? (
               <>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleApprove(request.id)}
+                  onClick={() => handleApprove(request.id, pendingLevel)}
                   disabled={isProcessing}
                   className="text-green-600 hover:text-green-700 hover:bg-green-50"
                 >
                   <Check className="h-4 w-4 mr-1" />
-                  Approve
+                  Approve L{pendingLevel}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleReject(request.id)}
+                  onClick={() => handleReject(request.id, pendingLevel)}
                   disabled={isProcessing}
                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   <X className="h-4 w-4 mr-1" />
-                  Reject
+                  Reject L{pendingLevel}
                 </Button>
               </>
             ) : (
-              <Badge variant={getStatusVariant(request.status)}>
-                {request.status}
-              </Badge>
+              isPending ? (
+                <Badge variant="secondary">
+                  Pending{pendingLevel ? ` L${pendingLevel}` : ""}
+                </Badge>
+              ) : (
+                <Badge variant={getStatusVariant(request.status)}>
+                  {request.status}
+                </Badge>
+              )
             )}
           </div>
         );
       },
     },
-  ], []);
+  ];
 
   // Prepare filter options
   const departmentOptions = useMemo(() => [
@@ -562,30 +608,6 @@ export default function LeaveRequestsPage() {
       label: `${emp.employeeId} -- ${emp.employeeName}`,
     })),
   ], [filteredEmployees]);
-
-  // Filter configs for data table
-  const filters: FilterConfig[] = useMemo(() => [
-    {
-      key: "department",
-      label: "Department",
-      options: departmentOptions,
-    },
-    {
-      key: "subDepartment",
-      label: "Sub Department",
-      options: subDepartmentOptions,
-    },
-    {
-      key: "employeeId",
-      label: "Employee",
-      options: employeeOptions,
-    },
-    {
-      key: "status",
-      label: "Leaves Status",
-      options: leaveStatusOptions,
-    },
-  ], [departmentOptions, subDepartmentOptions, employeeOptions]);
 
   return (
     <div className="space-y-6">
@@ -711,4 +733,3 @@ export default function LeaveRequestsPage() {
     </div>
   );
 }
-

@@ -109,9 +109,16 @@ export async function getLeaveRequestById(id: string): Promise<{ status: boolean
 }
 
 // Approve leave application
-export async function approveLeaveApplication(id: string): Promise<{ status: boolean; data?: LeaveRequest; message?: string }> {
+export async function approveLeaveApplication(
+  id: string,
+  level?: 1 | 2,
+): Promise<{ status: boolean; data?: LeaveRequest; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/leave-applications/${id}/approve`, {
+    const endpoint = level
+      ? `${API_URL}/leave-applications/${id}/approve-level/${level}`
+      : `${API_URL}/leave-applications/${id}/approve`;
+
+    const res = await fetch(endpoint, {
       method: 'PUT',
       headers: await getAuthHeaders(),
       body: JSON.stringify({}), // Empty object for JSON body
@@ -139,9 +146,17 @@ export async function approveLeaveApplication(id: string): Promise<{ status: boo
 }
 
 // Reject leave application
-export async function rejectLeaveApplication(id: string, remarks?: string): Promise<{ status: boolean; data?: LeaveRequest; message?: string }> {
+export async function rejectLeaveApplication(
+  id: string,
+  remarks?: string,
+  level?: 1 | 2,
+): Promise<{ status: boolean; data?: LeaveRequest; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/leave-applications/${id}/reject`, {
+    const endpoint = level
+      ? `${API_URL}/leave-applications/${id}/reject-level/${level}`
+      : `${API_URL}/leave-applications/${id}/reject`;
+
+    const res = await fetch(endpoint, {
       method: 'PUT',
       headers: await getAuthHeaders(),
       body: JSON.stringify({ remarks: remarks || '' }), // Always send remarks field

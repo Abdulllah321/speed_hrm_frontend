@@ -15,10 +15,19 @@ import { type Department, type SubDepartment, getSubDepartmentsByDepartment } fr
 import { cn } from "@/lib/utils";
 import { 
   updateRequestForwarding,
-  type CreateApprovalLevel 
+  type CreateApprovalLevel,
+  type UpdateRequestForwardingData,
+  type ApprovalLevel as ApiApprovalLevel,
 } from "@/lib/actions/request-forwarding";
 
-export type RequestType = "exemption" | "attendance" | "advance-salary" | "loan" | "overtime" | "leave-encashment";
+export type RequestType =
+  | "exemption"
+  | "attendance"
+  | "advance-salary"
+  | "loan"
+  | "overtime"
+  | "leave-application"
+  | "leave-encashment";
 
 export type ApprovalFlow = "auto-approved" | "multi-level";
 
@@ -54,8 +63,6 @@ interface RequestForwardingFormProps {
   title: string;
   description: string;
   icon: LucideIcon;
-  initialConfigId?: string | null;
-  initialConfigLoaded?: boolean;
 }
 
 export function RequestForwardingForm({
@@ -68,13 +75,10 @@ export function RequestForwardingForm({
   title,
   description,
   icon: Icon,
-  initialConfigId = null,
-  initialConfigLoaded = false,
 }: RequestForwardingFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
-  const [existingConfigId] = useState<string | null>(initialConfigId);
 
   const handleApprovalFlowChange = (flow: ApprovalFlow) => {
     onFormDataChange({
@@ -146,7 +150,7 @@ export function RequestForwardingForm({
     });
   };
 
-  const handleDepartmentChange = async (departmentId: string, levelIndex: number) => {
+  const handleDepartmentChange = async (departmentId: string) => {
     if (!departmentId) {
       setSubDepartments([]);
       return;
@@ -207,7 +211,7 @@ export function RequestForwardingForm({
     startTransition(async () => {
       try {
         // Transform form data to API format - only include properties that have values
-        const submissionData: Record<string, any> = {
+        const submissionData: UpdateRequestForwardingData = {
           approvalFlow: formData.approvalFlow,
         };
 
@@ -250,6 +254,9 @@ export function RequestForwardingForm({
           attendance: "Attendance",
           "advance-salary": "Advance Salary",
           loan: "Loan",
+          overtime: "Overtime",
+          "leave-application": "Leave Application",
+          "leave-encashment": "Leave Encashment",
         };
         toast.success(
           `${requestTypeLabels[requestType]} Request Forwarding configured successfully`
@@ -262,7 +269,7 @@ export function RequestForwardingForm({
         if (result.data) {
           onFormDataChange({
             approvalFlow: result.data.approvalFlow as ApprovalFlow,
-            levels: result.data.approvalLevels?.map((level: any) => ({
+            levels: (result.data.approvalLevels as ApiApprovalLevel[] | undefined)?.map((level) => ({
               level: level.level,
               approverType: level.approverType as ApproverType,
               departmentHeadMode: level.departmentHeadMode as DepartmentHeadMode | undefined,
@@ -410,7 +417,7 @@ export function RequestForwardingForm({
                         No approval levels configured
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Click "Add Level" to create your first approval level
+                        Click Add Level to create your first approval level
                       </p>
                     </CardContent>
                   </Card>
@@ -553,7 +560,7 @@ export function RequestForwardingForm({
                                         </div>
                                       </div>
                                       <p className="text-xs text-muted-foreground">
-                                        Automatically forward to employee's {level.approverType === "department-head" ? "department" : "sub-department"} head
+                                        Automatically forward to the employee {level.approverType === "department-head" ? "department" : "sub-department"} head
                                       </p>
                                     </button>
 
@@ -603,7 +610,7 @@ export function RequestForwardingForm({
                                       <Select
                                         value={level.departmentId || ""}
                                         onValueChange={(value) => {
-                                          handleDepartmentChange(value, levelIndex);
+                                          handleDepartmentChange(value);
                                           updateApprovalLevel(levelIndex, {
                                             departmentId: value || undefined,
                                             subDepartmentId: undefined,
@@ -661,7 +668,7 @@ export function RequestForwardingForm({
                                 {level.departmentHeadMode === "auto" && (
                                   <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
                                     <p>
-                                      Requests will be automatically forwarded to the {level.approverType === "department-head" ? "department" : "sub-department"} head based on the requesting employee's department assignment.
+                                      Requests will be automatically forwarded to the {level.approverType === "department-head" ? "department" : "sub-department"} head based on the requesting employee department assignment.
                                     </p>
                                   </div>
                                 )}
@@ -672,7 +679,7 @@ export function RequestForwardingForm({
                             {level.approverType === "reporting-manager" && (
                               <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
                                 <p>
-                                  Requests will be forwarded to the employee's reporting manager as specified in
+                                  Requests will be forwarded to the employee reporting manager as specified in
                                   their profile.
                                 </p>
                               </div>
@@ -696,7 +703,7 @@ export function RequestForwardingForm({
                   <div className="space-y-1">
                     <p className="font-medium">Auto Approval Enabled</p>
                     <p className="text-sm text-muted-foreground">
-                      All {requestType === "exemption" ? "exception" : requestType === "attendance" ? "attendance" : requestType === "advance-salary" ? "advance salary" : requestType === "loan" ? "loan" : requestType === "overtime" ? "overtime" : "leave encashment"} requests will be automatically
+                      All {requestType === "exemption" ? "exception" : requestType === "attendance" ? "attendance" : requestType === "advance-salary" ? "advance salary" : requestType === "loan" ? "loan" : requestType === "overtime" ? "overtime" : requestType === "leave-application" ? "leave application" : "leave encashment"} requests will be automatically
                       approved without requiring manual approval from any approver.
                     </p>
                   </div>
