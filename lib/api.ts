@@ -68,7 +68,29 @@ export interface DashboardStats {
 
 export const dashboardApi = {
   getStats: () => fetchApi<DashboardStats>('/dashboard/stats'),
+  getEmployeeStats: () => fetchApi<EmployeeDashboardStats>('/dashboard/employee-stats'),
 };
+
+export interface EmployeeDashboardStats {
+  overview: {
+    presentMonth: number;
+    absentMonth: number;
+    lateMonth: number;
+    pendingLeaves: number;
+    pendingAttendanceQueries: number;
+  };
+  upcomingHoliday?: {
+    name: string;
+    dateFrom: string;
+    dateTo: string;
+  };
+  recentActivities: {
+    date: string;
+    checkIn?: string;
+    checkOut?: string;
+    status: string;
+  }[];
+}
 
 // Types
 export interface Department {

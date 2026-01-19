@@ -28,7 +28,7 @@ export interface User {
 export async function getUsers(): Promise<{ status: boolean; data: User[]; message?: string }> {
   try {
     const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/users`, {
+    const res = await fetch(`${API_BASE}/auth/users`, {
       cache: "no-store",
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
@@ -40,23 +40,23 @@ export async function getUsers(): Promise<{ status: boolean; data: User[]; messa
   }
 }
 
-export async function createUser(data: { 
-    email: string; 
-    firstName: string; 
-    lastName: string; 
-    password?: string; 
-    employeeId?: string; 
-    roleId?: string 
+export async function createUser(data: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password?: string;
+  employeeId?: string;
+  roleId?: string
 }) {
   try {
     // Default password if not provided
     const payload = {
-        ...data,
-        password: data.password || "Password@123" // Default password
+      ...data,
+      password: data.password || "Password@123" // Default password
     };
 
     const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/users`, {
+    const res = await fetch(`${API_BASE}/auth/users`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -66,18 +66,18 @@ export async function createUser(data: {
     });
 
     if (!res.ok) {
-        let message = "Failed to create user";
+      let message = "Failed to create user";
+      try {
+        const error = await res.json();
+        message = error.message || message;
+      } catch {
         try {
-            const error = await res.json();
-            message = error.message || message;
-        } catch {
-            try {
-                const text = await res.text();
-                // Common server message when route not found
-                message = text || message;
-            } catch {}
-        }
-        return { status: false, message };
+          const text = await res.text();
+          // Common server message when route not found
+          message = text || message;
+        } catch { }
+      }
+      return { status: false, message };
     }
 
     revalidatePath("/hr/employee/user-account");
@@ -100,8 +100,8 @@ export async function updateUserRole(userId: string, roleId: string | null) {
     });
 
     if (!res.ok) {
-        const error = await res.json();
-        return { status: false, message: error.message || "Failed to update user role" };
+      const error = await res.json();
+      return { status: false, message: error.message || "Failed to update user role" };
     }
 
     revalidatePath("/hr/employee/user-account");

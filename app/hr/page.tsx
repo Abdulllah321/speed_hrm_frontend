@@ -1,11 +1,18 @@
 "use client";
 
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { DashboardContent } from "@/components/dashboard/dashboard-content";
+import { EmployeeDashboardContent } from "@/components/dashboard/employee-dashboard-content";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export default function HRPage() {
-  return (
-    <DashboardContent />
-  );
+  const { user, isAdmin } = useAuth();
+
+  // Show admin dashboard for admin/super_admin
+  if (isAdmin()) {
+    return <DashboardContent />;
+  }
+
+  // Show employee dashboard for regular users
+  return <EmployeeDashboardContent />;
 }
 
