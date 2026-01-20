@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +19,8 @@ const CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes (proactive refres
 export function SessionChecker() {
   const router = useRouter();
   const pathname = usePathname();
-  const [sessionExpired, setSessionExpired] = useState(false);
+  const { sessionExpired, setSessionExpired, handleSessionExpiry } = useAuth();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const performCheck = useCallback(async () => {
     try {
@@ -29,7 +32,7 @@ export function SessionChecker() {
       });
 
       if (res.status === 401 || res.status === 403) {
-        setSessionExpired(true);
+        await handleSessionExpiry();
         return;
       }
 
@@ -41,12 +44,12 @@ export function SessionChecker() {
       const data = await res.json();
 
       if (data && (data.resetCookies || data.valid === false)) {
-        setSessionExpired(true);
+        await handleSessionExpiry();
       }
     } catch (error) {
       console.error("Session check failed:", error);
     }
-  }, []);
+  }, [handleSessionExpiry]);
 
   useEffect(() => {
     // Initial check
@@ -67,7 +70,13 @@ export function SessionChecker() {
     };
   }, [performCheck]);
 
-  const handleLogin = () => {
+  const handleLogin = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setIsNavigating(true);
+    // Ensure cookies are cleared one last time before navigation
+    try {
+        await handleSessionExpiry();
+    } catch {}
     const callbackUrl = encodeURIComponent(pathname || "/hr");
     router.push(`/auth/login?callbackUrl=${callbackUrl}`);
   };
@@ -82,8 +91,15 @@ export function SessionChecker() {
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction onClick={handleLogin}>
-            Go to Login
+          <AlertDialogAction onClick={handleLogin} disabled={isNavigating}>
+            {isNavigating ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Navigating...
+              </>
+            ) : (
+              "Go to Login"
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

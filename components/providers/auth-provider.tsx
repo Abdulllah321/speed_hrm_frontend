@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 
@@ -57,6 +57,9 @@ interface AuthContextType {
   refreshToken: () => Promise<boolean>;
   checkAndRefreshSession: () => Promise<boolean>;
   fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+  sessionExpired: boolean;
+  setSessionExpired: (value: boolean) => void;
+  handleSessionExpiry: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("Initializing...");
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Convert preferences array to object for easier access
   const preferencesToObject = useCallback((prefs: Array<{ key: string; value: string }> | undefined) => {
@@ -84,33 +88,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return obj;
   }, []);
 
+  // Token refresh promise ref to handle race conditions
+  const refreshPromiseRef = useRef<Promise<boolean> | null>(null);
+
+  // Handle session expiry (clear cookies/state, show dialog, NO redirect)
+  const handleSessionExpiry = useCallback(async () => {
+    try {
+      const { logoutClient } = await import("@/lib/client-auth");
+      await logoutClient();
+    } catch (e) {
+      console.error("Error clearing cookies:", e);
+    }
+    setUser(null);
+    setPreferences({});
+    setSessionExpired(true);
+  }, []);
+
   // Token refresh function
   const refreshToken = useCallback(async (): Promise<boolean> => {
-    try {
-      const { refreshTokenClient } = await import("@/lib/client-auth");
-      const success = await refreshTokenClient();
-
-      if (!success) {
-        // Refresh failed, user needs to login again
-        setUser(null);
-        setPreferences({});
-        // router.push("/auth/login");
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Token refresh error:", error);
-      setUser(null);
-      setPreferences({});
-      router.push("/auth/login");
-      return false;
+    // If a refresh is already in progress, return the existing promise
+    if (refreshPromiseRef.current) {
+      return refreshPromiseRef.current;
     }
-  }, [router]);
+
+    refreshPromiseRef.current = (async () => {
+      try {
+        const { refreshTokenClient } = await import("@/lib/client-auth");
+        const success = await refreshTokenClient();
+
+        if (!success) {
+          // Refresh failed, trigger session expiry UI
+          await handleSessionExpiry();
+          return false;
+        }
+
+        return true;
+      } catch (error) {
+        console.error("Token refresh error:", error);
+        await handleSessionExpiry();
+        return false;
+      } finally {
+        refreshPromiseRef.current = null;
+      }
+    })();
+
+    return refreshPromiseRef.current;
+  }, [handleSessionExpiry]);
 
   const fetchWithAuth = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
-      let response = await fetch(url, {
+      // Ensure URL is absolute; if relative, prepend BASE URL from ENV
+      const finalUrl = url.startsWith("http") ? url : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}${url.startsWith("/") ? "" : "/"}${url}`;
+      let response = await fetch(finalUrl, {
         ...options,
         credentials: "include", // ✅ sends ALL cookies automatically
         cache: "no-store",
@@ -121,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const refreshSuccess = await refreshToken();
 
         if (refreshSuccess) {
-          response = await fetch(url, {
+          response = await fetch(finalUrl, {
             ...options,
             credentials: "include",
             cache: "no-store",
@@ -511,6 +540,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           refreshToken: async () => false,
           checkAndRefreshSession: async () => false,
           fetchWithAuth: async (url: string, options?: RequestInit) => fetch(url, options),
+          sessionExpired: false,
+          setSessionExpired: () => {},
+          handleSessionExpiry: async () => {},
         }}
       >
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />
@@ -536,6 +568,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         refreshToken,
         checkAndRefreshSession,
         fetchWithAuth,
+        sessionExpired,
+        setSessionExpired,
+        handleSessionExpiry,
       }}
     >
       {children}

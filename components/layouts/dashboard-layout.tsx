@@ -92,7 +92,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <HeaderUserMenu />
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
       </SidebarInset>
       
       {/* Mobile Floating Search */}
