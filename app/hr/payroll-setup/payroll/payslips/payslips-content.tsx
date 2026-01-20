@@ -221,17 +221,28 @@ export function PayslipsContent({ departments, subDepartments, employees }: Pays
 
             {/* Viewing Modal */}
             <Dialog open={isViewingModalOpen} onOpenChange={setIsViewingModalOpen}>
-                <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader className="print:hidden">
+                <DialogContent className="payslip-dialog-content !max-w-none !w-[100vw] !h-[100vh] !max-h-none !rounded-none !border-0 p-0 [&>div[data-slot=scroll-area]]:h-full [&>div[data-slot=scroll-area]]:max-h-screen">
+                    <DialogHeader className="print:hidden p-6 bg-white border-b shadow-sm">
                         <DialogTitle className="flex justify-between items-center pr-8">
                             <span>Employee Payslip Detail</span>
-                            <Button size="sm" variant="outline" onClick={handlePrintIndividual}>
-                                <Printer className="h-4 w-4 mr-2" />
-                                Print Individual
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button size="sm" variant="outline" onClick={handlePrintIndividual}>
+                                    <Printer className="h-4 w-4 mr-2" />
+                                    Print Individual
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setIsViewingModalOpen(false)}>
+                                    Close
+                                </Button>
+                            </div>
                         </DialogTitle>
                     </DialogHeader>
-                    {viewingDetail && <PayslipTemplate data={viewingDetail} />}
+                    {viewingDetail && (
+                        <div className="min-h-full bg-gray-50/50 p-4 md:p-8 flex justify-center">
+                             <div className="w-full max-w-[1200px] bg-white shadow-sm min-h-screen">
+                                <PayslipTemplate data={viewingDetail} />
+                             </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
 
@@ -248,20 +259,32 @@ export function PayslipsContent({ departments, subDepartments, employees }: Pays
           body * {
             visibility: hidden;
           }
-          #radix-\:rq\:, #radix-\:rq\: * {
+          .payslip-dialog-content, .payslip-dialog-content * {
             visibility: visible;
           }
-          #radix-\:rq\: {
+          .payslip-dialog-content {
             position: absolute;
             left: 0;
             top: 0;
-            width: 100%;
-            height: auto;
+            width: 100% !important;
+            height: auto !important;
             max-height: none !important;
             overflow: visible !important;
             box-shadow: none !important;
             border: none !important;
             padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+          }
+          /* Reset scroll area constraints for print */
+          .payslip-dialog-content > div[data-slot="scroll-area"] {
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+          }
+          /* Hide scrollbars in print if any */
+          ::-webkit-scrollbar {
+            display: none;
           }
           .print\:hidden {
             display: none !important;

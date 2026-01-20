@@ -19,8 +19,24 @@ export async function getPermissions(): Promise<{ status: boolean; data: Permiss
       cache: "force-cache", // Permissions rarely change
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
+    
+    if (!res.ok) {
+        console.error(`Failed to fetch permissions: ${res.status} ${res.statusText}`);
+        // If 401/403, it means auth failed. Return empty but log it.
+        if (res.status === 401 || res.status === 403) {
+             return { status: false, data: [], message: "Authentication failed" };
+        }
+    }
+
     const data = await res.json();
-    return { status: true, data: Array.isArray(data) ? data : [] };
+    
+    // Check if data is array (successful response)
+    if (Array.isArray(data)) {
+        return { status: true, data };
+    }
+    
+    console.error("Permissions fetch returned non-array:", data);
+    return { status: false, data: [], message: "Invalid response format" };
   } catch (error) {
     console.error("Failed to fetch permissions:", error);
     return { status: false, data: [], message: "Failed to fetch permissions" };

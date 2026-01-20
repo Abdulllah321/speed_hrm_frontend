@@ -18,7 +18,7 @@ export function PayslipTemplate({ data }: PayslipTemplateProps) {
     const totalAllowances = allowanceBreakup.reduce((sum: number, a: any) => sum + Number(a.amount), 0);
 
     return (
-        <div className="bg-white p-8 max-w-4xl mx-auto border shadow-sm print:shadow-none print:border-none print:p-0 text-[12px] leading-tight font-sans">
+        <div className="bg-white p-8 w-full mx-auto border shadow-sm print:shadow-none print:border-none print:p-0 text-[12px] leading-tight font-sans">
             {/* Header */}
             <div className="flex justify-between items-start mb-6 border-b-2 border-indigo-600 pb-4">
                 <div>

@@ -49,6 +49,78 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
     },
   });
 
+  // Define module order for display
+  const moduleOrder = [
+    // Dashboard
+    "dashboard",
+    
+    // HR Operational
+    "employee",
+    "user",
+    "exit-clearance",
+    "attendance",
+    "attendance-exemption",
+    "attendance-request-query",
+    "request-forwarding",
+    "working-hours-policy",
+    "holiday",
+    "leave-application",
+    
+    // Payroll Setup
+    "payroll",
+    "allowance",
+    "deduction",
+    "advance-salary",
+    "loan-request",
+    "increment",
+    "bonus",
+    "leave-encashment",
+    "pf",
+    "social-security",
+    "rebate",
+    "overtime-request",
+    
+    // Profile & Settings
+    "user-preference",
+    
+    // System & Admin
+    "role",
+    "permission",
+    "activity-log",
+    "upload",
+    
+    // Master Data
+    "department",
+    "sub-department",
+    "institute",
+    "designation",
+    "job-type",
+    "marital-status",
+    "employee-grade",
+    "employee-status",
+    "qualification",
+    "degree-type",
+    "allocation",
+    "country",
+    "state",
+    "city",
+    "location",
+    "allowance-head",
+    "deduction-head",
+    "salary-breakup",
+    "tax-slab",
+    "bonus-type",
+    "loan-type",
+    "leave-type",
+    "leaves-policy",
+    "eobi",
+    "provident-fund",
+    "equipment",
+    "bank",
+    "approval-setting",
+    "rebate-nature"
+  ];
+
   // Group permissions by module
   const groupedPermissions = permissions.reduce((acc, permission) => {
     if (!acc[permission.module]) {
@@ -57,6 +129,26 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
     acc[permission.module].push(permission);
     return acc;
   }, {} as Record<string, Permission[]>);
+
+  // Sort modules based on defined order
+  const sortedModules = Object.keys(groupedPermissions).sort((a, b) => {
+    const indexA = moduleOrder.indexOf(a);
+    const indexB = moduleOrder.indexOf(b);
+    
+    // If both are in the order list, sort by index
+    if (indexA !== -1 && indexB !== -1) {
+      return indexA - indexB;
+    }
+    
+    // If only A is in list, it comes first
+    if (indexA !== -1) return -1;
+    
+    // If only B is in list, it comes first
+    if (indexB !== -1) return 1;
+    
+    // If neither is in list, sort alphabetically
+    return a.localeCompare(b);
+  });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
@@ -140,7 +232,8 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-6">
-                        {Object.entries(groupedPermissions).map(([module, perms]) => {
+                        {sortedModules.map((module) => {
+                            const perms = groupedPermissions[module];
                             const allSelected = perms.every(p => form.watch("permissionIds").includes(p.id));
                             const someSelected = perms.some(p => form.watch("permissionIds").includes(p.id));
 
