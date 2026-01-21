@@ -66,6 +66,72 @@ export interface DashboardStats {
   }[];
 }
 
+export interface Employee {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  fatherHusbandName?: string;
+  cnicNumber?: string;
+  cnicExpiryDate?: string;
+  lifetimeCnic?: boolean;
+  joiningDate?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  gender?: string;
+  contactNumber?: string;
+  emergencyContactNumber?: string;
+  emergencyContactPersonName?: string;
+  personalEmail?: string;
+  officialEmail?: string;
+  currentAddress?: string;
+  permanentAddress?: string;
+  bankName?: string;
+  accountNumber?: string;
+  accountTitle?: string;
+  accountType?: string;
+  employeeSalary?: number;
+  department?: { id: string; name: string } | string;
+  subDepartment?: { id: string; name: string } | string;
+  designation?: { id: string; name: string } | string;
+  employeeGrade?: { id: string; grade: string } | string;
+  maritalStatus?: { id: string; name: string } | string;
+  employmentStatus?: { id: string; status: string } | string;
+  country?: { id: string; name: string } | string;
+  state?: { id: string; name: string } | string;
+  city?: { id: string; name: string } | string;
+  workingHoursPolicy?: { id: string; name: string } | string;
+  leavesPolicy?: { id: string; name: string } | string;
+  
+  // Relation objects for display
+  departmentRelation?: { id: string; name: string };
+  subDepartmentRelation?: { id: string; name: string };
+  designationRelation?: { id: string; name: string };
+  employeeGradeRelation?: { id: string; grade: string };
+  maritalStatusRelation?: { id: string; name: string };
+  employmentStatusRelation?: { id: string; status: string };
+  countryRelation?: { id: string; name: string };
+  stateRelation?: { id: string; name: string };
+  cityRelation?: { id: string; name: string };
+  workingHoursPolicyRelation?: { id: string; name: string };
+  leavesPolicyRelation?: { id: string; name: string };
+  avatarUrl?: string | null;
+  qualifications?: {
+    id: string;
+    degree: string;
+    institution: string;
+    passingYear: string;
+    gradeOrDivision?: string;
+  }[];
+  createdAt: string;
+  updatedAt: string;
+  status: string;
+}
+
+export const employeeApi = {
+  getProfile: (id: string, includeHistory: boolean = false) => 
+    fetchApi<{ status: boolean; data: Employee }>(`/employees/${id}?includeHistory=${includeHistory}`),
+};
+
 export const dashboardApi = {
   getStats: () => fetchApi<DashboardStats>('/dashboard/stats'),
   getEmployeeStats: () => fetchApi<EmployeeDashboardStats>('/dashboard/employee-stats'),
