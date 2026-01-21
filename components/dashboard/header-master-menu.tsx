@@ -106,6 +106,10 @@ export function HeaderMasterMenu() {
     setOpen(false);
   };
 
+  if (filteredMasterMenu.length === 0) {
+    return null;
+  }
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>

@@ -224,40 +224,9 @@ export async function getAccessToken(): Promise<string | null> {
 // Refresh token - calls backend directly for server-side use
 // For client-side refresh, use refreshTokenClient from client-auth.ts
 export async function refreshAccessToken(): Promise<boolean> {
-  const cookieStore = await cookies();
-  const refreshToken = cookieStore.get("refreshToken")?.value || null;
-
-  if (!refreshToken) return false;
-
-  // SECURITY CHECK: Verify refresh token is not expired
-  if (isTokenExpired(refreshToken)) {
-    // Refresh token expired, clear everything
-    cookieStore.delete("accessToken");
-    cookieStore.delete("refreshToken");
-    cookieStore.delete("userRole");
-    cookieStore.delete("user");
-    return false;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/refresh-token`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-      credentials: "include",
-    });
-
-    const data = await res.json();
-
-    if (data.status && data.data) {
-      // Note: Server actions cannot set cookies in browser
-      // This is mainly for server-side token validation
-      return true;
-    }
-  } catch (error) {
-    console.error("Token refresh error:", error);
-  }
-
+  // SECURITY: Server-side refresh is disabled to prevent race conditions with client-side refresh.
+  // The backend uses strict token rotation (revoke-on-use), so parallel refreshes will cause "Token revoked" errors.
+  // We let the client (auth-provider.tsx) handle all refreshes via its mutex-protected refreshToken function.
   return false;
 }
 
@@ -266,7 +235,7 @@ export async function refreshAccessToken(): Promise<boolean> {
 export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
   const cookieStore = await cookies();
   let accessToken = cookieStore.get("accessToken")?.value || null;
-  const refreshToken = cookieStore.get("refreshToken")?.value || null;
+  // const refreshToken = cookieStore.get("refreshToken")?.value || null; // Unused since we don't refresh here
 
   // SECURITY CHECK 1: If access token is expired, don't use it
   if (accessToken && isTokenExpired(accessToken)) {
@@ -274,17 +243,8 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
     accessToken = null;
   }
 
-  // SECURITY CHECK 2: Proactive refresh only if token is valid but expiring soon
-  // Never refresh if token is already expired
-  if (accessToken && isTokenExpiringSoon(accessToken) && refreshToken) {
-    // Only refresh if refresh token is also valid (not expired)
-    if (!isTokenExpired(refreshToken)) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed) {
-        accessToken = (await cookies()).get("accessToken")?.value || null;
-      }
-    }
-  }
+  // SECURITY CHECK 2: Proactive refresh removed to prevent race conditions
+  // if (accessToken && isTokenExpiringSoon(accessToken) && refreshToken) { ... }
 
   const makeRequest = async (token: string | null) => {
     return fetch(`${API_BASE}${url}`, {
@@ -298,23 +258,11 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
     });
   };
 
-  let response = await makeRequest(accessToken);
+  const response = await makeRequest(accessToken);
 
-  // SECURITY CHECK 3: If token expired (401), try to refresh ONLY if refresh token is valid
-  if (response.status === 401) {
-    if (refreshToken && !isTokenExpired(refreshToken)) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-        accessToken = (await cookies()).get("accessToken")?.value || null;
-        // SECURITY: Verify new token is not expired before using
-        if (accessToken && !isTokenExpired(accessToken)) {
-      response = await makeRequest(accessToken);
-    }
-      }
-    }
-    // If refresh token is expired or refresh failed, return 401 (security: expired = no access)
-  }
-
+  // SECURITY CHECK 3: If token expired (401), return response.
+  // Client-side will detect 401 and trigger refresh via auth-provider.
+  
   return response;
 }
 
@@ -366,57 +314,20 @@ export async function checkSession(): Promise<{ valid: boolean; user?: User }> {
     accessToken = null;
   }
 
-  // SECURITY CHECK 2: Proactive refresh only if token is valid but expiring soon
-  // Never refresh if token is already expired
-  if (accessToken && isTokenExpiringSoon(accessToken) && refreshToken) {
-    // Only refresh if refresh token is also valid (not expired)
-    if (!isTokenExpired(refreshToken)) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed) {
-        accessToken = (await cookies()).get("accessToken")?.value || null;
-      } else {
-        return { valid: false };
-      }
-    } else {
-      // Refresh token expired, clear everything
-      cookieStore.delete("accessToken");
-      cookieStore.delete("refreshToken");
-      cookieStore.delete("userRole");
-      cookieStore.delete("user");
-      return { valid: false };
-    }
-  }
+  // SECURITY CHECK 2: Proactive refresh removed to prevent race conditions
+  // if (accessToken && isTokenExpiringSoon(accessToken) && refreshToken) { ... }
 
-  // If still no access token but have refresh token, try to get new access token
-  if (!accessToken && refreshToken) {
-    // SECURITY: Only refresh if refresh token is not expired
-    if (!isTokenExpired(refreshToken)) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed) {
-        accessToken = (await cookies()).get("accessToken")?.value || null;
-      } else {
-        return { valid: false };
-      }
-    } else {
-      // Refresh token expired, clear everything (security: expired = invalid)
-      cookieStore.delete("accessToken");
-      cookieStore.delete("refreshToken");
-      cookieStore.delete("userRole");
-      cookieStore.delete("user");
-      return { valid: false };
-    }
-  }
-
-  if (!accessToken) {
+  // If no tokens, session is invalid
+  if (!accessToken && !refreshToken) {
     return { valid: false };
   }
 
   // SECURITY CHECK 3: Final validation - ensure token is not expired before API call
   if (isTokenExpired(accessToken)) {
     cookieStore.delete("accessToken");
-    cookieStore.delete("refreshToken");
-    cookieStore.delete("userRole");
-    cookieStore.delete("user");
+    // cookieStore.delete("refreshToken"); // Don't delete refresh token, let client use it
+    // cookieStore.delete("userRole");
+    // cookieStore.delete("user");
     return { valid: false };
   }
 
@@ -427,35 +338,9 @@ export async function checkSession(): Promise<{ valid: boolean; user?: User }> {
     });
 
     if (res.status === 401) {
-      // Token expired on server, try to refresh ONLY if refresh token is valid
-      if (refreshToken && !isTokenExpired(refreshToken)) {
-      const refreshed = await refreshAccessToken();
-      if (!refreshed) {
-        // Clear cookies on failed refresh
-        cookieStore.delete("accessToken");
-        cookieStore.delete("refreshToken");
-        cookieStore.delete("userRole");
-        cookieStore.delete("user");
-        return { valid: false };
-      }
-        // Retry with new token
-        const newToken = (await cookies()).get("accessToken")?.value || null;
-        if (newToken && !isTokenExpired(newToken)) {
-          const retryRes = await fetch(`${API_BASE}/auth/check-session`, {
-            headers: { Authorization: `Bearer ${newToken}` },
-            credentials: "include",
-          });
-          if (retryRes.ok) {
-            const user = await getCurrentUser();
-            return { valid: true, user: user || undefined };
-    }
-        }
-      }
-      // If refresh token is expired or refresh failed, session is invalid
-      cookieStore.delete("accessToken");
-      cookieStore.delete("refreshToken");
-      cookieStore.delete("userRole");
-      cookieStore.delete("user");
+      // Token expired on server.
+      // We return false here so the Client Component detects it and calls refresh.
+      // We DO NOT call refreshAccessToken() here.
       return { valid: false };
     }
 
