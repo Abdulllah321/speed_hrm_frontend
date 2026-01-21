@@ -52,6 +52,7 @@ export async function logoutClient(): Promise<{ status: boolean; message: string
     const res = await fetch(`${API_BASE}/auth/logout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
       credentials: "include",
     });
 
