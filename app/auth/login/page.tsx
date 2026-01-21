@@ -25,9 +25,8 @@ function buildSubdomainUrl(subdomain: string, path: string, port?: string): stri
     const portStr = port || window.location.port || "3001";
     return `${protocol}//${subdomain}.${baseDomain}:${portStr}${path}`;
   } else {
-    // Extract base domain (e.g., "example.com" from "auth.example.com")
-    const parts = hostname.split(".");
-    const baseDomain = parts.length >= 2 ? parts.slice(-2).join(".") : hostname;
+    // For production, use spl.inplsoftwares.com as base
+    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN||"spl.inplsoftwares.com";
     return `${protocol}//${subdomain}.${baseDomain}${path}`;
   }
 }
