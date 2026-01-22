@@ -32,6 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronDown } from "lucide-react";
 import type { AttendanceProgress } from "@/lib/actions/attendance";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface AttendanceProgressSummaryProps {
   initialData: AttendanceProgress[];
@@ -72,6 +73,7 @@ export function AttendanceProgressSummary({
 }: AttendanceProgressSummaryProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { user, isAdmin } = useAuth();
 
   // Initialize from URL params or defaults
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>(() => {
@@ -103,6 +105,16 @@ export function AttendanceProgressSummary({
   };
 
   const [dateRange, setDateRange] = useState<DateRange>(getInitialDateRange());
+
+  // Handle user-specific view restriction
+  useEffect(() => {
+    if (user && !isAdmin() && user.employeeId) {
+        // If regular user (not admin), force their employee ID
+        setSelectedEmployeeIds([user.employeeId]);
+        setSelectedDepartment("all");
+        setSelectedSubDepartment("all");
+    }
+  }, [user, isAdmin]);
 
   // Update URL params when filters change to trigger server refetch
   const updateFilters = (updates: {
@@ -296,55 +308,59 @@ export function AttendanceProgressSummary({
       <Card>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Department</Label>
-              <Autocomplete
-                options={departmentOptions}
-                value={selectedDepartment}
-                onValueChange={(value) => {
-                  setSelectedDepartment(value || "all");
-                  setSelectedSubDepartment("all");
-                  updateFilters({ departmentId: value || "all" });
-                }}
-                placeholder="All Departments"
-                searchPlaceholder="Search department..."
-                emptyMessage="No departments found"
-              />
-            </div>
+            {isAdmin() && (
+              <>
+                <div className="space-y-2">
+                  <Label>Department</Label>
+                  <Autocomplete
+                    options={departmentOptions}
+                    value={selectedDepartment}
+                    onValueChange={(value) => {
+                      setSelectedDepartment(value || "all");
+                      setSelectedSubDepartment("all");
+                      updateFilters({ departmentId: value || "all" });
+                    }}
+                    placeholder="All Departments"
+                    searchPlaceholder="Search department..."
+                    emptyMessage="No departments found"
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <Label>Sub Department</Label>
-              <Autocomplete
-                options={subDepartmentOptions}
-                value={selectedSubDepartment}
-                onValueChange={(value) => {
-                  const newValue = value || "all";
-                  setSelectedSubDepartment(newValue);
-                  updateFilters({ subDepartmentId: newValue });
-                }}
-                placeholder={
-                  selectedDepartment === "all"
-                    ? "All Sub Departments"
-                    : "Select sub department"
-                }
-                searchPlaceholder="Search sub department..."
-                emptyMessage="No sub departments found"
-                disabled={selectedDepartment === "all" || loadingSubDepartments}
-                isLoading={loadingSubDepartments}
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label>Sub Department</Label>
+                  <Autocomplete
+                    options={subDepartmentOptions}
+                    value={selectedSubDepartment}
+                    onValueChange={(value) => {
+                      const newValue = value || "all";
+                      setSelectedSubDepartment(newValue);
+                      updateFilters({ subDepartmentId: newValue });
+                    }}
+                    placeholder={
+                      selectedDepartment === "all"
+                        ? "All Sub Departments"
+                        : "Select sub department"
+                    }
+                    searchPlaceholder="Search sub department..."
+                    emptyMessage="No sub departments found"
+                    disabled={selectedDepartment === "all" || loadingSubDepartments}
+                    isLoading={loadingSubDepartments}
+                  />
+                </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label>Employees</Label>
-              <MultiSelect
-                options={filteredEmployeeOptions}
-                value={selectedEmployeeIds}
-                onValueChange={handleEmployeeChange}
-                placeholder="All Employees"
-                searchPlaceholder="Search employees..."
-                emptyMessage="No employees found"
-              />
-            </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Employees</Label>
+                  <MultiSelect
+                    options={filteredEmployeeOptions}
+                    value={selectedEmployeeIds}
+                    onValueChange={handleEmployeeChange}
+                    placeholder="All Employees"
+                    searchPlaceholder="Search employees..."
+                    emptyMessage="No employees found"
+                  />
+                </div>
+              </>
+            )}
 
             <div className="space-y-2 md:col-span-2">
               <Label>Date Range</Label>

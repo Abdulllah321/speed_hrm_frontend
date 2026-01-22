@@ -22,9 +22,11 @@ import {
 import { getAllEmployeesForClearance } from "@/lib/actions/exit-clearance";
 import type { Employee } from "@/lib/actions/exit-clearance";
 import { getDepartments, type Department, type SubDepartment } from "@/lib/actions/department";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export default function AttendanceRequestQueryPage() {
   const router = useRouter();
+  const { user, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +73,30 @@ export default function AttendanceRequestQueryPage() {
 
     fetchData();
   }, []);
+
+  // Auto-select current employee for non-admins
+  useEffect(() => {
+    if (!isAdmin() && user?.employeeId && allEmployees.length > 0) {
+      const currentEmployee = allEmployees.find(e => e.id === user.employeeId);
+      if (currentEmployee) {
+        setFormData(prev => ({
+          ...prev,
+          employeeId: currentEmployee.id,
+          employeeName: currentEmployee.employeeName,
+          department: currentEmployee.department || "",
+          subDepartment: currentEmployee.subDepartment || ""
+        }));
+        
+        // Also fetch sub-departments if department is set
+        if (currentEmployee.department) {
+           const dept = departments.find(d => d.name === currentEmployee.department);
+           if (dept && dept.subDepartments) {
+             setSubDepartments(dept.subDepartments);
+           }
+        }
+      }
+    }
+  }, [user, isAdmin, allEmployees, departments]);
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -234,7 +260,11 @@ export default function AttendanceRequestQueryPage() {
               {loading ? (
                 <div className="h-10 bg-muted rounded animate-pulse" />
               ) : (
-                <Select value={formData.employeeId} onValueChange={handleEmployeeChange} disabled={isPending || loading}>
+                <Select 
+                  value={formData.employeeId} 
+                  onValueChange={handleEmployeeChange} 
+                  disabled={isPending || loading || (!isAdmin() && !!user?.employeeId)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder={formData.department ? "Select employee from department" : "Select employee"} />
                   </SelectTrigger>

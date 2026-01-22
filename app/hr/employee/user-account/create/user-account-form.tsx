@@ -80,7 +80,17 @@ export function UserAccountForm({ employees, roles }: UserAccountFormProps) {
           form.setValue("firstName", firstName);
           form.setValue("lastName", lastName);
           
-          // We don't have email in dropdown, so we leave it empty or user enters it
+          // Auto-fill email if available (prefer official, fallback to personal)
+          const email = employee.officialEmail || employee.personalEmail;
+          if (email) {
+              form.setValue("email", email);
+          } else {
+              // Clear if no email to avoid confusion
+              form.setValue("email", "");
+          }
+
+          // Auto-fill default password
+          form.setValue("password", "Password@123");
       }
       setEmployeeOpen(false);
   }

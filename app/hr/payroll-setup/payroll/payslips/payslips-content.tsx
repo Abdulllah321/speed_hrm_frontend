@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,7 @@ import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import jsPDF from "jspdf";
 import * as htmlToImage from 'html-to-image';
-import { useRef } from "react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface PayslipsContentProps {
     departments: any[];
@@ -27,6 +27,7 @@ interface PayslipsContentProps {
 
 export function PayslipsContent({ departments, subDepartments, employees }: PayslipsContentProps) {
     const [isPending, startTransition] = useTransition();
+    const { user, isAdmin, hasPermission } = useAuth();
     const [data, setData] = useState<any[]>([]);
     const [filters, setFilters] = useState({
         monthYear: format(new Date(), "yyyy-MM"),
@@ -35,11 +36,25 @@ export function PayslipsContent({ departments, subDepartments, employees }: Pays
         employeeId: "all",
     });
 
+    // Allow view all if admin OR has payroll.create permission
+    const canViewAll = isAdmin() || hasPermission("payroll.create");
+
     const [viewingDetail, setViewingDetail] = useState<any>(null);
     const [isViewingModalOpen, setIsViewingModalOpen] = useState(false);
     const [isFetchingDetail, setIsFetchingDetail] = useState(false);
     const [isDownloading, setIsDownloading] = useState(false);
     const downloadRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (user && !canViewAll && user.employeeId) {
+            setFilters((prev) => ({
+                ...prev,
+                employeeId: user.employeeId,
+                departmentId: "all",
+                subDepartmentId: "all",
+            }));
+        }
+    }, [user, canViewAll]);
 
     const filteredSubDepartments = useMemo(() => {
         if (filters.departmentId === "all") return subDepartments;
@@ -48,6 +63,9 @@ export function PayslipsContent({ departments, subDepartments, employees }: Pays
 
     const filteredEmployees = useMemo(() => {
         let result = employees;
+        if (!canViewAll && user?.employeeId) {
+            return result.filter((e) => e.id === user.employeeId);
+        }
         if (filters.departmentId !== "all") {
             result = result.filter((e) => e.departmentId === filters.departmentId);
         }
@@ -55,21 +73,25 @@ export function PayslipsContent({ departments, subDepartments, employees }: Pays
             result = result.filter((e) => e.subDepartmentId === filters.subDepartmentId);
         }
         return result;
-    }, [filters.departmentId, filters.subDepartmentId, employees]);
+    }, [filters.departmentId, filters.subDepartmentId, employees, user, canViewAll]);
 
     const handleSearch = () => {
         startTransition(async () => {
             const [year, month] = filters.monthYear.split("-");
+            const effectiveEmployeeId = !canViewAll && user?.employeeId ? user.employeeId : filters.employeeId;
             const result = await getPayslips({
                 month,
                 year,
                 departmentId: filters.departmentId,
                 subDepartmentId: filters.subDepartmentId,
-                employeeId: filters.employeeId,
+                employeeId: effectiveEmployeeId,
             });
 
             if (result.status) {
-                setData(result.data);
+                const filteredData = !canViewAll && user?.employeeId
+                    ? result.data.filter((row: any) => row.employee?.id === user.employeeId || row.employeeId === user.employeeId)
+                    : result.data;
+                setData(filteredData);
                 if (result.data.length === 0) {
                     toast.info("No confirmed payroll records found for selected criteria.");
                 }
@@ -159,37 +181,41 @@ export function PayslipsContent({ departments, subDepartments, employees }: Pays
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        <div className="space-y-2">
-                            <Label>Department</Label>
-                            <Autocomplete
-                                options={departments.map(d => ({ value: d.id, label: d.name }))}
-                                value={filters.departmentId}
-                                onValueChange={(value) => setFilters({ ...filters, departmentId: value || "all", subDepartmentId: "all", employeeId: "all" })}
-                                placeholder="Select Department"
-                                searchPlaceholder="Search department..."
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Sub Department</Label>
-                            <Autocomplete
-                                options={filteredSubDepartments.map(sd => ({ value: sd.id, label: sd.name }))}
-                                value={filters.subDepartmentId}
-                                onValueChange={(value) => setFilters({ ...filters, subDepartmentId: value || "all", employeeId: "all" })}
-                                disabled={filters.departmentId === "all"}
-                                placeholder="Select Sub Department"
-                                searchPlaceholder="Search sub department..."
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Employee</Label>
-                            <Autocomplete
-                                options={filteredEmployees.map(e => ({ value: e.id, label: `(${e.employeeId}) ${e.employeeName}` }))}
-                                value={filters.employeeId}
-                                onValueChange={(value) => setFilters({ ...filters, employeeId: value || "all" })}
-                                placeholder="Select Employee"
-                                searchPlaceholder="Search employee..."
-                            />
-                        </div>
+                        {canViewAll && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Department</Label>
+                                    <Autocomplete
+                                        options={departments.map(d => ({ value: d.id, label: d.name }))}
+                                        value={filters.departmentId}
+                                        onValueChange={(value) => setFilters({ ...filters, departmentId: value || "all", subDepartmentId: "all", employeeId: "all" })}
+                                        placeholder="Select Department"
+                                        searchPlaceholder="Search department..."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Sub Department</Label>
+                                    <Autocomplete
+                                        options={filteredSubDepartments.map(sd => ({ value: sd.id, label: sd.name }))}
+                                        value={filters.subDepartmentId}
+                                        onValueChange={(value) => setFilters({ ...filters, subDepartmentId: value || "all", employeeId: "all" })}
+                                        disabled={filters.departmentId === "all"}
+                                        placeholder="Select Sub Department"
+                                        searchPlaceholder="Search sub department..."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Employee</Label>
+                                    <Autocomplete
+                                        options={filteredEmployees.map(e => ({ value: e.id, label: `(${e.employeeId}) ${e.employeeName}` }))}
+                                        value={filters.employeeId}
+                                        onValueChange={(value) => setFilters({ ...filters, employeeId: value || "all" })}
+                                        placeholder="Select Employee"
+                                        searchPlaceholder="Search employee..."
+                                    />
+                                </div>
+                            </>
+                        )}
                         <div className="space-y-2">
                             <Label>Month-Year</Label>
                             <MonthYearPicker

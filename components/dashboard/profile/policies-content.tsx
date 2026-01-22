@@ -25,9 +25,36 @@ export function PoliciesContent({ employee }: PoliciesContentProps) {
           <div className="text-2xl font-bold">
             {employee.workingHoursPolicyRelation?.name || "N/A"}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-1 mb-4">
             Assigned Schedule
           </p>
+          
+          {employee.workingHoursPolicyRelation && (
+            <div className="space-y-2 text-sm border-t pt-4">
+                <div className="flex justify-between">
+                    <span className="text-muted-foreground">Timing:</span>
+                    <span className="font-medium">
+                        {employee.workingHoursPolicyRelation.startWorkingHours} - {employee.workingHoursPolicyRelation.endWorkingHours}
+                    </span>
+                </div>
+                {employee.workingHoursPolicyRelation.startBreakTime && (
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Break:</span>
+                        <span className="font-medium">
+                            {employee.workingHoursPolicyRelation.startBreakTime} - {employee.workingHoursPolicyRelation.endBreakTime}
+                        </span>
+                    </div>
+                )}
+                {employee.workingHoursPolicyRelation.lateStartTime && (
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Late After:</span>
+                        <span className="font-medium text-destructive">
+                            {employee.workingHoursPolicyRelation.lateStartTime}
+                        </span>
+                    </div>
+                )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

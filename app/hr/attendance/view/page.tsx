@@ -44,6 +44,8 @@ interface DailyAttendanceRecord {
   notes?: string | null;
 }
 
+import { useAuth } from "@/components/providers/auth-provider";
+
 export default function Page() {
   return (
     <Suspense> <ViewEmployeeAttendanceDetailPage /></Suspense>
@@ -53,6 +55,8 @@ function ViewEmployeeAttendanceDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const { user, isAdmin } = useAuth();
+  
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
@@ -63,7 +67,28 @@ function ViewEmployeeAttendanceDetailPage() {
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Editing state
+  // Initialize filters
+  const [filters, setFilters] = useState({
+    department: searchParams.get('department') || "all",
+    subDepartment: searchParams.get('subDepartment') || "all",
+    employeeId: searchParams.get('employeeId') || "",
+  });
+
+  // Handle user-specific view restriction
+  useEffect(() => {
+    if (user && !isAdmin() && user.employeeId) {
+        // If regular user (not admin), force their employee ID
+        setFilters(prev => ({
+            ...prev,
+            employeeId: user.employeeId || "",
+            department: "all", // Hide department filter
+            subDepartment: "all" // Hide sub-department filter
+        }));
+        // Auto-trigger search for the user
+        setHasSearched(true);
+    }
+  }, [user, isAdmin]);
+
   const [editingRecord, setEditingRecord] = useState<{
     serialNo: number;
     field: 'checkIn' | 'checkOut' | 'status';
@@ -74,13 +99,6 @@ function ViewEmployeeAttendanceDetailPage() {
     status: 'present' | 'absent';
   }>({ checkIn: '', checkOut: '', status: 'present' });
   const [saving, setSaving] = useState(false);
-
-  // Initialize filters - Department first, then sub-department, then employee
-  const [filters, setFilters] = useState({
-    department: searchParams.get('department') || "all",
-    subDepartment: searchParams.get('subDepartment') || "all",
-    employeeId: searchParams.get('employeeId') || "",
-  });
 
   // Default date range: current month
   const getInitialDateRange = (): DateRange => {
@@ -610,100 +628,122 @@ function ViewEmployeeAttendanceDetailPage() {
           <CardDescription>Select department, employee, and date range to view attendance</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Department</Label>
-              {loading ? (
-                <div className="h-10 bg-muted rounded animate-pulse" />
-              ) : (
-                <Autocomplete
-                  options={[
-                    { value: "all", label: "All Departments" },
-                    ...departments.map((dept) => ({
-                      value: dept.id,
-                      label: dept.name,
-                    })),
-                  ]}
-                  value={filters.department}
-                  onValueChange={(value) => {
-                    updateFilters({
-                      department: value || "all",
-                      subDepartment: "all",
-                      employeeId: "", // Reset employee when department changes
-                    });
+          {/* Admin filters */}
+          {isAdmin() && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label>Department</Label>
+                {loading ? (
+                  <div className="h-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  <Autocomplete
+                    options={[
+                      { value: "all", label: "All Departments" },
+                      ...departments.map((dept) => ({
+                        value: dept.id,
+                        label: dept.name,
+                      })),
+                    ]}
+                    value={filters.department}
+                    onValueChange={(value) => {
+                      updateFilters({
+                        department: value || "all",
+                        subDepartment: "all",
+                        employeeId: "", // Reset employee when department changes
+                      });
+                    }}
+                    placeholder="Select department"
+                    searchPlaceholder="Search department..."
+                    emptyMessage="No departments found"
+                  />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Sub Department</Label>
+                {loading || loadingSubDepartments ? (
+                  <div className="h-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  <Autocomplete
+                    options={[
+                      { value: "all", label: "All Sub Departments" },
+                      ...subDepartments.map((subDept) => ({
+                        value: subDept.id,
+                        label: subDept.name,
+                      })),
+                    ]}
+                    value={filters.subDepartment}
+                    onValueChange={(value) => {
+                      updateFilters({
+                        subDepartment: value || "all",
+                        employeeId: "", // Reset employee when sub-department changes
+                      });
+                    }}
+                    placeholder={filters.department !== "all" ? "Select sub-department" : "Select department first"}
+                    searchPlaceholder="Search sub department..."
+                    emptyMessage="No sub departments found"
+                    disabled={!filters.department || filters.department === "all" || loadingSubDepartments}
+                    isLoading={loadingSubDepartments}
+                  />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Employee <span className="text-destructive">*</span></Label>
+                {loading ? (
+                  <div className="h-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  <Autocomplete
+                    options={[
+                      { value: "all", label: "All Employees", description: "View all filtered employees" },
+                      ...filteredEmployees.map((emp) => ({
+                        value: emp.id,
+                        label: `${emp.employeeName} (${emp.employeeId})`,
+                        description: emp.departmentName,
+                      }))]}
+                    value={filters.employeeId}
+                    onValueChange={(value) => updateFilters({ employeeId: value || "" })}
+                    placeholder="Select employee"
+                    searchPlaceholder="Search employee..."
+                    emptyMessage="No employees found"
+                  />
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>Date Range</Label>
+                <DateRangePicker
+                  initialDateFrom={dateRange.from}
+                  initialDateTo={dateRange.to}
+                  showCompare={false}
+                  onUpdate={(values) => {
+                    if (values.range) {
+                      setDateRange(values.range);
+                    }
                   }}
-                  placeholder="Select department"
-                  searchPlaceholder="Search department..."
-                  emptyMessage="No departments found"
                 />
-              )}
+              </div>
             </div>
+          )}
 
-            <div className="space-y-2">
-              <Label>Sub Department</Label>
-              {loading || loadingSubDepartments ? (
-                <div className="h-10 bg-muted rounded animate-pulse" />
-              ) : (
-                <Autocomplete
-                  options={[
-                    { value: "all", label: "All Sub Departments" },
-                    ...subDepartments.map((subDept) => ({
-                      value: subDept.id,
-                      label: subDept.name,
-                    })),
-                  ]}
-                  value={filters.subDepartment}
-                  onValueChange={(value) => {
-                    updateFilters({
-                      subDepartment: value || "all",
-                      employeeId: "", // Reset employee when sub-department changes
-                    });
+          {/* User view - Only date range */}
+          {!isAdmin() && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date Range</Label>
+                <DateRangePicker
+                  initialDateFrom={dateRange.from}
+                  initialDateTo={dateRange.to}
+                  showCompare={false}
+                  onUpdate={(values) => {
+                    if (values.range) {
+                      setDateRange(values.range);
+                    }
                   }}
-                  placeholder={filters.department !== "all" ? "Select sub-department" : "Select department first"}
-                  searchPlaceholder="Search sub department..."
-                  emptyMessage="No sub departments found"
-                  disabled={!filters.department || filters.department === "all" || loadingSubDepartments}
-                  isLoading={loadingSubDepartments}
                 />
-              )}
+              </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>Employee <span className="text-destructive">*</span></Label>
-              {loading ? (
-                <div className="h-10 bg-muted rounded animate-pulse" />
-              ) : (
-                <Autocomplete
-                  options={[
-                    { value: "all", label: "All Employees", description: "View all filtered employees" },
-                    ...filteredEmployees.map((emp) => ({
-                      value: emp.id,
-                      label: `${emp.employeeName} (${emp.employeeId})`,
-                      description: emp.departmentName,
-                    }))]}
-                  value={filters.employeeId}
-                  onValueChange={(value) => updateFilters({ employeeId: value || "" })}
-                  placeholder="Select employee"
-                  searchPlaceholder="Search employee..."
-                  emptyMessage="No employees found"
-                />
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label>Date Range</Label>
-              <DateRangePicker
-                initialDateFrom={dateRange.from}
-                initialDateTo={dateRange.to}
-                showCompare={false}
-                onUpdate={(values) => {
-                  if (values.range) {
-                    setDateRange(values.range);
-                  }
-                }}
-              />
-            </div>
-          </div>
+          )}
 
           <div className="flex gap-2 pt-2">
             <Button onClick={handleSearch} disabled={loading || !filters.employeeId || loadingAttendance}>

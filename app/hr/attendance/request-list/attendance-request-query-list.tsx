@@ -97,7 +97,7 @@ export function AttendanceRequestQueryList({
           { key: "department", label: "Department" },
           { key: "subDepartment", label: "Sub Department" },
         ]}
-        filters={[
+        filters={isAdmin() ? [
           {
             key: "department",
             label: "Department",
@@ -108,7 +108,7 @@ export function AttendanceRequestQueryList({
             label: "Employee",
             options: employeeOptions,
           }
-        ]}
+        ] : []}
         onFilterChange={handleFilterChange}
         resetFilterKey={selectedDepartment}
         tableId="attendance-request-query-list"

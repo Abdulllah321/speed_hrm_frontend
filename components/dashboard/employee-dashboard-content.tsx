@@ -274,7 +274,7 @@ export function EmployeeDashboardContent() {
                                     </Button>
 
                                     <Button asChild variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all group">
-                                        <Link href="/hr/attendance/my-attendance">
+                                        <Link href="/hr/attendance/summary">
                                             <div className="bg-green-100 p-2 rounded-md mr-3 text-green-600 dark:bg-green-900/20 dark:text-green-400 group-hover:scale-105 transition-transform">
                                                 <CalendarDays className="h-4 w-4" />
                                             </div>
@@ -286,7 +286,7 @@ export function EmployeeDashboardContent() {
                                     </Button>
 
                                     <Button asChild variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all group">
-                                        <Link href="/hr/payroll/payslip">
+                                        <Link href="/hr/payroll-setup/payroll/payslips">
                                             <div className="bg-purple-100 p-2 rounded-md mr-3 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400 group-hover:scale-105 transition-transform">
                                                 <FileText className="h-4 w-4" />
                                             </div>

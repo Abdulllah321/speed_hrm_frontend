@@ -34,7 +34,7 @@ export default function PasswordPage() {
         setLoading(true);
 
         try {
-            const res = await fetchWithAuth("/api/auth/change-password", {
+            const res = await fetchWithAuth("/auth/change-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

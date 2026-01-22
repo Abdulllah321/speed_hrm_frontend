@@ -283,21 +283,29 @@ export const menuData: MenuItem[] = [
       "attendance.update",
       "attendance-exemption.read",
       "attendance-request-query.read",
+      "working-hours-policy.read",
+      "holiday.read",
     ],
     children: [
       {
         title: "Attendance",
-        permissions: ["attendance.read", "attendance.update"],
+        permissions: [
+          "attendance.read",
+          "attendance.update",
+          "attendance-exemption.read",
+          "attendance-request-query.read",
+          "request-forwarding.read"
+        ],
         children: [
           { title: "Manage", href: "/hr/attendance/manage", permissions: ["attendance.update"] },
           { title: "View", href: "/hr/attendance/view", permissions: ["attendance.read"] },
           { title: "Summary", href: "/hr/attendance/summary", permissions: ["attendance.read"] },
-          { title: "Request", href: "/hr/attendance/request", permissions: ["attendance.read"] },
-          { title: "Request List", href: "/hr/attendance/request-list", permissions: ["attendance.read"] },
+          { title: "Request", href: "/hr/attendance/request", permissions: ["attendance-request-query.create"] },
+          { title: "Request List", href: "/hr/attendance/request-list", permissions: ["attendance-request-query.read"] },
           {
             title: "Exemptions",
             href: "/hr/attendance/exemptions",
-            permissions: ["attendance-exemption.read"],
+            permissions: ["attendance-exemption.create"],
           },
           {
             title: "Exemptions List",
@@ -307,29 +315,29 @@ export const menuData: MenuItem[] = [
           {
             title: "Request Forwarding",
             href: "/hr/request-forwarding?type=attendance",
-            permissions: ["attendance.read"],
+            permissions: ["request-forwarding.read"],
           },
         ],
       },
       {
         title: "Working Hours Policy",
-        permissions: ["attendance.read"],
+        permissions: ["working-hours-policy.read"],
         children: [
-          { title: "Create", href: "/hr/working-hours/create", permissions: ["attendance.read"] },
-          { title: "View", href: "/hr/working-hours/view", permissions: ["attendance.read"] },
+          { title: "Create", href: "/hr/working-hours/create", permissions: ["working-hours-policy.create"] },
+          { title: "View", href: "/hr/working-hours/view", permissions: ["working-hours-policy.read"] },
           {
             title: "Assign Policy",
             href: "/hr/working-hours/assign-policy",
-            permissions: ["attendance.read"],
+            permissions: ["working-hours-policy.update"],
           },
         ],
       },
       {
         title: "Holidays",
-        permissions: ["attendance.read"],
+        permissions: ["holiday.read"],
         children: [
-          { title: "Create", href: "/hr/holidays/add", permissions: ["attendance.read"] },
-          { title: "List", href: "/hr/holidays/list", permissions: ["attendance.read"] },
+          { title: "Create", href: "/hr/holidays/add", permissions: ["holiday.create"] },
+          { title: "List", href: "/hr/holidays/list", permissions: ["holiday.read"] },
         ],
       },
     ],
@@ -371,8 +379,8 @@ export const menuData: MenuItem[] = [
         permissions: ["payroll.read", "payroll.create"],
         children: [
           { title: "Create", href: "/hr/payroll-setup/payroll/create", permissions: ["payroll.create"] },
-          { title: "View Report", href: "/hr/payroll-setup/payroll/report", permissions: ["payroll.read"] },
-          { title: "Bank Report", href: "/hr/payroll-setup/payroll/bank-report", permissions: ["payroll.read"] },
+          { title: "View Report", href: "/hr/payroll-setup/payroll/report", permissions: ["payroll.create"] },
+          { title: "Bank Report", href: "/hr/payroll-setup/payroll/bank-report", permissions: ["payroll.create"] },
           { title: "Payslips Emails", href: "/hr/payroll-setup/payroll/payslips", permissions: ["payroll.read"] },
         ],
       },
@@ -571,7 +579,8 @@ export function filterMenuByPermissions(
       let children = item.children ? filterItems(item.children) : undefined;
       
       // If item has children and all children were filtered out, hide parent
-      if (item.children && (!children || children.length === 0) && !item.href) {
+      // UNLESS it's "Profile Settings" which should always be shown
+      if (item.children && (!children || children.length === 0) && !item.href && item.title !== "Profile Settings") {
         if (process.env.NODE_ENV === 'development') {
           console.log(`RBAC Filter Parent: ${item.title} - All children filtered out, hiding parent`);
         }
@@ -617,14 +626,17 @@ export function filterMenuByPermissions(
         // if they're explicitly public items like Dashboard
         // For security, we'll hide items without permissions unless they're explicitly marked
         // Dashboard is an exception - it should be visible to all authenticated users
-        if (item.title === "Dashboard" || item.title === "Profile Settings") {
+        if (item.title === "Dashboard" || item.title === "Profile Settings" || item.title === "Change Password" || item.title === "Edit Profile") {
           allowed = true; // Allow Dashboard and Profile Settings for all authenticated users
         } else if (item.children && (!children || children.length === 0)) {
           // Hide items without permissions if they have no accessible children
+          // UNLESS it's "Profile Settings"
           if (process.env.NODE_ENV === 'development') {
             console.log(`RBAC Filter Item: ${item.title} - No permissions defined and no accessible children, hiding for security`);
           }
-          continue;
+          if (item.title !== "Profile Settings") {
+             continue;
+          }
         } else if (item.children && children && children.length > 0) {
           // Item has no permissions but has accessible children - show it
           allowed = true;

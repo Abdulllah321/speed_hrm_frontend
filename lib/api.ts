@@ -112,7 +112,16 @@ export interface Employee {
   countryRelation?: { id: string; name: string };
   stateRelation?: { id: string; name: string };
   cityRelation?: { id: string; name: string };
-  workingHoursPolicyRelation?: { id: string; name: string };
+  workingHoursPolicyRelation?: { 
+    id: string; 
+    name: string;
+    startWorkingHours?: string;
+    endWorkingHours?: string;
+    startBreakTime?: string;
+    endBreakTime?: string;
+    lateStartTime?: string;
+    shortDayMins?: number;
+  };
   leavesPolicyRelation?: { id: string; name: string };
   avatarUrl?: string | null;
   qualifications?: {

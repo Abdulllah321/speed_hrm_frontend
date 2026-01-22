@@ -32,8 +32,9 @@ export async function getUsers(): Promise<{ status: boolean; data: User[]; messa
       cache: "no-store",
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
-    const data = await res.json();
-    return { status: true, data: Array.isArray(data) ? data : [] };
+    const payload = await res.json();
+    const users = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
+    return { status: true, data: users };
   } catch (error) {
     console.error("Failed to fetch users:", error);
     return { status: false, data: [], message: "Failed to fetch users" };
@@ -90,13 +91,16 @@ export async function createUser(data: {
 export async function updateUserRole(userId: string, roleId: string | null) {
   try {
     const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/users/${userId}`, {
-      method: "PATCH",
+    const res = await fetch(`${API_BASE}/auth/users/update`, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify({ roleId }),
+      body: JSON.stringify({
+        id: userId,
+        data: { roleId }
+      }),
     });
 
     if (!res.ok) {

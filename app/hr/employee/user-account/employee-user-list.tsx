@@ -160,7 +160,7 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
         columns={columns}
         data={rows}
         searchFields={[{ key: "email", label: "Email" }, { key: "employeeName", label: "Name" }]}
-        toggleAction={canCreate ? () => {} : undefined}
+        toggleAction={canCreate ? () => router.push("/hr/employee/user-account/create") : undefined}
         actionText="Create User Account"
         title="User Accounts"
         onMultiDelete={undefined}

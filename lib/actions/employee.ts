@@ -132,6 +132,8 @@ export interface EmployeeDropdownOption {
   subDepartmentName?: string | null;
   designationName?: string | null;
   providentFund?: boolean;
+  officialEmail?: string | null;
+  personalEmail?: string | null;
 }
 
 // Get employees for dropdown (minimal fields)

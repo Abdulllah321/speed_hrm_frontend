@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const CHECK_INTERVAL = 5 * 60 * 1000; // Check every 5 minutes (proactive refresh handles token expiration)
+const CHECK_INTERVAL = 30 * 60 * 1000; // Check every 5 minutes (proactive refresh handles token expiration)
 
 export function SessionChecker() {
   const router = useRouter();
@@ -58,15 +58,8 @@ export function SessionChecker() {
     // Set up interval
     const interval = setInterval(performCheck, CHECK_INTERVAL);
 
-    // Also check on window focus
-    const handleFocus = () => {
-      performCheck();
-    };
-    window.addEventListener("focus", handleFocus);
-
     return () => {
       clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
     };
   }, [performCheck]);
 
