@@ -16,6 +16,7 @@ import {
   Upload,
   MoreHorizontal,
   Download,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   getEmployees,
@@ -210,6 +211,12 @@ export default function EmployeeListPage() {
                 <Link href={`/hr/employee/edit/${employee.id}`}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/hr/employee/user-account/create?employeeId=${employee.id}`}>
+                  <LayoutDashboard className="h-4 w-4 mr-2" />
+                  Dashboard Access
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem

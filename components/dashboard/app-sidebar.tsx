@@ -383,7 +383,7 @@ export function AppSidebar() {
             <div className="flex items-center justify-center size-8 rounded-lg overflow-hidden bg-transparent">
               <Image
                 src="/logo.png"
-                alt="Innovative Network Logo"
+                alt="Speed (Pvt.) Limited Logo"
                 width={32}
                 height={32}
                 className="object-contain"
@@ -394,7 +394,7 @@ export function AppSidebar() {
                 Powered by
               </span>
               <span className="text-xs font-semibold text-sidebar-foreground truncate">
-                Innovative Network
+                Speed (Pvt.) Limited
               </span>
             </div>
           </div>
@@ -402,7 +402,7 @@ export function AppSidebar() {
             <div className="flex items-center justify-center size-8 rounded-lg overflow-hidden bg-transparent">
               <Image
                 src="/logo.png"
-                alt="Innovative Network Logo"
+                alt="Speed (Pvt.) Limited Logo"
                 width={32}
                 height={32}
                 className="object-contain"

@@ -11,7 +11,7 @@ import { Loader2 } from "lucide-react";
 import type { Employee } from "@/lib/actions/employee";
 import type { Role } from "@/lib/actions/roles";
 import type { User } from "@/lib/actions/users";
-import { updateUserRole, createUser, updateUserDashboardAccess } from "@/lib/actions/users";
+import { updateUserRole, createUser } from "@/lib/actions/users";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Row {
@@ -70,22 +70,6 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
       isDashboardEnabled: matchedUser?.isDashboardEnabled || false,
     };
   });
-
-  const handleDashboardAccess = (row: Row, checked: boolean) => {
-    if (!canUpdate || !row.userId) return;
-    
-    setSavingForId(row.employeeId);
-    startTransition(async () => {
-      const result = await updateUserDashboardAccess(row.userId!, checked);
-      if (result.status) {
-        toast.success(checked ? "Dashboard access granted" : "Dashboard access revoked");
-        router.refresh();
-      } else {
-        toast.error(result.message || "Failed to update dashboard access");
-      }
-      setSavingForId(null);
-    });
-  };
 
   const handleAssign = (row: Row, newRoleId: string | null) => {
     if (!canUpdate) return;
@@ -191,29 +175,6 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
           {row.original.status}
         </Badge>
       ),
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      cell: ({ row }) => {
-        const r = row.original;
-        return (
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id={`dashboard-${r.employeeId}`} 
-              checked={r.isDashboardEnabled}
-              onCheckedChange={(checked) => handleDashboardAccess(r, checked as boolean)}
-              disabled={!canUpdate || isPending || savingForId === r.employeeId}
-            />
-            <label 
-              htmlFor={`dashboard-${r.employeeId}`}
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-            >
-              Assign User Dashboard
-            </label>
-          </div>
-        );
-      },
     },
   ];
 
