@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useTransition, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -53,6 +53,7 @@ interface UserAccountFormProps {
 
 export function UserAccountForm({ employees, roles }: UserAccountFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [employeeOpen, setEmployeeOpen] = useState(false);
 
@@ -94,6 +95,14 @@ export function UserAccountForm({ employees, roles }: UserAccountFormProps) {
       }
       setEmployeeOpen(false);
   }
+
+  useEffect(() => {
+    const employeeIdParam = searchParams.get("employeeId");
+    if (employeeIdParam) {
+        // Use setTimeout to ensure form is ready, though useEffect runs after render
+        handleEmployeeSelect(employeeIdParam);
+    }
+  }, [searchParams, employees]); // Added dependencies
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     startTransition(async () => {
