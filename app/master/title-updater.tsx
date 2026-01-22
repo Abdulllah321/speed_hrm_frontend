@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useEnvironment } from "@/components/providers/environment-provider";
 
 // Map route segments to display names
 const routeNameMap: Record<string, string> = {
@@ -44,6 +45,8 @@ const actionNameMap: Record<string, string> = {
 
 export function MasterTitleUpdater() {
   const pathname = usePathname();
+  const { environment } = useEnvironment();
+  const systemName = environment === "ERP" ? "ERP System" : "HR Management System";
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -57,7 +60,7 @@ export function MasterTitleUpdater() {
     
     if (masterIndex === -1) {
       // Not in master section, use default
-      document.title = "Master Data Management | HR Management System";
+      document.title = `Master Data Management | ${systemName}`;
       return;
     }
 
@@ -87,8 +90,8 @@ export function MasterTitleUpdater() {
       "List";
 
     // Update document title
-    document.title = `${entityName} ${actionName} | Master Data | HR Management System`;
-  }, [pathname]);
+    document.title = `${entityName} ${actionName} | Master Data | ${systemName}`;
+  }, [pathname, environment, systemName]);
 
   return null;
 }

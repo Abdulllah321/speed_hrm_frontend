@@ -9,8 +9,9 @@ import { HeaderUserMenu } from "@/components/dashboard/header-user-menu";
 import { HeaderMasterMenu } from "@/components/dashboard/header-master-menu";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import { SessionChecker } from "@/components/auth/session-checker";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
-import { Search, X, Sparkles } from "lucide-react";
+import { Search, X, Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface DashboardLayoutProps {
@@ -18,28 +19,8 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
+  const { user } = useAuth();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [erpMode, setErpMode] = useState(false);
-
-  useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("erp-mode") : null;
-    const isOn = saved === "on";
-    setErpMode(isOn);
-    if (typeof document !== "undefined") {
-      document.documentElement.dataset.erpMode = isOn ? "on" : "off";
-    }
-  }, []);
-
-  const toggleErpMode = () => {
-    const next = !erpMode;
-    setErpMode(next);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("erp-mode", next ? "on" : "off");
-    }
-    if (typeof document !== "undefined") {
-      document.documentElement.dataset.erpMode = next ? "on" : "off";
-    }
-  };
 
   return (
     <SidebarProvider>
@@ -65,28 +46,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </Button>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <HeaderMasterMenu />
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-              <Button
-                variant={erpMode ? "default" : "outline"}
-                size="sm"
-                className={`relative overflow-hidden transition-all duration-200 ${erpMode ? "animate-pulse shadow-md" : "hover:shadow-sm"}`}
-                onClick={toggleErpMode}
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                <span className="hidden lg:inline">{erpMode ? "ERP Mode On" : "Switch to ERP mode"}</span>
-                <span className="lg:hidden">{erpMode ? "ERP" : "ERP"}</span>
-                <motion.span
-                  className="absolute inset-0 rounded-md"
-                  initial={false}
-                  animate={erpMode ? { opacity: [0.2, 0.5, 0.2] } : { opacity: 0 }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  style={{
-                    background:
-                      "radial-gradient(120% 120% at 50% 50%, rgba(99,102,241,0.15) 0%, rgba(147,51,234,0.15) 50%, transparent 100%)",
-                  }}
-                />
-              </Button>
-            </motion.div>
             <ThemeToggle />
             <HeaderNotifications />
             <HeaderUserMenu />

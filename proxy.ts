@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
 const publicRoutes = ["/auth/login"];
 
 // Routes that require authentication
-const protectedRoutes = ["/hr", "/admin", "/master"];
+const protectedRoutes = ["/hr", "/admin", "/master", "/erp"];
 
 // Admin-only routes
 const adminRoutes = ["/admin"];
@@ -165,6 +165,10 @@ export default function middleware(request: NextRequest): NextResponse {
     if (cleanPath.startsWith("admin/") || cleanPath.startsWith("activity-logs")) {
       return "admin";
     }
+
+    if (cleanPath.startsWith("/erp") || cleanPath.startsWith("finance")){
+      return "erp";
+    }
     
     // HR paths (default)
     return "hr";
@@ -295,6 +299,12 @@ export default function middleware(request: NextRequest): NextResponse {
     return NextResponse.redirect(adminUrl);
   }
 
+  if (pathname.startsWith("/erp") && currentSubdomain !== "erp") {
+    const erpPath = pathname.replace("/erp", "") || "/";
+    const erpUrl = buildUrl("erp", erpPath);
+    return NextResponse.redirect(erpUrl);
+  }
+
   // Special handling for other subdomains (hr, admin, master)
   if (currentSubdomain && currentSubdomain !== "auth") {
     // If path doesn't start with subdomain prefix and it's not a system path
@@ -335,13 +345,12 @@ export default function middleware(request: NextRequest): NextResponse {
       return NextResponse.redirect(targetUrl);
     }
   }
-  
   // Middleware reads cookies for authentication checks
   const accessToken = request.cookies.get("accessToken")?.value;
   const userRole = request.cookies.get("userRole")?.value;
 
   const isAuthenticated = !!accessToken;
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route)) || pathname.startsWith("/hr") || pathname.startsWith("/admin") || pathname.startsWith("/master");
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route)) || pathname.startsWith("/hr") || pathname.startsWith("/admin") || pathname.startsWith("/master") || pathname.startsWith("/erp");
   const isAdminRoute = pathname.startsWith("/admin");
 
   // Redirect unauthenticated users to login on auth subdomain

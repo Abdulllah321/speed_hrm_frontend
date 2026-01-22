@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Lora, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { EnvironmentProvider } from "@/components/providers/environment-provider";
 import { Toaster } from "sonner";
 
 const fontSans = Plus_Jakarta_Sans({
@@ -44,10 +45,12 @@ export default function RootLayout({
           defaultTheme="system"
           enableSystem
         >
-          <AuthProvider>
-            <Toaster />
-            {children}
-          </AuthProvider>
+          <EnvironmentProvider>
+            <AuthProvider>
+              <Toaster />
+              {children}
+            </AuthProvider>
+          </EnvironmentProvider>
         </ThemeProvider>
       </body>
     </html>

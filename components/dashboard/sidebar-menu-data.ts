@@ -15,6 +15,10 @@ import {
   Shield,
   Menu,
   Database,
+  Landmark,
+  Package,
+  ShoppingCart,
+  TrendingUp,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -24,6 +28,7 @@ export type MenuItem = {
   children?: MenuItem[];
   permissions?: string[];
   requireAllPermissions?: boolean;
+  environment?: "HR" | "ERP" | "BOTH";
 };
 
 export const masterMenuData: MenuItem[] = [
@@ -245,10 +250,119 @@ export const menuData: MenuItem[] = [
     title: "Dashboard",
     icon: LayoutDashboard,
     href: "/hr",
+    environment: "BOTH",
+  },
+  {
+    title: "Finance & Accounts",
+    icon: Landmark,
+    environment: "ERP",
+    permissions: ["finance.read"],
+    children: [
+      {
+        title: "Chart of Accounts",
+        children: [
+          { title: "List", href: "/erp/finance/chart-of-accounts" },
+          { title: "Create", href: "/erp/finance/chart-of-accounts/create" },
+        ],
+      },
+      {
+        title: "Journal Voucher",
+        children: [
+          { title: "List", href: "/erp/finance/journal-voucher" },
+          { title: "Create", href: "/erp/finance/journal-voucher/create" },
+        ],
+      },
+      {
+        title: "Bank Payment",
+        children: [
+          { title: "List", href: "/erp/finance/bank-payment" },
+          { title: "Create", href: "/erp/finance/bank-payment/create" },
+        ],
+      },
+      {
+        title: "Bank Receipt",
+        children: [
+          { title: "List", href: "/erp/finance/bank-receipt" },
+          { title: "Create", href: "/erp/finance/bank-receipt/create" },
+        ],
+      },
+      {
+        title: "Cash Payment",
+        children: [
+          { title: "List", href: "/erp/finance/cash-payment" },
+          { title: "Create", href: "/erp/finance/cash-payment/create" },
+        ],
+      },
+      {
+        title: "Cash Receipt",
+        children: [
+          { title: "List", href: "/erp/finance/cash-receipt" },
+          { title: "Create", href: "/erp/finance/cash-receipt/create" },
+        ],
+      },
+      {
+        title: "Reports",
+        children: [
+          { title: "General Ledger", href: "/erp/finance/reports/general-ledger" },
+          { title: "Trial Balance", href: "/erp/finance/reports/trial-balance" },
+          { title: "Balance Sheet", href: "/erp/finance/reports/balance-sheet" },
+          { title: "Profit & Loss", href: "/erp/finance/reports/profit-loss" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Inventory",
+    icon: Package,
+    environment: "ERP",
+    permissions: ["inventory.read"],
+    children: [
+      {
+         title: "Item Setup",
+         children: [
+            { title: "Items", href: "/erp/inventory/items" },
+            { title: "Categories", href: "/erp/inventory/categories" },
+            { title: "Warehouses", href: "/erp/inventory/warehouses" },
+         ]
+      },
+      {
+        title: "Transactions",
+        children: [
+             { title: "Stock Received", href: "/erp/inventory/stock-received" },
+             { title: "Delivery Note", href: "/erp/inventory/delivery-note" },
+             { title: "Stock Transfer", href: "/erp/inventory/stock-transfer" },
+        ]
+      }
+    ],
+  },
+  {
+    title: "Procurement",
+    icon: ShoppingCart,
+    environment: "ERP",
+    permissions: ["procurement.read"],
+    children: [
+      { title: "Vendors", href: "/erp/procurement/vendors" },
+      { title: "Purchase Requisition", href: "/erp/procurement/purchase-requisition" },
+      { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
+      { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
+    ],
+  },
+  {
+    title: "Sales",
+    icon: TrendingUp,
+    environment: "ERP",
+    permissions: ["sales.read"],
+    children: [
+      { title: "Customers", href: "/erp/sales/customers" },
+      { title: "Quotations", href: "/erp/sales/quotations" },
+      { title: "Sales Order", href: "/erp/sales/sales-order" },
+      { title: "Sales Invoice", href: "/erp/sales/sales-invoice" },
+    ],
   },
   {
     title: "Employee Setup",
     icon: Users,
+    environment: "HR",
     permissions: [
       "employee.read",
       "employee.create",
@@ -278,6 +392,7 @@ export const menuData: MenuItem[] = [
   {
     title: "Attendance Setup",
     icon: Clock,
+    environment: "HR",
     permissions: [
       "attendance.read",
       "attendance.update",
@@ -345,6 +460,7 @@ export const menuData: MenuItem[] = [
   {
     title: "Leaves Setup",
     icon: Palmtree,
+    environment: "HR",
     permissions: [
       "leave-application.read",
       "leave-application.create",
@@ -358,6 +474,7 @@ export const menuData: MenuItem[] = [
   {
     title: "Payroll Setup",
     icon: Wallet,
+    environment: "HR",
     permissions: [
       "payroll.read",
       "payroll.create",
@@ -521,9 +638,10 @@ export const menuData: MenuItem[] = [
     ],
   },
 {
-  title: "Profile Settings",
-  icon: Settings,
-  children: [
+    title: "Profile Settings",
+    icon: Settings,
+    environment: "BOTH",
+    children: [
     { title: "Change Password", href: "/hr/settings/password" },
     { title: "Edit Profile", href: "/hr/settings/profile" },
   ],

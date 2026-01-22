@@ -33,30 +33,45 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ChevronRight } from "lucide-react";
-import { MenuItem, menuData, filterMenuByPermissions } from "./sidebar-menu-data";
+import {
+  MenuItem,
+  menuData,
+  filterMenuByPermissions,
+} from "./sidebar-menu-data";
 import { cn } from "@/lib/utils";
 import { getCurrentSubdomain } from "@/lib/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useEnvironment } from "@/components/providers/environment-provider";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Normalize path by stripping subdomain prefix for comparison
-function normalizePathForComparison(path: string, currentSubdomain: string | null): string {
+function normalizePathForComparison(
+  path: string,
+  currentSubdomain: string | null,
+): string {
   if (!path) return path;
   if (!currentSubdomain) return path;
-  
+
   // Strip subdomain prefix if present (e.g., /hr/dashboard -> /dashboard)
   const prefix = `/${currentSubdomain}`;
   if (path.startsWith(prefix)) {
     const remaining = path.slice(prefix.length);
     return remaining || "/";
   }
-  
+
   return path;
 }
 
 function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
   const currentSubdomain = getCurrentSubdomain();
-  const normalizedPathname = normalizePathForComparison(pathname, currentSubdomain);
-  const normalizedHref = normalizePathForComparison(item.href || "", currentSubdomain);
+  const normalizedPathname = normalizePathForComparison(
+    pathname,
+    currentSubdomain,
+  );
+  const normalizedHref = normalizePathForComparison(
+    item.href || "",
+    currentSubdomain,
+  );
   const isActive = normalizedHref === normalizedPathname;
 
   if (item.children) {
@@ -82,12 +97,12 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
   }
 
   return (
-    <SidebarMenuSubButton 
-      asChild 
+    <SidebarMenuSubButton
+      asChild
       isActive={isActive}
       className={cn(
         "transition-all duration-200 hover:bg-sidebar-accent/60",
-        isActive && "bg-sidebar-accent/80 font-medium shadow-sm"
+        isActive && "bg-sidebar-accent/80 font-medium shadow-sm",
       )}
     >
       <Link href={item.href || "#"}>
@@ -97,11 +112,23 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
   );
 }
 
-function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: string }) {
+function MenuItemComponent({
+  item,
+  pathname,
+}: {
+  item: MenuItem;
+  pathname: string;
+}) {
   const Icon = item.icon;
   const currentSubdomain = getCurrentSubdomain();
-  const normalizedPathname = normalizePathForComparison(pathname, currentSubdomain);
-  const normalizedHref = normalizePathForComparison(item.href || "", currentSubdomain);
+  const normalizedPathname = normalizePathForComparison(
+    pathname,
+    currentSubdomain,
+  );
+  const normalizedHref = normalizePathForComparison(
+    item.href || "",
+    currentSubdomain,
+  );
   const isActive = normalizedHref === normalizedPathname;
   const { state } = useSidebar();
 
@@ -134,7 +161,7 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
 
       return (
         <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <SidebarMenuItem 
+          <SidebarMenuItem
             hasSubMenu={true}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -145,9 +172,9 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
                 <span className="sr-only">{item.title}</span>
               </SidebarMenuButton>
             </PopoverTrigger>
-            <PopoverContent 
-              side="right" 
-              align="start" 
+            <PopoverContent
+              side="right"
+              align="start"
               className="w-56 p-1"
               onOpenAutoFocus={(e) => e.preventDefault()}
               onMouseEnter={handleMouseEnter}
@@ -155,7 +182,11 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
             >
               <div className="space-y-1">
                 {item.children.map((child) => (
-                  <SubMenuItemInPopover key={child.title} item={child} pathname={pathname} />
+                  <SubMenuItemInPopover
+                    key={child.title}
+                    item={child}
+                    pathname={pathname}
+                  />
                 ))}
               </div>
             </PopoverContent>
@@ -170,7 +201,9 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
         <SidebarMenuItem hasSubMenu={true}>
           <CollapsibleTrigger asChild>
             <SidebarMenuButton className="cursor-pointer transition-all duration-200 hover:bg-sidebar-accent/80 hover:shadow-sm">
-              {Icon && <Icon className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:scale-110" />}
+              {Icon && (
+                <Icon className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:scale-110" />
+              )}
               <span>{item.title}</span>
               <ChevronRight className="ml-auto h-4 w-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
             </SidebarMenuButton>
@@ -191,42 +224,54 @@ function MenuItemComponent({ item, pathname }: { item: MenuItem; pathname: strin
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton 
-        asChild 
+      <SidebarMenuButton
+        asChild
         isActive={isActive}
         className={cn(
           "group relative transition-all duration-200",
           "hover:bg-sidebar-accent/80 hover:shadow-sm",
           isActive && "bg-sidebar-accent shadow-md font-semibold",
-          "data-[active=true]:bg-sidebar-accent data-[active=true]:shadow-md"
+          "data-[active=true]:bg-sidebar-accent data-[active=true]:shadow-md",
         )}
       >
         <Link href={item.href || "#"}>
           {Icon && (
-            <Icon className={cn(
-              "h-4 w-4 transition-transform duration-200",
-              isActive && "scale-110"
-            )} />
+            <Icon
+              className={cn(
+                "h-4 w-4 transition-transform duration-200",
+                isActive && "scale-110",
+              )}
+            />
           )}
           <span className="relative z-10">{item.title}</span>
           {isActive && (
             <div className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-3 rounded-r-full bg-primary transition-all duration-200" />
           )}
-          {
-            isActive && (
-              <div className="absolute right-[0.3rem] top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent transition-all duration-200" />
-            )
-          }
+          {isActive && (
+            <div className="absolute right-[0.3rem] top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent transition-all duration-200" />
+          )}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
 }
 
-function SubMenuItemInPopover({ item, pathname }: { item: MenuItem; pathname: string }) {
+function SubMenuItemInPopover({
+  item,
+  pathname,
+}: {
+  item: MenuItem;
+  pathname: string;
+}) {
   const currentSubdomain = getCurrentSubdomain();
-  const normalizedPathname = normalizePathForComparison(pathname, currentSubdomain);
-  const normalizedHref = normalizePathForComparison(item.href || "", currentSubdomain);
+  const normalizedPathname = normalizePathForComparison(
+    pathname,
+    currentSubdomain,
+  );
+  const normalizedHref = normalizePathForComparison(
+    item.href || "",
+    currentSubdomain,
+  );
   const isActive = normalizedHref === normalizedPathname;
 
   if (item.children) {
@@ -270,9 +315,9 @@ function SubMenuItemInPopover({ item, pathname }: { item: MenuItem; pathname: st
             <ChevronRight className="h-4 w-4" />
           </button>
         </PopoverTrigger>
-        <PopoverContent 
-          side="right" 
-          align="start" 
+        <PopoverContent
+          side="right"
+          align="start"
           className="w-56 p-1"
           onOpenAutoFocus={(e) => e.preventDefault()}
           onMouseEnter={handleMouseEnter}
@@ -280,7 +325,11 @@ function SubMenuItemInPopover({ item, pathname }: { item: MenuItem; pathname: st
         >
           <div className="space-y-1">
             {item.children.map((child) => (
-              <SubMenuItemInPopover key={child.title} item={child} pathname={pathname} />
+              <SubMenuItemInPopover
+                key={child.title}
+                item={child}
+                pathname={pathname}
+              />
             ))}
           </div>
         </PopoverContent>
@@ -302,78 +351,88 @@ function SubMenuItemInPopover({ item, pathname }: { item: MenuItem; pathname: st
   );
 }
 
-export function AppSidebar() {
+export function AppSidebar({
+  className,
+  ...props
+}: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user, hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
+  const { environment, setEnvironment } = useEnvironment();
 
   const filteredMenu = React.useMemo(() => {
-    // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('RBAC Debug - AppSidebar:', {
-        role: user?.role,
-        roleName: user?.role?.name || (user as any)?.role,
-        isAdmin: isAdmin(),
-        permissionsFromRole: user?.role?.permissions,
-        permissionsFlat: (user as any)?.permissions,
-        userObject: user,
-        menuItemsCount: menuData.length
-      });
-    }
-
-    const filtered = filterMenuByPermissions(menuData, {
+    // First filter by permissions
+    const permissionFiltered = filterMenuByPermissions(menuData, {
       hasAnyPermission,
       hasAllPermissions,
       isAdmin,
     });
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('RBAC Filtered Menu:', {
-        originalCount: menuData.length,
-        filteredCount: filtered.length,
-        filteredItems: filtered.map(item => item.title)
-      });
-    }
+    // Then filter by environment
+    const envFiltered = permissionFiltered.filter((item) => {
+      if (!item.environment || item.environment === "BOTH") return true;
+      return item.environment === environment;
+    });
 
-    return filtered;
-  }, [hasAnyPermission, hasAllPermissions, isAdmin, user]);
+    return envFiltered;
+  }, [hasAnyPermission, hasAllPermissions, isAdmin, user, environment]);
 
   return (
     <Sidebar collapsible="icon" className="border-0 overflow-hidden">
       <SidebarRail />
       <SidebarHeader className="border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm ">
-        <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
-          <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
-            <Image 
-              src={'/image.png'}
-              alt="Logo"
-              width={30}
-              height={30}
-              className="object-contain"
-            />
-          </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
-            <span className="font-bold text-base leading-tight text-sidebar-foreground">
-              Speed Pvt. Ltd
-            </span>
-            <span className="text-xs text-sidebar-foreground/60 font-medium">
-              Dashboard
-            </span>
+        <div className="flex flex-col gap-3 group-data-[collapsible=icon]:gap-0">
+          <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
+            <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
+              <Image
+                src={"/image.png"}
+                alt="Logo"
+                width={30}
+                height={30}
+                className="object-contain"
+              />
+            </div>
+            <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
+              <span className="font-bold text-base leading-tight text-sidebar-foreground">
+                Speed Pvt. Ltd
+              </span>
+              <span className="text-xs text-sidebar-foreground/60 font-medium">
+                Dashboard
+              </span>
+            </div>
           </div>
         </div>
       </SidebarHeader>
+
       <SidebarContent className="px-2 ">
-        <ScrollArea className="-mx-2 px-2" showShadows >
+        <div className="group-data-[collapsible=icon]:hidden mt-2">
+          <Tabs
+            defaultValue={environment}
+            value={environment}
+            onValueChange={(v) => setEnvironment(v as any)}
+            className="w-full"
+            variant="card"
+          >
+            <TabsList className="grid w-full grid-cols-2 h-8">
+              <TabsTrigger value="HR" className="text-xs">
+                HR
+              </TabsTrigger>
+              <TabsTrigger value="ERP" className="text-xs">
+                ERP
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+        <ScrollArea className="-mx-2 px-2" showShadows>
           <SidebarGroup>
-            <SidebarGroupLabel className="px-3 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-2 group-data-[collapsible=icon]:hidden">
-              Navigation
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="space-y-1">
+            <SidebarMenu className="space-y-1">
                 {filteredMenu.map((item) => (
-                  <MenuItemComponent key={item.title} item={item} pathname={pathname} />
+                  <MenuItemComponent
+                    key={item.title}
+                    item={item}
+                    pathname={pathname}
+                  />
                 ))}
               </SidebarMenu>
-            </SidebarGroupContent>
           </SidebarGroup>
         </ScrollArea>
       </SidebarContent>
@@ -414,4 +473,3 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
-

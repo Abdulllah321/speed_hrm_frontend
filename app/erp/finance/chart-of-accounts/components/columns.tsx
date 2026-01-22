@@ -1,0 +1,149 @@
+"use client";
+
+import { ColumnDef } from "@tanstack/react-table";
+import { ChartOfAccount } from "@/lib/actions/chart-of-account";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
+import { MoreHorizontal, ChevronRight, Folder, FileText } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { deleteChartOfAccount } from "@/lib/actions/chart-of-account";
+import { toast } from "sonner";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+export const columns: ColumnDef<ChartOfAccount>[] = [
+  {
+    accessorKey: "code",
+    header: "Code",
+    cell: ({ row }) => <span className="font-mono text-sm">{row.getValue("code")}</span>,
+  },
+  {
+    accessorKey: "name",
+    header: "Name",
+    cell: ({ row }) => {
+      const isGroup = row.original.isGroup;
+      
+      return (
+        <div 
+          className="flex items-center" 
+          style={{ paddingLeft: `${row.depth * 32}px` }}
+        >
+          {/* Tree connection lines could be added here if needed, but indentation + icons is usually cleaner */}
+          
+          {row.getCanExpand() ? (
+            <button
+              onClick={row.getToggleExpandedHandler()}
+              className={cn(
+                "mr-1 p-0.5 rounded-sm hover:bg-muted transition-transform duration-200",
+                row.getIsExpanded() && "rotate-90"
+              )}
+            >
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+          ) : (
+             // Spacer for non-expandable items to align with expandable ones
+             <span className="w-5 mr-1" />
+          )}
+
+          {isGroup ? (
+            <Folder className="mr-2 h-4 w-4 shrink-0 text-blue-500 fill-blue-500/20" />
+          ) : (
+            <FileText className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
+          )}
+          
+          <span className={cn(
+              "truncate transition-colors",
+              isGroup ? "font-semibold text-foreground" : "text-muted-foreground"
+          )}>
+            {row.getValue("name")}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "type",
+    header: "Type",
+    cell: ({ row }) => <Badge variant="outline" className="font-normal">{row.getValue("type")}</Badge>,
+  },
+  {
+    accessorKey: "isGroup",
+    header: "Group",
+    cell: ({ row }) => (
+      <Checkbox checked={row.getValue("isGroup")} disabled className="opacity-70" />
+    ),
+  },
+  {
+    accessorKey: "isActive",
+    header: "Active",
+    cell: ({ row }) => (
+      <Badge variant={row.getValue("isActive") ? "default" : "secondary"} className="rounded-full">
+        {row.getValue("isActive") ? "Active" : "Inactive"}
+      </Badge>
+    ),
+  },
+  {
+    accessorKey: "balance",
+    header: "Balance",
+    cell: ({ row }) => {
+      const amount = parseFloat(row.getValue("balance"));
+      const formatted = new Intl.NumberFormat("en-PK", {
+        style: "currency",
+        currency: "PKR",
+      }).format(amount);
+      return <div className="text-right font-medium font-mono">{formatted.replace('PKR', 'Rs.')}</div>;
+    },
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      const account = row.original;
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0 hover:bg-muted">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => navigator.clipboard.writeText(account.id)}
+            >
+              Copy ID
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <Link href={`/erp/finance/chart-of-accounts/edit/${account.id}`}>
+                <DropdownMenuItem>Edit</DropdownMenuItem>
+            </Link>
+            <DropdownMenuItem
+                className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                onClick={async () => {
+                    if (confirm("Are you sure you want to delete this account?")) {
+                        const res = await deleteChartOfAccount(account.id);
+                        if (res.status) {
+                            toast.success(res.message);
+                        } else {
+                            toast.error(res.message);
+                        }
+                    }
+                }}
+            >
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
+  },
+];
