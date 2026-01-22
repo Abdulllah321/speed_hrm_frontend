@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, LogIn, AlertCircle } from "lucide-react";
+import { Loader2, LogIn, AlertCircle, EyeOff, Eye } from "lucide-react";
 import { loginClient } from "@/lib/client-auth";
 import Image from "next/image";
 
@@ -25,9 +25,8 @@ function buildSubdomainUrl(subdomain: string, path: string, port?: string): stri
     const portStr = port || window.location.port || "3001";
     return `${protocol}//${subdomain}.${baseDomain}:${portStr}${path}`;
   } else {
-    // Extract base domain (e.g., "example.com" from "auth.example.com")
-    const parts = hostname.split(".");
-    const baseDomain = parts.length >= 2 ? parts.slice(-2).join(".") : hostname;
+    // For production, use spl.inplsoftwares.com as base
+    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN||"spl.inplsoftwares.com";
     return `${protocol}//${subdomain}.${baseDomain}${path}`;
   }
 }
@@ -82,6 +81,7 @@ export default function LoginPage() {
   
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -143,14 +143,34 @@ export default function LoginPage() {
           
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              required
-              disabled={isPending}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                required
+                disabled={isPending}
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isPending}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+                <span className="sr-only">
+                  {showPassword ? "Hide password" : "Show password"}
+                </span>
+              </Button>
+            </div>
           </div>
         </CardContent>
         

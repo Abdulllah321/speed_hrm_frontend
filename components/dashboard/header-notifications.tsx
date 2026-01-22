@@ -105,6 +105,7 @@ export function HeaderNotifications() {
     const res = await fetchWithAuth(`${API_BASE}/notifications/read-all`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
       cache: "no-store",
     });
     if (!res.ok) return;
