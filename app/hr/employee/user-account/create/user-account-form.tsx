@@ -228,7 +228,7 @@ export function UserAccountForm({ employees, roles }: UserAccountFormProps) {
                     <FormItem>
                     <FormLabel>Password (Optional)</FormLabel>
                     <FormControl>
-                        <Input type="password" placeholder="Leave blank for default: Password@123" {...field} />
+                        <Input type="text" placeholder="Leave blank for default: Password@123" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>

@@ -18,6 +18,7 @@ import { getEmployeeLeaveBalance, createLeaveApplication, type LeaveBalance, typ
 import { getLeaveRequests, type LeaveRequest } from "@/lib/actions/leave-requests";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
+import { useAuth } from "@/components/providers/auth-provider";
 
 const reasonOptions = [
   "Work-related commitments",
@@ -35,6 +36,7 @@ const dayTypeOptions = [
 ];
 
 export default function CreateLeavePage() {
+  const { user, isAdmin, hasPermission } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [leaveInfo, setLeaveInfo] = useState<EmployeeLeaveInfo | null>(null);
@@ -52,6 +54,12 @@ export default function CreateLeavePage() {
   });
   const [reasonForLeave, setReasonForLeave] = useState<string>("");
   const [addressWhileOnLeave, setAddressWhileOnLeave] = useState<string>("");
+
+  // Allow select employee if admin OR has leave-application.create permission (but NOT just for self)
+  // We'll assume leave-application.create is for HR/Admin to create for others if they are admin
+  // But standard users also have leave-application.create to create their own.
+  // So we rely on isAdmin() check for now to show/hide dropdown.
+  const canSelectEmployee = isAdmin();
 
   // Load employees
   useEffect(() => {
@@ -72,6 +80,17 @@ export default function CreateLeavePage() {
 
     fetchEmployees();
   }, []);
+
+  // Auto-select logged-in employee
+  useEffect(() => {
+    if (user?.employeeId && employees.length > 0) {
+      // Check if logged-in user is in the employee list
+      const employee = employees.find(e => e.id === user.employeeId);
+      if (employee) {
+        setSelectedEmployeeId(employee.id);
+      }
+    }
+  }, [user, employees]);
 
   // Load leave balance and requests when employee is selected
   useEffect(() => {
@@ -333,13 +352,24 @@ export default function CreateLeavePage() {
         <CardContent>
           <div className="space-y-2">
             <Label>Employee ID</Label>
-            <Autocomplete
-              options={employeeOptions}
-              value={selectedEmployeeId}
-              onValueChange={setSelectedEmployeeId}
-              placeholder="Select Employee"
-              searchPlaceholder="Search Employee..."
-            />
+            {canSelectEmployee ? (
+              <Autocomplete
+                options={employeeOptions}
+                value={selectedEmployeeId}
+                onValueChange={setSelectedEmployeeId}
+                placeholder="Select Employee"
+                searchPlaceholder="Search Employee..."
+              />
+            ) : (
+              <div className="p-3 bg-muted rounded-md border text-sm font-medium">
+                {selectedEmployeeId 
+                  ? employees.find(e => e.id === selectedEmployeeId)?.employeeName || "Loading..."
+                  : "Loading..."} 
+                {selectedEmployeeId && employees.find(e => e.id === selectedEmployeeId)?.employeeId 
+                  ? ` (${employees.find(e => e.id === selectedEmployeeId)?.employeeId})` 
+                  : ""}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -350,8 +350,8 @@ export const menuData: MenuItem[] = [
       "leave-application.create",
     ],
     children: [
-      { title: "Create Leave", href: "/hr/leaves/create-leaves" },
-      { title: "View Requests", href: "/hr/leaves/requests" },
+      { title: "Create Leave", href: "/hr/leaves/create-leaves", permissions: ["leave-application.create"] },
+      { title: "View Requests", href: "/hr/leaves/requests", permissions: ["leave-application.read"] },
     ],
   },
 

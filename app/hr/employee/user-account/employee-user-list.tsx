@@ -11,10 +11,12 @@ import { Loader2 } from "lucide-react";
 import type { Employee } from "@/lib/actions/employee";
 import type { Role } from "@/lib/actions/roles";
 import type { User } from "@/lib/actions/users";
-import { updateUserRole, createUser } from "@/lib/actions/users";
+import { updateUserRole, createUser, updateUserDashboardAccess } from "@/lib/actions/users";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Row {
   employeeId: string;
+  employeeCode: string;
   userId: string | null;
   roleId: string | null;
   employeeName: string;
@@ -22,6 +24,7 @@ interface Row {
   department: string;
   designation: string;
   status: string;
+  isDashboardEnabled: boolean;
 }
 
 interface Props {
@@ -49,11 +52,14 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
     }
   }
 
-  const rows: Row[] = employees.map((e) => {
+  const rows: Row[] = employees
+    .filter((e) => userByEmployeeId.has(e.id)) // Only include employees who have a user account
+    .map((e) => {
     const matchedUser = userByEmployeeId.get(e.id) || null;
     const email = matchedUser?.email || e.officialEmail || "";
     return {
       employeeId: e.id,
+      employeeCode: e.employeeId,
       userId: matchedUser?.id || null,
       roleId: matchedUser?.role?.id || null,
       employeeName: e.employeeName,
@@ -61,8 +67,25 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
       department: e.departmentName || e.department || "N/A",
       designation: e.designationName || e.designation || "N/A",
       status: e.status,
+      isDashboardEnabled: matchedUser?.isDashboardEnabled || false,
     };
   });
+
+  const handleDashboardAccess = (row: Row, checked: boolean) => {
+    if (!canUpdate || !row.userId) return;
+    
+    setSavingForId(row.employeeId);
+    startTransition(async () => {
+      const result = await updateUserDashboardAccess(row.userId!, checked);
+      if (result.status) {
+        toast.success(checked ? "Dashboard access granted" : "Dashboard access revoked");
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to update dashboard access");
+      }
+      setSavingForId(null);
+    });
+  };
 
   const handleAssign = (row: Row, newRoleId: string | null) => {
     if (!canUpdate) return;
@@ -113,7 +136,26 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
   };
 
   const columns: ColumnDef<Row>[] = [
-    { accessorKey: "employeeName", header: "Employee Name" },
+    { 
+      accessorKey: "employeeCode", 
+      header: "Employee ID",
+      cell: ({ row }) => <div className="font-medium">{row.getValue("employeeCode")}</div>
+    },
+    { 
+      accessorKey: "employeeName", 
+      header: "Employee Details",
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <div className="space-y-1">
+            <div className="font-medium">{r.employeeName}</div>
+            <div className="text-xs text-muted-foreground">
+              {r.department} • {r.designation}
+            </div>
+          </div>
+        );
+      }
+    },
     { accessorKey: "email", header: "Email / Username" },
     {
       accessorKey: "roleId",
@@ -126,7 +168,7 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
             onValueChange={(value) => handleAssign(r, value === "none" ? null : value)}
             disabled={!canUpdate || isPending || savingForId === r.employeeId}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select a role" />
             </SelectTrigger>
             <SelectContent>
@@ -141,8 +183,6 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
         );
       },
     },
-    { accessorKey: "department", header: "Department" },
-    { accessorKey: "designation", header: "Designation" },
     {
       accessorKey: "status",
       header: "Status",
@@ -151,6 +191,29 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
           {row.original.status}
         </Badge>
       ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const r = row.original;
+        return (
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id={`dashboard-${r.employeeId}`} 
+              checked={r.isDashboardEnabled}
+              onCheckedChange={(checked) => handleDashboardAccess(r, checked as boolean)}
+              disabled={!canUpdate || isPending || savingForId === r.employeeId}
+            />
+            <label 
+              htmlFor={`dashboard-${r.employeeId}`}
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              Assign User Dashboard
+            </label>
+          </div>
+        );
+      },
     },
   ];
 

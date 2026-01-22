@@ -11,6 +11,7 @@ export interface User {
   firstName: string;
   lastName: string;
   status: string;
+  isDashboardEnabled?: boolean;
   roleId?: string;
   role?: {
     id: string;
@@ -53,7 +54,8 @@ export async function createUser(data: {
     // Default password if not provided
     const payload = {
       ...data,
-      password: data.password || "Password@123" // Default password
+      password: data.password || "Password@123", // Default password
+      isDashboardEnabled: false // Explicitly disable dashboard access by default
     };
 
     const token = await getAccessToken();
@@ -112,5 +114,32 @@ export async function updateUserRole(userId: string, roleId: string | null) {
     return { status: true, message: "User role updated successfully" };
   } catch (error) {
     return { status: false, message: "Failed to update user role" };
+  }
+}
+
+export async function updateUserDashboardAccess(userId: string, hasAccess: boolean) {
+  try {
+    const token = await getAccessToken();
+    const res = await fetch(`${API_BASE}/auth/users/update`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify({
+        id: userId,
+        data: { isDashboardEnabled: hasAccess }
+      }),
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      return { status: false, message: error.message || "Failed to update dashboard access" };
+    }
+
+    revalidatePath("/hr/employee/user-account");
+    return { status: true, message: "Dashboard access updated successfully" };
+  } catch (error) {
+    return { status: false, message: "Failed to update dashboard access" };
   }
 }

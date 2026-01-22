@@ -262,7 +262,7 @@ export function EmployeeDashboardContent() {
                                 </CardHeader>
                                 <CardContent className="grid gap-3">
                                     <Button asChild variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all group">
-                                        <Link href="/hr/leave/application/create">
+                                        <Link href="/hr/leaves/create-leaves">
                                             <div className="bg-blue-100 p-2 rounded-md mr-3 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 group-hover:scale-105 transition-transform">
                                                 <FileText className="h-4 w-4" />
                                             </div>
