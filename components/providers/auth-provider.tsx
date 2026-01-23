@@ -309,6 +309,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check for first password status
   useEffect(() => {
     if (user?.isFirstPassword) {
+      document.documentElement.style.setProperty("--banner-height", "2.5rem");
+
       // You can implement forced redirect here if needed
       // if (pathname !== '/hr/settings/password') router.push('/hr/settings/password');
 
@@ -322,6 +324,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           onClick: () => router.push("/hr/settings/password"),
         },
       });
+    } else {
+      document.documentElement.style.setProperty("--banner-height", "0px");
     }
   }, [user, router]);
 

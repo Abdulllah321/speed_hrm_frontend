@@ -28,7 +28,7 @@ export type MenuItem = {
   children?: MenuItem[];
   permissions?: string[];
   requireAllPermissions?: boolean;
-  environment?: "HR" | "ERP" | "BOTH";
+  environment?: "HR" | "ERP" | "BOTH" | "ADMIN";
 };
 
 export const masterMenuData: MenuItem[] = [
@@ -638,6 +638,17 @@ export const menuData: MenuItem[] = [
     ],
   },
 {
+    title: "Admin",
+    icon: Shield,
+    environment: "ADMIN",
+    children: [
+      { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
+      { title: "Activity Logs", href: "/admin/activity-logs", icon: FileText },
+      { title: "Roles & Permissions", href: "/admin/roles", icon: Users },
+      { title: "System Settings", href: "/admin/settings", icon: Settings },
+    ],
+  },
+  {
     title: "Profile Settings",
     icon: Settings,
     environment: "BOTH",

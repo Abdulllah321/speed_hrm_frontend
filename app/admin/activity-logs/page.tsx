@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,13 +20,14 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, Printer, Download, RefreshCw, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, Search, Printer, Download, RefreshCw, Filter, ChevronLeft, ChevronRight, Activity } from "lucide-react";
 import { toast } from "sonner";
+import { io, Socket } from "socket.io-client";
 
 interface ActivityLog {
-  id: number;
-  userId: number | null;
-  user: { id: number; email: string; firstName: string; lastName: string } | null;
+  id: string;
+  userId: string | null;
+  user: { id: string; email: string; firstName: string; lastName: string } | null;
   action: string;
   module: string | null;
   entity: string | null;
@@ -71,37 +72,38 @@ export default function ActivityLogsPage() {
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const limit = 20;
+  const socketRef = useRef<Socket | null>(null);
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      // In real app, call API
-      // const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
-      // if (actionFilter) params.append('action', actionFilter);
-      // if (moduleFilter) params.append('module', moduleFilter);
-      // if (startDate) params.append('startDate', startDate);
-      // if (endDate) params.append('endDate', endDate);
-      // const res = await fetch(`/api/auth/activity-logs?${params}`);
-      // const result = await res.json();
-      // setData(result.data);
-
-      // Sample data
-      setData({
-        logs: [
-          { id: 1, userId: 1, user: { id: 1, email: "admin@company.com", firstName: "Admin", lastName: "User" }, action: "login", module: "auth", entity: null, entityId: null, description: "User logged in", oldValues: null, newValues: null, ipAddress: "192.168.1.100", userAgent: "Mozilla/5.0", status: "success", errorMessage: null, createdAt: new Date().toISOString() },
-          { id: 2, userId: 1, user: { id: 1, email: "admin@company.com", firstName: "Admin", lastName: "User" }, action: "create", module: "employees", entity: "Employee", entityId: "5", description: "Created employee: Ahmed Khan", oldValues: null, newValues: '{"name":"Ahmed Khan"}', ipAddress: "192.168.1.100", userAgent: "Mozilla/5.0", status: "success", errorMessage: null, createdAt: new Date(Date.now() - 3600000).toISOString() },
-          { id: 3, userId: 2, user: { id: 2, email: "hr@company.com", firstName: "HR", lastName: "Manager" }, action: "update", module: "employees", entity: "Employee", entityId: "3", description: "Updated employee: Sara Ali", oldValues: '{"status":"active"}', newValues: '{"status":"inactive"}', ipAddress: "192.168.1.101", userAgent: "Mozilla/5.0", status: "success", errorMessage: null, createdAt: new Date(Date.now() - 7200000).toISOString() },
-          { id: 4, userId: 1, user: { id: 1, email: "admin@company.com", firstName: "Admin", lastName: "User" }, action: "delete", module: "departments", entity: "Department", entityId: "2", description: "Deleted department: Marketing", oldValues: '{"name":"Marketing"}', newValues: null, ipAddress: "192.168.1.100", userAgent: "Mozilla/5.0", status: "success", errorMessage: null, createdAt: new Date(Date.now() - 10800000).toISOString() },
-          { id: 5, userId: null, user: null, action: "login", module: "auth", entity: null, entityId: null, description: "Login failed", oldValues: null, newValues: null, ipAddress: "192.168.1.200", userAgent: "Mozilla/5.0", status: "failure", errorMessage: "Invalid password", createdAt: new Date(Date.now() - 14400000).toISOString() },
-          { id: 6, userId: 1, user: { id: 1, email: "admin@company.com", firstName: "Admin", lastName: "User" }, action: "password_change", module: "auth", entity: null, entityId: null, description: "Password changed", oldValues: null, newValues: null, ipAddress: "192.168.1.100", userAgent: "Mozilla/5.0", status: "success", errorMessage: null, createdAt: new Date(Date.now() - 18000000).toISOString() },
-          { id: 7, userId: 2, user: { id: 2, email: "hr@company.com", firstName: "HR", lastName: "Manager" }, action: "logout", module: "auth", entity: null, entityId: null, description: "User logged out", oldValues: null, newValues: null, ipAddress: "192.168.1.101", userAgent: "Mozilla/5.0", status: "success", errorMessage: null, createdAt: new Date(Date.now() - 21600000).toISOString() },
-        ],
-        total: 7,
-        page: 1,
-        limit: 20,
-        totalPages: 1,
+      const params = new URLSearchParams({ 
+        page: page.toString(), 
+        limit: limit.toString() 
       });
+      if (actionFilter && actionFilter !== "all") params.append('action', actionFilter);
+      if (moduleFilter && moduleFilter !== "all") params.append('module', moduleFilter);
+      if (search) params.append('search', search);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const res = await fetch(`${API_URL}/activity-logs?${params}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          // Add Authorization header if needed, assuming cookie based or handled globally
+        },
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch logs');
+      }
+
+      const result = await res.json();
+      setData(result);
     } catch (error) {
+      console.error(error);
       toast.error("Failed to fetch activity logs");
     } finally {
       setLoading(false);
@@ -110,18 +112,95 @@ export default function ActivityLogsPage() {
 
   useEffect(() => {
     fetchLogs();
-  }, [page, actionFilter, moduleFilter, startDate, endDate]);
+  }, [page, actionFilter, moduleFilter, startDate, endDate]); // Removed search from dependency to avoid debouncing issues, search triggers manually or debounced ideally. But here let's keep it simple or add search button.
+  // Actually, let's add search to dependencies if we want auto-search, but usually we want debounce.
+  // For now, I'll add a search button or 'Enter' key handler.
+  
+  // Realtime connection
+  useEffect(() => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    // Extract base URL (remove /api)
+    const baseUrl = API_URL.replace(/\/api$/, '');
+    
+    socketRef.current = io(baseUrl, {
+      transports: ['websocket'],
+    });
 
-  const filteredLogs = data?.logs.filter((log) => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      log.user?.email.toLowerCase().includes(searchLower) ||
-      log.user?.firstName.toLowerCase().includes(searchLower) ||
-      log.description?.toLowerCase().includes(searchLower) ||
-      log.ipAddress?.toLowerCase().includes(searchLower)
-    );
-  }) || [];
+    socketRef.current.on('connect', () => {
+      console.log('Connected to Activity Logs WebSocket');
+    });
+
+    socketRef.current.on('activity_log', (newLog: ActivityLog) => {
+      // Only prepend if filters match or no filters active
+      // This is a simple client-side check, might not be perfect for all cases but good for UX
+      let matches = true;
+      if (actionFilter && actionFilter !== "all" && newLog.action !== actionFilter) matches = false;
+      if (moduleFilter && moduleFilter !== "all" && newLog.module !== moduleFilter) matches = false;
+      
+      if (matches) {
+        setData(prev => {
+          if (!prev) return null;
+          // Prepend new log and keep limit
+          const newLogs = [newLog, ...prev.logs].slice(0, limit);
+          return {
+            ...prev,
+            logs: newLogs,
+            total: prev.total + 1,
+          };
+        });
+        toast.info(`New activity: ${newLog.action} by ${newLog.user?.email || 'System'}`);
+      }
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [actionFilter, moduleFilter]); // Re-connect or just update listener logic? 
+  // Updating listener logic is better. But with useEffect dependency it will reconnect. 
+  // Better to use a ref for filters or just always update state and let the filter logic inside 'on' handle it.
+  // However, the 'on' callback captures the scope variables. 
+  // To avoid reconnecting, we can use a ref for the current filters.
+  
+  // Ref approach for filters to avoid reconnecting socket
+  const filtersRef = useRef({ actionFilter, moduleFilter });
+  useEffect(() => {
+    filtersRef.current = { actionFilter, moduleFilter };
+  }, [actionFilter, moduleFilter]);
+  
+  // Wait, I put [actionFilter, moduleFilter] in the socket useEffect dependency, so it reconnects.
+  // That's fine for now, it ensures the closure has fresh values.
+
+  const handleSearch = () => {
+    setPage(1);
+    fetchLogs();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  const clearFilters = () => {
+    setSearch("");
+    setActionFilter("");
+    setModuleFilter("");
+    setStartDate("");
+    setEndDate("");
+    setPage(1);
+    // fetchLogs will trigger due to dependency change (except search)
+    // If search is not in dependency, we need to call fetchLogs manually or add it.
+    // Let's add search to dependency of fetchLogs useEffect but only if we want auto-search.
+    // If not, we should call fetchLogs here.
+    // But since other states change, it will trigger.
+  };
+
+  // Re-trigger fetch when search is cleared?
+  useEffect(() => {
+    if (search === "") fetchLogs();
+  }, [search]);
 
   const handlePrint = () => {
     const printWindow = window.open("", "_blank");
@@ -131,15 +210,16 @@ export default function ActivityLogsPage() {
       <style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;font-size:10px}th,td{border:1px solid #ddd;padding:4px;text-align:left}th{background:#f4f4f4}h1{text-align:center}</style>
       </head><body><h1>Activity Logs</h1>
       <table><thead><tr><th>Date/Time</th><th>User</th><th>Action</th><th>Module</th><th>Description</th><th>IP Address</th><th>Status</th></tr></thead>
-      <tbody>${filteredLogs.map((log) => `<tr><td>${new Date(log.createdAt).toLocaleString()}</td><td>${log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System'}</td><td>${log.action}</td><td>${log.module || '-'}</td><td>${log.description || '-'}</td><td>${log.ipAddress || '-'}</td><td>${log.status}</td></tr>`).join("")}</tbody></table></body></html>
+      <tbody>${data?.logs.map((log) => `<tr><td>${new Date(log.createdAt).toLocaleString()}</td><td>${log.user ? `${log.user.firstName} ${log.user.lastName}` : 'System'}</td><td>${log.action}</td><td>${log.module || '-'}</td><td>${log.description || '-'}</td><td>${log.ipAddress || '-'}</td><td>${log.status}</td></tr>`).join("")}</tbody></table></body></html>
     `);
     printWindow.document.close();
     printWindow.print();
   };
 
   const handleExportCSV = () => {
+    if (!data?.logs) return;
     const headers = ["Date/Time", "User", "Email", "Action", "Module", "Entity", "Description", "IP Address", "Status", "Error"];
-    const rows = filteredLogs.map((log) => [
+    const rows = data.logs.map((log) => [
       new Date(log.createdAt).toLocaleString(),
       log.user ? `${log.user.firstName} ${log.user.lastName}` : "System",
       log.user?.email || "",
@@ -160,26 +240,32 @@ export default function ActivityLogsPage() {
     toast.success("CSV exported");
   };
 
-  const clearFilters = () => {
-    setSearch("");
-    setActionFilter("");
-    setModuleFilter("");
-    setStartDate("");
-    setEndDate("");
-    setPage(1);
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Activity Logs</h2>
-          <p className="text-muted-foreground">Monitor all system activities and user actions</p>
+          <p className="text-muted-foreground flex items-center gap-2">
+            Monitor all system activities and user actions
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 animate-pulse">
+              <Activity className="w-3 h-3 mr-1" /> Realtime
+            </Badge>
+          </p>
         </div>
-        <Button variant="outline" onClick={fetchLogs} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportCSV} disabled={!data?.logs.length}>
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+            </Button>
+            <Button variant="outline" onClick={handlePrint} disabled={!data?.logs.length}>
+                <Printer className="h-4 w-4 mr-2" />
+                Print
+            </Button>
+            <Button variant="outline" onClick={() => fetchLogs()} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+            </Button>
+        </div>
       </div>
 
       <Card>
@@ -198,116 +284,166 @@ export default function ActivityLogsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+              <Input
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="pl-9"
+              />
             </div>
             <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger><SelectValue placeholder="All Actions" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by Action" />
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Actions</SelectItem>
-                {actions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                <SelectItem value="all">All Actions</SelectItem>
+                {actions.map((action) => (
+                  <SelectItem key={action} value={action}>
+                    {action.charAt(0).toUpperCase() + action.slice(1).replace('_', ' ')}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={moduleFilter} onValueChange={setModuleFilter}>
-              <SelectTrigger><SelectValue placeholder="All Modules" /></SelectTrigger>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by Module" />
+              </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Modules</SelectItem>
-                {modules.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                <SelectItem value="all">All Modules</SelectItem>
+                {modules.map((module) => (
+                  <SelectItem key={module} value={module}>
+                    {module.charAt(0).toUpperCase() + module.slice(1)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-            <Input type="date" placeholder="Start Date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            <Input type="date" placeholder="End Date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <Input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              placeholder="Start Date"
+            />
+            <Input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              placeholder="End Date"
+            />
+          </div>
+          <div className="mt-4 flex justify-end">
+             <Button onClick={handleSearch}>Apply Search</Button>
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle>Logs ({data?.total || 0} total)</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={handlePrint} title="Print"><Printer className="h-4 w-4" /></Button>
-              <Button variant="outline" size="icon" onClick={handleExportCSV} title="Export CSV"><Download className="h-4 w-4" /></Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
-          ) : filteredLogs.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No activity logs found</div>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-40">Date/Time</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Module</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>IP Address</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="text-sm whitespace-nowrap">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </TableCell>
-                        <TableCell>
-                          {log.user ? (
-                            <div>
-                              <div className="font-medium">{log.user.firstName} {log.user.lastName}</div>
-                              <div className="text-xs text-muted-foreground">{log.user.email}</div>
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">System</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={actionColors[log.action] || "bg-gray-100 text-gray-800"}>
-                            {log.action}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{log.module || "-"}</TableCell>
-                        <TableCell className="max-w-xs truncate" title={log.description || ""}>
-                          {log.description || "-"}
-                        </TableCell>
-                        <TableCell className="text-sm font-mono">{log.ipAddress || "-"}</TableCell>
-                        <TableCell>
-                          <Badge variant={log.status === "success" ? "default" : "destructive"}>
-                            {log.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Pagination */}
-              {data && data.totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Page {data.page} of {data.totalPages}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(data.totalPages, p + 1))} disabled={page === data.totalPages}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date/Time</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Module</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>IP Address</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && !data ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                  </TableCell>
+                </TableRow>
+              ) : data?.logs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    No activity logs found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                data?.logs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="whitespace-nowrap">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      {log.user ? (
+                        <div className="flex flex-col">
+                          <span className="font-medium">{log.user.firstName} {log.user.lastName}</span>
+                          <span className="text-xs text-muted-foreground">{log.user.email}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground italic">System</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={actionColors[log.action] || "bg-gray-100"}>
+                        {log.action}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {log.module ? (
+                        <Badge variant="secondary" className="capitalize">
+                          {log.module}
+                        </Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-[300px] truncate" title={log.description || ""}>
+                      {log.description || "-"}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">{log.ipAddress || "-"}</TableCell>
+                    <TableCell>
+                      {log.status === "success" ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          Success
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive">Failure</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-            </>
-          )}
+            </TableBody>
+          </Table>
         </CardContent>
+        {data && data.totalPages > 1 && (
+            <div className="flex items-center justify-between p-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                    Showing {(data.page - 1) * data.limit + 1} to {Math.min(data.page * data.limit, data.total)} of {data.total} entries
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                    </Button>
+                    <div className="text-sm font-medium">
+                        Page {page} of {data.totalPages}
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage(p => Math.min(data.totalPages, p + 1))}
+                        disabled={page === data.totalPages}
+                    >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            </div>
+        )}
       </Card>
     </div>
   );
 }
-

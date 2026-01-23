@@ -78,13 +78,9 @@ export function HeaderUserMenu() {
           <>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => navigate("/admin/activity-logs")}>
+              <DropdownMenuItem onClick={() => navigate("/admin")}>
                 <Shield className="mr-2 h-4 w-4" />
-                Activity Logs
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate("/admin/users")}>
-                <Settings className="mr-2 h-4 w-4" />
-                User Managements
+                Admin Panel
               </DropdownMenuItem>
             </DropdownMenuGroup>
           </>

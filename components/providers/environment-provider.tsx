@@ -2,12 +2,14 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { toast } from "sonner";
+import Cookies from "js-cookie";
+import { setEnvironmentCookie } from "@/app/actions/set-environment";
 
-export type EnvironmentType = "HR" | "ERP";
+export type EnvironmentType = "HR" | "ERP" | "POS" | "ADMIN";
 
 interface EnvironmentContextType {
   environment: EnvironmentType;
-  setEnvironment: (env: EnvironmentType) => void;
+  setEnvironment: (env: EnvironmentType, silent?: boolean) => void;
   toggleEnvironment: () => void;
   isLoading: boolean;
 }
@@ -19,50 +21,81 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load saved environment from local storage
-    const saved = typeof window !== "undefined" ? localStorage.getItem("app-environment") : null;
+    // Load saved environment from cookies first, then local storage as fallback
+    const savedCookie = Cookies.get("app-environment");
+    const savedLocal = typeof window !== "undefined" ? localStorage.getItem("app-environment") : null;
+    
+    const saved = savedCookie || savedLocal;
+
     if (saved === "ERP") {
       setEnvironmentState("ERP");
       if (typeof document !== "undefined") {
         document.documentElement.dataset.environment = "ERP";
       }
-    } else {
-      // Default to HR
-      setEnvironmentState("HR");
+    } else if (saved === "POS") {
+      setEnvironmentState("POS");
       if (typeof document !== "undefined") {
-        document.documentElement.dataset.environment = "HR";
+        document.documentElement.dataset.environment = "POS";
+      }
+    } else if (saved === "ADMIN") {
+      setEnvironmentState("ADMIN");
+      if (typeof document !== "undefined") {
+        document.documentElement.dataset.environment = "ADMIN";
+      }
+    } else {
+      // Check current path for admin
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+        setEnvironmentState("ADMIN");
+        if (typeof document !== "undefined") {
+          document.documentElement.dataset.environment = "ADMIN";
+        }
+      } else {
+        // Default to HR
+        setEnvironmentState("HR");
+        if (typeof document !== "undefined") {
+          document.documentElement.dataset.environment = "HR";
+        }
       }
     }
     setIsLoading(false);
   }, []);
 
-  const setEnvironment = (env: EnvironmentType) => {
+  const setEnvironment = async (env: EnvironmentType, silent: boolean = false) => {
     try {
       setEnvironmentState(env);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("app-environment", env);
-      }
+      
+      // Update DOM
       if (typeof document !== "undefined") {
         document.documentElement.dataset.environment = env;
       }
       
-      // Show feedback
-      toast.success(`Switched to ${env} Environment`, {
-        description: `You are now working in the ${env} environment.`,
-        duration: 2000,
-      });
+      // Update LocalStorage (as backup)
+      if (typeof window !== "undefined") {
+        localStorage.setItem("app-environment", env);
+      }
+
+      // Use Server Action to set cookie (handles cross-subdomain logic via server headers)
+      await setEnvironmentCookie(env);
+      
+      // Show feedback only if not silent
+      if (!silent) {
+        toast.success(`Switched to ${env} Environment`, {
+          description: `You are now working in the ${env} environment.`,
+          duration: 2000,
+        });
+      }
     } catch (error) {
       console.error("Failed to switch environment:", error);
-      toast.error("Failed to switch environment", {
-        description: "An error occurred while saving your preference.",
-      });
-      // Revert state if needed, but since setEnvironmentState is async/batch, maybe not critical here 
-      // as the error is likely in localStorage.
+      if (!silent) {
+        toast.error("Failed to switch environment", {
+          description: "An error occurred while saving your preference.",
+        });
+      }
     }
   };
 
   const toggleEnvironment = () => {
-    const next = environment === "HR" ? "ERP" : "HR";
+    const next = environment === "HR" ? "ERP" : environment === "ERP" ? "POS" : environment === "POS" ? "ADMIN" : "HR";
     setEnvironment(next);
   };
 

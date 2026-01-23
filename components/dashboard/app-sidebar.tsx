@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -32,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, ShieldCheck, Activity, Settings, LogOut } from "lucide-react";
 import {
   MenuItem,
   menuData,
@@ -43,6 +43,7 @@ import { getCurrentSubdomain } from "@/lib/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useEnvironment } from "@/components/providers/environment-provider";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "../ui/button";
 
 // Normalize path by stripping subdomain prefix for comparison
 function normalizePathForComparison(
@@ -245,7 +246,7 @@ function MenuItemComponent({
           )}
           <span className="relative z-10">{item.title}</span>
           {isActive && (
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-3 rounded-r-full bg-primary transition-all duration-200" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-3 rounded-r-full bg-primary transition-all duration-200 group-data-[state=collapsed]:hidden" />
           )}
           {isActive && (
             <div className="absolute right-[0.3rem] top-1/2 -translate-y-1/2 w-1 h-1 rounded-full bg-accent transition-all duration-200" />
@@ -356,6 +357,7 @@ export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
   const { environment, setEnvironment } = useEnvironment();
 
@@ -377,9 +379,9 @@ export function AppSidebar({
   }, [hasAnyPermission, hasAllPermissions, isAdmin, user, environment]);
 
   return (
-    <Sidebar collapsible="icon" className="border-0 overflow-hidden">
+    <Sidebar collapsible="icon" className="border-0 overflow-hidden ">
       <SidebarRail />
-      <SidebarHeader className="border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm ">
+      <SidebarHeader className="border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm shadow-sm">
         <div className="flex flex-col gap-3 group-data-[collapsible=icon]:gap-0">
           <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
@@ -404,24 +406,61 @@ export function AppSidebar({
       </SidebarHeader>
 
       <SidebarContent className="px-2 ">
+
         <div className="group-data-[collapsible=icon]:hidden mt-2">
-          <Tabs
-            defaultValue={environment}
-            value={environment}
-            onValueChange={(v) => setEnvironment(v as any)}
-            className="w-full"
-            variant="card"
-          >
-            <TabsList className="grid w-full grid-cols-2 h-8">
-              <TabsTrigger value="HR" className="text-xs">
-                HR
-              </TabsTrigger>
-              <TabsTrigger value="ERP" className="text-xs">
-                ERP
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {environment === "ADMIN" ? (
+            <div className="flex flex-col gap-2 p-3 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border border-primary/20 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-2 opacity-10">
+                <ShieldCheck className="w-12 h-12 rotate-12" />
+              </div>
+              
+              <div className="flex items-center gap-2 text-primary relative z-10">
+                <div className="p-1.5 bg-primary/10 rounded-lg">
+                  <ShieldCheck className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="font-bold text-xs tracking-wide leading-none">ADMIN PANEL</span>
+                  <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Super User Access</span>
+                </div>
+              </div>
+
+              <Button
+                variant="ghost" 
+                size="sm" 
+                onClick={() => {
+                  setEnvironment("HR");
+                  router.push("/hr");
+                }}
+                className="w-full justify-start h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20 border border-transparent transition-colors mt-1 relative z-10"
+              >
+                <LogOut className="mr-2 h-3.5 w-3.5" color="red" />
+                Exit Admin Mode
+              </Button>
+            </div>
+          ) : (
+            <Tabs
+              defaultValue={environment}
+              value={environment}
+              onValueChange={(v) => {
+                setEnvironment(v as any);
+                if (v === "HR") router.push("/hr");
+                if (v === "ERP") router.push("/erp");
+              }}
+              className="w-full"
+              variant="card"
+            >
+              <TabsList className="grid w-full grid-cols-2 h-8">
+                <TabsTrigger value="HR" className="text-xs">
+                  HR
+                </TabsTrigger>
+                <TabsTrigger value="ERP" className="text-xs">
+                  ERP
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
+
         <ScrollArea className="-mx-2 px-2" showShadows>
           <SidebarGroup>
             <SidebarMenu className="space-y-1">
