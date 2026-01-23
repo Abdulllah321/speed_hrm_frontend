@@ -45,6 +45,8 @@ export default function LeaveRequestsPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
 
+  const showFilters = user?.role?.name === 'admin' || user?.role?.name === 'hr';
+
   // Load initial data
   useEffect(() => {
     const fetchData = async () => {
@@ -541,12 +543,15 @@ export default function LeaveRequestsPage() {
         const isPending = normalizeStatus(request.status) === "pending";
         const isProcessing = processingId === request.id;
         const pendingLevel = getPendingApprovalLevel(request);
+        const isAdmin = user?.role?.name === "admin";
+        
         const canAct =
-          pendingLevel === 1
+          isAdmin || 
+          (pendingLevel === 1
             ? request.approval1 === user?.id
             : pendingLevel === 2
               ? request.approval2 === user?.id
-              : false;
+              : false);
         
         return (
           <div className="flex items-center gap-2">
@@ -628,6 +633,7 @@ export default function LeaveRequestsPage() {
         </div>
       </div>
 
+      {showFilters && (
       <Card>
         <CardHeader>
           <CardTitle>Filter Leave Requests</CardTitle>
@@ -713,6 +719,7 @@ export default function LeaveRequestsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
