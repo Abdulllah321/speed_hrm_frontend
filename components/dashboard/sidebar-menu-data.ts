@@ -427,11 +427,6 @@ export const menuData: MenuItem[] = [
             href: "/hr/attendance/exemptions-list",
             permissions: ["attendance-exemption.read"],
           },
-          {
-            title: "Request Forwarding",
-            href: "/hr/request-forwarding?type=attendance",
-            permissions: ["request-forwarding.read"],
-          },
         ],
       },
       {
@@ -467,7 +462,44 @@ export const menuData: MenuItem[] = [
     ],
     children: [
       { title: "Create Leave", href: "/hr/leaves/create-leaves", permissions: ["leave-application.create"] },
-      { title: "View Requests", href: "/hr/leaves/requests", permissions: ["leave-application.read"] },
+      { 
+        title: "View Requests", 
+        href: "/hr/leaves/requests", 
+        permissions: ["leave-application.read"] // Allowed for anyone with read permission
+      },
+    ],
+  },
+  {
+    title: "Request Forwarding",
+    icon: Shield,
+    environment: "HR",
+    permissions: ["request-forwarding.read"],
+    children: [
+      {
+        title: "Attendance",
+        href: "/hr/request-forwarding?type=attendance",
+        permissions: ["request-forwarding.read"],
+      },
+      {
+        title: "Advance Salary",
+        href: "/hr/request-forwarding?type=advance-salary",
+        permissions: ["request-forwarding.read"],
+      },
+      {
+        title: "Loan",
+        href: "/hr/request-forwarding?type=loan",
+        permissions: ["request-forwarding.read"],
+      },
+      {
+        title: "Leave Application",
+        href: "/hr/request-forwarding?type=leave-application",
+        permissions: ["request-forwarding.read"],
+      },
+      {
+        title: "Leave Encashment",
+        href: "/hr/request-forwarding?type=leave-encashment",
+        permissions: ["request-forwarding.read"],
+      },
     ],
   },
 
@@ -525,7 +557,6 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create Request", href: "/hr/payroll-setup/advance-salary/create", permissions: ["advance-salary.create"] },
           { title: "View Requests", href: "/hr/payroll-setup/advance-salary/view", permissions: ["advance-salary.read"] },
-          { title: "Request Forwarding", href: "/hr/request-forwarding?type=advance-salary", permissions: ["advance-salary.read"] },
         ],
       },
       {

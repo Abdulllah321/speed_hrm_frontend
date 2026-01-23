@@ -61,6 +61,14 @@ export async function getRoleById(id: string): Promise<{ status: boolean; data: 
       cache: "no-store",
       headers: { ...(token && { Authorization: `Bearer ${token}` }) },
     });
+
+    if (!res.ok) {
+      if (res.status === 404) return { status: false, data: null };
+      const error = await res.json().catch(() => ({}));
+      console.error(`Failed to fetch role: ${res.status}`, error);
+      return { status: false, data: null };
+    }
+
     const data = await res.json();
     return { status: true, data };
   } catch (error) {
@@ -80,10 +88,10 @@ export async function createRole(data: { name: string; description?: string; per
       },
       body: JSON.stringify(data),
     });
-    
+
     if (!res.ok) {
-        const error = await res.json();
-        return { status: false, message: error.message || "Failed to create role" };
+      const error = await res.json();
+      return { status: false, message: error.message || "Failed to create role" };
     }
 
     revalidatePath("/admin/roles");
@@ -106,8 +114,8 @@ export async function updateRole(id: string, data: { name?: string; description?
     });
 
     if (!res.ok) {
-        const error = await res.json();
-        return { status: false, message: error.message || "Failed to update role" };
+      const error = await res.json();
+      return { status: false, message: error.message || "Failed to update role" };
     }
 
     revalidatePath("/admin/roles");
@@ -126,8 +134,8 @@ export async function deleteRole(id: string) {
     });
 
     if (!res.ok) {
-        const error = await res.json();
-        return { status: false, message: error.message || "Failed to delete role" };
+      const error = await res.json();
+      return { status: false, message: error.message || "Failed to delete role" };
     }
 
     revalidatePath("/admin/roles");
