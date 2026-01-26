@@ -9,9 +9,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, User, Edit, Upload, ExternalLink, FileText, Calendar, LogIn, LogOut, Eye, History } from "lucide-react";
+import { ArrowLeft, ArrowRight, User, Edit, Upload, ExternalLink, FileText, Calendar, LogIn, LogOut, Eye, History, MapPin } from "lucide-react";
 import Link from "next/link";
 import { getEmployeeById, getEmployees, getEmployeeRejoiningHistory } from "@/lib/actions/employee";
+import { getTransferHistory } from "@/lib/actions/transfer";
 import {
   Dialog,
   DialogContent,
@@ -31,12 +32,13 @@ export default async function ViewEmployeePage({ params }: PageProps) {
   const { id: employeeId } = await params;
 
   // Fetch employee with all relations, employees list, and rejoining history
-  const [employeeRes, employeesRes, historyRes] = await Promise.all([
+  const [employeeRes, employeesRes, historyRes, transferRes] = await Promise.all([
     getEmployeeById(employeeId),
     getEmployees(), // Only needed for reporting manager name lookup
     getEmployeeRejoiningHistory(employeeId),
+    getTransferHistory(employeeId),
   ]);
-  console.log(employeeRes)
+
   if (!employeeRes.status || !employeeRes.data) {
     notFound();
   }
@@ -44,6 +46,8 @@ export default async function ViewEmployeePage({ params }: PageProps) {
   const employee = employeeRes.data as any;
   const employees = employeesRes.status ? employeesRes.data || [] : [];
   const rejoiningHistory = historyRes.status ? historyRes.data || [] : [];
+  const transferHistory = transferRes.status ? transferRes.data || [] : [];
+
 
   // Helper functions to get names from relations
   // Backend returns relation objects under *Relation properties and also spreads them initially
@@ -374,6 +378,12 @@ export default async function ViewEmployeePage({ params }: PageProps) {
             Edit Employee
           </Button>
         </Link>
+        <Link href={`/hr/employee/transfer?employeeId=${employeeId}`}>
+          <Button variant="outline" className="ml-2">
+            <MapPin className="h-4 w-4 mr-2" />
+            Transfer Employee
+          </Button>
+        </Link>
       </div>
 
       <div className="border rounded-xl p-4 space-y-6">
@@ -412,6 +422,50 @@ export default async function ViewEmployeePage({ params }: PageProps) {
           </CardHeader>
         </Card>
 
+        {/* Transfer History */}
+        {transferHistory && transferHistory.length > 0 && (
+          <Card className="border-none shadow-none">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Transfer History
+              </CardTitle>
+              <CardDescription>History of location transfers</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="relative border-l border-border ml-3 pl-6 space-y-6">
+                {transferHistory.map((transfer: any) => (
+                  <div key={transfer.id} className="relative">
+                    <div className="absolute -left-[31px] bg-background border rounded-full p-1">
+                      <MapPin className="h-4 w-4 text-blue-500" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm">Transferred to {transfer.newLocation?.name}</span>
+                        <span className="text-xs text-muted-foreground">{formatDate(transfer.transferDate)}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-xs text-foreground/70">From: </span>
+                        {transfer.previousLocation?.name || "N/A"}, {transfer.previousCity?.name || "N/A"}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-xs text-foreground/70">To: </span>
+                        {transfer.newLocation?.name}, {transfer.newCity?.name || "N/A"}
+                      </div>
+                      {transfer.reason && (
+                        <p className="text-xs text-muted-foreground mt-1 italic">"{transfer.reason}"</p>
+                      )}
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Processed by: {transfer.createdBy?.firstName} {transfer.createdBy?.lastName}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Employment Timeline */}
         {timelineEvents.length > 0 && (
           <Card className="border-none shadow-none">
@@ -433,8 +487,8 @@ export default async function ViewEmployeePage({ params }: PageProps) {
                     <div key={index} className="relative flex items-start gap-4">
                       {/* Icon */}
                       <div className={`relative z-10 flex items-center justify-center w-12 h-12 rounded-full border-2 bg-background ${event.iconType === 'joined' ? 'border-green-500' :
-                          event.iconType === 'rejoined' ? 'border-blue-500' :
-                            'border-red-500'
+                        event.iconType === 'rejoined' ? 'border-blue-500' :
+                          'border-red-500'
                         }`}>
                         {event.iconType === 'joined' ? (
                           <LogIn className="h-5 w-5 text-green-600" />
@@ -803,6 +857,6 @@ export default async function ViewEmployeePage({ params }: PageProps) {
           );
         })()}
       </div>
-    </div>
+    </div >
   );
 }

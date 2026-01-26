@@ -25,6 +25,7 @@ export interface Location {
     city?: {
         id: string;
         name: string;
+        stateId: string;
         country?: { id: string; name: string };
     } | null;
     status: 'active' | 'inactive';
