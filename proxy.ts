@@ -34,12 +34,15 @@ function getHostWithoutPort(host: string): string {
 // Get base domain from environment or extract from host
 function getBaseDomain(host: string): string {
   const hostWithoutPort = getHostWithoutPort(host);
-  
+
   // In development, use localhost or localtest.me
-  if (hostWithoutPort.includes("localhost") || hostWithoutPort.includes("127.0.0.1")) {
+  if (
+    hostWithoutPort.includes("localhost") ||
+    hostWithoutPort.includes("127.0.0.1")
+  ) {
     return "localhost";
   }
-  
+
   if (hostWithoutPort.includes("localtest.me")) {
     return "localtest.me";
   }
@@ -49,7 +52,7 @@ function getBaseDomain(host: string): string {
   if (configuredBase && hostWithoutPort.endsWith(configuredBase)) {
     return configuredBase;
   }
-  
+
   // Fallback: Extract base domain (e.g., "example.com" from "hr.example.com")
   const parts = hostWithoutPort.split(".");
   if (parts.length >= 2) {
@@ -61,9 +64,12 @@ function getBaseDomain(host: string): string {
 // Extract subdomain from host
 function getSubdomain(host: string): string | null {
   const hostWithoutPort = getHostWithoutPort(host);
-  
+
   // Handle localhost subdomains (e.g., "hr.localhost" or "hr.localhost:3001")
-  if (hostWithoutPort.includes("localhost") || hostWithoutPort.includes("127.0.0.1")) {
+  if (
+    hostWithoutPort.includes("localhost") ||
+    hostWithoutPort.includes("127.0.0.1")
+  ) {
     const parts = hostWithoutPort.split(".");
     // If it's "hr.localhost" or similar, first part is subdomain
     if (parts.length > 1 && parts[parts.length - 1] === "localhost") {
@@ -71,12 +77,16 @@ function getSubdomain(host: string): string | null {
     }
     return null; // Just "localhost" without subdomain
   }
-  
+
   // Handle localtest.me subdomains (e.g., "hr.localtest.me")
   if (hostWithoutPort.includes("localtest.me")) {
     const parts = hostWithoutPort.split(".");
     // If it's "hr.localtest.me" or similar, first part is subdomain
-    if (parts.length > 2 && parts[parts.length - 2] === "localtest" && parts[parts.length - 1] === "me") {
+    if (
+      parts.length > 2 &&
+      parts[parts.length - 2] === "localtest" &&
+      parts[parts.length - 1] === "me"
+    ) {
       return parts[0]; // e.g., "hr" from "hr.localtest.me"
     }
     return null; // Just "localtest.me" without subdomain
@@ -87,12 +97,12 @@ function getSubdomain(host: string): string | null {
   if (configuredBase && hostWithoutPort.endsWith(configuredBase)) {
     // If host is exactly the base domain, no subdomain
     if (hostWithoutPort === configuredBase) return null;
-    
+
     // Remove base domain and trailing dot to get subdomain part
     const subdomainPart = hostWithoutPort.replace(`.${configuredBase}`, "");
     return subdomainPart;
   }
-  
+
   // Fallback production subdomains logic
   const parts = hostWithoutPort.split(".");
   if (parts.length > 2) {
@@ -112,114 +122,147 @@ function getTargetSubdomain(pathname: string): string | null {
 }
 
 // Strip subdomain prefix from path (e.g., /auth/login -> /login on auth subdomain)
-function normalizePathForSubdomain(pathname: string, subdomain: string | null): string {
+function normalizePathForSubdomain(
+  pathname: string,
+  subdomain: string | null,
+): string {
   if (!subdomain) return pathname;
-  
+
   const prefix = `/${subdomain}`;
   if (pathname.startsWith(prefix)) {
     const remaining = pathname.slice(prefix.length);
     return remaining || "/"; // Return "/" if path becomes empty
   }
-  
+
   // Special handling for auth/login
   if (subdomain === "auth" && pathname.startsWith("/auth/login")) {
     return pathname.replace("/auth", "");
   }
-  
+
   return pathname;
 }
 
 export default function middleware(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const host = request.headers.get("host") || "";
-  
+
   // Get current subdomain and port
   const currentSubdomain = getSubdomain(host);
   const baseDomain = getBaseDomain(host);
   const port = getPort(host);
-  const isDevelopment = baseDomain === "localhost" || baseDomain === "localtest.me" || baseDomain.includes("127.0.0.1");
-  
+  const isDevelopment =
+    baseDomain === "localhost" ||
+    baseDomain === "localtest.me" ||
+    baseDomain.includes("127.0.0.1");
+
   // Helper function to determine target subdomain from callback URL
   const getCallbackSubdomain = (callbackUrl: string): string => {
     // Remove leading slash for comparison
-    const cleanPath = callbackUrl.startsWith("/") ? callbackUrl.slice(1) : callbackUrl;
-    
+    const cleanPath = callbackUrl.startsWith("/")
+      ? callbackUrl.slice(1)
+      : callbackUrl;
+
     // Master data paths
     const masterPaths = [
-      "master/", "department/", "sub-department/", "institute/", "designation/", 
-      "job-type/", "marital-status/", "employee-grade/", "employee-status/", 
-      "qualification/", "city/", "location/", "allocation/", "loan-types/", 
-      "leave-types/", "leaves-policy/", "equipment/", "salary-breakup/", 
-      "eobi/", "social-security/", "tax-slabs/", "provident-fund/", 
-      "bonus-types/", "allowance-head/", "deduction-head/", "banks/", "rebate-nature/"
+      "master/",
+      "department/",
+      "sub-department/",
+      "institute/",
+      "designation/",
+      "job-type/",
+      "marital-status/",
+      "employee-grade/",
+      "employee-status/",
+      "qualification/",
+      "city/",
+      "location/",
+      "allocation/",
+      "loan-types/",
+      "leave-types/",
+      "leaves-policy/",
+      "equipment/",
+      "salary-breakup/",
+      "eobi/",
+      "social-security/",
+      "tax-slabs/",
+      "provident-fund/",
+      "bonus-types/",
+      "allowance-head/",
+      "deduction-head/",
+      "banks/",
+      "rebate-nature/",
     ];
-    
+
     // Check for master paths
     for (const masterPath of masterPaths) {
       if (cleanPath.startsWith(masterPath)) {
         return "master";
       }
     }
-    
+
     // Admin paths
-    if (cleanPath.startsWith("admin/") || cleanPath.startsWith("activity-logs")) {
+    if (
+      cleanPath.startsWith("admin/") ||
+      cleanPath.startsWith("activity-logs")
+    ) {
       return "admin";
     }
 
-    if (cleanPath.startsWith("/erp") || cleanPath.startsWith("finance")){
+    if (cleanPath.startsWith("/erp") || cleanPath.startsWith("finance")) {
       return "erp";
     }
-    
+
     // HR paths (default)
     return "hr";
   };
-  
+
   // Build URL helper
   const buildUrl = (subdomain: string | null, path: string): URL => {
-    const protocol = isDevelopment 
-      ? (request.headers.get("x-forwarded-proto") || "http")
-      : (request.headers.get("x-forwarded-proto") || "https");
-    
+    const protocol = isDevelopment
+      ? request.headers.get("x-forwarded-proto") || "http"
+      : request.headers.get("x-forwarded-proto") || "https";
+
     let hostname: string;
     if (subdomain) {
       hostname = `${subdomain}.${baseDomain}`;
     } else {
       hostname = baseDomain;
     }
-    
+
     // Add port in development
     if (isDevelopment && port) {
       hostname = `${hostname}:${port}`;
     }
-    
+
     return new URL(path + request.nextUrl.search, `${protocol}://${hostname}`);
   };
-  
+
   // Special handling for auth routes - redirect to auth subdomain
   if (pathname.startsWith("/auth") && currentSubdomain !== "auth") {
     // Check if user is already authenticated
     const accessToken = request.cookies.get("accessToken")?.value;
     const isAuthenticated = !!accessToken;
-    
+
     if (isAuthenticated) {
       // Check for callbackUrl in query parameters
       const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
       const callbackSubdomain = request.nextUrl.searchParams.get("subdomain");
-      
+
       if (callbackUrl) {
         // Determine target subdomain for callback URL
-        const targetSubdomain = callbackSubdomain || getCallbackSubdomain(callbackUrl);
-        
+        const targetSubdomain =
+          callbackSubdomain || getCallbackSubdomain(callbackUrl);
+
         // Redirect to callback URL on appropriate subdomain
         const callbackRedirectUrl = buildUrl(targetSubdomain, callbackUrl);
         return NextResponse.redirect(callbackRedirectUrl);
       }
-      
+
       // No callback URL, redirect to HR dashboard
       const dashboardUrl = buildUrl("hr", "/hr");
       return NextResponse.redirect(dashboardUrl);
     }
-    
+
     // Redirect /auth/login to auth.localtest.me/login
     if (pathname === "/auth/login") {
       const loginUrl = buildUrl("auth", "/login");
@@ -243,39 +286,51 @@ export default function middleware(request: NextRequest): NextResponse {
     // Check if user is already authenticated
     const accessToken = request.cookies.get("accessToken")?.value;
     const isAuthenticated = !!accessToken;
-    
+
     if (isAuthenticated) {
       // Check for callbackUrl in query parameters
       const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
       const callbackSubdomain = request.nextUrl.searchParams.get("subdomain");
-      
+
       if (callbackUrl) {
         // Determine target subdomain for callback URL
-        const targetSubdomain = callbackSubdomain || getCallbackSubdomain(callbackUrl);
-        
+        const targetSubdomain =
+          callbackSubdomain || getCallbackSubdomain(callbackUrl);
+
         // Redirect to callback URL on appropriate subdomain
         const callbackRedirectUrl = buildUrl(targetSubdomain, callbackUrl);
         return NextResponse.redirect(callbackRedirectUrl);
       }
-      
+
       // No callback URL, redirect to HR dashboard
       const dashboardUrl = buildUrl("hr", "/hr");
       return NextResponse.redirect(dashboardUrl);
     }
-    
+
     // Handle /login -> /auth/login rewrite
     if (pathname === "/login") {
-      return NextResponse.rewrite(new URL("/auth/login" + request.nextUrl.search, request.url));
+      return NextResponse.rewrite(
+        new URL("/auth/login" + request.nextUrl.search, request.url),
+      );
     }
     // Handle other auth routes that don't have /auth prefix
-    if (pathname === "/" || (!pathname.startsWith("/auth") && !pathname.startsWith("/_next") && !pathname.startsWith("/api"))) {
+    if (
+      pathname === "/" ||
+      (!pathname.startsWith("/auth") &&
+        !pathname.startsWith("/_next") &&
+        !pathname.startsWith("/api"))
+    ) {
       // For root path on auth subdomain, redirect to login
       if (pathname === "/") {
-        return NextResponse.rewrite(new URL("/auth/login" + request.nextUrl.search, request.url));
+        return NextResponse.rewrite(
+          new URL("/auth/login" + request.nextUrl.search, request.url),
+        );
       }
       // For other paths, add /auth prefix
       const rewritePath = `/auth${pathname}`;
-      return NextResponse.rewrite(new URL(rewritePath + request.nextUrl.search, request.url));
+      return NextResponse.rewrite(
+        new URL(rewritePath + request.nextUrl.search, request.url),
+      );
     }
   }
 
@@ -286,13 +341,13 @@ export default function middleware(request: NextRequest): NextResponse {
     const hrUrl = buildUrl("hr", hrPath);
     return NextResponse.redirect(hrUrl);
   }
-  
+
   if (pathname.startsWith("/master") && currentSubdomain !== "master") {
     const masterPath = pathname.replace("/master", "") || "/";
     const masterUrl = buildUrl("master", masterPath);
     return NextResponse.redirect(masterUrl);
   }
-  
+
   if (pathname.startsWith("/admin") && currentSubdomain !== "admin") {
     const adminPath = pathname.replace("/admin", "") || "/";
     const adminUrl = buildUrl("admin", adminPath);
@@ -308,21 +363,27 @@ export default function middleware(request: NextRequest): NextResponse {
   // Special handling for other subdomains (hr, admin, master)
   if (currentSubdomain && currentSubdomain !== "auth") {
     // If path doesn't start with subdomain prefix and it's not a system path
-    if (!pathname.startsWith(`/${currentSubdomain}`) && !pathname.startsWith("/_next") && !pathname.startsWith("/api")) {
+    if (
+      !pathname.startsWith(`/${currentSubdomain}`) &&
+      !pathname.startsWith("/_next") &&
+      !pathname.startsWith("/api")
+    ) {
       // Add subdomain prefix internally for Next.js routing
       // hr.localtest.me/payroll-setup/payroll/report -> /hr/payroll-setup/payroll/report (internal)
       // But the URL stays clean: hr.localtest.me/payroll-setup/payroll/report
       const rewritePath = `/${currentSubdomain}${pathname}`;
-      return NextResponse.rewrite(new URL(rewritePath + request.nextUrl.search, request.url));
+      return NextResponse.rewrite(
+        new URL(rewritePath + request.nextUrl.search, request.url),
+      );
     }
-    
+
     // If path already has subdomain prefix, just continue (don't redirect)
     // This allows URLs like hr.localtest.me/hr/payroll-setup/payroll/report to work
   }
 
   // Determine target subdomain for this path
   const targetSubdomain = getTargetSubdomain(pathname);
-  
+
   // Handle subdomain routing - redirect to correct subdomain if needed
   if (targetSubdomain && currentSubdomain !== targetSubdomain) {
     // Redirect to correct subdomain with normalized path
@@ -330,7 +391,7 @@ export default function middleware(request: NextRequest): NextResponse {
     const targetUrl = buildUrl(targetSubdomain, normalizedPath);
     return NextResponse.redirect(targetUrl);
   }
-  
+
   // Legacy redirects and fallbacks
   if (currentSubdomain && !targetSubdomain) {
     // Default to HR for hr routes
@@ -350,7 +411,12 @@ export default function middleware(request: NextRequest): NextResponse {
   const userRole = request.cookies.get("userRole")?.value;
 
   const isAuthenticated = !!accessToken;
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route)) || pathname.startsWith("/hr") || pathname.startsWith("/admin") || pathname.startsWith("/master") || pathname.startsWith("/erp");
+  const isProtectedRoute =
+    protectedRoutes.some((route) => pathname.startsWith(route)) ||
+    pathname.startsWith("/hr") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/master") ||
+    pathname.startsWith("/erp");
   const isAdminRoute = pathname.startsWith("/admin");
 
   // Redirect unauthenticated users to login on auth subdomain
@@ -369,30 +435,62 @@ export default function middleware(request: NextRequest): NextResponse {
 
   // If admin route but not on admin subdomain, redirect
   if (isAdminRoute && currentSubdomain !== "admin") {
-    const adminUrl = buildUrl("admin", pathname.startsWith("/admin") ? pathname : `/admin${pathname}`);
+    const adminUrl = buildUrl(
+      "admin",
+      pathname.startsWith("/admin") ? pathname : `/admin${pathname}`,
+    );
     return NextResponse.redirect(adminUrl);
   }
 
   // Set security headers
   const response = NextResponse.next();
-  
+
   // Backend handles cookie setting with proper domain configuration
-  
+
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set(
     "Strict-Transport-Security",
-    "max-age=31536000; includeSubDomains"
+    "max-age=31536000; includeSubDomains",
   );
+  const devCSP = `
+  default-src 'self';
+  connect-src
+    'self'
+    http://localhost:*
+    http://127.0.0.1:*
+    http://*.localtest.me:*
+    ws://localhost:*
+    ws://*.localtest.me:*
+    wss://localhost:*
+    wss://*.localtest.me:*;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: blob: http://localhost:* http://*.localtest.me:*;
+  font-src 'self' data:;
+`;
+  const prodCSP = `
+  default-src 'self';
+  connect-src
+    'self'
+    https://spl.inplsoftwares.com
+    https://*.spl.inplsoftwares.com;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: blob:;
+  font-src 'self' data:;
+`;
+
   // CSP: Allow API calls to localhost and localtest.me subdomains in development
   // ⭐ IMPORTANT: connect-src must come BEFORE default-src to override it
-  const cspDirective = isDevelopment
-    ? "connect-src 'self' http://localhost:* http://*.localtest.me:* ws://localhost:* ws://*.localtest.me:* wss://localhost:* wss://*.localtest.me:*; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http://localhost:* http://*.localtest.me:*; font-src 'self' data:;"
-    : "connect-src 'self'; default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:;";
-  
-  response.headers.set("Content-Security-Policy", cspDirective);
+  const cspDirective = isDevelopment ? devCSP : prodCSP;
+
+  response.headers.set(
+    "Content-Security-Policy",
+    cspDirective.replace(/\s+/g, " ").trim(),
+  );
 
   return response;
 }
@@ -410,4 +508,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|.*\\..*|api|internal-api).*)",
   ],
 };
-
