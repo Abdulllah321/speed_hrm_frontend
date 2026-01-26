@@ -88,7 +88,7 @@ export default function CreateEmployeePage() {
       try {
         setLoadingData(true);
         const [formDataRes, employeesRes] = await Promise.all([
-          fetch(`/api/data/employee-create`, { cache: "no-store" }),
+          fetch(`/internal-api/data/employee-create`, { cache: "no-store" }),
           getEmployeesForDropdown(),
         ]);
         const json = await formDataRes.json();

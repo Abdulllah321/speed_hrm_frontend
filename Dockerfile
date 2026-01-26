@@ -2,7 +2,7 @@
 FROM oven/bun:1 AS deps
 WORKDIR /app
 COPY package.json bun.lock* ./
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # Stage 2: Build
 FROM oven/bun:1 AS builder
@@ -11,9 +11,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_BASE_URL
 ARG NEXT_PUBLIC_BASE_DOMAIN
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 ENV NEXT_PUBLIC_BASE_DOMAIN=$NEXT_PUBLIC_BASE_DOMAIN
 
 RUN bun run build

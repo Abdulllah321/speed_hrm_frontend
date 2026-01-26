@@ -224,7 +224,7 @@ export default function CreateRebatePage() {
           const formData = new FormData();
           formData.append("file", data.file);
 
-          const uploadRes = await fetch("/api/uploads", {
+          const uploadRes = await fetch("/internal-api/uploads", {
             method: "POST",
             body: formData,
           });
