@@ -87,7 +87,7 @@ export default function ActivityLogsPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
       const res = await fetch(`${API_URL}/activity-logs?${params}`, {
         headers: {
           'Content-Type': 'application/json',
@@ -118,7 +118,7 @@ export default function ActivityLogsPage() {
   
   // Realtime connection
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+    const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
     // Extract base URL (remove /api)
     const baseUrl = API_URL.replace(/\/api$/, '');
     
