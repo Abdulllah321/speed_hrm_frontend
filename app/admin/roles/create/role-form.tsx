@@ -228,7 +228,32 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Permissions</CardTitle>
+                    <CardTitle className="flex justify-between items-center">
+                        Permissions
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    const allPermissionIds = permissions.map(p => p.id);
+                                    form.setValue("permissionIds", allPermissionIds, { shouldDirty: true });
+                                }}
+                            >
+                                Select All
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    form.setValue("permissionIds", [], { shouldDirty: true });
+                                }}
+                            >
+                                Deselect All
+                            </Button>
+                        </div>
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-6">

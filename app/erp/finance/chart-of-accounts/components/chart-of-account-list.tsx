@@ -25,6 +25,7 @@ import {
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { columns } from "./columns";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "motion/react";
 
 interface ChartOfAccountListProps {
   initialData: ChartOfAccount[];
@@ -124,32 +125,50 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
+            <AnimatePresence initial={false} mode="sync">
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <motion.tr
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className={cn(
+                      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", // Base TableRow styles
+                      "cursor-pointer",
+                      row.getIsExpanded() && "bg-muted/50"
+                    )}
+                    onClick={() => row.toggleExpanded()}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell 
+                        key={cell.id}
+                        className={cn(
+                          "py-2", // Reduce default padding slightly for tighter tree view
+                          cell.column.id === "name" && "p-0 relative" // Remove padding for tree column to allow full-height lines
+                        )}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </motion.tr>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    No results.
+                  </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
+              )}
+            </AnimatePresence>
           </TableBody>
         </Table>
       </div>

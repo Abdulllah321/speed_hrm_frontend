@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import { HeaderSearch } from "@/components/dashboard/header-search";
 import { HeaderNotifications } from "@/components/dashboard/header-notifications";
@@ -10,9 +14,11 @@ import { HeaderMasterMenu } from "@/components/dashboard/header-master-menu";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import { SessionChecker } from "@/components/auth/session-checker";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useEnvironment } from "@/components/providers/environment-provider";
 import { Button } from "@/components/ui/button";
 import { Search, X, Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
+import { usePathname } from "next/navigation";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -20,14 +26,50 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user } = useAuth();
+  const { environment, setEnvironment } = useEnvironment();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const pathname = usePathname();
 
-  return (
-    <SidebarProvider>
+  // Sync environment with route
+  useEffect(() => {
+    if (pathname.startsWith("/erp") && environment !== "ERP") {
+      setEnvironment("ERP", true);
+    } else if (pathname.startsWith("/hr") && environment !== "HR") {
+      setEnvironment("HR", true);
+    } else if (pathname.startsWith("/pos") && environment !== "POS") {
+      setEnvironment("POS", true);
+    } else if (pathname.startsWith("/admin") && environment !== "ADMIN") {
+      setEnvironment("ADMIN", true);
+    }
+  }, [pathname, setEnvironment]);
+
+  return (<>
+     {/* First Password Banner - Full Screen Width */}
+      {user?.isFirstPassword && (
+        <div className="bg-orange-600 text-white text-center font-medium shrink-0 h-10 z-60 flex items-center justify-center gap-4 shadow-md border-b border-orange-700 fixed top-0 left-0 right-0">
+          <AlertTriangle className="h-4 w-4 text-white animate-pulse" />
+          <span className="text-xs tracking-wide">
+            TEMPORARY PASSWORD DETECTED - PLEASE CHANGE YOUR PASSWORD
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="h-6 px-3 text-xs bg-white text-orange-600 hover:bg-orange-50 hover:text-orange-700 font-semibold border-0"
+            onClick={() => (window.location.href = "/hr/settings/password")}
+          >
+            Change Now
+          </Button>
+        </div>
+      )}
+    <SidebarProvider className="flex-1">
+   
+
       <SessionChecker />
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky top-0 z-40 w-full justify-between shadow-sm">
+        <header className="flex h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm" style={{
+          top:"var(--banner-height)"
+        }}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <SidebarTrigger className="shrink-0" />
             {/* Desktop Search */}
@@ -53,7 +95,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </header>
         <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">{children}</main>
       </SidebarInset>
-      
+
       {/* Mobile Floating Search */}
       <AnimatePresence>
         {mobileSearchOpen && (
@@ -79,7 +121,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="bg-background rounded-lg border shadow-lg p-2">
                 <div className="flex items-start gap-2">
                   <div className="flex-1 min-w-0">
-                    <HeaderSearch onNavigate={() => setMobileSearchOpen(false)} />
+                    <HeaderSearch
+                      onNavigate={() => setMobileSearchOpen(false)}
+                    />
                   </div>
                   <Button
                     variant="ghost"
@@ -95,6 +139,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </>
         )}
       </AnimatePresence>
-    </SidebarProvider>
+    </SidebarProvider></>
   );
 }

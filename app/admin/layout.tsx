@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import {DashboardLayout} from "@/components/layouts/dashboard-layout";
 
 export const metadata: Metadata = {
   title: "Admin Panel | HR Management System",
@@ -10,6 +11,10 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <DashboardLayout>
+      {children}
+    </DashboardLayout>
+  );
 }
 

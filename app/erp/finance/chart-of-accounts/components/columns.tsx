@@ -30,41 +30,68 @@ export const columns: ColumnDef<ChartOfAccount>[] = [
     header: "Name",
     cell: ({ row }) => {
       const isGroup = row.original.isGroup;
+      const indentSize = 24;
       
       return (
-        <div 
-          className="flex items-center" 
-          style={{ paddingLeft: `${row.depth * 32}px` }}
-        >
-          {/* Tree connection lines could be added here if needed, but indentation + icons is usually cleaner */}
+        <div className="flex items-center h-full w-full py-2 pr-4 relative group">
+          {/* Vertical Lines - Guide lines for tree structure */}
+          {Array.from({ length: row.depth }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute top-0 bottom-0 w-px bg-border/40"
+              style={{ left: `${i * indentSize + 12}px` }}
+            />
+          ))}
           
-          {row.getCanExpand() ? (
-            <button
-              onClick={row.getToggleExpandedHandler()}
-              className={cn(
-                "mr-1 p-0.5 rounded-sm hover:bg-muted transition-transform duration-200",
-                row.getIsExpanded() && "rotate-90"
-              )}
-            >
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-            </button>
-          ) : (
-             // Spacer for non-expandable items to align with expandable ones
-             <span className="w-5 mr-1" />
-          )}
+          <div 
+            className="flex items-center" 
+            style={{ paddingLeft: `${row.depth * indentSize}px` }}
+          >
+            {/* Connection line for current level (L-shape simulation) */}
+            {row.depth > 0 && (
+                <div 
+                    className="absolute w-3 h-px bg-border/40" 
+                    style={{ left: `${(row.depth - 1) * indentSize + 12}px` }}
+                />
+            )}
 
-          {isGroup ? (
-            <Folder className="mr-2 h-4 w-4 shrink-0 text-blue-500 fill-blue-500/20" />
-          ) : (
-            <FileText className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
-          )}
-          
-          <span className={cn(
-              "truncate transition-colors",
-              isGroup ? "font-semibold text-foreground" : "text-muted-foreground"
-          )}>
-            {row.getValue("name")}
-          </span>
+            {row.getCanExpand() ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  row.toggleExpanded();
+                }}
+                className={cn(
+                  "mr-1 p-0.5 rounded-sm hover:bg-muted transition-transform duration-200 z-10",
+                  row.getIsExpanded() && "rotate-90"
+                )}
+              >
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            ) : (
+               <span className="w-5 mr-1" />
+            )}
+
+            {isGroup ? (
+              <Folder className="mr-2 h-4 w-4 shrink-0 text-blue-500 fill-blue-500/20" />
+            ) : (
+              <FileText className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
+            )}
+            
+            <div className="flex flex-col">
+                 <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-muted-foreground/70">
+                        {row.original.code}
+                    </span>
+                    <span className={cn(
+                        "truncate transition-colors",
+                        isGroup ? "font-semibold text-foreground" : "text-muted-foreground"
+                    )}>
+                        {row.getValue("name")}
+                    </span>
+                 </div>
+             </div>
+          </div>
         </div>
       );
     },
@@ -118,7 +145,14 @@ export const columns: ColumnDef<ChartOfAccount>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(account.id)}
+              onClick={() => {
+                if (navigator?.clipboard) {
+                  navigator.clipboard.writeText(account.id);
+                  toast.success("ID copied to clipboard");
+                } else {
+                  toast.error("Clipboard access not available");
+                }
+              }}
             >
               Copy ID
             </DropdownMenuItem>
