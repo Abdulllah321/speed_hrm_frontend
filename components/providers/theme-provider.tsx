@@ -9,7 +9,6 @@ function ThemeSync() {
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    setMounted(true);
     // On mount, check cookie
     const savedTheme = Cookies.get("app-theme");
     // If cookie exists and is valid, and differs from what next-themes initialized (from localStorage), sync it.
@@ -18,7 +17,9 @@ function ThemeSync() {
     if (savedTheme && (savedTheme === "dark" || savedTheme === "light" || savedTheme === "system")) {
       setTheme(savedTheme);
     }
-  }, [setTheme]);
+    setMounted(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   React.useEffect(() => {
     if (!mounted || !theme) return;

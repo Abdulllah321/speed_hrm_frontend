@@ -414,16 +414,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('RBAC hasAnyPermission check:', { 
-        required: permissions,
-        userRolePermissions: user?.role?.permissions,
-        userFlatPermissions: (user as any)?.permissions,
-        userRole: user?.role
-      });
-    }
-
     // Check in role.permissions object structure (from API /me)
     if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
        // Check if permissions are in object format { permission: { name: "..." } }
@@ -501,18 +491,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = useCallback((): boolean => {
     // Check role name from nested object or string property
     const roleName = user?.role?.name || (user as any)?.role;
-    
-    // Debug logging for admin check
-    if (process.env.NODE_ENV === 'development') {
-      console.log('RBAC isAdmin check:', { 
-        roleName, 
-        userRole: user?.role,
-        isString: typeof roleName === 'string',
-        isSuperAdmin: roleName === "super_admin",
-        isAdmin: roleName === "admin",
-        result: roleName === "super_admin" || roleName === "admin"
-      });
-    }
 
     // Return true for both super_admin and admin roles
     // This allows admins to see and access everything
