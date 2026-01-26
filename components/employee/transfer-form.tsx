@@ -67,6 +67,13 @@ export function TransferForm({ employees, locations }: TransferFormProps) {
 
     // Form State
     const [selectedEmployeeId, setSelectedEmployeeId] = useState(paramEmployeeId || "");
+
+    // Sync state with param in case of navigation updates
+    useEffect(() => {
+        if (paramEmployeeId) {
+            setSelectedEmployeeId(paramEmployeeId);
+        }
+    }, [paramEmployeeId]);
     const [transferDate, setTransferDate] = useState<Date>(new Date());
     const [newLocationId, setNewLocationId] = useState("");
     const [newCityId, setNewCityId] = useState("");
@@ -249,6 +256,11 @@ export function TransferForm({ employees, locations }: TransferFormProps) {
                                                         onSelect={() => {
                                                             setSelectedEmployeeId(employee.id); // Use UUID
                                                             setOpenEmployee(false);
+
+                                                            // Update URL
+                                                            const params = new URLSearchParams(searchParams.toString());
+                                                            params.set("employeeId", employee.id);
+                                                            router.push(`?${params.toString()}`);
                                                         }}
                                                     >
                                                         <Check

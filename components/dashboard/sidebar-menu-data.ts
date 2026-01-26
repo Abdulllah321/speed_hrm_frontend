@@ -318,19 +318,19 @@ export const menuData: MenuItem[] = [
     permissions: ["inventory.read"],
     children: [
       {
-         title: "Item Setup",
-         children: [
-            { title: "Items", href: "/erp/inventory/items" },
-            { title: "Categories", href: "/erp/inventory/categories" },
-            { title: "Warehouses", href: "/erp/inventory/warehouses" },
-         ]
+        title: "Item Setup",
+        children: [
+          { title: "Items", href: "/erp/inventory/items" },
+          { title: "Categories", href: "/erp/inventory/categories" },
+          { title: "Warehouses", href: "/erp/inventory/warehouses" },
+        ]
       },
       {
         title: "Transactions",
         children: [
-             { title: "Stock Received", href: "/erp/inventory/stock-received" },
-             { title: "Delivery Note", href: "/erp/inventory/delivery-note" },
-             { title: "Stock Transfer", href: "/erp/inventory/stock-transfer" },
+          { title: "Stock Received", href: "/erp/inventory/stock-received" },
+          { title: "Delivery Note", href: "/erp/inventory/delivery-note" },
+          { title: "Stock Transfer", href: "/erp/inventory/stock-transfer" },
         ]
       }
     ],
@@ -375,6 +375,7 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/hr/employee/create" },
           { title: "List", href: "/hr/employee/list" },
+          { title: "Transfer", href: "/hr/employee/transfer" },
           { title: "User Accounts", href: "/hr/employee/user-account" },
         ],
       },
@@ -462,9 +463,9 @@ export const menuData: MenuItem[] = [
     ],
     children: [
       { title: "Create Leave", href: "/hr/leaves/create-leaves", permissions: ["leave-application.create"] },
-      { 
-        title: "View Requests", 
-        href: "/hr/leaves/requests", 
+      {
+        title: "View Requests",
+        href: "/hr/leaves/requests",
         permissions: ["leave-application.read"] // Allowed for anyone with read permission
       },
     ],
@@ -668,7 +669,7 @@ export const menuData: MenuItem[] = [
       // },
     ],
   },
-{
+  {
     title: "Admin",
     icon: Shield,
     environment: "ADMIN",
@@ -684,10 +685,10 @@ export const menuData: MenuItem[] = [
     icon: Settings,
     environment: "BOTH",
     children: [
-    { title: "Change Password", href: "/hr/settings/password" },
-    { title: "Edit Profile", href: "/hr/settings/profile" },
-  ],
-},
+      { title: "Change Password", href: "/hr/settings/password" },
+      { title: "Edit Profile", href: "/hr/settings/profile" },
+    ],
+  },
 ];
 
 
@@ -733,11 +734,11 @@ export function filterMenuByPermissions(
 
     for (const item of source) {
       const hasOwnPermissions = item.permissions && item.permissions.length > 0;
-      
+
       // For items with children, filter children FIRST
       // Then decide if parent should be shown based on accessible children
       let children = item.children ? filterItems(item.children) : undefined;
-      
+
       // If item has children and all children were filtered out, hide parent
       // UNLESS it's "Profile Settings" which should always be shown
       if (item.children && (!children || children.length === 0) && !item.href && item.title !== "Profile Settings") {
@@ -746,17 +747,17 @@ export function filterMenuByPermissions(
         }
         continue;
       }
-      
+
       // Now check if parent itself should be shown
       let allowed = true; // Default to true for items without permissions
-      
+
       // If item has permissions defined, check them
       if (hasOwnPermissions) {
         // Use normal OR/AND logic - if user has ANY of the required permissions, show the menu
         allowed = item.requireAllPermissions
           ? hasAllPermissions(item.permissions!)
           : hasAnyPermission(item.permissions!);
-          
+
         if (process.env.NODE_ENV === 'development') {
           console.log(`RBAC Filter Item: ${item.title}`, {
             required: item.permissions,
@@ -773,7 +774,7 @@ export function filterMenuByPermissions(
         if (!allowed && (!item.children || !children || children.length === 0)) {
           continue;
         }
-        
+
         // If parent doesn't have permissions but has accessible children, show it
         if (!allowed && children && children.length > 0) {
           if (process.env.NODE_ENV === 'development') {
@@ -795,7 +796,7 @@ export function filterMenuByPermissions(
             console.log(`RBAC Filter Item: ${item.title} - No permissions defined and no accessible children, hiding for security`);
           }
           if (item.title !== "Profile Settings") {
-             continue;
+            continue;
           }
         } else if (item.children && children && children.length > 0) {
           // Item has no permissions but has accessible children - show it

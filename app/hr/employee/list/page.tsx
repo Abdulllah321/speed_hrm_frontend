@@ -17,6 +17,7 @@ import {
   MoreHorizontal,
   Download,
   LayoutDashboard,
+  MapPin,
 } from "lucide-react";
 import {
   getEmployees,
@@ -211,6 +212,12 @@ export default function EmployeeListPage() {
                 <Link href={`/hr/employee/edit/${employee.id}`}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/hr/employee/transfer?employeeId=${employee.id}`}>
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Transfer
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
@@ -565,10 +572,6 @@ export default function EmployeeListPage() {
         <DataTable
           data={employees}
           columns={columns}
-          searchFields={[
-            { key: "employeeName", label: "Name" },
-            { key: "employeeId", label: "ID" },
-          ]}
           toggleAction={() => setUploadDialog(true)}
           actionText="Upload CSV"
           searchFields={[
