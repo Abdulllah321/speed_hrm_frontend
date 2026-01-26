@@ -407,7 +407,7 @@ export const config = {
      * - public files (public folder)
      * - api routes (handled separately)
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\..*|api).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\..*|api|internal-api).*)",
   ],
 };
 
