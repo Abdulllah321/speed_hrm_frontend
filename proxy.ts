@@ -462,13 +462,16 @@ export default function middleware(request: NextRequest): NextResponse {
     http://localhost:*
     http://127.0.0.1:*
     http://*.localtest.me:*
+    https://localhost:*
+    https://127.0.0.1:*
+    https://*.localtest.me:*
     ws://localhost:*
     ws://*.localtest.me:*
     wss://localhost:*
     wss://*.localtest.me:*;
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
-  img-src 'self' data: blob: http://localhost:* http://*.localtest.me:*;
+  img-src 'self' data: blob: http://localhost:* http://*.localtest.me:* https://localhost:* https://*.localtest.me:*;
   font-src 'self' data:;
 `;
   const prodCSP = `
