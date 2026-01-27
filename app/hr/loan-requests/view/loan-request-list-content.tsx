@@ -9,9 +9,10 @@ import { format } from "date-fns";
 
 interface LoanRequestListContentProps {
   initialData?: LoanRequestRow[];
+  canSearch?: boolean;
 }
 
-export function LoanRequestListContent({ initialData = [] }: LoanRequestListContentProps) {
+export function LoanRequestListContent({ initialData = [], canSearch = true }: LoanRequestListContentProps) {
   const data: LoanRequestRow[] = initialData;
   
   const handlePrint = () => {
@@ -395,12 +396,12 @@ export function LoanRequestListContent({ initialData = [] }: LoanRequestListCont
         <DataTable
           columns={listColumns}
           data={data}
-          searchFields={[
+          searchFields={canSearch ? [
             { key: "empName", label: "Employee Name" },
             { key: "empId", label: "Employee ID" },
             { key: "department", label: "Department" },
             { key: "loanType", label: "Loan Type" },
-          ]}
+          ] : undefined}
           tableId="loan-request-list-content"
         />
       </div>

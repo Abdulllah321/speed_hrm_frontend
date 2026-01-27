@@ -562,10 +562,11 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Loan Requests",
+        permissions: ["loan-request.read", "loan-request.create"],
         children: [
-          { title: "Create Request", href: "/hr/loan-requests/create" },
-          { title: "View & Reports", href: "/hr/loan-requests/view" },
-          { title: "Request Forwarding", href: "/hr/request-forwarding?type=loan" },
+          { title: "Create Request", href: "/hr/loan-requests/create", permissions: ["loan-request.create"] },
+          { title: "View & Reports", href: "/hr/loan-requests/view", permissions: ["loan-request.read"] },
+          { title: "Request Forwarding", href: "/hr/request-forwarding?type=loan", permissions: ["request-forwarding.read"] },
         ],
       },
       {
