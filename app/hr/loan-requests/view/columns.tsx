@@ -1123,200 +1123,207 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
   );
 }
 
-export const columns: ColumnDef<LoanRequestRow>[] = [
-  {
-    accessorKey: "sNo",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        S.No
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm font-medium">{row.original.sNo}</div>
-    ),
-  },
-  {
-    accessorKey: "empId",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Employee ID
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm">{row.original.empId}</div>
-    ),
-  },
-  {
-    accessorKey: "empName",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Employee Name
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm font-medium">{row.original.empName}</div>
-    ),
-  },
-  {
-    accessorKey: "department",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Department
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm">{row.original.department}</div>
-    ),
-  },
-  {
-    accessorKey: "loanType",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Loan Type
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm">{row.original.loanType}</div>
-    ),
-  },
-  {
-    accessorKey: "amount",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-        Amount
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm font-medium text-right">
-        {new Intl.NumberFormat("en-PK", {
-          style: "currency",
-          currency: "PKR",
-          minimumFractionDigits: 0,
-        }).format(row.original.amount)}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "paidAmount",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-        Paid Amount
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm font-medium text-right text-green-600">
-        {row.original.paidAmount !== undefined ? new Intl.NumberFormat("en-PK", {
-          style: "currency",
-          currency: "PKR",
-          minimumFractionDigits: 0,
-        }).format(row.original.paidAmount) : "—"}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "remainingAmount",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
-        Remaining
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm font-medium text-right text-destructive">
-        {row.original.remainingAmount !== undefined ? new Intl.NumberFormat("en-PK", {
-          style: "currency",
-          currency: "PKR",
-          minimumFractionDigits: 0,
-        }).format(row.original.remainingAmount) : "—"}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "requestedDate",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Requested Date
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm">{row.original.requestedDate}</div>
-    ),
-  },
-  {
-    accessorKey: "repaymentStartMonthYear",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        Repayment Start
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm">{row.original.repaymentStartMonthYear}</div>
-    ),
-  },
-  {
-    accessorKey: "numberOfInstallments",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-        Installments
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-sm text-center">{row.original.numberOfInstallments}</div>
-    ),
-  },
-  {
-    accessorKey: "approvalStatus",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-        Approval Status
-      </div>
-    ),
-    cell: ({ row }) => {
-      const status = row.original.approvalStatus;
-      return (
-        <div className="flex justify-center">
-          <Badge
-            variant={
-              status === "Approved"
-                ? "default"
-                : status === "Pending"
-                  ? "secondary"
-                  : "destructive"
-            }
-          >
-            {status}
-          </Badge>
+export const getColumns = (isAdmin: boolean): ColumnDef<LoanRequestRow>[] => {
+  const baseColumns: ColumnDef<LoanRequestRow>[] = [
+    {
+      accessorKey: "sNo",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          S.No
         </div>
-      );
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm font-medium">{row.original.sNo}</div>
+      ),
     },
-  },
-  {
-    accessorKey: "status",
-    header: () => (
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
-        Status
-      </div>
-    ),
-    cell: ({ row }) => {
-      const status = row.original.status;
-      return (
-        <div className="flex justify-center">
-          <Badge
-            variant={
-              status === "Approved" || status === "Completed" || status === "Disbursed"
-                ? "default"
-                : status === "Pending"
-                  ? "secondary"
-                  : "destructive"
-            }
-          >
-            {status}
-          </Badge>
+    {
+      accessorKey: "empId",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Employee ID
         </div>
-      );
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm">{row.original.empId}</div>
+      ),
     },
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => <RowActions row={row} />,
-  },
-];
+    {
+      accessorKey: "empName",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Employee Name
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm font-medium">{row.original.empName}</div>
+      ),
+    },
+    {
+      accessorKey: "department",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Department
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm">{row.original.department}</div>
+      ),
+    },
+    {
+      accessorKey: "loanType",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Loan Type
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm">{row.original.loanType}</div>
+      ),
+    },
+    {
+      accessorKey: "amount",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+          Amount
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm font-medium text-right">
+          {new Intl.NumberFormat("en-PK", {
+            style: "currency",
+            currency: "PKR",
+            minimumFractionDigits: 0,
+          }).format(row.original.amount)}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "paidAmount",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+          Paid Amount
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm font-medium text-right text-green-600">
+          {row.original.paidAmount !== undefined ? new Intl.NumberFormat("en-PK", {
+            style: "currency",
+            currency: "PKR",
+            minimumFractionDigits: 0,
+          }).format(row.original.paidAmount) : "—"}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "remainingAmount",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">
+          Remaining
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm font-medium text-right text-destructive">
+          {row.original.remainingAmount !== undefined ? new Intl.NumberFormat("en-PK", {
+            style: "currency",
+            currency: "PKR",
+            minimumFractionDigits: 0,
+          }).format(row.original.remainingAmount) : "—"}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "requestedDate",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Requested Date
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm">{row.original.requestedDate}</div>
+      ),
+    },
+    {
+      accessorKey: "repaymentStartMonthYear",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Repayment Start
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm">{row.original.repaymentStartMonthYear}</div>
+      ),
+    },
+    {
+      accessorKey: "numberOfInstallments",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+          Installments
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="text-sm text-center">{row.original.numberOfInstallments}</div>
+      ),
+    },
+    {
+      accessorKey: "approvalStatus",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+          Approval Status
+        </div>
+      ),
+      cell: ({ row }) => {
+        const status = row.original.approvalStatus;
+        return (
+          <div className="flex justify-center">
+            <Badge
+              variant={
+                status === "Approved"
+                  ? "default"
+                  : status === "Pending"
+                    ? "secondary"
+                    : "destructive"
+              }
+            >
+              {status}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "status",
+      header: () => (
+        <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">
+          Status
+        </div>
+      ),
+      cell: ({ row }) => {
+        const status = row.original.status;
+        return (
+          <div className="flex justify-center">
+            <Badge
+              variant={
+                status === "Approved" || status === "Completed" || status === "Disbursed"
+                  ? "default"
+                  : status === "Pending"
+                    ? "secondary"
+                    : "destructive"
+              }
+            >
+              {status}
+            </Badge>
+          </div>
+        );
+      },
+    },
+  ];
+
+  if (isAdmin) {
+    baseColumns.push({
+      id: "actions",
+      cell: ({ row }) => <RowActions row={row} />,
+    });
+  }
+
+  return baseColumns;
+};

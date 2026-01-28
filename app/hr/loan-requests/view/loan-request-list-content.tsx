@@ -1,11 +1,12 @@
 "use client";
 
 import DataTable from "@/components/common/data-table";
-import { columns as listColumns, type LoanRequestRow } from "./columns";
+import { getColumns, type LoanRequestRow } from "./columns";
 import { Button } from "@/components/ui/button";
 import { Printer, Download } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface LoanRequestListContentProps {
   initialData?: LoanRequestRow[];
@@ -14,7 +15,10 @@ interface LoanRequestListContentProps {
 
 export function LoanRequestListContent({ initialData = [], canSearch = true }: LoanRequestListContentProps) {
   const data: LoanRequestRow[] = initialData;
-  
+  const { isAdmin } = useAuth();
+
+  const columns = getColumns(isAdmin());
+
   const handlePrint = () => {
     if (data.length === 0) {
       toast.error("No data to print");
@@ -227,10 +231,10 @@ export function LoanRequestListContent({ initialData = [], canSearch = true }: L
           <div class="info-bar">
             <span>Total Records: ${data.length}</span>
             <span>Total Amount: ${new Intl.NumberFormat("en-PK", {
-              style: "currency",
-              currency: "PKR",
-              minimumFractionDigits: 0,
-            }).format(totalAmount)}</span>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+    }).format(totalAmount)}</span>
           </div>
 
           <table>
@@ -258,10 +262,10 @@ export function LoanRequestListContent({ initialData = [], canSearch = true }: L
                   <td>${row.department}</td>
                   <td>${row.loanType}</td>
                   <td class="text-right">${new Intl.NumberFormat("en-PK", {
-                    style: "currency",
-                    currency: "PKR",
-                    minimumFractionDigits: 0,
-                  }).format(row.amount)}</td>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+    }).format(row.amount)}</td>
                   <td>${row.requestedDate}</td>
                   <td>${row.repaymentStartMonthYear}</td>
                   <td class="text-center">${row.numberOfInstallments}</td>
@@ -286,10 +290,10 @@ export function LoanRequestListContent({ initialData = [], canSearch = true }: L
               <div class="summary-item">
                 <div class="summary-label">Total Amount</div>
                 <div class="summary-value">${new Intl.NumberFormat("en-PK", {
-                  style: "currency",
-                  currency: "PKR",
-                  minimumFractionDigits: 0,
-                }).format(totalAmount)}</div>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+    }).format(totalAmount)}</div>
               </div>
               <div class="summary-item">
                 <div class="summary-label">Approved</div>
@@ -394,7 +398,7 @@ export function LoanRequestListContent({ initialData = [], canSearch = true }: L
       {/* Data Table */}
       <div className="w-full max-w-full overflow-x-hidden">
         <DataTable
-          columns={listColumns}
+          columns={getColumns(isAdmin())}
           data={data}
           searchFields={canSearch ? [
             { key: "empName", label: "Employee Name" },
