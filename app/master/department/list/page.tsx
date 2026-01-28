@@ -10,18 +10,12 @@ export default async function DepartmentListPage({
 }: {
   searchParams: Promise<{ newItemId?: string }>;
 }) {
-  console.log("🔍 DepartmentListPage: Starting to load...");
 
   try {
     const { newItemId } = await searchParams;
-    console.log("🔍 DepartmentListPage: searchParams resolved, newItemId:", newItemId);
-
-    console.log("🔍 DepartmentListPage: Calling getDepartments()...");
     const result = await getDepartments();
-    console.log("🔍 DepartmentListPage: getDepartments() result:", result);
 
     if (!result.status || !result.data) {
-      console.log("❌ DepartmentListPage: API call failed or no data");
       return (
         <ListError
           title="Failed to load departments"
@@ -30,9 +24,8 @@ export default async function DepartmentListPage({
       );
     }
 
-    console.log("✅ DepartmentListPage: Rendering DepartmentList with data:", result.data.length, "items");
     return (
-      <PermissionGuard permissions="department.read">
+      <PermissionGuard permissions={["master.department.read", "master.department.create", "master.department.update", "master.department.delete"]}>
         <DepartmentList
           initialDepartments={result.data || []}
           newItemId={newItemId}
@@ -40,7 +33,6 @@ export default async function DepartmentListPage({
       </PermissionGuard>
     );
   } catch (error) {
-    console.error("❌ Error in DepartmentListPage:", error);
     return (
       <ListError
         title="Failed to load departments"

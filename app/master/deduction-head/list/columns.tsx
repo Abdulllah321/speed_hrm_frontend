@@ -129,8 +129,8 @@ function RowActions({ row }: RowActionsProps) {
     status: deductionHead.status,
   });
 
-  const canEdit = hasPermission("deduction-head.update");
-  const canDelete = hasPermission("deduction-head.delete");
+  const canEdit = hasPermission("master.deduction-head.update");
+  const canDelete = hasPermission("master.deduction-head.delete");
 
   if (!canEdit && !canDelete) {
     return null;

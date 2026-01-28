@@ -34,7 +34,7 @@ export type MenuItem = {
 export const masterMenuData: MenuItem[] = [
   {
     title: "Department",
-    permissions: ["department.read", "department.create"],
+    permissions: ["master.department.read", "master.department.create"],
     children: [
       { title: "Add", href: "/master/department/add" },
       { title: "View", href: "/master/department/list" },
