@@ -138,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchWithAuth = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
       // Ensure URL is absolute; if relative, prepend BASE URL from ENV
-      const finalUrl = url.startsWith("http") ? url : `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}${url.startsWith("/") ? "" : "/"}${url}`;
+      const finalUrl = url.startsWith("http") ? url : `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"}${url.startsWith("/") ? "" : "/"}${url}`;
       let response = await fetch(finalUrl, {
         ...options,
         credentials: "include", // ✅ sends ALL cookies automatically
@@ -175,18 +175,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userCookie = document.cookie
           .split('; ')
           .find(row => row.startsWith('user='));
-        
+
         if (userCookie) {
           const userData = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
           // Transform simple permission array from cookie to the structure expected by User interface if needed
           // The cookie usually has { ...user, permissions: string[] }
           // But our User interface expects role.permissions to be populated for helper methods
-          
+
           if (userData && userData.permissions && Array.isArray(userData.permissions)) {
             // Ensure role structure exists
             if (!userData.role) userData.role = { name: "", permissions: [] };
             else if (typeof userData.role === 'string') userData.role = { name: userData.role, permissions: [] };
-            
+
             // Map flat permissions to object structure if not already done
             if (!userData.role.permissions || userData.role.permissions.length === 0) {
               userData.role.permissions = userData.permissions.map((p: string) => ({
@@ -194,16 +194,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               }));
             }
           }
-          
+
           setUser(userData);
           // If we have data from cookie, we can show UI immediately while fetching fresh data
-          setLoading(false); 
+          setLoading(false);
         }
       } catch (e) {
         console.warn("Failed to parse user cookie", e);
       }
 
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
       const res = await fetchWithAuth(`${API_BASE}/auth/me`);
 
       setLoadingProgress(50);
@@ -227,18 +227,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.status && data.data) {
         const userData = data.data;
-        
+
         // Ensure permissions are accessible in both formats for compatibility
         // The API returns role.permissions as objects, but we also need flat array for fallback
         if (userData.role?.permissions && Array.isArray(userData.role.permissions) && userData.role.permissions.length > 0) {
           // Extract flat permissions array if not already present
           if (!userData.permissions || !Array.isArray(userData.permissions)) {
-            userData.permissions = userData.role.permissions.map((p: any) => 
+            userData.permissions = userData.role.permissions.map((p: any) =>
               p.permission?.name || p.name || p
             ).filter(Boolean);
           }
         }
-        
+
         if (process.env.NODE_ENV === 'development') {
           const permissionNames = userData.role?.permissions?.map((p: any) => p.permission?.name || p.name || p).filter(Boolean) || [];
           console.log('RBAC - User data from /auth/me:', {
@@ -250,7 +250,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             actualPermissionNames: permissionNames
           });
         }
-        
+
         setUser(userData);
         setPreferences(preferencesToObject(userData.preferences));
       }
@@ -334,7 +334,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
       const res = await fetch(`${API_BASE}/auth/check-session`, {
         credentials: "include",
       });
@@ -385,16 +385,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasPermission = useCallback((permission: string): boolean => {
     // Check in role.permissions object structure (from API /me)
     if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
-       // Check if permissions are in object format { permission: { name: "..." } }
-       if (user.role.permissions[0].permission) {
-         return user.role.permissions.some(p => p.permission?.name === permission);
-       }
-       // Handle case where permissions might be strings in role.permissions
-       if (typeof user.role.permissions[0] === 'string') {
-          return (user.role.permissions as any as string[]).includes(permission);
-       }
+      // Check if permissions are in object format { permission: { name: "..." } }
+      if (user.role.permissions[0].permission) {
+        return user.role.permissions.some(p => p.permission?.name === permission);
+      }
+      // Handle case where permissions might be strings in role.permissions
+      if (typeof user.role.permissions[0] === 'string') {
+        return (user.role.permissions as any as string[]).includes(permission);
+      }
     }
-    
+
     // Fallback: Check flat permissions array (from cookie or simplified user object)
     // The user interface defines permissions?: string[] on the root object in some contexts (like lib/auth.ts)
     // casting to any to bypass strict type checking for this fallback
@@ -402,7 +402,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (flatPermissions && Array.isArray(flatPermissions)) {
       return flatPermissions.includes(permission);
     }
-    
+
     return false;
   }, [user]);
 
@@ -414,44 +414,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // Debug logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('RBAC hasAnyPermission check:', { 
-        required: permissions,
-        userRolePermissions: user?.role?.permissions,
-        userFlatPermissions: (user as any)?.permissions,
-        userRole: user?.role
-      });
-    }
-
     // Check in role.permissions object structure (from API /me)
     if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
-       // Check if permissions are in object format { permission: { name: "..." } }
-       if (user.role.permissions[0].permission) {
-         const userPermissionNames = user.role.permissions.map((p: any) => p.permission?.name).filter(Boolean);
-         const hasPermission = permissions.some(permission => userPermissionNames.includes(permission));
-         if (process.env.NODE_ENV === 'development') {
-           console.log('RBAC hasAnyPermission result (object format):', hasPermission, {
-             required: permissions,
-             userPermissions: userPermissionNames,
-             match: permissions.filter(p => userPermissionNames.includes(p))
-           });
-         }
-         return hasPermission;
-       }
-       // Handle case where permissions might be strings in role.permissions
-       if (typeof user.role.permissions[0] === 'string') {
-          const hasPermission = permissions.some(permission => 
-            (user.role?.permissions as any as string[]).includes(permission)
-          );
-          if (process.env.NODE_ENV === 'development') {
-            console.log('RBAC hasAnyPermission result (string format):', hasPermission, {
-              required: permissions,
-              userPermissions: user.role.permissions
-            });
-          }
-          return hasPermission;
-       }
+      // Check if permissions are in object format { permission: { name: "..." } }
+      if (user.role.permissions[0].permission) {
+        const userPermissionNames = user.role.permissions.map((p: any) => p.permission?.name).filter(Boolean);
+        const hasPermission = permissions.some(permission => userPermissionNames.includes(permission));
+        if (process.env.NODE_ENV === 'development') {
+          console.log('RBAC hasAnyPermission result (object format):', hasPermission, {
+            required: permissions,
+            userPermissions: userPermissionNames,
+            match: permissions.filter(p => userPermissionNames.includes(p))
+          });
+        }
+        return hasPermission;
+      }
+      // Handle case where permissions might be strings in role.permissions
+      if (typeof user.role.permissions[0] === 'string') {
+        const hasPermission = permissions.some(permission =>
+          (user.role?.permissions as any as string[]).includes(permission)
+        );
+        if (process.env.NODE_ENV === 'development') {
+          console.log('RBAC hasAnyPermission result (string format):', hasPermission, {
+            required: permissions,
+            userPermissions: user.role.permissions
+          });
+        }
+        return hasPermission;
+      }
     }
 
     // Fallback: Check flat permissions array (from cookie)
@@ -459,9 +449,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (flatPermissions && Array.isArray(flatPermissions)) {
       const hasPermission = permissions.some(p => flatPermissions.includes(p));
       if (process.env.NODE_ENV === 'development') {
-        console.log('RBAC hasAnyPermission result (flat array):', hasPermission, { 
+        console.log('RBAC hasAnyPermission result (flat array):', hasPermission, {
           userPermissions: flatPermissions,
-          required: permissions 
+          required: permissions
         });
       }
       return hasPermission;
@@ -476,17 +466,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasAllPermissions = useCallback((permissions: string[]): boolean => {
     // Check in role.permissions object structure
     if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
-       if (user.role.permissions[0].permission) {
-         return permissions.every(permission =>
-           user.role?.permissions?.some(p => p.permission?.name === permission)
-         );
-       }
-       // Handle case where permissions might be strings in role.permissions
-       if (typeof user.role.permissions[0] === 'string') {
-          return permissions.every(permission => 
-            (user.role?.permissions as any as string[]).includes(permission)
-          );
-       }
+      if (user.role.permissions[0].permission) {
+        return permissions.every(permission =>
+          user.role?.permissions?.some(p => p.permission?.name === permission)
+        );
+      }
+      // Handle case where permissions might be strings in role.permissions
+      if (typeof user.role.permissions[0] === 'string') {
+        return permissions.every(permission =>
+          (user.role?.permissions as any as string[]).includes(permission)
+        );
+      }
     }
 
     // Fallback: Check flat permissions array
@@ -501,25 +491,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = useCallback((): boolean => {
     // Check role name from nested object or string property
     const roleName = user?.role?.name || (user as any)?.role;
-    
-    // Debug logging for admin check
-    if (process.env.NODE_ENV === 'development') {
-      console.log('RBAC isAdmin check:', { 
-        roleName, 
-        userRole: user?.role,
-        isString: typeof roleName === 'string',
-        isSuperAdmin: roleName === "super_admin",
-        isAdmin: roleName === "admin",
-        result: roleName === "super_admin" || roleName === "admin"
-      });
-    }
 
     // Return true for both super_admin and admin roles
     // This allows admins to see and access everything
     if (typeof roleName === 'string') {
-      return roleName === "super_admin" || roleName === "admin";
+      const normalized = roleName.toLowerCase().trim();
+      return normalized === "super_admin" || normalized === "admin" || normalized === "super admin";
     }
-    
+
     return false;
   }, [user]);
 
@@ -545,8 +524,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           checkAndRefreshSession: async () => false,
           fetchWithAuth: async (url: string, options?: RequestInit) => fetch(url, options),
           sessionExpired: false,
-          setSessionExpired: () => {},
-          handleSessionExpiry: async () => {},
+          setSessionExpired: () => { },
+          handleSessionExpiry: async () => { },
         }}
       >
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />

@@ -231,7 +231,6 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                     ${row.taxBreakup?.fixedAmountTax > 0 ? `<div><b>Fixed Tax:</b> ${Math.round(Number(row.taxBreakup?.fixedAmountTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>` : ''}
                     ${row.taxBreakup?.percentageTax > 0 ? `<div><b>% Tax:</b> ${Math.round(Number(row.taxBreakup?.percentageTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>` : ''}
                     <div><b>Annual Tax:</b> ${Math.round(Number(row.taxDeduction || 0) * 12).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                    <div><b>Rebate:</b> ${Math.round(Number(row.taxBreakup?.totalRebate || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                     <div class="section-header" style="margin-top: 4px; border-top: 1px solid #999;"><b>Monthly Tax:</b> ${Math.round(Number(row.taxDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                   </td>
                   <td>

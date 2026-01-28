@@ -12,6 +12,7 @@ import { columns as reportColumns, type LoanReportRow } from "../report/columns"
 import { LoanRequestListContent } from "./loan-request-list-content";
 import { LoanReportContent } from "./loan-report-content";
 import { useMemo } from "react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface LoanRequestUnifiedProps {
   listData: LoanRequestRow[];
@@ -20,6 +21,9 @@ interface LoanRequestUnifiedProps {
 
 export function LoanRequestUnified({ listData, reportData }: LoanRequestUnifiedProps) {
   const [activeTab, setActiveTab] = useState<"list" | "analytics">("list");
+  const { user, isAdmin, hasPermission } = useAuth();
+
+  const canViewReports = isAdmin() || hasPermission("loan-request.view-reports");
 
   // Calculate summary statistics for analytics
   const summary = useMemo(() => {
@@ -70,26 +74,30 @@ export function LoanRequestUnified({ listData, reportData }: LoanRequestUnifiedP
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "list" | "analytics")} className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="list" className="flex items-center gap-2">
-            <List className="h-4 w-4" />
-            List View
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            Analytics & Report
-          </TabsTrigger>
-        </TabsList>
+        {canViewReports ? (
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              List View
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              Analytics & Report
+            </TabsTrigger>
+          </TabsList>
+        ) : null}
 
         {/* List View Tab */}
         <TabsContent value="list" className="mt-6 space-y-6">
-          <LoanRequestListContent initialData={listData} />
+          <LoanRequestListContent initialData={listData} canSearch={canViewReports} />
         </TabsContent>
 
         {/* Analytics & Report Tab */}
-        <TabsContent value="analytics" className="mt-6 space-y-6">
-          <LoanReportContent initialData={reportData} summary={summary} />
-        </TabsContent>
+        {canViewReports && (
+          <TabsContent value="analytics" className="mt-6 space-y-6">
+            <LoanReportContent initialData={reportData} summary={summary} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

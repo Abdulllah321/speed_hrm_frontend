@@ -185,10 +185,6 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                         <span className="font-bold shrink-0">Annual Tax:</span>
                         <span className="text-right">{Math.round(Number(annualTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
                     </div>
-                    <div className="flex justify-between items-center gap-2">
-                        <span className="font-bold shrink-0">Rebate:</span>
-                        <span className="text-right">{Math.round(Number(tax?.totalRebate || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || "0"}</span>
-                    </div>
                     <div className="flex justify-between items-center gap-2 font-bold border-t pt-1 bg-gray-50">
                         <span className="shrink-0">Monthly Tax:</span>
                         <span className="text-right">

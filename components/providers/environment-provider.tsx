@@ -9,6 +9,7 @@ export type EnvironmentType = "HR" | "ERP" | "POS" | "ADMIN";
 
 interface EnvironmentContextType {
   environment: EnvironmentType;
+
   setEnvironment: (env: EnvironmentType, silent?: boolean) => void;
   toggleEnvironment: () => void;
   isLoading: boolean;

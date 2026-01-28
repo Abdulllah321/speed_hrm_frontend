@@ -77,8 +77,15 @@ const loanRequestFormSchema = z.object({
 
 type LoanRequestFormData = z.infer<typeof loanRequestFormSchema>;
 
+import { useAuth } from "@/components/providers/auth-provider";
+
 export default function CreateLoanRequestPage() {
   const router = useRouter();
+  const { user, isAdmin, hasPermission } = useAuth();
+
+  // Check if user has permission to create loan request for others
+  const canCreateForOthers = isAdmin() || hasPermission("loan-request.create.others");
+
   const [loading, setLoading] = useState(true);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [loadingLoanTypes, setLoadingLoanTypes] = useState(false);
@@ -104,6 +111,31 @@ export default function CreateLoanRequestPage() {
     },
     mode: "onBlur",
   });
+
+  // Pre-select current user if available
+  useEffect(() => {
+    if (user?.employeeId && employees.length > 0) {
+      // Find employee object for current user
+      const currentUserEmployee = employees.find(emp => emp.id === user.employeeId);
+
+      if (currentUserEmployee) {
+        // Set department if not already set
+        if (!form.getValues("departmentId") && currentUserEmployee.departmentId) {
+          form.setValue("departmentId", currentUserEmployee.departmentId);
+        }
+
+        // Set sub-department if not already set
+        if (!form.getValues("subDepartmentId") && currentUserEmployee.subDepartmentId) {
+          form.setValue("subDepartmentId", currentUserEmployee.subDepartmentId);
+        }
+
+        // Set employee ID
+        if (!form.getValues("employeeId")) {
+          form.setValue("employeeId", user.employeeId);
+        }
+      }
+    }
+  }, [user, employees, form]);
 
   const selectedDepartmentId = form.watch("departmentId");
   const selectedSubDepartmentId = form.watch("subDepartmentId");
@@ -212,6 +244,14 @@ export default function CreateLoanRequestPage() {
     return filtered;
   }, [employees, selectedDepartmentId, selectedSubDepartmentId]);
 
+  // Find current employee object for display
+  const currentEmployee = useMemo(() => {
+    if (user?.employeeId && employees.length > 0) {
+      return employees.find(emp => emp.id === user.employeeId);
+    }
+    return null;
+  }, [user, employees]);
+
   // Employee options for Autocomplete
   const employeeOptions = useMemo(() => {
     return filteredEmployees.map((emp) => ({
@@ -281,84 +321,118 @@ export default function CreateLoanRequestPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Department and Sub Department Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="departmentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        Department
-                      </FormLabel>
-                      <FormControl>
-                        <Autocomplete
-                          options={[
-                            { value: "", label: "All Departments" },
-                            ...departments.map((dept) => ({
-                              value: dept.id,
-                              label: dept.name,
-                            })),
-                          ]}
-                          value={field.value ?? ""}
-                          onValueChange={(value) => {
-                            const newValue = value === "" ? undefined : value;
-                            field.onChange(newValue);
-                            form.setValue("subDepartmentId", undefined);
-                            form.setValue("employeeId", "");
-                          }}
-                          placeholder="Select Department (Optional)"
-                          searchPlaceholder="Search department..."
-                          emptyMessage="No departments found"
-                          disabled={form.formState.isSubmitting || submitting}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="subDepartmentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        Sub Department
-                      </FormLabel>
-                      <FormControl>
-                        {loadingSubDepartments ? (
-                          <div className="h-10 bg-muted rounded-md animate-pulse" />
-                        ) : (
+              {/* Department and Sub Department Row - Only visible to admins/authorized users */}
+              {canCreateForOthers && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="departmentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Department
+                        </FormLabel>
+                        <FormControl>
                           <Autocomplete
                             options={[
-                              { value: "", label: "All Sub Departments" },
-                              ...subDepartments.map((subDept) => ({
-                                value: subDept.id,
-                                label: subDept.name,
+                              { value: "", label: "All Departments" },
+                              ...departments.map((dept) => ({
+                                value: dept.id,
+                                label: dept.name,
                               })),
                             ]}
                             value={field.value ?? ""}
                             onValueChange={(value) => {
                               const newValue = value === "" ? undefined : value;
                               field.onChange(newValue);
+                              form.setValue("subDepartmentId", undefined);
                               form.setValue("employeeId", "");
                             }}
-                            placeholder={
-                              !selectedDepartmentId
-                                ? "Select department first"
-                                : "Select Sub Department (Optional)"
-                            }
-                            searchPlaceholder="Search sub department..."
-                            emptyMessage="No sub departments found"
-                            disabled={
-                              form.formState.isSubmitting ||
-                              submitting ||
-                              !selectedDepartmentId ||
-                              subDepartments.length === 0
-                            }
+                            placeholder="Select Department (Optional)"
+                            searchPlaceholder="Search department..."
+                            emptyMessage="No departments found"
+                            disabled={form.formState.isSubmitting || submitting}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="subDepartmentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          Sub Department
+                        </FormLabel>
+                        <FormControl>
+                          {loadingSubDepartments ? (
+                            <div className="h-10 bg-muted rounded-md animate-pulse" />
+                          ) : (
+                            <Autocomplete
+                              options={[
+                                { value: "", label: "All Sub Departments" },
+                                ...subDepartments.map((subDept) => ({
+                                  value: subDept.id,
+                                  label: subDept.name,
+                                })),
+                              ]}
+                              value={field.value ?? ""}
+                              onValueChange={(value) => {
+                                const newValue = value === "" ? undefined : value;
+                                field.onChange(newValue);
+                                form.setValue("employeeId", "");
+                              }}
+                              placeholder={
+                                !selectedDepartmentId
+                                  ? "Select department first"
+                                  : "Select Sub Department (Optional)"
+                              }
+                              searchPlaceholder="Search sub department..."
+                              emptyMessage="No sub departments found"
+                              disabled={
+                                form.formState.isSubmitting ||
+                                submitting ||
+                                !selectedDepartmentId ||
+                                subDepartments.length === 0
+                              }
+                            />
+                          )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Employee Selection */}
+              {canCreateForOthers ? (
+                <FormField
+                  control={form.control}
+                  name="employeeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Employee <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        {loading ? (
+                          <div className="h-10 bg-muted rounded-md animate-pulse" />
+                        ) : (
+                          <Autocomplete
+                            options={employeeOptions}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Select employee"
+                            searchPlaceholder="Search employees..."
+                            emptyMessage="No employees found"
+                            disabled={form.formState.isSubmitting || submitting || loading}
                           />
                         )}
                       </FormControl>
@@ -366,37 +440,22 @@ export default function CreateLoanRequestPage() {
                     </FormItem>
                   )}
                 />
-              </div>
-
-              {/* Employee Selection */}
-              <FormField
-                control={form.control}
-                name="employeeId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      Employee <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      {loading ? (
-                        <div className="h-10 bg-muted rounded-md animate-pulse" />
-                      ) : (
-                        <Autocomplete
-                          options={employeeOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select employee"
-                          searchPlaceholder="Search employees..."
-                          emptyMessage="No employees found"
-                          disabled={form.formState.isSubmitting || submitting || loading}
-                        />
-                      )}
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              ) : (
+                // Read-only view for employees
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium">Select Employee</h3>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Employee ID</p>
+                    <div className="flex w-full rounded-md bg-muted px-3 py-2 text-sm">
+                      {currentEmployee
+                        ? `${currentEmployee.employeeName} (${currentEmployee.employeeId})`
+                        : user?.employee
+                          ? `${user.firstName || ""} ${user.lastName || ""} (${user.employee.employeeId})`
+                          : "Loading..."}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Loan Type */}
               <FormField

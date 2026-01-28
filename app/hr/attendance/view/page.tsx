@@ -621,6 +621,71 @@ function ViewEmployeeAttendanceDetailPage() {
         </div>
       </div>
 
+      {/* Employee Info & Summary */}
+      {selectedEmployee && hasSearched && (
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardContent>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-primary/10">
+                  <UserCircle className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Employee</p>
+                  <p className="font-semibold">{selectedEmployee.employeeName}</p>
+                  <p className="text-xs text-muted-foreground">{selectedEmployee.employeeId}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Present Days</p>
+                  <p className="text-2xl font-bold text-green-600">{summary.present}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Absent Days</p>
+                  <p className="text-2xl font-bold text-red-600">{summary.absent}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Holidays</p>
+                  <p className="text-2xl font-bold text-purple-600">{summary.holidays}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Weekly Offs</p>
+                  <p className="text-2xl font-bold text-gray-600">{summary.weeklyOffs}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Overtime Days</p>
+                  <p className="text-2xl font-bold text-amber-600">{summary.overtime}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Late Days</p>
+                  <p className="text-2xl font-bold text-yellow-600">{summary.late}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Filters Card */}
       <Card>
         <CardHeader>
@@ -694,13 +759,11 @@ function ViewEmployeeAttendanceDetailPage() {
                   <div className="h-10 bg-muted rounded animate-pulse" />
                 ) : (
                   <Autocomplete
-                    options={[
-                      { value: "all", label: "All Employees", description: "View all filtered employees" },
-                      ...filteredEmployees.map((emp) => ({
-                        value: emp.id,
-                        label: `${emp.employeeName} (${emp.employeeId})`,
-                        description: emp.departmentName,
-                      }))]}
+                    options={filteredEmployees.map((emp) => ({
+                      value: emp.id,
+                      label: `${emp.employeeName} (${emp.employeeId})`,
+                      description: emp.departmentName,
+                    }))}
                     value={filters.employeeId}
                     onValueChange={(value) => updateFilters({ employeeId: value || "" })}
                     placeholder="Select employee"
@@ -781,71 +844,6 @@ function ViewEmployeeAttendanceDetailPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Employee Info & Summary */}
-      {selectedEmployee && hasSearched && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-full bg-primary/10">
-                  <UserCircle className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Employee</p>
-                  <p className="font-semibold">{selectedEmployee.employeeName}</p>
-                  <p className="text-xs text-muted-foreground">{selectedEmployee.employeeId}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Present Days</p>
-                  <p className="text-2xl font-bold text-green-600">{summary.present}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Absent Days</p>
-                  <p className="text-2xl font-bold text-red-600">{summary.absent}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Holidays</p>
-                  <p className="text-2xl font-bold text-purple-600">{summary.holidays}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Weekly Offs</p>
-                  <p className="text-2xl font-bold text-gray-600">{summary.weeklyOffs}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Overtime Days</p>
-                  <p className="text-2xl font-bold text-amber-600">{summary.overtime}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Late Days</p>
-                  <p className="text-2xl font-bold text-yellow-600">{summary.late}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
 
       {/* Attendance Detail Table */}
       <Card className="print:shadow-none">

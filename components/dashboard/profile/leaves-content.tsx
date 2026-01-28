@@ -93,11 +93,7 @@ export function LeavesContent({ employee }: LeavesContentProps) {
                                 </div>
                             </div>
 
-                            <div className="pt-4 flex justify-end">
-                                <Link href="/hr/leaves">
-                                    <Button>Go to Leaves Management</Button>
-                                </Link>
-                            </div>
+                           
                         </div>
                     ) : (
                         <div className="space-y-4">

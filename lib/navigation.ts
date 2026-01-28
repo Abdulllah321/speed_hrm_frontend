@@ -22,7 +22,16 @@ export function buildSubdomainUrl(subdomain: string, path: string): string {
   } else {
     // Production: extract base domain
     const parts = hostname.split(".");
-    const baseDomain = parts.length >= 2 ? parts.slice(-2).join(".") : hostname;
+    let baseDomain = hostname;
+
+    // List of known subdomains that we should replace if they are at the start of the hostname
+    const knownSubdomains = ["hr", "admin", "auth", "master", "erp", "pos"];
+    
+    // If the first part of the hostname is a known subdomain, remove it to get the base domain
+    if (parts.length > 1 && knownSubdomains.includes(parts[0])) {
+      baseDomain = parts.slice(1).join(".");
+    }
+    
     return `${protocol}//${subdomain}.${baseDomain}${path}`;
   }
 }
