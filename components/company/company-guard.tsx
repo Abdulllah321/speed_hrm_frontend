@@ -21,7 +21,7 @@ interface CompanyGuardProps {
  */
 export function CompanyGuard({ children, optional = false }: CompanyGuardProps) {
     const { currentCompany, needsSetup, loading } = useCompany();
-    const { loading: authLoading } = useAuth();
+    const { loading: authLoading, isAuthenticated } = useAuth();
 
     // While loading, if it's the initial load, AuthProvider covers with a LoadingScreen.
     // If not initial load, we still shouldn't show children if they depend on company.
@@ -35,13 +35,13 @@ export function CompanyGuard({ children, optional = false }: CompanyGuardProps) 
             <>
                 {children}
                 {/* Still show setup dialog if needed, but don't block */}
-                <CompanySetupDialog open={needsSetup} allowClose={true} />
+                <CompanySetupDialog open={needsSetup && isAuthenticated} allowClose={true} />
             </>
         );
     }
 
     // If no companies exist, force setup
-    if (needsSetup) {
+    if (needsSetup && isAuthenticated) {
         return (
             <>
                 <div className="flex h-[80vh] items-center justify-center">
