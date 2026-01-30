@@ -6,6 +6,7 @@ import DataTable from "@/components/common/data-table";
 import { columns, HolidayRow } from "./columns";
 import { Holiday, deleteHolidays, updateHolidays } from "@/lib/actions/holiday";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ interface HolidayListProps {
 
 export function HolidayList({ initialHolidays, newItemId }: HolidayListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string; dateFrom: string; dateTo: string; status: string }[]>([]);
@@ -107,7 +109,7 @@ export function HolidayList({ initialHolidays, newItemId }: HolidayListProps) {
         columns={columns}
         data={data}
         actionText="Add Holiday"
-        toggleAction={handleToggle}
+        toggleAction={hasPermission("hr.holiday.create") ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[{ key: "name", label: "Name" }]}
         filters={[
@@ -120,8 +122,8 @@ export function HolidayList({ initialHolidays, newItemId }: HolidayListProps) {
             ],
           },
         ]}
-        onMultiDelete={handleMultiDelete}
-        onBulkEdit={handleBulkEdit}
+        onMultiDelete={hasPermission("hr.holiday.delete") ? handleMultiDelete : undefined}
+        onBulkEdit={hasPermission("hr.holiday.update") ? handleBulkEdit : undefined}
         tableId="holiday-list"
       />
 

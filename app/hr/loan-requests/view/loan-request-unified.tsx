@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { List, BarChart3, Plus, Printer, Download } from "lucide-react";
 import Link from "next/link";
 import DataTable from "@/components/common/data-table";
-import { columns as listColumns, type LoanRequestRow } from "./columns";
+import { type LoanRequestRow } from "./columns";
 import { columns as reportColumns, type LoanReportRow } from "../report/columns";
 import { LoanRequestListContent } from "./loan-request-list-content";
 import { LoanReportContent } from "./loan-report-content";
@@ -23,7 +23,7 @@ export function LoanRequestUnified({ listData, reportData }: LoanRequestUnifiedP
   const [activeTab, setActiveTab] = useState<"list" | "analytics">("list");
   const { user, isAdmin, hasPermission } = useAuth();
 
-  const canViewReports = isAdmin() || hasPermission("loan-request.view-reports");
+  const canViewReports = isAdmin() || hasPermission("hr.loan-request.read");
 
   // Calculate summary statistics for analytics
   const summary = useMemo(() => {

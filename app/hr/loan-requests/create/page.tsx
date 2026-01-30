@@ -84,7 +84,7 @@ export default function CreateLoanRequestPage() {
   const { user, isAdmin, hasPermission } = useAuth();
 
   // Check if user has permission to create loan request for others
-  const canCreateForOthers = isAdmin() || hasPermission("loan-request.create.others");
+  const canCreateForOthers = isAdmin() || hasPermission("hr.loan-request.create");
 
   const [loading, setLoading] = useState(true);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);

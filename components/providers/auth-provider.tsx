@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { getApiBaseUrl } from "@/lib/utils";
 
 export interface User {
   id: string;
@@ -138,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchWithAuth = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
       // Ensure URL is absolute; if relative, prepend BASE URL from ENV
-      const finalUrl = url.startsWith("http") ? url : `${process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"}${url.startsWith("/") ? "" : "/"}${url}`;
+      const finalUrl = url.startsWith("http") ? url : `${getApiBaseUrl()}${url.startsWith("/") ? "" : "/"}${url}`;
       let response = await fetch(finalUrl, {
         ...options,
         credentials: "include", // ✅ sends ALL cookies automatically
@@ -203,8 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("Failed to parse user cookie", e);
       }
 
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
-      const res = await fetchWithAuth(`${API_BASE}/auth/me`);
+      const res = await fetchWithAuth(`${getApiBaseUrl()}/auth/me`);
 
       setLoadingProgress(50);
 
@@ -334,8 +334,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
-      const res = await fetch(`${API_BASE}/auth/check-session`, {
+      const res = await fetch(`${getApiBaseUrl()}/auth/check-session`, {
         credentials: "include",
       });
 

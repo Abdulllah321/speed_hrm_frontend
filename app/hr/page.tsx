@@ -1,5 +1,6 @@
 "use client";
 
+import { PermissionGuard } from "@/components/auth/permission-guard";
 import { DashboardContent } from "@/components/dashboard/dashboard-content";
 import { EmployeeDashboardContent } from "@/components/dashboard/employee-dashboard-content";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -13,6 +14,10 @@ export default function HRPage() {
   }
 
   // Show employee dashboard for regular users
-  return <EmployeeDashboardContent />;
+  return (
+    <PermissionGuard permissions="hr.dashboard.view">
+      <EmployeeDashboardContent />
+    </PermissionGuard>
+  );
 }
 

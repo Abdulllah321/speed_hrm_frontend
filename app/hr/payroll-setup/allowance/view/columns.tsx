@@ -45,6 +45,7 @@ import {
 import { Edit2, Trash2, MoreHorizontal, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateAllowance, deleteAllowance, getAllowanceHeads, type AllowanceHead } from "@/lib/actions/allowance";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export interface AllowanceRow {
   id: string;
@@ -264,6 +265,10 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
   const item = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission("hr.allowance.update");
+  const canDelete = hasPermission("hr.allowance.delete");
+
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [allowanceHeads, setAllowanceHeads] = useState<AllowanceHead[]>([]);
@@ -366,6 +371,7 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
                 });
                 setEditDialog(true);
               }}
+              disabled={!canEdit}
             >
               <Edit2 className="h-4 w-4 mr-2" />
               Edit
@@ -373,6 +379,7 @@ function RowActions({ row }: { row: Row<AllowanceRow> }) {
             <DropdownMenuItem
               onClick={() => setDeleteDialog(true)}
               className="text-destructive focus:text-destructive"
+              disabled={!canDelete}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete

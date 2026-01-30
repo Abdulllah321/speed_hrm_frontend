@@ -56,6 +56,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type WorkingHoursPolicyRow = WorkingHoursPolicy & { id: string; sno?: number };
 
@@ -530,6 +531,7 @@ const TimePicker = ({
 
 function RowActions({ row }: RowActionsProps) {
   const policy = row.original;
+  const { hasPermission } = useAuth();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
@@ -733,17 +735,21 @@ function RowActions({ row }: RowActionsProps) {
             <Eye className="h-4 w-4 mr-2" />
             View
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </DropdownMenuItem>
+          {hasPermission("hr.working-hour-policy.update") && (
+            <DropdownMenuItem onClick={() => setEditDialog(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+          )}
+          {hasPermission("hr.working-hour-policy.delete") && (
+            <DropdownMenuItem
+              onClick={() => setDeleteDialog(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

@@ -251,6 +251,7 @@ export const menuData: MenuItem[] = [
     icon: LayoutDashboard,
     href: "/hr",
     environment: "BOTH",
+    permissions: ["hr.dashboard.view"],
   },
   {
     title: "Finance & Accounts",
@@ -364,27 +365,26 @@ export const menuData: MenuItem[] = [
     icon: Users,
     environment: "HR",
     permissions: [
-      "employee.read",
-      "employee.create",
-      "user.read",
-      "user.create",
+      "hr.employee.read",
+      "hr.employee.create",
+      "hr.employee.user-account",
     ],
     children: [
       {
         title: "Employee",
         children: [
-          { title: "Create", href: "/hr/employee/create" },
-          { title: "List", href: "/hr/employee/list" },
-          { title: "Transfer", href: "/hr/employee/transfer" },
-          { title: "User Accounts", href: "/hr/employee/user-account" },
+          { title: "Create", href: "/hr/employee/create", permissions: ["hr.employee.create"] },
+          { title: "List", href: "/hr/employee/list", permissions: ["hr.employee.read"] },
+          { title: "Transfer", href: "/hr/employee/transfer", permissions: ["hr.employee.transfer"] },
+          { title: "User Accounts", href: "/hr/employee/user-account", permissions: ["hr.employee.user-account"] },
         ],
       },
       {
         title: "Exit Clearance",
         icon: LogOut,
         children: [
-          { title: "Create", href: "/hr/exit-clearance/create" },
-          { title: "List", href: "/hr/exit-clearance/list" },
+          { title: "Create", href: "/hr/exit-clearance/create", permissions: ["hr.exit-clearance.create"] },
+          { title: "List", href: "/hr/exit-clearance/list", permissions: ["hr.exit-clearance.read"] },
         ],
       },
     ],
@@ -395,60 +395,62 @@ export const menuData: MenuItem[] = [
     icon: Clock,
     environment: "HR",
     permissions: [
-      "attendance.read",
-      "attendance.update",
-      "attendance-exemption.read",
-      "attendance-request-query.read",
-      "working-hours-policy.read",
-      "holiday.read",
+      "hr.attendance.view",
+      "hr.attendance.update",
+      "hr.attendance.exemptions-list",
+      "hr.attendance.request-list",
+      "hr.attendance.summary",
+      "hr.working-hour-policy.read",
+      "hr.holiday.read",
     ],
     children: [
       {
         title: "Attendance",
         permissions: [
-          "attendance.read",
-          "attendance.update",
-          "attendance-exemption.read",
-          "attendance-request-query.read",
-          "request-forwarding.read"
+          "hr.attendance.view",
+          "hr.attendance.update",
+          "hr.attendance.exemptions-list",
+          "hr.attendance.request-list",
+          "hr.attendance.summary",
+          "hr.request-forwarding.attendance",
         ],
         children: [
-          { title: "Manage", href: "/hr/attendance/manage", permissions: ["attendance.update"] },
-          { title: "View", href: "/hr/attendance/view", permissions: ["attendance.read"] },
-          { title: "Summary", href: "/hr/attendance/summary", permissions: ["attendance.read"] },
-          { title: "Request", href: "/hr/attendance/request", permissions: ["attendance-request-query.create"] },
-          { title: "Request List", href: "/hr/attendance/request-list", permissions: ["attendance-request-query.read"] },
+          { title: "Manage", href: "/hr/attendance/manage", permissions: ["hr.attendance.update"] },
+          { title: "View", href: "/hr/attendance/view", permissions: ["hr.attendance.view"] },
+          { title: "Summary", href: "/hr/attendance/summary", permissions: ["hr.attendance.summary"] },
+          { title: "Request", href: "/hr/attendance/request", permissions: ["hr.attendance.request"] },
+          { title: "Request List", href: "/hr/attendance/request-list", permissions: ["hr.attendance.request-list"] },
           {
             title: "Exemptions",
             href: "/hr/attendance/exemptions",
-            permissions: ["attendance-exemption.create"],
+            permissions: ["hr.attendance.exemptions"],
           },
           {
             title: "Exemptions List",
             href: "/hr/attendance/exemptions-list",
-            permissions: ["attendance-exemption.read"],
+            permissions: ["hr.attendance.exemptions-list"],
           },
         ],
       },
       {
         title: "Working Hours Policy",
-        permissions: ["working-hours-policy.read"],
+        permissions: ["hr.working-hour-policy.read"],
         children: [
-          { title: "Create", href: "/hr/working-hours/create", permissions: ["working-hours-policy.create"] },
-          { title: "View", href: "/hr/working-hours/view", permissions: ["working-hours-policy.read"] },
+          { title: "Create", href: "/hr/working-hours/create", permissions: ["hr.working-hour-policy.create"] },
+          { title: "View", href: "/hr/working-hours/view", permissions: ["hr.working-hour-policy.read"] },
           {
             title: "Assign Policy",
             href: "/hr/working-hours/assign-policy",
-            permissions: ["working-hours-policy.update"],
+            permissions: ["hr.working-hour-policy.assign"],
           },
         ],
       },
       {
         title: "Holidays",
-        permissions: ["holiday.read"],
+        permissions: ["hr.holiday.read"],
         children: [
-          { title: "Create", href: "/hr/holidays/add", permissions: ["holiday.create"] },
-          { title: "List", href: "/hr/holidays/list", permissions: ["holiday.read"] },
+          { title: "Create", href: "/hr/holidays/add", permissions: ["hr.holiday.create"] },
+          { title: "List", href: "/hr/holidays/list", permissions: ["hr.holiday.read"] },
         ],
       },
     ],
@@ -458,15 +460,15 @@ export const menuData: MenuItem[] = [
     icon: Palmtree,
     environment: "HR",
     permissions: [
-      "leave-application.read",
-      "leave-application.create",
+      "hr.leave.read",
+      "hr.leave.create",
     ],
     children: [
-      { title: "Create Leave", href: "/hr/leaves/create-leaves", permissions: ["leave-application.create"] },
+      { title: "Create Leave", href: "/hr/leaves/create-leaves", permissions: ["hr.leave.create"] },
       {
         title: "View Requests",
         href: "/hr/leaves/requests",
-        permissions: ["leave-application.read"] // Allowed for anyone with read permission
+        permissions: ["hr.leave.read"] // Allowed for anyone with read permission
       },
     ],
   },
@@ -474,32 +476,32 @@ export const menuData: MenuItem[] = [
     title: "Request Forwarding",
     icon: Shield,
     environment: "HR",
-    permissions: ["request-forwarding.read"],
+    permissions: ["hr.request-forwarding.view", "request-forwarding.read"],
     children: [
       {
         title: "Attendance",
         href: "/hr/request-forwarding?type=attendance",
-        permissions: ["request-forwarding.read"],
+        permissions: ["hr.request-forwarding.attendance", "request-forwarding.read"],
       },
       {
         title: "Advance Salary",
         href: "/hr/request-forwarding?type=advance-salary",
-        permissions: ["request-forwarding.read"],
+        permissions: ["hr.request-forwarding.advance-salary", "request-forwarding.read"],
       },
       {
         title: "Loan",
         href: "/hr/request-forwarding?type=loan",
-        permissions: ["request-forwarding.read"],
+        permissions: ["hr.request-forwarding.loan", "request-forwarding.read"],
       },
       {
         title: "Leave Application",
         href: "/hr/request-forwarding?type=leave-application",
-        permissions: ["request-forwarding.read"],
+        permissions: ["hr.request-forwarding.leave-application", "request-forwarding.read"],
       },
       {
         title: "Leave Encashment",
         href: "/hr/request-forwarding?type=leave-encashment",
-        permissions: ["request-forwarding.read"],
+        permissions: ["hr.request-forwarding.leave-encashment", "request-forwarding.read"],
       },
     ],
   },
@@ -509,81 +511,86 @@ export const menuData: MenuItem[] = [
     icon: Wallet,
     environment: "HR",
     permissions: [
-      "payroll.read",
-      "payroll.create",
-      "allowance.read",
-      "allowance.create",
-      "deduction.read",
-      "deduction.create",
-      "advance-salary.read",
-      "advance-salary.create",
-      "loan-request.read",
-      "loan-request.create",
-      "bonus.read",
-      "bonus.create",
-      "provident-fund.read",
+      "hr.payroll.read",
+      "hr.payroll.create",
+      "hr.allowance.read",
+      "hr.allowance.create",
+      "hr.deduction.read",
+      "hr.deduction.create",
+      "hr.advance-salary.read",
+      "hr.advance-salary.create",
+      "hr.loan-request.read",
+      "hr.loan-request.create",
+      "hr.bonus.read",
+      "hr.bonus.create",
+      "hr.provident-fund.read",
+      "hr.provident-fund.create",
+      "hr.leave-encashment.read",
+      "hr.leave-encashment.create",
     ],
     children: [
       {
         title: "Payroll",
-        permissions: ["payroll.read", "payroll.create"],
+        permissions: ["hr.payroll.read", "hr.payroll.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/payroll/create", permissions: ["payroll.create"] },
-          { title: "View Report", href: "/hr/payroll-setup/payroll/report", permissions: ["payroll.create"] },
-          { title: "Bank Report", href: "/hr/payroll-setup/payroll/bank-report", permissions: ["payroll.create"] },
-          { title: "Payslips Emails", href: "/hr/payroll-setup/payroll/payslips", permissions: ["payroll.read"] },
+          { title: "Create", href: "/hr/payroll-setup/payroll/create", permissions: ["hr.payroll.create"] },
+          { title: "View Report", href: "/hr/payroll-setup/payroll/report", permissions: ["hr.payroll.create"] },
+          { title: "Bank Report", href: "/hr/payroll-setup/payroll/bank-report", permissions: ["hr.payroll.create"] },
+          { title: "Payslips Emails", href: "/hr/payroll-setup/payroll/payslips", permissions: ["hr.payroll.read"] },
         ],
       },
       {
         title: "Allowance",
-        permissions: ["allowance.read", "allowance.create"],
+        permissions: ["hr.allowance.read", "hr.allowance.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/allowance/create", permissions: ["allowance.create"] },
-          { title: "View", href: "/hr/payroll-setup/allowance/view", permissions: ["allowance.read"] },
-          { title: "Bank Report", href: "/hr/payroll-setup/allowance/bank-report", permissions: ["allowance.read"] },
-          { title: "Allowance Payslip", href: "/hr/payroll-setup/allowance/payslip", permissions: ["allowance.read"] },
+          { title: "Create", href: "/hr/payroll-setup/allowance/create", permissions: ["hr.allowance.create"] },
+          { title: "View", href: "/hr/payroll-setup/allowance/view", permissions: ["hr.allowance.read"] },
+          { title: "Bank Report", href: "/hr/payroll-setup/allowance/bank-report", permissions: ["hr.allowance.read"] },
+          { title: "Allowance Payslip", href: "/hr/payroll-setup/allowance/payslip", permissions: ["hr.allowance.read"] },
         ],
       },
       {
         title: "Deduction",
-        permissions: ["deduction.read", "deduction.create"],
+        permissions: ["hr.deduction.read", "hr.deduction.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/deduction/create", permissions: ["deduction.create"] },
-          { title: "View", href: "/hr/payroll-setup/deduction/view", permissions: ["deduction.read"] },
+          { title: "Create", href: "/hr/payroll-setup/deduction/create", permissions: ["hr.deduction.create"] },
+          { title: "View", href: "/hr/payroll-setup/deduction/view", permissions: ["hr.deduction.read"] },
         ],
       },
       {
         title: "Advance Salary",
-        permissions: ["advance-salary.read", "advance-salary.create"],
+        permissions: ["hr.advance-salary.read", "hr.advance-salary.create"],
         children: [
-          { title: "Create Request", href: "/hr/payroll-setup/advance-salary/create", permissions: ["advance-salary.create"] },
-          { title: "View Requests", href: "/hr/payroll-setup/advance-salary/view", permissions: ["advance-salary.read"] },
+          { title: "Create Request", href: "/hr/payroll-setup/advance-salary/create", permissions: ["hr.advance-salary.create"] },
+          { title: "View Requests", href: "/hr/payroll-setup/advance-salary/view", permissions: ["hr.advance-salary.read"] },
         ],
       },
       {
         title: "Loan Requests",
-        permissions: ["loan-request.read", "loan-request.create"],
+        permissions: ["hr.loan-request.read", "hr.loan-request.create"],
         children: [
-          { title: "Create Request", href: "/hr/loan-requests/create", permissions: ["loan-request.create"] },
-          { title: "View & Reports", href: "/hr/loan-requests/view", permissions: ["loan-request.read"] },
-          { title: "Request Forwarding", href: "/hr/request-forwarding?type=loan", permissions: ["request-forwarding.read"] },
+          { title: "Create Request", href: "/hr/loan-requests/create", permissions: ["hr.loan-request.create"] },
+          { title: "View & Reports", href: "/hr/loan-requests/view", permissions: ["hr.loan-request.read"] },
+          { title: "Request Forwarding", href: "/hr/request-forwarding?type=loan", permissions: ["hr.request-forwarding.loan"] },
         ],
       },
       {
         title: "Increment/Decrement",
+        permissions: ["hr.increment.read", "hr.increment.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/increment/create" },
-          { title: "View", href: "/hr/payroll-setup/increment/view" },
+          { title: "Create", href: "/hr/payroll-setup/increment/create", permissions: ["hr.increment.create"] },
+          { title: "View", href: "/hr/payroll-setup/increment/view", permissions: ["hr.increment.read"] },
         ],
       },
       {
         title: "Bonus",
         icon: Gift,
+        permissions: ["hr.bonus.read", "hr.bonus.create"],
         children: [
-          { title: "Issue Bonus", href: "/hr/payroll-setup/bonus/issue" },
-          { title: "View & Reports", href: "/hr/payroll-setup/bonus/view" },
-          { title: "Bank Report", href: "/hr/payroll-setup/bonus/bank-report" },
-          { title: "Bonus Payslip", href: "/hr/payroll-setup/bonus/payslip" },
+          { title: "Issue Bonus", href: "/hr/payroll-setup/bonus/issue", permissions: ["hr.bonus.create"] },
+          { title: "View & Reports", href: "/hr/payroll-setup/bonus/view", permissions: ["hr.bonus.read"] },
+          { title: "Bank Report", href: "/hr/payroll-setup/bonus/bank-report", permissions: ["hr.bonus.read"] },
+          { title: "Bonus Payslip", href: "/hr/payroll-setup/bonus/payslip", permissions: ["hr.bonus.read"] },
         ],
       },
       // {
@@ -602,37 +609,43 @@ export const menuData: MenuItem[] = [
       {
         title: "Leave Encashment",
         icon: Coins,
+        permissions: ["hr.leave-encashment.read", "hr.leave-encashment.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/leave-encashment/create" },
-          { title: "List", href: "/hr/payroll-setup/leave-encashment/list" },
+          { title: "Create", href: "/hr/payroll-setup/leave-encashment/create", permissions: ["hr.leave-encashment.create"] },
+          { title: "List", href: "/hr/payroll-setup/leave-encashment/list", permissions: ["hr.leave-encashment.read"] },
           {
             title: "Request Forwarding",
             href: "/hr/request-forwarding?type=leave-encashment",
+            permissions: ["hr.request-forwarding.leave-encashment"],
           },
         ],
       },
 
       {
         title: "PF for Employee",
+        permissions: ["hr.provident-fund.read", "hr.provident-fund.create"],
         children: [
-          // { title: "Create PF", href: "/hr/payroll-setup/pf-employee/create" },
-          { title: "View PF", href: "/hr/payroll-setup/pf-employee/view" },
+          // { title: "Create PF", href: "/hr/payroll-setup/pf-employee/create", permissions: ["hr.provident-fund.create"] },
+          { title: "View PF", href: "/hr/payroll-setup/pf-employee/view", permissions: ["hr.provident-fund.read"] },
           {
             title: "Create Withdraw",
             href: "/hr/payroll-setup/pf-employee/withdraw-create",
+            permissions: ["hr.provident-fund.create"],
           },
           {
             title: "View Withdraw",
             href: "/hr/payroll-setup/pf-employee/withdraw-view",
+            permissions: ["hr.provident-fund.read"],
           },
-          { title: "View Report", href: "/hr/payroll-setup/pf-employee/report" },
-          { title: "View Ledger", href: "/hr/payroll-setup/pf-employee/ledger" },
+          { title: "View Report", href: "/hr/payroll-setup/pf-employee/report", permissions: ["hr.provident-fund.read"] },
+          { title: "View Ledger", href: "/hr/payroll-setup/pf-employee/ledger", permissions: ["hr.provident-fund.read"] },
         ],
       },
       {
         title: "Social Security",
+        permissions: ["hr.social-security.read"],
         children: [
-          { title: "View Social Security", href: "/hr/payroll-setup/social-security-employee/view" },
+          { title: "View Social Security", href: "/hr/payroll-setup/social-security-employee/view", permissions: ["hr.social-security.read"] },
         ],
       },
       // {
@@ -788,8 +801,8 @@ export function filterMenuByPermissions(
         // if they're explicitly public items like Dashboard
         // For security, we'll hide items without permissions unless they're explicitly marked
         // Dashboard is an exception - it should be visible to all authenticated users
-        if (item.title === "Dashboard" || item.title === "Profile Settings" || item.title === "Change Password" || item.title === "Edit Profile") {
-          allowed = true; // Allow Dashboard and Profile Settings for all authenticated users
+        if (item.title === "Profile Settings" || item.title === "Change Password" || item.title === "Edit Profile") {
+          allowed = true; // Allow Profile Settings for all authenticated users
         } else if (item.children && (!children || children.length === 0)) {
           // Hide items without permissions if they have no accessible children
           // UNLESS it's "Profile Settings"

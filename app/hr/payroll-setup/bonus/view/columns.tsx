@@ -46,6 +46,7 @@ import { Edit2, Trash2, MoreHorizontal, Loader2, Wallet, DollarSign, CalendarDay
 import { toast } from "sonner";
 import { updateBonus, deleteBonus } from "@/lib/actions/bonus";
 import { getBonusTypes, type BonusType } from "@/lib/actions/bonus-type";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export interface BonusRow {
   id: string;
@@ -300,6 +301,10 @@ function RowActions({ row }: { row: Row<BonusRow> }) {
   const item = row.original;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission("hr.bonus.update");
+  const canDelete = hasPermission("hr.bonus.delete");
+
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [bonusTypes, setBonusTypes] = useState<BonusType[]>([]);
@@ -416,6 +421,7 @@ function RowActions({ row }: { row: Row<BonusRow> }) {
                 });
                 setEditDialog(true);
               }}
+              disabled={!canEdit}
             >
               <Edit2 className="h-4 w-4 mr-2" />
               Edit
@@ -423,6 +429,7 @@ function RowActions({ row }: { row: Row<BonusRow> }) {
             <DropdownMenuItem
               onClick={() => setDeleteDialog(true)}
               className="text-destructive focus:text-destructive"
+              disabled={!canDelete}
             >
               <Trash2 className="h-4 w-4 mr-2" />
               Delete

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface AllowanceListProps {
   initialData?: Allowance[];
@@ -30,6 +31,8 @@ const formatMonthYear = (month: string, year: string) => {
 
 export function AllowanceList({ initialData = [] }: AllowanceListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission("hr.allowance.create");
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
@@ -277,12 +280,14 @@ export function AllowanceList({ initialData = [] }: AllowanceListProps) {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Link href="/hr/payroll-setup/allowance/create">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Allowance
-            </Button>
-          </Link>
+          {canCreate && (
+            <Link href="/hr/payroll-setup/allowance/create">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Allowance
+              </Button>
+            </Link>
+          )}
           <Button variant="secondary" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Print

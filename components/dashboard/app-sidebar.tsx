@@ -361,7 +361,7 @@ export function AppSidebar({
   const { user, hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
   const { environment, setEnvironment } = useEnvironment();
 
-  const filteredMenu = React.useMemo(() => {
+  const { filteredMenu, hasHRAccess, hasERPAccess } = React.useMemo(() => {
     // First filter by permissions
     const permissionFiltered = filterMenuByPermissions(menuData, {
       hasAnyPermission,
@@ -369,14 +369,43 @@ export function AppSidebar({
       isAdmin,
     });
 
+    // Check which environments are accessible based on permissions
+    const hasHRAccess = permissionFiltered.some(
+      (item) => item.environment === "HR" || item.environment === "BOTH"
+    );
+    const hasERPAccess = permissionFiltered.some(
+      (item) => item.environment === "ERP" || item.environment === "BOTH"
+    );
+
     // Then filter by environment
     const envFiltered = permissionFiltered.filter((item) => {
       if (!item.environment || item.environment === "BOTH") return true;
       return item.environment === environment;
     });
 
-    return envFiltered;
+    return { filteredMenu: envFiltered, hasHRAccess, hasERPAccess };
   }, [hasAnyPermission, hasAllPermissions, isAdmin, user, environment]);
+
+  React.useEffect(() => {
+     if (environment === "ADMIN") return;
+     
+     // Auto-switch environment if current one is not accessible
+     if (environment === "HR" && !hasHRAccess && hasERPAccess) {
+        setEnvironment("ERP");
+        router.push("/erp");
+     } else if (environment === "ERP" && !hasERPAccess && hasHRAccess) {
+        setEnvironment("HR");
+        router.push("/hr");
+     }
+  }, [hasHRAccess, hasERPAccess, environment, setEnvironment, router]);
+
+  const logoLabel = React.useMemo(() => {
+      if (environment === "ADMIN") return "Admin Panel";
+      if (hasHRAccess && hasERPAccess) return "Dashboard";
+      if (hasHRAccess) return "HR";
+      if (hasERPAccess) return "ERP";
+      return "Dashboard";
+  }, [hasHRAccess, hasERPAccess, environment]);
 
   return (
     <Sidebar collapsible="icon" className="border-0 overflow-hidden ">
@@ -398,7 +427,7 @@ export function AppSidebar({
                 Speed Pvt. Ltd
               </span>
               <span className="text-xs text-sidebar-foreground/60 font-medium">
-                Dashboard
+                {logoLabel}
               </span>
             </div>
           </div>
@@ -438,26 +467,30 @@ export function AppSidebar({
               </Button>
             </div>
           ) : (
-            <Tabs
-              defaultValue={environment}
-              value={environment}
-              onValueChange={(v) => {
-                setEnvironment(v as any);
-                if (v === "HR") router.push("/hr");
-                if (v === "ERP") router.push("/erp");
-              }}
-              className="w-full"
-              variant="card"
-            >
-              <TabsList className="grid w-full grid-cols-2 h-8">
-                <TabsTrigger value="HR" className="text-xs">
-                  HR
-                </TabsTrigger>
-                <TabsTrigger value="ERP" className="text-xs">
-                  ERP
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <>
+            {hasHRAccess && hasERPAccess && (
+                <Tabs
+                defaultValue={environment}
+                value={environment}
+                onValueChange={(v) => {
+                    setEnvironment(v as any);
+                    if (v === "HR") router.push("/hr");
+                    if (v === "ERP") router.push("/erp");
+                }}
+                className="w-full"
+                variant="card"
+                >
+                <TabsList className="grid w-full grid-cols-2 h-8">
+                    <TabsTrigger value="HR" className="text-xs">
+                    HR
+                    </TabsTrigger>
+                    <TabsTrigger value="ERP" className="text-xs">
+                    ERP
+                    </TabsTrigger>
+                </TabsList>
+                </Tabs>
+            )}
+            </>
           )}
         </div>
 
