@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -66,6 +67,7 @@ import {
 } from "@/components/ui/table";
 
 export default function EmployeeListPage() {
+  const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -73,6 +75,7 @@ export default function EmployeeListPage() {
   const [uploadDialog, setUploadDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadPending, setUploadPending] = useState(false);
+  const [impersonatePendingId, setImpersonatePendingId] = useState<string | null>(null);
 
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
@@ -221,10 +224,15 @@ export default function EmployeeListPage() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/hr/employee/user-account/create?employeeId=${employee.id}`}>
+                <button
+                  type="button"
+                  className="flex w-full items-center"
+                  onClick={() => handleDashboardAccess(employee)}
+                  disabled={!!impersonatePendingId}
+                >
                   <LayoutDashboard className="h-4 w-4 mr-2" />
-                  Dashboard Access
-                </Link>
+                  {impersonatePendingId === employee.id ? "Opening..." : "Dashboard Access"}
+                </button>
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => handleStatusToggle(employee)}
@@ -371,6 +379,41 @@ export default function EmployeeListPage() {
         toast.error("Failed to delete employee");
       }
     });
+  };
+
+  const handleDashboardAccess = async (employee: Employee) => {
+    try {
+      setImpersonatePendingId(employee.id);
+
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+
+      const res = await fetch(`${apiBase}/auth/impersonate-by-employee`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ employeeId: employee.id }),
+      });
+
+      const payload = await res.json();
+
+      if (!res.ok || !payload.status) {
+        toast.error(
+          payload.message ||
+          "Failed to open dashboard. Make sure user account & dashboard access exist."
+        );
+        return;
+      }
+
+      window.open("/hr/my-dashboard", "_blank");
+    } catch (error) {
+      console.error("Error impersonating user:", error);
+      toast.error("Failed to open dashboard");
+    } finally {
+      setImpersonatePendingId(null);
+    }
   };
 
   const handlePrint = () => {

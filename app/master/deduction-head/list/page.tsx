@@ -1,6 +1,7 @@
 import { getDeductionHeads } from "@/lib/actions/deduction-head";
 import { DeductionHeadList } from "./deduction-head-list";
 import { ListError } from "@/components/dashboard/list-error";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,12 @@ export default async function DeductionHeadListPage({
     }
 
     return (
+      <PermissionGuard permissions={["master.deduction-head.create", "master.deduction-head.update", "master.deduction-head.delete"]}>
       <DeductionHeadList
         initialDeductionHeads={result.data || []}
         newItemId={newItemId}
       />
+      </PermissionGuard>
     );
   } catch (error) {
     console.error("Error in DeductionHeadListPage:", error);

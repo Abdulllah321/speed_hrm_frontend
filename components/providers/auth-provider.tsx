@@ -526,7 +526,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Return true for both super_admin and admin roles
     // This allows admins to see and access everything
     if (typeof roleName === 'string') {
-      return roleName === "super_admin" || roleName === "admin";
+      const normalized = roleName.toLowerCase().trim();
+      return normalized === "super_admin" || normalized === "admin" || normalized === "super admin";
     }
 
     return false;
@@ -534,6 +535,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Don't render children until mounted and initial load is complete
   // This prevents hydration mismatch between server and client
+  if (!mounted || loading) {
+    return (
+      <AuthContext.Provider
+        value={{
+          user,
+          preferences,
+          loading: true,
+          isAuthenticated: false,
+          refreshUser,
+          updatePreference,
+          getPreference,
+          logout,
+          hasPermission: () => false,
+          hasAnyPermission: () => false,
+          hasAllPermissions: () => false,
+          isAdmin: () => false,
+          refreshToken: async () => false,
+          checkAndRefreshSession: async () => false,
+          fetchWithAuth: async (url: string, options?: RequestInit) => fetch(url, options),
+          sessionExpired: false,
+          setSessionExpired: () => { },
+          handleSessionExpiry: async () => { },
+        }}
+      >
+        <LoadingScreen progress={loadingProgress} message={loadingMessage} />
+      </AuthContext.Provider>
+    );
+  }
+
   return (
     <AuthContext.Provider
       value={{

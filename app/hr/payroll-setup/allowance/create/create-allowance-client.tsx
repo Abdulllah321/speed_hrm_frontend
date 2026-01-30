@@ -291,11 +291,19 @@ export function CreateAllowanceClient({
     }
 
     // Get selected months - handle both single string and array
-    const selectedMonths = Array.isArray(formData.monthYear)
-      ? formData.monthYear
-      : formData.monthYear
-        ? [formData.monthYear]
-        : [];
+    let selectedMonths: string[] = [];
+    
+    if (formData.allowanceTypeCategory === "specific") {
+      selectedMonths = Array.isArray(formData.monthYear)
+        ? formData.monthYear
+        : formData.monthYear
+          ? [formData.monthYear]
+          : [];
+    } else {
+      // For recurring, use current month as default since input is disabled
+      // This ensures at least one record is created
+      selectedMonths = [new Date().toISOString().slice(0, 7)];
+    }
 
     // Create allowance items for all selected employees and months
     const newAllowances: EmployeeAllowanceItem[] = [];

@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Play, CheckCircle, Undo } from "lucide-react";
+import { ArrowLeft, Loader2, Play, CheckCircle, Undo, Search } from "lucide-react";
 import Link from "next/link";
 import {
     getSubDepartmentsByDepartment,
@@ -60,6 +60,7 @@ export function GeneratePayrollClient({
     const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
     const [step, setStep] = useState<"select" | "preview">("select");
     const [previewData, setPreviewData] = useState<any[]>([]);
+    const [searchQuery, setSearchQuery] = useState("");
 
 
     const [formData, setFormData] = useState({
@@ -346,12 +347,21 @@ export function GeneratePayrollClient({
                 </form>
             ) : (
                 <Card className="border-0 shadow-lg bg-card animate-in fade-in zoom-in-95 duration-300">
-                    <CardHeader className="flex flex-row items-center justify-between pb-4">
+                    <CardHeader className="sticky top-24 z-20 bg-card flex flex-row items-center justify-between pb-4 border-b shadow-sm">
                         <div>
                             <CardTitle className="text-2xl font-bold">Preview Payroll</CardTitle>
                             <CardDescription>Review and edit payroll details before confirming.</CardDescription>
                         </div>
                         <div className="flex space-x-2">
+                            <div className="relative w-64 mr-2">
+                                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    placeholder="Search employee by name or code..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-8"
+                                />
+                            </div>
                             <Button variant="outline" onClick={() => setStep("select")} disabled={isPending}>
                                 <Undo className="h-4 w-4 mr-2" />
                                 Back
@@ -371,296 +381,207 @@ export function GeneratePayrollClient({
                             <Table>
                                 <TableHeader>
                                     <TableRow>
+                                        <TableHead className="w-[50px]">S.No</TableHead>
                                         <TableHead className="w-[150px]">Employee</TableHead>
-                                        <TableHead>Salary Breakdown</TableHead>
-                                        <TableHead>Increment/Decrement</TableHead>
-                                        <TableHead>Allowances Breakdown</TableHead>
-                                        <TableHead>Overtime</TableHead>
-                                        <TableHead>Bonuses</TableHead>
-                                        <TableHead>Deductions Breakdown</TableHead>
-                                        <TableHead>Attendance</TableHead>
+                                        <TableHead>Emp Details</TableHead>
+                                        <TableHead>Salary/Allowances</TableHead>
                                         <TableHead>Tax</TableHead>
+                                        <TableHead>Deductions</TableHead>
                                         <TableHead>Social Security</TableHead>
                                         <TableHead>Net Salary</TableHead>
+                                        <TableHead>Account No</TableHead>
+                                        <TableHead>Payment Mode</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {previewData.map((row, index) => (
-                                        <TableRow key={row.employeeId}>
-                                            <TableCell className="font-medium">
-                                                <div>{row.employeeName}</div>
-                                                <div className="text-xs text-muted-foreground">{row.employeeCode}</div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.salaryBreakup && row.salaryBreakup.length > 0 ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        {row.salaryBreakup.map((b: any) => (
-                                                            <div key={b.id} className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">{b.name} ({b.percentage ? b.percentage + '%' : '-'}):</span>
-                                                                <span>{Math.round(b.amount || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 })}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    row.basicSalary?.toLocaleString()
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.incrementBreakup && row.incrementBreakup.length > 0 ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        {row.incrementBreakup.map((inc: any, idx: number) => (
-                                                            <div key={inc.id || idx} className="space-y-0.5">
-                                                                <div className="flex justify-between gap-4">
-                                                                    <span className={`font-medium ${inc.type === 'Increment' ? 'text-green-600' : 'text-destructive'}`}>
-                                                                        {inc.type}:
-                                                                    </span>
-                                                                    <span className={inc.type === 'Increment' ? 'text-green-600' : 'text-destructive'}>
-                                                                        {inc.method === 'Amount'
-                                                                            ? `+${inc.amount?.toLocaleString() || '0'}`
-                                                                            : `+${inc.percentage || '0'}%`}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex justify-between gap-4 text-muted-foreground">
-                                                                    <span className="text-xs">
-                                                                        {new Date(inc.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                                    </span>
-                                                                    <span className="text-xs">
-                                                                        {inc.oldSalary?.toLocaleString()} → {inc.newSalary?.toLocaleString()}
-                                                                    </span>
-                                                                </div>
-                                                                {inc.daysBefore > 0 && (
-                                                                    <div className="text-xs text-muted-foreground">
-                                                                        {inc.daysBefore} days @ old salary
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">No change</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.allowanceBreakup && row.allowanceBreakup.length > 0 ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        {row.allowanceBreakup.map((a: any) => (
-                                                            <div key={a.id} className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">{a.name}:</span>
-                                                                <span>{a.amount?.toLocaleString()}</span>
-                                                            </div>
-                                                        ))}
-                                                        <div className="pt-1 mt-1 border-t flex justify-between gap-4 font-semibold">
-                                                            <span>Total:</span>
-                                                            <span>{row.totalAllowances?.toLocaleString()}</span>
+                                    {previewData
+                                        .filter((row) => {
+                                            if (!searchQuery) return true;
+                                            const query = searchQuery.toLowerCase();
+                                            return (
+                                                row.employeeName?.toLowerCase().includes(query) ||
+                                                row.employeeCode?.toLowerCase().includes(query)
+                                            );
+                                        })
+                                        .map((row, index) => {
+                                        const salaryBreakupTotal = row.salaryBreakup && row.salaryBreakup.length > 0
+                                            ? row.salaryBreakup.reduce((sum: number, component: any) => sum + (component.amount || 0), 0)
+                                            : (row.basicSalary || 0);
+                                        const deductionBreakupTotal = (row.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
+                                        const annualTax = (row.taxBreakup?.monthlyTax || 0) * 12;
+
+                                        return (
+                                            <TableRow key={row.employeeId}>
+                                                <TableCell>{index + 1}</TableCell>
+                                                <TableCell className="font-medium">
+                                                    <div>({row.employeeCode}) {row.employeeName}</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="text-[10px] space-y-0.5 min-w-[200px]">
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <span className="font-bold shrink-0">Country:</span>
+                                                            <span className="text-right">{row.employee?.country?.name}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <span className="font-bold shrink-0">Province:</span>
+                                                            <span className="text-right">{row.employee?.state?.name}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <span className="font-bold shrink-0">City:</span>
+                                                            <span className="text-right">{row.employee?.city?.name}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <span className="font-bold shrink-0">Station:</span>
+                                                            <span className="text-right">{row.employee?.branch?.name}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <span className="font-bold shrink-0">Dept:</span>
+                                                            <span className="text-right">{row.employee?.department?.name}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <span className="font-bold shrink-0">Sub-Dept:</span>
+                                                            <span className="text-right">{row.employee?.subDepartment?.name || "-"}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <span className="font-bold shrink-0">Designation:</span>
+                                                            <span className="text-right">{row.employee?.designation?.name}</span>
                                                         </div>
                                                     </div>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">No allowances</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.overtimeBreakup && row.overtimeBreakup.length > 0 ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        {row.overtimeBreakup.map((ot: any) => (
-                                                            <div key={ot.id} className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">
-                                                                    {ot.title || 'Overtime'}
-                                                                    {ot.weekdayHours > 0 && <span className="ml-1">(WD: {ot.weekdayHours}h)</span>}
-                                                                    {ot.holidayHours > 0 && <span className="ml-1">(HD: {ot.holidayHours}h)</span>}
-                                                                </span>
-                                                                <span>{ot.amount?.toLocaleString()}</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="text-[10px] space-y-0.5 min-w-[200px]">
+                                                        {row.salaryBreakup?.map((b: any) => (
+                                                            <div key={b.id} className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">{b.name}:</span>
+                                                                <span className="text-right">{Math.round(Number(b.amount || 0)).toLocaleString()}</span>
                                                             </div>
                                                         ))}
-                                                        <div className="pt-1 mt-1 border-t flex justify-between gap-4 font-semibold">
-                                                            <span>Total:</span>
-                                                            <span>{row.overtimeAmount?.toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">No overtime</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.bonusBreakup && row.bonusBreakup.length > 0 ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        {row.bonusBreakup.map((b: any) => (
-                                                            <div key={b.id} className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">{b.name}:</span>
-                                                                <span>{b.amount?.toLocaleString()}</span>
+                                                        {row.allowanceBreakup?.map((a: any) => (
+                                                            <div key={a.id} className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">{a.name}:</span>
+                                                                <span className="text-right">{Math.round(Number(a.amount || 0)).toLocaleString()}</span>
                                                             </div>
                                                         ))}
-                                                        <div className="pt-1 mt-1 border-t flex justify-between gap-4 font-semibold">
-                                                            <span>Total:</span>
-                                                            <span>{row.bonusAmount?.toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">No bonuses</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.deductionBreakup && row.deductionBreakup.length > 0 ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        {row.deductionBreakup.map((d: any) => (
-                                                            <div key={d.id} className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">{d.name}:</span>
-                                                                <span>{d.amount?.toLocaleString()}</span>
-                                                            </div>
-                                                        ))}
-                                                        <div className="pt-1 mt-1 border-t flex justify-between gap-4 font-semibold">
-                                                            <span>Total:</span>
-                                                            <span>{row.totalDeductions?.toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">No deductions</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.attendanceBreakup ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        {row.attendanceBreakup.absent.count > 0 && (
-                                                            <div className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">
-                                                                    Absent ({row.attendanceBreakup.absent.count}):
-                                                                </span>
-                                                                <span className="text-destructive">
-                                                                    {row.attendanceBreakup.absent.amount?.toLocaleString()}
-                                                                </span>
+                                                        {row.overtimeAmount > 0 && (
+                                                            <div className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">Overtime:</span>
+                                                                <span className="text-right">{Math.round(Number(row.overtimeAmount || 0)).toLocaleString()}</span>
                                                             </div>
                                                         )}
-                                                        {row.attendanceBreakup.late.count > 0 && (
-                                                            <div className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">
-                                                                    Late ({row.attendanceBreakup.late.count}
-                                                                    {row.attendanceBreakup.late.chargeableCount !== undefined &&
-                                                                        row.attendanceBreakup.late.chargeableCount !== row.attendanceBreakup.late.count &&
-                                                                        `/${row.attendanceBreakup.late.chargeableCount}`}):
-                                                                </span>
-                                                                <span className="text-destructive">
-                                                                    {row.attendanceBreakup.late.amount?.toLocaleString()}
-                                                                </span>
+                                                        {row.bonusAmount > 0 && (
+                                                            <div className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">Bonus:</span>
+                                                                <span className="text-right">{Math.round(Number(row.bonusAmount || 0)).toLocaleString()}</span>
                                                             </div>
                                                         )}
-                                                        {row.attendanceBreakup.halfDay && row.attendanceBreakup.halfDay.count > 0 && (
-                                                            <div className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">
-                                                                    Half Day ({row.attendanceBreakup.halfDay.count}):
-                                                                </span>
-                                                                <span className="text-destructive">
-                                                                    {row.attendanceBreakup.halfDay.amount?.toLocaleString()}
-                                                                </span>
+                                                        {row.leaveEncashmentAmount > 0 && (
+                                                            <div className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">Leave Encashment:</span>
+                                                                <span className="text-right">{Math.round(Number(row.leaveEncashmentAmount || 0)).toLocaleString()}</span>
                                                             </div>
                                                         )}
-                                                        {row.attendanceBreakup.shortDay && row.attendanceBreakup.shortDay.count > 0 && (
-                                                            <div className="flex justify-between gap-4">
-                                                                <span className="text-muted-foreground">
-                                                                    Short Day ({row.attendanceBreakup.shortDay.count}):
-                                                                </span>
-                                                                <span className="text-destructive">
-                                                                    {row.attendanceBreakup.shortDay.amount?.toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {row.attendanceBreakup.leave && row.attendanceBreakup.leave.count > 0 && (
-                                                            <div className="flex justify-between gap-4">
-                                                                <span className="text-green-600">
-                                                                    Leave ({row.attendanceBreakup.leave.count}):
-                                                                </span>
-                                                                <span className="text-green-600">—</span>
-                                                            </div>
-                                                        )}
-                                                        {(row.attendanceBreakup.absent.count > 0 ||
-                                                            (row.attendanceBreakup.late.amount && row.attendanceBreakup.late.amount > 0) ||
-                                                            (row.attendanceBreakup.halfDay && row.attendanceBreakup.halfDay.count > 0) ||
-                                                            (row.attendanceBreakup.shortDay && row.attendanceBreakup.shortDay.count > 0)) && (
-                                                                <div className="pt-1 mt-1 border-t flex justify-between gap-4 font-semibold">
-                                                                    <span>Total:</span>
-                                                                    <span className="text-destructive">
-                                                                        {row.attendanceDeduction?.toLocaleString()}
-                                                                    </span>
-                                                                </div>
-                                                            )}
-                                                        {row.attendanceBreakup.absent.count === 0 &&
-                                                            row.attendanceBreakup.late.count === 0 &&
-                                                            (!row.attendanceBreakup.halfDay || row.attendanceBreakup.halfDay.count === 0) &&
-                                                            (!row.attendanceBreakup.shortDay || row.attendanceBreakup.shortDay.count === 0) &&
-                                                            (!row.attendanceBreakup.leave || row.attendanceBreakup.leave.count === 0) && (
-                                                                <span className="text-xs text-muted-foreground">No issues</span>
-                                                            )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {row.attendanceDeduction > 0
-                                                            ? row.attendanceDeduction?.toLocaleString()
-                                                            : "No deduction"}
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.taxBreakup ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        {row.taxBreakup.rebateBreakup && row.taxBreakup.rebateBreakup.length > 0 && (
-                                                            <>
-                                                                {row.taxBreakup.rebateBreakup.map((rebate: any) => (
-                                                                    <div key={rebate.id} className="flex justify-between gap-4">
-                                                                        <span className="text-green-600">
-                                                                            {rebate.name}:
-                                                                        </span>
-                                                                        <span className="text-green-600">
-                                                                            -{rebate.amount?.toLocaleString()}
-                                                                        </span>
-                                                                    </div>
-                                                                ))}
-                                                                <div className="flex justify-between gap-4 text-xs">
-                                                                    <span className="text-muted-foreground">Total Rebate:</span>
-                                                                    <span className="text-green-600">-{row.taxBreakup.totalRebate?.toLocaleString()}</span>
-                                                                </div>
-                                                                <div className="pt-1 mt-1 border-t"></div>
-                                                            </>
-                                                        )}
-                                                        <div className="flex justify-between gap-4">
-                                                            <span className="text-muted-foreground">Taxable Income (Annual):</span>
-                                                            <span>{row.taxBreakup.taxableIncome?.toLocaleString()}</span>
-                                                        </div>
-                                                        {row.taxBreakup.taxSlab && (
-                                                            <div className="flex justify-between gap-4 text-xs">
-                                                                <span className="text-muted-foreground">
-                                                                    Slab ({row.taxBreakup.taxSlab.rate}%):
-                                                                </span>
-                                                                <span>
-                                                                    {row.taxBreakup.taxSlab.minAmount?.toLocaleString()} - {row.taxBreakup.taxSlab.maxAmount?.toLocaleString()}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        <div className="pt-1 mt-1 border-t flex justify-between gap-4 font-semibold">
-                                                            <span>Monthly Tax:</span>
-                                                            <span className="text-destructive">
-                                                                {row.taxDeduction?.toFixed(2)}
+                                                        <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
+                                                            <span className="shrink-0">Gross:</span>
+                                                            <span className="text-right">
+                                                                {Math.round(Number(row.grossSalary || 0)).toLocaleString()}
                                                             </span>
                                                         </div>
                                                     </div>
-                                                ) : (
-                                                    <span>{row.taxDeduction?.toFixed(2) || "0.00"}</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                {row.socialSecurityContributionAmount && row.socialSecurityContributionAmount > 0 ? (
-                                                    <div className="space-y-1 text-xs">
-                                                        <div className="flex justify-between gap-4">
-                                                            <span className="text-muted-foreground">Contribution:</span>
-                                                            <span>{Math.round(row.socialSecurityContributionAmount || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 })}</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="text-[10px] space-y-0.5 min-w-[160px]">
+                                                        <div className="flex justify-between items-center gap-2">
+                                                            <span className="font-bold shrink-0">Taxable:</span>
+                                                            <span className="text-right">{Math.round(Number(row.taxBreakup?.taxableIncome || 0)).toLocaleString()}</span>
+                                                        </div>
+                                                        {row.taxBreakup?.fixedAmountTax > 0 && (
+                                                            <div className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">Fixed Tax:</span>
+                                                                <span className="text-right">{Math.round(Number(row.taxBreakup?.fixedAmountTax || 0)).toLocaleString()}</span>
+                                                            </div>
+                                                        )}
+                                                        {row.taxBreakup?.percentageTax > 0 && (
+                                                            <div className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">% Tax:</span>
+                                                                <span className="text-right">{Math.round(Number(row.taxBreakup?.percentageTax || 0)).toLocaleString()}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-between items-center gap-2">
+                                                            <span className="font-bold shrink-0">Annual Tax:</span>
+                                                            <span className="text-right">{Math.round(Number(annualTax || 0)).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center gap-2 font-bold border-t pt-1 bg-gray-50">
+                                                            <span className="shrink-0">Monthly Tax:</span>
+                                                            <span className="text-right">
+                                                                {Math.round(Number(row.taxDeduction || 0)).toLocaleString()}
+                                                            </span>
                                                         </div>
                                                     </div>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">-</span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="font-bold text-green-600">
-                                                {row.netSalary?.toFixed(2)}
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="text-[10px] space-y-0.5 min-w-[160px]">
+                                                        <div className="flex justify-between items-center gap-2">
+                                                            <span className="font-bold shrink-0">PF:</span>
+                                                            <span className="text-right">{Math.round(Number(row.providentFundDeduction || 0)).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center gap-2">
+                                                            <span className="font-bold shrink-0">Advance:</span>
+                                                            <span className="text-right">{Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center gap-2">
+                                                            <span className="font-bold shrink-0">EOBI:</span>
+                                                            <span className="text-right">{Math.round(Number(row.eobiDeduction || 0)).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center gap-2">
+                                                            <span className="font-bold shrink-0">Loan:</span>
+                                                            <span className="text-right">{Math.round(Number(row.loanDeduction || 0)).toLocaleString()}</span>
+                                                        </div>
+                                                        {row.deductionBreakup?.map((d: any) => (
+                                                            <div key={d.id} className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">{d.name}:</span>
+                                                                <span className="text-right">{Math.round(Number(d.amount || 0)).toLocaleString()}</span>
+                                                            </div>
+                                                        ))}
+                                                        <div className="flex justify-between items-center gap-2">
+                                                            <span className="font-bold shrink-0">Attendance:</span>
+                                                            <span className="text-right">{Math.round(Number(row.attendanceDeduction || 0)).toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
+                                                            <span className="shrink-0">Total:</span>
+                                                            <span className="text-right">
+                                                                {Math.round(
+                                                                    Number(row.attendanceDeduction || 0) +
+                                                                    Number(row.loanDeduction || 0) +
+                                                                    Number(row.advanceSalaryDeduction || 0) +
+                                                                    Number(row.eobiDeduction || 0) +
+                                                                    Number(row.providentFundDeduction || 0) +
+                                                                    Number(row.taxDeduction || 0) +
+                                                                    deductionBreakupTotal
+                                                                ).toLocaleString()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="text-[10px] min-w-[120px]">
+                                                        {row.socialSecurityContributionAmount > 0 ? (
+                                                            <div className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">Contribution:</span>
+                                                                <span className="text-right">{Math.round(Number(row.socialSecurityContributionAmount || 0)).toLocaleString()}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">-</span>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="font-bold text-green-600">
+                                                    {Math.round(Number(row.netSalary || 0)).toLocaleString()}
+                                                </TableCell>
+                                                <TableCell>{row.accountNumber || "-"}</TableCell>
+                                                <TableCell>{row.paymentMode || "Bank Transfer"}</TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>

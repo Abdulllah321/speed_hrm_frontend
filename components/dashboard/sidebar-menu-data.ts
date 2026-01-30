@@ -268,36 +268,22 @@ export const menuData: MenuItem[] = [
       {
         title: "Journal Voucher",
         children: [
-          { title: "List", href: "/erp/finance/journal-voucher" },
           { title: "Create", href: "/erp/finance/journal-voucher/create" },
+          { title: "List", href: "/erp/finance/journal-voucher/list" },
         ],
       },
       {
-        title: "Bank Payment",
+        title: "Payment Voucher",
         children: [
-          { title: "List", href: "/erp/finance/bank-payment" },
-          { title: "Create", href: "/erp/finance/bank-payment/create" },
+          { title: "List", href: "/erp/finance/payment-voucher/list" },
+          { title: "Create", href: "/erp/finance/payment-voucher/create" },
         ],
       },
       {
-        title: "Bank Receipt",
+        title: "Receipt Voucher",
         children: [
-          { title: "List", href: "/erp/finance/bank-receipt" },
-          { title: "Create", href: "/erp/finance/bank-receipt/create" },
-        ],
-      },
-      {
-        title: "Cash Payment",
-        children: [
-          { title: "List", href: "/erp/finance/cash-payment" },
-          { title: "Create", href: "/erp/finance/cash-payment/create" },
-        ],
-      },
-      {
-        title: "Cash Receipt",
-        children: [
-          { title: "List", href: "/erp/finance/cash-receipt" },
-          { title: "Create", href: "/erp/finance/cash-receipt/create" },
+          { title: "List", href: "/erp/finance/receipt-voucher/list" },
+          { title: "Create", href: "/erp/finance/receipt-voucher/create" },
         ],
       },
       {
@@ -562,10 +548,11 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Loan Requests",
+        permissions: ["loan-request.read", "loan-request.create"],
         children: [
-          { title: "Create Request", href: "/hr/loan-requests/create" },
-          { title: "View & Reports", href: "/hr/loan-requests/view" },
-          { title: "Request Forwarding", href: "/hr/request-forwarding?type=loan" },
+          { title: "Create Request", href: "/hr/loan-requests/create", permissions: ["loan-request.create"] },
+          { title: "View & Reports", href: "/hr/loan-requests/view", permissions: ["loan-request.read"] },
+          { title: "Request Forwarding", href: "/hr/request-forwarding?type=loan", permissions: ["request-forwarding.read"] },
         ],
       },
       {
@@ -634,13 +621,13 @@ export const menuData: MenuItem[] = [
           { title: "View Social Security", href: "/hr/payroll-setup/social-security-employee/view" },
         ],
       },
-      {
-        title: "Final Settlement",
-        children: [
-          { title: "Create", href: "/hr/payroll-setup/final-settlement/create" },
-          { title: "List", href: "/hr/payroll-setup/final-settlement/list" },
-        ],
-      },
+      // {
+      //   title: "Final Settlement",
+      //   children: [
+      //     { title: "Create", href: "/hr/payroll-setup/final-settlement/create" },
+      //     { title: "List", href: "/hr/payroll-setup/final-settlement/list" },
+      //   ],
+      // },
       // {
       //   title: "HR Letters",
       //   icon: FileText,
@@ -650,16 +637,16 @@ export const menuData: MenuItem[] = [
       //     { title: "Upload", href: "/hr/payroll-setup/hr-letters/upload" },
       //   ],
       // },
-      {
-        title: "Salary Sheet",
-        icon: Receipt,
-        children: [
-          {
-            title: "Tax Certificate",
-            href: "/hr/salary-sheet/tax-certificate",
-          },
-        ],
-      },
+      // {
+      //   title: "Salary Sheet",
+      //   icon: Receipt,
+      //   children: [
+      //     {
+      //       title: "Tax Certificate",
+      //       href: "/hr/salary-sheet/tax-certificate",
+      //     },
+      //   ],
+      // },
       // {
       //   title: "Rebate",
       //   children: [

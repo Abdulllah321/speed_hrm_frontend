@@ -47,7 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Autocomplete, type AutocompleteOption } from "@/components/ui/autocomplete";
+import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 
 export default function AttendanceManagePage() {
   const [isPending, setIsPending] = useState(false);
@@ -64,7 +64,7 @@ export default function AttendanceManagePage() {
   const [pendingSubmit, setPendingSubmit] = useState<((includeLeaves: boolean) => void) | null>(null);
 
   const [formData, setFormData] = useState({
-    employeeId: "",
+    employeeIds: [] as string[],
     employeeName: "",
     departmentId: "",
     subDepartmentId: "",
@@ -156,7 +156,7 @@ export default function AttendanceManagePage() {
         }
       } else {
         setSubDepartments([]);
-        setFormData((prev) => ({ ...prev, subDepartmentId: "", employeeId: "", employeeName: "" }));
+        setFormData((prev) => ({ ...prev, subDepartmentId: "", employeeIds: [], employeeName: "" }));
       }
     };
 
@@ -166,7 +166,7 @@ export default function AttendanceManagePage() {
   // Reset sub-department and employee when department changes
   useEffect(() => {
     if (formData.departmentId) {
-      setFormData((prev) => ({ ...prev, subDepartmentId: "", employeeId: "", employeeName: "" }));
+      setFormData((prev) => ({ ...prev, subDepartmentId: "", employeeIds: [], employeeName: "" }));
       setSelectedEmployee(null);
     }
   }, [formData.departmentId]);
@@ -174,7 +174,7 @@ export default function AttendanceManagePage() {
   // Reset employee when sub-department changes
   useEffect(() => {
     if (formData.subDepartmentId) {
-      setFormData((prev) => ({ ...prev, employeeId: "", employeeName: "" }));
+      setFormData((prev) => ({ ...prev, employeeIds: [], employeeName: "" }));
       setSelectedEmployee(null);
     }
   }, [formData.subDepartmentId]);
@@ -185,7 +185,7 @@ export default function AttendanceManagePage() {
       ...prev,
       departmentId: actualDepartmentId,
       subDepartmentId: "",
-      employeeId: "",
+      employeeIds: [],
       employeeName: "",
     }));
     setSelectedEmployee(null);
@@ -196,50 +196,45 @@ export default function AttendanceManagePage() {
     setFormData((prev) => ({
       ...prev,
       subDepartmentId: actualSubDepartmentId,
-      employeeId: "",
+      employeeIds: [],
       employeeName: "",
     }));
     setSelectedEmployee(null);
   };
 
-  const handleEmployeeChange = (employeeId: string) => {
-    if (employeeId === "all") {
-      setFormData((prev) => ({
-        ...prev,
-        employeeId: "all",
-        employeeName: "All Employees",
-      }));
-      setSelectedEmployee(null); // No specific employee details to show
-      return;
-    }
+  const handleEmployeeChange = (employeeIds: string[]) => {
+    setFormData((prev) => ({
+      ...prev,
+      employeeIds,
+      employeeName: employeeIds.length === 1 
+        ? allEmployees.find(e => e.id === employeeIds[0])?.employeeName || "" 
+        : `${employeeIds.length} employees selected`,
+    }));
 
-    // Search in all employees, not just filtered ones
-    const selected = allEmployees.find((e) => e.id === employeeId);
-    if (selected) {
-      setSelectedEmployee(selected);
-      setFormData((prev) => ({
-        ...prev,
-        employeeId: selected.id,
-        employeeName: selected.employeeName,
-        // Don't update departmentId/subDepartmentId here - it will trigger refetch
-        // These are just for display/filtering, not for the selected employee
-      }));
-
-      // Set default clock in/out times from working hours policy
-      const policy = selected.workingHoursPolicy;
-      if (policy) {
-        setFormData((prev) => ({
-          ...prev,
-          checkIn: policy.startWorkingHours || "",
-          checkOut: policy.endWorkingHours || "",
-        }));
-      } else {
-        setFormData((prev) => ({
-          ...prev,
-          checkIn: "",
-          checkOut: "",
-        }));
+    // If single employee selected, set selectedEmployee and policy defaults
+    if (employeeIds.length === 1) {
+      const selected = allEmployees.find((e) => e.id === employeeIds[0]);
+      if (selected) {
+        setSelectedEmployee(selected);
+        
+        // Set default clock in/out times from working hours policy
+        const policy = selected.workingHoursPolicy;
+        if (policy) {
+          setFormData((prev) => ({
+            ...prev,
+            checkIn: policy.startWorkingHours || "",
+            checkOut: policy.endWorkingHours || "",
+          }));
+        } else {
+          setFormData((prev) => ({
+            ...prev,
+            checkIn: "",
+            checkOut: "",
+          }));
+        }
       }
+    } else {
+      setSelectedEmployee(null);
     }
   };
 
@@ -292,211 +287,109 @@ export default function AttendanceManagePage() {
 
     setIsPending(true);
     try {
-      // Handle "All Employees" selection
-      if (formData.employeeId === "all") {
-        const employeesToProcess = employees.filter(e => e.id); // Use filtered employees
+      const employeesToProcess = allEmployees.filter(e => formData.employeeIds.includes(e.id));
 
-        if (employeesToProcess.length === 0) {
-          toast.error("No employees found to create attendance for");
-          setIsPending(false);
-          return;
-        }
-
-        let successCount = 0;
-        let errorCount = 0;
-        const errors: Array<{ employee: string; error: string }> = [];
-
-        for (const employee of employeesToProcess) {
-          try {
-            if (isSingleDate) {
-              const checkInDateTime = formData.checkIn
-                ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkIn}`)
-                : undefined;
-              const checkOutDateTime = formData.checkOut
-                ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkOut}`)
-                : undefined;
-
-              const result = await createAttendance({
-                employeeId: employee.id,
-                date: fromDate,
-                checkIn: checkInDateTime,
-                checkOut: checkOutDateTime,
-                status: formData.status,
-                isRemote: formData.isRemote,
-                location: formData.location || undefined,
-                notes: formData.notes || undefined,
-              });
-
-              if (result.status) {
-                successCount++;
-              } else {
-                errorCount++;
-                errors.push({ employee: employee.employeeName, error: result.message || "Unknown error" });
-              }
-            } else {
-              const result = await createAttendanceForDateRange({
-                employeeId: employee.id,
-                fromDate: fromDate,
-                toDate: toDate,
-                checkIn: formData.checkIn || undefined,
-                checkOut: formData.checkOut || undefined,
-                status: formData.status,
-                isRemote: formData.isRemote,
-                location: formData.location || undefined,
-                notes: formData.notes || undefined,
-              });
-
-              if (result.status) {
-                successCount += result.data?.length || 0;
-                errorCount += result.errors?.length || 0;
-              } else {
-                errorCount++;
-                errors.push({ employee: employee.employeeName, error: result.message || "Unknown error" });
-              }
-            }
-          } catch (error) {
-            errorCount++;
-            errors.push({ employee: employee.employeeName, error: error instanceof Error ? error.message : "Unknown error" });
-          }
-        }
-
-        if (errorCount > 0) {
-          toast.warning(
-            `${successCount} records created, ${errorCount} failed`,
-            {
-              description: `Processed ${employeesToProcess.length} employees. Check console for details.`,
-              duration: 6000,
-            }
-          );
-          console.error("Failed records:", errors);
-        } else {
-          toast.success(
-            `${successCount} attendance records created successfully!`,
-            {
-              description: `Processed ${employeesToProcess.length} employees`,
-              duration: 5000,
-            }
-          );
-        }
-
-        // Reset form
-        setFormData({
-          employeeId: "",
-          employeeName: "",
-          departmentId: "",
-          subDepartmentId: "",
-          dateRange: {
-            from: new Date(),
-            to: new Date(),
-          } as DateRange,
-          checkIn: "",
-          checkOut: "",
-          status: "present",
-          isRemote: false,
-          location: "",
-          notes: "",
-        });
-        setSelectedEmployee(null);
+      if (employeesToProcess.length === 0) {
+        toast.error("No employees selected to create attendance for");
         setIsPending(false);
         return;
       }
 
-      // Single employee logic (existing code)
-      let result;
+      let successCount = 0;
+      let errorCount = 0;
+      const errors: Array<{ employee: string; error: string }> = [];
 
-      if (isSingleDate) {
-        // Single date - use createAttendance
-        const checkInDateTime = formData.checkIn
-          ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkIn}`)
-          : undefined;
-        const checkOutDateTime = formData.checkOut
-          ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkOut}`)
-          : undefined;
+      for (const employee of employeesToProcess) {
+        try {
+          if (isSingleDate) {
+            const checkInDateTime = formData.checkIn
+              ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkIn}`)
+              : undefined;
+            const checkOutDateTime = formData.checkOut
+              ? new Date(`${format(fromDate, 'yyyy-MM-dd')}T${formData.checkOut}`)
+              : undefined;
 
-        result = await createAttendance({
-          employeeId: formData.employeeId,
-          date: fromDate,
-          checkIn: checkInDateTime,
-          checkOut: checkOutDateTime,
-          status: formData.status,
-          isRemote: formData.isRemote,
-          location: formData.location || undefined,
-          notes: formData.notes || undefined,
-        });
-      } else {
-        // Date range - use createAttendanceForDateRange
-        // Backend handles weekend skipping automatically
-        result = await createAttendanceForDateRange({
-          employeeId: formData.employeeId,
-          fromDate: fromDate,
-          toDate: toDate,
-          checkIn: formData.checkIn || undefined,
-          checkOut: formData.checkOut || undefined,
-          status: formData.status,
-          isRemote: formData.isRemote,
-          location: formData.location || undefined,
-          notes: formData.notes || undefined,
-        });
-      }
+            const result = await createAttendance({
+              employeeId: employee.id,
+              date: fromDate,
+              checkIn: checkInDateTime,
+              checkOut: checkOutDateTime,
+              status: formData.status,
+              isRemote: formData.isRemote,
+              location: formData.location || undefined,
+              notes: formData.notes || undefined,
+            });
 
-      if (result.status) {
-        if (isSingleDate) {
-          const dateStr = format(fromDate, 'MMM dd, yyyy');
-          toast.success(
-            `Attendance record created successfully!`,
-            {
-              description: `Employee: ${formData.employeeName || 'N/A'} | Date: ${dateStr} | Status: ${formData.status}`,
-              duration: 5000,
+            if (result.status) {
+              successCount++;
+            } else {
+              errorCount++;
+              errors.push({ employee: employee.employeeName, error: result.message || "Unknown error" });
             }
-          );
-        } else {
-          const dateRangeResult = result as { status: boolean; data?: Attendance[]; errors?: Array<{ date: string; error: string }>; message?: string };
-          const successCount = dateRangeResult.data?.length || 0;
-          const errorCount = dateRangeResult.errors?.length || 0;
-          const fromDateStr = format(fromDate, 'MMM dd, yyyy');
-          const toDateStr = format(toDate, 'MMM dd, yyyy');
-
-          if (errorCount > 0) {
-            toast.warning(
-              `${successCount} records created, ${errorCount} failed`,
-              {
-                description: `Employee: ${formData.employeeName || 'N/A'} | Date Range: ${fromDateStr} - ${toDateStr} | Check console for failed records.`,
-                duration: 6000,
-              }
-            );
-            console.error("Failed records:", dateRangeResult.errors);
           } else {
-            toast.success(
-              `${successCount} attendance records created successfully!`,
-              {
-                description: `Employee: ${formData.employeeName || 'N/A'} | Date Range: ${fromDateStr} - ${toDateStr} | Status: ${formData.status}`,
-                duration: 5000,
-              }
-            );
-          }
-        }
+            const result = await createAttendanceForDateRange({
+              employeeId: employee.id,
+              fromDate: fromDate,
+              toDate: toDate,
+              checkIn: formData.checkIn || undefined,
+              checkOut: formData.checkOut || undefined,
+              status: formData.status,
+              isRemote: formData.isRemote,
+              location: formData.location || undefined,
+              notes: formData.notes || undefined,
+            });
 
-        // Reset form
-        setFormData({
-          employeeId: "",
-          employeeName: "",
-          departmentId: "",
-          subDepartmentId: "",
-          dateRange: {
-            from: new Date(),
-            to: new Date(),
-          } as DateRange,
-          checkIn: "",
-          checkOut: "",
-          status: "present",
-          isRemote: false,
-          location: "",
-          notes: "",
-        });
-        setSelectedEmployee(null);
-      } else {
-        toast.error(result.message || "Failed to create attendance record");
+            if (result.status) {
+              successCount += result.data?.length || 0;
+              errorCount += result.errors?.length || 0;
+            } else {
+              errorCount++;
+              errors.push({ employee: employee.employeeName, error: result.message || "Unknown error" });
+            }
+          }
+        } catch (error) {
+          errorCount++;
+          errors.push({ employee: employee.employeeName, error: error instanceof Error ? error.message : "Unknown error" });
+        }
       }
+
+      if (errorCount > 0) {
+        toast.warning(
+          `${successCount} records created, ${errorCount} failed`,
+          {
+            description: `Processed ${employeesToProcess.length} employees. Check console for details.`,
+            duration: 6000,
+          }
+        );
+        console.error("Failed records:", errors);
+      } else {
+        toast.success(
+          `${successCount} attendance records created successfully!`,
+          {
+            description: `Processed ${employeesToProcess.length} employees`,
+            duration: 5000,
+          }
+        );
+      }
+
+      // Reset form
+      setFormData({
+        employeeIds: [],
+        employeeName: "",
+        departmentId: "",
+        subDepartmentId: "",
+        dateRange: {
+          from: new Date(),
+          to: new Date(),
+        } as DateRange,
+        checkIn: "",
+        checkOut: "",
+        status: "present",
+        isRemote: false,
+        location: "",
+        notes: "",
+      });
+      setSelectedEmployee(null);
     } catch (error) {
       console.error("Error:", error);
       toast.error("Failed to create attendance record");
@@ -507,7 +400,7 @@ export default function AttendanceManagePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.employeeId || !formData.dateRange.from || !formData.dateRange.to) {
+    if (formData.employeeIds.length === 0 || !formData.dateRange.from || !formData.dateRange.to) {
       toast.error("Please fill all required fields (Employee and Date Range)");
       return;
     }
@@ -516,9 +409,9 @@ export default function AttendanceManagePage() {
     const toDate = formData.dateRange.to;
     const isSingleDate = format(fromDate, 'yyyy-MM-dd') === format(toDate, 'yyyy-MM-dd');
 
-    // For date ranges, check for leave days before submitting
-    if (!isSingleDate) {
-      const leaveDatesFound = await checkForLeaveDays(fromDate, toDate, formData.employeeId);
+    // For date ranges, check for leave days before submitting (only for single employee selection)
+    if (!isSingleDate && formData.employeeIds.length === 1) {
+      const leaveDatesFound = await checkForLeaveDays(fromDate, toDate, formData.employeeIds[0]);
 
       if (leaveDatesFound.length > 0) {
         setLeaveDates(leaveDatesFound);
@@ -530,7 +423,7 @@ export default function AttendanceManagePage() {
       }
     }
 
-    // No leave days found, proceed normally
+    // No leave days found or multiple employees, proceed normally
     handleSubmitInternal(true);
   };
 
@@ -778,19 +671,19 @@ export default function AttendanceManagePage() {
                 {loading ? (
                   <div className="h-10 bg-muted rounded animate-pulse" />
                 ) : (
-                  <Autocomplete
-                    options={[
-                      { value: "all", label: "All Employees", description: "Apply to all currently filtered employees" },
-                      ...employees.map((e) => ({
-                        value: e.id,
-                        label: `${e.employeeName} (${e.employeeId})`,
-                        description: `${e.department?.name || 'No Dept'} - ${e.subDepartment?.name || 'No Sub-Dept'}`
-                      }))]}
-                    value={formData.employeeId}
+                  <MultiSelect
+                    options={employees.map((e) => ({
+                      value: e.id,
+                      label: e.employeeName,
+                      description: `${e.employeeId}${e.department?.name ? ` • ${e.department.name}` : ""}`
+                    }))}
+                    value={formData.employeeIds}
                     onValueChange={handleEmployeeChange}
-                    placeholder="Search and select employee..."
-                    searchPlaceholder="Type name or ID..."
+                    placeholder="Select employees..."
+                    searchPlaceholder="Search employee..."
+                    emptyMessage="No employees found"
                     disabled={isPending || loading}
+                    maxDisplayedItems={5}
                   />
                 )}
               </div>
@@ -984,7 +877,7 @@ export default function AttendanceManagePage() {
             variant="outline"
             onClick={() => {
               setFormData({
-                employeeId: "",
+                employeeIds: [],
                 employeeName: "",
                 departmentId: "",
                 subDepartmentId: "",

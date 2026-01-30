@@ -62,9 +62,17 @@ const advanceSalaryFormSchema = z.object({
 
 type AdvanceSalaryFormData = z.infer<typeof advanceSalaryFormSchema>;
 
+import { useAuth } from "@/components/providers/auth-provider";
+
+// ... existing imports
+
 export default function CreateAdvanceSalaryPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const { user, isAdmin, hasPermission } = useAuth();
+  
+  // Check if user has permission to create advance salary for others
+  const canCreateForOthers = isAdmin() || hasPermission("advance-salary.create.others");
+  
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -83,6 +91,32 @@ export default function CreateAdvanceSalaryPage() {
     },
     mode: "onBlur",
   });
+
+  // Pre-select current user if available
+  useEffect(() => {
+    if (user?.employeeId && employees.length > 0) {
+      // Find employee object for current user
+      const currentUserEmployee = employees.find(emp => emp.id === user.employeeId);
+      
+      if (currentUserEmployee) {
+        // Set department if not already set
+        if (!form.getValues("departmentId") && currentUserEmployee.departmentId) {
+          form.setValue("departmentId", currentUserEmployee.departmentId);
+        }
+        
+        // Set sub-department if not already set
+        if (!form.getValues("subDepartmentId") && currentUserEmployee.subDepartmentId) {
+          form.setValue("subDepartmentId", currentUserEmployee.subDepartmentId);
+        }
+
+        // Set employee ID
+        const currentEmployeeIds = form.getValues("employeeIds");
+        if (currentEmployeeIds.length === 0) {
+          form.setValue("employeeIds", [user.employeeId]);
+        }
+      }
+    }
+  }, [user, employees, form]);
 
   const selectedDepartmentId = form.watch("departmentId");
   const selectedSubDepartmentId = form.watch("subDepartmentId");
@@ -153,6 +187,14 @@ export default function CreateAdvanceSalaryPage() {
     fetchSubDepartments();
   }, [selectedDepartmentId, form]);
 
+  // Find current employee object for display
+  const currentEmployee = useMemo(() => {
+    if (user?.employeeId && employees.length > 0) {
+      return employees.find(emp => emp.id === user.employeeId);
+    }
+    return null;
+  }, [user, employees]);
+
   // Filter employees based on department and sub-department
   const filteredEmployees = useMemo(() => {
     let filtered = [...employees];
@@ -220,125 +262,145 @@ export default function CreateAdvanceSalaryPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Department and Sub Department Row */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="departmentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <FormControl>
-                        <Autocomplete
-                          options={[
-                            { value: "", label: "All Departments" },
-                            ...departments.map((dept) => ({
-                              value: dept.id,
-                              label: dept.name,
-                            })),
-                          ]}
-                          value={field.value ?? ""}
-                          onValueChange={(value) => {
-                            const newValue = value === "" ? undefined : value;
-                            field.onChange(newValue);
-                            form.setValue("subDepartmentId", undefined);
-                            form.setValue("employeeIds", []);
-                          }}
-                          placeholder="Select Department (Optional)"
-                          searchPlaceholder="Search department..."
-                          emptyMessage="No departments found"
-                          disabled={form.formState.isSubmitting}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Filter employees by department
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="subDepartmentId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sub Department</FormLabel>
-                      <FormControl>
-                        {loadingSubDepartments ? (
-                          <div className="h-10 bg-muted rounded-md animate-pulse" />
-                        ) : (
+              {/* Department and Sub Department Row - Only visible to admins/authorized users */}
+              {canCreateForOthers && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="departmentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Department</FormLabel>
+                        <FormControl>
                           <Autocomplete
                             options={[
-                              { value: "", label: "All Sub Departments" },
-                              ...subDepartments.map((subDept) => ({
-                                value: subDept.id,
-                                label: subDept.name,
+                              { value: "", label: "All Departments" },
+                              ...departments.map((dept) => ({
+                                value: dept.id,
+                                label: dept.name,
                               })),
                             ]}
                             value={field.value ?? ""}
                             onValueChange={(value) => {
                               const newValue = value === "" ? undefined : value;
                               field.onChange(newValue);
+                              form.setValue("subDepartmentId", undefined);
                               form.setValue("employeeIds", []);
                             }}
-                            placeholder={
-                              !selectedDepartmentId
-                                ? "Select department first"
-                                : "Select Sub Department (Optional)"
-                            }
-                            searchPlaceholder="Search sub department..."
-                            emptyMessage="No sub departments found"
-                            disabled={
-                              form.formState.isSubmitting ||
-                              !selectedDepartmentId ||
-                              subDepartments.length === 0
-                            }
+                            placeholder="Select Department (Optional)"
+                            searchPlaceholder="Search department..."
+                            emptyMessage="No departments found"
+                            disabled={form.formState.isSubmitting || !canCreateForOthers}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Filter employees by department
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="subDepartmentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Sub Department</FormLabel>
+                        <FormControl>
+                          {loadingSubDepartments ? (
+                            <div className="h-10 bg-muted rounded-md animate-pulse" />
+                          ) : (
+                            <Autocomplete
+                              options={[
+                                { value: "", label: "All Sub Departments" },
+                                ...subDepartments.map((subDept) => ({
+                                  value: subDept.id,
+                                  label: subDept.name,
+                                })),
+                              ]}
+                              value={field.value ?? ""}
+                              onValueChange={(value) => {
+                                const newValue = value === "" ? undefined : value;
+                                field.onChange(newValue);
+                                form.setValue("employeeIds", []);
+                              }}
+                              placeholder={
+                                !selectedDepartmentId
+                                  ? "Select department first"
+                                  : "Select Sub Department (Optional)"
+                              }
+                              searchPlaceholder="Search sub department..."
+                              emptyMessage="No sub departments found"
+                              disabled={
+                                form.formState.isSubmitting ||
+                                !selectedDepartmentId ||
+                                subDepartments.length === 0 ||
+                                !canCreateForOthers
+                              }
+                            />
+                          )}
+                        </FormControl>
+                        <FormDescription>
+                          Filter employees by sub-department
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {/* Employees Selection */}
+              {canCreateForOthers ? (
+                <FormField
+                  control={form.control}
+                  name="employeeIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Employees <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        {loading ? (
+                          <div className="h-10 bg-muted rounded-md animate-pulse" />
+                        ) : (
+                          <MultiSelect
+                            options={employeeOptions}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Select one or more employees"
+                            searchPlaceholder="Search employees..."
+                            emptyMessage="No employees found"
+                            disabled={form.formState.isSubmitting || loading || !canCreateForOthers}
+                            maxDisplayedItems={3}
+                            showSelectAll={canCreateForOthers}
                           />
                         )}
                       </FormControl>
                       <FormDescription>
-                        Filter employees by sub-department
+                        Select one or more employees for advance salary request
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-
-              {/* Employees Multi-Select */}
-              <FormField
-                control={form.control}
-                name="employeeIds"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Employees <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      {loading ? (
-                        <div className="h-10 bg-muted rounded-md animate-pulse" />
-                      ) : (
-                        <MultiSelect
-                          options={employeeOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select one or more employees"
-                          searchPlaceholder="Search employees..."
-                          emptyMessage="No employees found"
-                          disabled={form.formState.isSubmitting || loading}
-                          maxDisplayedItems={3}
-                          showSelectAll={true}
-                        />
-                      )}
-                    </FormControl>
-                    <FormDescription>
-                      Select one or more employees for advance salary request
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              ) : (
+                // Read-only view for employees
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium">Select Employee</h3>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Employee ID</p>
+                    <div className="flex w-full rounded-md bg-muted px-3 py-2 text-sm">
+                      {currentEmployee 
+                        ? `${currentEmployee.employeeName} (${currentEmployee.employeeId})` 
+                        : user?.employee 
+                          ? `${user.firstName || ""} ${user.lastName || ""} (${user.employee.employeeId})`
+                          : "Loading..."}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Amount, Needed On, and Deduction Month-Year Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

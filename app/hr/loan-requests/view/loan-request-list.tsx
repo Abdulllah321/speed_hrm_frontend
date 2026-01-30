@@ -1,13 +1,14 @@
 "use client";
 
 import DataTable from "@/components/common/data-table";
-import { columns, type LoanRequestRow } from "./columns";
 import { Button } from "@/components/ui/button";
 import { Printer, Download, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/components/providers/auth-provider";
+import { getColumns, type LoanRequestRow } from "./columns";
 
 interface LoanRequestListProps {
   initialData?: LoanRequestRow[];
@@ -16,7 +17,10 @@ interface LoanRequestListProps {
 export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
   const data: LoanRequestRow[] = initialData;
   const router = useRouter();
-  
+  const { isAdmin } = useAuth();
+
+  const currentColumns = getColumns(isAdmin());
+
   const handlePrint = () => {
     if (data.length === 0) {
       toast.error("No data to print");
@@ -233,10 +237,10 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
           <div class="info-bar">
             <span>Total Records: ${data.length}</span>
             <span>Total Amount: ${new Intl.NumberFormat("en-PK", {
-              style: "currency",
-              currency: "PKR",
-              minimumFractionDigits: 0,
-            }).format(totalAmount)}</span>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+    }).format(totalAmount)}</span>
           </div>
 
           <table>
@@ -264,10 +268,10 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
                   <td>${row.department}</td>
                   <td>${row.loanType}</td>
                   <td class="text-right">${new Intl.NumberFormat("en-PK", {
-                    style: "currency",
-                    currency: "PKR",
-                    minimumFractionDigits: 0,
-                  }).format(row.amount)}</td>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+    }).format(row.amount)}</td>
                   <td>${row.requestedDate}</td>
                   <td>${row.repaymentStartMonthYear}</td>
                   <td class="text-center">${row.numberOfInstallments}</td>
@@ -292,10 +296,10 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
               <div class="summary-item">
                 <div class="summary-label">Total Amount</div>
                 <div class="summary-value">${new Intl.NumberFormat("en-PK", {
-                  style: "currency",
-                  currency: "PKR",
-                  minimumFractionDigits: 0,
-                }).format(totalAmount)}</div>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+    }).format(totalAmount)}</div>
               </div>
               <div class="summary-item">
                 <div class="summary-label">Approved</div>
@@ -414,7 +418,7 @@ export function LoanRequestList({ initialData = [] }: LoanRequestListProps) {
 
       <div className="w-full max-w-full overflow-x-hidden">
         <DataTable
-          columns={columns}
+          columns={currentColumns}
           data={data}
           searchFields={[
             { key: "empName", label: "Employee Name" },

@@ -37,7 +37,7 @@ export function DepartmentList({
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("department.create");
+  const showAddAction = hasPermission("master.department.create");
 
   const handleToggle = () => {
     router.push("/master/department/add");
