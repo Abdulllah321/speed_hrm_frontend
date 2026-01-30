@@ -18,18 +18,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { createRole, updateRole, Role } from "@/lib/actions/roles";
 import { Permission } from "@/lib/actions/permissions";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, Shield } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   description: z.string().optional(),
-  permissionIds: z.array(z.string()).default([]),
+  permissionIds: z.array(z.string()),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 interface RoleFormProps {
   initialData?: Role;
@@ -40,7 +45,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialData?.name || "",
@@ -49,77 +54,24 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
     },
   });
 
-  // Define module order for display
-  const moduleOrder = [
-    // Dashboard
-    "dashboard",
+  // Define module categorization
+  const getCategory = (module: string): "HR" | "Master" | "ERP" => {
+    if (module.startsWith("master.") || 
+        ["country", "state", "city", "location", "bank", "equipment", 
+         "allowance-head", "deduction-head", "salary-breakup", "tax-slab", 
+         "bonus-type", "loan-type", "leave-type", "leaves-policy", "eobi", "provident-fund",
+         "approval-setting", "rebate-nature"].includes(module)) {
+      return "Master";
+    }
+    // As per user request, ERP permissions are not created yet, so specific ERP modules will go here later.
+    // For now, if we had any, we'd list them.
+    if (module.startsWith("erp.")) {
+        return "ERP";
+    }
     
-    // HR Operational
-    "employee",
-    "user",
-    "exit-clearance",
-    "attendance",
-    "attendance-exemption",
-    "attendance-request-query",
-    "request-forwarding",
-    "working-hours-policy",
-    "holiday",
-    "leave-application",
-    
-    // Payroll Setup
-    "payroll",
-    "allowance",
-    "deduction",
-    "advance-salary",
-    "loan-request",
-    "increment",
-    "bonus",
-    "leave-encashment",
-    "pf",
-    "social-security",
-    "rebate",
-    "overtime-request",
-    
-    // Profile & Settings
-    "user-preference",
-    
-    // System & Admin
-    "role",
-    "permission",
-    "activity-log",
-    "upload",
-    
-    // Master Data
-    "department",
-    "sub-department",
-    "institute",
-    "designation",
-    "job-type",
-    "marital-status",
-    "employee-grade",
-    "employee-status",
-    "qualification",
-    "degree-type",
-    "allocation",
-    "country",
-    "state",
-    "city",
-    "location",
-    "allowance-head",
-    "deduction-head",
-    "salary-breakup",
-    "tax-slab",
-    "bonus-type",
-    "loan-type",
-    "leave-type",
-    "leaves-policy",
-    "eobi",
-    "provident-fund",
-    "equipment",
-    "bank",
-    "approval-setting",
-    "rebate-nature"
-  ];
+    // Default everything else to HR (including Payroll Setup as typically requested if not ERP yet)
+    return "HR";
+  };
 
   // Group permissions by module
   const groupedPermissions = permissions.reduce((acc, permission) => {
@@ -130,27 +82,33 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
     return acc;
   }, {} as Record<string, Permission[]>);
 
-  // Sort modules based on defined order
-  const sortedModules = Object.keys(groupedPermissions).sort((a, b) => {
-    const indexA = moduleOrder.indexOf(a);
-    const indexB = moduleOrder.indexOf(b);
-    
-    // If both are in the order list, sort by index
-    if (indexA !== -1 && indexB !== -1) {
-      return indexA - indexB;
-    }
-    
-    // If only A is in list, it comes first
-    if (indexA !== -1) return -1;
-    
-    // If only B is in list, it comes first
-    if (indexB !== -1) return 1;
-    
-    // If neither is in list, sort alphabetically
-    return a.localeCompare(b);
-  });
+  const modules = Object.keys(groupedPermissions).sort();
+  
+  // Group modules by category
+  const modulesByCategory = {
+    HR: modules.filter(m => getCategory(m) === "HR"),
+    Master: modules.filter(m => getCategory(m) === "Master"),
+    ERP: modules.filter(m => getCategory(m) === "ERP"),
+  };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const selectedPermissionIds = form.watch("permissionIds");
+
+  // Helper to get selected count per category
+  const getSelectedCount = (category: "HR" | "Master" | "ERP") => {
+    return modulesByCategory[category].reduce((count, module) => {
+      const perms = groupedPermissions[module];
+      return count + perms.filter(p => selectedPermissionIds.includes(p.id)).length;
+    }, 0);
+  };
+
+  // Helper to get total count per category
+  const getTotalCount = (category: "HR" | "Master" | "ERP") => {
+     return modulesByCategory[category].reduce((count, module) => {
+      return count + groupedPermissions[module].length;
+    }, 0);
+  };
+
+  async function onSubmit(values: FormValues) {
     startTransition(async () => {
       if (initialData) {
         const result = await updateRole(initialData.id, values);
@@ -188,135 +146,220 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
     form.setValue("permissionIds", newPermissions, { shouldDirty: true });
   };
 
+  const handleSelectAllInCategory = (category: "HR" | "Master" | "ERP", select: boolean) => {
+     const categoryModules = modulesByCategory[category];
+     let idsToToggle: string[] = [];
+     
+     categoryModules.forEach(module => {
+         idsToToggle.push(...groupedPermissions[module].map(p => p.id));
+     });
+
+     const currentPermissions = form.getValues("permissionIds");
+     let newPermissions: string[];
+
+     if (select) {
+         newPermissions = [...new Set([...currentPermissions, ...idsToToggle])];
+     } else {
+         newPermissions = currentPermissions.filter(id => !idsToToggle.includes(id));
+     }
+     form.setValue("permissionIds", newPermissions, { shouldDirty: true });
+  };
+
+  const renderModuleList = (categoryModules: string[]) => (
+      <div className="space-y-6">
+          {categoryModules.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                  No modules found in this category.
+              </div>
+          )}
+          {categoryModules.map((module) => {
+              const perms = groupedPermissions[module];
+              const allSelected = perms.every(p => selectedPermissionIds.includes(p.id));
+              const someSelected = perms.some(p => selectedPermissionIds.includes(p.id));
+
+              return (
+                  <div key={module} className="space-y-2 border rounded-lg p-4 bg-card/50">
+                      <div className="flex items-center space-x-2 mb-2">
+                          <Checkbox 
+                              id={`module-${module}`}
+                              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                              onCheckedChange={(checked) => handleModuleSelect(module, !!checked)}
+                          />
+                          <label htmlFor={`module-${module}`} className="text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize">
+                              {module.replace('hr.', '').replace('master.', '').replace(/-/g, ' ')}
+                          </label>
+                      </div>
+                      <div className="ml-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {perms.map((permission) => (
+                              <FormField
+                                  key={permission.id}
+                                  control={form.control}
+                                  name="permissionIds"
+                                  render={({ field }) => (
+                                      <FormItem
+                                          key={permission.id}
+                                          className="flex flex-row items-start space-x-3 space-y-0"
+                                      >
+                                          <FormControl>
+                                              <Checkbox
+                                                  checked={field.value?.includes(permission.id)}
+                                                  onCheckedChange={(checked) => {
+                                                      return checked
+                                                          ? field.onChange([...field.value, permission.id])
+                                                          : field.onChange(
+                                                              field.value?.filter(
+                                                                  (value) => value !== permission.id
+                                                              )
+                                                          )
+                                                  }}
+                                              />
+                                          </FormControl>
+                                          <FormLabel className="font-normal text-xs cursor-pointer">
+                                              {permission.action}
+                                          </FormLabel>
+                                      </FormItem>
+                                  )}
+                              />
+                          ))}
+                      </div>
+                  </div>
+              );
+          })}
+      </div>
+  );
+
+  const [activeTab, setActiveTab] = useState<"HR" | "Master" | "ERP">("HR");
+
+  const pageTitle = initialData ? `Edit Role: ${initialData.name}` : "Create New Role";
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Role Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Role Name</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g. HR Manager" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                            <Textarea placeholder="Describe the role's responsibilities" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </CardContent>
-            </Card>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        
+        <div className="flex justify-between items-center mb-6">
+            <h1 className="text-3xl font-bold">{pageTitle}</h1>
+        </div>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex justify-between items-center">
-                        Permissions
-                        <div className="flex gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    const allPermissionIds = permissions.map(p => p.id);
-                                    form.setValue("permissionIds", allPermissionIds, { shouldDirty: true });
-                                }}
-                            >
-                                Select All
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    form.setValue("permissionIds", [], { shouldDirty: true });
-                                }}
-                            >
-                                Deselect All
-                            </Button>
-                        </div>
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-6">
-                        {sortedModules.map((module) => {
-                            const perms = groupedPermissions[module];
-                            const allSelected = perms.every(p => form.watch("permissionIds").includes(p.id));
-                            const someSelected = perms.some(p => form.watch("permissionIds").includes(p.id));
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column: Role Details & Summary */}
+            <div className="lg:col-span-4 space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Role Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        <FormField
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Role Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. HR Manager" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Description</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="Describe the role's responsibilities" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                    </CardContent>
+                </Card>
 
+                {/* Permissions Summary Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                            <Shield className="h-5 w-5" />
+                            Permissions Summary
+                        </CardTitle>
+                        <CardDescription>Overview of assigned permissions</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
+                        {(["HR", "Master", "ERP"] as const).map((cat) => {
+                            const count = getSelectedCount(cat);
+                            const total = getTotalCount(cat);
                             return (
-                                <div key={module} className="space-y-2">
-                                    <div className="flex items-center space-x-2">
-                                        <Checkbox 
-                                            id={`module-${module}`}
-                                            checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                                            onCheckedChange={(checked) => handleModuleSelect(module, !!checked)}
+                                <div key={cat} className="space-y-3">
+                                    <div className="flex justify-between text-sm">
+                                        <span className="font-medium">{cat}</span>
+                                        <span className="text-muted-foreground">{count} / {total}</span>
+                                    </div>
+                                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-primary transition-all duration-300" 
+                                            style={{ width: `${total > 0 ? (count / total) * 100 : 0}%` }}
                                         />
-                                        <label htmlFor={`module-${module}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize">
-                                            {module.replace(/-/g, ' ')}
-                                        </label>
                                     </div>
-                                    <div className="ml-6 grid grid-cols-1 md:grid-cols-2 gap-2">
-                                        {perms.map((permission) => (
-                                            <FormField
-                                                key={permission.id}
-                                                control={form.control}
-                                                name="permissionIds"
-                                                render={({ field }) => (
-                                                    <FormItem
-                                                        key={permission.id}
-                                                        className="flex flex-row items-start space-x-3 space-y-0"
-                                                    >
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={field.value?.includes(permission.id)}
-                                                                onCheckedChange={(checked) => {
-                                                                    return checked
-                                                                        ? field.onChange([...field.value, permission.id])
-                                                                        : field.onChange(
-                                                                            field.value?.filter(
-                                                                                (value) => value !== permission.id
-                                                                            )
-                                                                        )
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                        <FormLabel className="font-normal text-xs">
-                                                            {permission.action}
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        ))}
-                                    </div>
-                                    <Separator className="my-2" />
+                                    
+                                    
+                                    
                                 </div>
                             );
                         })}
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Right Column: Permission Tabs content */}
+            <div className="lg:col-span-8">
+                <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
+                    <Card>
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-4">
+                            <TabsList className="grid w-[300px] grid-cols-3">
+                                <TabsTrigger value="HR">HR</TabsTrigger>
+                                <TabsTrigger value="Master">Master</TabsTrigger>
+                                <TabsTrigger value="ERP">ERP</TabsTrigger>
+                            </TabsList>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSelectAllInCategory(activeTab, true)}
+                                >
+                                    Select All
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSelectAllInCategory(activeTab, false)}
+                                >
+                                    Deselect All
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <ScrollArea className="h-[490px] pr-4">
+                                <TabsContent value="HR" className="mt-0 space-y-4">
+                                    {renderModuleList(modulesByCategory["HR"])}
+                                </TabsContent>
+                                <TabsContent value="Master" className="mt-0 space-y-4">
+                                    {renderModuleList(modulesByCategory["Master"])}
+                                </TabsContent>
+                                <TabsContent value="ERP" className="mt-0 space-y-4">
+                                    {renderModuleList(modulesByCategory["ERP"])}
+                                </TabsContent>
+                            </ScrollArea>
+                        </CardContent>
+                    </Card>
+                </Tabs>
+            </div>
         </div>
 
-        <div className="flex justify-end space-x-4">
+        <div className="flex justify-end space-x-4 border-t pt-6">
             <Button type="button" variant="outline" onClick={() => router.back()}>
                 Cancel
             </Button>

@@ -71,7 +71,7 @@ export default function CreateAdvanceSalaryPage() {
   const { user, isAdmin, hasPermission } = useAuth();
   
   // Check if user has permission to create advance salary for others
-  const canCreateForOthers = isAdmin() || hasPermission("advance-salary.create.others");
+  const canCreateForOthers = isAdmin() || hasPermission("hr.advance-salary.create");
   
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);

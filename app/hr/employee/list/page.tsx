@@ -1,5 +1,7 @@
 "use client";
 
+import { PermissionGuard } from "@/components/auth/permission-guard";
+
 import { useState, useEffect, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -587,163 +589,165 @@ export default function EmployeeListPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Employees</h2>
-          <p className="text-muted-foreground">Manage employee records</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/hr/employee/create">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Employee
-            </Button>
-          </Link>
-          <Button variant="secondary" onClick={() => setUploadDialog(true)}>
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Employees CSV
-          </Button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <DataTable
-          data={employees}
-          columns={columns}
-          toggleAction={() => setUploadDialog(true)}
-          actionText="Upload CSV"
-          searchFields={[
-            { key: "employeeName", label: "Employee Name" },
-            { key: "employeeId", label: "Employee ID" },
-            { key: "contactNumber", label: "Contact Number" },
-          ]}
-        />
-      )}
-
-      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Employee</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;
-              {deletingEmployee?.employeeName}&quot;? This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
-        <DialogContent className="max-w-4xl">
-          <DialogHeader>
-            <DialogTitle>Upload Employees CSV</DialogTitle>
-            <DialogDescription>
-              Select a CSV file. It will be stored in backend public/csv and parsed here.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <FileUpload
-              id="employee-csv-upload"
-              accept=".csv,text/csv"
-              onChange={(files) => {
-                if (files && files.length > 0) {
-                  setSelectedFile(files[0]);
-                } else {
-                  setSelectedFile(null);
-                }
-              }}
-            />
-            <div className="border border-primary/20 rounded-lg p-3 bg-primary/5">
-              <p className="text-sm text-primary mb-2">Need a template?</p>
-              <Button asChild variant="outline" size="sm" className="bg-primary! text-white! hover:bg-primary/90!">
-                <a href="/employee_samples.xlsx" download>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Sample Template
-                </a>
+    <PermissionGuard permissions="hr.employee.read">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Employees</h2>
+            <p className="text-muted-foreground">Manage employee records</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/hr/employee/create">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Employee
               </Button>
-
-            </div>
+            </Link>
+            <Button variant="secondary" onClick={() => setUploadDialog(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Employees CSV
+            </Button>
           </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setUploadDialog(false);
-                setSelectedFile(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleCsvUpload}
-              disabled={uploadPending || !selectedFile}
-            >
-              {uploadPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Upload
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
 
-      <Dialog open={errorDialog} onOpenChange={setErrorDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Import Errors</DialogTitle>
-            <DialogDescription>
-              {importErrors.length} records failed to import. Please review the errors below.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="border rounded-md overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Row</TableHead>
-                    <TableHead>Key Data</TableHead>
-                    <TableHead>Error Reason</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {importErrors.map((err, i) => (
-                    <TableRow key={i} className="bg-destructive/5">
-                      <TableCell>{i + 1}</TableCell>
-                      <TableCell className="font-mono text-xs max-w-[300px] truncate" title={JSON.stringify(err.row, null, 2)}>
-                        {err.row['Employee ID'] || err.row['Employee Name'] || 'Unknown'}
-                      </TableCell>
-                      <TableCell className="text-destructive font-medium">
-                        {err.error}
-                      </TableCell>
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <DataTable
+            data={employees}
+            columns={columns}
+            toggleAction={() => setUploadDialog(true)}
+            actionText="Upload CSV"
+            searchFields={[
+              { key: "employeeName", label: "Employee Name" },
+              { key: "employeeId", label: "Employee ID" },
+              { key: "contactNumber", label: "Contact Number" },
+            ]}
+          />
+        )}
+
+        <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Employee</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete &quot;
+                {deletingEmployee?.employeeName}&quot;? This action cannot be
+                undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteConfirm}
+                disabled={isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>Upload Employees CSV</DialogTitle>
+              <DialogDescription>
+                Select a CSV file. It will be stored in backend public/csv and parsed here.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <FileUpload
+                id="employee-csv-upload"
+                accept=".csv,text/csv"
+                onChange={(files) => {
+                  if (files && files.length > 0) {
+                    setSelectedFile(files[0]);
+                  } else {
+                    setSelectedFile(null);
+                  }
+                }}
+              />
+              <div className="border border-primary/20 rounded-lg p-3 bg-primary/5">
+                <p className="text-sm text-primary mb-2">Need a template?</p>
+                <Button asChild variant="outline" size="sm" className="bg-primary! text-white! hover:bg-primary/90!">
+                  <a href="/employee_samples.xlsx" download>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Sample Template
+                  </a>
+                </Button>
+
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setUploadDialog(false);
+                  setSelectedFile(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleCsvUpload}
+                disabled={uploadPending || !selectedFile}
+              >
+                {uploadPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Upload
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={errorDialog} onOpenChange={setErrorDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-destructive">Import Errors</DialogTitle>
+              <DialogDescription>
+                {importErrors.length} records failed to import. Please review the errors below.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="border rounded-md overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">Row</TableHead>
+                      <TableHead>Key Data</TableHead>
+                      <TableHead>Error Reason</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {importErrors.map((err, i) => (
+                      <TableRow key={i} className="bg-destructive/5">
+                        <TableCell>{i + 1}</TableCell>
+                        <TableCell className="font-mono text-xs max-w-[300px] truncate" title={JSON.stringify(err.row, null, 2)}>
+                          {err.row['Employee ID'] || err.row['Employee Name'] || 'Unknown'}
+                        </TableCell>
+                        <TableCell className="text-destructive font-medium">
+                          {err.error}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setErrorDialog(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setErrorDialog(false)}>
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </PermissionGuard>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import DataTable from "@/components/common/data-table";
 import { columns, AttendanceRequestQueryRow } from "./columns";
+import { useAuth } from "@/components/providers/auth-provider";
 import { AttendanceRequestQuery } from "@/lib/actions/attendance-request-query";
 import type { Employee } from "@/lib/actions/exit-clearance";
 import type { Department } from "@/lib/actions/department";
@@ -20,6 +21,7 @@ export function AttendanceRequestQueryList({
   departments: allDepartments,
   newItemId,
 }: AttendanceRequestQueryListProps) {
+  const { isAdmin } = useAuth();
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
 
   // Get unique departments from all sources

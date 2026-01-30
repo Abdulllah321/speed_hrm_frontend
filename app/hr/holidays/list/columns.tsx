@@ -35,6 +35,7 @@ import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Holiday, updateHoliday, deleteHoliday } from "@/lib/actions/holiday";
 
 export type HolidayRow = Holiday & { id: string };
@@ -130,6 +131,7 @@ type RowActionsProps = { row: Row<HolidayRow> };
 
 function RowActions({ row }: RowActionsProps) {
   const holiday = row.original;
+  const { hasPermission } = useAuth();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
@@ -193,14 +195,18 @@ function RowActions({ row }: RowActionsProps) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
-            <Pencil className="h-4 w-4 mr-2" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </DropdownMenuItem>
+          {hasPermission("hr.holiday.update") && (
+            <DropdownMenuItem onClick={() => setEditDialog(true)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+          )}
+          {hasPermission("hr.holiday.delete") && (
+            <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

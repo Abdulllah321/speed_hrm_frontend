@@ -37,17 +37,12 @@ export function HeaderNotifications() {
   const { user, isAuthenticated, fetchWithAuth } = useAuth();
   const router = useRouter();
 
-  const API_BASE = useMemo(
-    () => process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api",
-    []
-  );
-
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) return;
-    const res = await fetchWithAuth(`${API_BASE}/notifications?limit=10`, {
+    const res = await fetchWithAuth(`/notifications?limit=10`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
@@ -61,7 +56,7 @@ export function HeaderNotifications() {
     if (!json?.status || !json.data) return;
     setItems(json.data.items || []);
     setUnreadCount(json.data.unreadCount || 0);
-  }, [API_BASE, fetchWithAuth, isAuthenticated]);
+  }, [fetchWithAuth, isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -83,7 +78,7 @@ export function HeaderNotifications() {
       const current = items.find((n) => n.id === id);
       if (!current) return;
 
-      const res = await fetchWithAuth(`${API_BASE}/notifications/${id}/read`, {
+      const res = await fetchWithAuth(`/notifications/${id}/read`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -97,12 +92,12 @@ export function HeaderNotifications() {
         setUnreadCount((c) => Math.max(0, c - 1));
       }
     },
-    [API_BASE, fetchWithAuth, isAuthenticated, items]
+    [fetchWithAuth, isAuthenticated, items]
   );
 
   const handleMarkAllRead = useCallback(async () => {
     if (!isAuthenticated) return;
-    const res = await fetchWithAuth(`${API_BASE}/notifications/read-all`, {
+    const res = await fetchWithAuth(`/notifications/read-all`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -112,7 +107,7 @@ export function HeaderNotifications() {
 
     setItems((prev) => prev.map((n) => ({ ...n, status: "read" })));
     setUnreadCount(0);
-  }, [API_BASE, fetchWithAuth, isAuthenticated]);
+  }, [fetchWithAuth, isAuthenticated]);
 
   const getActionRoute = useCallback((n: NotificationItem) => {
     if (!n.actionType) return null;

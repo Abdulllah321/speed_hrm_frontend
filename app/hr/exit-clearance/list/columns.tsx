@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { ExitClearance, deleteExitClearance } from "@/lib/actions/exit-clearance";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type ExitClearanceRow = ExitClearance & { id: string };
 
@@ -118,6 +119,7 @@ type RowActionsProps = {
 
 function RowActions({ row }: RowActionsProps) {
   const record = row.original;
+  const { hasPermission } = useAuth();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -152,19 +154,23 @@ function RowActions({ row }: RowActionsProps) {
               View
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href={`/hr/exit-clearance/edit/${record.id}`}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => setDeleteDialog(true)}
-            className="text-destructive focus:text-destructive"
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </DropdownMenuItem>
+          {hasPermission("hr.exit-clearance.update") && (
+            <DropdownMenuItem asChild>
+              <Link href={`/hr/exit-clearance/edit/${record.id}`}>
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </DropdownMenuItem>
+          )}
+          {hasPermission("hr.exit-clearance.delete") && (
+            <DropdownMenuItem
+              onClick={() => setDeleteDialog(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

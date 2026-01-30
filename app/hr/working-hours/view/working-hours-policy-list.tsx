@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface WorkingHoursPolicyListProps {
   initialPolicies: WorkingHoursPolicy[];
@@ -29,6 +30,7 @@ export function WorkingHoursPolicyList({
   newItemId,
 }: WorkingHoursPolicyListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [search, setSearch] = useState("");
 
@@ -211,14 +213,14 @@ export function WorkingHoursPolicyList({
             columns={columns}
             data={data}
             actionText="Add Working Hours Policy"
-            toggleAction={handleToggle}
+            toggleAction={hasPermission("hr.working-hour-policy.create") ? handleToggle : undefined}
             newItemId={newItemId}
             searchFields={[
               { key: "name", label: "Policy Name" },
               { key: "startWorkingHours", label: "Start Time" },
               { key: "endWorkingHours", label: "End Time" },
             ]}
-            onMultiDelete={handleMultiDelete}
+            onMultiDelete={hasPermission("hr.working-hour-policy.delete") ? handleMultiDelete : undefined}
             tableId="working-hours-policy-list"
           />
         </CardContent>

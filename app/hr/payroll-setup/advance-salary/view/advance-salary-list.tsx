@@ -7,6 +7,7 @@ import { Printer, Download } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface AdvanceSalaryListProps {
   initialData?: AdvanceSalaryRow[];
@@ -15,6 +16,8 @@ interface AdvanceSalaryListProps {
 export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) {
   const data: AdvanceSalaryRow[] = initialData;
   const router = useRouter();
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission("hr.advance-salary.create");
   
   const handlePrint = () => {
     if (data.length === 0) {
@@ -423,8 +426,8 @@ export function AdvanceSalaryList({ initialData = [] }: AdvanceSalaryListProps) 
             { key: "empName", label: "Employee Name" },
             { key: "empId", label: "Employee ID" },
           ]}
-          actionText="Create Advance Salary"
-          toggleAction={() => router.push("/hr/payroll-setup/advance-salary/create")}
+          actionText={canCreate ? "Create Advance Salary" : undefined}
+          toggleAction={canCreate ? () => router.push("/hr/payroll-setup/advance-salary/create") : undefined}
           tableId="advance-salary-list"
         />
       </div>

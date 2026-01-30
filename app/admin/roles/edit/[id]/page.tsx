@@ -22,7 +22,7 @@ export default async function EditRolePage({ params }: EditRolePageProps) {
 
   return (
     <div className="container mx-auto py-6">
-      <h1 className="text-3xl font-bold mb-6">Edit Role: {role.name}</h1>
+
       <RoleForm permissions={permissions} initialData={role} />
     </div>
   );

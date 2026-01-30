@@ -13,6 +13,7 @@ import { type Bonus } from "@/lib/actions/bonus";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import Link from "next/link";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface BonusListProps {
   initialData?: Bonus[];
@@ -29,6 +30,8 @@ const formatMonthYear = (month: string, year: string) => {
 };
 
 export function BonusList({ initialData = [] }: BonusListProps) {
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission("hr.bonus.create");
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
@@ -642,12 +645,14 @@ export function BonusList({ initialData = [] }: BonusListProps) {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Link href="/hr/payroll-setup/bonus/issue">
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Issue Bonus
-            </Button>
-          </Link>
+          {canCreate && (
+            <Link href="/hr/payroll-setup/bonus/issue">
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Issue Bonus
+              </Button>
+            </Link>
+          )}
           <Button variant="secondary" onClick={handlePrint}>
             <Printer className="h-4 w-4 mr-2" />
             Print

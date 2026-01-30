@@ -61,6 +61,7 @@ import {
 } from "@/lib/actions/advance-salary";
 import { DatePicker } from "@/components/ui/date-picker";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export interface AdvanceSalaryRow {
   id: string;
@@ -110,6 +111,12 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
   const [viewDialog, setViewDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
   const [advanceSalaryDetails, setAdvanceSalaryDetails] = useState<AdvanceSalary | null>(null);
+  const { hasPermission } = useAuth();
+  const canApprove = hasPermission("hr.advance-salary.approve");
+  const canEdit = hasPermission("hr.advance-salary.update");
+  const canDelete = hasPermission("hr.advance-salary.delete");
+  const canRead = hasPermission("hr.advance-salary.read");
+
   const [loadingDetails, setLoadingDetails] = useState(false);
   const record = row.original;
 
@@ -472,7 +479,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
             <>
               <DropdownMenuItem
                 onClick={handleApprove}
-                disabled={isPending}
+                disabled={isPending || !canApprove}
                 className="text-green-600 focus:text-green-600"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -480,7 +487,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setRejectDialog(true)}
-                disabled={isPending}
+                disabled={isPending || !canApprove}
                 className="text-destructive focus:text-destructive"
               >
                 <XCircle className="h-4 w-4 mr-2" />
@@ -514,7 +521,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
 
           <DropdownMenuItem
             onClick={() => setEditDialog(true)}
-            disabled={isPending || isApproved}
+            disabled={isPending || isApproved || !canEdit}
           >
             <Edit2 className="h-4 w-4 mr-2" />
             Edit
@@ -763,7 +770,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
 
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
-            disabled={isPending}
+            disabled={isPending || !canDelete}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />

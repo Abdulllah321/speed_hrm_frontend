@@ -6,6 +6,7 @@ import DataTable from "@/components/common/data-table";
 import { columns, ExitClearanceRow } from "./columns";
 import { ExitClearance, deleteExitClearances } from "@/lib/actions/exit-clearance";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface ExitClearanceListProps {
   initialData: ExitClearance[];
@@ -14,6 +15,7 @@ interface ExitClearanceListProps {
 
 export function ExitClearanceList({ initialData, newItemId }: ExitClearanceListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
 
   const handleToggle = () => {
@@ -48,13 +50,13 @@ export function ExitClearanceList({ initialData, newItemId }: ExitClearanceListP
         columns={columns}
         data={data}
         actionText="Create Clearance"
-        toggleAction={handleToggle}
+        toggleAction={hasPermission("hr.exit-clearance.create") ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[
           { key: "employeeName", label: "Employee Name" },
           { key: "department", label: "Department" },
         ]}
-        onMultiDelete={handleMultiDelete}
+        onMultiDelete={hasPermission("hr.exit-clearance.delete") ? handleMultiDelete : undefined}
         tableId="exit-clearance-list"
       />
     </div>

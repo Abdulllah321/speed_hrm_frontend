@@ -2,97 +2,106 @@
 // This ensures users can only access routes they have permissions for
 
 export const routePermissions: Record<string, string[]> = {
-  // Dashboard - public (no permissions required)
-  "/hr": [],
+  // Dashboard
+  "/hr": ["hr.dashboard.view"],
+  "/hr/my-dashboard": ["hr.dashboard.view"],
   
   // Employee Setup
-  "/hr/employee/create": ["employee.create"],
-  "/hr/employee/list": ["employee.read"],
-  "/hr/employee/view": ["employee.read"],
-  "/hr/employee/edit": ["employee.update"],
-  "/hr/employee/user-account": ["user.read"],
-  "/hr/employee/user-account/create": ["user.create"],
+  "/hr/employee/create": ["hr.employee.create"],
+  "/hr/employee/list": ["hr.employee.read"],
+  "/hr/employee/view": ["hr.employee.read"],
+  "/hr/employee/transfer": ["hr.employee.transfer"],
+  "/hr/employee/edit": ["hr.employee.update"],
+  "/hr/employee/user-account": ["hr.employee.user-account"],
+  "/hr/employee/user-account/create": ["hr.employee.user-account"],
   
   // Exit Clearance
-  "/hr/exit-clearance/create": ["employee.create"],
-  "/hr/exit-clearance/list": ["employee.read"],
+  "/hr/exit-clearance/create": ["hr.exit-clearance.create"],
+  "/hr/exit-clearance/list": ["hr.exit-clearance.read"],
+  "/hr/exit-clearance/edit": ["hr.exit-clearance.update"],
   
   // Attendance Setup
-  "/hr/attendance/manage": ["attendance.update"],
-  "/hr/attendance/view": ["attendance.read"],
-  "/hr/attendance/summary": ["attendance.read"],
-  "/hr/attendance/request": ["attendance.read"],
-  "/hr/attendance/request-list": ["attendance.read"],
-  "/hr/attendance/exemptions": ["attendance-exemption.read"],
-  "/hr/attendance/exemptions-list": ["attendance-exemption.read"],
+  "/hr/attendance/manage": ["hr.attendance.update"],
+  "/hr/attendance/view": ["hr.attendance.view"],
+  "/hr/attendance/summary": ["hr.attendance.summary"],
+  "/hr/attendance/request": ["hr.attendance.request"],
+  "/hr/attendance/request-list": ["hr.attendance.request-list"],
+  "/hr/attendance/exemptions": ["hr.attendance.exemptions"],
+  "/hr/attendance/exemptions-list": ["hr.attendance.exemptions-list"],
   
   // Working Hours
-  "/hr/working-hours/create": ["attendance.read"],
-  "/hr/working-hours/view": ["attendance.read"],
-  "/hr/working-hours/assign-policy": ["attendance.read"],
+  "/hr/working-hours/create": ["hr.working-hour-policy.create"],
+  "/hr/working-hours/view": ["hr.working-hour-policy.read"],
+  "/hr/working-hours/assign-policy": ["hr.working-hour-policy.assign"],
   
   // Holidays
-  "/hr/holidays/add": ["attendance.read"],
-  "/hr/holidays/list": ["attendance.read"],
+  "/hr/holidays/add": ["hr.holiday.create"],
+  "/hr/holidays/list": ["hr.holiday.read"],
   
   // Leaves
-  "/hr/leaves/create-leaves": ["leave-application.create"],
-  "/hr/leaves/requests": ["leave-application.read"],
+  "/hr/leaves/create-leaves": ["hr.leave.create"],
+  "/hr/leaves/requests": ["hr.leave.read"],
   
   // Payroll Setup
-  "/hr/payroll-setup/payroll/create": ["payroll.create"],
-  "/hr/payroll-setup/payroll/report": ["payroll.read"],
-  "/hr/payroll-setup/payroll/bank-report": ["payroll.read"],
-  "/hr/payroll-setup/payroll/payslips": ["payroll.read"],
+  "/hr/payroll-setup/payroll/create": ["hr.payroll.create"],
+  "/hr/payroll-setup/payroll/report": ["hr.payroll.read"],
+  "/hr/payroll-setup/payroll/bank-report": ["hr.payroll.read"],
+  "/hr/payroll-setup/payroll/payslips": ["hr.payroll.read"],
   
   // Allowance
-  "/hr/payroll-setup/allowance/create": ["allowance.create"],
-  "/hr/payroll-setup/allowance/view": ["allowance.read"],
-  "/hr/payroll-setup/allowance/bank-report": ["allowance.read"],
-  "/hr/payroll-setup/allowance/payslip": ["allowance.read"],
+  "/hr/payroll-setup/allowance/create": ["hr.allowance.create"],
+  "/hr/payroll-setup/allowance/view": ["hr.allowance.read"],
+  "/hr/payroll-setup/allowance/bank-report": ["hr.allowance.read"],
+  "/hr/payroll-setup/allowance/payslip": ["hr.allowance.read"],
   
   // Deduction
-  "/hr/payroll-setup/deduction/create": ["deduction.create"],
-  "/hr/payroll-setup/deduction/view": ["deduction.read"],
+  "/hr/payroll-setup/deduction/create": ["hr.deduction.create"],
+  "/hr/payroll-setup/deduction/view": ["hr.deduction.read"],
   
   // Advance Salary
-  "/hr/payroll-setup/advance-salary/create": ["advance-salary.create"],
-  "/hr/payroll-setup/advance-salary/view": ["advance-salary.read"],
+  "/hr/payroll-setup/advance-salary/create": ["hr.advance-salary.create"],
+  "/hr/payroll-setup/advance-salary/view": ["hr.advance-salary.read"],
   
   // Loan Requests
-  "/hr/loan-requests/create": ["loan-request.create"],
-  "/hr/loan-requests/view": ["loan-request.read"],
+  "/hr/loan-requests/create": ["hr.loan-request.create"],
+  "/hr/loan-requests/view": ["hr.loan-request.read"],
   
   // Increment
-  "/hr/payroll-setup/increment/create": ["payroll.read"],
-  "/hr/payroll-setup/increment/view": ["payroll.read"],
+  "/hr/payroll-setup/increment/create": ["hr.increment.create"],
+  "/hr/payroll-setup/increment/view": ["hr.increment.read"],
   
   // Bonus
-  "/hr/payroll-setup/bonus/issue": ["bonus.create"],
-  "/hr/payroll-setup/bonus/view": ["bonus.read"],
-  "/hr/payroll-setup/bonus/bank-report": ["bonus.read"],
-  "/hr/payroll-setup/bonus/payslip": ["bonus.read"],
+  "/hr/payroll-setup/bonus/issue": ["hr.bonus.create"],
+  "/hr/payroll-setup/bonus/view": ["hr.bonus.read"],
+  "/hr/payroll-setup/bonus/bank-report": ["hr.bonus.read"],
+  "/hr/payroll-setup/bonus/payslip": ["hr.bonus.read"],
   
   // Leave Encashment
-  "/hr/payroll-setup/leave-encashment/create": ["payroll.read"],
-  "/hr/payroll-setup/leave-encashment/list": ["payroll.read"],
+  "/hr/payroll-setup/leave-encashment/create": ["hr.leave-encashment.create"],
+  "/hr/payroll-setup/leave-encashment/list": ["hr.leave-encashment.read"],
   
   // PF for Employee
-  "/hr/payroll-setup/pf-employee/view": ["provident-fund.read"],
-  "/hr/payroll-setup/pf-employee/withdraw-create": ["provident-fund.read"],
-  "/hr/payroll-setup/pf-employee/withdraw-view": ["provident-fund.read"],
-  "/hr/payroll-setup/pf-employee/report": ["provident-fund.read"],
-  "/hr/payroll-setup/pf-employee/ledger": ["provident-fund.read"],
+  "/hr/payroll-setup/pf-employee/view": ["hr.provident-fund.read"],
+  "/hr/payroll-setup/pf-employee/withdraw-create": ["hr.provident-fund.create"],
+  "/hr/payroll-setup/pf-employee/withdraw-view": ["hr.provident-fund.read"],
+  "/hr/payroll-setup/pf-employee/report": ["hr.provident-fund.read"],
+  "/hr/payroll-setup/pf-employee/ledger": ["hr.provident-fund.read"],
+  
+  // Rebate
+  "/hr/payroll-setup/rebate/create": ["hr.rebate.create"],
+  "/hr/payroll-setup/rebate/list": ["hr.rebate.read"],
+  "/hr/payroll-setup/rebate-nature": ["hr.rebate-nature.read"],
   
   // Final Settlement
-  "/hr/payroll-setup/final-settlement/create": ["payroll.read"],
-  "/hr/payroll-setup/final-settlement/list": ["payroll.read"],
+  "/hr/payroll-setup/final-settlement/create": ["hr.payroll.create"],
+  "/hr/payroll-setup/final-settlement/list": ["hr.payroll.read"],
   
-  // Salary Sheet
-  "/hr/salary-sheet/tax-certificate": ["payroll.read"],
+  // Salary Sheet & Social Security
+  "/hr/salary-sheet/tax-certificate": ["hr.salary-sheet.read"],
+  "/hr/payroll-setup/social-security-employee/view": ["hr.social-security.read"],
   
   // Request Forwarding
-  "/hr/request-forwarding": ["attendance.read", "advance-salary.read", "loan-request.read"],
+  "/hr/request-forwarding": ["hr.request-forwarding.view"],
   
   // Settings - public (all authenticated users)
   "/hr/settings/password": [],
@@ -145,7 +154,7 @@ export function getRoutePermissions(pathname: string): string[] {
   if (normalizedPath.startsWith("/hr/")) {
     // Return default permissions for unknown HR routes
     // This ensures users can't access routes that aren't explicitly allowed
-    return DEFAULT_ROUTE_PERMISSIONS.length > 0 ? DEFAULT_ROUTE_PERMISSIONS : ["employee.read"];
+    return DEFAULT_ROUTE_PERMISSIONS.length > 0 ? DEFAULT_ROUTE_PERMISSIONS : ["hr.employee.read"];
   }
   
   // Default: no permissions required (public route)
