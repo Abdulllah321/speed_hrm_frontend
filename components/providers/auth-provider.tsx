@@ -557,6 +557,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionExpired: false,
           setSessionExpired: () => { },
           handleSessionExpiry: async () => { },
+          setLoadingProgress,
+          setLoadingMessage,
+          completeAuthStep,
+          completeAppWait,
+          registerAppWait,
         }}
       >
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />
