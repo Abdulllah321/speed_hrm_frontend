@@ -4,5 +4,5 @@ import { redirect } from "next/navigation";
 
 export default async function Home() {
   const user = await getCurrentUser()  
-  redirect(user?"/hr" : "/login")
+  redirect(user?"/hr" : "/auth/login")
 }

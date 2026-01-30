@@ -61,6 +61,12 @@ interface AuthContextType {
   sessionExpired: boolean;
   setSessionExpired: (value: boolean) => void;
   handleSessionExpiry: () => Promise<void>;
+  // App initialization controls
+  setLoadingProgress: (progress: number) => void;
+  setLoadingMessage: (message: string) => void;
+  completeAuthStep: () => void;
+  completeAppWait: (key: string) => void;
+  registerAppWait: (key: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -74,6 +80,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("Initializing...");
   const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Track multiple initialization steps
+  const [pendingSteps, setPendingSteps] = useState<Set<string>>(new Set(["auth"]));
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  const registerAppWait = useCallback((key: string) => {
+    setPendingSteps(prev => new Set(prev).add(key));
+    setIsInitializing(true);
+  }, []);
+
+  const completeAppWait = useCallback((key: string) => {
+    setPendingSteps(prev => {
+      const next = new Set(prev);
+      next.delete(key);
+      if (next.size === 0) {
+        setIsInitializing(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const completeAuthStep = useCallback(() => {
+    completeAppWait("auth");
+  }, [completeAppWait]);
 
   // Convert preferences array to object for easier access
   const preferencesToObject = useCallback((prefs: Array<{ key: string; value: string }> | undefined) => {
@@ -267,8 +297,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoadingProgress(100);
     } finally {
       setLoading(false);
+      completeAuthStep();
     }
-  }, [preferencesToObject, fetchWithAuth]);
+  }, [preferencesToObject, fetchWithAuth, completeAuthStep]);
 
   // Set mounted flag to prevent hydration mismatch
   useEffect(() => {
@@ -525,6 +556,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           sessionExpired: false,
           setSessionExpired: () => { },
           handleSessionExpiry: async () => { },
+          setLoadingProgress,
+          setLoadingMessage,
+          completeAuthStep,
+          completeAppWait,
+          registerAppWait,
         }}
       >
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />
@@ -553,9 +589,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionExpired,
         setSessionExpired,
         handleSessionExpiry,
+        setLoadingProgress,
+        setLoadingMessage,
+        completeAuthStep,
+        completeAppWait,
+        registerAppWait,
       }}
     >
-      {children}
+      {mounted && children}
+      {(!mounted || isInitializing) && (
+        <LoadingScreen progress={loadingProgress} message={loadingMessage} />
+      )}
     </AuthContext.Provider>
   );
 }

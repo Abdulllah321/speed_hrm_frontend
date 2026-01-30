@@ -30,14 +30,14 @@ function decodeToken(token: string): { exp?: number; iat?: number } | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
-    
+
     // Decode base64url payload (JWT uses base64url encoding)
     const payload = parts[1];
     // Replace URL-safe base64 characters
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     // Add padding if needed
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-    
+
     // Decode base64
     const decoded = Buffer.from(padded, 'base64').toString('utf-8');
     const parsed = JSON.parse(decoded) as { exp?: number; iat?: number };
@@ -50,13 +50,13 @@ function decodeToken(token: string): { exp?: number; iat?: number } | null {
 // Check if token is already expired (SECURITY: Never refresh expired tokens)
 function isTokenExpired(token: string | null | undefined): boolean {
   if (!token) return true;
-  
+
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) return true;
-  
+
   const expirationTime = decoded.exp * 1000; // Convert to milliseconds
   const now = Date.now();
-  
+
   // Return true if token is already expired
   return now >= expirationTime;
 }
@@ -65,25 +65,25 @@ function isTokenExpired(token: string | null | undefined): boolean {
 // SECURITY: Only refresh if token is still valid (not expired)
 function isTokenExpiringSoon(token: string | null | undefined): boolean {
   if (!token) return false;
-  
+
   // SECURITY: If token is already expired, don't refresh
   if (isTokenExpired(token)) return false;
-  
+
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) return false;
-  
+
   const expirationTime = decoded.exp * 1000; // Convert to milliseconds
   const now = Date.now();
   const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
-  
+
   // Return true only if token is still valid AND expires within 30 minutes
   return expirationTime - now < thirtyMinutes && expirationTime > now;
 }
 
 // Login action - for server-side use, calls backend directly
 // For client-side login, use loginClient from client-auth.ts
-export async function login(formData: FormData): Promise<{ 
-  status: boolean; 
+export async function login(formData: FormData): Promise<{
+  status: boolean;
   message: string;
 }> {
   const email = formData.get("email") as string;
@@ -106,8 +106,8 @@ export async function login(formData: FormData): Promise<{
     if (data.status && data.data) {
       // Note: This server action cannot set cookies in the browser
       // Use loginClient from client-auth.ts for proper cookie handling
-      return { 
-        status: true, 
+      return {
+        status: true,
         message: "Login successful"
       };
     }
@@ -198,7 +198,7 @@ export async function getAccessToken(): Promise<string | null> {
       const refreshed = await refreshAccessToken();
       if (refreshed) {
         accessToken = (await cookies()).get("accessToken")?.value || null;
-}
+      }
     } else {
       // Refresh token expired, clear everything
       cookieStore.delete("accessToken");
@@ -231,12 +231,13 @@ export async function refreshAccessToken(): Promise<boolean> {
   return false;
 }
 
+import axios from "axios";
+
 // Authenticated fetch helper (NextAuth-like with proactive refresh)
 // SECURITY: Never use expired tokens, never refresh expired tokens
-export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+export async function authFetch(url: string, options: any = {}): Promise<any> {
   const cookieStore = await cookies();
   let accessToken = cookieStore.get("accessToken")?.value || null;
-  // const refreshToken = cookieStore.get("refreshToken")?.value || null; // Unused since we don't refresh here
 
   // SECURITY CHECK 1: If access token is expired, don't use it
   if (accessToken && isTokenExpired(accessToken)) {
@@ -244,27 +245,47 @@ export async function authFetch(url: string, options: RequestInit = {}): Promise
     accessToken = null;
   }
 
-  // SECURITY CHECK 2: Proactive refresh removed to prevent race conditions
-  // if (accessToken && isTokenExpiringSoon(accessToken) && refreshToken) { ... }
+  const companyCookie = cookieStore.get("currentCompany")?.value;
+  const companyCode = cookieStore.get("companyCode")?.value;
+  let companyId = "";
 
-  const makeRequest = async (token: string | null) => {
-    return fetch(`${API_BASE}${url}`, {
-      ...options,
-      credentials: "include",
+  if (companyCookie) {
+    try {
+      const company = JSON.parse(companyCookie);
+      companyId = company.id;
+    } catch (e) { }
+  }
+
+  try {
+    const response = await axios({
+      url: `${API_BASE}${url}`,
+      method: options.method || 'GET',
+      data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
       headers: {
         "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(companyId ? { "x-company-id": companyId } : {}),
+        ...(companyCode ? { "x-tenant-id": companyCode } : {}),
         ...options.headers,
       },
+      withCredentials: true,
+      // Adapt axios response to look like fetch response for compatibility
     });
-  };
 
-  const response = await makeRequest(accessToken);
-
-  // SECURITY CHECK 3: If token expired (401), return response.
-  // Client-side will detect 401 and trigger refresh via auth-provider.
-  
-  return response;
+    return {
+      ok: true,
+      status: response.status,
+      json: async () => response.data,
+      text: async () => JSON.stringify(response.data),
+    };
+  } catch (error: any) {
+    return {
+      ok: false,
+      status: error.response?.status || 500,
+      json: async () => error.response?.data || { message: error.message },
+      text: async () => JSON.stringify(error.response?.data || { message: error.message }),
+    };
+  }
 }
 
 // Change password
@@ -346,7 +367,7 @@ export async function checkSession(): Promise<{ valid: boolean; user?: User }> {
     }
 
     if (res.ok) {
-    const data = await res.json();
+      const data = await res.json();
       const user = await getCurrentUser();
       return { valid: data.status && data.valid !== false, user: user || undefined };
     }

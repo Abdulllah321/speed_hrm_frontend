@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAccessToken } from "@/lib/auth";
+import { authFetch } from "@/lib/auth";
 
 const API_BASE = process.env.API_URL || "http://localhost:5000/api";
 
@@ -48,10 +48,8 @@ export interface SubDepartment {
 // Department Actions
 export async function getDepartments(): Promise<{ status: boolean; data: Department[]; message?: string }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/departments`, {
-      cache: "no-store",
-      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    const res = await authFetch("/departments", {
+      cache: "no-store"
     });
     return res.json();
   } catch (error) {
@@ -62,10 +60,8 @@ export async function getDepartments(): Promise<{ status: boolean; data: Departm
 
 export async function getDepartmentById(id: string): Promise<{ status: boolean; data: Department | null }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/departments/${id}`, {
-      cache: "no-store",
-      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    const res = await authFetch(`/departments/${id}`, {
+      cache: "no-store"
     });
     return res.json();
   } catch (error) {
@@ -80,13 +76,8 @@ export async function createDepartments(items: { name: string; allocationId?: st
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/departments`, {
+    const res = await authFetch("/departments", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -110,13 +101,8 @@ export async function updateDepartment(id: string, formData: FormData): Promise<
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/departments/${id}`, {
+    const res = await authFetch(`/departments/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ id, name, headId: headId || null }),
     });
     const data = await res.json();
@@ -133,12 +119,8 @@ export async function updateDepartment(id: string, formData: FormData): Promise<
 
 export async function deleteDepartment(id: string): Promise<{ status: boolean; message: string }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/departments/${id}`, {
+    const res = await authFetch(`/departments/${id}`, {
       method: "DELETE",
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
     });
     const data = await res.json();
 
@@ -158,13 +140,8 @@ export async function deleteDepartments(ids: string[]): Promise<{ status: boolea
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/departments/bulk`, {
+    const res = await authFetch("/departments/bulk", {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
@@ -187,13 +164,8 @@ export async function updateDepartments(
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/departments/bulk`, {
+    const res = await authFetch("/departments/bulk", {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -211,10 +183,8 @@ export async function updateDepartments(
 // Sub-Department Actions
 export async function getSubDepartments(): Promise<{ status: boolean; data: SubDepartment[]; message?: string }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/sub-departments`, {
-      cache: "no-store",
-      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    const res = await authFetch("/sub-departments", {
+      cache: "no-store"
     });
     return res.json();
   } catch (error) {
@@ -225,10 +195,8 @@ export async function getSubDepartments(): Promise<{ status: boolean; data: SubD
 
 export async function getSubDepartmentsByDepartment(departmentId: string): Promise<{ status: boolean; data: SubDepartment[] }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/sub-departments/department/${departmentId}`, {
-      cache: "no-store",
-      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+    const res = await authFetch(`/sub-departments/department/${departmentId}`, {
+      cache: "no-store"
     });
     return res.json();
   } catch (error) {
@@ -249,13 +217,8 @@ export async function createSubDepartment(formData: FormData): Promise<{ status:
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/sub-departments`, {
+    const res = await authFetch("/sub-departments", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ name, departmentId }),
     });
     const data = await res.json();
@@ -278,13 +241,8 @@ export async function createSubDepartments(
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
+    const res = await authFetch("/sub-departments/bulk", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -309,13 +267,8 @@ export async function updateSubDepartment(id: string, formData: FormData): Promi
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/sub-departments/${id}`, {
+    const res = await authFetch(`/sub-departments/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ id, name, departmentId: departmentId || undefined, headId: headId || null }),
     });
     const data = await res.json();
@@ -332,12 +285,8 @@ export async function updateSubDepartment(id: string, formData: FormData): Promi
 
 export async function deleteSubDepartment(id: string): Promise<{ status: boolean; message: string }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/sub-departments/${id}`, {
+    const res = await authFetch(`/sub-departments/${id}`, {
       method: "DELETE",
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
     });
     const data = await res.json();
 
@@ -357,13 +306,8 @@ export async function deleteSubDepartments(ids: string[]): Promise<{ status: boo
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
+    const res = await authFetch("/sub-departments/bulk", {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
@@ -386,13 +330,8 @@ export async function updateSubDepartments(
   }
 
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/sub-departments/bulk`, {
+    const res = await authFetch("/sub-departments/bulk", {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ items }),
     });
     const data = await res.json();

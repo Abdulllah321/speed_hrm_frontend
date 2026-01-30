@@ -1,44 +1,2 @@
 "use server";
-
-import { getAccessToken } from "@/lib/auth";
-
-const API_BASE = process.env.API_URL || "http://localhost:5000/api";
-
-export interface Permission {
-  id: string;
-  name: string;
-  module: string;
-  action: string;
-  description?: string;
-}
-
-export async function getPermissions(): Promise<{ status: boolean; data: Permission[]; message?: string }> {
-  try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_BASE}/permissions`, {
-      cache: "force-cache", // Permissions rarely change
-      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-    });
-    
-    if (!res.ok) {
-        console.error(`Failed to fetch permissions: ${res.status} ${res.statusText}`);
-        // If 401/403, it means auth failed. Return empty but log it.
-        if (res.status === 401 || res.status === 403) {
-             return { status: false, data: [], message: "Authentication failed" };
-        }
-    }
-
-    const data = await res.json();
-    
-    // Check if data is array (successful response)
-    if (Array.isArray(data)) {
-        return { status: true, data };
-    }
-    
-    console.error("Permissions fetch returned non-array:", data);
-    return { status: false, data: [], message: "Invalid response format" };
-  } catch (error) {
-    console.error("Failed to fetch permissions:", error);
-    return { status: false, data: [], message: "Failed to fetch permissions" };
-  }
-}
+import { authFetch } from "@/lib/auth";export interface Permission {  id: string;  name: string;  module: string;  action: string;  description?: string;}export async function getPermissions(): Promise<{ status: boolean; data: Permission[]; message?: string }> {  try {    const res = await authFetch(`/permissions`, {      cache: "force-cache", // Permissions rarely change    });    if (!res.ok) {        console.error(`Failed to fetch permissions: ${res.status} ${res.statusText}`);        // If 401/403, it means auth failed. Return empty but log it.        if (res.status === 401 || res.status === 403) {             return { status: false, data: [], message: "Authentication failed" };        }    }    const data = await res.json();    // Check if data is array (successful response)    if (Array.isArray(data)) {        return { status: true, data };    }    console.error("Permissions fetch returned non-array:", data);    return { status: false, data: [], message: "Invalid response format" };  } catch (error) {    console.error("Failed to fetch permissions:", error);    return { status: false, data: [], message: "Failed to fetch permissions" };  }}

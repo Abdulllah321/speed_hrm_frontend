@@ -5,19 +5,24 @@ import { Users, Clock, AlertCircle, FileText, CheckCircle, XCircle } from "lucid
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { dashboardApi, DashboardStats } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCompany } from "@/components/providers/company-provider";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 
 export function DashboardContent() {
+    const { currentCompany, loading: companyLoading } = useCompany();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
     useEffect(() => {
+        if (companyLoading || !currentCompany) return;
+
         async function loadStats() {
             try {
+                setLoading(true);
                 const data = await dashboardApi.getStats();
                 setStats(data);
+                setError(null);
             } catch (err) {
                 console.error(err);
                 setError("Failed to load dashboard data.");
@@ -26,14 +31,28 @@ export function DashboardContent() {
             }
         }
         loadStats();
-    }, []);
+    }, [currentCompany, companyLoading]);
 
-    if (loading) {
+    if (companyLoading || loading) {
         return <DashboardSkeleton />;
     }
 
+    if (!currentCompany) {
+        return <div className="p-4 text-amber-600 bg-amber-50 rounded-md">Please select a company to view dashboard data.</div>;
+    }
+
     if (error || !stats) {
-        return <div className="p-4 text-red-500">{error || "No data available"}</div>;
+        return (
+            <div className="p-4 text-red-500 bg-red-50 rounded-md flex flex-col gap-2">
+                <p>{error || "No data available"}</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="text-sm underline text-left"
+                >
+                    Retry
+                </button>
+            </div>
+        );
     }
 
     const attendanceData = [

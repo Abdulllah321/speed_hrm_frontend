@@ -20,22 +20,26 @@ export default function HRLayout({
   // Debug: Print accessible routes when user data is loaded
   useEffect(() => {
     if (!loading && user && process.env.NODE_ENV === 'development') {
-      const userPermissions = user.role?.permissions?.map((p: any) => 
+      const userPermissions = user.role?.permissions?.map((p: any) =>
         p.permission?.name || p.name || p
       ).filter(Boolean) || (user as any)?.permissions || [];
-      
+
       if (userPermissions.length > 0) {
         console.log("=== USER PERMISSIONS ===", userPermissions);
         printAccessibleRoutes(userPermissions);
       }
     }
   }, [user, loading]);
-  
+
   // Super admin bypasses all permission checks
   if (isAdmin()) {
-    return <DashboardLayout>{children}</DashboardLayout>;
+    return (
+      <DashboardLayout>
+        {children}
+      </DashboardLayout>
+    );
   }
-  
+
   // If route requires permissions, wrap with PermissionGuard
   if (requiredPermissions.length > 0) {
     return (
@@ -46,7 +50,11 @@ export default function HRLayout({
       </DashboardLayout>
     );
   }
-  
+
   // Public routes (no permissions required)
-  return <DashboardLayout>{children}</DashboardLayout>;
+  return (
+    <DashboardLayout>
+      {children}
+    </DashboardLayout>
+  );
 }

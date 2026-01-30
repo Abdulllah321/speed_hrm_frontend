@@ -1,21 +1,40 @@
 import { getApiBaseUrl } from "./utils";
 
+import axios from 'axios';
 
-async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${getApiBaseUrl()}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    credentials: 'include', // ✅ Send cookies with every request
-    cache: 'no-store',
-    ...options,
-  });
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.message || 'Something went wrong');
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+
+async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
+  // Helper to get cookie value in browser
+  const getCookie = (name: string) => {
+    if (typeof document === 'undefined') return '';
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift() || '';
+    return '';
+  };
+
+  const companyId = getCookie('companyId');
+  const companyCode = getCookie('companyCode');
+
+  try {
+    const response = await axios({
+      url: `${API_BASE}${endpoint}`,
+      method: options?.method || 'GET',
+      data: options?.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(companyId ? { 'x-company-id': companyId } : {}),
+        ...(companyCode ? { 'x-tenant-id': companyCode } : {}),
+        ...options?.headers,
+      },
+      withCredentials: true,
+    });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || error.message || 'Something went wrong');
   }
-  return data;
 }
 
 // Department API
@@ -102,7 +121,7 @@ export interface Employee {
   city?: { id: string; name: string } | string;
   workingHoursPolicy?: { id: string; name: string } | string;
   leavesPolicy?: { id: string; name: string } | string;
-  
+
   // Relation objects for display
   departmentRelation?: { id: string; name: string };
   subDepartmentRelation?: { id: string; name: string };
@@ -113,8 +132,8 @@ export interface Employee {
   countryRelation?: { id: string; name: string };
   stateRelation?: { id: string; name: string };
   cityRelation?: { id: string; name: string };
-  workingHoursPolicyRelation?: { 
-    id: string; 
+  workingHoursPolicyRelation?: {
+    id: string;
     name: string;
     startWorkingHours?: string;
     endWorkingHours?: string;
@@ -138,7 +157,7 @@ export interface Employee {
 }
 
 export const employeeApi = {
-  getProfile: (id: string, includeHistory: boolean = false) => 
+  getProfile: (id: string, includeHistory: boolean = false) =>
     fetchApi<{ status: boolean; data: Employee }>(`/employees/${id}?includeHistory=${includeHistory}`),
 };
 

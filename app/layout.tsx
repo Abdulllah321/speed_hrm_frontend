@@ -4,6 +4,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { EnvironmentProvider } from "@/components/providers/environment-provider";
+import { CompanyProvider } from "@/components/providers/company-provider";
 import { Toaster } from "sonner";
 import { cookies } from "next/headers";
 
@@ -51,8 +52,10 @@ export default async function RootLayout({
         >
           <EnvironmentProvider>
             <AuthProvider>
-              <Toaster />
-              {children}
+              <CompanyProvider>
+                <Toaster />
+                {children}
+              </CompanyProvider>
             </AuthProvider>
           </EnvironmentProvider>
         </ThemeProvider>

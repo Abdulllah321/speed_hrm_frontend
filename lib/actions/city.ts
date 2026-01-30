@@ -1,22 +1,7 @@
 "use server";
 
+import { authFetch } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { getAccessToken } from "@/lib/auth";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-
-async function getHeaders(isJson = true) {
-  const token = await getAccessToken();
-  const headers: Record<string, string> = {
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-
-  if (isJson) {
-    headers["Content-Type"] = "application/json";
-  }
-  return headers;
-}
 
 export interface Country {
   id: string;
@@ -61,22 +46,18 @@ export async function getCountries(): Promise<{
   message?: string;
 }> {
   try {
-    const res = await fetch(`${API_BASE}/countries`, {
+    const res = await authFetch(`/countries`, {
       cache: "no-store",
-      headers: await getHeaders(false),
     });
-
     if (!res.ok) {
       const errorData = await res
         .json()
         .catch(() => ({ message: "Failed to fetch countries" }));
-
       return {
         status: false,
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-
     return res.json();
   } catch (error) {
     console.error("Failed to fetch countries:", error);
@@ -96,15 +77,12 @@ export async function createCountry(
 ): Promise<{ status: boolean; message: string; data?: Country }> {
   const name = formData.get("name") as string;
   const code = formData.get("code") as string;
-
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/countries`, {
+    const res = await authFetch(`/countries`, {
       method: "POST",
-      headers: await getHeaders(),
       body: JSON.stringify({ name, code }),
     });
     const data = await res.json();
@@ -121,11 +99,9 @@ export async function createCountries(
   if (!items.length) {
     return { status: false, message: "At least one country is required" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/countries/bulk`, {
+    const res = await authFetch(`/countries/bulk`, {
       method: "POST",
-      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -142,15 +118,12 @@ export async function updateCountry(
 ): Promise<{ status: boolean; message: string }> {
   const name = formData.get("name") as string;
   const code = formData.get("code") as string;
-
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/countries/${id}`, {
+    const res = await authFetch(`/countries/${id}`, {
       method: "PUT",
-      headers: await getHeaders(),
       body: JSON.stringify({ id, name, code }),
     });
     const data = await res.json();
@@ -167,11 +140,9 @@ export async function updateCountries(
   if (!items.length) {
     return { status: false, message: "No items to update" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/countries/bulk`, {
+    const res = await authFetch(`/countries/bulk`, {
       method: "PUT",
-      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -186,9 +157,8 @@ export async function deleteCountry(
   id: string
 ): Promise<{ status: boolean; message: string }> {
   try {
-    const res = await fetch(`${API_BASE}/countries/${id}`, {
+    const res = await authFetch(`/countries/${id}`, {
       method: "DELETE",
-      headers: await getHeaders(false),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/master/country");
@@ -204,11 +174,9 @@ export async function deleteCountries(
   if (!ids.length) {
     return { status: false, message: "No items to delete" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/countries/bulk`, {
+    const res = await authFetch(`/countries/bulk`, {
       method: "DELETE",
-      headers: await getHeaders(),
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
@@ -226,11 +194,9 @@ export async function getCities(): Promise<{
   message?: string;
 }> {
   try {
-    const res = await fetch(`${API_BASE}/cities`, {
+    const res = await authFetch(`/cities`, {
       cache: "no-store",
-      headers: await getHeaders(false),
     });
-
     if (!res.ok) {
       const errorData = await res
         .json()
@@ -240,7 +206,6 @@ export async function getCities(): Promise<{
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-
     return res.json();
   } catch (error) {
     console.error("Failed to fetch cities:", error);
@@ -259,9 +224,8 @@ export async function getCitiesByCountry(
   countryId: string
 ): Promise<{ status: boolean; data: City[] }> {
   try {
-    const res = await fetch(`${API_BASE}/cities/country/${countryId}`, {
+    const res = await authFetch(`/cities/country/${countryId}`, {
       cache: "no-store",
-      headers: await getHeaders(false),
     });
     return res.json();
   } catch (error) {
@@ -277,11 +241,9 @@ export async function getStates(): Promise<{
   message?: string;
 }> {
   try {
-    const res = await fetch(`${API_BASE}/states`, {
+    const res = await authFetch(`/states`, {
       cache: "no-store",
-      headers: await getHeaders(false),
     });
-
     if (!res.ok) {
       const errorData = await res
         .json()
@@ -291,7 +253,6 @@ export async function getStates(): Promise<{
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-
     return res.json();
   } catch (error) {
     console.error("Failed to fetch states:", error);
@@ -310,11 +271,9 @@ export async function getStatesByCountry(
   countryId: string
 ): Promise<{ status: boolean; data?: State[]; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/states/country/${countryId}`, {
+    const res = await authFetch(`/states/country/${countryId}`, {
       cache: "no-store",
-      headers: await getHeaders(false),
     });
-
     if (!res.ok) {
       const errorData = await res
         .json()
@@ -324,7 +283,6 @@ export async function getStatesByCountry(
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-
     return res.json();
   } catch (error) {
     console.error("Failed to fetch states:", error);
@@ -343,11 +301,9 @@ export async function getCitiesByState(
   stateId: string
 ): Promise<{ status: boolean; data?: City[]; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/cities/state/${stateId}`, {
+    const res = await authFetch(`/cities/state/${stateId}`, {
       cache: "no-store",
-      headers: await getHeaders(false),
     });
-
     if (!res.ok) {
       const errorData = await res
         .json()
@@ -357,7 +313,6 @@ export async function getCitiesByState(
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-
     return res.json();
   } catch (error) {
     console.error("Failed to fetch cities:", error);
@@ -377,11 +332,9 @@ export async function getStateById(
   id: string
 ): Promise<{ status: boolean; data?: State; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/states/${id}`, {
+    const res = await authFetch(`/states/${id}`, {
       cache: "no-store",
-      headers: await getHeaders(false),
     });
-
     if (!res.ok) {
       const errorData = await res
         .json()
@@ -391,7 +344,6 @@ export async function getStateById(
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-
     return res.json();
   } catch (error) {
     console.error("Failed to fetch state:", error);
@@ -411,9 +363,8 @@ export async function createState(data: {
   status?: string;
 }): Promise<{ status: boolean; data?: State; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/states`, {
+    const res = await authFetch(`/states`, {
       method: "POST",
-      headers: await getHeaders(),
       body: JSON.stringify(data),
     });
     const result = await res.json();
@@ -430,11 +381,9 @@ export async function createStates(
   if (!items.length) {
     return { status: false, message: "At least one state is required" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/states/bulk`, {
+    const res = await authFetch(`/states/bulk`, {
       method: "POST",
-      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -450,9 +399,8 @@ export async function updateState(
   data: { name: string; countryId?: string; status?: string }
 ): Promise<{ status: boolean; data?: State; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/states/${id}`, {
+    const res = await authFetch(`/states/${id}`, {
       method: "PUT",
-      headers: await getHeaders(),
       body: JSON.stringify({ ...data, id }),
     });
     const result = await res.json();
@@ -467,9 +415,8 @@ export async function updateStates(
   items: { id: string; name: string; countryId?: string; status?: string }[]
 ): Promise<{ status: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/states/bulk`, {
+    const res = await authFetch(`/states/bulk`, {
       method: "PUT",
-      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -484,9 +431,8 @@ export async function deleteState(
   id: string
 ): Promise<{ status: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/states/${id}`, {
+    const res = await authFetch(`/states/${id}`, {
       method: "DELETE",
-      headers: await getHeaders(false),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/master/state");
@@ -500,9 +446,8 @@ export async function deleteStates(
   ids: string[]
 ): Promise<{ status: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/states/bulk`, {
+    const res = await authFetch(`/states/bulk`, {
       method: "DELETE",
-      headers: await getHeaders(),
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();
@@ -519,7 +464,6 @@ export async function createCity(
   const name = formData.get("name") as string;
   const countryId = formData.get("countryId") as string;
   const stateId = formData.get("stateId") as string;
-
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
@@ -529,11 +473,9 @@ export async function createCity(
   if (!stateId) {
     return { status: false, message: "State is required" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/cities`, {
+    const res = await authFetch(`/cities`, {
       method: "POST",
-      headers: await getHeaders(),
       body: JSON.stringify({ name, countryId, stateId }),
     });
     const data = await res.json();
@@ -550,11 +492,9 @@ export async function createCities(
   if (!items.length) {
     return { status: false, message: "At least one city is required" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/cities/bulk`, {
+    const res = await authFetch(`/cities/bulk`, {
       method: "POST",
-      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -572,18 +512,15 @@ export async function updateCity(
   const name = formData.get("name") as string;
   const countryId = formData.get("countryId") as string;
   const stateId = formData.get("stateId") as string;
-
   if (!name?.trim()) {
     return { status: false, message: "Name is required" };
   }
   if (!stateId) {
     return { status: false, message: "State is required" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/cities/${id}`, {
+    const res = await authFetch(`/cities/${id}`, {
       method: "PUT",
-      headers: await getHeaders(),
       body: JSON.stringify({
         id,
         name,
@@ -605,11 +542,9 @@ export async function updateCities(
   if (!items.length) {
     return { status: false, message: "No items to update" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/cities/bulk`, {
+    const res = await authFetch(`/cities/bulk`, {
       method: "PUT",
-      headers: await getHeaders(),
       body: JSON.stringify({ items }),
     });
     const data = await res.json();
@@ -624,9 +559,8 @@ export async function deleteCity(
   id: string
 ): Promise<{ status: boolean; message: string }> {
   try {
-    const res = await fetch(`${API_BASE}/cities/${id}`, {
+    const res = await authFetch(`/cities/${id}`, {
       method: "DELETE",
-      headers: await getHeaders(false),
     });
     const data = await res.json();
     if (data.status) revalidatePath("/master/city");
@@ -642,11 +576,9 @@ export async function deleteCities(
   if (!ids.length) {
     return { status: false, message: "No items to delete" };
   }
-
   try {
-    const res = await fetch(`${API_BASE}/cities/bulk`, {
+    const res = await authFetch(`/cities/bulk`, {
       method: "DELETE",
-      headers: await getHeaders(),
       body: JSON.stringify({ ids }),
     });
     const data = await res.json();

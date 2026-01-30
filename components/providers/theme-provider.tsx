@@ -3,6 +3,7 @@
 import * as React from "react";
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes";
 import Cookies from "js-cookie";
+import { getCookieDomain } from "@/lib/utils";
 
 function ThemeSync() {
   const { theme, setTheme } = useTheme();
@@ -25,19 +26,14 @@ function ThemeSync() {
     if (!mounted || !theme) return;
 
     // When theme changes, update cookie
-    // Use the configured cookie domain or auto-detect
-    const domain = process.env.NEXT_PUBLIC_COOKIE_DOMAIN || undefined;
-    
-    // Safety check for localhost
-    const isLocalhost = typeof window !== 'undefined' && (
-      window.location.hostname === 'localhost' || 
-      window.location.hostname === '127.0.0.1'
-    );
+    const host = typeof window !== 'undefined' ? window.location.host : '';
+    const domain = getCookieDomain(host);
 
     const cookieOptions: Cookies.CookieAttributes = {
       expires: 365,
-      // Don't set domain if on localhost, otherwise it won't work
-      domain: isLocalhost ? undefined : domain
+      domain: domain,
+      path: '/',
+      sameSite: 'lax'
     };
 
     Cookies.set("app-theme", theme, cookieOptions);

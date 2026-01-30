@@ -1,202 +1,2 @@
 'use server';
-
-import { getAccessToken } from '../auth';
-
-const API_URL = process.env.API_URL || 'http://localhost:5000/api';
-
-async function getAuthHeaders(isJson = true) {
-  const token = await getAccessToken();
-  const headers: Record<string, string> = {
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-
-  if (isJson) {
-    headers['Content-Type'] = 'application/json';
-  }
-  return headers;
-}
-
-export interface Qualification {
-  id: string;
-  name: string;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Get all qualifications
-export async function getQualifications(): Promise<{ status: boolean; data?: Qualification[]; message?: string }> {
-  try {
-    const res = await fetch(`${API_URL}/qualifications`, {
-      headers: await getAuthHeaders(false),
-      cache: 'no-store',
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch qualifications' }));
-      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error('Error fetching qualifications:', error);
-    return {
-      status: false,
-      message: error instanceof Error ? error.message : 'Failed to fetch qualifications. Please check your connection.'
-    };
-  }
-}
-
-// Get qualification by id
-export async function getQualificationById(id: string): Promise<{ status: boolean; data?: Qualification; message?: string }> {
-  try {
-    const res = await fetch(`${API_URL}/qualifications/${id}`, {
-      headers: await getAuthHeaders(false),
-      cache: 'no-store',
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch qualification' }));
-      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error('Error fetching qualification:', error);
-    return {
-      status: false,
-      message: error instanceof Error ? error.message : 'Failed to fetch qualification'
-    };
-  }
-}
-
-// Create qualification
-export async function createQualification(data: { name: string; status?: string }): Promise<{ status: boolean; data?: Qualification; message?: string }> {
-  try {
-    const res = await fetch(`${API_URL}/qualifications`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'Failed to create qualification' }));
-      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error('Error creating qualification:', error);
-    return { status: false, message: error instanceof Error ? error.message : 'Failed to create qualification' };
-  }
-}
-
-// Create qualifications bulk
-export async function createQualificationsBulk(items: { name: string; status?: string }[]): Promise<{ status: boolean; message?: string }> {
-  try {
-    const res = await fetch(`${API_URL}/qualifications/bulk`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ items }),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'Failed to create qualifications' }));
-      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error('Error creating qualifications:', error);
-    return { status: false, message: error instanceof Error ? error.message : 'Failed to create qualifications' };
-  }
-}
-
-// Update qualification
-export async function updateQualification(id: string, data: { name?: string; status?: string }): Promise<{ status: boolean; data?: Qualification; message?: string }> {
-  try {
-    const res = await fetch(`${API_URL}/qualifications/${id}`, {
-      method: 'PUT',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ ...data, id }),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'Failed to update qualification' }));
-      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error('Error updating qualification:', error);
-    return { status: false, message: error instanceof Error ? error.message : 'Failed to update qualification' };
-  }
-}
-
-// Delete qualification
-export async function deleteQualification(id: string): Promise<{ status: boolean; message?: string }> {
-  try {
-    const res = await fetch(`${API_URL}/qualifications/${id}`, {
-      method: 'DELETE',
-      headers: await getAuthHeaders(false),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'Failed to delete qualification' }));
-      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error('Error deleting qualification:', error);
-    return { status: false, message: error instanceof Error ? error.message : 'Failed to delete qualification' };
-  }
-}
-
-// Update qualifications bulk
-export async function updateQualifications(items: {
-  id: string;
-  name: string;
-  status?: string;
-}[]): Promise<{ status: boolean; message?: string }> {
-  try {
-    const results = await Promise.all(
-      items.map(item => updateQualification(item.id, item))
-    );
-
-    const failed = results.filter(r => !r.status);
-    if (failed.length > 0) {
-      return { status: false, message: `${failed.length} qualification(s) failed to update` };
-    }
-
-    return { status: true, message: `${results.length} qualification(s) updated successfully` };
-  } catch (error) {
-    console.error('Error updating qualifications:', error);
-    return { status: false, message: error instanceof Error ? error.message : 'Failed to update qualifications' };
-  }
-}
-
-// Delete qualifications bulk
-export async function deleteQualifications(ids: string[]): Promise<{ status: boolean; message?: string }> {
-  if (!ids.length) {
-    return { status: false, message: 'No items to delete' };
-  }
-
-  try {
-    const res = await fetch(`${API_URL}/qualifications/bulk`, {
-      method: 'DELETE',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ ids }),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: 'Failed to delete qualifications' }));
-      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error('Error deleting qualifications:', error);
-    return { status: false, message: error instanceof Error ? error.message : 'Failed to delete qualifications' };
-  }
-}
+import { authFetch } from '@/lib/auth';export interface Qualification {  id: string;  name: string;  status: string;  createdAt: string;  updatedAt: string;}// Get all qualificationsexport async function getQualifications(): Promise<{ status: boolean; data?: Qualification[]; message?: string }> {  try {    const res = await authFetch(`/qualifications`, {    });    if (!res.ok) {      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch qualifications' }));      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };    }    return res.json();  } catch (error) {    console.error('Error fetching qualifications:', error);    return {      status: false,      message: error instanceof Error ? error.message : 'Failed to fetch qualifications. Please check your connection.'    };  }}// Get qualification by idexport async function getQualificationById(id: string): Promise<{ status: boolean; data?: Qualification; message?: string }> {  try {    const res = await authFetch(`/qualifications/${id}`, {    });    if (!res.ok) {      const errorData = await res.json().catch(() => ({ message: 'Failed to fetch qualification' }));      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };    }    return res.json();  } catch (error) {    console.error('Error fetching qualification:', error);    return {      status: false,      message: error instanceof Error ? error.message : 'Failed to fetch qualification'    };  }}// Create qualificationexport async function createQualification(data: { name: string; status?: string }): Promise<{ status: boolean; data?: Qualification; message?: string }> {  try {    const res = await authFetch(`/qualifications`, {      method: 'POST',      body: JSON.stringify(data),    });    if (!res.ok) {      const errorData = await res.json().catch(() => ({ message: 'Failed to create qualification' }));      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };    }    return res.json();  } catch (error) {    console.error('Error creating qualification:', error);    return { status: false, message: error instanceof Error ? error.message : 'Failed to create qualification' };  }}// Create qualifications bulkexport async function createQualificationsBulk(items: { name: string; status?: string }[]): Promise<{ status: boolean; message?: string }> {  try {    const res = await authFetch(`/qualifications/bulk`, {      method: 'POST',      body: JSON.stringify({ items }),    });    if (!res.ok) {      const errorData = await res.json().catch(() => ({ message: 'Failed to create qualifications' }));      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };    }    return res.json();  } catch (error) {    console.error('Error creating qualifications:', error);    return { status: false, message: error instanceof Error ? error.message : 'Failed to create qualifications' };  }}// Update qualificationexport async function updateQualification(id: string, data: { name?: string; status?: string }): Promise<{ status: boolean; data?: Qualification; message?: string }> {  try {    const res = await authFetch(`/qualifications/${id}`, {      method: 'PUT',      body: JSON.stringify({ ...data, id }),    });    if (!res.ok) {      const errorData = await res.json().catch(() => ({ message: 'Failed to update qualification' }));      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };    }    return res.json();  } catch (error) {    console.error('Error updating qualification:', error);    return { status: false, message: error instanceof Error ? error.message : 'Failed to update qualification' };  }}// Delete qualificationexport async function deleteQualification(id: string): Promise<{ status: boolean; message?: string }> {  try {    const res = await authFetch(`/qualifications/${id}`, {      method: 'DELETE',    });    if (!res.ok) {      const errorData = await res.json().catch(() => ({ message: 'Failed to delete qualification' }));      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };    }    return res.json();  } catch (error) {    console.error('Error deleting qualification:', error);    return { status: false, message: error instanceof Error ? error.message : 'Failed to delete qualification' };  }}// Update qualifications bulkexport async function updateQualifications(items: {  id: string;  name: string;  status?: string;}[]): Promise<{ status: boolean; message?: string }> {  try {    const results = await Promise.all(      items.map(item => updateQualification(item.id, item))    );    const failed = results.filter(r => !r.status);    if (failed.length > 0) {      return { status: false, message: `${failed.length} qualification(s) failed to update` };    }    return { status: true, message: `${results.length} qualification(s) updated successfully` };  } catch (error) {    console.error('Error updating qualifications:', error);    return { status: false, message: error instanceof Error ? error.message : 'Failed to update qualifications' };  }}// Delete qualifications bulkexport async function deleteQualifications(ids: string[]): Promise<{ status: boolean; message?: string }> {  if (!ids.length) {    return { status: false, message: 'No items to delete' };  }  try {    const res = await authFetch(`/qualifications/bulk`, {      method: 'DELETE',      body: JSON.stringify({ ids }),    });    if (!res.ok) {      const errorData = await res.json().catch(() => ({ message: 'Failed to delete qualifications' }));      return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };    }    return res.json();  } catch (error) {    console.error('Error deleting qualifications:', error);    return { status: false, message: error instanceof Error ? error.message : 'Failed to delete qualifications' };  }}
