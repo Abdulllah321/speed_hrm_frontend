@@ -85,7 +85,7 @@ export default function AddDepartmentPage() {
   };
 
   return (
-    <PermissionGuard permissions="department.create">
+    <PermissionGuard permissions="master.department.create">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <Link href="/master/department/list">

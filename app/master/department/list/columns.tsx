@@ -131,9 +131,9 @@ function RowActions({ row }: RowActionsProps) {
   const [selectedHeadId, setSelectedHeadId] = useState<string>(dept.headId || "");
   const { hasPermission } = useAuth();
 
-  const canEdit = hasPermission("department.update");
-  const canDelete = hasPermission("department.delete");
-  const canAddSubDept = hasPermission("sub-department.create");
+  const canEdit = hasPermission("master.department.update");
+  const canDelete = hasPermission("master.department.delete");
+  const canAddSubDept = hasPermission("master.sub-department.create");
 
   if (!canEdit && !canDelete && !canAddSubDept) {
     return null;
