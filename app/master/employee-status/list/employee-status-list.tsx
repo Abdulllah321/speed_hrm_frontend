@@ -32,10 +32,12 @@ export function EmployeeStatusList({
   initialEmployeeStatuses,
   newItemId,
 }: EmployeeStatusListProps) {
-  const router = useRouter();
+  const router = useRouter(); const { hasPermission } = useAuth();
+
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; status: string }[]>([]);
+  const showAddAction = hasPermission("employee-status.create");
 
   const handleToggle = () => {
     router.push("/master/employee-status/add");

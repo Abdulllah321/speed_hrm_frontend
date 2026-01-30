@@ -1,10 +1,6 @@
 "use server";
-
+import { authFetch } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import { getAccessToken } from "@/lib/auth";
-
-const API_URL = process.env.API_URL || "http://localhost:5000/api";
-
 export interface SalaryBreakup {
   id: string;
   name: string;
@@ -16,7 +12,6 @@ export interface SalaryBreakup {
   createdAt: string;
   updatedAt: string;
 }
-
 export async function createSalaryBreakup(
   name: string,
   percentage: number,
@@ -27,13 +22,8 @@ export async function createSalaryBreakup(
     return { status: false, message: "Percentage is required" };
   }
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_URL}/salary-breakups`, {
+    const res = await authFetch(`/salary-breakups`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify({ 
         name, 
         percentage, 
@@ -48,22 +38,14 @@ export async function createSalaryBreakup(
     return { status: false, message: "Failed to create salary breakup" };
   }
 }
-
 export async function getSalaryBreakups(): Promise<{
   status: boolean;
   message?: string;
   data?: SalaryBreakup[];
 }> {
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_URL}/salary-breakups`, {
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+    const res = await authFetch(`/salary-breakups`, {
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: "Failed to fetch salary breakups" }));
       return {
@@ -71,7 +53,6 @@ export async function getSalaryBreakups(): Promise<{
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-
     const result = await res.json();
     return {
       status: result.status || true,
@@ -86,7 +67,6 @@ export async function getSalaryBreakups(): Promise<{
     };
   }
 }
-
 export async function updateSalaryBreakup(
   id: string,
   data: { name: string; percentage: number; isTaxable?: boolean; status?: string }
@@ -97,13 +77,8 @@ export async function updateSalaryBreakup(
     return { status: false, message: "Percentage is required" };
   }
   try {
-    const token = await getAccessToken();
-    const res = await fetch(`${API_URL}/salary-breakups/${id}`, {
+    const res = await authFetch(`/salary-breakups/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
       body: JSON.stringify(data),
     });
     const result = await res.json();
@@ -113,17 +88,15 @@ export async function updateSalaryBreakup(
     return { status: false, message: "Failed to update salary breakup" };
   }
 }
-
 export async function deleteSalaryBreakup(
   id: string
 ): Promise<{ status: boolean; message: string }> {
   if (!id?.trim()) return { status: false, message: "ID is required" };
   try {
-    const token = await getAccessToken();
     const headers: HeadersInit = {
       ...(token && { Authorization: `Bearer ${token}` }),
     };
-    const res = await fetch(`${API_URL}/salary-breakups/${id}`, {
+    const res = await authFetch(`/salary-breakups/${id}`, {
       method: "DELETE",
       headers,
     });

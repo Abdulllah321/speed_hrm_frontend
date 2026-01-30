@@ -24,7 +24,7 @@ export default async function AllocationListPage({
         }
 
         return (
-            <PermissionGuard permissions="allocation.read">
+            <PermissionGuard permissions="allocation.read" >
                 <AllocationList
                     initialAllocations={result.data || []}
                     newItemId={newItemId}

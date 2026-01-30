@@ -34,7 +34,7 @@ export type MenuItem = {
 export const masterMenuData: MenuItem[] = [
   {
     title: "Department",
-    permissions: ["department.read", "department.create"],
+    permissions: ["master.department.read", "master.department.create"],
     children: [
       { title: "Add", href: "/master/department/add" },
       { title: "View", href: "/master/department/list" },
@@ -42,7 +42,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Sub Department",
-    permissions: ["sub-department.read", "sub-department.create"],
+    permissions: ["master.sub-department.read", "master.sub-department.create"],
     children: [
       { title: "Add", href: "/master/sub-department/add" },
       { title: "View", href: "/master/sub-department/list" },
@@ -50,7 +50,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Institute",
-    permissions: ["institute.read", "institute.create"],
+    permissions: ["master.institute.read", "master.institute.create"],
     children: [
       { title: "Add", href: "/master/institute/add" },
       { title: "View", href: "/master/institute/list" },
@@ -58,7 +58,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Designation",
-    permissions: ["designation.read", "designation.create"],
+    permissions: ["master.designation.read", "master.designation.create"],
     children: [
       { title: "Add", href: "/master/designation/add" },
       { title: "View", href: "/master/designation/list" },
@@ -66,7 +66,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Job Type",
-    permissions: ["job-type.read", "job-type.create"],
+    permissions: ["master.job-type.read", "master.job-type.create"],
     children: [
       { title: "Add", href: "/master/job-type/add" },
       { title: "View", href: "/master/job-type/list" },
@@ -74,7 +74,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Marital Status",
-    permissions: ["marital-status.read", "marital-status.create"],
+    permissions: ["master.marital-status.read", "master.marital-status.create"],
     children: [
       { title: "Add", href: "/master/marital-status/add" },
       { title: "View", href: "/master/marital-status/list" },
@@ -82,7 +82,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Employee Grade",
-    permissions: ["employee-grade.read", "employee-grade.create"],
+    permissions: ["master.employee-grade.read", "master.employee-grade.create"],
     children: [
       { title: "Add", href: "/master/employee-grade/add" },
       { title: "View", href: "/master/employee-grade/list" },
@@ -90,7 +90,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Employement Status",
-    permissions: ["employee-status.read", "employee-status.create"],
+    permissions: ["master.employee-status.read", "master.employee-status.create"],
     children: [
       { title: "Add", href: "/master/employee-status/add" },
       { title: "View", href: "/master/employee-status/list" },
@@ -98,7 +98,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Qualification",
-    permissions: ["qualification.read", "qualification.create"],
+    permissions: ["master.qualification.read", "master.qualification.create"],
     children: [
       { title: "Add", href: "/master/qualification/add" },
       { title: "View", href: "/master/qualification/list" },
@@ -106,7 +106,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "City",
-    permissions: ["city.read", "city.create"],
+    permissions: ["master.city.read", "master.city.create"],
     children: [
       { title: "Add", href: "/master/city/add" },
       { title: "View", href: "/master/city/list" },
@@ -114,7 +114,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Location",
-    permissions: ["location.read", "location.create"],
+    permissions: ["master.location.read", "master.location.create"],
     children: [
       { title: "Add", href: "/master/location/add" },
       { title: "View", href: "/master/location/list" },
@@ -122,7 +122,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Allocation",
-    permissions: ["allocation.read", "allocation.create"],
+    permissions: ["master.allocation.read", "master.allocation.create"],
     children: [
       { title: "Add", href: "/master/allocation/add" },
       { title: "View", href: "/master/allocation/list" },
@@ -130,7 +130,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Loan Types",
-    permissions: ["loan-type.read", "loan-type.create"],
+    permissions: ["master.loan-type.read", "master.loan-type.create"],
     children: [
       { title: "Add", href: "/master/loan-types/add" },
       { title: "View", href: "/master/loan-types/list" },
@@ -138,7 +138,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Leave Types",
-    permissions: ["leave-type.read", "leave-type.create"],
+    permissions: ["master.leave-type.read", "master.leave-type.create"],
     children: [
       { title: "Add", href: "/master/leave-types/add" },
       { title: "View", href: "/master/leave-types/list" },
@@ -146,7 +146,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Leaves Policy",
-    permissions: ["leaves-policy.read", "leaves-policy.create"],
+    permissions: ["master.leaves-policy.read", "master.leaves-policy.create"],
     children: [
       { title: "Add", href: "/master/leaves-policy/add" },
       { title: "View", href: "/master/leaves-policy/list" },
@@ -158,7 +158,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Equipment",
-    permissions: ["equipment.read", "equipment.create"],
+    permissions: ["master.equipment.read", "master.equipment.create"],
     children: [
       { title: "Add", href: "/master/equipment/add" },
       { title: "View", href: "/master/equipment/list" },
@@ -166,7 +166,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Salary Breakup",
-    permissions: ["salary-breakup.read", "salary-breakup.create"],
+    permissions: ["master.salary-breakup.read", "master.salary-breakup.create"],
     children: [
       { title: "Add", href: "/master/salary-breakup/add" },
       { title: "View", href: "/master/salary-breakup/list" },
@@ -174,7 +174,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "EOBI",
-    permissions: ["eobi.read", "eobi.create"],
+    permissions: ["master.eobi.read", "master.eobi.create"],
     children: [
       { title: "Add", href: "/master/eobi/add" },
       { title: "View", href: "/master/eobi/list" },
@@ -182,7 +182,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Social Security",
-    permissions: ["social-security.read", "social-security.create"],
+    permissions: ["master.social-security.read", "master.social-security.create"],
     children: [
       { title: "Add", href: "/master/social-security/add" },
       { title: "View", href: "/master/social-security/list" },
@@ -190,7 +190,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Tax Slabs",
-    permissions: ["tax-slab.read", "tax-slab.create"],
+    permissions: ["master.tax-slab.read", "master.tax-slab.create"],
     children: [
       { title: "Add", href: "/master/tax-slabs/add" },
       { title: "View", href: "/master/tax-slabs/list" },
@@ -198,7 +198,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Provident Fund",
-    permissions: ["provident-fund.read", "provident-fund.create"],
+    permissions: ["master.provident-fund.read", "master.provident-fund.create"],
     children: [
       { title: "Add", href: "/master/provident-fund/add" },
       { title: "View", href: "/master/provident-fund/list" },
@@ -206,7 +206,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Bonus Types",
-    permissions: ["bonus-type.read", "bonus-type.create"],
+    permissions: ["master.bonus-type.read", "master.bonus-type.create"],
     children: [
       { title: "Add", href: "/master/bonus-types/add" },
       { title: "View", href: "/master/bonus-types/list" },
@@ -214,7 +214,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Allowance",
-    permissions: ["allowance-head.read", "allowance-head.create"],
+    permissions: ["master.allowance-head.read", "master.allowance-head.create"],
     children: [
       { title: "Add", href: "/master/allowance-head/add" },
       { title: "View", href: "/master/allowance-head/list" },
@@ -222,7 +222,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Deduction",
-    permissions: ["deduction-head.read", "deduction-head.create"],
+    permissions: ["master.deduction-head.read", "master.deduction-head.create"],
     children: [
       { title: "Add", href: "/master/deduction-head/add" },
       { title: "View", href: "/master/deduction-head/list" },
@@ -230,7 +230,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Bank",
-    permissions: ["bank.read", "bank.create"],
+    permissions: ["master.bank.read", "master.bank.create"],
     children: [
       { title: "Add", href: "/master/banks/add" },
       { title: "View", href: "/master/banks/list" },
@@ -677,6 +677,7 @@ export const menuData: MenuItem[] = [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard },
       { title: "Activity Logs", href: "/admin/activity-logs", icon: FileText },
       { title: "Roles & Permissions", href: "/admin/roles", icon: Users },
+      { title: "Companies", href: "/admin/companies", icon: Users },
       { title: "System Settings", href: "/admin/settings", icon: Settings },
     ],
   },
@@ -737,7 +738,7 @@ export function filterMenuByPermissions(
 
       // For items with children, filter children FIRST
       // Then decide if parent should be shown based on accessible children
-      let children = item.children ? filterItems(item.children) : undefined;
+      const children = item.children ? filterItems(item.children) : undefined;
 
       // If item has children and all children were filtered out, hide parent
       // UNLESS it's "Profile Settings" which should always be shown

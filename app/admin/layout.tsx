@@ -1,10 +1,6 @@
-import type { Metadata } from "next";
-import {DashboardLayout} from "@/components/layouts/dashboard-layout";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Admin Panel | HR Management System",
-  description: "Administrative functions including activity logs, system settings, and administrative operations",
-};
+import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 
 export default function AdminLayout({
   children,
@@ -12,9 +8,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <DashboardLayout>
+    <DashboardLayout companyOptional={true}>
       {children}
     </DashboardLayout>
   );
 }
-
