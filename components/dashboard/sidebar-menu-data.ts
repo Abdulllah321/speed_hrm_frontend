@@ -268,36 +268,22 @@ export const menuData: MenuItem[] = [
       {
         title: "Journal Voucher",
         children: [
-          { title: "List", href: "/erp/finance/journal-voucher" },
           { title: "Create", href: "/erp/finance/journal-voucher/create" },
+          { title: "List", href: "/erp/finance/journal-voucher/list" },
         ],
       },
       {
-        title: "Bank Payment",
+        title: "Payment Voucher",
         children: [
-          { title: "List", href: "/erp/finance/bank-payment" },
-          { title: "Create", href: "/erp/finance/bank-payment/create" },
+          { title: "List", href: "/erp/finance/payment-voucher/list" },
+          { title: "Create", href: "/erp/finance/payment-voucher/create" },
         ],
       },
       {
-        title: "Bank Receipt",
+        title: "Receipt Voucher",
         children: [
-          { title: "List", href: "/erp/finance/bank-receipt" },
-          { title: "Create", href: "/erp/finance/bank-receipt/create" },
-        ],
-      },
-      {
-        title: "Cash Payment",
-        children: [
-          { title: "List", href: "/erp/finance/cash-payment" },
-          { title: "Create", href: "/erp/finance/cash-payment/create" },
-        ],
-      },
-      {
-        title: "Cash Receipt",
-        children: [
-          { title: "List", href: "/erp/finance/cash-receipt" },
-          { title: "Create", href: "/erp/finance/cash-receipt/create" },
+          { title: "List", href: "/erp/finance/receipt-voucher/list" },
+          { title: "Create", href: "/erp/finance/receipt-voucher/create" },
         ],
       },
       {
