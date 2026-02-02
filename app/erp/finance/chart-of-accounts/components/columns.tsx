@@ -131,8 +131,9 @@ export const columns: ColumnDef<ChartOfAccount>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const account = row.original;
+      const permissions = (table.options.meta as any)?.permissions;
 
       return (
         <DropdownMenu>
@@ -157,24 +158,31 @@ export const columns: ColumnDef<ChartOfAccount>[] = [
               Copy ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <Link href={`/erp/finance/chart-of-accounts/edit/${account.id}`}>
-                <DropdownMenuItem>Edit</DropdownMenuItem>
-            </Link>
-            <DropdownMenuItem
-                className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                onClick={async () => {
-                    if (confirm("Are you sure you want to delete this account?")) {
-                        const res = await deleteChartOfAccount(account.id);
-                        if (res.status) {
-                            toast.success(res.message);
-                        } else {
-                            toast.error(res.message);
-                        }
-                    }
-                }}
-            >
-              Delete
-            </DropdownMenuItem>
+            {permissions?.canUpdate && (
+              <Link href={`/erp/finance/chart-of-accounts/edit/${account.id}`}>
+                  <DropdownMenuItem>Edit</DropdownMenuItem>
+              </Link>
+            )}
+            {permissions?.canDelete && (
+              <DropdownMenuItem
+                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                  onClick={async () => {
+                      if (confirm("Are you sure you want to delete this account?")) {
+                          const res = await deleteChartOfAccount(account.id);
+                          if (res.status) {
+                              toast.success(res.message);
+                          } else {
+                              toast.error(res.message);
+                          }
+                      }
+                  }}
+              >
+                Delete
+              </DropdownMenuItem>
+            )}
+            {!permissions?.canUpdate && !permissions?.canDelete && (
+              <DropdownMenuItem disabled>No actions available</DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );

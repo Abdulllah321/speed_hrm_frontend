@@ -47,7 +47,7 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
     router.push("/master/banks/add");
   };
 
-  const showAddAction = hasPermission("bank.create");
+  const showAddAction = hasPermission("master.bank.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {

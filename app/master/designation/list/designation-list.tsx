@@ -42,7 +42,7 @@ export function DesignationList({
     router.push("/master/designation/add");
   };
 
-  const showAddAction = hasPermission("designation.create");
+  const showAddAction = hasPermission("master.designation.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {

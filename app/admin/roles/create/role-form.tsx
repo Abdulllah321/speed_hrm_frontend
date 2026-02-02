@@ -186,7 +186,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
                               onCheckedChange={(checked) => handleModuleSelect(module, !!checked)}
                           />
                           <label htmlFor={`module-${module}`} className="text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize">
-                              {module.replace('hr.', '').replace('master.', '').replace(/-/g, ' ')}
+                              {module.replace('hr.', '').replace('master.', '').replace('erp.finance.', '').replace(/-/g, ' ')}
                           </label>
                       </div>
                       <div className="ml-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -30,26 +30,35 @@ export function useAuth() {
     setLoading(false);
   }, []);
 
+  const isAdmin = useCallback((): boolean => {
+    // Check role name from nested object or string property
+    const roleName = (user?.role as any)?.name || user?.role;
+
+    if (typeof roleName === 'string') {
+      const normalized = roleName.toLowerCase().trim();
+      return normalized === "super_admin" || normalized === "admin" || normalized === "super admin";
+    }
+
+    return false;
+  }, [user]);
+
   const hasPermission = useCallback((permission: string): boolean => {
     if (!user) return false;
+    if (isAdmin()) return true;
     return user.permissions.includes(permission);
-  }, [user]);
+  }, [user, isAdmin]);
 
   const hasAnyPermission = useCallback((permissions: string[]): boolean => {
     if (!user) return false;
+    if (isAdmin()) return true;
     return permissions.some((p) => user.permissions.includes(p));
-  }, [user]);
+  }, [user, isAdmin]);
 
   const hasAllPermissions = useCallback((permissions: string[]): boolean => {
     if (!user) return false;
+    if (isAdmin()) return true;
     return permissions.every((p) => user.permissions.includes(p));
-  }, [user]);
-
-  const isAdmin = useCallback((): boolean => {
-    // Only return true for super_admin, not regular admin
-    // This ensures role-based permissions work for all users, including regular admins
-    return user?.role === "super_admin";
-  }, [user]);
+  }, [user, isAdmin]);
 
   const logout = useCallback(async () => {
     // Call server action

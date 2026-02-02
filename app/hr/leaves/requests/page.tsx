@@ -53,18 +53,22 @@ export default function LeaveRequestsPage() {
       try {
         setLoading(true);
         const [deptsResult, employeesResult, requestsResult] = await Promise.all([
-          getDepartments(),
-          getEmployees(),
+          getDepartments().catch(err => ({ status: false, message: err.message, data: [] })),
+          getEmployees().catch(err => ({ status: false, message: err.message, data: [] })),
           getLeaveRequests(),
         ]);
 
         if (deptsResult.status && deptsResult.data) {
           setDepartments(deptsResult.data);
+        } else if (showFilters) {
+          toast.error(deptsResult.message || "Failed to load departments");
         }
 
         if (employeesResult.status && employeesResult.data) {
           setEmployees(employeesResult.data);
           setFilteredEmployees(employeesResult.data);
+        } else if (showFilters) {
+          toast.error(employeesResult.message || "Failed to load employees");
         }
 
         if (requestsResult.status && requestsResult.data) {

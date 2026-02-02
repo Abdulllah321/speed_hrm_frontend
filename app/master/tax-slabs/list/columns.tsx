@@ -73,8 +73,8 @@ function RowActions({ row }: { row: Row<TaxSlabRow> }) {
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("tax-slab.update");
-  const canDelete = hasPermission("tax-slab.delete");
+  const canEdit = hasPermission("master.tax-slab.update");
+  const canDelete = hasPermission("master.tax-slab.delete");
 
   if (!canEdit && !canDelete) {
     return null;

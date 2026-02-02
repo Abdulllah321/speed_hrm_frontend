@@ -67,6 +67,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 // ... existing imports
 
 export default function CreateAdvanceSalaryPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const { user, isAdmin, hasPermission } = useAuth();
   
@@ -131,10 +132,14 @@ export default function CreateAdvanceSalaryPage() {
         }
       } catch (error) {
         console.error("Failed to fetch departments:", error);
+        // Silently fail for regular users, can show error for admins if needed
+        if (isAdmin()) {
+          toast.error("Failed to load departments");
+        }
       }
     };
     fetchDepartments();
-  }, []);
+  }, [isAdmin]);
 
   // Fetch employees on mount
   useEffect(() => {
@@ -145,12 +150,18 @@ export default function CreateAdvanceSalaryPage() {
         if (result.status && result.data) {
           setEmployees(result.data);
         } else {
-          toast.error(result.message || "Failed to load employees");
+          // If fetch fails (likely permission), and user is NOT admin, 
+          // we don't necessarily want to toast every time
+          if (isAdmin()) {
+            toast.error(result.message || "Failed to load employees");
+          }
           setEmployees([]);
         }
       } catch (error) {
         console.error("Error:", error);
-        toast.error("Failed to load employees");
+        if (isAdmin()) {
+          toast.error("Failed to load employees");
+        }
         setEmployees([]);
       } finally {
         setLoading(false);
@@ -158,7 +169,7 @@ export default function CreateAdvanceSalaryPage() {
     };
 
     fetchEmployees();
-  }, []);
+  }, [isAdmin]);
 
   // Fetch sub-departments when department changes
   useEffect(() => {

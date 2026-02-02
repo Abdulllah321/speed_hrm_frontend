@@ -94,7 +94,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 id="jvNo"
                                 {...form.register("jvNo")}
                                 disabled
-                                className="bg-gray-100 h-11 border-gray-300 pointer-events-none"
+                                className="bg-gray-100 dark:bg-muted h-11 border-gray-300 dark:border-input pointer-events-none"
                             />
                         </div>
                         <div className="space-y-2">
@@ -107,7 +107,8 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         value={field.value ? field.value.toISOString().split('T')[0] : ""}
                                         onChange={(dateStr) => field.onChange(new Date(dateStr))}
                                         disabled={isPending}
-                                        className="h-11 border-gray-300"
+                                        disabled={isPending}
+                                        className="h-11 border-gray-300 dark:border-input"
                                     />
                                 )}
                             />
@@ -119,7 +120,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
 
                     <div className="space-y-4 pt-4">
                         <div className="flex items-center justify-between border-b pb-2">
-                            <h2 className="text-xl font-bold text-gray-800">Journal Voucher Detail</h2>
+                            <h2 className="text-xl font-bold text-gray-800 dark:text-foreground">Journal Voucher Detail</h2>
                             <div className="flex items-center gap-2">
                                 <Button
                                     type="button"
@@ -136,9 +137,9 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                             </div>
                         </div>
 
-                        <div className="border rounded-lg overflow-hidden border-gray-200">
+                        <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-border">
                             <table className="w-full text-sm">
-                                <thead className="bg-[#EAEEF2] text-foreground border-b font-bold">
+                                <thead className="bg-[#EAEEF2] dark:bg-muted text-foreground border-b font-bold">
                                     <tr>
                                         <th className="px-4 py-3 text-left">Account Head</th>
                                         <th className="px-4 py-3 text-left w-[180px]">Debit <span className="text-destructive">*</span></th>
@@ -148,7 +149,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
                                     {fields.map((field, index) => (
-                                        <tr key={field.id} className="hover:bg-gray-50/50">
+                                        <tr key={field.id} className="hover:bg-gray-50/50 dark:hover:bg-muted/50">
                                             <td className="px-4 py-3">
                                                 <Controller
                                                     control={form.control}
@@ -163,7 +164,8 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                             onValueChange={field.onChange}
                                                             placeholder="Select Account"
                                                             disabled={isPending}
-                                                            className="h-10 border-gray-300"
+                                                            disabled={isPending}
+                                                            className="h-10 border-gray-300 dark:border-input"
                                                         />
                                                     )}
                                                 />
@@ -187,7 +189,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                         }
                                                     })}
                                                     disabled={isPending}
-                                                    className="h-10 border-gray-300 font-medium"
+                                                    className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
@@ -204,7 +206,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                         }
                                                     })}
                                                     disabled={isPending}
-                                                    className="h-10 border-gray-300 font-medium"
+                                                    className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-3 text-center">
@@ -226,21 +228,21 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-gray-50 font-bold border-t border-gray-200">
+                                <tfoot className="bg-gray-50 dark:bg-muted/30 font-bold border-t border-gray-200 dark:border-border">
                                     <tr>
-                                        <td className="px-4 py-4 text-right pr-8 text-gray-600">Totals:</td>
+                                        <td className="px-4 py-4 text-right pr-8 text-gray-600 dark:text-muted-foreground">Totals:</td>
                                         <td className="px-0 py-0">
-                                            <div className="bg-[#EAEEF2] h-full flex items-center px-4 py-4 border-l border-r border-gray-200 text-gray-700">
+                                            <div className="bg-[#EAEEF2] dark:bg-muted h-full flex items-center px-4 py-4 border-l border-r border-gray-200 dark:border-border text-gray-700 dark:text-foreground">
                                                 {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </div>
                                         </td>
                                         <td className="px-0 py-0">
-                                            <div className="bg-[#EAEEF2] h-full flex items-center px-4 py-4 border-r border-gray-200 text-gray-700">
+                                            <div className="bg-[#EAEEF2] dark:bg-muted h-full flex items-center px-4 py-4 border-r border-gray-200 dark:border-border text-gray-700 dark:text-foreground">
                                                 {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </div>
                                         </td>
                                         <td className="px-0 py-0">
-                                            <div className="bg-[#EAEEF2] h-full flex items-center justify-center py-4">
+                                            <div className="bg-[#EAEEF2] dark:bg-muted h-full flex items-center justify-center py-4">
                                                 {!isBalanced && (
                                                     <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="Out of Balance" />
                                                 )}
@@ -262,7 +264,8 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                             placeholder="Description"
                             {...form.register("description")}
                             disabled={isPending}
-                            className="min-h-[100px] border-gray-300 rounded-lg"
+                            disabled={isPending}
+                            className="min-h-[100px] border-gray-300 dark:border-input rounded-lg"
                         />
                         {form.formState.errors.description && (
                             <p className="text-xs text-destructive font-medium">{form.formState.errors.description.message}</p>

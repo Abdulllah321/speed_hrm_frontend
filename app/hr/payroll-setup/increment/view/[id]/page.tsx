@@ -21,12 +21,13 @@ export default async function ViewIncrementDetailPage({
   }
   
   // Fetch increment data and initial data
+  // Individually handle catches to ensure one failure doesn't block the rest
   const [incrementResult, deptResult, empResult, gradesResult, designationsResult] = await Promise.all([
-    getIncrementById(id),
-    getDepartments(),
-    getEmployeesForDropdown(),
-    getEmployeeGrades(),
-    getDesignations(),
+    getIncrementById(id).catch(err => ({ status: false, data: null, message: err.message })),
+    getDepartments().catch(() => ({ status: false, data: [] })),
+    getEmployeesForDropdown().catch(() => ({ status: false, data: [] })),
+    getEmployeeGrades().catch(() => ({ status: false, data: [] })),
+    getDesignations().catch(() => ({ status: false, data: [] })),
   ]);
 
   if (!incrementResult.status || !incrementResult.data) {

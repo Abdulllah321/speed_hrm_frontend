@@ -42,7 +42,7 @@ export function AllocationList({
         router.push("/master/allocation/add");
     };
 
-    const showAddAction = hasPermission("allocation.create");
+    const showAddAction = hasPermission("master.allocation.create");
 
     const handleMultiDelete = (ids: string[]) => {
         startTransition(async () => {

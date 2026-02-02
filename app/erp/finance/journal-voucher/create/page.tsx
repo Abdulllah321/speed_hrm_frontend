@@ -34,7 +34,7 @@ export default async function CreateJournalVoucherPage() {
                 </div>
             </header>
 
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 bg-[#F8F9FA]">
+            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 bg-[#F8F9FA] dark:bg-background">
                 <CreateJournalVoucherClient accounts={accounts || []} />
             </div>
         </div>

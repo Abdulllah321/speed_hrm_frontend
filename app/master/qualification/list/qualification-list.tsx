@@ -37,7 +37,7 @@ export function QualificationList({
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("qualification.create");
+  const showAddAction = hasPermission("master.qualification.create");
 
   const handleToggle = () => {
     router.push("/master/qualification/add");

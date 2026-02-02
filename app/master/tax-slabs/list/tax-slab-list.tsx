@@ -31,7 +31,7 @@ export function TaxSlabList({ initialTaxSlabs, newItemId }: TaxSlabListProps) {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string; minAmount: number; maxAmount: number; rate: number }[]>([]);
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("tax-slab.create");
+  const showAddAction = hasPermission("master.tax-slab.create");
 
   const handleToggle = () => {
     router.push("/master/tax-slabs/add");

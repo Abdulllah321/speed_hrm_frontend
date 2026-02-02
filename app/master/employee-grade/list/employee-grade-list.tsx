@@ -42,7 +42,7 @@ export function EmployeeGradeList({
     router.push("/master/employee-grade/add");
   };
 
-  const showAddAction = hasPermission("employee-grade.create");
+  const showAddAction = hasPermission("master.employee-grade.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {

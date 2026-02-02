@@ -243,7 +243,7 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
 
                         <div className="border rounded-lg overflow-hidden">
                             <table className="w-full text-sm">
-                                <thead className="bg-[#EAEEF2] font-bold">
+                                <thead className="bg-[#EAEEF2] dark:bg-muted font-bold">
                                     <tr>
                                         <th className="px-4 py-3 text-left">Account Head</th>
                                         <th className="px-4 py-3 text-left w-[200px]">Debit <span className="text-destructive">*</span></th>
@@ -289,13 +289,13 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-muted/50 font-bold border-t">
+                                <tfoot className="bg-muted/50 dark:bg-muted/30 font-bold border-t">
                                     <tr>
                                         <td className="px-4 py-3 text-right">Totals:</td>
                                         <td className="px-4 py-3">
                                             <div className={cn(
                                                 "p-2 rounded border text-lg",
-                                                isBalanced ? "bg-green-100 border-green-200 text-green-700" : "bg-red-100 border-red-200 text-red-700"
+                                                isBalanced ? "bg-green-100 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
                                             )}>
                                                 {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </div>

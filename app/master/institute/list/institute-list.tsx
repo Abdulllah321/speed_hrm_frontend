@@ -37,7 +37,7 @@ export function InstituteList({
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("institute.create");
+  const showAddAction = hasPermission("master.institute.create");
 
   const handleToggle = () => {
     router.push("/master/institute/add");

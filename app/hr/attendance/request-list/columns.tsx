@@ -98,10 +98,10 @@ export const columns: ColumnDef<AttendanceRequestQueryRow>[] = [
     accessorKey: "approvalStatus",
     header: "Approval",
     cell: ({ row }) => {
-      // Always show "Approved" by default
+      const status = row.original.approvalStatus || "pending";
       return (
-        <Badge variant="default">
-          Approved
+        <Badge variant={statusVariant(status)}>
+          {status.charAt(0).toUpperCase() + status.slice(1)}
         </Badge>
       );
     },

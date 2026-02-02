@@ -5,6 +5,20 @@ export const routePermissions: Record<string, string[]> = {
   // Dashboard
   "/hr": ["hr.dashboard.view"],
   "/hr/my-dashboard": ["hr.dashboard.view"],
+
+  // ERP - Finance & Accounts
+  "/erp/finance/chart-of-accounts": ["erp.finance.chart-of-account.read"],
+  "/erp/finance/chart-of-accounts/create": ["erp.finance.chart-of-account.create"],
+  "/erp/finance/journal-voucher": ["erp.finance.journal-voucher.read"],
+  "/erp/finance/journal-voucher/list": ["erp.finance.journal-voucher.read"],
+  "/erp/finance/journal-voucher/create": ["erp.finance.journal-voucher.create"],
+  "/erp/finance/payment-voucher": ["erp.finance.payment-voucher.read"],
+  "/erp/finance/payment-voucher/list": ["erp.finance.payment-voucher.read"],
+  "/erp/finance/payment-voucher/create": ["erp.finance.payment-voucher.create"],
+  "/erp/finance/receipt-voucher": ["erp.finance.receipt-voucher.read"],
+  "/erp/finance/receipt-voucher/list": ["erp.finance.receipt-voucher.read"],
+  "/erp/finance/receipt-voucher/create": ["erp.finance.receipt-voucher.create"],
+  "/erp/finance/reports": ["finance.reports.read"], // Assuming generic for now or specific if needed
   
   // Employee Setup
   "/hr/employee/create": ["hr.employee.create"],

@@ -30,7 +30,7 @@ export function MaritalStatusList({ initialMaritalStatuses, newItemId }: Marital
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("marital-status.create");
+  const showAddAction = hasPermission("master.marital-status.create");
 
   const handleToggle = () => {
     router.push("/master/marital-status/add");

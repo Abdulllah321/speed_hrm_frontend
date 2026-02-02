@@ -132,8 +132,8 @@ function RowActions({ row }: RowActionsProps) {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
 
-  const canEdit = hasPermission("location.update");
-  const canDelete = hasPermission("location.delete");
+  const canEdit = hasPermission("master.location.update");
+  const canDelete = hasPermission("master.location.delete");
 
   if (!canEdit && !canDelete) {
     return null;

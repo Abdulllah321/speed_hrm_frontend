@@ -150,10 +150,13 @@ export default function CreateLoanRequestPage() {
         }
       } catch (error) {
         console.error("Failed to fetch departments:", error);
+        if (isAdmin()) {
+          toast.error("Failed to load departments");
+        }
       }
     };
     fetchDepartments();
-  }, []);
+  }, [isAdmin]);
 
   // Fetch loan types on mount
   useEffect(() => {
@@ -164,19 +167,23 @@ export default function CreateLoanRequestPage() {
         if (result.status && result.data) {
           setLoanTypes(result.data.filter(lt => lt.status === "active"));
         } else {
-          toast.error(result.message || "Failed to load loan types");
+          if (isAdmin()) {
+            toast.error(result.message || "Failed to load loan types");
+          }
           setLoanTypes([]);
         }
       } catch (error) {
         console.error("Error:", error);
-        toast.error("Failed to load loan types");
+        if (isAdmin()) {
+          toast.error("Failed to load loan types");
+        }
         setLoanTypes([]);
       } finally {
         setLoadingLoanTypes(false);
       }
     };
     fetchLoanTypes();
-  }, []);
+  }, [isAdmin]);
 
   // Fetch employees on mount
   useEffect(() => {
@@ -187,12 +194,16 @@ export default function CreateLoanRequestPage() {
         if (result.status && result.data) {
           setEmployees(result.data);
         } else {
-          toast.error(result.message || "Failed to load employees");
+          if (isAdmin()) {
+            toast.error(result.message || "Failed to load employees");
+          }
           setEmployees([]);
         }
       } catch (error) {
         console.error("Error:", error);
-        toast.error("Failed to load employees");
+        if (isAdmin()) {
+          toast.error("Failed to load employees");
+        }
         setEmployees([]);
       } finally {
         setLoading(false);
@@ -200,7 +211,7 @@ export default function CreateLoanRequestPage() {
     };
 
     fetchEmployees();
-  }, []);
+  }, [isAdmin]);
 
   // Fetch sub-departments when department changes
   useEffect(() => {

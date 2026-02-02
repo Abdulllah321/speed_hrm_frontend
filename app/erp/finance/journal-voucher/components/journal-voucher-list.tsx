@@ -25,10 +25,18 @@ import { DateRangePicker } from "@/components/ui/date-range-picker";
 
 export function JournalVoucherList({
     initialData,
-    accounts
+    accounts,
+    permissions
 }: {
     initialData: JournalVoucher[],
-    accounts: ChartOfAccount[]
+    accounts: ChartOfAccount[],
+    permissions?: {
+        canCreate: boolean;
+        canRead: boolean;
+        canUpdate: boolean;
+        canDelete: boolean;
+        canApprove: boolean;
+    }
 }) {
     const [fromDate, setFromDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
     const [toDate, setToDate] = useState<Date | undefined>(new Date());
@@ -67,10 +75,10 @@ export function JournalVoucherList({
                     {row.original.details.map((detail, idx) => (
                         <div key={idx} className="flex justify-between gap-4 items-center">
                             <span className="flex-1">
-                                <span className="font-bold mr-2 text-gray-700">{detail.debit > 0 ? "Dr =" : "Cr ="}</span>
-                                <span className="uppercase text-gray-600 truncate max-w-[200px] inline-block">{detail.accountName || "Account"}</span>
+                                <span className="font-bold mr-2 text-gray-700 dark:text-muted-foreground">{detail.debit > 0 ? "Dr =" : "Cr ="}</span>
+                                <span className="uppercase text-gray-600 dark:text-gray-400 truncate max-w-[200px] inline-block">{detail.accountName || "Account"}</span>
                             </span>
-                            <span className="font-bold text-gray-800">
+                            <span className="font-bold text-gray-800 dark:text-foreground">
                                 {(detail.debit || detail.credit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                             </span>
                         </div>
@@ -112,12 +120,14 @@ export function JournalVoucherList({
                     <p className="text-muted-foreground">View and manage journal vouchers</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Link href="/finance/journal-voucher/create">
-                        <Button>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Voucher
-                        </Button>
-                    </Link>
+                    {permissions?.canCreate && (
+                        <Link href="/erp/finance/journal-voucher/create">
+                            <Button>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Voucher
+                            </Button>
+                        </Link>
+                    )}
                     <Button variant="outline">
                         <Printer className="mr-2 h-4 w-4" />
                         Print
@@ -135,7 +145,7 @@ export function JournalVoucherList({
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
                     {/* Filters Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-muted/30 p-4 rounded-lg border">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-muted/30 dark:bg-muted/10 p-4 rounded-lg border dark:border-border">
                         <div className="space-y-2">
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">Select Date Range</Label>
                             <DateRangePicker
@@ -184,7 +194,7 @@ export function JournalVoucherList({
                     </div>
 
                     {showFilterInfo && fromDate && toDate && (
-                        <div className="text-sm font-bold italic text-slate-800 py-2 border-b">
+                        <div className="text-sm font-bold italic text-slate-800 dark:text-slate-200 py-2 border-b dark:border-border">
                             Journal Voucher List From :
                             <span className="text-red-600 ml-1 font-mono">{format(fromDate, "dd-MM-yyyy")}</span>
                             <span className="mx-1">Between To</span>

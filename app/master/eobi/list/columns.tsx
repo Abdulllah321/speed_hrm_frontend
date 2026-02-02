@@ -72,8 +72,8 @@ function RowActions({ row }: { row: Row<EOBIRow> }) {
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("eobi.update");
-  const canDelete = hasPermission("eobi.delete");
+  const canEdit = hasPermission("master.eobi.update");
+  const canDelete = hasPermission("master.eobi.delete");
 
   if (!canEdit && !canDelete) {
     return null;

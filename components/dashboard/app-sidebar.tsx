@@ -369,12 +369,14 @@ export function AppSidebar({
       isAdmin,
     });
 
-    // Check which environments are accessible based on permissions
+    // Check which environments are accessible based on permissions (Strict check)
+    // We only want to show the switcher if they have explicit access to specific HR and ERP modules
+    // Items with "BOTH" (like Dashboard/Profile) shouldn't trigger the switcher presence
     const hasHRAccess = permissionFiltered.some(
-      (item) => item.environment === "HR" || item.environment === "BOTH"
+      (item) => item.environment === "HR"
     );
     const hasERPAccess = permissionFiltered.some(
-      (item) => item.environment === "ERP" || item.environment === "BOTH"
+      (item) => item.environment === "ERP"
     );
 
     // Then filter by environment

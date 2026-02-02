@@ -122,6 +122,9 @@ export const columns: ColumnDef<SocialSecurityInstitutionRow>[] = [
 function RowActions({ row }: { row: Row<SocialSecurityInstitutionRow> }) {
   const institution = row.original;
   const router = useRouter();
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission("master.social-security.update");
+  const canDelete = hasPermission("master.social-security.delete");
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);

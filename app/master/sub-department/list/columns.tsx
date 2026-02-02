@@ -141,8 +141,8 @@ function RowActions({ row }: RowActionsProps) {
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [selectedHeadId, setSelectedHeadId] = useState<string>(subDept.headId || "");
 
-  const canEdit = hasPermission("sub-department.update");
-  const canDelete = hasPermission("sub-department.delete");
+  const canEdit = hasPermission("master.sub-department.update");
+  const canDelete = hasPermission("master.sub-department.delete");
 
   if (!canEdit && !canDelete) {
     return null;

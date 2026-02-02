@@ -129,8 +129,8 @@ function RowActions({ row }: RowActionsProps) {
     status: grade.status,
   });
 
-  const canEdit = hasPermission("employee-grade.update");
-  const canDelete = hasPermission("employee-grade.delete");
+  const canEdit = hasPermission("master.employee-grade.update");
+  const canDelete = hasPermission("master.employee-grade.delete");
 
   if (!canEdit && !canDelete) {
     return null;

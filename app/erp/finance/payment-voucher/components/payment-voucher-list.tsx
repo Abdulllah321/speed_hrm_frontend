@@ -27,9 +27,17 @@ import { ColumnDef } from "@tanstack/react-table";
 export function PaymentVoucherList({
     initialData,
     accounts,
+    permissions,
 }: {
     initialData: PaymentVoucher[];
     accounts: ChartOfAccount[];
+    permissions?: {
+        canCreate: boolean;
+        canRead: boolean;
+        canUpdate: boolean;
+        canDelete: boolean;
+        canApprove: boolean;
+    };
 }) {
     const [type, setType] = useState<"bank" | "cash">("bank");
     const [fromDate, setFromDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -119,12 +127,14 @@ export function PaymentVoucherList({
                     <p className="text-muted-foreground">Manage your bank and cash payments</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Link href="/finance/payment-voucher/create">
-                        <Button>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Payment Voucher
-                        </Button>
-                    </Link>
+                    {permissions?.canCreate && (
+                        <Link href="/erp/finance/payment-voucher/create">
+                            <Button>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Payment Voucher
+                            </Button>
+                        </Link>
+                    )}
                     <Button variant="outline">
                         <Printer className="mr-2 h-4 w-4" />
                         Print
@@ -149,7 +159,7 @@ export function PaymentVoucherList({
                 </TabsList>
 
                 <Card className="mt-6">
-                    <CardHeader className="border-b">
+                    <CardHeader className="border-b dark:border-border">
                         <div className="flex items-center justify-between">
                             <CardTitle>View {type === "bank" ? "Bank" : "Cash"} Payment Voucher List</CardTitle>
                         </div>
@@ -157,7 +167,7 @@ export function PaymentVoucherList({
                     <CardContent className="pt-6 space-y-6">
 
                         {/* Filters */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-muted/30 p-4 rounded-lg border">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-muted/30 dark:bg-muted/10 p-4 rounded-lg border dark:border-border">
                             <div className="space-y-1.5 overflow-hidden">
                                 <Label className="text-xs uppercase font-bold text-muted-foreground">Select Date Range</Label>
                                 <DateRangePicker
@@ -206,7 +216,7 @@ export function PaymentVoucherList({
                         </div>
 
                         {showFilterInfo && fromDate && toDate && (
-                            <div className="text-sm font-bold italic text-slate-800 py-2 border-b">
+                            <div className="text-sm font-bold italic text-slate-800 dark:text-slate-200 py-2 border-b dark:border-border">
                                 {type === "bank" ? "Bank" : "Cash"} Payment Voucher List From :
                                 <span className="text-red-600 ml-1 font-mono">{format(fromDate, "dd-MM-yyyy")}</span>
                                 <span className="mx-1">Between To</span>

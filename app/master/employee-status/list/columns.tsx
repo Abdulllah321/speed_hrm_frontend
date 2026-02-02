@@ -129,8 +129,8 @@ function RowActions({ row }: RowActionsProps) {
     statusType: empStatus.statusType,
   });
 
-  const canEdit = hasPermission("employee-status.update");
-  const canDelete = hasPermission("employee-status.delete");
+  const canEdit = hasPermission("master.employee-status.update");
+  const canDelete = hasPermission("master.employee-status.delete");
 
   if (!canEdit && !canDelete) {
     return null;

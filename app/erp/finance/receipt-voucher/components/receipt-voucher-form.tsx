@@ -133,7 +133,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 name="rvDate"
                                 render={({ field }) => (
                                     <DatePicker
-                                        className="h-10 border-slate-300"
+                                        className="h-10 border-slate-300 dark:border-input"
                                         value={field.value ? field.value.toISOString().split('T')[0] : ""}
                                         onChange={(date) => field.onChange(new Date(date))}
                                     />
@@ -150,7 +150,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                             <>
                                 <div className="space-y-1.5">
                                     <Label className="text-[10px] text-muted-foreground uppercase font-bold">Cheque No <span className="text-destructive">*</span></Label>
-                                    <Input {...form.register("chequeNo")} placeholder="Cheque No" className="h-10 border-slate-300" />
+                                    <Input {...form.register("chequeNo")} placeholder="Cheque No" className="h-10 border-slate-300 dark:border-input" />
                                 </div>
                                 <div className="space-y-1.5">
                                     <Label className="text-[10px] text-muted-foreground uppercase font-bold">Cheque Date <span className="text-destructive">*</span></Label>
@@ -159,7 +159,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         name="chequeDate"
                                         render={({ field }) => (
                                             <DatePicker
-                                                className="h-10 border-slate-300"
+                                                className="h-10 border-slate-300 dark:border-input"
                                                 value={field.value ? field.value.toISOString().split('T')[0] : ""}
                                                 onChange={(date) => field.onChange(new Date(date))}
                                             />
@@ -190,19 +190,19 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                             </div>
                         </div>
 
-                        <div className="border border-slate-200 rounded-sm overflow-hidden shadow-sm">
+                        <div className="border border-slate-200 dark:border-border rounded-sm overflow-hidden shadow-sm">
                             <table className="w-full text-sm">
-                                <thead className="bg-[#EAEEF2] font-bold text-slate-700">
-                                    <tr className="border-b border-slate-300">
+                                <thead className="bg-[#EAEEF2] dark:bg-muted font-bold text-slate-700 dark:text-foreground">
+                                    <tr className="border-b border-slate-300 dark:border-border">
                                         <th className="px-4 py-3 text-left">Account Head</th>
                                         <th className="px-4 py-3 text-left w-[150px]">Debit <span className="text-destructive">*</span></th>
                                         <th className="px-4 py-3 text-left w-[150px]">Credit <span className="text-destructive">*</span></th>
                                         <th className="px-4 py-3 text-center w-[80px]">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-200">
+                                <tbody className="divide-y divide-slate-200 dark:divide-border">
                                     {fields.map((field, index) => (
-                                        <tr key={field.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <tr key={field.id} className="hover:bg-slate-50/50 dark:hover:bg-muted/50 transition-colors">
                                             <td className="px-2 py-2">
                                                 <Controller
                                                     control={form.control}
@@ -224,7 +224,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                     step="0.01"
                                                     {...form.register(`details.${index}.debit`, { valueAsNumber: true })}
                                                     placeholder="Debit"
-                                                    className="border-slate-300 h-10 text-right font-medium"
+                                                    className="border-slate-300 dark:border-input h-10 text-right font-medium"
                                                 />
                                             </td>
                                             <td className="px-2 py-2">
@@ -233,7 +233,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                     step="0.01"
                                                     {...form.register(`details.${index}.credit`, { valueAsNumber: true })}
                                                     placeholder="Credit"
-                                                    className="border-slate-300 h-10 text-right font-medium"
+                                                    className="border-slate-300 dark:border-input h-10 text-right font-medium"
                                                 />
                                             </td>
                                             <td className="px-2 py-2 text-center">
@@ -256,13 +256,13 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-white border-t-2 border-slate-800">
-                                    <tr className="divide-x divide-slate-200">
-                                        <td className="px-4 py-4 text-right font-bold bg-slate-50/30"></td>
+                                <tfoot className="bg-white dark:bg-card border-t-2 border-slate-800 dark:border-border">
+                                    <tr className="divide-x divide-slate-200 dark:divide-border">
+                                        <td className="px-4 py-4 text-right font-bold bg-slate-50/30 dark:bg-muted/30"></td>
                                         <td className="px-2 py-4">
                                             <div className={cn(
                                                 "p-2 rounded-md border text-center font-bold text-lg min-h-[44px] flex items-center justify-center",
-                                                totalDebit > 0 ? "bg-slate-100 border-slate-300 text-slate-700" : "bg-slate-100 border-slate-300 text-transparent"
+                                                totalDebit > 0 ? "bg-slate-100 dark:bg-muted/50 border-slate-300 dark:border-input text-slate-700 dark:text-foreground" : "bg-slate-100 dark:bg-muted/50 border-slate-300 dark:border-input text-transparent"
                                             )}>
                                                 {totalDebit > 0 ? totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ""}
                                             </div>
@@ -270,15 +270,15 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         <td className="px-2 py-4">
                                             <div className={cn(
                                                 "p-2 rounded-md border text-center font-bold text-lg min-h-[44px] flex items-center justify-center",
-                                                totalCredit > 0 ? "bg-slate-100 border-slate-300 text-slate-700" : "bg-slate-100 border-slate-300 text-transparent"
+                                                totalCredit > 0 ? "bg-slate-100 dark:bg-muted/50 border-slate-300 dark:border-input text-slate-700 dark:text-foreground" : "bg-slate-100 dark:bg-muted/50 border-slate-300 dark:border-input text-transparent"
                                             )}>
                                                 {totalCredit > 0 ? totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ""}
                                             </div>
                                         </td>
-                                        <td className="bg-slate-50/30">
+                                        <td className="bg-slate-50/30 dark:bg-muted/30">
                                             <div className={cn(
                                                 "p-2 rounded-md border text-center font-bold text-lg min-h-[44px] flex items-center justify-center",
-                                                isBalanced ? "bg-green-100 border-green-200 text-green-700" : (totalDebit > 0 || totalCredit > 0) ? "bg-red-100 border-red-200 text-red-700" : "bg-slate-100 border-slate-300"
+                                                isBalanced ? "bg-green-100 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400" : (totalDebit > 0 || totalCredit > 0) ? "bg-red-100 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400" : "bg-slate-100 dark:bg-muted/50 border-slate-300 dark:border-input"
                                             )}>
                                                 {isBalanced ? "✓" : (totalDebit > 0 || totalCredit > 0) ? "!" : ""}
                                             </div>
@@ -296,7 +296,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         <Textarea
                             {...form.register("description")}
                             placeholder="Type description here..."
-                            className="min-h-[80px] border-slate-300 rounded-sm"
+                            className="min-h-[80px] border-slate-300 dark:border-input rounded-sm"
                         />
                     </div>
 

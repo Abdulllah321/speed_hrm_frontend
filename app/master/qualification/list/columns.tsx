@@ -120,8 +120,8 @@ function RowActions({ row }: RowActionsProps) {
     status: qual.status,
   });
 
-  const canEdit = hasPermission("qualification.update");
-  const canDelete = hasPermission("qualification.delete");
+  const canEdit = hasPermission("master.qualification.update");
+  const canDelete = hasPermission("master.qualification.delete");
 
   if (!canEdit && !canDelete) {
     return null;

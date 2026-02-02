@@ -257,34 +257,43 @@ export const menuData: MenuItem[] = [
     title: "Finance & Accounts",
     icon: Landmark,
     environment: "ERP",
-    permissions: ["finance.read"],
+    permissions: [
+      "erp.finance.chart-of-account.read",
+      "erp.finance.journal-voucher.read",
+      "erp.finance.payment-voucher.read",
+      "erp.finance.receipt-voucher.read"
+    ],
     children: [
       {
         title: "Chart of Accounts",
+        permissions: ["erp.finance.chart-of-account.read"],
         children: [
-          { title: "List", href: "/erp/finance/chart-of-accounts" },
-          { title: "Create", href: "/erp/finance/chart-of-accounts/create" },
+          { title: "List", href: "/erp/finance/chart-of-accounts", permissions: ["erp.finance.chart-of-account.read"] },
+          { title: "Create", href: "/erp/finance/chart-of-accounts/create", permissions: ["erp.finance.chart-of-account.create"] },
         ],
       },
       {
         title: "Journal Voucher",
+        permissions: ["erp.finance.journal-voucher.read"],
         children: [
-          { title: "Create", href: "/erp/finance/journal-voucher/create" },
-          { title: "List", href: "/erp/finance/journal-voucher/list" },
+          { title: "Create", href: "/erp/finance/journal-voucher/create", permissions: ["erp.finance.journal-voucher.create"] },
+          { title: "List", href: "/erp/finance/journal-voucher/list", permissions: ["erp.finance.journal-voucher.read"] },
         ],
       },
       {
         title: "Payment Voucher",
+        permissions: ["erp.finance.payment-voucher.read"],
         children: [
-          { title: "List", href: "/erp/finance/payment-voucher/list" },
-          { title: "Create", href: "/erp/finance/payment-voucher/create" },
+          { title: "List", href: "/erp/finance/payment-voucher/list", permissions: ["erp.finance.payment-voucher.read"] },
+          { title: "Create", href: "/erp/finance/payment-voucher/create", permissions: ["erp.finance.payment-voucher.create"] },
         ],
       },
       {
         title: "Receipt Voucher",
+        permissions: ["erp.finance.receipt-voucher.read"],
         children: [
-          { title: "List", href: "/erp/finance/receipt-voucher/list" },
-          { title: "Create", href: "/erp/finance/receipt-voucher/create" },
+          { title: "List", href: "/erp/finance/receipt-voucher/list", permissions: ["erp.finance.receipt-voucher.read"] },
+          { title: "Create", href: "/erp/finance/receipt-voucher/create", permissions: ["erp.finance.receipt-voucher.create"] },
         ],
       },
       {

@@ -27,9 +27,17 @@ import { ColumnDef } from "@tanstack/react-table";
 export function ReceiptVoucherList({
     initialData,
     accounts,
+    permissions,
 }: {
     initialData: ReceiptVoucher[];
     accounts: ChartOfAccount[];
+    permissions?: {
+        canCreate: boolean;
+        canRead: boolean;
+        canUpdate: boolean;
+        canDelete: boolean;
+        canApprove: boolean;
+    };
 }) {
     const [type, setType] = useState<"bank" | "cash">("bank");
     const [fromDate, setFromDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
@@ -54,7 +62,7 @@ export function ReceiptVoucherList({
         {
             accessorKey: "rvNo",
             header: "R.V. No.",
-            cell: ({ row }) => <span className="font-mono font-bold text-slate-800">{row.original.rvNo}</span>
+            cell: ({ row }) => <span className="font-mono font-bold text-slate-800 dark:text-foreground">{row.original.rvNo}</span>
         },
         {
             accessorKey: "rvDate",
@@ -76,14 +84,14 @@ export function ReceiptVoucherList({
             header: "Debit/Credit",
             cell: ({ row }) => (
                 <div className="space-y-1 min-w-[200px]">
-                    <div className="flex justify-between text-[11px] font-bold border-b border-slate-200 pb-1 mb-1">
-                        <span className="text-slate-500">DR:</span>
-                        <span className="text-slate-800">{row.original.debitAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between text-[11px] font-bold border-b border-slate-200 pb-1 mb-1 dark:border-border">
+                        <span className="text-slate-500 dark:text-muted-foreground">DR:</span>
+                        <span className="text-slate-800 dark:text-foreground">{row.original.debitAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                     {row.original.details.map((d, di) => (
                         <div key={di} className="flex justify-between text-[11px]">
-                            <span className="text-green-600">CR:</span>
-                            <span className="font-bold text-slate-700">{d.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            <span className="text-green-600 dark:text-green-500">CR:</span>
+                            <span className="font-bold text-slate-700 dark:text-slate-300">{d.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     ))}
                 </div>
@@ -124,12 +132,14 @@ export function ReceiptVoucherList({
                     <p className="text-muted-foreground">Manage your bank and cash receipts</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Link href="/finance/receipt-voucher/create">
-                        <Button>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add Receipt Voucher
-                        </Button>
-                    </Link>
+                    {permissions?.canCreate && (
+                        <Link href="/erp/finance/receipt-voucher/create">
+                            <Button>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Add Receipt Voucher
+                            </Button>
+                        </Link>
+                    )}
                     <Button variant="outline">
                         <Printer className="mr-2 h-4 w-4" />
                         Print
@@ -162,7 +172,7 @@ export function ReceiptVoucherList({
                     <CardContent className="px-0 space-y-6">
 
                         {/* Filters */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-white p-6 rounded-lg border border-slate-200">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-white dark:bg-card p-6 rounded-lg border border-slate-200 dark:border-border">
                             <div className="space-y-1.5 md:col-span-1">
                                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Select Date Range</Label>
                                 <DateRangePicker
@@ -213,7 +223,7 @@ export function ReceiptVoucherList({
                         </div>
 
                         {showFilterInfo && fromDate && toDate && (
-                            <div className="text-sm font-bold italic text-slate-800 py-2 border-b">
+                            <div className="text-sm font-bold italic text-slate-800 dark:text-slate-200 py-2 border-b dark:border-border">
                                 {type === "bank" ? "Bank" : "Cash"} Receipt Voucher List From :
                                 <span className="text-red-600 ml-1 font-mono">{format(fromDate, "dd-MM-yyyy")}</span>
                                 <span className="mx-1">Between To</span>

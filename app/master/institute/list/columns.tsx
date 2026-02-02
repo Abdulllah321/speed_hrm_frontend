@@ -113,8 +113,8 @@ function RowActions({ row }: RowActionsProps) {
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("institute.update");
-  const canDelete = hasPermission("institute.delete");
+  const canEdit = hasPermission("master.institute.update");
+  const canDelete = hasPermission("master.institute.delete");
 
   if (!canEdit && !canDelete) {
     return null;
