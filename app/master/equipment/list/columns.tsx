@@ -66,13 +66,13 @@ export const columns: ColumnDef<EquipmentRow>[] = [
 function RowActions({ row }: { row: Row<EquipmentRow> }) {
   const eq = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("equipment.update");
-  const canDelete = hasPermission("equipment.delete");
+  const canEdit = isAdmin() || hasPermission("equipment.update");
+  const canDelete = isAdmin() || hasPermission("equipment.delete");
 
   if (!canEdit && !canDelete) {
     return null;

@@ -105,7 +105,7 @@ export const columns: ColumnDef<BankRow>[] = [
 function RowActions({ row }: { row: Row<BankRow> }) {
   const item = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -116,8 +116,9 @@ function RowActions({ row }: { row: Row<BankRow> }) {
     status: item.status || "active",
   });
 
-  const canEdit = hasPermission("bank.update");
-  const canDelete = hasPermission("bank.delete");
+  // Admins can always edit/delete, otherwise check specific permissions
+  const canEdit = isAdmin() || hasPermission("bank.update");
+  const canDelete = isAdmin() || hasPermission("bank.delete");
 
   if (!canEdit && !canDelete) {
     return null;

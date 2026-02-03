@@ -120,7 +120,7 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const grade = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -129,8 +129,8 @@ function RowActions({ row }: RowActionsProps) {
     status: grade.status,
   });
 
-  const canEdit = hasPermission("employee-grade.update");
-  const canDelete = hasPermission("employee-grade.delete");
+  const canEdit = isAdmin() || hasPermission("employee-grade.update");
+  const canDelete = isAdmin() || hasPermission("employee-grade.delete");
 
   if (!canEdit && !canDelete) {
     return null;

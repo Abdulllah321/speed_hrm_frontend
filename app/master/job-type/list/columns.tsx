@@ -95,13 +95,13 @@ type RowActionsProps = { row: Row<JobTypeRow> };
 function RowActions({ row }: RowActionsProps) {
   const jt = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("job-type.update");
-  const canDelete = hasPermission("job-type.delete");
+  const canEdit = isAdmin() || hasPermission("job-type.update");
+  const canDelete = isAdmin() || hasPermission("job-type.delete");
 
   if (!canEdit && !canDelete) {
     return null;

@@ -129,11 +129,12 @@ function RowActions({ row }: RowActionsProps) {
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [selectedHeadId, setSelectedHeadId] = useState<string>(dept.headId || "");
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
 
-  const canEdit = hasPermission("master.department.update");
-  const canDelete = hasPermission("master.department.delete");
-  const canAddSubDept = hasPermission("master.sub-department.create");
+  // Admins can always edit/delete, otherwise check specific permissions
+  const canEdit = isAdmin() || hasPermission("master.department.update");
+  const canDelete = isAdmin() || hasPermission("master.department.delete");
+  const canAddSubDept = isAdmin() || hasPermission("master.sub-department.create");
 
   if (!canEdit && !canDelete && !canAddSubDept) {
     return null;

@@ -134,7 +134,7 @@ export const columns: ColumnDef<BonusTypeRow>[] = [
 function RowActions({ row }: { row: Row<BonusTypeRow> }) {
   const item = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -145,8 +145,8 @@ function RowActions({ row }: { row: Row<BonusTypeRow> }) {
     percentage: item.percentage?.toString() || "",
   });
 
-  const canEdit = hasPermission("bonus-type.update");
-  const canDelete = hasPermission("bonus-type.delete");
+  const canEdit = isAdmin() || hasPermission("bonus-type.update");
+  const canDelete = isAdmin() || hasPermission("bonus-type.delete");
 
   if (!canEdit && !canDelete) {
     return null;

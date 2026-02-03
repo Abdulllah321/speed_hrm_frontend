@@ -134,15 +134,16 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const subDept = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [selectedHeadId, setSelectedHeadId] = useState<string>(subDept.headId || "");
 
-  const canEdit = hasPermission("sub-department.update");
-  const canDelete = hasPermission("sub-department.delete");
+  // Admins can always edit/delete, otherwise check specific permissions
+  const canEdit = isAdmin() || hasPermission("sub-department.update");
+  const canDelete = isAdmin() || hasPermission("sub-department.delete");
 
   if (!canEdit && !canDelete) {
     return null;

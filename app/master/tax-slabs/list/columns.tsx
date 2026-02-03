@@ -68,13 +68,13 @@ export const columns: ColumnDef<TaxSlabRow>[] = [
 function RowActions({ row }: { row: Row<TaxSlabRow> }) {
   const ts = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("tax-slab.update");
-  const canDelete = hasPermission("tax-slab.delete");
+  const canEdit = isAdmin() || hasPermission("tax-slab.update");
+  const canDelete = isAdmin() || hasPermission("tax-slab.delete");
 
   if (!canEdit && !canDelete) {
     return null;

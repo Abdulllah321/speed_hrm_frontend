@@ -108,13 +108,13 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const inst = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("institute.update");
-  const canDelete = hasPermission("institute.delete");
+  const canEdit = isAdmin() || hasPermission("institute.update");
+  const canDelete = isAdmin() || hasPermission("institute.delete");
 
   if (!canEdit && !canDelete) {
     return null;

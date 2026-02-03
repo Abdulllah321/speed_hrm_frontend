@@ -134,7 +134,7 @@ export const columns: ColumnDef<AllowanceHeadRow>[] = [
 function RowActions({ row }: { row: Row<AllowanceHeadRow> }) {
   const item = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -145,8 +145,8 @@ function RowActions({ row }: { row: Row<AllowanceHeadRow> }) {
     percentage: item.percentage?.toString() || "",
   });
 
-  const canEdit = hasPermission("allowance-head.update");
-  const canDelete = hasPermission("allowance-head.delete");
+  const canEdit = isAdmin() || hasPermission("allowance-head.update");
+  const canDelete = isAdmin() || hasPermission("allowance-head.delete");
 
   if (!canEdit && !canDelete) {
     return null;

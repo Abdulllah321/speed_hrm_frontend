@@ -100,13 +100,14 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const item = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("designation.update");
-  const canDelete = hasPermission("designation.delete");
+  // Admins can always edit/delete, otherwise check specific permissions
+  const canEdit = isAdmin() || hasPermission("designation.update");
+  const canDelete = isAdmin() || hasPermission("designation.delete");
 
   if (!canEdit && !canDelete) {
     return null;

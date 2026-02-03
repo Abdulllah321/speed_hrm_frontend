@@ -115,15 +115,15 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const city = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [countryId, setCountryId] = useState(city.countryId);
   const [stateId, setStateId] = useState(city.stateId);
 
-  const canEdit = hasPermission("city.update");
-  const canDelete = hasPermission("city.delete");
+  const canEdit = isAdmin() || hasPermission("city.update");
+  const canDelete = isAdmin() || hasPermission("city.delete");
 
   if (!canEdit && !canDelete) {
     return null;

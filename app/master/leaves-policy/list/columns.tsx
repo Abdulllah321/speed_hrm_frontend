@@ -176,12 +176,12 @@ export const columns: ColumnDef<LeavesPolicyRow>[] = [
 function RowActions({ row }: { row: Row<LeavesPolicyRow> }) {
   const lp = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("leaves-policy.update");
-  const canDelete = hasPermission("leaves-policy.delete");
+  const canEdit = isAdmin() || hasPermission("leaves-policy.update");
+  const canDelete = isAdmin() || hasPermission("leaves-policy.delete");
   // Assuming view is generally allowed, or maybe reuse read permission if strict, but ignoring for now or using 'leaves-policy.read' implicitly via page access.
   // Actually, let's keep View always visible or based on read permission if we want. But usually list access implies read.
   // The prompt asked for Add, Edit, Delete.
