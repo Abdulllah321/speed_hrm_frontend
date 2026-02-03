@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EOBI, updateEOBI, deleteEOBI } from "@/lib/actions/eobi";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type EOBIRow = EOBI & { id: string };
 
@@ -67,7 +67,7 @@ export const columns: ColumnDef<EOBIRow>[] = [
 function RowActions({ row }: { row: Row<EOBIRow> }) {
   const e = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);

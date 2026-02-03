@@ -110,7 +110,7 @@ export default function CreateLeavePage() {
       try {
         setLoading(true);
         setLoadingRequests(true);
-        
+
         // Fetch leave balance and requests in parallel
         const [balanceResult, requestsResult] = await Promise.all([
           getEmployeeLeaveBalance(selectedEmployeeId),
@@ -298,11 +298,11 @@ export default function CreateLeavePage() {
             getEmployeeLeaveBalance(selectedEmployeeId),
             getLeaveRequests({ employeeId: selectedEmployeeId }),
           ]);
-          
+
           if (balanceResult.status && balanceResult.data) {
             setLeaveInfo(balanceResult.data);
           }
-          
+
           if (requestsResult.status && requestsResult.data) {
             setEmployeeLeaveRequests(requestsResult.data);
           }
@@ -440,7 +440,7 @@ export default function CreateLeavePage() {
             <CardHeader>
               <CardTitle >
                 SELECT LEAVE TYPE
-                <hr className="mt-2"/>
+                <hr className="mt-2" />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">

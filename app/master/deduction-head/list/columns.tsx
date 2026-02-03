@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DeductionHead, updateDeductionHead, deleteDeductionHead } from "@/lib/actions/deduction-head";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type DeductionHeadRow = DeductionHead & { id: string; sno?: number };
 
@@ -120,7 +120,7 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const deductionHead = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -129,8 +129,8 @@ function RowActions({ row }: RowActionsProps) {
     status: deductionHead.status,
   });
 
-  const canEdit = hasPermission("master.deduction-head.update");
-  const canDelete = hasPermission("master.deduction-head.delete");
+  const canEdit = isAdmin() || hasPermission("master.deduction-head.update");
+  const canDelete = isAdmin() || hasPermission("master.deduction-head.delete");
 
   if (!canEdit && !canDelete) {
     return null;

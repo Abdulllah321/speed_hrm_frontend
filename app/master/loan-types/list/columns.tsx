@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LoanType, updateLoanType, deleteLoanType } from "@/lib/actions/loan-type";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type LoanTypeRow = LoanType & { id: string };
 
@@ -65,13 +65,13 @@ export const columns: ColumnDef<LoanTypeRow>[] = [
 function RowActions({ row }: { row: Row<LoanTypeRow> }) {
   const lt = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("loan-type.update");
-  const canDelete = hasPermission("loan-type.delete");
+  const canEdit = isAdmin() || hasPermission("loan-type.update");
+  const canDelete = isAdmin() || hasPermission("loan-type.delete");
 
   if (!canEdit && !canDelete) {
     return null;

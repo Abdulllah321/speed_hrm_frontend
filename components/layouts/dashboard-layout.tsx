@@ -95,7 +95,7 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
             <HeaderUserMenu />
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 !pt-[calc(var(--banner-height)+1rem)] bg-muted/30">
           <CompanyGuard optional={companyOptional}>
             {children}
           </CompanyGuard>

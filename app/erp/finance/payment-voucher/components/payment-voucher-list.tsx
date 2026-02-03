@@ -20,7 +20,6 @@ import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { voucherStore } from "@/lib/voucher-store";
 import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -47,15 +46,9 @@ export function PaymentVoucherList({
     const [vouchers, setVouchers] = useState<PaymentVoucher[]>(initialData);
     const [showFilterInfo, setShowFilterInfo] = useState(false);
 
-    // Merge client-side session state with server-side initial data
+    // Use initial data directly as it comes from the server
     useEffect(() => {
-        const localPVs = voucherStore.getPaymentVouchers();
-        const combined = [...localPVs, ...initialData];
-        const unique = combined.filter((v, index, self) =>
-            index === self.findIndex((t) => t.id === v.id)
-        );
-
-        setVouchers(unique.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        setVouchers(initialData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     }, [initialData]);
 
     const columns = useMemo<ColumnDef<PaymentVoucher>[]>(() => [

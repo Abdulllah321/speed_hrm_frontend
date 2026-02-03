@@ -17,7 +17,7 @@ import { createJournalVoucher, type JournalVoucher } from "@/lib/actions/journal
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { voucherStore } from "@/lib/voucher-store";
+
 
 export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] }) {
     const router = useRouter();
@@ -46,21 +46,8 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
             setIsPending(true);
             const result = await createJournalVoucher(values);
             if (result.status) {
-                // Add to client-side state for immediate visibility
-                const newJv: JournalVoucher = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    jvNo: values.jvNo,
-                    jvDate: values.jvDate.toISOString(),
-                    description: values.description,
-                    status: "pending",
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    details: values.details.map(d => ({
-                        ...d,
-                        accountName: accounts.find(a => a.id === d.accountId)?.name || "Account"
-                    }))
-                };
-                voucherStore.addJournalVoucher(newJv);
+                // Client-side state update is not needed as we revalidate path
+                // and redirect to list which fetches fresh data
 
                 toast.success("Journal Voucher created successfully");
                 router.push("/finance/journal-voucher/list");

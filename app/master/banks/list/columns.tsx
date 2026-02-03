@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bank, updateBank, deleteBank } from "@/lib/actions/bank";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type BankRow = Bank & { id: string };
 
@@ -105,7 +105,7 @@ export const columns: ColumnDef<BankRow>[] = [
 function RowActions({ row }: { row: Row<BankRow> }) {
   const item = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);

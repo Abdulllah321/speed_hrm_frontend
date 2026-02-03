@@ -410,7 +410,7 @@ export function AppSidebar({
   }, [hasHRAccess, hasERPAccess, environment]);
 
   return (
-    <Sidebar collapsible="icon" className="border-0 overflow-hidden ">
+    <Sidebar collapsible="icon" className="border-0 overflow-hidden">
       <SidebarRail />
       <SidebarHeader className="border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm shadow-sm">
         <div className="flex flex-col gap-3 group-data-[collapsible=icon]:gap-0">

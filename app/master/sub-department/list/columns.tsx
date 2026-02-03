@@ -49,7 +49,7 @@ import {
 } from "@/lib/actions/department";
 import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { Autocomplete } from "@/components/ui/autocomplete";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type SubDepartmentRow = SubDepartment & { id: string };
 
@@ -134,7 +134,7 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const subDept = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);

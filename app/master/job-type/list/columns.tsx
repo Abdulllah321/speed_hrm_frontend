@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { JobType, updateJobType, deleteJobType } from "@/lib/actions/job-type";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type JobTypeRow = JobType & { id: string };
 
@@ -95,7 +95,7 @@ type RowActionsProps = { row: Row<JobTypeRow> };
 function RowActions({ row }: RowActionsProps) {
   const jt = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);

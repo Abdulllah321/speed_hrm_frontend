@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LeaveType, updateLeaveType, deleteLeaveType } from "@/lib/actions/leave-type";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type LeaveTypeRow = LeaveType & { id: string };
 
@@ -65,13 +65,13 @@ export const columns: ColumnDef<LeaveTypeRow>[] = [
 function RowActions({ row }: { row: Row<LeaveTypeRow> }) {
   const lt = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("leave-type.update");
-  const canDelete = hasPermission("leave-type.delete");
+  const canEdit = isAdmin() || hasPermission("leave-type.update");
+  const canDelete = isAdmin() || hasPermission("leave-type.delete");
 
   if (!canEdit && !canDelete) {
     return null;

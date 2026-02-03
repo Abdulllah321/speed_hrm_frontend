@@ -9,67 +9,35 @@ export interface ReceiptVoucher {
     id: string;
     type: "bank" | "cash";
     rvNo: string;
-    rvDate: Date;
+    rvDate: string; // ISO string
     refBillNo?: string;
-    billDate?: Date;
+    billDate?: string; // ISO string
     debitAccountId: string;
-    debitAccountName: string;
+    debitAccount?: any; // populated from backend
+    debitAccountName?: string; // helper for UI
     debitAmount: number;
     status: "pending" | "approved" | "rejected";
     description: string;
     chequeNo?: string;
-    chequeDate?: Date;
+    chequeDate?: string; // ISO string
     details: {
         accountId: string;
-        accountName: string;
+        accountName?: string;
         credit: number;
     }[];
-    createdAt: Date;
+    createdAt: string;
     createdBy: string;
 }
-
-// Persistent mock data for demonstration
-let mockReceiptVouchers: ReceiptVoucher[] = [
-    {
-        id: "1",
-        type: "bank",
-        rvNo: "BRV2601004",
-        rvDate: new Date(),
-        debitAccountId: "acc1",
-        debitAccountName: "Meezan Bank",
-        debitAmount: 75000,
-        status: "approved",
-        description: "Collection from Client A",
-        chequeNo: "987654",
-        chequeDate: new Date(),
-        details: [
-            { accountId: "acc2", accountName: "Accounts Receivable", credit: 75000 }
-        ],
-        createdAt: new Date(),
-        createdBy: "Admin"
-    },
-    {
-        id: "2",
-        type: "cash",
-        rvNo: "CRV2601005",
-        rvDate: new Date(),
-        debitAccountId: "acc3",
-        debitAccountName: "Cash in Hand",
-        debitAmount: 1200,
-        status: "pending",
-        description: "Miscellaneous income",
-        details: [
-            { accountId: "acc4", accountName: "Other Income", credit: 1200 }
-        ],
-        createdAt: new Date(),
-        createdBy: "Cashier"
-    }
-];
 
 export async function getReceiptVouchers(type?: "bank" | "cash") {
     try {
         const token = await getAccessToken();
-        const response = await fetch(`${API_URL}/finance/receipt-vouchers${type ? `?type=${type}` : ''}`, {
+        const url = new URL(`${API_URL}/finance/receipt-vouchers`);
+        if (type) {
+            url.searchParams.append("type", type);
+        }
+
+        const response = await fetch(url.toString(), {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -77,23 +45,35 @@ export async function getReceiptVouchers(type?: "bank" | "cash") {
             next: { revalidate: 0 }
         });
 
-        let apiData = [];
-        if (response.ok) {
-            apiData = await response.json();
+        if (!response.ok) {
+            console.error("Failed to fetch receipt vouchers", response.status);
+            return {
+                status: false,
+                data: []
+            };
         }
 
-        const filteredMock = type ? mockReceiptVouchers.filter(v => v.type === type) : mockReceiptVouchers;
-        const combined = Array.isArray(apiData) ? [...apiData, ...filteredMock] : [...filteredMock];
+        const data = await response.json();
+
+        // Map backend data to frontend interface if needed
+        const mappedData = data.map((rv: any) => ({
+            ...rv,
+            debitAccountName: rv.debitAccount?.name || "Unknown Account",
+            details: rv.details.map((d: any) => ({
+                ...d,
+                accountName: d.account?.name || "Unknown Account"
+            }))
+        }));
 
         return {
             status: true,
-            data: combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            data: mappedData
         };
     } catch (error) {
-        const filtered = type ? mockReceiptVouchers.filter(v => v.type === type) : mockReceiptVouchers;
+        console.error("Error fetching receipt vouchers:", error);
         return {
-            status: true,
-            data: [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            status: false,
+            data: []
         };
     }
 }
@@ -102,19 +82,13 @@ export async function createReceiptVoucher(data: any) {
     try {
         const token = await getAccessToken();
 
-        // Add to mock immediately for demo visibility
-        const newRv: ReceiptVoucher = {
-            id: Math.random().toString(36).substr(2, 9),
+        // Ensure dates are stringified
+        const payload = {
             ...data,
-            rvDate: data.rvDate ? new Date(data.rvDate) : new Date(),
-            billDate: data.billDate ? new Date(data.billDate) : undefined,
-            chequeDate: data.chequeDate ? new Date(data.chequeDate) : undefined,
-            status: "pending",
-            createdAt: new Date(),
-            createdBy: "Current User",
-            debitAccountName: "Selected Account",
+            rvDate: new Date(data.rvDate).toISOString(),
+            billDate: data.billDate ? new Date(data.billDate).toISOString() : undefined,
+            chequeDate: data.chequeDate ? new Date(data.chequeDate).toISOString() : undefined,
         };
-        mockReceiptVouchers.unshift(newRv);
 
         const response = await fetch(`${API_URL}/finance/receipt-vouchers`, {
             method: "POST",
@@ -122,20 +96,23 @@ export async function createReceiptVoucher(data: any) {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify(data),
+            body: JSON.stringify(payload),
         });
 
-        console.log("RV Created (Mocked & Sent to API):", newRv.rvNo);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            return {
+                status: false,
+                message: errorData.message || `Failed to create Receipt Voucher: ${response.statusText}`
+            };
+        }
 
-        revalidatePath("/erp/finance/receipt-voucher/list");
         revalidatePath("/finance/receipt-voucher/list");
-        revalidatePath("/", "layout");
+        revalidatePath("/erp/finance/receipt-voucher/list");
 
         return { status: true, message: "Receipt Voucher created successfully" };
-    } catch (error) {
-        console.error("RV Creation Fallback to Mock Only", error);
-        revalidatePath("/finance/receipt-voucher/list");
-        revalidatePath("/", "layout");
-        return { status: true, message: "Receipt Voucher created successfully (Offline Mode)" };
+    } catch (error: any) {
+        console.error("Error creating receipt voucher:", error);
+        return { status: false, message: error.message || "An unexpected error occurred" };
     }
 }

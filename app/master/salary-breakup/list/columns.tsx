@@ -38,7 +38,7 @@ import { toast } from "sonner";
 import { updateSalaryBreakup, deleteSalaryBreakup } from "@/lib/actions/salary-breakup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type SalaryBreakupRow = {
   id: string;
@@ -132,13 +132,13 @@ type RowActionsProps = {
 function RowActions({ row, table }: RowActionsProps) {
   const item = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = hasPermission("salary-breakup.update");
-  const canDelete = hasPermission("salary-breakup.delete");
+  const canEdit = isAdmin() || hasPermission("salary-breakup.update");
+  const canDelete = isAdmin() || hasPermission("salary-breakup.delete");
 
   if (!canEdit && !canDelete) {
     return null;
