@@ -35,6 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { SocialSecurityInstitution, updateSocialSecurityInstitution, deleteSocialSecurityInstitution } from "@/lib/actions/social-security";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type SocialSecurityInstitutionRow = SocialSecurityInstitution & { id: string };
 
@@ -129,6 +130,14 @@ function RowActions({ row }: { row: Row<SocialSecurityInstitutionRow> }) {
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
+  // Admins can always edit/delete, otherwise check specific permissions
+  const canEdit = isAdmin() || hasPermission("social-security.update");
+  const canDelete = isAdmin() || hasPermission("social-security.delete");
+
+  if (!canEdit && !canDelete) {
+    return null;
+  }
+
   const handleEditSubmit = async (formData: FormData) => {
     startTransition(async () => {
       const result = await updateSocialSecurityInstitution(institution.id, formData);
@@ -166,12 +175,16 @@ function RowActions({ row }: { row: Row<SocialSecurityInstitutionRow> }) {
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setEditDialog(true)}>
-            <Pencil className="h-4 w-4 mr-2" />Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
-            <Trash2 className="h-4 w-4 mr-2" />Delete
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => setEditDialog(true)}>
+              <Pencil className="h-4 w-4 mr-2" />Edit
+            </DropdownMenuItem>
+          )}
+          {canDelete && (
+            <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4 mr-2" />Delete
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

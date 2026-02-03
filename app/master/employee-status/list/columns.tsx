@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EmployeeStatus, updateEmployeeStatus, deleteEmployeeStatus } from "@/lib/actions/employee-status";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type EmployeeStatusRow = EmployeeStatus & { id: string; sno?: number };
 
@@ -120,7 +120,7 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const empStatus = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);

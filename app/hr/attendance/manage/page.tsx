@@ -206,8 +206,8 @@ export default function AttendanceManagePage() {
     setFormData((prev) => ({
       ...prev,
       employeeIds,
-      employeeName: employeeIds.length === 1 
-        ? allEmployees.find(e => e.id === employeeIds[0])?.employeeName || "" 
+      employeeName: employeeIds.length === 1
+        ? allEmployees.find(e => e.id === employeeIds[0])?.employeeName || ""
         : `${employeeIds.length} employees selected`,
     }));
 
@@ -216,7 +216,7 @@ export default function AttendanceManagePage() {
       const selected = allEmployees.find((e) => e.id === employeeIds[0]);
       if (selected) {
         setSelectedEmployee(selected);
-        
+
         // Set default clock in/out times from working hours policy
         const policy = selected.workingHoursPolicy;
         if (policy) {

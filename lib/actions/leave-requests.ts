@@ -25,6 +25,7 @@ export interface LeaveRequest {
   createdAt?: string;
   updatedAt?: string;
 }
+
 export interface LeaveRequestFilters {
   departmentId?: string;
   subDepartmentId?: string;

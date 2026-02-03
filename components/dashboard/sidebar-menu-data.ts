@@ -719,16 +719,16 @@ export const menuData: MenuItem[] = [
           { title: "Summary", href: "/hr/attendance/summary", permissions: ["hr.attendance.summary"] },
           { title: "Request", href: "/hr/attendance/request", permissions: ["hr.attendance.request"] },
           { title: "Request List", href: "/hr/attendance/request-list", permissions: ["hr.attendance.request-list"] },
-          {
-            title: "Exemptions",
-            href: "/hr/attendance/exemptions",
-            permissions: ["hr.attendance.exemptions"],
-          },
-          {
-            title: "Exemptions List",
-            href: "/hr/attendance/exemptions-list",
-            permissions: ["hr.attendance.exemptions-list"],
-          },
+          // {
+          //   title: "Exemptions",
+          //   href: "/hr/attendance/exemptions",
+          //   permissions: ["hr.attendance.exemptions"],
+          // },
+          // {
+          //   title: "Exemptions List",
+          //   href: "/hr/attendance/exemptions-list",
+          //   permissions: ["hr.attendance.exemptions-list"],
+          // },
         ],
       },
       {

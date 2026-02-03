@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ProvidentFund, updateProvidentFund, deleteProvidentFund } from "@/lib/actions/provident-fund";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type ProvidentFundRow = ProvidentFund & { id: string; sno?: number };
 
@@ -127,7 +127,7 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const fund = row.original;
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -137,8 +137,8 @@ function RowActions({ row }: RowActionsProps) {
     status: fund.status,
   });
 
-  const canEdit = hasPermission("provident-fund.update");
-  const canDelete = hasPermission("provident-fund.delete");
+  const canEdit = isAdmin() || hasPermission("provident-fund.update");
+  const canDelete = isAdmin() || hasPermission("provident-fund.delete");
 
   if (!canEdit && !canDelete) {
     return null;

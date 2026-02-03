@@ -9,73 +9,37 @@ export interface PaymentVoucher {
     id: string;
     type: "bank" | "cash";
     pvNo: string;
-    pvDate: Date;
+    pvDate: string; // ISO string from API
     refBillNo?: string;
-    billDate?: Date;
+    billDate?: string; // ISO string
     creditAccountId: string;
-    creditAccountName: string;
+    creditAccount?: any; // populated from backend
+    creditAccountName?: string; // helper for UI
     creditAmount: number;
     status: "pending" | "approved" | "rejected";
     description: string;
     isTaxApplicable: boolean;
     isAdvance: boolean;
     chequeNo?: string;
-    chequeDate?: Date;
+    chequeDate?: string; // ISO string
     details: {
         accountId: string;
-        accountName: string;
+        accountName?: string;
         debit: number;
     }[];
-    createdAt: Date;
+    createdAt: string;
     createdBy: string;
 }
-
-// Persistent mock data for demonstration
-let mockPaymentVouchers: PaymentVoucher[] = [
-    {
-        id: "1",
-        type: "bank",
-        pvNo: "BPV2601004",
-        pvDate: new Date(),
-        creditAccountId: "acc1",
-        creditAccountName: "Meezan Bank",
-        creditAmount: 50000,
-        status: "approved",
-        description: "Payment for supplies",
-        isTaxApplicable: false,
-        isAdvance: true,
-        chequeNo: "123456",
-        chequeDate: new Date(),
-        details: [
-            { accountId: "acc2", accountName: "Office Supplies", debit: 50000 }
-        ],
-        createdAt: new Date(),
-        createdBy: "Admin"
-    },
-    {
-        id: "2",
-        type: "cash",
-        pvNo: "CPV2601005",
-        pvDate: new Date(),
-        creditAccountId: "acc3",
-        creditAccountName: "Petty Cash",
-        creditAmount: 2500,
-        status: "pending",
-        description: "Fuel reimbursement",
-        isTaxApplicable: false,
-        isAdvance: false,
-        details: [
-            { accountId: "acc4", accountName: "Fuel Expense", debit: 2500 }
-        ],
-        createdAt: new Date(),
-        createdBy: "Accountant"
-    }
-];
 
 export async function getPaymentVouchers(type?: "bank" | "cash") {
     try {
         const token = await getAccessToken();
-        const response = await fetch(`${API_URL}/finance/payment-vouchers${type ? `?type=${type}` : ''}`, {
+        const url = new URL(`${API_URL}/finance/payment-vouchers`);
+        if (type) {
+            url.searchParams.append("type", type);
+        }
+
+        const response = await fetch(url.toString(), {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
@@ -83,23 +47,36 @@ export async function getPaymentVouchers(type?: "bank" | "cash") {
             next: { revalidate: 0 }
         });
 
-        let apiData = [];
-        if (response.ok) {
-            apiData = await response.json();
+        if (!response.ok) {
+            console.error("Failed to fetch payment vouchers", response.status);
+            return {
+                status: false,
+                data: []
+            };
         }
 
-        const filteredMock = type ? mockPaymentVouchers.filter(v => v.type === type) : mockPaymentVouchers;
-        const combined = Array.isArray(apiData) ? [...apiData, ...filteredMock] : [...filteredMock];
+        const data = await response.json();
+
+        // Map backend data to frontend interface if needed
+        // Backend returns `creditAccount` object, frontend list expects `creditAccountName`
+        const mappedData = data.map((pv: any) => ({
+            ...pv,
+            creditAccountName: pv.creditAccount?.name || "Unknown Account",
+            details: pv.details.map((d: any) => ({
+                ...d,
+                accountName: d.account?.name || "Unknown Account"
+            }))
+        }));
 
         return {
             status: true,
-            data: combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            data: mappedData
         };
     } catch (error) {
-        const filtered = type ? mockPaymentVouchers.filter(v => v.type === type) : mockPaymentVouchers;
+        console.error("Error fetching payment vouchers:", error);
         return {
-            status: true,
-            data: [...filtered].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            status: false,
+            data: []
         };
     }
 }
@@ -108,19 +85,13 @@ export async function createPaymentVoucher(data: any) {
     try {
         const token = await getAccessToken();
 
-        // Add to mock immediately for demo visibility
-        const newPv: PaymentVoucher = {
-            id: Math.random().toString(36).substr(2, 9),
+        // Ensure dates are stringified if they aren't already
+        const payload = {
             ...data,
-            pvDate: data.pvDate ? new Date(data.pvDate) : new Date(),
-            billDate: data.billDate ? new Date(data.billDate) : undefined,
-            chequeDate: data.chequeDate ? new Date(data.chequeDate) : undefined,
-            status: "pending",
-            createdAt: new Date(),
-            createdBy: "Current User",
-            creditAccountName: "Selected Account",
+            pvDate: new Date(data.pvDate).toISOString(),
+            billDate: data.billDate ? new Date(data.billDate).toISOString() : undefined,
+            chequeDate: data.chequeDate ? new Date(data.chequeDate).toISOString() : undefined,
         };
-        mockPaymentVouchers.unshift(newPv);
 
         const response = await fetch(`${API_URL}/finance/payment-vouchers`, {
             method: "POST",
@@ -128,20 +99,23 @@ export async function createPaymentVoucher(data: any) {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
-            body: JSON.stringify(data),
+            body: JSON.stringify(payload),
         });
 
-        console.log("PV Created (Mocked & Sent to API):", newPv.pvNo);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            return {
+                status: false,
+                message: errorData.message || `Failed to create Payment Voucher: ${response.statusText}`
+            };
+        }
 
-        revalidatePath("/erp/finance/payment-voucher/list");
         revalidatePath("/finance/payment-voucher/list");
-        revalidatePath("/", "layout");
+        revalidatePath("/erp/finance/payment-voucher/list");
 
         return { status: true, message: "Payment Voucher created successfully" };
-    } catch (error) {
-        console.error("PV Creation Fallback to Mock Only", error);
-        revalidatePath("/finance/payment-voucher/list");
-        revalidatePath("/", "layout");
-        return { status: true, message: "Payment Voucher created successfully (Offline Mode)" };
+    } catch (error: any) {
+        console.error("Error creating payment voucher:", error);
+        return { status: false, message: error.message || "An unexpected error occurred" };
     }
 }
