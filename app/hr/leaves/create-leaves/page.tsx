@@ -55,11 +55,8 @@ export default function CreateLeavePage() {
   const [reasonForLeave, setReasonForLeave] = useState<string>("");
   const [addressWhileOnLeave, setAddressWhileOnLeave] = useState<string>("");
 
-  // Allow select employee if admin OR has leave-application.create permission (but NOT just for self)
-  // We'll assume leave-application.create is for HR/Admin to create for others if they are admin
-  // But standard users also have leave-application.create to create their own.
-  // So we rely on isAdmin() check for now to show/hide dropdown.
-  const canSelectEmployee = isAdmin();
+  // Allow select employee if admin OR has hr.leave.selectEmployee permission
+  const canSelectEmployee = isAdmin() || hasPermission("hr.leave.selectEmployee");
 
   // Load employees
   useEffect(() => {
