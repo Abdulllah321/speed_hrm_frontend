@@ -105,8 +105,8 @@ function RowActions({ row }: RowActionsProps) {
     const [editDialog, setEditDialog] = useState(false);
     const [deleteDialog, setDeleteDialog] = useState(false);
 
-    const canEdit = isAdmin() || hasPermission("allocation.update");
-    const canDelete = isAdmin() || hasPermission("allocation.delete");
+    const canEdit = hasPermission("master.allocation.update");
+    const canDelete = hasPermission("master.allocation.delete");
 
     if (!canEdit && !canDelete) {
         return null;

@@ -411,8 +411,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push("/auth/login");
   }, [router]);
 
+  const isAdmin = useCallback((): boolean => {
+    // Check role name from nested object or string property
+    const roleName = user?.role?.name || (user as any)?.role;
+
+    // Return true for both super_admin and admin roles
+    // This allows admins to see and access everything
+    if (typeof roleName === 'string') {
+      const normalized = roleName.toLowerCase().trim();
+      return normalized === "super_admin" || normalized === "admin" || normalized === "super admin";
+    }
+
+    return false;
+  }, [user]);
+
   // Permission helpers
   const hasPermission = useCallback((permission: string): boolean => {
+    if (isAdmin()) return true;
     // Check in role.permissions object structure (from API /me)
     if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
       // Check if permissions are in object format { permission: { name: "..." } }
@@ -434,9 +449,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return false;
-  }, [user]);
+  }, [user, isAdmin]);
 
   const hasAnyPermission = useCallback((permissions: string[]): boolean => {
+    if (isAdmin()) return true;
     if (!user) {
       if (process.env.NODE_ENV === 'development') {
         console.log('RBAC hasAnyPermission: No user', { required: permissions });
@@ -491,9 +507,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('RBAC hasAnyPermission: No permissions found, returning false');
     }
     return false;
-  }, [user]);
+  }, [user, isAdmin]);
 
   const hasAllPermissions = useCallback((permissions: string[]): boolean => {
+    if (isAdmin()) return true;
     // Check in role.permissions object structure
     if (user?.role?.permissions && Array.isArray(user.role.permissions) && user.role.permissions.length > 0) {
       if (user.role.permissions[0].permission) {
@@ -516,21 +533,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     return false;
-  }, [user]);
-
-  const isAdmin = useCallback((): boolean => {
-    // Check role name from nested object or string property
-    const roleName = user?.role?.name || (user as any)?.role;
-
-    // Return true for both super_admin and admin roles
-    // This allows admins to see and access everything
-    if (typeof roleName === 'string') {
-      const normalized = roleName.toLowerCase().trim();
-      return normalized === "super_admin" || normalized === "admin" || normalized === "super admin";
-    }
-
-    return false;
-  }, [user]);
+  }, [user, isAdmin]);
 
   // Don't render children until mounted and initial load is complete
   // This prevents hydration mismatch between server and client

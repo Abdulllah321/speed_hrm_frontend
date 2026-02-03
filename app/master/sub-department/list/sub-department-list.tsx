@@ -56,7 +56,7 @@ export function SubDepartmentList({
   }, [departments]);
 
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("sub-department.create");
+  const showAddAction = hasPermission("master.sub-department.create");
 
   const handleToggle = () => {
     router.push("/master/sub-department/add");

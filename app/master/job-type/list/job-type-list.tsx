@@ -30,7 +30,7 @@ export function JobTypeList({ initialJobTypes, newItemId }: JobTypeListProps) {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("job-type.create");
+  const showAddAction = hasPermission("master.job-type.create");
 
   const handleToggle = () => {
     router.push("/master/job-type/add");

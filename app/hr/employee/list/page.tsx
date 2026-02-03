@@ -260,16 +260,18 @@ export default function EmployeeListPage() {
       try {
         setLoading(true);
 
-        // Fetch employees, departments, and designations in parallel
-        const [employeesRes, deptsRes, designationsRes] = await Promise.all([
-          getEmployees(),
-          getDepartments(),
-          getDesignations(),
-        ]);
+        // Fetch employees, departments, and designations separately to prevent one from blocking others
+        // (especially important for designation fetches that might fail for employees)
+        const employeesRes = await getEmployees();
+        
+        // Non-blocking fetches for metadata
+        getDepartments().then(res => {
+          if (res.status) setDepartments(res.data || []);
+        }).catch(err => console.error("Non-blocking department fetch failed:", err));
 
-        // Set departments and designations
-        if (deptsRes.status) setDepartments(deptsRes.data || []);
-        if (designationsRes.status) setDesignations(designationsRes.data || []);
+        getDesignations().then(res => {
+          if (res.status) setDesignations(res.data || []);
+        }).catch(err => console.error("Non-blocking designation fetch failed:", err));
 
         // Set employees
         if (employeesRes.status && employeesRes.data) {

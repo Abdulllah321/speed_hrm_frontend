@@ -69,12 +69,15 @@ export default function CreateLeavePage() {
         if (result.status && result.data) {
           // Show all employees (active and inactive)
           setEmployees(result.data);
-        } else {
+        } else if (isAdmin()) {
+          // Only show error for admins who NEED the full list
           toast.error(result.message || "Failed to load employees");
         }
       } catch (error) {
         console.error("Failed to fetch employees:", error);
-        toast.error("Failed to load employees");
+        if (isAdmin()) {
+          toast.error("Failed to load employees");
+        }
       }
     };
 
@@ -83,9 +86,15 @@ export default function CreateLeavePage() {
 
   // Auto-select logged-in employee
   useEffect(() => {
+    // Priority 1: Use the linked employee UUID from the user object
+    if (user?.employee?.id) {
+      setSelectedEmployeeId(user.employee.id);
+      return;
+    }
+
+    // Priority 2: Use employeeId string (e.g. EMP001) to find UUID from employees list
     if (user?.employeeId && employees.length > 0) {
-      // Check if logged-in user is in the employee list
-      const employee = employees.find(e => e.id === user.employeeId);
+      const employee = employees.find(e => e.employeeId === user.employeeId);
       if (employee) {
         setSelectedEmployeeId(employee.id);
       }
@@ -362,11 +371,11 @@ export default function CreateLeavePage() {
               />
             ) : (
               <div className="p-3 bg-muted rounded-md border text-sm font-medium">
-                {selectedEmployeeId
-                  ? employees.find(e => e.id === selectedEmployeeId)?.employeeName || "Loading..."
-                  : "Loading..."}
-                {selectedEmployeeId && employees.find(e => e.id === selectedEmployeeId)?.employeeId
-                  ? ` (${employees.find(e => e.id === selectedEmployeeId)?.employeeId})`
+                {selectedEmployeeId 
+                  ? employees.find(e => e.id === selectedEmployeeId)?.employeeName || (user ? `${user.firstName} ${user.lastName}` : "User Profile")
+                  : (user ? `${user.firstName} ${user.lastName}` : "Loading...")} 
+                {selectedEmployeeId && (employees.find(e => e.id === selectedEmployeeId)?.employeeId || user?.employeeId)
+                  ? ` (${employees.find(e => e.id === selectedEmployeeId)?.employeeId || user?.employeeId})` 
                   : ""}
               </div>
             )}

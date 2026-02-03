@@ -9,6 +9,7 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { hasPermission } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,12 @@ export default async function PaymentVoucherListPage() {
         getChartOfAccounts(),
     ]);
 
+    const canCreate = await hasPermission("erp.finance.payment-voucher.create");
+    const canRead = await hasPermission("erp.finance.payment-voucher.read");
+    const canUpdate = await hasPermission("erp.finance.payment-voucher.update");
+    const canDelete = await hasPermission("erp.finance.payment-voucher.delete");
+    const canApprove = await hasPermission("erp.finance.payment-voucher.approve");
+
     return (
         <div className="flex-1 flex flex-col">
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 border-b">
@@ -25,11 +32,11 @@ export default async function PaymentVoucherListPage() {
                     <Breadcrumb>
                         <BreadcrumbList>
                             <BreadcrumbItem className="hidden md:block">
-                                <BreadcrumbLink href="/finance">Finance</BreadcrumbLink>
+                                <BreadcrumbLink href="/erp/finance">Finance</BreadcrumbLink>
                             </BreadcrumbItem>
                             <BreadcrumbSeparator className="hidden md:block" />
                             <BreadcrumbItem className="hidden md:block">
-                                <BreadcrumbLink href="/finance/payment-voucher/list">Payment Voucher</BreadcrumbLink>
+                                <BreadcrumbLink href="/erp/finance/payment-voucher/list">Payment Voucher</BreadcrumbLink>
                             </BreadcrumbItem>
                             <BreadcrumbSeparator className="hidden md:block" />
                             <BreadcrumbItem>
@@ -40,10 +47,11 @@ export default async function PaymentVoucherListPage() {
                 </div>
             </header>
 
-            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 bg-[#F8F9FA]">
+            <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 bg-[#F8F9FA] dark:bg-background">
                 <PaymentVoucherList
                     initialData={vouchers || []}
                     accounts={accounts || []}
+                    permissions={{ canCreate, canRead, canUpdate, canDelete, canApprove }}
                 />
             </div>
         </div>

@@ -15,8 +15,8 @@ export default async function AttendanceRequestQueryListPage({
     const { newItemId } = await searchParams;
     const [queriesResult, employeesResult, departmentsResult] = await Promise.all([
       getAllAttendanceRequestQueries(),
-      getAllEmployeesForClearance(),
-      getDepartments(),
+      getAllEmployeesForClearance().catch(err => ({ status: false, message: err.message, data: [] })),
+      getDepartments().catch(err => ({ status: false, message: err.message, data: [] })),
     ]);
 
     if (!queriesResult.status || !queriesResult.data) {
@@ -28,8 +28,8 @@ export default async function AttendanceRequestQueryListPage({
       );
     }
 
-    const employees = employeesResult.status && employeesResult.data ? employeesResult.data : [];
-    const departments = departmentsResult.status && departmentsResult.data ? departmentsResult.data : [];
+    const employees = employeesResult.status ? employeesResult.data || [] : [];
+    const departments = departmentsResult.status ? departmentsResult.data || [] : [];
 
     return (
       <AttendanceRequestQueryList

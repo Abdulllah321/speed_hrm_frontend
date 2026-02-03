@@ -31,7 +31,7 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; employerContribution: number; employeeContribution: number; yearMonth: string }[]>([]);
   const { hasPermission } = useAuth();
-  const showAddAction = hasPermission("eobi.create");
+  const showAddAction = hasPermission("master.eobi.create");
 
   const handleToggle = () => {
     router.push("/master/eobi/add");
@@ -64,7 +64,7 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   };
 
   const handleBulkEditSubmit = async () => {
-    const validRows = editRows.filter((r) => r.name.trim());
+    const validRows = editRows.filter((r) => r.yearMonth.trim());
     if (validRows.length === 0) {
       toast.error("Please fill in all fields");
       return;

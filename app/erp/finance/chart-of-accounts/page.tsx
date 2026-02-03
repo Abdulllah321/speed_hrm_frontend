@@ -11,10 +11,14 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { hasPermission } from "@/lib/auth";
 
 
 export default async function ChartOfAccountsPage() {
   const { data: accounts } = await getChartOfAccounts();
+  const canCreate = await hasPermission("erp.finance.chart-of-account.create");
+  const canUpdate = await hasPermission("erp.finance.chart-of-account.update");
+  const canDelete = await hasPermission("erp.finance.chart-of-account.delete");
 
   return (
     <>
@@ -42,15 +46,17 @@ export default async function ChartOfAccountsPage() {
               Manage your financial accounts hierarchy.
             </p>
           </div>
-          <Link href="/erp/finance/chart-of-accounts/create">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Account
-            </Button>
-          </Link>
+          {canCreate && (
+            <Link href="/erp/finance/chart-of-accounts/create">
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Account
+              </Button>
+            </Link>
+          )}
         </div>
         
-        <ChartOfAccountList initialData={accounts || []} />
+        <ChartOfAccountList initialData={accounts || []} permissions={{ canUpdate, canDelete }} />
       </div>
     </>
   );

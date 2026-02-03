@@ -48,7 +48,7 @@ export function BonusTypeList({ initialBonusTypes, newItemId }: BonusTypeListPro
     router.push("/master/bonus-types/add");
   };
 
-  const showAddAction = hasPermission("bonus-type.create");
+  const showAddAction = hasPermission("master.bonus-type.create");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {

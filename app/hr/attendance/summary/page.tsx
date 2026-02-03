@@ -28,8 +28,8 @@ export default async function AttendanceProgressSummaryPage({
     const defaultDateTo = new Date();
     
     const [employeesResult, departmentsResult, progressResult] = await Promise.all([
-      getEmployees(),
-      getDepartments(),
+      getEmployees().catch(err => ({ status: false, message: err.message, data: [] })),
+      getDepartments().catch(err => ({ status: false, message: err.message, data: [] })),
       getAttendanceProgressSummary({
         employeeId,
         departmentId,
@@ -39,23 +39,8 @@ export default async function AttendanceProgressSummaryPage({
       }),
     ]);
 
-    if (!employeesResult.status || !employeesResult.data) {
-      return (
-        <ListError
-          title="Failed to load employees"
-          message={employeesResult.message || "Unable to fetch employees. Please check your connection and try again."}
-        />
-      );
-    }
-
-    if (!departmentsResult.status || !departmentsResult.data) {
-      return (
-        <ListError
-          title="Failed to load departments"
-          message={departmentsResult.message || "Unable to fetch departments. Please check your connection and try again."}
-        />
-      );
-    }
+    const employees = employeesResult.status ? employeesResult.data || [] : [];
+    const departments = departmentsResult.status ? departmentsResult.data || [] : [];
 
     if (!progressResult.status) {
       return (
@@ -66,8 +51,6 @@ export default async function AttendanceProgressSummaryPage({
       );
     }
 
-    const employees = employeesResult.data || [];
-    const departments = departmentsResult.data || [];
     const progressData = progressResult.data || [];
 
     return (

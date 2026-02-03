@@ -28,7 +28,9 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const { hasPermission } = useAuth();
   const [editRows, setEditRows] = useState<{ id: string; code: string; name: string; province?: string; status?: string; contributionRate?: number }[]>([]);
+  const showAddAction = hasPermission("master.social-security.create");
 
   const handleToggle = () => {
     router.push("/master/social-security/add");
@@ -92,8 +94,8 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
       <DataTable<SocialSecurityInstitutionRow>
         columns={columns}
         data={data}
-        actionText="Add Institution"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Institution" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[
           { key: "code", label: "Code" },

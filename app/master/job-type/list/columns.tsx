@@ -100,8 +100,8 @@ function RowActions({ row }: RowActionsProps) {
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  const canEdit = isAdmin() || hasPermission("job-type.update");
-  const canDelete = isAdmin() || hasPermission("job-type.delete");
+  const canEdit = hasPermission("master.job-type.update");
+  const canDelete = hasPermission("master.job-type.delete");
 
   if (!canEdit && !canDelete) {
     return null;

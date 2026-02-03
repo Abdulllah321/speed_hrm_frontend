@@ -1,17 +1,8 @@
 'use server';
-
-import { getAccessToken } from '../auth';
+import { authFetch } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
-const API_URL = process.env.API_URL || 'http://localhost:5000/api';
-
-async function getAuthHeaders() {
-  const token = await getAccessToken();
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-}
+const API_URL = process.env.API_URL;
 
 export interface LeaveRequest {
   id: string;
@@ -34,7 +25,6 @@ export interface LeaveRequest {
   createdAt?: string;
   updatedAt?: string;
 }
-
 export interface LeaveRequestFilters {
   departmentId?: string;
   subDepartmentId?: string;
@@ -43,7 +33,6 @@ export interface LeaveRequestFilters {
   fromDate?: string;
   toDate?: string;
 }
-
 // Get all leave requests
 export async function getLeaveRequests(filters?: LeaveRequestFilters): Promise<{ status: boolean; data?: LeaveRequest[]; message?: string }> {
   try {
@@ -54,19 +43,13 @@ export async function getLeaveRequests(filters?: LeaveRequestFilters): Promise<{
     if (filters?.status) queryParams.append('status', filters.status);
     if (filters?.fromDate) queryParams.append('fromDate', filters.fromDate);
     if (filters?.toDate) queryParams.append('toDate', filters.toDate);
-
     const url = `${API_URL}/leave-requests${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    
     const res = await fetch(url, {
-      headers: await getAuthHeaders(),
-      cache: 'no-store',
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: 'Failed to fetch leave requests' }));
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
-
     const result = await res.json();
     if (result.status && result.data) {
       return { status: true, data: result.data };
@@ -80,20 +63,15 @@ export async function getLeaveRequests(filters?: LeaveRequestFilters): Promise<{
     };
   }
 }
-
 // Get leave request by ID
 export async function getLeaveRequestById(id: string): Promise<{ status: boolean; data?: LeaveRequest; message?: string }> {
   try {
-    const res = await fetch(`${API_URL}/leave-requests/${id}`, {
-      headers: await getAuthHeaders(),
-      cache: 'no-store',
+    const res = await authFetch(`/leave-requests/${id}`, {
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: 'Failed to fetch leave request' }));
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
-
     const result = await res.json();
     if (result.status && result.data) {
       return { status: true, data: result.data };
@@ -107,7 +85,6 @@ export async function getLeaveRequestById(id: string): Promise<{ status: boolean
     };
   }
 }
-
 // Approve leave application
 export async function approveLeaveApplication(
   id: string,
@@ -117,18 +94,14 @@ export async function approveLeaveApplication(
     const endpoint = level
       ? `${API_URL}/leave-applications/${id}/approve-level/${level}`
       : `${API_URL}/leave-applications/${id}/approve`;
-
     const res = await fetch(endpoint, {
       method: 'PUT',
-      headers: await getAuthHeaders(),
       body: JSON.stringify({}), // Empty object for JSON body
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: 'Failed to approve leave application' }));
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
-
     const result = await res.json();
     if (result.status && result.data) {
       revalidatePath('/hr/leaves/requests');
@@ -144,7 +117,6 @@ export async function approveLeaveApplication(
     };
   }
 }
-
 // Reject leave application
 export async function rejectLeaveApplication(
   id: string,
@@ -155,18 +127,14 @@ export async function rejectLeaveApplication(
     const endpoint = level
       ? `${API_URL}/leave-applications/${id}/reject-level/${level}`
       : `${API_URL}/leave-applications/${id}/reject`;
-
     const res = await fetch(endpoint, {
       method: 'PUT',
-      headers: await getAuthHeaders(),
       body: JSON.stringify({ remarks: remarks || '' }), // Always send remarks field
     });
-
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: 'Failed to reject leave application' }));
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
-
     const result = await res.json();
     if (result.status && result.data) {
       revalidatePath('/hr/leaves/requests');
@@ -182,4 +150,3 @@ export async function rejectLeaveApplication(
     };
   }
 }
-

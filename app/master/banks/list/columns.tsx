@@ -116,9 +116,8 @@ function RowActions({ row }: { row: Row<BankRow> }) {
     status: item.status || "active",
   });
 
-  // Admins can always edit/delete, otherwise check specific permissions
-  const canEdit = isAdmin() || hasPermission("bank.update");
-  const canDelete = isAdmin() || hasPermission("bank.delete");
+  const canEdit = hasPermission("master.bank.update");
+  const canDelete = hasPermission("master.bank.delete");
 
   if (!canEdit && !canDelete) {
     return null;

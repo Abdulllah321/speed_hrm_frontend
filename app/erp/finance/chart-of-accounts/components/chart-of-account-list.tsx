@@ -29,9 +29,13 @@ import { motion, AnimatePresence } from "motion/react";
 
 interface ChartOfAccountListProps {
   initialData: ChartOfAccount[];
+  permissions?: {
+    canUpdate: boolean;
+    canDelete: boolean;
+  };
 }
 
-export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
+export function ChartOfAccountList({ initialData, permissions }: ChartOfAccountListProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -68,6 +72,9 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
   const table = useReactTable({
     data,
     columns,
+    meta: {
+      permissions
+    },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),

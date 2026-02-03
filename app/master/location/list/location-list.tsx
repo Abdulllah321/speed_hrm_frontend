@@ -37,7 +37,7 @@ export function LocationList({
     const [bulkEditOpen, setBulkEditOpen] = useState(false);
     const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
     const { hasPermission } = useAuth();
-    const showAddAction = hasPermission("location.create");
+    const showAddAction = hasPermission("master.location.create");
 
     const handleToggle = () => {
         router.push("/master/location/add");
