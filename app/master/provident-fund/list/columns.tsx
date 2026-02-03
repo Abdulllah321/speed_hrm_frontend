@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ProvidentFund, updateProvidentFund, deleteProvidentFund } from "@/lib/actions/provident-fund";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type ProvidentFundRow = ProvidentFund & { id: string; sno?: number };
 

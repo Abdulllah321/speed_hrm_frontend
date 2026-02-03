@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { JobType, updateJobType, deleteJobType } from "@/lib/actions/job-type";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type JobTypeRow = JobType & { id: string };
 

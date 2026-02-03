@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Allocation, updateAllocation, deleteAllocation } from "@/lib/actions/allocation";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type AllocationRow = Allocation & { id: string };
 

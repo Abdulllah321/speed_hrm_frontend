@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DeductionHead, updateDeductionHead, deleteDeductionHead } from "@/lib/actions/deduction-head";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type DeductionHeadRow = DeductionHead & { id: string; sno?: number };
 

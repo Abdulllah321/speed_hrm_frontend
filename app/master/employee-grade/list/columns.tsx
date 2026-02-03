@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EmployeeGrade, updateEmployeeGrade, deleteEmployeeGrade } from "@/lib/actions/employee-grade";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type EmployeeGradeRow = EmployeeGrade & { id: string; sno?: number };
 

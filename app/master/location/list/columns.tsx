@@ -44,7 +44,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Location, updateLocations, deleteLocation } from "@/lib/actions/location";
 import { getCities, City } from "@/lib/actions/city";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type LocationRow = Location & { id: string };
 

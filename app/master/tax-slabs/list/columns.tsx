@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { TaxSlab, updateTaxSlab, deleteTaxSlab } from "@/lib/actions/tax-slab";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type TaxSlabRow = TaxSlab & { id: string };
 

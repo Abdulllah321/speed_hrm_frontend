@@ -1,2 +1,43 @@
 'use server';
-import { authFetch } from '@/lib/auth';export interface PFEmployee {    id: string;    employeeId: string;    employeeName: string;    department: string;    subDepartment: string;    designation: string;    employeeContribution: number;    employerContribution: number;    totalPFBalance: number;    lastContributionMonth: string;    totalMonths: number;}// Get all PF employees with their balancesexport async function getPFEmployees(): Promise<{ status: boolean; data?: PFEmployee[]; message?: string }> {    try {        const headers = await getAuthHeaders();        const response = await authFetch(`/pf/employees`, {            method: 'GET',            headers,        });        if (!response.ok) {            const errorData = await response.json().catch(() => ({ message: 'Failed to fetch PF employees' }));            return { status: false, message: errorData.message || `HTTP error! status: ${response.status}` };        }        const result = await response.json();        return result;    } catch (error) {        console.error('Error fetching PF employees:', error);        return {            status: false,            message: error instanceof Error ? error.message : 'An unexpected error occurred',        };    }}
+
+import { authFetch } from '@/lib/auth';
+
+export interface PFEmployee {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    department: string;
+    subDepartment: string;
+    designation: string;
+    employeeContribution: number;
+    employerContribution: number;
+    totalPFBalance: number;
+    lastContributionMonth: string;
+    totalMonths: number;
+}
+
+// Get all PF employees with their balances
+export async function getPFEmployees(): Promise<{ status: boolean; data?: PFEmployee[]; message?: string }> {
+    try {
+        const response = await authFetch(`/pf/employees`, {
+            method: 'GET',
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            return {
+                status: false,
+                message: result.message || `HTTP error! status: ${response.status}`
+            };
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error fetching PF employees:', error);
+        return {
+            status: false,
+            message: error instanceof Error ? error.message : 'An unexpected error occurred',
+        };
+    }
+}

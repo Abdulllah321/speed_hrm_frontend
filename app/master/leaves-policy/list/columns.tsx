@@ -74,7 +74,7 @@ import { Badge } from "@/components/ui/badge";
 import { getLeaveTypes, LeaveType } from "@/lib/actions/leave-type";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface LeaveTypeRow {
   id: number;

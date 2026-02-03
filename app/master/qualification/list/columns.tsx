@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Qualification, updateQualification, deleteQualification } from "@/lib/actions/qualification";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type QualificationRow = Qualification & { id: string };
 

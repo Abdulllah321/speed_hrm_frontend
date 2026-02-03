@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { RebateNature, updateRebateNature, deleteRebateNature } from "@/lib/actions/rebate-nature";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import {
   Select,
   SelectContent,

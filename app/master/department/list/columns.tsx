@@ -37,7 +37,7 @@ import { toast } from "sonner";
 import { Department, updateDepartment, deleteDepartment } from "@/lib/actions/department";
 import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { Autocomplete } from "@/components/ui/autocomplete";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type DepartmentRow = Department & { id: string };
 

@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { LeaveType, updateLeaveType, deleteLeaveType } from "@/lib/actions/leave-type";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type LeaveTypeRow = LeaveType & { id: string };
 

@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Bank, updateBank, deleteBank } from "@/lib/actions/bank";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type BankRow = Bank & { id: string };
 

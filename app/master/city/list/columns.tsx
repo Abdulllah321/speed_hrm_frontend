@@ -36,7 +36,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { City, Country, State, updateCity, deleteCity, getStatesByCountry } from "@/lib/actions/city";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type CityRow = City & { id: string };
 

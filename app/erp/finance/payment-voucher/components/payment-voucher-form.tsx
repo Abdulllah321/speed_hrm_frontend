@@ -19,8 +19,6 @@ import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { voucherStore } from "@/lib/voucher-store";
-import { PaymentVoucher } from "@/lib/actions/payment-voucher";
 
 export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] }) {
     const router = useRouter();
@@ -65,21 +63,6 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
             setIsPending(true);
             const result = await createPaymentVoucher(values);
             if (result.status) {
-                // Add to client-side state for immediate visibility
-                const newPv: PaymentVoucher = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    ...values,
-                    status: "pending",
-                    createdAt: new Date(),
-                    createdBy: "Current User",
-                    creditAccountName: accounts.find(a => a.id === values.creditAccountId)?.name || "Account",
-                    details: values.details.map(d => ({
-                        ...d,
-                        accountName: accounts.find(a => a.id === d.accountId)?.name || "Account"
-                    }))
-                };
-                voucherStore.addPaymentVoucher(newPv);
-
                 toast.success(result.message);
                 router.push("/finance/payment-voucher/list");
             } else {

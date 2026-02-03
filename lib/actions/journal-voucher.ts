@@ -7,7 +7,7 @@ const API_URL = process.env.API_URL || "http://localhost:5000/api";
 
 export interface JournalVoucherDetail {
     accountId: string;
-    accountName?: string;
+    accountName?: string; // Optional for display
     debit: number;
     credit: number;
 }
@@ -18,87 +18,48 @@ export interface JournalVoucher {
     jvDate: string;
     description: string;
     details: JournalVoucherDetail[];
-    status: "pending" | "approved" | "rejected";
+    status: string;
     createdAt: string;
     updatedAt: string;
 }
 
-// Persistent mock data for demonstration
-let mockJournalVouchers: JournalVoucher[] = [
-    {
-        id: "1",
-        jvNo: "JV2601002",
-        jvDate: "2026-01-23",
-        description: "Office utility payment",
-        status: "approved",
-        details: [
-            { accountId: "acc1", accountName: "OTHER UTILITY CHARGES C/O FACTORY", debit: 1000, credit: 0 },
-            { accountId: "acc2", accountName: "MEEZAN BANK- SA(0759)", debit: 0, credit: 1000 },
-        ],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-    {
-        id: "2",
-        jvNo: "JV2601001",
-        jvDate: "2026-01-21",
-        description: "Vehicle purchase partial payment",
-        status: "pending",
-        details: [
-            { accountId: "acc3", accountName: "CURRENT LIABILITIES", debit: 2000, credit: 0 },
-            { accountId: "acc4", accountName: "VEHICLES", debit: 0, credit: 2000 },
-        ],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-    },
-];
-
 export async function getJournalVouchers() {
     try {
         const token = await getAccessToken();
-        const response = await fetch(`${API_URL}/finance/journal-vouchers`, {
+        const response = await fetch(`${API_URL}/finance/journal-voucher`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
-            cache: 'no-store', // Disable fetch caching
+            cache: 'no-store',
             next: { revalidate: 0 }
         });
 
-        let apiData = [];
-        if (response.ok) {
-            apiData = await response.json();
+        if (!response.ok) {
+            console.error("Failed to fetch journal vouchers", response.status, response.statusText);
+            return {
+                status: false,
+                data: []
+            };
         }
 
-        // Merge API data with mock data, preferred mock data for demonstration
-        const combined = Array.isArray(apiData) ? [...apiData, ...mockJournalVouchers] : [...mockJournalVouchers];
-
+        const data = await response.json();
         return {
             status: true,
-            data: combined.sort((a, b) => new Date(b.jvDate).getTime() - new Date(a.jvDate).getTime())
+            data: data
         };
     } catch (error) {
+        console.error("Error fetching journal vouchers:", error);
         return {
-            status: true,
-            data: [...mockJournalVouchers].sort((a, b) => new Date(b.jvDate).getTime() - new Date(a.jvDate).getTime())
+            status: false,
+            data: []
         };
     }
 }
 
 export async function createJournalVoucher(data: any) {
     try {
-        // Always add to mock for immediate visibility in this demo phase
-        const newJv: JournalVoucher = {
-            id: Math.random().toString(36).substr(2, 9),
-            ...data,
-            jvDate: data.jvDate instanceof Date ? data.jvDate.toISOString() : data.jvDate,
-            status: "pending",
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-        mockJournalVouchers.unshift(newJv); // Add to beginning
-
         const token = await getAccessToken();
-        const response = await fetch(`${API_URL}/finance/journal-vouchers`, {
+        const response = await fetch(`${API_URL}/finance/journal-voucher`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -107,17 +68,22 @@ export async function createJournalVoucher(data: any) {
             body: JSON.stringify(data),
         });
 
-        console.log("JV Created (Mocked & Sent to API):", newJv.jvNo);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            return {
+                status: false,
+                message: errorData.message || `Failed to create Journal Voucher: ${response.statusText}`
+            };
+        }
 
-        revalidatePath("/erp/finance/journal-voucher/list");
-        revalidatePath("/finance/journal-voucher/list");
-        revalidatePath("/", "layout"); // Aggressive revalidation
+        const result = await response.json();
 
-        return { status: true, message: "Journal Voucher created successfully" };
-    } catch (error) {
-        console.error("JV Creation Fallback to Mock Only", error);
         revalidatePath("/finance/journal-voucher/list");
-        revalidatePath("/", "layout");
-        return { status: true, message: "Journal Voucher created successfully (Offline Mode)" };
+        revalidatePath("/erp/finance/journal-voucher/list"); // Ensure correct path revalidation
+
+        return { status: true, message: "Journal Voucher created successfully", data: result };
+    } catch (error: any) {
+        console.error("Error creating journal voucher:", error);
+        return { status: false, message: error.message || "An unexpected error occurred" };
     }
 }

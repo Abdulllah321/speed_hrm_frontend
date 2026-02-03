@@ -38,7 +38,7 @@ import { toast } from "sonner";
 import { updateSalaryBreakup, deleteSalaryBreakup } from "@/lib/actions/salary-breakup";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type SalaryBreakupRow = {
   id: string;

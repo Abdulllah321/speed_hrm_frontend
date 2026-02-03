@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Equipment, updateEquipment, deleteEquipment } from "@/lib/actions/equipment";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type EquipmentRow = Equipment & { id: string };
 

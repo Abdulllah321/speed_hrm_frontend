@@ -20,7 +20,6 @@ import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
-import { voucherStore } from "@/lib/voucher-store";
 import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -39,15 +38,9 @@ export function ReceiptVoucherList({
     const [vouchers, setVouchers] = useState<ReceiptVoucher[]>(initialData);
     const [showFilterInfo, setShowFilterInfo] = useState(false);
 
-    // Merge client-side session state with server-side initial data
+    // Use initial data directly as it comes from the server
     useEffect(() => {
-        const localRVs = voucherStore.getReceiptVouchers();
-        const combined = [...localRVs, ...initialData];
-        const unique = combined.filter((v, index, self) =>
-            index === self.findIndex((t) => t.id === v.id)
-        );
-
-        setVouchers(unique.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        setVouchers(initialData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     }, [initialData]);
 
     const columns = useMemo<ColumnDef<ReceiptVoucher>[]>(() => [
@@ -78,12 +71,14 @@ export function ReceiptVoucherList({
                 <div className="space-y-1 min-w-[200px]">
                     <div className="flex justify-between text-[11px] font-bold border-b border-slate-200 pb-1 mb-1">
                         <span className="text-slate-500">DR:</span>
-                        <span className="text-slate-800">{row.original.debitAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <span className="text-slate-800 ml-1">{row.original.debitAccountName}</span>
+                        <span className="text-slate-800 ml-auto">{row.original.debitAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                     {row.original.details.map((d, di) => (
                         <div key={di} className="flex justify-between text-[11px]">
                             <span className="text-green-600">CR:</span>
-                            <span className="font-bold text-slate-700">{d.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            <span className="text-slate-700 ml-1">{d.accountName}</span>
+                            <span className="font-bold text-slate-700 ml-auto">{d.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                     ))}
                 </div>

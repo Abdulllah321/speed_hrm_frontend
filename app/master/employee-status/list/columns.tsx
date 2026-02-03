@@ -36,7 +36,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { EmployeeStatus, updateEmployeeStatus, deleteEmployeeStatus } from "@/lib/actions/employee-status";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type EmployeeStatusRow = EmployeeStatus & { id: string; sno?: number };
 

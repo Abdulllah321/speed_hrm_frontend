@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent, CardAction } from "@/components/ui/card";
 import Link from "next/link";
-import { voucherStore } from "@/lib/voucher-store";
+
 import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -37,15 +37,9 @@ export function JournalVoucherList({
     const [vouchers, setVouchers] = useState<JournalVoucher[]>(initialData);
     const [showFilterInfo, setShowFilterInfo] = useState(false);
 
-    // Merge client-side session state with server-side initial data
+    // Use initial data directly as it comes from the server
     useEffect(() => {
-        const localJVs = voucherStore.getJournalVouchers();
-        const combined = [...localJVs, ...initialData];
-        const unique = combined.filter((v, index, self) =>
-            index === self.findIndex((t) => t.id === v.id)
-        );
-
-        setVouchers(unique.sort((a, b) => new Date(b.jvDate).getTime() - new Date(a.jvDate).getTime()));
+        setVouchers(initialData.sort((a, b) => new Date(b.jvDate).getTime() - new Date(a.jvDate).getTime()));
     }, [initialData]);
 
     const columns = useMemo<ColumnDef<JournalVoucher>[]>(() => [

@@ -35,7 +35,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MaritalStatus, updateMaritalStatus, deleteMaritalStatus } from "@/lib/actions/marital-status";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type MaritalStatusRow = MaritalStatus & { id: string };
 

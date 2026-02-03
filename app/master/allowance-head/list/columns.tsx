@@ -37,7 +37,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { AllowanceHead, updateAllowanceHead, deleteAllowanceHead } from "@/lib/actions/allowance-head";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type AllowanceHeadRow = AllowanceHead & { id: string };
 

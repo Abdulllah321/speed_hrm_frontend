@@ -13,12 +13,11 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Plus, Trash2, Loader2, CreditCard, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createReceiptVoucher, type ReceiptVoucher } from "@/lib/actions/receipt-voucher";
+import { createReceiptVoucher } from "@/lib/actions/receipt-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { voucherStore } from "@/lib/voucher-store";
 
 export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] }) {
     const router = useRouter();
@@ -35,9 +34,10 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
             chequeNo: "",
             chequeDate: undefined,
             description: "",
+            debitAccountId: "",
+            debitAmount: 0,
             details: [
-                { accountId: "", debit: 0, credit: 0 },
-                { accountId: "", debit: 0, credit: 0 }
+                { accountId: "", credit: 0 },
             ],
         },
     });
@@ -62,24 +62,6 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
             setIsPending(true);
             const result = await createReceiptVoucher(values);
             if (result.status) {
-                // Add to client-side state for immediate visibility
-                const newRv: ReceiptVoucher = {
-                    id: Math.random().toString(36).substr(2, 9),
-                    ...values,
-                    status: "pending",
-                    createdAt: new Date(),
-                    createdBy: "Current User",
-                    debitAccountId: values.details[0]?.accountId || "",
-                    debitAccountName: accounts.find(a => a.id === (values.details[0]?.accountId))?.name || "Account",
-                    debitAmount: values.details.reduce((sum, d) => sum + (d.debit || 0), 0),
-                    details: values.details.map(d => ({
-                        accountId: d.accountId,
-                        accountName: accounts.find(a => a.id === d.accountId)?.name || "Account",
-                        credit: d.credit || 0
-                    }))
-                };
-                voucherStore.addReceiptVoucher(newRv);
-
                 toast.success(result.message);
                 router.push("/finance/receipt-voucher/list");
             } else {
@@ -93,9 +75,9 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
     };
 
     const watchDetails = form.watch("details") || [];
-    const totalDebit = watchDetails.reduce((sum, detail) => sum + (Number(detail.debit) || 0), 0);
     const totalCredit = watchDetails.reduce((sum, detail) => sum + (Number(detail.credit) || 0), 0);
-    const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
+    const debitAmount = form.watch("debitAmount") || 0;
+    const isBalanced = Math.abs(totalCredit - debitAmount) < 0.01 && debitAmount > 0;
 
     return (
         <Card className="w-full border-none shadow-none bg-transparent">
@@ -172,6 +154,39 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         )}
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-6">
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Debit To (Account) <span className="text-destructive">*</span></Label>
+                            <Controller
+                                control={form.control}
+                                name="debitAccountId"
+                                render={({ field }) => (
+                                    <Autocomplete
+                                        options={accounts.map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}` }))}
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                        placeholder="Select Bank/Cash Account"
+                                    />
+                                )}
+                            />
+                            {form.formState.errors.debitAccountId && (
+                                <p className="text-xs text-destructive">{form.formState.errors.debitAccountId.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Total Amount <span className="text-destructive">*</span></Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                {...form.register("debitAmount", { valueAsNumber: true })}
+                                className="text-lg font-bold"
+                            />
+                            {form.formState.errors.debitAmount && (
+                                <p className="text-xs text-destructive">{form.formState.errors.debitAmount.message}</p>
+                            )}
+                        </div>
+                    </div>
+
                     <div className="space-y-4 pt-4">
                         <div className="flex items-center justify-between">
                             <h3 className="text-lg font-bold">{voucherType === "bank" ? "Bank" : "Cash"} Receipt Voucher Detail</h3>
@@ -179,7 +194,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => append({ accountId: "", debit: 0, credit: 0 })}
+                                    onClick={() => append({ accountId: "", credit: 0 })}
                                     className="h-9 px-4 rounded-md font-bold"
                                 >
                                     Add More RV's Rows
@@ -195,7 +210,6 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 <thead className="bg-[#EAEEF2] font-bold text-slate-700">
                                     <tr className="border-b border-slate-300">
                                         <th className="px-4 py-3 text-left">Account Head</th>
-                                        <th className="px-4 py-3 text-left w-[150px]">Debit <span className="text-destructive">*</span></th>
                                         <th className="px-4 py-3 text-left w-[150px]">Credit <span className="text-destructive">*</span></th>
                                         <th className="px-4 py-3 text-center w-[80px]">Action</th>
                                     </tr>
@@ -216,15 +230,6 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                             className="border-none bg-transparent focus-visible:ring-0 shadow-none h-10"
                                                         />
                                                     )}
-                                                />
-                                            </td>
-                                            <td className="px-2 py-2">
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    {...form.register(`details.${index}.debit`, { valueAsNumber: true })}
-                                                    placeholder="Debit"
-                                                    className="border-slate-300 h-10 text-right font-medium"
                                                 />
                                             </td>
                                             <td className="px-2 py-2">
@@ -258,15 +263,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 </tbody>
                                 <tfoot className="bg-white border-t-2 border-slate-800">
                                     <tr className="divide-x divide-slate-200">
-                                        <td className="px-4 py-4 text-right font-bold bg-slate-50/30"></td>
-                                        <td className="px-2 py-4">
-                                            <div className={cn(
-                                                "p-2 rounded-md border text-center font-bold text-lg min-h-[44px] flex items-center justify-center",
-                                                totalDebit > 0 ? "bg-slate-100 border-slate-300 text-slate-700" : "bg-slate-100 border-slate-300 text-transparent"
-                                            )}>
-                                                {totalDebit > 0 ? totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ""}
-                                            </div>
-                                        </td>
+                                        <td className="px-4 py-4 text-right font-bold bg-slate-50/30">Totals:</td>
                                         <td className="px-2 py-4">
                                             <div className={cn(
                                                 "p-2 rounded-md border text-center font-bold text-lg min-h-[44px] flex items-center justify-center",
@@ -278,9 +275,9 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         <td className="bg-slate-50/30">
                                             <div className={cn(
                                                 "p-2 rounded-md border text-center font-bold text-lg min-h-[44px] flex items-center justify-center",
-                                                isBalanced ? "bg-green-100 border-green-200 text-green-700" : (totalDebit > 0 || totalCredit > 0) ? "bg-red-100 border-red-200 text-red-700" : "bg-slate-100 border-slate-300"
+                                                isBalanced ? "bg-green-100 border-green-200 text-green-700" : (totalCredit > 0) ? "bg-red-100 border-red-200 text-red-700" : "bg-slate-100 border-slate-300"
                                             )}>
-                                                {isBalanced ? "✓" : (totalDebit > 0 || totalCredit > 0) ? "!" : ""}
+                                                {isBalanced ? "✓" : (totalCredit > 0) ? "!" : ""}
                                             </div>
                                         </td>
                                     </tr>

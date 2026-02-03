@@ -104,7 +104,7 @@ export default function CreateLeavePage() {
       try {
         setLoading(true);
         setLoadingRequests(true);
-        
+
         // Fetch leave balance and requests in parallel
         const [balanceResult, requestsResult] = await Promise.all([
           getEmployeeLeaveBalance(selectedEmployeeId),
@@ -292,11 +292,11 @@ export default function CreateLeavePage() {
             getEmployeeLeaveBalance(selectedEmployeeId),
             getLeaveRequests({ employeeId: selectedEmployeeId }),
           ]);
-          
+
           if (balanceResult.status && balanceResult.data) {
             setLeaveInfo(balanceResult.data);
           }
-          
+
           if (requestsResult.status && requestsResult.data) {
             setEmployeeLeaveRequests(requestsResult.data);
           }
@@ -362,11 +362,11 @@ export default function CreateLeavePage() {
               />
             ) : (
               <div className="p-3 bg-muted rounded-md border text-sm font-medium">
-                {selectedEmployeeId 
+                {selectedEmployeeId
                   ? employees.find(e => e.id === selectedEmployeeId)?.employeeName || "Loading..."
-                  : "Loading..."} 
-                {selectedEmployeeId && employees.find(e => e.id === selectedEmployeeId)?.employeeId 
-                  ? ` (${employees.find(e => e.id === selectedEmployeeId)?.employeeId})` 
+                  : "Loading..."}
+                {selectedEmployeeId && employees.find(e => e.id === selectedEmployeeId)?.employeeId
+                  ? ` (${employees.find(e => e.id === selectedEmployeeId)?.employeeId})`
                   : ""}
               </div>
             )}
@@ -434,7 +434,7 @@ export default function CreateLeavePage() {
             <CardHeader>
               <CardTitle >
                 SELECT LEAVE TYPE
-                <hr className="mt-2"/>
+                <hr className="mt-2" />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
