@@ -1,9 +1,7 @@
 "use server";
 
-import { getAccessToken } from "@/lib/auth";
+import { authFetch } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-
-const API_URL = process.env.API_URL || "http://localhost:5000/api";
 
 export interface PaymentVoucher {
     id: string;
@@ -33,16 +31,12 @@ export interface PaymentVoucher {
 
 export async function getPaymentVouchers(type?: "bank" | "cash") {
     try {
-        const token = await getAccessToken();
-        const url = new URL(`${API_URL}/finance/payment-vouchers`);
+        const queryParams = new URLSearchParams();
         if (type) {
-            url.searchParams.append("type", type);
+            queryParams.append("type", type);
         }
 
-        const response = await fetch(url.toString(), {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+        const response = await authFetch(`/finance/payment-vouchers?${queryParams.toString()}`, {
             cache: 'no-store',
             next: { revalidate: 0 }
         });
@@ -83,8 +77,6 @@ export async function getPaymentVouchers(type?: "bank" | "cash") {
 
 export async function createPaymentVoucher(data: any) {
     try {
-        const token = await getAccessToken();
-
         // Ensure dates are stringified if they aren't already
         const payload = {
             ...data,
@@ -93,12 +85,8 @@ export async function createPaymentVoucher(data: any) {
             chequeDate: data.chequeDate ? new Date(data.chequeDate).toISOString() : undefined,
         };
 
-        const response = await fetch(`${API_URL}/finance/payment-vouchers`, {
+        const response = await authFetch("/finance/payment-vouchers", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify(payload),
         });
 
@@ -106,7 +94,7 @@ export async function createPaymentVoucher(data: any) {
             const errorData = await response.json().catch(() => ({}));
             return {
                 status: false,
-                message: errorData.message || `Failed to create Payment Voucher: ${response.statusText}`
+                message: errorData.message || `Failed to create Payment Voucher: ${response.statusText || response.status}`
             };
         }
 

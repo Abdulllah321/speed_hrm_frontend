@@ -1,9 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getAccessToken } from "@/lib/auth";
-
-const API_URL = process.env.API_URL || "http://localhost:5000/api";
+import { authFetch } from "@/lib/auth";
 
 export interface JournalVoucherDetail {
     accountId: string;
@@ -25,17 +23,13 @@ export interface JournalVoucher {
 
 export async function getJournalVouchers() {
     try {
-        const token = await getAccessToken();
-        const response = await fetch(`${API_URL}/finance/journal-voucher`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
+        const response = await authFetch("/finance/journal-voucher", {
             cache: 'no-store',
             next: { revalidate: 0 }
         });
 
         if (!response.ok) {
-            console.error("Failed to fetch journal vouchers", response.status, response.statusText);
+            console.error("Failed to fetch journal vouchers", response.status);
             return {
                 status: false,
                 data: []
@@ -58,13 +52,8 @@ export async function getJournalVouchers() {
 
 export async function createJournalVoucher(data: any) {
     try {
-        const token = await getAccessToken();
-        const response = await fetch(`${API_URL}/finance/journal-voucher`, {
+        const response = await authFetch("/finance/journal-voucher", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-            },
             body: JSON.stringify(data),
         });
 
@@ -72,7 +61,7 @@ export async function createJournalVoucher(data: any) {
             const errorData = await response.json().catch(() => ({}));
             return {
                 status: false,
-                message: errorData.message || `Failed to create Journal Voucher: ${response.statusText}`
+                message: errorData.message || `Failed to create Journal Voucher: ${response.statusText || response.status}`
             };
         }
 
