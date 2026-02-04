@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useMemo } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, SalaryBreakupRow } from "./columns";
 import { SalaryBreakup } from "@/lib/actions/salary-breakup";
 import { toast } from "sonner";
@@ -97,6 +97,8 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
 
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("salary-breakup.create");
+  const canBulkEdit = hasPermission("salary-breakup.update");
+  const canBulkDelete = hasPermission("salary-breakup.delete");
 
   const handleToggle = () => {
     router.push("/master/salary-breakup/add");
@@ -269,6 +271,8 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
         ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="salary-breakup-list"
       />
 

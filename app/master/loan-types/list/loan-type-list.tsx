@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, LoanTypeRow } from "./columns";
 import {
   LoanType,
@@ -38,6 +38,8 @@ export function LoanTypeList({
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("loan-type.create");
+  const canBulkEdit = hasPermission("loan-type.update");
+  const canBulkDelete = hasPermission("loan-type.delete");
 
   const handleToggle = () => {
     router.push("/master/loan-types/add");
@@ -113,6 +115,8 @@ export function LoanTypeList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="loan-type-list"
       />
 

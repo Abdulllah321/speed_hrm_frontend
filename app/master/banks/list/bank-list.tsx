@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, BankRow } from "./columns";
 import {
   Bank,
@@ -48,6 +48,8 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
   };
 
   const showAddAction = hasPermission("master.bank.create");
+  const canBulkEdit = hasPermission("master.bank.update");
+  const canBulkDelete = hasPermission("master.bank.delete");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -133,6 +135,8 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
             searchFields={[{ key: "name", label: "Name" }]}
             onMultiDelete={handleMultiDelete}
             onBulkEdit={handleBulkEdit}
+            canBulkEdit={canBulkEdit}
+            canBulkDelete={canBulkDelete}
             tableId="bank-list"
           />
         </CardContent>

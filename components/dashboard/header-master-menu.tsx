@@ -29,7 +29,16 @@ import { createNavigationHandler } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 
-function MasterMenuItem({ item, pathname, onNavigate }: { item: MenuItem; pathname: string; onNavigate: (href: string, e: React.MouseEvent) => void }) {
+function getCategoryLabel(environment?: string) {
+  switch (environment) {
+    case "HR": return "HRM";
+    case "ERP": return "ERP";
+    case "BOTH": return "Common";
+    default: return "";
+  }
+}
+
+function MasterMenuItem({ item, pathname, onNavigate, showCategory = false }: { item: MenuItem; pathname: string; onNavigate: (href: string, e: React.MouseEvent) => void; showCategory?: boolean }) {
   const hasChildren = item.children && item.children.length > 0;
   const isChildActive = item.children?.some((child) => child.href === pathname);
 
@@ -68,7 +77,14 @@ function MasterMenuItem({ item, pathname, onNavigate }: { item: MenuItem; pathna
         pathname === item.href && "bg-accent text-accent-foreground font-medium"
       )}
     >
-      <span>{item.title}</span>
+      <div className="flex flex-col items-start gap-0.5">
+        <span>{item.title}</span>
+        {showCategory && item.environment && (
+          <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">
+            {getCategoryLabel(item.environment)}
+          </span>
+        )}
+      </div>
       <ChevronRight className="h-4 w-4 opacity-50" />
     </button>
   );
@@ -96,21 +112,24 @@ export function HeaderMasterMenu() {
   );
 
   const filteredMenu = useMemo(() => {
-    const searchLower = search.toLowerCase();
-    const filteredBySearch = search
-      ? filteredMasterMenu.filter((item) => {
+    const searchLower = search.trim().toLowerCase();
+
+    if (searchLower) {
+      const results = filteredMasterMenu.filter((item) => {
         const titleMatch = item.title.toLowerCase().includes(searchLower);
         const childMatch = item.children?.some((child) =>
           child.title.toLowerCase().includes(searchLower)
         );
         return titleMatch || childMatch;
-      })
-      : filteredMasterMenu;
+      });
+      return { results, isSearch: true };
+    }
 
     return {
-      COMMON: filteredBySearch.filter(item => item.environment === "BOTH"),
-      HRM: filteredBySearch.filter(item => item.environment === "HR"),
-      ERP: filteredBySearch.filter(item => item.environment === "ERP"),
+      COMMON: filteredMasterMenu.filter(item => item.environment === "BOTH"),
+      HRM: filteredMasterMenu.filter(item => item.environment === "HR"),
+      ERP: filteredMasterMenu.filter(item => item.environment === "ERP"),
+      isSearch: false
     };
   }, [search, filteredMasterMenu]);
 
@@ -136,9 +155,9 @@ export function HeaderMasterMenu() {
         <div className="flex flex-col h-full bg-background/95 backdrop-blur-md">
           <SheetHeader className="px-6 pt-6 pb-4 border-b space-y-4">
             <div className="flex items-center justify-between">
-              <SheetTitle className="flex items-center gap-3 text-xl font-bold tracking-tight">
-                <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                  <Database className="h-6 w-6" />
+              <SheetTitle className="flex items-center gap-3 font-bold tracking-tight">
+                <div className="p-1 rounded-xl bg-primary/10 text-primary">
+                  <Database className="h-4 w-4" />
                 </div>
                 Master Repository
               </SheetTitle>
@@ -149,33 +168,16 @@ export function HeaderMasterMenu() {
                 placeholder="Search master records..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 h-11 bg-secondary/50 border-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all rounded-xl"
+                className="pl-10 h-8 bg-secondary/50 border-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all rounded-xl"
               />
             </div>
           </SheetHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0" variant="underline">
-            <div className="px-6 py-2 border-b bg-secondary/20">
-              <TabsList className="grid w-full grid-cols-3 h-10 p-1 bg-background/50 backdrop-blur rounded-lg">
-                <TabsTrigger value="COMMON" className="text-xs font-semibold gap-2 rounded-md transition-all data-[state=active]:shadow-sm">
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  Common
-                </TabsTrigger>
-                <TabsTrigger value="HRM" className="text-xs font-semibold gap-2 rounded-md transition-all data-[state=active]:shadow-sm">
-                  <Users className="h-3.5 w-3.5" />
-                  HRM
-                </TabsTrigger>
-                <TabsTrigger value="ERP" className="text-xs font-semibold gap-2 rounded-md transition-all data-[state=active]:shadow-sm">
-                  <Package className="h-3.5 w-3.5" />
-                  ERP
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value={activeTab} className="flex-1 mt-0 min-h-0 overflow-hidden outline-none">
-              <ScrollArea className="h-full" showShadows>
+          {filteredMenu.isSearch ? (
+            <div className="flex-1 flex flex-col min-h-0">
+              <ScrollArea className="flex-1" showShadows>
                 <div className="px-6 py-4 space-y-1">
-                  {filteredMenu[activeTab as keyof typeof filteredMenu].length === 0 ? (
+                  {(filteredMenu as any).results.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground animate-in fade-in slide-in-from-bottom-2 duration-300">
                       <div className="p-4 rounded-full bg-secondary/50 mb-3">
                         <Search className="h-8 w-8 opacity-20" />
@@ -184,21 +186,68 @@ export function HeaderMasterMenu() {
                       <p className="text-xs opacity-70">Try searching for something else</p>
                     </div>
                   ) : (
-                    <div className="grid gap-1.5 animate-in fade-in slide-in-from-right-2 duration-300">
-                      {filteredMenu[activeTab as keyof typeof filteredMenu].map((item) => (
+                    <div className="grid gap-1.5 animate-in fade-in duration-300">
+                      {(filteredMenu as any).results.map((item: any) => (
                         <MasterMenuItem
                           key={item.title}
                           item={item}
                           pathname={pathname}
                           onNavigate={handleClick}
+                          showCategory={true}
                         />
                       ))}
                     </div>
                   )}
                 </div>
               </ScrollArea>
-            </TabsContent>
-          </Tabs>
+            </div>
+          ) : (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0" variant="underline">
+              <div className="px-0 pt-3 border-b bg-secondary/20">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="COMMON">
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    Common
+                  </TabsTrigger>
+                  <TabsTrigger value="HRM">
+                    <Users className="h-3.5 w-3.5" />
+                    HRM
+                  </TabsTrigger>
+                  <TabsTrigger value="ERP">
+                    <Package className="h-3.5 w-3.5" />
+                    ERP
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+
+              <TabsContent value={activeTab} className="flex-1 mt-0 min-h-0 overflow-hidden outline-none">
+                <ScrollArea className="h-full" showShadows>
+                  <div className="px-6 py-4 space-y-1">
+                    {(filteredMenu as any)[activeTab].length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div className="p-4 rounded-full bg-secondary/50 mb-3">
+                          <Search className="h-8 w-8 opacity-20" />
+                        </div>
+                        <p className="text-sm font-medium">No results found</p>
+                        <p className="text-xs opacity-70">Check your permissions or active module</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-1.5 animate-in fade-in slide-in-from-right-2 duration-300">
+                        {(filteredMenu as any)[activeTab].map((item: any) => (
+                          <MasterMenuItem
+                            key={item.title}
+                            item={item}
+                            pathname={pathname}
+                            onNavigate={handleClick}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
+          )}
 
         </div>
       </SheetContent>

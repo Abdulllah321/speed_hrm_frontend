@@ -159,6 +159,10 @@ type DataTableProps<TData extends DataTableRow> = {
   onFilterChange?: (key: string, value: string) => void;
   resetFilterKey?: string; // Key to reset a specific filter when it changes
   tableId?: string; // Unique identifier for localStorage persistence
+  canBulkEdit?: boolean;
+  canBulkDelete?: boolean;
+  canRowEdit?: boolean;
+  canRowDelete?: boolean;
 };
 
 export default function DataTable<TData extends DataTableRow>({
@@ -178,6 +182,10 @@ export default function DataTable<TData extends DataTableRow>({
   onFilterChange,
   resetFilterKey,
   tableId,
+  canBulkEdit = true,
+  canBulkDelete = true,
+  canRowEdit = true,
+  canRowDelete = true,
 }: DataTableProps<TData>) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -188,14 +196,14 @@ export default function DataTable<TData extends DataTableRow>({
     pageSize: 10,
   });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  
+
   // Get preferences from AuthProvider
   const { getPreference, updatePreference } = useAuth();
-  
+
   // Storage key for column visibility
   const storageKey = tableId ? `table-column-visibility-${tableId}` : null;
   const isInitialMount = useRef(true);
-  
+
   // Initialize column visibility from AuthProvider preferences
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
     if (!storageKey) return {};
@@ -224,7 +232,7 @@ export default function DataTable<TData extends DataTableRow>({
         header: "Actions",
         cell: ({ row }: { row: any }) => (
           <div className="flex items-center gap-2">
-            {onRowEdit && (
+            {onRowEdit && canRowEdit && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -234,7 +242,7 @@ export default function DataTable<TData extends DataTableRow>({
                 <PencilIcon size={16} />
               </Button>
             )}
-            {onRowDelete && (
+            {onRowDelete && canRowDelete && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -249,7 +257,7 @@ export default function DataTable<TData extends DataTableRow>({
         ),
       },
     ];
-  }, [columns, onRowEdit, onRowDelete]);
+  }, [columns, onRowEdit, onRowDelete, canRowEdit, canRowDelete]);
 
   const table = useReactTable({
     data,
@@ -381,9 +389,9 @@ export default function DataTable<TData extends DataTableRow>({
       isInitialMount.current = false;
       return;
     }
-    
+
     if (!storageKey) return;
-    
+
     updatePreference(storageKey, columnVisibility);
   }, [columnVisibility, storageKey, updatePreference]);
 
@@ -483,7 +491,7 @@ export default function DataTable<TData extends DataTableRow>({
           <div className="flex items-center gap-3">
             {table.getSelectedRowModel().rows.length > 0 && (
               <>
-                {onBulkEdit && (
+                {onBulkEdit && canBulkEdit && (
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -501,7 +509,7 @@ export default function DataTable<TData extends DataTableRow>({
                     </span>
                   </Button>
                 )}
-                {onMultiDelete && (
+                {onMultiDelete && canBulkDelete && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -594,7 +602,7 @@ export default function DataTable<TData extends DataTableRow>({
                             <div
                               className={cn(
                                 header.column.getCanSort() &&
-                                  "flex h-full cursor-pointer items-center justify-between gap-2 select-none hover:text-foreground transition-colors"
+                                "flex h-full cursor-pointer items-center justify-between gap-2 select-none hover:text-foreground transition-colors"
                               )}
                               onClick={header.column.getToggleSortingHandler()}
                               onKeyDown={(e) => {
@@ -663,7 +671,7 @@ export default function DataTable<TData extends DataTableRow>({
                           index % 2 === 0 ? "bg-transparent" : "bg-muted/20",
                           "hover:bg-accent/50",
                           isNew &&
-                            "bg-primary/10 animate-pulse ring-1 ring-primary/30"
+                          "bg-primary/10 animate-pulse ring-1 ring-primary/30"
                         )}
                       >
                         {row.getVisibleCells().map((cell) => (
@@ -761,8 +769,8 @@ export default function DataTable<TData extends DataTableRow>({
                   -
                   {Math.min(
                     table.getState().pagination.pageIndex *
-                      table.getState().pagination.pageSize +
-                      table.getState().pagination.pageSize,
+                    table.getState().pagination.pageSize +
+                    table.getState().pagination.pageSize,
                     table.getRowCount()
                   )}
                 </span>{" "}

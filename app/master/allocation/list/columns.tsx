@@ -100,7 +100,7 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
     const item = row.original;
     const router = useRouter();
-    const { hasPermission, isAdmin } = useAuth();
+    const { hasPermission } = useAuth();
     const [isPending, startTransition] = useTransition();
     const [editDialog, setEditDialog] = useState(false);
     const [deleteDialog, setDeleteDialog] = useState(false);
