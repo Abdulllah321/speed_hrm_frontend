@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import DataTable, { FilterConfig } from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, setCountriesStore, CityRow } from "./columns";
 import { City, Country, State, deleteCities, updateCities, getStatesByCountry } from "@/lib/actions/city";
 import { toast } from "sonner";
@@ -42,6 +42,8 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
 
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("city.create");
+  const canBulkEdit = hasPermission("city.update");
+  const canBulkDelete = hasPermission("city.delete");
 
   const handleToggle = () => {
     router.push("/master/city/add");
@@ -189,6 +191,8 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
         filters={[countryFilter]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="city-list"
       />
 

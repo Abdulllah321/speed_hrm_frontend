@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, EmployeeGradeRow } from "./columns";
 import {
   EmployeeGrade,
@@ -43,6 +43,8 @@ export function EmployeeGradeList({
   };
 
   const showAddAction = hasPermission("master.employee-grade.create");
+  const canBulkEdit = hasPermission("master.employee-grade.update");
+  const canBulkDelete = hasPermission("master.employee-grade.delete");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -115,6 +117,8 @@ export function EmployeeGradeList({
         searchFields={[{ key: "grade", label: "Grade" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="employee-grade-list"
       />
 

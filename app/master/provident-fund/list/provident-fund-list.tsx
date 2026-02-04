@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, ProvidentFundRow } from "./columns";
 import {
   ProvidentFund,
@@ -39,6 +39,8 @@ export function ProvidentFundList({
   const [editRows, setEditRows] = useState<{ id: string; name: string; percentage: string }[]>([]);
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("provident-fund.create");
+  const canBulkEdit = hasPermission("provident-fund.update");
+  const canBulkDelete = hasPermission("provident-fund.delete");
 
   const handleToggle = () => {
     router.push("/master/provident-fund/add");
@@ -134,6 +136,8 @@ export function ProvidentFundList({
         ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="provident-fund-list"
       />
 

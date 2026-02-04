@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import DataTable, { FilterConfig } from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, setDepartmentsStore, SubDepartmentRow } from "./columns";
 import {
   Department,
@@ -57,6 +57,8 @@ export function SubDepartmentList({
 
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("master.sub-department.create");
+  const canBulkEdit = hasPermission("master.sub-department.update");
+  const canBulkDelete = hasPermission("master.sub-department.delete");
 
   const handleToggle = () => {
     router.push("/master/sub-department/add");
@@ -153,6 +155,8 @@ export function SubDepartmentList({
         filters={[departmentFilter]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="sub-department-list"
       />
 

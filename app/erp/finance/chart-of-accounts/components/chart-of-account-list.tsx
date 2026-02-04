@@ -39,8 +39,7 @@ export function ChartOfAccountList({ initialData, permissions }: ChartOfAccountL
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-  const [expanded, setExpanded] = React.useState<ExpandedState>({});
+  const [expanded, setExpanded] = React.useState<ExpandedState>(true);
 
   // Transform flat data to tree
   const data = React.useMemo(() => {
@@ -81,7 +80,6 @@ export function ChartOfAccountList({ initialData, permissions }: ChartOfAccountL
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
     onExpandedChange: setExpanded,
     getExpandedRowModel: getExpandedRowModel(),
     getSubRows: (row) => row.children,
@@ -89,7 +87,6 @@ export function ChartOfAccountList({ initialData, permissions }: ChartOfAccountL
       sorting,
       columnFilters,
       columnVisibility,
-      rowSelection,
       expanded,
     },
     initialState: {
@@ -143,9 +140,8 @@ export function ChartOfAccountList({ initialData, permissions }: ChartOfAccountL
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.2, ease: "easeInOut" }}
                     className={cn(
-                      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", // Base TableRow styles
+                      "border-b transition-colors hover:bg-muted/50", // Base TableRow styles
                       "cursor-pointer",
-                      row.getIsExpanded() && "bg-muted/50"
                     )}
                     onClick={() => row.toggleExpanded()}
                   >

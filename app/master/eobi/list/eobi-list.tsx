@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, EOBIRow } from "./columns";
 import { EOBI, deleteEOBIs, updateEOBIs } from "@/lib/actions/eobi";
 import { toast } from "sonner";
@@ -32,6 +32,8 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   const [editRows, setEditRows] = useState<{ id: string; employerContribution: number; employeeContribution: number; yearMonth: string }[]>([]);
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("master.eobi.create");
+  const canBulkEdit = hasPermission("master.eobi.update");
+  const canBulkDelete = hasPermission("master.eobi.delete");
 
   const handleToggle = () => {
     router.push("/master/eobi/add");
@@ -99,6 +101,8 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="eobi-list"
       />
 

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, DeductionHeadRow } from "./columns";
 import {
   DeductionHead,
@@ -38,6 +38,8 @@ export function DeductionHeadList({
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("deduction-head.create");
+  const canBulkEdit = hasPermission("deduction-head.update");
+  const canBulkDelete = hasPermission("deduction-head.delete");
 
   const handleToggle = () => {
     router.push("/master/deduction-head/add");
@@ -114,6 +116,8 @@ export function DeductionHeadList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="deduction-head-list"
       />
 

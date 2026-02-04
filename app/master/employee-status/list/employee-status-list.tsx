@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, EmployeeStatusRow } from "./columns";
 import {
   EmployeeStatus,
@@ -32,12 +32,16 @@ export function EmployeeStatusList({
   initialEmployeeStatuses,
   newItemId,
 }: EmployeeStatusListProps) {
-  const router = useRouter(); const { hasPermission } = useAuth();
+  const router = useRouter();
+  const { hasPermission } = useAuth();
 
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [editRows, setEditRows] = useState<{ id: string; status: string }[]>([]);
+  
   const showAddAction = hasPermission("master.employee-status.create");
+  const canBulkEdit = hasPermission("master.employee-status.update");
+  const canBulkDelete = hasPermission("master.employee-status.delete");
 
   const handleToggle = () => {
     router.push("/master/employee-status/add");
@@ -114,6 +118,8 @@ export function EmployeeStatusList({
         searchFields={[{ key: "status", label: "Status" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="employee-status-list"
       />
 

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, DepartmentRow } from "./columns";
 import {
   Department,
@@ -38,6 +38,8 @@ export function DepartmentList({
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("master.department.create");
+  const canBulkEdit = hasPermission("master.department.update");
+  const canBulkDelete = hasPermission("master.department.delete");
 
   const handleToggle = () => {
     router.push("/master/department/add");
@@ -69,12 +71,6 @@ export function DepartmentList({
     setEditRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, name: value } : r))
     );
-  };
-
-  const removeEditRow = (id: string) => {
-    if (editRows.length > 1) {
-      setEditRows((rows) => rows.filter((r) => r.id !== id));
-    }
   };
 
   const handleBulkEditSubmit = async () => {
@@ -120,6 +116,8 @@ export function DepartmentList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="department-list"
       />
 

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
 import { columns, AllocationRow } from "./columns";
 import {
     Allocation,
@@ -22,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface AllocationListProps {
     initialAllocations: Allocation[];
@@ -97,6 +97,9 @@ export function AllocationList({
         id: item.id.toString(),
     }));
 
+    const canBulkEdit = hasPermission("master.allocation.update");
+    const canBulkDelete = hasPermission("master.allocation.delete");
+
     return (
         <div className="space-y-6">
             <div>
@@ -115,6 +118,8 @@ export function AllocationList({
                 searchFields={[{ key: "name", label: "Name" }]}
                 onMultiDelete={handleMultiDelete}
                 onBulkEdit={handleBulkEdit}
+                canBulkEdit={canBulkEdit}
+                canBulkDelete={canBulkDelete}
             />
 
             {/* Bulk Edit Dialog */}

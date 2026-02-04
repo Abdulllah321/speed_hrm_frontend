@@ -31,6 +31,8 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
   const { hasPermission } = useAuth();
   const [editRows, setEditRows] = useState<{ id: string; code: string; name: string; province?: string; status?: string; contributionRate?: number }[]>([]);
   const showAddAction = hasPermission("master.social-security.create");
+  const canBulkEdit = hasPermission("master.social-security.update");
+  const canBulkDelete = hasPermission("master.social-security.delete");
 
   const handleToggle = () => {
     router.push("/master/social-security/add");
@@ -104,6 +106,8 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
         ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="social-security-institution-list"
       />
 
