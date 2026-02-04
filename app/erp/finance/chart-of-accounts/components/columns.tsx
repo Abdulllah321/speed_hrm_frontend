@@ -21,13 +21,14 @@ import { cn } from "@/lib/utils";
 
 export const columns: ColumnDef<ChartOfAccount>[] = [
   {
-    accessorKey: "code",
-    header: "Code",
-    cell: ({ row }) => <span className="font-mono text-sm">{row.getValue("code")}</span>,
-  },
-  {
     accessorKey: "name",
     header: "Name",
+    filterFn: (row, id, value) => {
+      const name = row.original.name?.toLowerCase() || "";
+      const code = row.original.code?.toLowerCase() || "";
+      const search = value.toLowerCase();
+      return name.includes(search) || code.includes(search);
+    },
     cell: ({ row }) => {
       const isGroup = row.original.isGroup;
       const indentSize = 24;

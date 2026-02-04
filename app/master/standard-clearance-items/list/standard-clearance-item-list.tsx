@@ -36,8 +36,14 @@ export function StandardClearanceItemList({
   newItemId,
 }: StandardClearanceItemListProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+
+  const showAddAction = hasPermission("standard-clearance-item.create");
+  const canBulkEdit = hasPermission("standard-clearance-item.update");
+  const canBulkDelete = hasPermission("standard-clearance-item.delete");
+
   const [editRows, setEditRows] = useState<{
     id: string;
     name: string;
@@ -130,8 +136,8 @@ export function StandardClearanceItemList({
       <DataTable<StandardClearanceItemRow>
         columns={columns}
         data={data}
-        actionText="Add Standard Item"
-        toggleAction={handleToggle}
+        actionText={showAddAction ? "Add Standard Item" : undefined}
+        toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
         searchFields={[
           { key: "name", label: "Name" },
@@ -140,6 +146,8 @@ export function StandardClearanceItemList({
         ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="standard-clearance-item-list"
       />
 

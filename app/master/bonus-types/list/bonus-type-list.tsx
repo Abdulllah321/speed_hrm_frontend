@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, BonusTypeRow } from "./columns";
 import {
   BonusType,
@@ -49,6 +49,8 @@ export function BonusTypeList({ initialBonusTypes, newItemId }: BonusTypeListPro
   };
 
   const showAddAction = hasPermission("master.bonus-type.create");
+  const canBulkEdit = hasPermission("master.bonus-type.update");
+  const canBulkDelete = hasPermission("master.bonus-type.delete");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -153,6 +155,8 @@ export function BonusTypeList({ initialBonusTypes, newItemId }: BonusTypeListPro
             searchFields={[{ key: "name", label: "Name" }]}
             onMultiDelete={handleMultiDelete}
             onBulkEdit={handleBulkEdit}
+            canBulkEdit={canBulkEdit}
+            canBulkDelete={canBulkDelete}
             tableId="bonus-type-list"
           />
         </CardContent>

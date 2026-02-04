@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, LeaveTypeRow } from "./columns";
 import {
   LeaveType,
@@ -38,6 +38,8 @@ export function LeaveTypeList({
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("leave-type.create");
+  const canBulkEdit = hasPermission("leave-type.update");
+  const canBulkDelete = hasPermission("leave-type.delete");
 
   const handleToggle = () => {
     router.push("/master/leave-types/add");
@@ -113,6 +115,8 @@ export function LeaveTypeList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="leave-type-list"
       />
 

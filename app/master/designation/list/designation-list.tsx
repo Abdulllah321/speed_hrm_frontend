@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, DesignationRow } from "./columns";
 import {
   Designation,
@@ -43,6 +43,8 @@ export function DesignationList({
   };
 
   const showAddAction = hasPermission("master.designation.create");
+  const canBulkEdit = hasPermission("master.designation.update");
+  const canBulkDelete = hasPermission("master.designation.delete");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -115,6 +117,8 @@ export function DesignationList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="designation-list"
       />
 

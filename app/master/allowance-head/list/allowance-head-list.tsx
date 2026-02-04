@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, AllowanceHeadRow } from "./columns";
 import {
   AllowanceHead,
@@ -49,6 +49,8 @@ export function AllowanceHeadList({ initialAllowanceHeads, newItemId }: Allowanc
   };
 
   const showAddAction = hasPermission("allowance-head.create");
+  const canBulkEdit = hasPermission("allowance-head.update");
+  const canBulkDelete = hasPermission("allowance-head.delete");
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
@@ -159,6 +161,8 @@ export function AllowanceHeadList({ initialAllowanceHeads, newItemId }: Allowanc
             searchFields={[{ key: "name", label: "Name" }]}
             onMultiDelete={handleMultiDelete}
             onBulkEdit={handleBulkEdit}
+            canBulkEdit={canBulkEdit}
+            canBulkDelete={canBulkDelete}
             tableId="allowance-head-list"
           />
         </CardContent>

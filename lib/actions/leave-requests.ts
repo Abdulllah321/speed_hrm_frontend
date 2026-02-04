@@ -45,8 +45,7 @@ export async function getLeaveRequests(filters?: LeaveRequestFilters): Promise<{
     if (filters?.fromDate) queryParams.append('fromDate', filters.fromDate);
     if (filters?.toDate) queryParams.append('toDate', filters.toDate);
     const url = `${API_URL}/leave-requests${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    const res = await fetch(url, {
-    });
+    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: 'Failed to fetch leave requests' }));
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };

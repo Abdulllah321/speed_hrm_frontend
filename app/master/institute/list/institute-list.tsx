@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, InstituteRow } from "./columns";
 import {
   Institute,
@@ -38,6 +38,8 @@ export function InstituteList({
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("master.institute.create");
+  const canBulkEdit = hasPermission("master.institute.update");
+  const canBulkDelete = hasPermission("master.institute.delete");
 
   const handleToggle = () => {
     router.push("/master/institute/add");
@@ -114,6 +116,8 @@ export function InstituteList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="institute-list"
       />
 

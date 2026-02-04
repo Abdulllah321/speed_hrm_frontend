@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, LocationRow } from "./columns";
 import {
     Location,
@@ -38,6 +38,8 @@ export function LocationList({
     const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
     const { hasPermission } = useAuth();
     const showAddAction = hasPermission("master.location.create");
+  const canBulkEdit = hasPermission("master.location.update");
+  const canBulkDelete = hasPermission("master.location.delete");
 
     const handleToggle = () => {
         router.push("/master/location/add");
@@ -114,6 +116,8 @@ export function LocationList({
                 searchFields={[{ key: "name", label: "Name" }]}
                 onMultiDelete={handleMultiDelete}
                 onBulkEdit={handleBulkEdit}
+                canBulkEdit={canBulkEdit}
+                canBulkDelete={canBulkDelete}
             />
 
             {/* Bulk Edit Dialog */}

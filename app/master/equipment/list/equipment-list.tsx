@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import DataTable from "@/components/common/data-table";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { columns, EquipmentRow } from "./columns";
 import {
   Equipment,
@@ -38,6 +38,8 @@ export function EquipmentList({
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
   const { hasPermission } = useAuth();
   const showAddAction = hasPermission("equipment.create");
+  const canBulkEdit = hasPermission("equipment.update");
+  const canBulkDelete = hasPermission("equipment.delete");
 
   const handleToggle = () => {
     router.push("/master/equipment/add");
@@ -113,6 +115,8 @@ export function EquipmentList({
         searchFields={[{ key: "name", label: "Name" }]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
+        canBulkEdit={canBulkEdit}
+        canBulkDelete={canBulkDelete}
         tableId="equipment-list"
       />
 
