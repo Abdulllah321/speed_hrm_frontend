@@ -453,7 +453,7 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Category",
     environment: "ERP",
-    permissions: ["master.category.read", "master.category.create"],
+    permissions: ["erp.category.read", "erp.category.create"],
     children: [
       { title: "Add", href: "/master/category/add" },
       { title: "View", href: "/master/category/list" },
@@ -462,7 +462,7 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Sub Category",
     environment: "ERP",
-    permissions: ["master.sub-category.read", "master.sub-category.create"],
+    permissions: ["erp.sub-category.read", "erp.sub-category.create"],
     children: [
       { title: "Add", href: "/master/sub-category/add" },
       { title: "View", href: "/master/sub-category/list" },
