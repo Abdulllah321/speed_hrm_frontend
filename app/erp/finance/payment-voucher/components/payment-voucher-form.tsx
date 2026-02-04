@@ -156,7 +156,7 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                     </div>
 
                     {voucherType === "bank" && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-muted/20 rounded-lg border border-dashed border-primary/20">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-lg border border-dashed border-primary/20">
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">Cheque No <span className="text-destructive">*</span></Label>
                                 <Input {...form.register("chequeNo")} placeholder="Enter Cheque No" />
@@ -220,13 +220,13 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 onClick={() => append({ accountId: "", debit: 0 })}
                             >
                                 <Plus className="h-4 w-4 mr-2" />
-                                Add More PV's Rows
+                                Add More PV Rows
                             </Button>
                         </div>
 
                         <div className="border rounded-lg overflow-hidden">
                             <table className="w-full text-sm">
-                                <thead className="bg-[#EAEEF2] dark:bg-muted font-bold">
+                                <thead className="dark:bg-muted font-bold">
                                     <tr>
                                         <th className="px-4 py-3 text-left">Account Head</th>
                                         <th className="px-4 py-3 text-left w-[200px]">Debit <span className="text-destructive">*</span></th>
@@ -264,7 +264,6 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                     size="icon"
                                                     onClick={() => remove(index)}
                                                     disabled={fields.length === 1}
-                                                    className="text-muted-foreground hover:text-destructive"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>
@@ -272,16 +271,11 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-muted/50 dark:bg-muted/30 font-bold border-t">
+                                <tfoot className="font-bold border-t border-slate-300">
                                     <tr>
-                                        <td className="px-4 py-3 text-right">Totals:</td>
-                                        <td className="px-4 py-3">
-                                            <div className={cn(
-                                                "p-2 rounded border text-lg",
-                                                isBalanced ? "bg-green-100 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400" : "bg-red-100 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
-                                            )}>
-                                                {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </div>
+                                        <td className="px-4 py-4 text-right text-slate-600 dark:text-muted-foreground">Totals:</td>
+                                        <td className="px-4 py-4 text-right text-lg">
+                                            {totalDebit > 0 ? totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ""}
                                         </td>
                                         <td></td>
                                     </tr>
@@ -314,16 +308,9 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         <Button
                             type="submit"
                             disabled={isPending || !isBalanced || creditAmount <= 0}
-                            className="px-20 h-14 text-xl font-bold rounded-xl shadow-lg"
                         >
-                            {isPending ? (
-                                <>
-                                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                                    Submitting...
-                                </>
-                            ) : (
-                                "Submit"
-                            )}
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Create Payment Voucher
                         </Button>
                     </div>
                 </form>
