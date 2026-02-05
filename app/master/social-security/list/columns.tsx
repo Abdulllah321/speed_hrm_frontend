@@ -130,10 +130,6 @@ function RowActions({ row }: { row: Row<SocialSecurityInstitutionRow> }) {
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
 
-  // Admins can always edit/delete, otherwise check specific permissions
-  const canEdit = isAdmin() || hasPermission("social-security.update");
-  const canDelete = isAdmin() || hasPermission("social-security.delete");
-
   if (!canEdit && !canDelete) {
     return null;
   }
