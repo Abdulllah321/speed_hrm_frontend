@@ -26,16 +26,17 @@ export interface AutocompleteOption {
   description?: string
 }
 
-interface AutocompleteProps {
+export interface AutocompleteProps {
   options: AutocompleteOption[]
   value?: string
   onValueChange?: (value: string) => void
   placeholder?: string
   searchPlaceholder?: string
-  emptyMessage?: string
+  emptyMessage?: React.ReactNode
   disabled?: boolean
   className?: string
   isLoading?: boolean
+  onCreate?: (value: string) => void
 }
 
 export function Autocomplete({
@@ -48,6 +49,7 @@ export function Autocomplete({
   disabled = false,
   className,
   isLoading = false,
+  onCreate,
 }: AutocompleteProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -61,15 +63,15 @@ export function Autocomplete({
       normalizedSearch.length === 0
         ? options
         : options.filter((option) => {
-            const haystack = [
-              option.value,
-              option.label,
-              option.description || "",
-            ]
-              .join(" ")
-              .toLowerCase()
-            return haystack.includes(normalizedSearch)
-          }),
+          const haystack = [
+            option.value,
+            option.label,
+            option.description || "",
+          ]
+            .join(" ")
+            .toLowerCase()
+          return haystack.includes(normalizedSearch)
+        }),
     [options, normalizedSearch]
   )
 
@@ -78,6 +80,13 @@ export function Autocomplete({
       setSearch("")
     }
   }, [open])
+
+  const handleCreate = () => {
+    if (onCreate && search) {
+      onCreate(search);
+      setOpen(false);
+    }
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -112,14 +121,14 @@ export function Autocomplete({
           )} />
         </Button>
       </PopoverTrigger>
-      <PopoverContent 
-        className="w-[var(--radix-popover-trigger-width)] p-0" 
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
         align="start"
         sideOffset={4}
       >
         <Command className="rounded-lg">
-          <CommandInput 
-            placeholder={searchPlaceholder} 
+          <CommandInput
+            placeholder={searchPlaceholder}
             disabled={isLoading}
             value={search}
             onValueChange={setSearch}
@@ -137,8 +146,18 @@ export function Autocomplete({
                   </div>
                 ) : (
                   <>
-                    <CommandEmpty className="py-8 text-center text-sm text-muted-foreground">
-                      {emptyMessage}
+                    <CommandEmpty className="py-2 text-center text-sm text-muted-foreground px-2">
+                      {filteredOptions.length === 0 && onCreate && search ? (
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start h-auto py-2 px-2 text-primary"
+                          onClick={handleCreate}
+                        >
+                          <span className="truncate">Create "{search}"</span>
+                        </Button>
+                      ) : (
+                        emptyMessage
+                      )}
                     </CommandEmpty>
                     <CommandGroup className="p-1">
                       {filteredOptions.map((option) => {
