@@ -478,8 +478,8 @@ export default function middleware(request: NextRequest): NextResponse {
   default-src 'self';
   connect-src
     'self'
-    https://spl.inplsoftwares.com
-    https://*.spl.inplsoftwares.com;
+    https://drivesafewarranty.co.uk
+    https://*.drivesafewarranty.co.uk;
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob:;
