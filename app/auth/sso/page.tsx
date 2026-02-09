@@ -22,7 +22,7 @@ export default function SSOPage() {
       setState('loading');
       
       // Call backend SSO API and wait for response
-      const backendUrl = 'http://api.localtest.me:5000';
+      const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       fetch(`${backendUrl}/api/auth/sso?token=${token}`, {
         method: 'GET',
         credentials: 'include', // Important: include cookies
