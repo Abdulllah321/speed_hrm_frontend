@@ -117,6 +117,16 @@ export const routePermissions: Record<string, string[]> = {
   // Request Forwarding
   "/hr/request-forwarding": ["hr.request-forwarding.view"],
   
+  // Master - ERP
+  "/master/category": ["erp.category.read"],
+  "/master/category/add": ["erp.category.create"],
+  "/master/category/list": ["erp.category.read"],
+  "/master/sub-category": ["erp.sub-category.read"],
+  "/master/sub-category/add": ["erp.sub-category.create"],
+  "/master/sub-category/list": ["erp.sub-category.read"],
+  "/master/unit-of-measurement/add": ["erp.uom.create"],
+  "/master/unit-of-measurement/list": ["erp.uom.read"],
+
   // Settings - public (all authenticated users)
   "/hr/settings/password": [],
   "/hr/settings/profile": [],

@@ -158,7 +158,6 @@ export function RequestForwardingClient({
     ? activeTab 
     : (finalTabs.length > 0 ? finalTabs[0].value : activeTab);
 
-  const tabsCount = Math.max(finalTabs.length, 1);
 
   return (
     <div className="space-y-6">
@@ -168,7 +167,7 @@ export function RequestForwardingClient({
       </div>
 
       <Tabs value={effectiveActiveTab} onValueChange={(v) => handleTabChange(v as RequestType)} className="w-full">
-        <TabsList variant="card" className={`grid w-full max-w-6xl grid-cols-${tabsCount}`}>
+        <TabsList variant="card" className="flex w-full max-w-6xl">
           {finalTabs.map((tab) => {
             const Icon = tab.icon;
             return (
