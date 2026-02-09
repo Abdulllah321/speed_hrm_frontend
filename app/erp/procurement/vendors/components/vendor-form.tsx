@@ -1,9 +1,10 @@
 "use client";
 
 import { createVendor } from "@/lib/actions/procurement";
+import { getChartOfAccounts, ChartOfAccount } from "@/lib/actions/chart-of-account";
 
-import { useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useState, useEffect } from "react";
+import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
 import { Button } from "@/components/ui/button";
@@ -15,10 +16,26 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 
 export function VendorForm() {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
+    const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
+
+    useEffect(() => {
+        getChartOfAccounts().then(res => {
+            if (res.status && Array.isArray(res.data)) {
+                setAccounts(res.data);
+            }
+        });
+    }, []);
 
     const form = useForm<VendorFormValues>({
         resolver: zodResolver(vendorSchema) as any,
@@ -29,7 +46,7 @@ export function VendorForm() {
             address: "",
             contactPerson: "",
             contactNumber: "",
-            nature: "",
+            nature: undefined,
             cnic: "",
             ntn: "",
             strn: "",
@@ -37,6 +54,7 @@ export function VendorForm() {
             pra: "",
             ict: "",
             brand: "",
+            chartOfAccountId: "",
         },
     });
 
@@ -117,6 +135,31 @@ export function VendorForm() {
                         </div>
                     </div>
 
+                    <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase font-semibold">Chart of Account <span className="text-destructive">*</span></Label>
+                        <Controller
+                            control={form.control}
+                            name="chartOfAccountId"
+                            render={({ field }) => (
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Account" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {accounts.map((acc) => (
+                                            <SelectItem key={acc.id} value={acc.id}>
+                                                {acc.code} - {acc.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                        {form.formState.errors.chartOfAccountId && (
+                            <p className="text-xs text-destructive">{form.formState.errors.chartOfAccountId.message}</p>
+                        )}
+                    </div>
+
                     {/* Tax & Registration Details - Common for Both */}
                     <div className="space-y-6 border-t pt-6">
                         <h3 className="text-lg font-semibold">Tax & Registration Details</h3>
@@ -155,7 +198,21 @@ export function VendorForm() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground uppercase font-semibold">Nature <span className="text-destructive">*</span></Label>
-                                    <Input {...form.register("nature")} placeholder="e.g. GOODS / SERVICES" />
+                                    <Controller
+                                        control={form.control}
+                                        name="nature"
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select Nature" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="GOODS">Goods</SelectItem>
+                                                    <SelectItem value="SERVICES">Services</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
                                     {form.formState.errors.nature && (
                                         <p className="text-xs text-destructive">{form.formState.errors.nature.message}</p>
                                     )}

@@ -17,6 +17,9 @@ export const vendorSchema = z.object({
     pra: z.string().optional(),
     ict: z.string().optional(),
 
+    // Financial Linking
+    chartOfAccountId: z.string().min(1, "Chart of Account is required"),
+
     // Import Supplier Specific
     brand: z.string().optional(),
 }).superRefine((data, ctx) => {

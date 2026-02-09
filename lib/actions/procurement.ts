@@ -1,22 +1,43 @@
 "use server";
 
-import { authFetch } from "@/lib/auth"; // Keeping imports for future use, even if unused now.
+import { authFetch } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 export async function createVendor(data: any) {
     try {
-        console.log("Creating vendor (Mock):", data);
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Transform data to match backend DTO
+        const payload = {
+            ...data,
+            type: data.type === "local" ? "LOCAL" : "INTERNATIONAL",
+            nature: data.type === "local" ? data.nature : undefined,
+            brand: data.type === "import" ? data.brand : undefined,
+            cnicNo: data.cnic,
+            ntnNo: data.ntn,
+            strnNo: data.strn,
+            srbNo: data.srb,
+            praNo: data.pra,
+            ictNo: data.ict,
+            // Clean up old keys
+            cnic: undefined,
+            ntn: undefined,
+            strn: undefined,
+            srb: undefined,
+            pra: undefined,
+            ict: undefined,
+        };
 
-        // In a real implementation:
-        // const response = await authFetch("/procurement/vendors", {
-        //     method: "POST",
-        //     body: JSON.stringify(data),
-        // });
-        // return response.json();
+        const response = await authFetch("/finance/suppliers", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
 
-        return { status: true, message: "Vendor created successfully (Mock)" };
+        const result = await response.json();
+
+        if (result.status) {
+            revalidatePath("/erp/procurement/vendors"); // Or list page
+        }
+
+        return result;
     } catch (error) {
         console.error("Create vendor error:", error);
         return { status: false, message: "Failed to create vendor" };
