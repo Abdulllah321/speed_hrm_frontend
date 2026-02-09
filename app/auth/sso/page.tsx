@@ -27,7 +27,7 @@ export default function SSOPage() {
 
       // Call backend SSO API and wait for response
       const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-      fetch(`${backendUrl}/api/auth/sso?token=${token}`, {
+      fetch(`${backendUrl}/auth/sso?token=${token}`, {
         method: 'GET',
         credentials: 'include', // Important: include cookies
       })
