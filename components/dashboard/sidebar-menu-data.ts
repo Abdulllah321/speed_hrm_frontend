@@ -78,6 +78,42 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
+    title: "Segment",
+    environment: "ERP",
+    permissions: ["erp.segment.read", "erp.segment.create"],
+    children: [
+      { title: "Add", href: "/master/segment/add" },
+      { title: "View", href: "/master/segment/list" },
+    ],
+  },
+  {
+    title: "Item Class",
+    environment: "ERP",
+    permissions: ["erp.item-class.read", "erp.item-class.create"],
+    children: [
+      { title: "Add", href: "/master/class/add" },
+      { title: "View", href: "/master/class/list" },
+    ],
+  },
+  {
+    title: "Item Subclass",
+    environment: "ERP",
+    permissions: ["erp.item-subclass.read", "erp.item-subclass.create"],
+    children: [
+      { title: "Add", href: "/master/subclass/add" },
+      { title: "View", href: "/master/subclass/list" },
+    ],
+  },
+  {
+    title: "Season",
+    environment: "ERP",
+    permissions: ["erp.season.read", "erp.season.create"],
+    children: [
+      { title: "Add", href: "/master/season/add" },
+      { title: "View", href: "/master/season/list" },
+    ],
+  },
+  {
     title: "Channel Class",
     environment: "ERP",
     permissions: ["master.channel-class.read", "master.channel-class.create"],
