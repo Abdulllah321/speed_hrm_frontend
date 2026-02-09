@@ -2,19 +2,22 @@ import { z } from "zod";
 
 export const receiptVoucherDetailSchema = z.object({
     accountId: z.string().min(1, "Account is required"),
-    debit: z.coerce.number().min(0).default(0),
     credit: z.coerce.number().min(0).default(0),
 });
 
 export const receiptVoucherSchema = z.object({
     type: z.enum(["bank", "cash"]),
     rvNo: z.string().min(1, "RV Number is required"),
-    rvDate: z.date().min(new Date("1900-01-01"), "RV Date is required"),
+    rvDate: z.date(),
     refBillNo: z.string().optional(),
     billDate: z.date().optional(),
     // Bank specific fields
     chequeNo: z.string().optional(),
     chequeDate: z.date().optional(),
+
+    // Main debit account (where money is coming in)
+    debitAccountId: z.string().min(1, "Debit Account is required"),
+    debitAmount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
 
     description: z.string().min(1, "Description is required"),
     details: z.array(receiptVoucherDetailSchema).min(1, "At least one detail row is required"),
@@ -27,11 +30,10 @@ export const receiptVoucherSchema = z.object({
     message: "Cheque details are required for Bank receipts",
     path: ["chequeNo"],
 }).refine(data => {
-    const totalDebit = data.details.reduce((sum, item) => sum + item.debit, 0);
     const totalCredit = data.details.reduce((sum, item) => sum + item.credit, 0);
-    return Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
+    return Math.abs(totalCredit - data.debitAmount) < 0.01;
 }, {
-    message: "Total Debits must equal Total Credits and be greater than 0",
+    message: "Total Credits must equal Debit Amount",
     path: ["details"],
 });
 

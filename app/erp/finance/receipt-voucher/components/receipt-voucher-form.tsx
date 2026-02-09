@@ -75,9 +75,9 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
     };
 
     const watchDetails = form.watch("details") || [];
-    const totalCredit = watchDetails.reduce((sum, detail) => sum + (Number(detail.credit) || 0), 0);
-    const debitAmount = form.watch("debitAmount") || 0;
-    const isBalanced = Math.abs(totalCredit - debitAmount) < 0.01 && debitAmount > 0;
+    const totalCredit = watchDetails.reduce((sum, detail: any) => sum + (Number(detail.credit) || 0), 0);
+    const debitAmount = form.watch("debitAmount" as any) || 0;
+    const isBalanced = Math.abs(totalCredit - (debitAmount as number)) < 0.01 && (debitAmount as number) > 0;
 
     return (
         <Card className="w-full border-none shadow-none bg-transparent">
@@ -105,7 +105,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div className="space-y-1.5">
                             <Label className="text-[10px] text-muted-foreground uppercase font-bold">RV No</Label>
-                            <Input {...form.register("rvNo")} disabled className="bg-slate-200/50 border-slate-300 h-10 font-medium" />
+                            <Input {...form.register("rvNo")} disabled className="border-slate-300 h-10 font-medium" />
                         </div>
 
                         <div className="space-y-1.5">
@@ -170,7 +170,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 )}
                             />
                             {form.formState.errors.debitAccountId && (
-                                <p className="text-xs text-destructive">{form.formState.errors.debitAccountId.message}</p>
+                                <p className="text-xs text-destructive">{(form.formState.errors.debitAccountId as any).message}</p>
                             )}
                         </div>
                         <div className="space-y-1">
@@ -182,7 +182,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 className="text-lg font-bold"
                             />
                             {form.formState.errors.debitAmount && (
-                                <p className="text-xs text-destructive">{form.formState.errors.debitAmount.message}</p>
+                                <p className="text-xs text-destructive">{(form.formState.errors.debitAmount as any).message}</p>
                             )}
                         </div>
                     </div>
@@ -194,20 +194,17 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                 <Button
                                     type="button"
                                     variant="secondary"
-                                    onClick={() => append({ accountId: "", credit: 0 })}
-                                    className="h-9 px-4 rounded-md font-bold"
+                                    size="sm"
+                                    onClick={() => append({ accountId: "", credit: 0 } as any)}
                                 >
-                                    Add More RV's Rows
+                                    Add More RV Rows
                                 </Button>
-                                <span className="absolute -top-2 -right-2 bg-slate-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white shadow-sm font-bold">
-                                    {fields.length}
-                                </span>
                             </div>
                         </div>
 
                         <div className="border border-slate-200 dark:border-border rounded-sm overflow-hidden shadow-sm">
                             <table className="w-full text-sm">
-                                <thead className="bg-[#EAEEF2] dark:bg-muted font-bold text-slate-700 dark:text-foreground">
+                                <thead className="dark:bg-muted font-bold text-slate-700 dark:text-foreground">
                                     <tr className="border-b border-slate-300 dark:border-border">
                                         <th className="px-4 py-3 text-left">Account Head</th>
                                         <th className="px-4 py-3 text-left w-[150px]">Credit <span className="text-destructive">*</span></th>
@@ -249,7 +246,6 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                             variant="ghost"
                                                             size="icon"
                                                             onClick={() => remove(index)}
-                                                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-8 w-8"
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -261,27 +257,20 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-white border-t-2 border-slate-800">
-                                    <tr className="divide-x divide-slate-200">
-                                        <td className="px-4 py-4 text-right font-bold bg-slate-50/30">Totals:</td>
-                                        <td className="px-2 py-4">
-                                            <div className={cn(
-                                                "p-2 rounded-md border text-center font-bold text-lg min-h-[44px] flex items-center justify-center",
-                                                totalCredit > 0 ? "bg-slate-100 dark:bg-muted/50 border-slate-300 dark:border-input text-slate-700 dark:text-foreground" : "bg-slate-100 dark:bg-muted/50 border-slate-300 dark:border-input text-transparent"
-                                            )}>
-                                                {totalCredit > 0 ? totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ""}
-                                            </div>
-                                        </td>
-                                        <td className="bg-slate-50/30 dark:bg-muted/30">
-                                            <div className={cn(
-                                                "p-2 rounded-md border text-center font-bold text-lg min-h-[44px] flex items-center justify-center",
-                                                isBalanced ? "bg-green-100 border-green-200 text-green-700" : (totalCredit > 0) ? "bg-red-100 border-red-200 text-red-700" : "bg-slate-100 border-slate-300"
-                                            )}>
-                                                {isBalanced ? "✓" : (totalCredit > 0) ? "!" : ""}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tfoot>
+                                <tr className="border-t border-slate-300 dark:border-border">
+                                    <td className="px-4 py-4 text-right font-bold text-slate-600 dark:text-muted-foreground">Totals:</td>
+                                    <td className="px-4 py-4 text-right font-bold text-lg">
+                                        {totalCredit > 0 ? totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ""}
+                                    </td>
+                                    <td className="px-4 py-4 text-center">
+                                        <span className={cn(
+                                            "font-bold text-lg",
+                                            isBalanced ? "text-green-600" : (totalCredit > 0) ? "text-red-600" : ""
+                                        )}>
+                                            {isBalanced ? "✓" : (totalCredit > 0) ? "!" : ""}
+                                        </span>
+                                    </td>
+                                </tr>
                             </table>
                         </div>
                     </div>
@@ -301,16 +290,9 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         <Button
                             type="submit"
                             disabled={isPending || !isBalanced}
-                            className="px-16 h-12 text-lg font-bold rounded-md shadow-md transition-all active:scale-95"
                         >
-                            {isPending ? (
-                                <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                    Submitting...
-                                </>
-                            ) : (
-                                "Submit"
-                            )}
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Create Receipt Voucher
                         </Button>
                     </div>
                 </form>

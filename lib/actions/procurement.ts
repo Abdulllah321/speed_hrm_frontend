@@ -1,0 +1,45 @@
+"use server";
+
+import { authFetch } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
+
+export async function createVendor(data: any) {
+    try {
+        // Transform data to match backend DTO
+        const payload = {
+            ...data,
+            type: data.type === "local" ? "LOCAL" : "INTERNATIONAL",
+            nature: data.type === "local" ? data.nature : undefined,
+            brand: data.type === "import" ? data.brand : undefined,
+            cnicNo: data.cnic,
+            ntnNo: data.ntn,
+            strnNo: data.strn,
+            srbNo: data.srb,
+            praNo: data.pra,
+            ictNo: data.ict,
+            // Clean up old keys
+            cnic: undefined,
+            ntn: undefined,
+            strn: undefined,
+            srb: undefined,
+            pra: undefined,
+            ict: undefined,
+        };
+
+        const response = await authFetch("/finance/suppliers", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+
+        if (result.status) {
+            revalidatePath("/erp/procurement/vendors"); // Or list page
+        }
+
+        return result;
+    } catch (error) {
+        console.error("Create vendor error:", error);
+        return { status: false, message: "Failed to create vendor" };
+    }
+}

@@ -24,7 +24,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
     const [isPending, setIsPending] = useState(false);
 
     const form = useForm<JournalVoucherFormValues>({
-        resolver: zodResolver(journalVoucherSchema),
+        resolver: zodResolver(journalVoucherSchema) as any,
         defaultValues: {
             jvNo: `JV${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}${Math.floor(1000 + Math.random() * 9000)}`,
             jvDate: new Date(),
@@ -72,7 +72,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                 <CardTitle>Create Journal Voucher Form</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-2">
@@ -93,7 +93,6 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                     <DatePicker
                                         value={field.value ? field.value.toISOString().split('T')[0] : ""}
                                         onChange={(dateStr) => field.onChange(new Date(dateStr))}
-                                        disabled={isPending}
                                         disabled={isPending}
                                         className="h-11 border-gray-300 dark:border-input"
                                     />
@@ -116,17 +115,14 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                     onClick={() => append({ accountId: "", debit: 0, credit: 0 })}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
-                                    Add More PV's Rows
+                                    Add More JV Rows
                                 </Button>
-                                <span className="bg-gray-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold">
-                                    {fields.length}
-                                </span>
                             </div>
                         </div>
 
                         <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-border">
                             <table className="w-full text-sm">
-                                <thead className="bg-[#EAEEF2] dark:bg-muted text-foreground border-b font-bold">
+                                <thead className="dark:bg-muted text-foreground border-b font-bold">
                                     <tr>
                                         <th className="px-4 py-3 text-left">Account Head</th>
                                         <th className="px-4 py-3 text-left w-[180px]">Debit <span className="text-destructive">*</span></th>
@@ -150,7 +146,6 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                             value={field.value}
                                                             onValueChange={field.onChange}
                                                             placeholder="Select Account"
-                                                            disabled={isPending}
                                                             disabled={isPending}
                                                             className="h-10 border-gray-300 dark:border-input"
                                                         />
@@ -204,7 +199,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                         size="icon"
                                                         onClick={() => remove(index)}
                                                         disabled={isPending}
-                                                        className="text-gray-400 hover:text-red-500 rounded-full h-8 w-8"
+                                                        className="rounded-full"
                                                     >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
@@ -215,25 +210,19 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="bg-gray-50 dark:bg-muted/30 font-bold border-t border-gray-200 dark:border-border">
+                                <tfoot className="font-bold border-t border-gray-200 dark:border-border">
                                     <tr>
                                         <td className="px-4 py-4 text-right pr-8 text-gray-600 dark:text-muted-foreground">Totals:</td>
-                                        <td className="px-0 py-0">
-                                            <div className="bg-[#EAEEF2] dark:bg-muted h-full flex items-center px-4 py-4 border-l border-r border-gray-200 dark:border-border text-gray-700 dark:text-foreground">
-                                                {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </div>
+                                        <td className="px-4 py-4 text-right text-lg">
+                                            {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td className="px-0 py-0">
-                                            <div className="bg-[#EAEEF2] dark:bg-muted h-full flex items-center px-4 py-4 border-r border-gray-200 dark:border-border text-gray-700 dark:text-foreground">
-                                                {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                            </div>
+                                        <td className="px-4 py-4 text-right text-lg">
+                                            {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td className="px-0 py-0">
-                                            <div className="bg-[#EAEEF2] dark:bg-muted h-full flex items-center justify-center py-4">
-                                                {!isBalanced && (
-                                                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="Out of Balance" />
-                                                )}
-                                            </div>
+                                        <td className="px-4 py-4 text-center">
+                                            {!isBalanced && (
+                                                <div className="mx-auto w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="Out of Balance" />
+                                            )}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -251,7 +240,6 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                             placeholder="Description"
                             {...form.register("description")}
                             disabled={isPending}
-                            disabled={isPending}
                             className="min-h-[100px] border-gray-300 dark:border-input rounded-lg"
                         />
                         {form.formState.errors.description && (
@@ -263,16 +251,9 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         <Button
                             type="submit"
                             disabled={isPending || !isBalanced || totalDebit === 0}
-                            className="px-16 h-12 text-lg font-bold"
                         >
-                            {isPending ? (
-                                <>
-                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                                    Submitting...
-                                </>
-                            ) : (
-                                "Submit"
-                            )}
+                            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                            Create Journal Voucher
                         </Button>
                     </div>
                 </form>

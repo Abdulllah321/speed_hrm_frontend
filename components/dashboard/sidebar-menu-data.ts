@@ -33,6 +33,105 @@ export type MenuItem = {
 
 export const masterMenuData: MenuItem[] = [
   {
+    title: "Brand",
+    environment: "ERP",
+    permissions: ["master.brand.read", "master.brand.create"],
+    children: [
+      { title: "Add", href: "/master/brand/add" },
+      { title: "View", href: "/master/brand/list" },
+    ],
+  },
+  {
+    title: "Division",
+    environment: "ERP",
+    permissions: ["master.division.read", "master.division.create"],
+    children: [
+      { title: "Add", href: "/master/division/add" },
+      { title: "View", href: "/master/division/list" },
+    ],
+  },
+  {
+    title: "Gender",
+    environment: "ERP",
+    permissions: ["master.gender.read", "master.gender.create"],
+    children: [
+      { title: "Add", href: "/master/gender/add" },
+      { title: "View", href: "/master/gender/list" },
+    ],
+  },
+  {
+    title: "Size",
+    environment: "ERP",
+    permissions: ["master.size.read", "master.size.create"],
+    children: [
+      { title: "Add", href: "/master/size/add" },
+      { title: "View", href: "/master/size/list" },
+    ],
+  },
+  {
+    title: "Silhouette",
+    environment: "ERP",
+    permissions: ["master.silhouette.read", "master.silhouette.create"],
+    children: [
+      { title: "Add", href: "/master/silhouette/add" },
+      { title: "View", href: "/master/silhouette/list" },
+    ],
+  },
+  {
+    title: "Segment",
+    environment: "ERP",
+    permissions: ["erp.segment.read", "erp.segment.create"],
+    children: [
+      { title: "Add", href: "/master/segment/add" },
+      { title: "View", href: "/master/segment/list" },
+    ],
+  },
+  {
+    title: "Item Class",
+    environment: "ERP",
+    permissions: ["erp.item-class.read", "erp.item-class.create"],
+    children: [
+      { title: "Add", href: "/master/class/add" },
+      { title: "View", href: "/master/class/list" },
+    ],
+  },
+  {
+    title: "Item Subclass",
+    environment: "ERP",
+    permissions: ["erp.item-subclass.read", "erp.item-subclass.create"],
+    children: [
+      { title: "Add", href: "/master/subclass/add" },
+      { title: "View", href: "/master/subclass/list" },
+    ],
+  },
+  {
+    title: "Season",
+    environment: "ERP",
+    permissions: ["erp.season.read", "erp.season.create"],
+    children: [
+      { title: "Add", href: "/master/season/add" },
+      { title: "View", href: "/master/season/list" },
+    ],
+  },
+  {
+    title: "Channel Class",
+    environment: "ERP",
+    permissions: ["master.channel-class.read", "master.channel-class.create"],
+    children: [
+      { title: "Add", href: "/master/channel-class/add" },
+      { title: "View", href: "/master/channel-class/list" },
+    ],
+  },
+  {
+    title: "Color",
+    environment: "ERP",
+    permissions: ["master.color.read", "master.color.create"],
+    children: [
+      { title: "Add", href: "/master/color/add" },
+      { title: "View", href: "/master/color/list" },
+    ],
+  },
+  {
     title: "Department",
     environment: "BOTH",
     permissions: ["master.department.read", "master.department.create"],
@@ -620,7 +719,8 @@ export const menuData: MenuItem[] = [
       {
         title: "Item Setup",
         children: [
-          { title: "Items", href: "/erp/inventory/items" },
+          { title: "Items", href: "/erp/items/create" },
+          { title: "Item-List", href: "/erp/items/list" },
           { title: "Categories", href: "/erp/inventory/categories" },
           { title: "Warehouses", href: "/erp/inventory/warehouses" },
         ]
