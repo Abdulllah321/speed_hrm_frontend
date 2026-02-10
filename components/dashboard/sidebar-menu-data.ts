@@ -716,13 +716,20 @@ export const menuData: MenuItem[] = [
     environment: "ERP",
     permissions: ["inventory.read"],
     children: [
+      { title: "Dashboard", href: "/erp/inventory" },
+      {
+        title: "Warehouse WMS",
+        children: [
+          { title: "Dashboard", href: "/erp/inventory/warehouse" },
+          { title: "Inventory Explorer", href: "/erp/inventory/warehouse/inventory" },
+        ]
+      },
       {
         title: "Item Setup",
         children: [
           { title: "Items", href: "/erp/items/create" },
           { title: "Item-List", href: "/erp/items/list" },
           { title: "Categories", href: "/erp/inventory/categories" },
-          { title: "Warehouses", href: "/erp/inventory/warehouses" },
         ]
       },
       {
