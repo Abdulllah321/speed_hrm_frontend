@@ -89,6 +89,24 @@ export default async function ViewItemPage({ params }: PageProps) {
                 </CardHeader>
             </Card>
 
+            {/* Image Display Section */}
+            {item.imageUrl && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Item Image</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex justify-center">
+                            <img
+                                src={item.imageUrl}
+                                alt={item.itemId}
+                                className="max-w-md w-full h-auto rounded-lg border shadow-sm object-contain"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
             <InfoSection title="Basic Details">
                 <InfoItem label="Description" value={item.description} />
                 <InfoItem label="Brand" value={item.brand?.name} />

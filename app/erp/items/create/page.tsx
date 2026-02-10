@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -42,6 +42,9 @@ import { getSegments } from "@/lib/actions/segment";
 import { createItem } from "@/lib/actions/items";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { uploadFile } from "@/lib/upload";
+import Cropper from "react-easy-crop";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 // --- Validation Schemas ---
 
@@ -54,6 +57,7 @@ const itemFormSchema = z.object({
     barCode: z.string().optional(),
     hsCode: z.string().optional(),
     isActive: z.boolean(),
+    imageUrl: z.string().optional(),
 
     // Step 2: Classification (Masters)
     divisionId: z.string().optional(),
@@ -148,6 +152,80 @@ export default function ItemCreatePage() {
     const watchBrandId = form.watch("brandId");
     const watchCategoryId = form.watch("categoryId");
     const watchItemClassId = form.watch("itemClassId");
+
+    // Image Upload State
+    const [cropDialogOpen, setCropDialogOpen] = useState(false);
+    const [cropSrc, setCropSrc] = useState<string | null>(null);
+    const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    const onCropComplete = (_: any, areaPixels: any) => setCroppedAreaPixels(areaPixels);
+
+    async function getCroppedBlob(imageSrc: string, area: any): Promise<Blob> {
+        const image: HTMLImageElement = await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = imageSrc;
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = area.width;
+        canvas.height = area.height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(
+            image,
+            area.x,
+            area.y,
+            area.width,
+            area.height,
+            0,
+            0,
+            area.width,
+            area.height
+        );
+        return await new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.9));
+    }
+
+    const handleCropDialogClose = (open: boolean) => {
+        if (!open) {
+            setCropSrc(null);
+            setCrop({ x: 0, y: 0 });
+            setZoom(1);
+            setCroppedAreaPixels(null);
+        }
+        setCropDialogOpen(open);
+    };
+
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const src = URL.createObjectURL(file);
+        setCropSrc(src);
+        setCropDialogOpen(true);
+    };
+
+    const confirmCropAndUpload = async () => {
+        if (!cropSrc || !croppedAreaPixels) return;
+        try {
+            const blob = await getCroppedBlob(cropSrc, croppedAreaPixels);
+            const file = new File([blob], 'item-image.jpg', { type: 'image/jpeg' });
+            
+            const reader = new FileReader();
+            reader.onloadend = () => setImagePreview(reader.result as string);
+            reader.readAsDataURL(file);
+
+            const uploaded = await uploadFile(file);
+            form.setValue("imageUrl", uploaded.url);
+            toast.success("Image uploaded successfully");
+
+            handleCropDialogClose(false);
+        } catch (err: any) {
+            toast.error(err?.message || "Failed to upload image");
+            handleCropDialogClose(false);
+        }
+    };
 
     useEffect(() => {
         const fetchMasters = async () => {
@@ -263,9 +341,67 @@ export default function ItemCreatePage() {
 
                                     {/* STEP 1: BASIC DETAILS */}
                                     {currentStep === 0 && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                            <FormField
-                                                control={form.control}
+                                        <>
+                                            {/* Image Upload Section */}
+                                            <div className="flex flex-col items-center gap-6 mb-6">
+                                                <div
+                                                    className="relative cursor-pointer group"
+                                                    onClick={() => document.getElementById("item-image-input")?.click()}
+                                                >
+                                                    {imagePreview ? (
+                                                        <img
+                                                            src={imagePreview}
+                                                            alt="Item preview"
+                                                            className="w-40 h-40 rounded-md object-cover border-4 border-border group-hover:opacity-80 transition-opacity"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-40 h-40 rounded-md bg-muted flex items-center justify-center border-4 border-border group-hover:bg-muted/80 transition-colors">
+                                                            <div className="flex flex-col items-center text-muted-foreground">
+                                                                <Upload className="h-10 w-10 mb-2" />
+                                                                <span className="text-xs">Upload Image</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    id="item-image-input"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleImageChange}
+                                                    className="hidden"
+                                                />
+                                            </div>
+
+                                            <Dialog open={cropDialogOpen} onOpenChange={handleCropDialogClose}>
+                                                <DialogContent className="sm:max-w-[480px]">
+                                                    <DialogHeader>
+                                                        <DialogTitle>Crop Item Image</DialogTitle>
+                                                    </DialogHeader>
+                                                    <div className="relative w-full h-80 bg-muted rounded-md overflow-hidden">
+                                                        {cropSrc && (
+                                                            <Cropper
+                                                                image={cropSrc}
+                                                                crop={crop}
+                                                                zoom={zoom}
+                                                                aspect={1}
+                                                                onCropChange={setCrop}
+                                                                onZoomChange={setZoom}
+                                                                onCropComplete={onCropComplete}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <DialogFooter>
+                                                        <div className="flex w-full justify-end gap-2">
+                                                            <Button variant="outline" onClick={() => handleCropDialogClose(false)}>Cancel</Button>
+                                                            <Button onClick={confirmCropAndUpload}>Save</Button>
+                                                        </div>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                <FormField
+                                                    control={form.control}
                                                 name="brandId"
                                                 render={({ field }) => (
                                                     <MasterSelect
@@ -374,6 +510,7 @@ export default function ItemCreatePage() {
                                                 )}
                                             />
                                         </div>
+                                        </>
                                     )}
 
                                     {/* STEP 2: CLASSIFICATION */}
@@ -742,6 +879,14 @@ export default function ItemCreatePage() {
                                     {currentStep === 4 && (
                                         <div className="space-y-6">
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                <div className="border p-3 rounded-md bg-white">
+                                                    <Label className="text-muted-foreground text-xs">Image</Label>
+                                                    <div className="font-medium">
+                                                        {imagePreview ? (
+                                                            <img src={imagePreview} alt="Item" className="w-16 h-16 object-cover rounded mt-1" />
+                                                        ) : "N/A"}
+                                                    </div>
+                                                </div>
                                                 <div className="border p-3 rounded-md bg-white">
                                                     <Label className="text-muted-foreground text-xs">Item ID</Label>
                                                     <div className="font-medium">{form.getValues("itemId")}</div>

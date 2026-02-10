@@ -24,6 +24,7 @@ function sanitizeItemData(data: any) {
     if (sanitized.barCode === "") sanitized.barCode = undefined;
     if (sanitized.hsCode === "") sanitized.hsCode = undefined;
     if (sanitized.description === "") sanitized.description = undefined;
+    if (sanitized.imageUrl === "") sanitized.imageUrl = undefined;
     if (sanitized.case === "") sanitized.case = undefined;
     if (sanitized.band === "") sanitized.band = undefined;
     if (sanitized.movementType === "") sanitized.movementType = undefined;

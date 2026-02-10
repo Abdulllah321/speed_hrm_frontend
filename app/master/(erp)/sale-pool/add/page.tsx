@@ -28,7 +28,7 @@ export default function AddSalePoolPage() {
       const result = await createSalePool({ name: name.trim() });
       if (result.status) {
         toast.success(result.message);
-        router.push("/erp/inventory-master/sale-pool/list");
+        router.push("/master/sale-pool/list");
       } else {
         toast.error(result.message);
       }
@@ -38,7 +38,7 @@ export default function AddSalePoolPage() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-6">
-        <Link href="/erp/inventory-master/sale-pool/list">
+        <Link href="/sale-pool/list">
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
