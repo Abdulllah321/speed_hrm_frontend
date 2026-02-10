@@ -9,8 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { vendorQuotationApi, rfqApi, RequestForQuotation } from '@/lib/api';
-import { fetchApi } from '@/lib/api';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { RequestForQuotation } from '@/lib/api';
+import { getRfqs, getRfq } from '@/lib/actions/rfq';
+import { createVendorQuotation } from '@/lib/actions/vendor-quotations';
+import { getVendors } from '@/lib/actions/procurement';
+import { toast } from 'sonner';
 
 interface Supplier {
     id: string;
@@ -65,8 +69,10 @@ export default function CreateVendorQuotation() {
 
     const fetchSentRfqs = async () => {
         try {
-            const data = await rfqApi.getAll('SENT');
-            setSentRfqs(data);
+            const result = await getRfqs('SENT');
+            if (result.status !== false) {
+                setSentRfqs(result);
+            }
         } catch (error) {
             console.error(error);
         }
@@ -74,15 +80,25 @@ export default function CreateVendorQuotation() {
 
     const fetchSuppliers = async () => {
         try {
-            const response = await fetchApi<{ status: boolean; data: Supplier[] }>('/suppliers');
-            setSuppliers(response.data || []);
+            const result = await getVendors();
+            if (result.status) {
+                setSuppliers(result.data || []);
+            }
         } catch (error) {
             console.error(error);
         }
     };
 
     const handleRfqSelect = async (rfqId: string) => {
-        const rfq = sentRfqs.find(r => r.id === rfqId);
+        const rfqFromList = sentRfqs.find(r => r.id === rfqId);
+
+        // Fetch full RFQ details if needed, or use from list
+        let rfq = rfqFromList;
+        if (!rfq?.purchaseRequisition?.items) {
+            const result = await getRfq(rfqId);
+            if (result) rfq = result;
+        }
+
         setSelectedRfq(rfq || null);
 
         if (rfq) {
@@ -102,10 +118,16 @@ export default function CreateVendorQuotation() {
     const onSubmit = async (data: FormValues) => {
         try {
             setLoading(true);
-            const quotation = await vendorQuotationApi.create(data);
-            router.push(`/erp/procurement/vendor-quotation/${quotation.id}`);
+            const result = await createVendorQuotation(data);
+            if (result.status !== false && result.id) {
+                toast.success('Vendor quotation created successfully');
+                router.push(`/erp/procurement/vendor-quotation/${result.id}`);
+            } else {
+                toast.error(result.message || 'Failed to create quotation');
+            }
         } catch (error) {
             console.error(error);
+            toast.error('An error occurred while creating the quotation');
         } finally {
             setLoading(false);
         }
@@ -227,5 +249,4 @@ export default function CreateVendorQuotation() {
     );
 }
 
-// Import Table components
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
