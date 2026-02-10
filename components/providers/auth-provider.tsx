@@ -317,10 +317,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    // Refresh token every 90 minutes (before 2h expiry)
+    // Refresh token every 6 hours (access token lasts 7 days)
+    // This ensures tokens stay fresh without being overly aggressive
     const refreshInterval = setInterval(() => {
       refreshToken();
-    }, 90 * 60 * 1000); // 90 minutes
+    }, 6 * 60 * 60 * 1000); // 6 hours
 
     // Also refresh on window focus (user returns to tab)
     const handleFocus = () => {

@@ -312,3 +312,63 @@ export const itemApi = {
   getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/master/erp/item/${id}`),
 };
 
+
+// Vendor Quotation Types and API
+
+export interface VendorQuotationItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  quotedQty: string;
+  unitPrice: string;
+  taxPercent: string;
+  discountPercent: string;
+  lineTotal: string;
+}
+
+export interface VendorQuotation {
+  id: string;
+  rfqId: string;
+  vendorId: string;
+  quotationDate: string;
+  status: string;
+  subtotal: string;
+  taxAmount: string;
+  discountAmount: string;
+  totalAmount: string;
+  notes?: string;
+  items: VendorQuotationItem[];
+  vendor: {
+    id: string;
+    code: string;
+    name: string;
+    email?: string;
+    contactNo?: string;
+  };
+  rfq: RequestForQuotation;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const vendorQuotationApi = {
+  getAll: (rfqId?: string) => fetchApi<VendorQuotation[]>(`/vendor-quotation${rfqId ? `?rfqId=${rfqId}` : ''}`),
+  getById: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}`),
+  compare: (rfqId: string) => fetchApi<VendorQuotation[]>(`/vendor-quotation/compare/${rfqId}`),
+  create: (data: any) => fetchApi<VendorQuotation>('/vendor-quotation', {
+     method: 'POST',
+     body: JSON.stringify(data),
+  }),
+  submit: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}/submit`, {
+     method: 'POST',
+  }),
+  select: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}/select`, {
+     method: 'POST',
+  }),
+  update: (id: string, data: any) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}`, {
+     method: 'PATCH',
+     body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<void>(`/vendor-quotation/${id}`, {
+     method: 'DELETE',
+  }),
+};

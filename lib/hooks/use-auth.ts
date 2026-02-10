@@ -12,7 +12,7 @@ export function useAuth() {
     try {
       const res = await fetch("/api/auth/check-session");
       const data = await res.json();
-      
+
       if (!data.valid) {
         // Session invalid, redirect to login
         router.push("/login");
@@ -26,9 +26,9 @@ export function useAuth() {
     // Initial check
     checkAndRefreshToken();
 
-    // Set up interval to check every 5 minutes
+    // Set up interval to check every hour (tokens last 7 days)
     // The API route will proactively refresh tokens if they're expiring soon
-    const interval = setInterval(checkAndRefreshToken, 5 * 60 * 1000);
+    const interval = setInterval(checkAndRefreshToken, 60 * 60 * 1000); // 1 hour
 
     // Check on window focus (user returns to tab)
     const handleFocus = () => {
