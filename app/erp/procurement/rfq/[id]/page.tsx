@@ -1,90 +1,29 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Checkbox } from '@/components/ui/checkbox';
-import { rfqApi, RequestForQuotation } from '@/lib/api';
-import { fetchApi } from '@/lib/api';
+import { getRfq } from '@/lib/actions/rfq';
+import { getVendors } from '@/lib/actions/procurement';
+import { RfqDetailClient } from './rfq-detail-client';
+import { notFound } from 'next/navigation';
+import { RequestForQuotation, PurchaseRequisitionItem, RfqVendor } from '@/lib/api';
 
-interface Supplier {
-    id: string;
-    code: string;
-    name: string;
-    email?: string;
-    contactNo?: string;
-}
+export default async function RfqDetail({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
 
-export default function RfqDetail({ params }: { params: { id: string } }) {
-    const [rfq, setRfq] = useState<RequestForQuotation | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const router = useRouter();
-    const id = params.id;
+    // Fetch data in parallel
+    const [rfqResult, suppliersResult] = await Promise.all([
+        getRfq(id),
+        getVendors()
+    ]);
 
-    useEffect(() => {
-        fetchRfq();
-        fetchSuppliers();
-    }, [id]);
+    const rfq = rfqResult as RequestForQuotation;
+    const suppliers = suppliersResult.status !== false ? (suppliersResult.data || []) : [];
 
-    const fetchRfq = async () => {
-        try {
-            setLoading(true);
-            const data = await rfqApi.getById(id);
-            setRfq(data);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchSuppliers = async () => {
-        try {
-            const response = await fetchApi<{ status: boolean; data: Supplier[] }>('/suppliers');
-            setSuppliers(response.data || []);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const handleAddVendors = async () => {
-        try {
-            setLoading(true);
-            await rfqApi.addVendors(id, selectedVendors);
-            setSelectedVendors([]);
-            setDialogOpen(false);
-            fetchRfq();
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleMarkAsSent = async () => {
-        try {
-            setLoading(true);
-            await rfqApi.markAsSent(id);
-            fetchRfq();
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    if (loading && !rfq) return <div className="p-6">Loading...</div>;
-    if (!rfq) return <div className="p-6">Not found</div>;
-
-    const existingVendorIds = rfq.vendors.map(v => v.vendorId);
-    const availableSuppliers = suppliers.filter(s => !existingVendorIds.includes(s.id));
+    if (!rfq || (rfq as any).status === false) {
+        notFound();
+    }
 
     return (
         <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -96,57 +35,10 @@ export default function RfqDetail({ params }: { params: { id: string } }) {
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => router.back()}>Back</Button>
-                    {rfq.status === 'DRAFT' && (
-                        <>
-                            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                                <DialogTrigger asChild>
-                                    <Button variant="secondary">Add Vendors</Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-2xl">
-                                    <DialogHeader>
-                                        <DialogTitle>Select Vendors</DialogTitle>
-                                    </DialogHeader>
-                                    <div className="max-h-96 overflow-y-auto space-y-2">
-                                        {availableSuppliers.length === 0 ? (
-                                            <p className="text-muted-foreground">All suppliers have been added.</p>
-                                        ) : (
-                                            availableSuppliers.map((supplier) => (
-                                                <div key={supplier.id} className="flex items-center space-x-2 p-2 hover:bg-muted rounded">
-                                                    <Checkbox
-                                                        id={supplier.id}
-                                                        checked={selectedVendors.includes(supplier.id)}
-                                                        onCheckedChange={(checked) => {
-                                                            if (checked) {
-                                                                setSelectedVendors([...selectedVendors, supplier.id]);
-                                                            } else {
-                                                                setSelectedVendors(selectedVendors.filter(id => id !== supplier.id));
-                                                            }
-                                                        }}
-                                                    />
-                                                    <label htmlFor={supplier.id} className="flex-1 cursor-pointer">
-                                                        <div className="font-medium">{supplier.name}</div>
-                                                        <div className="text-sm text-muted-foreground">
-                                                            {supplier.code} | {supplier.email || 'No email'} | {supplier.contactNo || 'No contact'}
-                                                        </div>
-                                                    </label>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                    <div className="flex justify-end gap-2 mt-4">
-                                        <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-                                        <Button onClick={handleAddVendors} disabled={selectedVendors.length === 0}>
-                                            Add {selectedVendors.length} Vendor(s)
-                                        </Button>
-                                    </div>
-                                </DialogContent>
-                            </Dialog>
-                            <Button onClick={handleMarkAsSent} disabled={rfq.vendors.length === 0}>
-                                Mark as Sent
-                            </Button>
-                        </>
-                    )}
+                    <Link href="/erp/procurement/rfq">
+                        <Button variant="outline">Back</Button>
+                    </Link>
+                    <RfqDetailClient rfq={rfq} suppliers={suppliers} />
                 </div>
             </div>
 
@@ -184,7 +76,7 @@ export default function RfqDetail({ params }: { params: { id: string } }) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {rfq.purchaseRequisition?.items.map((item) => (
+                            {rfq.purchaseRequisition?.items.map((item: PurchaseRequisitionItem) => (
                                 <TableRow key={item.id}>
                                     <TableCell className="font-medium">{item.itemId}</TableCell>
                                     <TableCell>{item.description || '-'}</TableCell>
@@ -219,7 +111,7 @@ export default function RfqDetail({ params }: { params: { id: string } }) {
                                     <TableCell colSpan={6} className="text-center h-24">No vendors added yet.</TableCell>
                                 </TableRow>
                             ) : (
-                                rfq.vendors.map((v) => (
+                                rfq.vendors.map((v: RfqVendor) => (
                                     <TableRow key={v.id}>
                                         <TableCell className="font-medium">{v.vendor.code}</TableCell>
                                         <TableCell>{v.vendor.name}</TableCell>

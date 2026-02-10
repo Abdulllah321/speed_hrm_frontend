@@ -58,3 +58,21 @@ export async function markRfqAsSent(id: string) {
         return { status: false, message: "Failed to mark RFQ as sent" };
     }
 }
+
+export async function addVendorsToRfq(id: string, vendorIds: string[]) {
+    try {
+        const response = await authFetch(`/rfq/${id}/vendors`, {
+            method: "POST",
+            body: JSON.stringify({ vendorIds }),
+        });
+        const result = await response.json();
+        if (result.status !== false) {
+            revalidatePath("/erp/procurement/rfq");
+            revalidatePath(`/erp/procurement/rfq/${id}`);
+        }
+        return result;
+    } catch (error) {
+        console.error("Add vendors error:", error);
+        return { status: false, message: "Failed to add vendors" };
+    }
+}

@@ -1,36 +1,14 @@
-
-'use client';
-
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
-import { purchaseRequisitionApi, PurchaseRequisition } from '@/lib/api';
+import { getPurchaseRequisitions } from '@/lib/actions/purchase-requisition';
+import { PurchaseRequisition } from '@/lib/api';
 
-export default function PurchaseRequisitionList() {
-    const [prs, setPrs] = useState<PurchaseRequisition[]>([]);
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
-
-    useEffect(() => {
-        fetchPrs();
-    }, []);
-
-    const fetchPrs = async () => {
-        try {
-            setLoading(true);
-            const data = await purchaseRequisitionApi.getAll();
-            setPrs(data);
-        } catch (error) {
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
+export default async function PurchaseRequisitionList() {
+    const prs = await getPurchaseRequisitions();
 
     return (
         <div className="p-6 space-y-6">
@@ -60,16 +38,12 @@ export default function PurchaseRequisitionList() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24">Loading...</TableCell>
-                                </TableRow>
-                            ) : prs.length === 0 ? (
+                            {(!prs || prs.length === 0) ? (
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center h-24">No requisitions found.</TableCell>
                                 </TableRow>
                             ) : (
-                                prs.map((pr) => (
+                                prs.map((pr: PurchaseRequisition) => (
                                     <TableRow key={pr.id}>
                                         <TableCell className="font-medium">{pr.prNumber}</TableCell>
                                         <TableCell>{new Date(pr.requestDate).toLocaleDateString()}</TableCell>
@@ -85,7 +59,7 @@ export default function PurchaseRequisitionList() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/erp/purchase-requisition/${pr.id}`}>
+                                            <Link href={`/erp/procurement/purchase-requisition/${pr.id}`}>
                                                 <Button variant="ghost" size="sm">View</Button>
                                             </Link>
                                         </TableCell>

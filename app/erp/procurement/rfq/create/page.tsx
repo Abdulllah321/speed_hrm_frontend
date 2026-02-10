@@ -9,7 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { rfqApi, purchaseRequisitionApi, PurchaseRequisition } from '@/lib/api';
+import { PurchaseRequisition } from '@/lib/api';
+import { getPurchaseRequisitions } from '@/lib/actions/purchase-requisition';
+import { createRfq } from '@/lib/actions/rfq';
+import { toast } from 'sonner';
 
 interface FormValues {
     purchaseRequisitionId: string;
@@ -30,8 +33,8 @@ export default function CreateRfq() {
 
     const fetchApprovedPRs = async () => {
         try {
-            const data = await purchaseRequisitionApi.getAll('APPROVED');
-            setApprovedPRs(data);
+            const data = await getPurchaseRequisitions('APPROVED');
+            setApprovedPRs(data || []);
         } catch (error) {
             console.error(error);
         }
@@ -46,10 +49,16 @@ export default function CreateRfq() {
     const onSubmit = async (data: FormValues) => {
         try {
             setLoading(true);
-            const rfq = await rfqApi.create(data);
-            router.push(`/erp/rfq/${rfq.id}`);
+            const result = await createRfq(data);
+            if (result.status !== false && result.id) {
+                toast.success('RFQ created successfully');
+                router.push(`/erp/procurement/rfq/${result.id}`);
+            } else {
+                toast.error(result.message || 'Failed to create RFQ');
+            }
         } catch (error) {
             console.error(error);
+            toast.error('An error occurred');
         } finally {
             setLoading(false);
         }
@@ -77,7 +86,7 @@ export default function CreateRfq() {
                                 <SelectContent>
                                     {approvedPRs.map((pr) => (
                                         <SelectItem key={pr.id} value={pr.id}>
-                                            {pr.prNumber} - {pr.requestedBy} ({pr.items.length} items)
+                                            {pr.prNumber} - {pr.requestedBy} ({pr.items?.length || 0} items)
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -92,12 +101,12 @@ export default function CreateRfq() {
                                     <div><strong>PR Number:</strong> {selectedPR.prNumber}</div>
                                     <div><strong>Requested By:</strong> {selectedPR.requestedBy}</div>
                                     <div><strong>Department:</strong> {selectedPR.department || '-'}</div>
-                                    <div><strong>Items:</strong> {selectedPR.items.length}</div>
+                                    <div><strong>Items:</strong> {selectedPR.items?.length || 0}</div>
                                 </div>
                                 <div className="mt-3">
                                     <strong>Items:</strong>
                                     <ul className="list-disc list-inside mt-1">
-                                        {selectedPR.items.map((item) => (
+                                        {selectedPR.items?.map((item) => (
                                             <li key={item.id}>
                                                 {item.itemId} - Qty: {item.requiredQty} {item.description && `(${item.description})`}
                                             </li>
