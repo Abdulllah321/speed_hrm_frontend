@@ -2,7 +2,7 @@
 import { authFetch } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 
-const API_URL = process.env.API_URL;
+
 
 export interface LeaveRequest {
   id: string;
@@ -43,17 +43,22 @@ export async function getLeaveRequests(filters?: LeaveRequestFilters): Promise<{
     if (filters?.status) queryParams.append('status', filters.status);
     if (filters?.fromDate) queryParams.append('fromDate', filters.fromDate);
     if (filters?.toDate) queryParams.append('toDate', filters.toDate);
-    const url = `${API_URL}/leave-requests${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-    const res = await fetch(url, { headers: { 'Content-Type': 'application/json' } });
+
+    const qs = queryParams.toString();
+    const endpoint = `/leave-requests${qs ? `?${qs}` : ''}`;
+
+    const res = await authFetch(endpoint);
+
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({ message: 'Failed to fetch leave requests' }));
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
+
     const result = await res.json();
     if (result.status && result.data) {
       return { status: true, data: result.data };
     }
-    return { status: false, message: 'Invalid response format' };
+    return { status: false, message: result.message || 'Invalid response format' };
   } catch (error) {
     console.error('Error fetching leave requests:', error);
     return {
@@ -91,9 +96,9 @@ export async function approveLeaveApplication(
 ): Promise<{ status: boolean; data?: LeaveRequest; message?: string }> {
   try {
     const endpoint = level
-      ? `${API_URL}/leave-applications/${id}/approve-level/${level}`
-      : `${API_URL}/leave-applications/${id}/approve`;
-    const res = await fetch(endpoint, {
+      ? `/leave-applications/${id}/approve-level/${level}`
+      : `/leave-applications/${id}/approve`;
+    const res = await authFetch(endpoint, {
       method: 'PUT',
       body: JSON.stringify({}), // Empty object for JSON body
     });
@@ -124,9 +129,9 @@ export async function rejectLeaveApplication(
 ): Promise<{ status: boolean; data?: LeaveRequest; message?: string }> {
   try {
     const endpoint = level
-      ? `${API_URL}/leave-applications/${id}/reject-level/${level}`
-      : `${API_URL}/leave-applications/${id}/reject`;
-    const res = await fetch(endpoint, {
+      ? `/leave-applications/${id}/reject-level/${level}`
+      : `/leave-applications/${id}/reject`;
+    const res = await authFetch(endpoint, {
       method: 'PUT',
       body: JSON.stringify({ remarks: remarks || '' }), // Always send remarks field
     });

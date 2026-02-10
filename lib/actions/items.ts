@@ -37,7 +37,7 @@ function sanitizeItemData(data: any) {
 export async function createItem(data: any) {
     try {
         const sanitizedData = sanitizeItemData(data);
-        const response = await authFetch("/master/erp/item", {
+        const response = await authFetch("/finance/items", {
             method: "POST",
             body: JSON.stringify(sanitizedData),
         });
@@ -55,7 +55,7 @@ export async function createItem(data: any) {
 
 export async function getItems() {
     try {
-        const response = await authFetch("/master/erp/item", {
+        const response = await authFetch("/finance/items", {
             method: "GET",
         });
 
@@ -69,7 +69,7 @@ export async function getItems() {
 
 export async function getItemById(id: string) {
     try {
-        const response = await authFetch(`/master/erp/item/${id}`, {
+        const response = await authFetch(`/finance/items/${id}`, {
             method: "GET",
         });
 
@@ -83,7 +83,7 @@ export async function getItemById(id: string) {
 export async function updateItem(id: string, data: any) {
     try {
         const sanitizedData = sanitizeItemData(data);
-        const response = await authFetch(`/master/erp/item/${id}`, {
+        const response = await authFetch(`/finance/items/${id}`, {
             method: "PUT",
             body: JSON.stringify(sanitizedData),
         });
@@ -101,7 +101,7 @@ export async function updateItem(id: string, data: any) {
 
 export async function deleteItem(id: string) {
     try {
-        const response = await authFetch(`/master/erp/item/${id}`, {
+        const response = await authFetch(`/finance/items/${id}`, {
             method: "DELETE",
         });
 
