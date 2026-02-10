@@ -5,8 +5,7 @@ export const vendorSchema = z.object({
     code: z.string().min(1, "Code is required"), // Common for both
     name: z.string().min(1, "Name is required"), // Common for both
     address: z.string().min(1, "Address is required"), // Common for both
-    contactPerson: z.string().optional(), // Common for both
-    contactNumber: z.string().optional(), // Common for both
+    contactNo: z.string().optional(), // Common for both
 
     // Local Supplier Specific
     nature: z.string().optional(), // e.g., GOODS, SERVICES

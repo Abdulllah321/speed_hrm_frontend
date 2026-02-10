@@ -719,8 +719,8 @@ export const menuData: MenuItem[] = [
       {
         title: "Item Setup",
         children: [
-          { title: "Items", href: "/erp/items/create" },
-          { title: "Item-List", href: "/erp/items/list" },
+          { title: "Create", href: "/erp/items/create" },
+          { title: "List", href: "/erp/items/list" },
           { title: "Categories", href: "/erp/inventory/categories" },
           { title: "Warehouses", href: "/erp/inventory/warehouses" },
         ]

@@ -1,6 +1,6 @@
 "use client";
 
-import { createVendor } from "@/lib/actions/procurement";
+import { createVendor, updateVendor } from "@/lib/actions/procurement";
 import { getChartOfAccounts, ChartOfAccount } from "@/lib/actions/chart-of-account";
 
 import { useState, useEffect } from "react";
@@ -23,8 +23,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Autocomplete } from "@/components/ui/autocomplete";
 
-export function VendorForm() {
+interface VendorFormProps {
+    initialData?: any;
+    id?: string;
+    readOnly?: boolean;
+}
+
+export function VendorForm({ initialData, id, readOnly = false }: VendorFormProps) {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
     const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
@@ -40,34 +47,43 @@ export function VendorForm() {
     const form = useForm<VendorFormValues>({
         resolver: zodResolver(vendorSchema) as any,
         defaultValues: {
-            type: "local",
-            code: "",
-            name: "",
-            address: "",
-            contactPerson: "",
-            contactNumber: "",
-            nature: undefined,
-            cnic: "",
-            ntn: "",
-            strn: "",
-            srb: "",
-            pra: "",
-            ict: "",
-            brand: "",
-            chartOfAccountId: "",
+            type: initialData?.type ? (initialData.type === "LOCAL" ? "local" : "import") : "local",
+            code: initialData?.code || "",
+            name: initialData?.name || "",
+            address: initialData?.address || "",
+            contactNo: initialData?.contactNo || initialData?.contactNumber || "",
+            nature: initialData?.nature || undefined,
+            cnic: initialData?.cnicNo || "",
+            ntn: initialData?.ntnNo || "",
+            strn: initialData?.strnNo || "",
+            srb: initialData?.srbNo || "",
+            pra: initialData?.praNo || "",
+            ict: initialData?.ictNo || "",
+            brand: initialData?.brand || "",
+            chartOfAccountId: initialData?.chartOfAccountId || "",
         },
     });
 
     const vendorType = form.watch("type");
 
     const onSubmit: SubmitHandler<VendorFormValues> = async (values) => {
+        if (readOnly) return;
         try {
             setIsPending(true);
-            const result = await createVendor(values);
+            let result;
+            if (id) {
+                result = await updateVendor(id, values);
+            } else {
+                result = await createVendor(values);
+            }
+            
             if (result.status) {
                 toast.success(result.message);
-                // router.push("/erp/procurement/vendors/list"); // Redirect to list if it existed
-                form.reset();
+                if (!id) {
+                    form.reset();
+                } else {
+                    router.push("/erp/procurement/vendors");
+                }
             } else {
                 toast.error(result.message);
             }
@@ -81,14 +97,25 @@ export function VendorForm() {
     return (
         <Card className="w-full">
             <CardHeader className="border-b flex flex-row items-center justify-between">
-                <CardTitle>{vendorType === "local" ? "Create Local Supplier" : "Create Import Supplier"}</CardTitle>
-                <Tabs value={vendorType} onValueChange={(val) => form.setValue("type", val as "local" | "import")} className="w-[300px]">
+                <CardTitle>
+                    {readOnly 
+                        ? (vendorType === "local" ? "View Local Supplier" : "View Import Supplier") 
+                        : id 
+                            ? (vendorType === "local" ? "Edit Local Supplier" : "Edit Import Supplier") 
+                            : (vendorType === "local" ? "Create Local Supplier" : "Create Import Supplier")
+                    }
+                </CardTitle>
+                <Tabs 
+                    value={vendorType} 
+                    onValueChange={(val) => !readOnly && form.setValue("type", val as "local" | "import")} 
+                    className="w-[300px]"
+                >
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="local" className="flex items-center gap-2">
+                        <TabsTrigger value="local" className="flex items-center gap-2" disabled={readOnly}>
                             <User className="h-4 w-4" />
                             Local
                         </TabsTrigger>
-                        <TabsTrigger value="import" className="flex items-center gap-2">
+                        <TabsTrigger value="import" className="flex items-center gap-2" disabled={readOnly}>
                             <Globe className="h-4 w-4" />
                             Import
                         </TabsTrigger>
@@ -102,14 +129,14 @@ export function VendorForm() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">Code <span className="text-destructive">*</span></Label>
-                            <Input {...form.register("code")} placeholder="Enter Supplier Code" />
+                            <Input {...form.register("code")} placeholder="Enter Supplier Code" disabled={readOnly} />
                             {form.formState.errors.code && (
                                 <p className="text-xs text-destructive">{form.formState.errors.code.message}</p>
                             )}
                         </div>
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">Name of Supplier <span className="text-destructive">*</span></Label>
-                            <Input {...form.register("name")} placeholder="Enter Supplier Name" />
+                            <Input {...form.register("name")} placeholder="Enter Supplier Name" disabled={readOnly} />
                             {form.formState.errors.name && (
                                 <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
                             )}
@@ -118,7 +145,7 @@ export function VendorForm() {
 
                     <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground uppercase font-semibold">Address <span className="text-destructive">*</span></Label>
-                        <Textarea {...form.register("address")} placeholder="Enter Address" />
+                        <Textarea {...form.register("address")} placeholder="Enter Address" disabled={readOnly} />
                         {form.formState.errors.address && (
                             <p className="text-xs text-destructive">{form.formState.errors.address.message}</p>
                         )}
@@ -126,12 +153,8 @@ export function VendorForm() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Contact Person</Label>
-                            <Input {...form.register("contactPerson")} placeholder="Enter Contact Person" />
-                        </div>
-                        <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">Contact Number</Label>
-                            <Input {...form.register("contactNumber")} placeholder="Enter Contact Number" />
+                            <Input {...form.register("contactNo")} placeholder="Enter Contact Number" disabled={readOnly} />
                         </div>
                     </div>
 
@@ -141,18 +164,17 @@ export function VendorForm() {
                             control={form.control}
                             name="chartOfAccountId"
                             render={({ field }) => (
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Account" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {accounts.map((acc) => (
-                                            <SelectItem key={acc.id} value={acc.id}>
-                                                {acc.code} - {acc.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Autocomplete
+                                    options={accounts.map((acc) => ({
+                                        value: acc.id,
+                                        label: `${acc.code} - ${acc.name}`,
+                                    }))}
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                    placeholder="Select Account"
+                                    searchPlaceholder="Search account..."
+                                    disabled={readOnly}
+                                />
                             )}
                         />
                         {form.formState.errors.chartOfAccountId && (
@@ -166,27 +188,27 @@ export function VendorForm() {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">CNIC No.</Label>
-                                <Input {...form.register("cnic")} placeholder="Enter CNIC" />
+                                <Input {...form.register("cnic")} placeholder="Enter CNIC" disabled={readOnly} />
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">NTN No.</Label>
-                                <Input {...form.register("ntn")} placeholder="Enter NTN" />
+                                <Input {...form.register("ntn")} placeholder="Enter NTN" disabled={readOnly} />
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">STRN No.</Label>
-                                <Input {...form.register("strn")} placeholder="Enter STRN" />
+                                <Input {...form.register("strn")} placeholder="Enter STRN" disabled={readOnly} />
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">SRB No.</Label>
-                                <Input {...form.register("srb")} placeholder="Enter SRB" />
+                                <Input {...form.register("srb")} placeholder="Enter SRB" disabled={readOnly} />
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">PRA No.</Label>
-                                <Input {...form.register("pra")} placeholder="Enter PRA" />
+                                <Input {...form.register("pra")} placeholder="Enter PRA" disabled={readOnly} />
                             </div>
                             <div className="space-y-1">
                                 <Label className="text-xs text-muted-foreground uppercase font-semibold">ICT No.</Label>
-                                <Input {...form.register("ict")} placeholder="Enter ICT" />
+                                <Input {...form.register("ict")} placeholder="Enter ICT" disabled={readOnly} />
                             </div>
                         </div>
                     </div>
@@ -202,7 +224,7 @@ export function VendorForm() {
                                         control={form.control}
                                         name="nature"
                                         render={({ field }) => (
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={readOnly}>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder="Select Nature" />
                                                 </SelectTrigger>
@@ -228,7 +250,7 @@ export function VendorForm() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-1">
                                     <Label className="text-xs text-muted-foreground uppercase font-semibold">Brand <span className="text-destructive">*</span></Label>
-                                    <Input {...form.register("brand")} placeholder="e.g. NIKE, ADIDAS" />
+                                    <Input {...form.register("brand")} placeholder="e.g. NIKE, ADIDAS" disabled={readOnly} />
                                     {form.formState.errors.brand && (
                                         <p className="text-xs text-destructive">{form.formState.errors.brand.message}</p>
                                     )}
@@ -237,12 +259,14 @@ export function VendorForm() {
                         </div>
                     )}
 
-                    <div className="flex justify-end pt-6 border-t font-primary">
-                        <Button type="submit" disabled={isPending}>
-                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Supplier
-                        </Button>
-                    </div>
+                    {!readOnly && (
+                        <div className="flex justify-end pt-6 border-t font-primary">
+                            <Button type="submit" disabled={isPending}>
+                                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {id ? "Update Supplier" : "Create Supplier"}
+                            </Button>
+                        </div>
+                    )}
                 </form>
             </CardContent>
         </Card>

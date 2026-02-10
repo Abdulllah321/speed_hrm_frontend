@@ -14,7 +14,7 @@ export function getApiBaseUrl(): string {
   // Check if running in browser
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname;
-    
+
     // If accessing via localtest.me (including subdomains), use api.localtest.me
     if (hostname.includes("localtest.me")) {
       return "http://api.localtest.me:5000";

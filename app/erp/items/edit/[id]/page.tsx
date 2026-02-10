@@ -129,6 +129,7 @@ export default function ItemEditPage() {
 
     const [loading, setLoading] = useState(true);
     const [fetchingItem, setFetchingItem] = useState(true);
+    const [currentItem, setCurrentItem] = useState<any>(null);
 
     const form = useForm({
         resolver: zodResolver(itemFormSchema),
@@ -217,6 +218,7 @@ export default function ItemEditPage() {
                 const result = await getItemById(itemId);
                 if (result.status && result.data) {
                     const item = result.data;
+                    setCurrentItem(item); // Store item for image display
 
                     // Transform dates to Date objects if they exist
                     const discountStartDate = item.discountStartDate ? new Date(item.discountStartDate) : null;
@@ -337,6 +339,24 @@ export default function ItemEditPage() {
             </div>
 
             <Steps steps={STEPS} currentStep={currentStep} />
+
+            {/* Image Display Section */}
+            {currentItem?.imageUrl && (
+                <Card className="mt-8">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Current Item Image</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="flex justify-center">
+                            <img
+                                src={currentItem.imageUrl}
+                                alt={currentItem.itemId}
+                                className="max-w-md w-full h-auto rounded-lg border shadow-sm object-contain"
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="mt-8">
                 <Form {...form}>
