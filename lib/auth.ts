@@ -262,7 +262,7 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
       method: options.method || 'GET',
       data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
       headers: {
-        "Content-Type": "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(companyId ? { "x-company-id": companyId } : {}),
         ...(companyCode ? { "x-tenant-id": companyCode } : {}),

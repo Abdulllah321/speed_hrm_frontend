@@ -24,7 +24,7 @@ async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
       method: options?.method || 'GET',
       data: options?.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
       headers: {
-        'Content-Type': 'application/json',
+        ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
         ...(companyId ? { 'x-company-id': companyId } : {}),
         ...(companyCode ? { 'x-tenant-id': companyCode } : {}),
         ...options?.headers,
@@ -231,15 +231,15 @@ export const purchaseRequisitionApi = {
   getAll: (status?: string) => fetchApi<PurchaseRequisition[]>(`/purchase-requisition${status ? `?status=${status}` : ''}`),
   getById: (id: string) => fetchApi<PurchaseRequisition>(`/purchase-requisition/${id}`),
   create: (data: any) => fetchApi<PurchaseRequisition>('/purchase-requisition', {
-     method: 'POST',
-     body: JSON.stringify(data),
+    method: 'POST',
+    body: JSON.stringify(data),
   }),
   update: (id: string, data: any) => fetchApi<PurchaseRequisition>(`/purchase-requisition/${id}`, {
-     method: 'PATCH',
-     body: JSON.stringify(data),
+    method: 'PATCH',
+    body: JSON.stringify(data),
   }),
   delete: (id: string) => fetchApi<void>(`/purchase-requisition/${id}`, {
-     method: 'DELETE',
+    method: 'DELETE',
   }),
 };
 
@@ -277,22 +277,22 @@ export const rfqApi = {
   getAll: (status?: string) => fetchApi<RequestForQuotation[]>(`/rfq${status ? `?status=${status}` : ''}`),
   getById: (id: string) => fetchApi<RequestForQuotation>(`/rfq/${id}`),
   create: (data: any) => fetchApi<RequestForQuotation>('/rfq', {
-     method: 'POST',
-     body: JSON.stringify(data),
+    method: 'POST',
+    body: JSON.stringify(data),
   }),
   addVendors: (id: string, vendorIds: string[]) => fetchApi<RequestForQuotation>(`/rfq/${id}/vendors`, {
-     method: 'POST',
-     body: JSON.stringify({ vendorIds }),
+    method: 'POST',
+    body: JSON.stringify({ vendorIds }),
   }),
   markAsSent: (id: string) => fetchApi<RequestForQuotation>(`/rfq/${id}/send`, {
-     method: 'POST',
+    method: 'POST',
   }),
   update: (id: string, data: any) => fetchApi<RequestForQuotation>(`/rfq/${id}`, {
-     method: 'PATCH',
-     body: JSON.stringify(data),
+    method: 'PATCH',
+    body: JSON.stringify(data),
   }),
   delete: (id: string) => fetchApi<void>(`/rfq/${id}`, {
-     method: 'DELETE',
+    method: 'DELETE',
   }),
 };
 
@@ -355,20 +355,20 @@ export const vendorQuotationApi = {
   getById: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}`),
   compare: (rfqId: string) => fetchApi<VendorQuotation[]>(`/vendor-quotation/compare/${rfqId}`),
   create: (data: any) => fetchApi<VendorQuotation>('/vendor-quotation', {
-     method: 'POST',
-     body: JSON.stringify(data),
+    method: 'POST',
+    body: JSON.stringify(data),
   }),
   submit: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}/submit`, {
-     method: 'POST',
+    method: 'POST',
   }),
   select: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}/select`, {
-     method: 'POST',
+    method: 'POST',
   }),
   update: (id: string, data: any) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}`, {
-     method: 'PATCH',
-     body: JSON.stringify(data),
+    method: 'PATCH',
+    body: JSON.stringify(data),
   }),
   delete: (id: string) => fetchApi<void>(`/vendor-quotation/${id}`, {
-     method: 'DELETE',
+    method: 'DELETE',
   }),
 };
