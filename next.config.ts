@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
     "master.localtest.me",
     "auth.localtest.me",
     "erp.localtest.me",
+    "pos.localtest.me",
     "localhost",
     "127.0.0.1",
   ],
