@@ -720,8 +720,11 @@ export const menuData: MenuItem[] = [
       {
         title: "Warehouse WMS",
         children: [
+
           { title: "Dashboard", href: "/erp/inventory/warehouse" },
+          { title: "ADD Warehouse", href: "/erp/inventory/warehouse/add" },
           { title: "Inventory Explorer", href: "/erp/inventory/warehouse/inventory" },
+
         ]
       },
       {
@@ -752,7 +755,7 @@ export const menuData: MenuItem[] = [
       { title: "Purchase Requisition", href: "/erp/procurement/purchase-requisition" },
       { title: "RFQ", href: "/erp/procurement/rfq" },
       { title: "Vendor Quotation", href: "/erp/procurement/vendor-quotation/create" },
-           { title: "Vendor Quotation list", href: "/erp/procurement/vendor-quotation/list" },
+      { title: "Vendor Quotation list", href: "/erp/procurement/vendor-quotation/list" },
       { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
     ],

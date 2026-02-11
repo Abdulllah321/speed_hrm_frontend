@@ -113,49 +113,43 @@ export function PaymentVoucherList({
 
     return (
         <div className="space-y-6">
-            {/* Page Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Payment Vouchers</h2>
-                    <p className="text-muted-foreground">Manage your bank and cash payments</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {permissions?.canCreate && (
-                        <Link href="/erp/finance/payment-voucher/create">
-                            <Button>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Payment Voucher
-                            </Button>
-                        </Link>
-                    )}
-                    <Button variant="outline">
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print
-                    </Button>
-                    <Button variant="outline">
-                        <Download className="mr-2 h-4 w-4" />
-                        Export (xlsx)
-                    </Button>
-                </div>
-            </div>
-
             <Tabs value={type} onValueChange={(val) => setType(val as "bank" | "cash")} className="w-full">
-                <TabsList variant="card" className="grid w-full max-w-md grid-cols-2">
-                    <TabsTrigger value="bank" className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Bank Payment Vouchers
-                    </TabsTrigger>
-                    <TabsTrigger value="cash" className="flex items-center gap-2">
-                        <Wallet className="h-4 w-4" />
-                        Cash Payment Vouchers
-                    </TabsTrigger>
-                </TabsList>
-
-                <Card className="mt-6">
-                    <CardHeader className="border-b dark:border-border">
-                        <div className="flex items-center justify-between">
-                            <CardTitle>View {type === "bank" ? "Bank" : "Cash"} Payment Voucher List</CardTitle>
+                <Card>
+                    <CardHeader className="border-b dark:border-border space-y-4">
+                        <div className="flex items-center justify-between w-full">
+                            <div className="space-y-1">
+                                <CardTitle>Payment Vouchers</CardTitle>
+                                <p className="text-sm text-muted-foreground">Manage your bank and cash payments</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {permissions?.canCreate && (
+                                    <Link href="/erp/finance/payment-voucher/create">
+                                        <Button size="sm">
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            Add Payment Voucher
+                                        </Button>
+                                    </Link>
+                                )}
+                                <Button variant="outline" size="sm">
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Print
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export (xlsx)
+                                </Button>
+                            </div>
                         </div>
+                        <TabsList variant="card" className="grid w-full max-w-md grid-cols-2">
+                            <TabsTrigger value="bank" className="flex items-center gap-2">
+                                <CreditCard className="h-4 w-4" />
+                                Bank Payment Vouchers
+                            </TabsTrigger>
+                            <TabsTrigger value="cash" className="flex items-center gap-2">
+                                <Wallet className="h-4 w-4" />
+                                Cash Payment Vouchers
+                            </TabsTrigger>
+                        </TabsList>
                     </CardHeader>
                     <CardContent className="pt-6 space-y-6">
 

@@ -380,6 +380,7 @@ export interface PurchaseOrderItem {
   itemId: string;
   description?: string;
   quantity: string;
+  receivedQty: string;
   unitPrice: string;
   taxPercent: string;
   discountPercent: string;
@@ -423,4 +424,74 @@ export const purchaseOrderApi = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+};
+
+// GRN & Warehouse Types and API
+
+export interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  address?: string;
+  type: string;
+  description?: string;
+  isActive: boolean;
+  managerId?: string;
+  createdAt: string;
+}
+
+export interface GrnItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  receivedQty: string;
+}
+
+export interface Grn {
+  id: string;
+  grnNumber: string;
+  purchaseOrderId: string;
+  warehouseId: string;
+  receivedDate: string;
+  status: string;
+  notes?: string;
+  items: GrnItem[];
+  purchaseOrder?: {
+    poNumber: string;
+  };
+  warehouse?: {
+    name: string;
+  };
+  createdAt: string;
+}
+
+export const grnApi = {
+  getAll: () => fetchApi<Grn[]>('/grn'),
+  getById: (id: string) => fetchApi<Grn>(`/grn/${id}`),
+  create: (data: {
+    purchaseOrderId: string;
+    warehouseId: string;
+    notes?: string;
+    items: { itemId: string; description?: string; receivedQty: number }[];
+  }) =>
+    fetchApi<Grn>('/grn', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const warehouseApi = {
+  getAll: () => fetchApi<Warehouse[]>('/warehouse'),
+  getById: (id: string) => fetchApi<Warehouse>(`/warehouse/${id}`),
+  create: (data: Partial<Warehouse>) => fetchApi<Warehouse>('/warehouse', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: Partial<Warehouse>) => fetchApi<Warehouse>(`/warehouse/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<void>(`/warehouse/${id}`, {
+    method: 'DELETE',
+  }),
 };

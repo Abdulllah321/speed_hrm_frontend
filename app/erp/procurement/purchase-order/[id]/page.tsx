@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 import { purchaseOrderApi, PurchaseOrder } from '@/lib/api';
 import { toast } from 'sonner';
 import { Printer, ArrowLeft, Building2 } from 'lucide-react';
@@ -86,6 +87,13 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={() => router.back()}>Back</Button>
+                        {(order.status === 'OPEN' || order.status === 'PARTIALLY_RECEIVED') && (
+                            <Button variant="default" className="bg-blue-600 hover:bg-blue-700" asChild>
+                                <Link href={`/erp/procurement/grn/create/${order.id}`}>
+                                    Create GRN
+                                </Link>
+                            </Button>
+                        )}
                         <Button onClick={() => window.print()}>Print PO</Button>
                     </div>
                 </div>
@@ -146,7 +154,8 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                 <TableRow>
                                     <TableHead>Item ID</TableHead>
                                     <TableHead>Description</TableHead>
-                                    <TableHead className="text-right">Quantity</TableHead>
+                                    <TableHead className="text-right">Ordered</TableHead>
+                                    <TableHead className="text-right">Received</TableHead>
                                     <TableHead className="text-right">Unit Price</TableHead>
                                     <TableHead className="text-right">Tax %</TableHead>
                                     <TableHead className="text-right">Line Total</TableHead>
@@ -157,7 +166,8 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                     <TableRow key={item.id}>
                                         <TableCell className="font-medium">{item.itemId}</TableCell>
                                         <TableCell>{item.description || 'No description'}</TableCell>
-                                        <TableCell className="text-right">{parseFloat(item.quantity).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right font-mono text-blue-600">{parseFloat(item.receivedQty || '0').toFixed(2)}</TableCell>
                                         <TableCell className="text-right">${parseFloat(item.unitPrice).toFixed(2)}</TableCell>
                                         <TableCell className="text-right">{item.taxPercent}%</TableCell>
                                         <TableCell className="text-right font-semibold">${parseFloat(item.lineTotal).toFixed(2)}</TableCell>
@@ -183,7 +193,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
             {/* Professional Print View - Hidden on Screen */}
             <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
                 <div className="max-w-4xl mx-auto border-none shadow-none">
-                    
+
                     {/* Header Section */}
                     <div className="p-8 border-b">
                         <div className="flex justify-between items-start">
