@@ -372,3 +372,55 @@ export const vendorQuotationApi = {
     method: 'DELETE',
   }),
 };
+
+// Purchase Order Types and API
+
+export interface PurchaseOrderItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  quantity: string;
+  unitPrice: string;
+  taxPercent: string;
+  discountPercent: string;
+  lineTotal: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  vendorQuotationId: string;
+  vendorId: string;
+  rfqId?: string;
+  orderDate: string;
+  expectedDeliveryDate?: string;
+  status: string;
+  subtotal: string;
+  taxAmount: string;
+  discountAmount: string;
+  totalAmount: string;
+  notes?: string;
+  items: PurchaseOrderItem[];
+  vendor: {
+    name: string;
+    code: string;
+  };
+  vendorQuotation?: VendorQuotation;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const purchaseOrderApi = {
+  getAll: () => fetchApi<PurchaseOrder[]>('/purchase-order'),
+  getById: (id: string) => fetchApi<PurchaseOrder>(`/purchase-order/${id}`),
+  create: (data: { vendorQuotationId: string; notes?: string; expectedDeliveryDate?: string }) =>
+    fetchApi<PurchaseOrder>('/purchase-order', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateStatus: (id: string, status: string) =>
+    fetchApi<PurchaseOrder>(`/purchase-order/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+};

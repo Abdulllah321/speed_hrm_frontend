@@ -8,7 +8,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { purchaseRequisitionApi, itemApi, MasterItem } from '@/lib/api';
+import { purchaseRequisitionApi } from '@/lib/api';
+import { getItems } from '@/lib/actions/items';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
 import {
@@ -40,10 +41,17 @@ interface FormValues {
     }[];
 }
 
+interface Item {
+    id: string;
+    itemId: string;
+    sku: string;
+    description?: string;
+}
+
 export default function CreatePurchaseRequisition() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [items, setItems] = useState<MasterItem[]>([]);
+    const [items, setItems] = useState<Item[]>([]);
     const [loadingItems, setLoadingItems] = useState(false);
 
     // Default values
@@ -65,7 +73,7 @@ export default function CreatePurchaseRequisition() {
         const fetchItems = async () => {
             try {
                 setLoadingItems(true);
-                const response = await itemApi.getAll();
+                const response = await getItems();
                 if (response.status) {
                     setItems(response.data);
                 }
@@ -171,7 +179,7 @@ export default function CreatePurchaseRequisition() {
                                                         )}
                                                     >
                                                         {itemField.value
-                                                            ? items.find((item) => item.id === itemField.value)?.name || items.find((item) => item.id === itemField.value)?.code || "Select item"
+                                                            ? items.find((item) => item.itemId === itemField.value)?.itemId || items.find((item) => item.itemId === itemField.value)?.sku || "Select item"
                                                             : "Select item"}
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                     </Button>
@@ -185,19 +193,19 @@ export default function CreatePurchaseRequisition() {
                                                                 {items.map((item) => (
                                                                     <CommandItem
                                                                         key={item.id}
-                                                                        value={`${item.name} ${item.code}`}
+                                                                        value={`${item.itemId} ${item.sku} ${item.description}`}
                                                                         onSelect={() => {
-                                                                            itemField.onChange(item.id);
-                                                                            setValue(`items.${index}.description`, item.description || item.name); 
+                                                                            itemField.onChange(item.itemId);
+                                                                            setValue(`items.${index}.description`, item.description || item.sku); 
                                                                         }}
                                                                     >
                                                                         <Check
                                                                             className={cn(
                                                                                 "mr-2 h-4 w-4",
-                                                                                item.id === itemField.value ? "opacity-100" : "opacity-0"
+                                                                                item.itemId === itemField.value ? "opacity-100" : "opacity-0"
                                                                             )}
                                                                         />
-                                                                        {item.code} - {item.name}
+                                                                        {item.itemId} - {item.sku}
                                                                     </CommandItem>
                                                                 ))}
                                                             </CommandList>

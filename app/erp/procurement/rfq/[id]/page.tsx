@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { getRfq } from '@/lib/actions/rfq';
 import { getVendors } from '@/lib/actions/procurement';
 import { RfqDetailClient } from './rfq-detail-client';
+import { RfqVendorTable } from './rfq-vendor-table';
 import { notFound } from 'next/navigation';
-import { RequestForQuotation, PurchaseRequisitionItem, RfqVendor } from '@/lib/api';
+import { RequestForQuotation, PurchaseRequisitionItem } from '@/lib/api';
 
 export default async function RfqDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -35,6 +36,11 @@ export default async function RfqDetail({ params }: { params: Promise<{ id: stri
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    {rfq.status !== 'DRAFT' && (
+                        <Link href={`/erp/procurement/vendor-quotation/compare/${rfq.id}`}>
+                            <Button variant="secondary">Compare Quotations</Button>
+                        </Link>
+                    )}
                     <Link href="/erp/procurement/rfq">
                         <Button variant="outline">Back</Button>
                     </Link>
@@ -94,40 +100,7 @@ export default async function RfqDetail({ params }: { params: Promise<{ id: stri
                     <CardTitle>Vendors</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Vendor Code</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Contact</TableHead>
-                                <TableHead>Sent At</TableHead>
-                                <TableHead>Response</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {rfq.vendors.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24">No vendors added yet.</TableCell>
-                                </TableRow>
-                            ) : (
-                                rfq.vendors.map((v: RfqVendor) => (
-                                    <TableRow key={v.id}>
-                                        <TableCell className="font-medium">{v.vendor.code}</TableCell>
-                                        <TableCell>{v.vendor.name}</TableCell>
-                                        <TableCell>{v.vendor.email || '-'}</TableCell>
-                                        <TableCell>{v.vendor.contactNo || '-'}</TableCell>
-                                        <TableCell>{v.sentAt ? new Date(v.sentAt).toLocaleDateString() : '-'}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={v.responseStatus === 'RESPONDED' ? 'default' : 'outline'}>
-                                                {v.responseStatus}
-                                            </Badge>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+                    <RfqVendorTable rfq={rfq} />
                 </CardContent>
             </Card>
         </div>

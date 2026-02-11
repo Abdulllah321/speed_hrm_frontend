@@ -2,21 +2,43 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { purchaseRequisitionApi, PurchaseRequisition } from '@/lib/api';
+import { getItems } from '@/lib/actions/items';
 
-export default function PurchaseRequisitionDetail({ params }: { params: { id: string } }) {
+export default function PurchaseRequisitionDetail() {
+    const params = useParams();
+    const id = params?.id as string;
     const [pr, setPr] = useState<PurchaseRequisition | null>(null);
+    const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
-    const id = params.id;
 
     useEffect(() => {
-        fetchPr();
+        if (!id) return;
+        
+        const loadData = async () => {
+            try {
+                setLoading(true);
+                const [prData, itemsResult] = await Promise.all([
+                    purchaseRequisitionApi.getById(id),
+                    getItems()
+                ]);
+                setPr(prData);
+                if (itemsResult.status) {
+                    setItems(itemsResult.data);
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
     }, [id]);
 
     const fetchPr = async () => {
@@ -100,20 +122,25 @@ export default function PurchaseRequisitionDetail({ params }: { params: { id: st
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Item ID</TableHead>
+                                <TableHead>SKU</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead>Qty</TableHead>
                                 <TableHead>Needed By</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {pr.items.map((item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell className="font-medium">{item.itemId}</TableCell>
-                                    <TableCell>{item.description || '-'}</TableCell>
-                                    <TableCell>{item.requiredQty}</TableCell>
-                                    <TableCell>{item.neededByDate ? new Date(item.neededByDate).toLocaleDateString() : '-'}</TableCell>
-                                </TableRow>
-                            ))}
+                            {pr.items.map((item) => {
+                                const masterItem = items.find(i => i.itemId === item.itemId);
+                                return (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium">{item.itemId}</TableCell>
+                                        <TableCell>{masterItem?.sku || '-'}</TableCell>
+                                        <TableCell>{item.description || masterItem?.description || '-'}</TableCell>
+                                        <TableCell>{item.requiredQty}</TableCell>
+                                        <TableCell>{item.neededByDate ? new Date(item.neededByDate).toLocaleDateString() : '-'}</TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </CardContent>

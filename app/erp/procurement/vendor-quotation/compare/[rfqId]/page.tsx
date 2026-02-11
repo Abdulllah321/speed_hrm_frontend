@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import Link from 'next/link';
 import { vendorQuotationApi, VendorQuotation } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
-export default function CompareQuotations({ params }: { params: { rfqId: string } }) {
+export default function CompareQuotations({ params }: { params: Promise<{ rfqId: string }> }) {
+    const { rfqId } = use(params);
     const [quotations, setQuotations] = useState<VendorQuotation[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
-    const rfqId = params.rfqId;
 
     useEffect(() => {
         fetchComparison();
@@ -33,9 +35,11 @@ export default function CompareQuotations({ params }: { params: { rfqId: string 
     const handleSelect = async (quotationId: string) => {
         try {
             await vendorQuotationApi.select(quotationId);
+            toast.success('Vendor selected successfully');
             fetchComparison(); // Refresh
         } catch (error) {
             console.error(error);
+            toast.error('Failed to select vendor');
         }
     };
 
@@ -48,9 +52,13 @@ export default function CompareQuotations({ params }: { params: { rfqId: string 
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Compare Quotations</h1>
-                    <p className="text-muted-foreground">RFQ: {quotations[0]?.rfq?.rfqNumber}</p>
+                <div className="flex items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Compare Quotations</h1>
+                        <Link href={`/erp/procurement/rfq/${rfqId}`} className="text-sm text-blue-600 hover:underline">
+                            View RFQ Detail
+                        </Link>
+                    </div>
                 </div>
                 <Button variant="outline" onClick={() => router.back()}>Back</Button>
             </div>

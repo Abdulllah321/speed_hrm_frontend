@@ -2,28 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus } from 'lucide-react';
-import { rfqApi, RequestForQuotation } from '@/lib/api';
+import { Plus, Eye } from 'lucide-react';
+import { purchaseOrderApi, PurchaseOrder } from '@/lib/api';
 
-export default function RfqList() {
-    const [rfqs, setRfqs] = useState<RequestForQuotation[]>([]);
+export default function PurchaseOrderList() {
+    const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
 
     useEffect(() => {
-        fetchRfqs();
+        fetchOrders();
     }, []);
 
-    const fetchRfqs = async () => {
+    const fetchOrders = async () => {
         try {
             setLoading(true);
-            const data = await rfqApi.getAll();
-            setRfqs(data);
+            const data = await purchaseOrderApi.getAll();
+            setOrders(data);
         } catch (error) {
             console.error(error);
         } finally {
@@ -34,26 +32,21 @@ export default function RfqList() {
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold tracking-tight">Request For Quotations (RFQ)</h1>
-                <Link href="/erp/procurement/rfq/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Create RFQ
-                    </Button>
-                </Link>
+                <h1 className="text-3xl font-bold tracking-tight">Purchase Orders</h1>
             </div>
 
             <Card>
                 <CardHeader>
-                    <CardTitle>All RFQs</CardTitle>
+                    <CardTitle>Recent Orders</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>RFQ Number</TableHead>
-                                <TableHead>PR Number</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Vendors</TableHead>
+                                <TableHead>PO #</TableHead>
+                                <TableHead>Vendor</TableHead>
+                                <TableHead>Order Date</TableHead>
+                                <TableHead>Total Amount</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Actions</TableHead>
                             </TableRow>
@@ -63,28 +56,30 @@ export default function RfqList() {
                                 <TableRow>
                                     <TableCell colSpan={6} className="text-center h-24">Loading...</TableCell>
                                 </TableRow>
-                            ) : rfqs.length === 0 ? (
+                            ) : orders.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center h-24">No RFQs found.</TableCell>
+                                    <TableCell colSpan={6} className="text-center h-24">No purchase orders found.</TableCell>
                                 </TableRow>
                             ) : (
-                                rfqs.map((rfq) => (
-                                    <TableRow key={rfq.id}>
-                                        <TableCell className="font-medium">{rfq.rfqNumber}</TableCell>
-                                        <TableCell>{rfq.purchaseRequisition?.prNumber || '-'}</TableCell>
-                                        <TableCell>{new Date(rfq.rfqDate).toLocaleDateString()}</TableCell>
-                                        <TableCell>{rfq.vendors.length} vendor(s)</TableCell>
+                                orders.map((order) => (
+                                    <TableRow key={order.id}>
+                                        <TableCell className="font-medium">{order.poNumber}</TableCell>
+                                        <TableCell>{order.vendor?.name}</TableCell>
+                                        <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                                        <TableCell className="font-semibold">${parseFloat(order.totalAmount).toFixed(2)}</TableCell>
                                         <TableCell>
                                             <Badge variant={
-                                                rfq.status === 'SENT' ? 'default' :
-                                                    rfq.status === 'CLOSED' ? 'secondary' : 'outline'
+                                                order.status === 'OPEN' ? 'default' :
+                                                    order.status === 'CLOSED' ? 'secondary' : 'outline'
                                             }>
-                                                {rfq.status}
+                                                {order.status}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/erp/procurement/rfq/create/${rfq.id}`}>
-                                                <Button variant="ghost" size="sm">View</Button>
+                                            <Link href={`/erp/procurement/purchase-order/${order.id}`}>
+                                                <Button variant="ghost" size="sm">
+                                                    <Eye className="mr-2 h-4 w-4" /> View
+                                                </Button>
                                             </Link>
                                         </TableCell>
                                     </TableRow>

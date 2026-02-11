@@ -750,6 +750,9 @@ export const menuData: MenuItem[] = [
     children: [
       { title: "Vendors", href: "/erp/procurement/vendors" },
       { title: "Purchase Requisition", href: "/erp/procurement/purchase-requisition" },
+      { title: "RFQ", href: "/erp/procurement/rfq" },
+      { title: "Vendor Quotation", href: "/erp/procurement/vendor-quotation/create" },
+           { title: "Vendor Quotation list", href: "/erp/procurement/vendor-quotation/list" },
       { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
     ],
