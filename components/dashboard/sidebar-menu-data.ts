@@ -1054,39 +1054,6 @@ export const menuData: MenuItem[] = [
           { title: "View Social Security", href: "/hr/payroll-setup/social-security-employee/view", permissions: ["hr.social-security.read"] },
         ],
       },
-      // {
-      //   title: "Final Settlement",
-      //   children: [
-      //     { title: "Create", href: "/hr/payroll-setup/final-settlement/create" },
-      //     { title: "List", href: "/hr/payroll-setup/final-settlement/list" },
-      //   ],
-      // },
-      // {
-      //   title: "HR Letters",
-      //   icon: FileText,
-      //   children: [
-      //     { title: "Create", href: "/hr/payroll-setup/hr-letters/create" },
-      //     { title: "View", href: "/hr/payroll-setup/hr-letters/view" },
-      //     { title: "Upload", href: "/hr/payroll-setup/hr-letters/upload" },
-      //   ],
-      // },
-      // {
-      //   title: "Salary Sheet",
-      //   icon: Receipt,
-      //   children: [
-      //     {
-      //       title: "Tax Certificate",
-      //       href: "/hr/salary-sheet/tax-certificate",
-      //     },
-      //   ],
-      // },
-      // {
-      //   title: "Rebate",
-      //   children: [
-      //     { title: "Create", href: "/hr/payroll-setup/rebate/create" },
-      //     { title: "List", href: "/hr/payroll-setup/rebate/list" },
-      //   ],
-      // },
     ],
   },
   {
