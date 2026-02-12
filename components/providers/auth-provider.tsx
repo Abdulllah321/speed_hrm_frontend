@@ -366,16 +366,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!user) return false;
 
     try {
+      // Proactive check: if token is already expired or near expiry, refresh first
+      // But for simplicity, we let the backend return 401 and handle it there.
       const res = await fetch(`${getApiBaseUrl()}/auth/check-session`, {
         credentials: "include",
       });
 
       if (res.status === 401) {
-        // Token expired, try to refresh
         return await refreshToken();
       }
 
-      return res.ok;
+      if (!res.ok) return false;
+      const data = await res.json();
+      return data.status && data.valid;
     } catch (error) {
       console.error("Session check failed:", error);
       return false;

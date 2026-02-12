@@ -225,9 +225,7 @@ export async function getAccessToken(): Promise<string | null> {
 // Refresh token - calls backend directly for server-side use
 // For client-side refresh, use refreshTokenClient from client-auth.ts
 export async function refreshAccessToken(): Promise<boolean> {
-  // SECURITY: Server-side refresh is disabled to prevent race conditions with client-side refresh.
-  // The backend uses strict token rotation (revoke-on-use), so parallel refreshes will cause "Token revoked" errors.
-  // We let the client (auth-provider.tsx) handle all refreshes via its mutex-protected refreshToken function.
+  // Stateless refresh is handled by the Client Component auth-provider.tsx.
   return false;
 }
 
@@ -321,50 +319,14 @@ export async function hasPermission(permission: string): Promise<boolean> {
 // Check session validity (NextAuth-like with proactive refresh)
 // SECURITY: Never validate expired tokens, never refresh expired tokens
 export async function checkSession(): Promise<{ valid: boolean; user?: User }> {
-  const cookieStore = await cookies();
-  let accessToken = cookieStore.get("accessToken")?.value || null;
-  const refreshToken = cookieStore.get("refreshToken")?.value || null;
-
-  // If no tokens, session is invalid
-  if (!accessToken && !refreshToken) {
-    return { valid: false };
-  }
-
-  // SECURITY CHECK 1: If access token is expired, clear it immediately
-  if (accessToken && isTokenExpired(accessToken)) {
-    cookieStore.delete("accessToken");
-    accessToken = null;
-  }
-
-  // SECURITY CHECK 2: Proactive refresh removed to prevent race conditions
-  // if (accessToken && isTokenExpiringSoon(accessToken) && refreshToken) { ... }
-
-  // If no tokens, session is invalid
-  if (!accessToken && !refreshToken) {
-    return { valid: false };
-  }
-
-  // SECURITY CHECK 3: Final validation - ensure token is not expired before API call
-  if (isTokenExpired(accessToken)) {
-    cookieStore.delete("accessToken");
-    // cookieStore.delete("refreshToken"); // Don't delete refresh token, let client use it
-    // cookieStore.delete("userRole");
-    // cookieStore.delete("user");
-    return { valid: false };
-  }
-
   try {
+    const accessToken = await getAccessToken();
+    if (!accessToken) return { valid: false };
+
     const res = await fetch(`${API_BASE}/auth/check-session`, {
       headers: { Authorization: `Bearer ${accessToken}` },
       credentials: "include",
     });
-
-    if (res.status === 401) {
-      // Token expired on server.
-      // We return false here so the Client Component detects it and calls refresh.
-      // We DO NOT call refreshAccessToken() here.
-      return { valid: false };
-    }
 
     if (res.ok) {
       const data = await res.json();
