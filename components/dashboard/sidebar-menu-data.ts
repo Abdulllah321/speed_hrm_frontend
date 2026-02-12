@@ -738,9 +738,9 @@ export const menuData: MenuItem[] = [
       {
         title: "Transactions",
         children: [
-          { title: "Stock Received", href: "/erp/inventory/stock-received" },
-          { title: "Delivery Note", href: "/erp/inventory/delivery-note" },
-          { title: "Stock Transfer", href: "/erp/inventory/stock-transfer" },
+          { title: "Stock Received", href: "/erp/inventory/transactions/stock-received" },
+          { title: "Delivery Note", href: "/erp/inventory/transactions/delivery-note" },
+          { title: "Stock Transfer", href: "/erp/inventory/transactions/stock-transfer" },
         ]
       }
     ],

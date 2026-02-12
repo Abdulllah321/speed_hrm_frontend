@@ -495,3 +495,34 @@ export const warehouseApi = {
     method: 'DELETE',
   }),
 };
+
+// Stock Ledger Types and API
+export enum MovementType {
+  INBOUND = 'INBOUND',
+  OUTBOUND = 'OUTBOUND',
+  TRANSFER = 'TRANSFER',
+  ADJUSTMENT = 'ADJUSTMENT',
+  OPENING_BALANCE = 'OPENING_BALANCE'
+}
+
+export interface StockLedgerEntry {
+  id: string;
+  itemId: string;
+  warehouseId: string;
+  qty: string;
+  movementType: MovementType;
+  referenceType: string;
+  referenceId: string;
+  locationId?: string;
+  createdAt: string;
+  // Optional expanded relations if backend includes them
+  item?: { itemId: string; sku: string; description: string | null; name?: string };
+  warehouse?: { name: string };
+}
+
+export const stockLedgerApi = {
+  getAll: (params?: { warehouseId?: string, movementType?: MovementType, itemId?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<StockLedgerEntry[]>(`/warehouse/stock-ledger?${query}`);
+  }
+};
