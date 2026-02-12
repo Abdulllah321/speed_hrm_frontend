@@ -139,9 +139,9 @@ export function JournalVoucherList({
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
                     {/* Filters Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-muted/30 dark:bg-muted/10 p-4 rounded-lg border dark:border-border">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 rounded-lg border dark:border-border">
                         <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Select Date Range</Label>
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Select Date Range</Label>
                             <DateRangePicker
                                 initialDateFrom={fromDate}
                                 initialDateTo={toDate}
@@ -155,7 +155,7 @@ export function JournalVoucherList({
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Account Head</Label>
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Account Head</Label>
                             <Autocomplete
                                 options={accounts.map(acc => ({ value: acc.id, label: acc.name }))}
                                 value={selectedAccount}
@@ -164,7 +164,7 @@ export function JournalVoucherList({
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Voucher Status</Label>
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Voucher Status</Label>
                             <Select value={status} onValueChange={setStatus}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="All" />
@@ -179,7 +179,7 @@ export function JournalVoucherList({
                         </div>
                         <div>
                             <Button
-                                className="w-full h-10 font-bold"
+                                variant="secondary"
                                 onClick={() => setShowFilterInfo(true)}
                             >
                                 View Range Wise Data Filter

@@ -29,6 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
+import { PolicyTimeline } from "@/components/ui/policy-timeline";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Play, CheckCircle, Undo, Search } from "lucide-react";
 import Link from "next/link";
@@ -404,184 +405,193 @@ export function GeneratePayrollClient({
                                             );
                                         })
                                         .map((row, index) => {
-                                        const salaryBreakupTotal = row.salaryBreakup && row.salaryBreakup.length > 0
-                                            ? row.salaryBreakup.reduce((sum: number, component: any) => sum + (component.amount || 0), 0)
-                                            : (row.basicSalary || 0);
-                                        const deductionBreakupTotal = (row.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
-                                        const annualTax = (row.taxBreakup?.monthlyTax || 0) * 12;
+                                            const salaryBreakupTotal = row.salaryBreakup && row.salaryBreakup.length > 0
+                                                ? row.salaryBreakup.reduce((sum: number, component: any) => sum + (component.amount || 0), 0)
+                                                : (row.basicSalary || 0);
+                                            const deductionBreakupTotal = (row.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
+                                            const annualTax = (row.taxBreakup?.monthlyTax || 0) * 12;
 
-                                        return (
-                                            <TableRow key={row.employeeId}>
-                                                <TableCell>{index + 1}</TableCell>
-                                                <TableCell className="font-medium">
-                                                    <div>({row.employeeCode}) {row.employeeName}</div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-[10px] space-y-0.5 min-w-[200px]">
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <span className="font-bold shrink-0">Country:</span>
-                                                            <span className="text-right">{row.employee?.country?.name}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <span className="font-bold shrink-0">Province:</span>
-                                                            <span className="text-right">{row.employee?.state?.name}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <span className="font-bold shrink-0">City:</span>
-                                                            <span className="text-right">{row.employee?.city?.name}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <span className="font-bold shrink-0">Station:</span>
-                                                            <span className="text-right">{row.employee?.branch?.name}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <span className="font-bold shrink-0">Dept:</span>
-                                                            <span className="text-right">{row.employee?.department?.name}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <span className="font-bold shrink-0">Sub-Dept:</span>
-                                                            <span className="text-right">{row.employee?.subDepartment?.name || "-"}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-start gap-2">
-                                                            <span className="font-bold shrink-0">Designation:</span>
-                                                            <span className="text-right">{row.employee?.designation?.name}</span>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-[10px] space-y-0.5 min-w-[200px]">
-                                                        {row.salaryBreakup?.map((b: any) => (
-                                                            <div key={b.id} className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">{b.name}:</span>
-                                                                <span className="text-right">{Math.round(Number(b.amount || 0)).toLocaleString()}</span>
+                                            return (
+                                                <TableRow key={row.employeeId}>
+                                                    <TableCell>{index + 1}</TableCell>
+                                                    <TableCell className="font-medium">
+                                                        <div>({row.employeeCode}) {row.employeeName}</div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="text-[10px] space-y-0.5 min-w-[200px]">
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <span className="font-bold shrink-0">Country:</span>
+                                                                <span className="text-right">{row.employee?.country?.name}</span>
                                                             </div>
-                                                        ))}
-                                                        {row.allowanceBreakup?.map((a: any) => (
-                                                            <div key={a.id} className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">{a.name}:</span>
-                                                                <span className="text-right">{Math.round(Number(a.amount || 0)).toLocaleString()}</span>
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <span className="font-bold shrink-0">Province:</span>
+                                                                <span className="text-right">{row.employee?.state?.name}</span>
                                                             </div>
-                                                        ))}
-                                                        {row.overtimeAmount > 0 && (
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <span className="font-bold shrink-0">City:</span>
+                                                                <span className="text-right">{row.employee?.city?.name}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <span className="font-bold shrink-0">Station:</span>
+                                                                <span className="text-right">{row.employee?.branch?.name}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <span className="font-bold shrink-0">Dept:</span>
+                                                                <span className="text-right">{row.employee?.department?.name}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <span className="font-bold shrink-0">Sub-Dept:</span>
+                                                                <span className="text-right">{row.employee?.subDepartment?.name || "-"}</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <span className="font-bold shrink-0">Designation:</span>
+                                                                <span className="text-right">{row.employee?.designation?.name}</span>
+                                                            </div>
+                                                            {row.policyAssignments && row.policyAssignments.length > 0 && (
+                                                                <div className="mt-2 pt-2 border-t">
+                                                                    <PolicyTimeline
+                                                                        assignments={row.policyAssignments}
+                                                                        defaultPolicy={row.workingHoursPolicy}
+                                                                        monthYear={formData.monthYear}
+                                                                    />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="text-[10px] space-y-0.5 min-w-[200px]">
+                                                            {row.salaryBreakup?.map((b: any) => (
+                                                                <div key={b.id} className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">{b.name}:</span>
+                                                                    <span className="text-right">{Math.round(Number(b.amount || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            ))}
+                                                            {row.allowanceBreakup?.map((a: any) => (
+                                                                <div key={a.id} className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">{a.name}:</span>
+                                                                    <span className="text-right">{Math.round(Number(a.amount || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            ))}
+                                                            {row.overtimeAmount > 0 && (
+                                                                <div className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">Overtime:</span>
+                                                                    <span className="text-right">{Math.round(Number(row.overtimeAmount || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            )}
+                                                            {row.bonusAmount > 0 && (
+                                                                <div className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">Bonus:</span>
+                                                                    <span className="text-right">{Math.round(Number(row.bonusAmount || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            )}
+                                                            {row.leaveEncashmentAmount > 0 && (
+                                                                <div className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">Leave Encashment:</span>
+                                                                    <span className="text-right">{Math.round(Number(row.leaveEncashmentAmount || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
+                                                                <span className="shrink-0">Gross:</span>
+                                                                <span className="text-right">
+                                                                    {Math.round(Number(row.grossSalary || 0)).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="text-[10px] space-y-0.5 min-w-[160px]">
                                                             <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">Overtime:</span>
-                                                                <span className="text-right">{Math.round(Number(row.overtimeAmount || 0)).toLocaleString()}</span>
+                                                                <span className="font-bold shrink-0">Taxable:</span>
+                                                                <span className="text-right">{Math.round(Number(row.taxBreakup?.taxableIncome || 0)).toLocaleString()}</span>
                                                             </div>
-                                                        )}
-                                                        {row.bonusAmount > 0 && (
+                                                            {row.taxBreakup?.fixedAmountTax > 0 && (
+                                                                <div className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">Fixed Tax:</span>
+                                                                    <span className="text-right">{Math.round(Number(row.taxBreakup?.fixedAmountTax || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            )}
+                                                            {row.taxBreakup?.percentageTax > 0 && (
+                                                                <div className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">% Tax:</span>
+                                                                    <span className="text-right">{Math.round(Number(row.taxBreakup?.percentageTax || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            )}
                                                             <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">Bonus:</span>
-                                                                <span className="text-right">{Math.round(Number(row.bonusAmount || 0)).toLocaleString()}</span>
+                                                                <span className="font-bold shrink-0">Annual Tax:</span>
+                                                                <span className="text-right">{Math.round(Number(annualTax || 0)).toLocaleString()}</span>
                                                             </div>
-                                                        )}
-                                                        {row.leaveEncashmentAmount > 0 && (
+                                                            <div className="flex justify-between items-center gap-2 font-bold border-t pt-1 bg-gray-50">
+                                                                <span className="shrink-0">Monthly Tax:</span>
+                                                                <span className="text-right">
+                                                                    {Math.round(Number(row.taxDeduction || 0)).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="text-[10px] space-y-0.5 min-w-[160px]">
                                                             <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">Leave Encashment:</span>
-                                                                <span className="text-right">{Math.round(Number(row.leaveEncashmentAmount || 0)).toLocaleString()}</span>
+                                                                <span className="font-bold shrink-0">PF:</span>
+                                                                <span className="text-right">{Math.round(Number(row.providentFundDeduction || 0)).toLocaleString()}</span>
                                                             </div>
-                                                        )}
-                                                        <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
-                                                            <span className="shrink-0">Gross:</span>
-                                                            <span className="text-right">
-                                                                {Math.round(Number(row.grossSalary || 0)).toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-[10px] space-y-0.5 min-w-[160px]">
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <span className="font-bold shrink-0">Taxable:</span>
-                                                            <span className="text-right">{Math.round(Number(row.taxBreakup?.taxableIncome || 0)).toLocaleString()}</span>
-                                                        </div>
-                                                        {row.taxBreakup?.fixedAmountTax > 0 && (
                                                             <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">Fixed Tax:</span>
-                                                                <span className="text-right">{Math.round(Number(row.taxBreakup?.fixedAmountTax || 0)).toLocaleString()}</span>
+                                                                <span className="font-bold shrink-0">Advance:</span>
+                                                                <span className="text-right">{Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString()}</span>
                                                             </div>
-                                                        )}
-                                                        {row.taxBreakup?.percentageTax > 0 && (
                                                             <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">% Tax:</span>
-                                                                <span className="text-right">{Math.round(Number(row.taxBreakup?.percentageTax || 0)).toLocaleString()}</span>
+                                                                <span className="font-bold shrink-0">EOBI:</span>
+                                                                <span className="text-right">{Math.round(Number(row.eobiDeduction || 0)).toLocaleString()}</span>
                                                             </div>
-                                                        )}
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <span className="font-bold shrink-0">Annual Tax:</span>
-                                                            <span className="text-right">{Math.round(Number(annualTax || 0)).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center gap-2 font-bold border-t pt-1 bg-gray-50">
-                                                            <span className="shrink-0">Monthly Tax:</span>
-                                                            <span className="text-right">
-                                                                {Math.round(Number(row.taxDeduction || 0)).toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-[10px] space-y-0.5 min-w-[160px]">
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <span className="font-bold shrink-0">PF:</span>
-                                                            <span className="text-right">{Math.round(Number(row.providentFundDeduction || 0)).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <span className="font-bold shrink-0">Advance:</span>
-                                                            <span className="text-right">{Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <span className="font-bold shrink-0">EOBI:</span>
-                                                            <span className="text-right">{Math.round(Number(row.eobiDeduction || 0)).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <span className="font-bold shrink-0">Loan:</span>
-                                                            <span className="text-right">{Math.round(Number(row.loanDeduction || 0)).toLocaleString()}</span>
-                                                        </div>
-                                                        {row.deductionBreakup?.map((d: any) => (
-                                                            <div key={d.id} className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">{d.name}:</span>
-                                                                <span className="text-right">{Math.round(Number(d.amount || 0)).toLocaleString()}</span>
-                                                            </div>
-                                                        ))}
-                                                        <div className="flex justify-between items-center gap-2">
-                                                            <span className="font-bold shrink-0">Attendance:</span>
-                                                            <span className="text-right">{Math.round(Number(row.attendanceDeduction || 0)).toLocaleString()}</span>
-                                                        </div>
-                                                        <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
-                                                            <span className="shrink-0">Total:</span>
-                                                            <span className="text-right">
-                                                                {Math.round(
-                                                                    Number(row.attendanceDeduction || 0) +
-                                                                    Number(row.loanDeduction || 0) +
-                                                                    Number(row.advanceSalaryDeduction || 0) +
-                                                                    Number(row.eobiDeduction || 0) +
-                                                                    Number(row.providentFundDeduction || 0) +
-                                                                    Number(row.taxDeduction || 0) +
-                                                                    deductionBreakupTotal
-                                                                ).toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="text-[10px] min-w-[120px]">
-                                                        {row.socialSecurityContributionAmount > 0 ? (
                                                             <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">Contribution:</span>
-                                                                <span className="text-right">{Math.round(Number(row.socialSecurityContributionAmount || 0)).toLocaleString()}</span>
+                                                                <span className="font-bold shrink-0">Loan:</span>
+                                                                <span className="text-right">{Math.round(Number(row.loanDeduction || 0)).toLocaleString()}</span>
                                                             </div>
-                                                        ) : (
-                                                            <span className="text-muted-foreground">-</span>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="font-bold text-green-600">
-                                                    {Math.round(Number(row.netSalary || 0)).toLocaleString()}
-                                                </TableCell>
-                                                <TableCell>{row.accountNumber || "-"}</TableCell>
-                                                <TableCell>{row.paymentMode || "Bank Transfer"}</TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
+                                                            {row.deductionBreakup?.map((d: any) => (
+                                                                <div key={d.id} className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">{d.name}:</span>
+                                                                    <span className="text-right">{Math.round(Number(d.amount || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            ))}
+                                                            <div className="flex justify-between items-center gap-2">
+                                                                <span className="font-bold shrink-0">Attendance:</span>
+                                                                <span className="text-right">{Math.round(Number(row.attendanceDeduction || 0)).toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
+                                                                <span className="shrink-0">Total:</span>
+                                                                <span className="text-right">
+                                                                    {Math.round(
+                                                                        Number(row.attendanceDeduction || 0) +
+                                                                        Number(row.loanDeduction || 0) +
+                                                                        Number(row.advanceSalaryDeduction || 0) +
+                                                                        Number(row.eobiDeduction || 0) +
+                                                                        Number(row.providentFundDeduction || 0) +
+                                                                        Number(row.taxDeduction || 0) +
+                                                                        deductionBreakupTotal
+                                                                    ).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="text-[10px] min-w-[120px]">
+                                                            {row.socialSecurityContributionAmount > 0 ? (
+                                                                <div className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">Contribution:</span>
+                                                                    <span className="text-right">{Math.round(Number(row.socialSecurityContributionAmount || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-muted-foreground">-</span>
+                                                            )}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="font-bold text-green-600">
+                                                        {Math.round(Number(row.netSalary || 0)).toLocaleString()}
+                                                    </TableCell>
+                                                    <TableCell>{row.accountNumber || "-"}</TableCell>
+                                                    <TableCell>{row.paymentMode || "Bank Transfer"}</TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
                                 </TableBody>
                             </Table>
                         </div>

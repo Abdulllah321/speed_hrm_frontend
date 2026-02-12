@@ -167,7 +167,7 @@ export function ReceiptVoucherList({
                     <CardContent className="px-0 space-y-6">
 
                         {/* Filters */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-white dark:bg-card p-6 rounded-lg border border-slate-200 dark:border-border">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-6 rounded-lg border border-slate-200 dark:border-border">
                             <div className="space-y-1.5 md:col-span-1">
                                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Select Date Range</Label>
                                 <DateRangePicker
@@ -209,10 +209,10 @@ export function ReceiptVoucherList({
                             </div>
                             <div>
                                 <Button
-                                    className="w-full h-10 font-bold"
+                                    variant="secondary"
                                     onClick={() => setShowFilterInfo(true)}
                                 >
-                                    View Range Wise Data Filter
+                                    View Data List
                                 </Button>
                             </div>
                         </div>

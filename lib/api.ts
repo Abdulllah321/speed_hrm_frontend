@@ -24,7 +24,7 @@ async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
       method: options?.method || 'GET',
       data: options?.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
       headers: {
-        'Content-Type': 'application/json',
+        ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
         ...(companyId ? { 'x-company-id': companyId } : {}),
         ...(companyCode ? { 'x-tenant-id': companyCode } : {}),
         ...options?.headers,
@@ -205,3 +205,170 @@ export interface SubDepartment {
   updatedAt: string;
 }
 
+// Purchase Requisition Types and API
+export interface PurchaseRequisition {
+  id: string;
+  prNumber: string;
+  requestedBy: string;
+  department?: string;
+  requestDate: string;
+  status: string;
+  notes?: string;
+  items: PurchaseRequisitionItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseRequisitionItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  requiredQty: string;
+  neededByDate?: string;
+}
+
+export const purchaseRequisitionApi = {
+  getAll: (status?: string) => fetchApi<PurchaseRequisition[]>(`/purchase-requisition${status ? `?status=${status}` : ''}`),
+  getById: (id: string) => fetchApi<PurchaseRequisition>(`/purchase-requisition/${id}`),
+  create: (data: any) => fetchApi<PurchaseRequisition>('/purchase-requisition', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: any) => fetchApi<PurchaseRequisition>(`/purchase-requisition/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<void>(`/purchase-requisition/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+
+// RFQ Types and API
+
+export interface RfqVendor {
+  id: string;
+  vendorId: string;
+  sentAt?: string;
+  responseStatus: string;
+  vendor: {
+    id: string;
+    code: string;
+    name: string;
+    email?: string;
+    contactNo?: string;
+  };
+}
+
+export interface RequestForQuotation {
+  id: string;
+  rfqNumber: string;
+  purchaseRequisitionId: string;
+  rfqDate: string;
+  status: string;
+  notes?: string;
+  vendors: RfqVendor[];
+  purchaseRequisition: PurchaseRequisition;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const rfqApi = {
+  getAll: (status?: string) => fetchApi<RequestForQuotation[]>(`/rfq${status ? `?status=${status}` : ''}`),
+  getById: (id: string) => fetchApi<RequestForQuotation>(`/rfq/${id}`),
+  create: (data: any) => fetchApi<RequestForQuotation>('/rfq', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  addVendors: (id: string, vendorIds: string[]) => fetchApi<RequestForQuotation>(`/rfq/${id}/vendors`, {
+    method: 'POST',
+    body: JSON.stringify({ vendorIds }),
+  }),
+  markAsSent: (id: string) => fetchApi<RequestForQuotation>(`/rfq/${id}/send`, {
+    method: 'POST',
+  }),
+  update: (id: string, data: any) => fetchApi<RequestForQuotation>(`/rfq/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<void>(`/rfq/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// Item API
+export interface MasterItem {
+  id: string;
+  code: string;
+  name: string;
+  itemClass?: { name: string };
+  itemSubclass?: { name: string };
+  uom?: { name: string };
+  description?: string;
+}
+
+export const itemApi = {
+  getAll: () => fetchApi<{ status: boolean; data: MasterItem[] }>('/master/erp/item'),
+  getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/master/erp/item/${id}`),
+};
+
+
+// Vendor Quotation Types and API
+
+export interface VendorQuotationItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  quotedQty: string;
+  unitPrice: string;
+  taxPercent: string;
+  discountPercent: string;
+  lineTotal: string;
+}
+
+export interface VendorQuotation {
+  id: string;
+  rfqId: string;
+  vendorId: string;
+  quotationDate: string;
+  status: string;
+  subtotal: string;
+  taxAmount: string;
+  discountAmount: string;
+  totalAmount: string;
+  notes?: string;
+  items: VendorQuotationItem[];
+  vendor: {
+    id: string;
+    code: string;
+    name: string;
+    email?: string;
+    contactNo?: string;
+  };
+  rfq: RequestForQuotation;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const vendorQuotationApi = {
+  getAll: (rfqId?: string) => fetchApi<VendorQuotation[]>(`/vendor-quotation${rfqId ? `?rfqId=${rfqId}` : ''}`),
+  getById: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}`),
+  compare: (rfqId: string) => fetchApi<VendorQuotation[]>(`/vendor-quotation/compare/${rfqId}`),
+  create: (data: any) => fetchApi<VendorQuotation>('/vendor-quotation', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  submit: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}/submit`, {
+    method: 'POST',
+  }),
+  select: (id: string) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}/select`, {
+    method: 'POST',
+  }),
+  update: (id: string, data: any) => fetchApi<VendorQuotation>(`/vendor-quotation/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<void>(`/vendor-quotation/${id}`, {
+    method: 'DELETE',
+  }),
+};
