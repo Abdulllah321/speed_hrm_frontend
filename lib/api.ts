@@ -299,8 +299,14 @@ export const rfqApi = {
 // Item API
 export interface MasterItem {
   id: string;
-  code: string;
-  name: string;
+  itemId: string;
+  sku: string;
+  name?: string;
+  code?: string;
+  unitPrice?: number;
+  taxRate1?: number;
+  taxRate2?: number;
+  discountRate?: number;
   itemClass?: { name: string };
   itemSubclass?: { name: string };
   uom?: { name: string };
@@ -308,8 +314,8 @@ export interface MasterItem {
 }
 
 export const itemApi = {
-  getAll: () => fetchApi<{ status: boolean; data: MasterItem[] }>('/master/erp/item'),
-  getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/master/erp/item/${id}`),
+  getAll: () => fetchApi<{ status: boolean; data: MasterItem[] }>('/finance/items'),
+  getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/finance/items/${id}`),
 };
 
 
@@ -413,8 +419,22 @@ export interface PurchaseOrder {
 
 export const purchaseOrderApi = {
   getAll: () => fetchApi<PurchaseOrder[]>('/purchase-order'),
+  getPendingQuotations: () => fetchApi<VendorQuotation[]>('/purchase-order/pending-quotations'),
   getById: (id: string) => fetchApi<PurchaseOrder>(`/purchase-order/${id}`),
-  create: (data: { vendorQuotationId: string; notes?: string; expectedDeliveryDate?: string }) =>
+  create: (data: {
+    vendorQuotationId?: string;
+    vendorId?: string;
+    items?: {
+      itemId: string;
+      description?: string;
+      quantity: number;
+      unitPrice: number;
+      taxPercent?: number;
+      discountPercent?: number;
+    }[];
+    notes?: string;
+    expectedDeliveryDate?: string;
+  }) =>
     fetchApi<PurchaseOrder>('/purchase-order', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -520,9 +540,29 @@ export interface StockLedgerEntry {
   warehouse?: { name: string };
 }
 
+export interface StockLevel {
+  itemId: string;
+  warehouseId: string;
+  totalQty: string;
+  item: {
+    itemId: string;
+    sku: string;
+    description: string | null;
+    uomId: string | null;
+  } | null;
+  warehouse: {
+    name: string;
+    code: string;
+  } | null;
+}
+
 export const stockLedgerApi = {
   getAll: (params?: { warehouseId?: string, movementType?: MovementType, itemId?: string }) => {
     const query = new URLSearchParams(params as any).toString();
-    return fetchApi<StockLedgerEntry[]>(`/warehouse/stock-ledger?${query}`);
+    return fetchApi<StockLedgerEntry[]>(`/stock-ledger?${query}`);
+  },
+  getLevels: (params?: { warehouseId?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<StockLevel[]>(`/stock-ledger/levels?${query}`);
   }
 };

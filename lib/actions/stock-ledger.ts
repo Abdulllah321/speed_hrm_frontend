@@ -16,7 +16,7 @@ export async function getStockLedger(filters?: {
         if (filters?.itemId) queryParams.append("itemId", filters.itemId);
 
         const queryString = queryParams.toString();
-        const url = `/warehouse/stock-ledger${queryString ? `?${queryString}` : ""}`;
+        const url = `/stock-ledger${queryString ? `?${queryString}` : ""}`;
 
         const response = await authFetch(url, {
             method: "GET",

@@ -32,6 +32,19 @@ export default function AllVendorQuotationList() {
         }
     };
 
+    // Group quotations by RFQ
+    const groupedQuotations = quotations.reduce((groups, quotation) => {
+        const rfqId = quotation.rfqId || 'direct';
+        if (!groups[rfqId]) {
+            groups[rfqId] = {
+                rfq: quotation.rfq,
+                items: []
+            };
+        }
+        groups[rfqId].items.push(quotation);
+        return groups;
+    }, {} as Record<string, { rfq?: any, items: VendorQuotation[] }>);
+
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
@@ -52,7 +65,6 @@ export default function AllVendorQuotationList() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Quotation #</TableHead>
-                                <TableHead>RFQ #</TableHead>
                                 <TableHead>Vendor</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Items</TableHead>
@@ -64,59 +76,82 @@ export default function AllVendorQuotationList() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center h-24">Loading...</TableCell>
+                                    <TableCell colSpan={7} className="text-center h-24">Loading...</TableCell>
                                 </TableRow>
-                            ) : quotations.length === 0 ? (
+                            ) : Object.keys(groupedQuotations).length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center h-24">No quotations found.</TableCell>
+                                    <TableCell colSpan={7} className="text-center h-24">No quotations found.</TableCell>
                                 </TableRow>
                             ) : (
-                                quotations.map((quotation) => (
-                                    <TableRow key={quotation.id}>
-                                        <TableCell className="font-medium">{quotation.id.substring(0, 8)}...</TableCell>
-                                        <TableCell>
-                                            <Link href={`/erp/procurement/rfq/${quotation.rfqId}`} className="text-blue-600 hover:underline">
-                                                {quotation.rfq?.rfqNumber || '-'}
-                                            </Link>
-                                        </TableCell>
-                                        <TableCell>{quotation.vendor?.name || '-'}</TableCell>
-                                        <TableCell>{new Date(quotation.quotationDate).toLocaleDateString()}</TableCell>
-                                        <TableCell>{quotation.items.length} item(s)</TableCell>
-                                        <TableCell className="font-semibold">${parseFloat(quotation.totalAmount).toFixed(2)}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={
-                                                quotation.status === 'SELECTED' ? 'default' :
-                                                    quotation.status === 'REJECTED' ? 'destructive' :
-                                                        quotation.status === 'SUBMITTED' ? 'outline' : 'secondary'
-                                            }>
-                                                {quotation.status}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex gap-2">
-                                                <Link href={`/erp/procurement/vendor-quotation/${quotation.id}`}>
-                                                    <Button variant="ghost" size="sm">View</Button>
-                                                </Link>
-                                                {quotation.status === 'DRAFT' && (
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={async () => {
-                                                            try {
-                                                                await vendorQuotationApi.submit(quotation.id);
-                                                                toast.success('Quotation submitted');
-                                                                fetchQuotations();
-                                                            } catch (error) {
-                                                                toast.error('Failed to submit');
-                                                            }
-                                                        }}
-                                                    >
-                                                        Submit
-                                                    </Button>
+                                Object.entries(groupedQuotations).map(([rfqId, group]) => (
+                                    <>
+                                        {/* Group Header Row */}
+                                        <TableRow key={`header-${rfqId}`} className="bg-muted/50 hover:bg-muted/50 font-semibold">
+                                            <TableCell colSpan={6}>
+                                                <div className="flex items-center gap-2">
+                                                    <span>
+                                                        RFQ: {group.rfq?.rfqNumber || 'Direct Orders'}
+                                                    </span>
+                                                    <Badge variant="secondary">
+                                                        {group.items.length} Quotation{group.items.length > 1 ? 's' : ''}
+                                                    </Badge>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {group.rfq && group.items.length > 1 && (
+                                                    <Link href={`/erp/procurement/vendor-quotation/compare/${rfqId}`}>
+                                                        <Button variant="outline" size="sm">Compare All</Button>
+                                                    </Link>
                                                 )}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
+                                            </TableCell>
+                                        </TableRow>
+
+                                        {/* Individual Quotation Rows */}
+                                        {group.items.map((quotation) => (
+                                            <TableRow key={quotation.id}>
+                                                <TableCell className="pl-8 font-medium">
+                                                    {quotation.id.substring(0, 8)}...
+                                                </TableCell>
+                                                <TableCell>{quotation.vendor?.name || '-'}</TableCell>
+                                                <TableCell>{new Date(quotation.quotationDate).toLocaleDateString()}</TableCell>
+                                                <TableCell>{quotation.items.length} item(s)</TableCell>
+                                                <TableCell className="font-semibold">${parseFloat(quotation.totalAmount).toFixed(2)}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={
+                                                        quotation.status === 'SELECTED' ? 'default' :
+                                                            quotation.status === 'REJECTED' ? 'destructive' :
+                                                                quotation.status === 'SUBMITTED' ? 'outline' : 'secondary'
+                                                    }>
+                                                        {quotation.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Link href={`/erp/procurement/vendor-quotation/${quotation.id}`}>
+                                                            <Button variant="ghost" size="sm">View</Button>
+                                                        </Link>
+                                                        {quotation.status === 'DRAFT' && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await vendorQuotationApi.submit(quotation.id);
+                                                                        toast.success('Quotation submitted');
+                                                                        fetchQuotations();
+                                                                    } catch (error) {
+                                                                        toast.error('Failed to submit');
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Submit
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </>
                                 ))
                             )}
                         </TableBody>

@@ -732,7 +732,7 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/erp/items/create" },
           { title: "List", href: "/erp/items/list" },
-          { title: "Categories", href: "/erp/inventory/categories" },
+          // { title: "Categories", href: "/erp/inventory/categories" },
         ]
       },
       {
@@ -757,6 +757,7 @@ export const menuData: MenuItem[] = [
       { title: "Vendor Quotation", href: "/erp/procurement/vendor-quotation/create" },
       { title: "Vendor Quotation list", href: "/erp/procurement/vendor-quotation/list" },
       { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
+      { title: "Goods Receipt Note", href: "/erp/procurement/grn" },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
     ],
   },

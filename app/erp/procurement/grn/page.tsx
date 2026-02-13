@@ -6,12 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { grnApi, Grn } from '@/lib/api';
-import { Plus, Eye, Receipt } from 'lucide-react';
+import { grnApi, Grn, purchaseOrderApi, PurchaseOrder } from '@/lib/api';
+import { Plus, Eye, Receipt, Search, Check } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export default function GrnListPage() {
     const [grns, setGrns] = useState<Grn[]>([]);
+    const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
+    const [poModalOpen, setPoModalOpen] = useState(false);
+    const router = useRouter();
 
     useEffect(() => {
         loadGrns();
@@ -19,13 +25,22 @@ export default function GrnListPage() {
 
     const loadGrns = async () => {
         try {
-            const data = await grnApi.getAll();
-            setGrns(data);
+            const [grnData, poData] = await Promise.all([
+                grnApi.getAll(),
+                purchaseOrderApi.getAll()
+            ]);
+            setGrns(grnData);
+            setGrns(grnData);
+            setOrders(poData.filter(po => po.status !== 'CLOSED'));
         } catch (error) {
-            console.error('Failed to load GRNs:', error);
+            console.error('Failed to load data:', error);
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleGenerateGrn = (poId: string) => {
+        router.push(`/erp/procurement/grn/create/${poId}`);
     };
 
     return (
@@ -35,6 +50,49 @@ export default function GrnListPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Goods Receipt Notes</h1>
                     <p className="text-muted-foreground">Manage and track received goods and stock entry.</p>
                 </div>
+                <Dialog open={poModalOpen} onOpenChange={setPoModalOpen}>
+                    <DialogTrigger asChild>
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> Create GRN
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                            <DialogTitle>Select Purchase Order</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <p className="text-sm text-muted-foreground">
+                                Select an open Purchase Order to generate a Goods Receipt Note.
+                            </p>
+                            <div className="max-h-[300px] overflow-y-auto space-y-2">
+                                {orders.length === 0 ? (
+                                    <p className="text-center py-4 text-sm">No available purchase orders found.</p>
+                                ) : (
+                                    orders.map((order) => (
+                                        <div
+                                            key={order.id}
+                                            onClick={() => handleGenerateGrn(order.id)}
+                                            className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
+                                        >
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-medium">{order.poNumber}</div>
+                                                    <Badge variant="outline" className="text-[10px] h-4">
+                                                        {order.status}
+                                                    </Badge>
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {order.vendor?.name} • {new Date(order.orderDate).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                            <Receipt className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <Card>
