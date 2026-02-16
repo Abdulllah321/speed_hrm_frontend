@@ -16,7 +16,14 @@ import Link from "next/link";
 export default function AddLocationPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [locations, setLocations] = useState([{ id: 1, name: "", address: "", cityId: "" }]);
+  interface LocationState {
+    id: number;
+    name: string;
+    code: string;
+    address: string;
+    cityId: string;
+  }
+  const [locations, setLocations] = useState<LocationState[]>([{ id: 1, name: "", code: "", address: "", cityId: "" }]);
   const [cities, setCities] = useState<City[]>([]);
 
   useEffect(() => {
@@ -30,7 +37,7 @@ export default function AddLocationPage() {
   }, []);
 
   const addRow = () => {
-    setLocations([...locations, { id: Date.now(), name: "", address: "", cityId: "" }]);
+    setLocations([...locations, { id: Date.now(), name: "", code: "", address: "", cityId: "" }]);
   };
 
   const removeRow = (id: number) => {
@@ -45,10 +52,10 @@ export default function AddLocationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const validLocations = locations.filter((l) => l.name.trim());
+    const validLocations = locations.filter((l) => l.name.trim() && l.code.trim());
 
     if (validLocations.length === 0) {
-      toast.error("Please enter at least one location name");
+      toast.error("Please enter Name and Code for at least one location");
       return;
     }
 
@@ -56,6 +63,7 @@ export default function AddLocationPage() {
       const result = await createLocations(
         validLocations.map((l) => ({
           name: l.name.trim(),
+          code: l.code.trim(),
           address: l.address.trim() || undefined,
           cityId: l.cityId || undefined,
         }))
@@ -96,8 +104,8 @@ export default function AddLocationPage() {
               <Label>Locations</Label>
               {locations.map((loc, index) => (
                 <div key={loc.id} className="space-y-3 p-4 border rounded-lg bg-muted/10 relative group">
-                  <div className="flex gap-2">
-                    <div className="flex-1 space-y-1.5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5 order-1 md:order-0">
                       <Label className="text-xs text-muted-foreground">Location Name</Label>
                       <Input
                         placeholder={`Location ${index + 1} Name`}
@@ -107,13 +115,26 @@ export default function AddLocationPage() {
                         className="bg-background"
                       />
                     </div>
+                    <div className="space-y-1.5 order-2 md:order-0">
+                      <Label className="text-xs text-muted-foreground">Location Code</Label>
+                      <Input
+                        placeholder="e.g. NYC-01"
+                        value={loc.code}
+                        onChange={(e) => updateLocation(loc.id, "code", e.target.value.toUpperCase())}
+                        disabled={isPending}
+                        className="bg-background"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="relative">
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       onClick={() => removeRow(loc.id)}
                       disabled={locations.length === 1 || isPending}
-                      className="mt-6"
+                      className="absolute right-0 top-0 -mt-10 mr-0"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

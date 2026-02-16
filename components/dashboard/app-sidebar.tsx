@@ -389,30 +389,30 @@ export function AppSidebar({
   }, [hasAnyPermission, hasAllPermissions, isAdmin, user, environment]);
 
   React.useEffect(() => {
-     if (environment === "ADMIN") return;
-     
-     // Auto-switch environment if current one is not accessible
-     if (environment === "HR" && !hasHRAccess && hasERPAccess) {
-        setEnvironment("ERP");
-        router.push("/erp");
-     } else if (environment === "ERP" && !hasERPAccess && hasHRAccess) {
-        setEnvironment("HR");
-        router.push("/hr");
-     }
+    if (environment === "ADMIN") return;
+
+    // Auto-switch environment if current one is not accessible
+    if (environment === "HR" && !hasHRAccess && hasERPAccess) {
+      setEnvironment("ERP");
+      router.push("/erp");
+    } else if (environment === "ERP" && !hasERPAccess && hasHRAccess) {
+      setEnvironment("HR");
+      router.push("/hr");
+    }
   }, [hasHRAccess, hasERPAccess, environment, setEnvironment, router]);
 
   const logoLabel = React.useMemo(() => {
-      if (environment === "ADMIN") return "Admin Panel";
-      if (hasHRAccess && hasERPAccess) return "Dashboard";
-      if (hasHRAccess) return "HR";
-      if (hasERPAccess) return "ERP";
-      return "Dashboard";
+    if (environment === "ADMIN") return "Admin Panel";
+    if (hasHRAccess && hasERPAccess) return "Dashboard";
+    if (hasHRAccess) return "HR";
+    if (hasERPAccess) return "ERP";
+    return "Dashboard";
   }, [hasHRAccess, hasERPAccess, environment]);
 
   return (
     <Sidebar collapsible="icon" className="border-0 overflow-hidden">
       <SidebarRail />
-      <SidebarHeader className="border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm shadow-sm">
+      <SidebarHeader className="border-b border-sidebar-border/50 bg-linear-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm shadow-sm">
         <div className="flex flex-col gap-3 group-data-[collapsible=icon]:gap-0">
           <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
@@ -440,11 +440,11 @@ export function AppSidebar({
 
         <div className="group-data-[collapsible=icon]:hidden mt-2">
           {environment === "ADMIN" ? (
-            <div className="flex flex-col gap-2 p-3 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border border-primary/20 shadow-sm relative overflow-hidden">
+            <div className="flex flex-col gap-2 p-3 bg-linear-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border border-primary/20 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 p-2 opacity-10">
                 <ShieldCheck className="w-12 h-12 rotate-12" />
               </div>
-              
+
               <div className="flex items-center gap-2 text-primary relative z-10">
                 <div className="p-1.5 bg-primary/10 rounded-lg">
                   <ShieldCheck className="h-4 w-4" />
@@ -456,8 +456,8 @@ export function AppSidebar({
               </div>
 
               <Button
-                variant="ghost" 
-                size="sm" 
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setEnvironment("HR");
                   router.push("/hr");
@@ -470,28 +470,32 @@ export function AppSidebar({
             </div>
           ) : (
             <>
-            {hasHRAccess && hasERPAccess && (
+              {((hasHRAccess ? 1 : 0) + (hasERPAccess ? 1 : 0)) > 1 && (
                 <Tabs
-                defaultValue={environment}
-                value={environment}
-                onValueChange={(v) => {
+                  defaultValue={environment}
+                  value={environment}
+                  onValueChange={(v) => {
                     setEnvironment(v as any);
                     if (v === "HR") router.push("/hr");
                     if (v === "ERP") router.push("/erp");
-                }}
-                className="w-full"
-                variant="card"
+                  }}
+                  className="w-full"
+                  variant="card"
                 >
-                <TabsList className="grid w-full grid-cols-2 h-8">
-                    <TabsTrigger value="HR" className="text-xs">
-                    HR
-                    </TabsTrigger>
-                    <TabsTrigger value="ERP" className="text-xs">
-                    ERP
-                    </TabsTrigger>
-                </TabsList>
+                  <TabsList className="grid w-full h-8 grid-cols-2">
+                    {hasHRAccess && (
+                      <TabsTrigger value="HR" className="text-xs">
+                        HR
+                      </TabsTrigger>
+                    )}
+                    {hasERPAccess && (
+                      <TabsTrigger value="ERP" className="text-xs">
+                        ERP
+                      </TabsTrigger>
+                    )}
+                  </TabsList>
                 </Tabs>
-            )}
+              )}
             </>
           )}
         </div>
@@ -499,14 +503,14 @@ export function AppSidebar({
         <ScrollArea className="-mx-2 px-2" showShadows>
           <SidebarGroup>
             <SidebarMenu className="space-y-1">
-                {filteredMenu.map((item) => (
-                  <MenuItemComponent
-                    key={item.title}
-                    item={item}
-                    pathname={pathname}
-                  />
-                ))}
-              </SidebarMenu>
+              {filteredMenu.map((item) => (
+                <MenuItemComponent
+                  key={item.title}
+                  item={item}
+                  pathname={pathname}
+                />
+              ))}
+            </SidebarMenu>
           </SidebarGroup>
         </ScrollArea>
       </SidebarContent>

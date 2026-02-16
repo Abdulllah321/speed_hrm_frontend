@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, Upload } from "lucide-react";
 import Link from "next/link";
 import {
     DropdownMenu,
@@ -25,6 +25,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { deleteItem } from "@/lib/actions/items";
+import { BulkUploadModal } from "@/components/items/bulk-upload-modal";
+import { useRouter } from "next/navigation";
 
 interface ItemListProps {
     initialItems: any[];
@@ -33,6 +35,8 @@ interface ItemListProps {
 export function ItemList({ initialItems }: ItemListProps) {
     const [items, setItems] = useState(initialItems);
     const [searchTerm, setSearchTerm] = useState("");
+    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+    const router = useRouter();
 
     const filteredItems = items.filter((item) =>
         item.itemId.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -59,11 +63,16 @@ export function ItemList({ initialItems }: ItemListProps) {
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
                 <CardTitle className="text-2xl font-bold">Items Catalog</CardTitle>
-                <Link href="/erp/items/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Add Item
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" /> Bulk Upload
                     </Button>
-                </Link>
+                    <Link href="/erp/items/create">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> Add Item
+                        </Button>
+                    </Link>
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="flex items-center pb-4 space-x-2">
@@ -151,6 +160,14 @@ export function ItemList({ initialItems }: ItemListProps) {
                     </Table>
                 </div>
             </CardContent>
+            <BulkUploadModal
+                open={isBulkUploadOpen}
+                onOpenChange={setIsBulkUploadOpen}
+                onSuccess={() => {
+                    router.refresh();
+                    toast.success("Item list refreshed");
+                }}
+            />
         </Card>
     );
 }

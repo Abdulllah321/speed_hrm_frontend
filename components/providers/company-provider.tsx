@@ -42,7 +42,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     const [loading, setLoading] = useState(true);
     const [needsSetup, setNeedsSetup] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const { registerAppWait, completeAppWait, setLoadingProgress, setLoadingMessage } = useAuth();
+    // const { } = useAuth(); // Removed loading controls
 
     // Internal function to select company and update cookies via server action
     const selectCompanyInternal = useCallback(async (company: Company) => {
@@ -57,16 +57,12 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     const initializeCompany = useCallback(async () => {
         try {
             setLoading(true);
-            setLoadingMessage("Checking company settings...");
-            setLoadingProgress(60);
 
             // 1. Try to get current company from server action (reads cookies correctly)
             const savedCompany = await getCurrentCompany();
             if (savedCompany) {
                 setCurrentCompany(savedCompany);
             }
-
-            setLoadingProgress(80);
 
             // 2. Check if companies exist via server action
             const { hasCompanies } = await checkCompaniesExist();
@@ -75,12 +71,8 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
                 setNeedsSetup(true);
                 setCompanies([]);
                 setCurrentCompany(null);
-                setLoadingProgress(100);
                 return;
             }
-
-            setLoadingMessage("Fetching companies...");
-            setLoadingProgress(90);
 
             // 3. Fetch companies list via server action
             const { data: companiesList } = await getCompanies();
@@ -97,14 +89,12 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
             } else {
                 setNeedsSetup(true);
             }
-            setLoadingProgress(100);
         } catch (error) {
             console.error("Failed to initialize company:", error);
         } finally {
             setLoading(false);
-            completeAppWait("company");
         }
-    }, [completeAppWait, setLoadingProgress, setLoadingMessage, selectCompanyInternal]);
+    }, [selectCompanyInternal]);
 
     // Public function to select company
     const selectCompany = useCallback(async (company: Company) => {
@@ -163,9 +153,8 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
 
     // Mount and initialize
     useEffect(() => {
-        registerAppWait("company");
         setMounted(true);
-    }, [registerAppWait]);
+    }, []);
 
     useEffect(() => {
         if (mounted) {

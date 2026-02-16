@@ -13,8 +13,8 @@ export interface User {
 }
 
 // Client-side login function - now calls backend directly
-export async function loginClient(email: string, password: string): Promise<{ 
-  status: boolean; 
+export async function loginClient(email: string, password: string): Promise<{
+  status: boolean;
   message: string;
   user?: User;
 }> {
@@ -33,8 +33,8 @@ export async function loginClient(email: string, password: string): Promise<{
     const data = await res.json();
 
     if (data.status) {
-      return { 
-        status: true, 
+      return {
+        status: true,
         message: "Login successful",
         user: data.data?.user
       };
@@ -43,6 +43,58 @@ export async function loginClient(email: string, password: string): Promise<{
     return { status: false, message: data.message || "Login failed" };
   } catch (error) {
     console.error("Login error:", error);
+    return { status: false, message: "Failed to connect to server" };
+  }
+}
+
+// Client-side POS login function
+export async function getPosContext(
+  code?: string,
+  lat?: number,
+  lng?: number,
+): Promise<{ status: boolean; message: string; data?: any }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/pos/context`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, lat, lng }),
+    });
+    return res.json();
+  } catch (error) {
+    return { status: false, message: "Network error" };
+  }
+}
+
+export async function posLoginClient(terminalCode: string, pin: string): Promise<{
+  status: boolean;
+  message: string;
+  data?: any;
+}> {
+  if (!terminalCode || !pin) {
+    return { status: false, message: "Terminal Code and PIN are required" };
+  }
+
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/pos-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ terminalCode, pin }),
+      credentials: "include",
+    });
+
+    const data = await res.json();
+
+    if (data.status) {
+      return {
+        status: true,
+        message: "POS Authentication successful",
+        data: data.data
+      };
+    }
+
+    return { status: false, message: data.message || "POS Authentication failed" };
+  } catch (error) {
+    console.error("POS Login error:", error);
     return { status: false, message: "Failed to connect to server" };
   }
 }
@@ -63,7 +115,7 @@ export async function logoutClient(): Promise<{ status: boolean; message: string
     console.error("Logout error:", error);
     return { status: false, message: "Logout failed" };
   }
-} 
+}
 
 // Client-side token refresh function - now calls backend directly
 export async function refreshTokenClient(): Promise<boolean> {

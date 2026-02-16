@@ -287,7 +287,7 @@ export default function middleware(request: NextRequest): NextResponse {
     const accessToken = request.cookies.get("accessToken")?.value;
     const isAuthenticated = !!accessToken;
 
-    if (isAuthenticated) {
+    if (isAuthenticated && pathname !== "/pos-login") {
       // Check for callbackUrl in query parameters
       const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
       const callbackSubdomain = request.nextUrl.searchParams.get("subdomain");
@@ -381,6 +381,22 @@ export default function middleware(request: NextRequest): NextResponse {
     // This allows URLs like hr.localtest.me/hr/payroll-setup/payroll/report to work
   }
 
+  // Special handling for POS subdomain
+  if (currentSubdomain === 'pos') {
+    const posSessionId = request.cookies.get("posSessionId")?.value;
+
+    // Allow auth routes to pass through (they will be handled by auth redirect logic later if needed)
+    if (pathname.startsWith("/auth") || pathname.startsWith("/_next") || pathname.startsWith("/api")) {
+      // let it pass
+    } else if (!posSessionId) {
+      // Redirect to POS login if no session
+      const loginUrl = buildUrl("auth", "/pos-login");
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      loginUrl.searchParams.set("subdomain", "pos");
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   // Determine target subdomain for this path
   const targetSubdomain = getTargetSubdomain(pathname);
 
@@ -408,9 +424,10 @@ export default function middleware(request: NextRequest): NextResponse {
   }
   // Middleware reads cookies for authentication checks
   const accessToken = request.cookies.get("accessToken")?.value;
+  const posAccessToken = request.cookies.get("posAccessToken")?.value;
   const userRole = request.cookies.get("userRole")?.value;
 
-  const isAuthenticated = !!accessToken;
+  const isAuthenticated = !!accessToken || !!posAccessToken;
   const isProtectedRoute =
     protectedRoutes.some((route) => pathname.startsWith(route)) ||
     pathname.startsWith("/hr") ||

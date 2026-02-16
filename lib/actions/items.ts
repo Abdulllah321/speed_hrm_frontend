@@ -53,17 +53,22 @@ export async function createItem(data: any) {
     }
 }
 
-export async function getItems() {
+export async function getItems(page: number = 1, limit: number = 50, search?: string) {
     try {
-        const response = await authFetch("/finance/items", {
+        const queryParams = new URLSearchParams();
+        queryParams.append("page", page.toString());
+        queryParams.append("limit", limit.toString());
+        if (search) queryParams.append("search", search);
+
+        const response = await authFetch(`/finance/items?${queryParams.toString()}`, {
             method: "GET",
         });
 
         const result = await response.json();
-        return result; // Backend now returns { status: true, data: Item[] }
+        return result; // Backend now returns { status: true, data: Item[], meta: { ... } }
     } catch (error) {
         console.error("Get items error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: { total: 0, page, limit, totalPages: 0 } };
     }
 }
 
