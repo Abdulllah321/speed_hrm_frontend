@@ -751,8 +751,11 @@ export const menuData: MenuItem[] = [
       {
         title: "Warehouse WMS",
         children: [
+
           { title: "Dashboard", href: "/erp/inventory/warehouse" },
+          { title: "ADD Warehouse", href: "/erp/inventory/warehouse/add" },
           { title: "Inventory Explorer", href: "/erp/inventory/warehouse/inventory" },
+
         ]
       },
       {
@@ -760,15 +763,15 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/erp/items/create" },
           { title: "List", href: "/erp/items/list" },
-          { title: "Categories", href: "/erp/inventory/categories" },
+          // { title: "Categories", href: "/erp/inventory/categories" },
         ]
       },
       {
         title: "Transactions",
         children: [
-          { title: "Stock Received", href: "/erp/inventory/stock-received" },
-          { title: "Delivery Note", href: "/erp/inventory/delivery-note" },
-          { title: "Stock Transfer", href: "/erp/inventory/stock-transfer" },
+          { title: "Stock Received", href: "/erp/inventory/transactions/stock-received" },
+          { title: "Delivery Note", href: "/erp/inventory/transactions/delivery-note" },
+          { title: "Stock Transfer", href: "/erp/inventory/transactions/stock-transfer" },
         ]
       }
     ],
@@ -781,7 +784,11 @@ export const menuData: MenuItem[] = [
     children: [
       { title: "Vendors", href: "/erp/procurement/vendors" },
       { title: "Purchase Requisition", href: "/erp/procurement/purchase-requisition" },
+      { title: "RFQ", href: "/erp/procurement/rfq" },
+      { title: "Vendor Quotation", href: "/erp/procurement/vendor-quotation/create" },
+      { title: "Vendor Quotation list", href: "/erp/procurement/vendor-quotation/list" },
       { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
+      { title: "Goods Receipt Note", href: "/erp/procurement/grn" },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
     ],
   },

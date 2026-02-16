@@ -299,8 +299,14 @@ export const rfqApi = {
 // Item API
 export interface MasterItem {
   id: string;
-  code: string;
-  name: string;
+  itemId: string;
+  sku: string;
+  name?: string;
+  code?: string;
+  unitPrice?: number;
+  taxRate1?: number;
+  taxRate2?: number;
+  discountRate?: number;
   itemClass?: { name: string };
   itemSubclass?: { name: string };
   uom?: { name: string };
@@ -308,8 +314,8 @@ export interface MasterItem {
 }
 
 export const itemApi = {
-  getAll: () => fetchApi<{ status: boolean; data: MasterItem[] }>('/master/erp/item'),
-  getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/master/erp/item/${id}`),
+  getAll: () => fetchApi<{ status: boolean; data: MasterItem[] }>('/finance/items'),
+  getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/finance/items/${id}`),
 };
 
 
@@ -371,4 +377,192 @@ export const vendorQuotationApi = {
   delete: (id: string) => fetchApi<void>(`/vendor-quotation/${id}`, {
     method: 'DELETE',
   }),
+};
+
+// Purchase Order Types and API
+
+export interface PurchaseOrderItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  quantity: string;
+  receivedQty: string;
+  unitPrice: string;
+  taxPercent: string;
+  discountPercent: string;
+  lineTotal: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  vendorQuotationId: string;
+  vendorId: string;
+  rfqId?: string;
+  orderDate: string;
+  expectedDeliveryDate?: string;
+  status: string;
+  subtotal: string;
+  taxAmount: string;
+  discountAmount: string;
+  totalAmount: string;
+  notes?: string;
+  items: PurchaseOrderItem[];
+  vendor: {
+    name: string;
+    code: string;
+  };
+  vendorQuotation?: VendorQuotation;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const purchaseOrderApi = {
+  getAll: () => fetchApi<PurchaseOrder[]>('/purchase-order'),
+  getPendingQuotations: () => fetchApi<VendorQuotation[]>('/purchase-order/pending-quotations'),
+  getById: (id: string) => fetchApi<PurchaseOrder>(`/purchase-order/${id}`),
+  create: (data: {
+    vendorQuotationId?: string;
+    vendorId?: string;
+    items?: {
+      itemId: string;
+      description?: string;
+      quantity: number;
+      unitPrice: number;
+      taxPercent?: number;
+      discountPercent?: number;
+    }[];
+    notes?: string;
+    expectedDeliveryDate?: string;
+  }) =>
+    fetchApi<PurchaseOrder>('/purchase-order', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateStatus: (id: string, status: string) =>
+    fetchApi<PurchaseOrder>(`/purchase-order/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+};
+
+// GRN & Warehouse Types and API
+
+export interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  address?: string;
+  type: string;
+  description?: string;
+  isActive: boolean;
+  managerId?: string;
+  createdAt: string;
+}
+
+export interface GrnItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  receivedQty: string;
+}
+
+export interface Grn {
+  id: string;
+  grnNumber: string;
+  purchaseOrderId: string;
+  warehouseId: string;
+  receivedDate: string;
+  status: string;
+  notes?: string;
+  items: GrnItem[];
+  purchaseOrder?: {
+    poNumber: string;
+  };
+  warehouse?: {
+    name: string;
+  };
+  createdAt: string;
+}
+
+export const grnApi = {
+  getAll: () => fetchApi<Grn[]>('/grn'),
+  getById: (id: string) => fetchApi<Grn>(`/grn/${id}`),
+  create: (data: {
+    purchaseOrderId: string;
+    warehouseId: string;
+    notes?: string;
+    items: { itemId: string; description?: string; receivedQty: number }[];
+  }) =>
+    fetchApi<Grn>('/grn', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+export const warehouseApi = {
+  getAll: () => fetchApi<Warehouse[]>('/warehouse'),
+  getById: (id: string) => fetchApi<Warehouse>(`/warehouse/${id}`),
+  create: (data: Partial<Warehouse>) => fetchApi<Warehouse>('/warehouse', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: Partial<Warehouse>) => fetchApi<Warehouse>(`/warehouse/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<void>(`/warehouse/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// Stock Ledger Types and API
+export enum MovementType {
+  INBOUND = 'INBOUND',
+  OUTBOUND = 'OUTBOUND',
+  TRANSFER = 'TRANSFER',
+  ADJUSTMENT = 'ADJUSTMENT',
+  OPENING_BALANCE = 'OPENING_BALANCE'
+}
+
+export interface StockLedgerEntry {
+  id: string;
+  itemId: string;
+  warehouseId: string;
+  qty: string;
+  movementType: MovementType;
+  referenceType: string;
+  referenceId: string;
+  locationId?: string;
+  createdAt: string;
+  // Optional expanded relations if backend includes them
+  item?: { itemId: string; sku: string; description: string | null; name?: string };
+  warehouse?: { name: string };
+}
+
+export interface StockLevel {
+  itemId: string;
+  warehouseId: string;
+  totalQty: string;
+  item: {
+    itemId: string;
+    sku: string;
+    description: string | null;
+    uomId: string | null;
+  } | null;
+  warehouse: {
+    name: string;
+    code: string;
+  } | null;
+}
+
+export const stockLedgerApi = {
+  getAll: (params?: { warehouseId?: string, movementType?: MovementType, itemId?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<StockLedgerEntry[]>(`/stock-ledger?${query}`);
+  },
+  getLevels: (params?: { warehouseId?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<StockLevel[]>(`/stock-ledger/levels?${query}`);
+  }
 };

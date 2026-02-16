@@ -64,7 +64,7 @@ export async function submitVendorQuotation(id: string) {
         const result = await response.json();
         if (result.status) {
             revalidatePath("/erp/procurement/vendor-quotation");
-            revalidatePath(`/erp/procurement/vendor-quotation/${id}`);
+            revalidatePath(`/erp/procurement/vendor-quotation/list${id}`);
         }
         return result;
     } catch (error) {
