@@ -90,7 +90,7 @@ export default function CreatePurchaseRequisition() {
     const onSubmit = async (data: FormValues) => {
         try {
             setLoading(true);
-            await purchaseRequisitionApi.create({
+            const pr = await purchaseRequisitionApi.create({
                 ...data,
                 items: data.items.map(item => ({
                     ...item,
@@ -98,8 +98,8 @@ export default function CreatePurchaseRequisition() {
                     neededByDate: item.neededByDate ? new Date(item.neededByDate) : undefined
                 }))
             });
-            toast.success('Purchase Requisition created successfully');
-            router.push('/erp/procurement/purchase-requisition');
+            toast.success('Purchase Requisition submitted for approval');
+            router.push(`/erp/procurement/purchase-requisition/${pr.id}`);
         } catch (error) {
             console.error(error);
             toast.error('Failed to create requisition');
@@ -250,7 +250,7 @@ export default function CreatePurchaseRequisition() {
 
                 <div className="flex justify-end">
                     <Button type="submit" disabled={loading}>
-                        {loading ? 'Submitting...' : 'Create Draft'}
+                        {loading ? 'Submitting...' : 'Submit'}
                     </Button>
                 </div>
             </form>

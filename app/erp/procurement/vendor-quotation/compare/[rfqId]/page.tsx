@@ -6,14 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
-import { vendorQuotationApi, VendorQuotation } from '@/lib/api';
+import { vendorQuotationApi, VendorQuotation, purchaseOrderApi } from '@/lib/api';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function CompareQuotations({ params }: { params: Promise<{ rfqId: string }> }) {
     const { rfqId } = use(params);
     const [quotations, setQuotations] = useState<VendorQuotation[]>([]);
     const [loading, setLoading] = useState(true);
+    const [awards, setAwards] = useState<Record<string, string>>({});
+    const [submitting, setSubmitting] = useState(false);
     const router = useRouter();
 
     useEffect(() => {
@@ -29,6 +32,43 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleAwardChange = (itemId: string, vendorQuotationId: string) => {
+        setAwards(prev => ({ ...prev, [itemId]: vendorQuotationId }));
+    };
+
+    const handleAwardSubmit = async () => {
+        try {
+            setSubmitting(true);
+            const prItems = quotations[0]?.rfq?.purchaseRequisition?.items || [];
+            const grouped: Record<string, { itemId: string; quantity: number }[]> = {};
+            for (const prItem of prItems) {
+                const vqid = awards[prItem.itemId];
+                if (!vqid) continue;
+                const qty = Number(prItem.requiredQty);
+                if (!grouped[vqid]) grouped[vqid] = [];
+                grouped[vqid].push({ itemId: prItem.itemId, quantity: qty });
+            }
+            const payload = {
+                rfqId,
+                awards: Object.entries(grouped).map(([vendorQuotationId, items]) => ({
+                    vendorQuotationId,
+                    items
+                }))
+            };
+            const result = await purchaseOrderApi.awardFromRfq(payload);
+            if (Array.isArray(result) && result.length > 0) {
+                toast.success('Purchase Orders created for awarded items');
+                router.push(`/erp/procurement/purchase-order/${result[0].id}`);
+            } else {
+                toast.error('No orders created');
+            }
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to award items');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -92,6 +132,23 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                                         <div>{prItem.itemId}</div>
                                         <div className="text-sm text-muted-foreground">{prItem.description || '-'}</div>
                                         <div className="text-sm text-muted-foreground">Qty: {prItem.requiredQty}</div>
+                                        <div className="mt-2">
+                                            <Select onValueChange={(value) => handleAwardChange(prItem.itemId, value)}>
+                                                <SelectTrigger className="w-[220px]">
+                                                    <SelectValue placeholder="Award to vendor" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {quotations.map((q) => {
+                                                        const hasItem = q.items.some(i => i.itemId === prItem.itemId);
+                                                        return hasItem ? (
+                                                            <SelectItem key={q.id} value={q.id}>
+                                                                {q.vendor.name}
+                                                            </SelectItem>
+                                                        ) : null;
+                                                    })}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </TableCell>
                                     {quotations.map((quotation) => {
                                         const item = quotation.items.find(i => i.itemId === prItem.itemId);
@@ -159,6 +216,15 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                                         )}
                                     </TableCell>
                                 ))}
+                            </TableRow>
+                            <TableRow>
+                                <TableCell colSpan={quotations.length + 1}>
+                                    <div className="flex justify-end">
+                                        <Button onClick={handleAwardSubmit} disabled={submitting} variant="secondary">
+                                            {submitting ? 'Processing...' : 'Award Selected Items & Create POs'}
+                                        </Button>
+                                    </div>
+                                </TableCell>
                             </TableRow>
                         </TableBody>
                     </Table>

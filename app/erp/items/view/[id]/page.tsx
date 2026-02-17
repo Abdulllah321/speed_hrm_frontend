@@ -124,7 +124,7 @@ export default async function ViewItemPage({ params }: PageProps) {
                 <InfoItem label="Channel Class" value={item.channelClass?.name} />
                 <InfoItem label="Gender" value={item.gender?.name} />
                 <InfoItem label="Season" value={item.season?.name} />
-                <InfoItem label="UOM" value={item.uom?.name} />
+                {/* UOM removed */}
             </InfoSection>
 
             <InfoSection title="Pricing & Discounts">

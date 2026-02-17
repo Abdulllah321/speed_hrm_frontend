@@ -25,14 +25,13 @@ interface Supplier {
 interface FormValues {
     rfqId: string;
     vendorId: string;
+    expiryDate: string;
     notes: string;
     items: {
         itemId: string;
         description: string;
         quotedQty: number;
         unitPrice: number;
-        taxPercent: number;
-        discountPercent: number;
     }[];
 }
 
@@ -108,9 +107,7 @@ export default function CreateVendorQuotation() {
                 itemId: item.itemId,
                 description: item.description || '',
                 quotedQty: parseFloat(item.requiredQty),
-                unitPrice: 0,
-                taxPercent: 0,
-                discountPercent: 0
+                unitPrice: 0
             })));
         }
     };
@@ -184,12 +181,20 @@ export default function CreateVendorQuotation() {
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="notes">Notes</Label>
-                            <Textarea id="notes" {...register('notes')} placeholder="Optional notes" />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="expiryDate">Expiry Date</Label>
+                                <Input type="date" id="expiryDate" {...register('expiryDate', { required: true })} />
+                                {errors.expiryDate && <span className="text-red-500 text-sm">Required</span>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="notes">Notes</Label>
+                                <Textarea id="notes" {...register('notes')} placeholder="Optional notes" />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
+
 
                 {fields.length > 0 && (
                     <Card>
@@ -204,9 +209,7 @@ export default function CreateVendorQuotation() {
                                             <TableHead>Item ID</TableHead>
                                             <TableHead>Description</TableHead>
                                             <TableHead>Qty</TableHead>
-                                            <TableHead>Unit Price</TableHead>
-                                            <TableHead>Tax %</TableHead>
-                                            <TableHead>Disc %</TableHead>
+                                            <TableHead>Rate</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -223,12 +226,6 @@ export default function CreateVendorQuotation() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Input type="number" step="0.01" {...register(`items.${index}.unitPrice`, { valueAsNumber: true, required: true })} className="w-32" placeholder="0.00" />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Input type="number" step="0.01" {...register(`items.${index}.taxPercent`, { valueAsNumber: true })} className="w-20" placeholder="0" />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Input type="number" step="0.01" {...register(`items.${index}.discountPercent`, { valueAsNumber: true })} className="w-20" placeholder="0" />
                                                 </TableCell>
                                             </TableRow>
                                         ))}

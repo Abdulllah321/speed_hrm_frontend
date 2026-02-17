@@ -304,12 +304,13 @@ export interface MasterItem {
   name?: string;
   code?: string;
   unitPrice?: number;
+  fob?: number;
+  unitCost?: number;
   taxRate1?: number;
   taxRate2?: number;
   discountRate?: number;
   itemClass?: { name: string };
   itemSubclass?: { name: string };
-  uom?: { name: string };
   description?: string;
 }
 
@@ -337,6 +338,7 @@ export interface VendorQuotation {
   rfqId: string;
   vendorId: string;
   quotationDate: string;
+  expiryDate?: string;
   status: string;
   subtotal: string;
   taxAmount: string;
@@ -436,6 +438,38 @@ export const purchaseOrderApi = {
     expectedDeliveryDate?: string;
   }) =>
     fetchApi<PurchaseOrder>('/purchase-order', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  awardFromRfq: (data: {
+    rfqId: string;
+    awards: {
+      vendorQuotationId: string;
+      items: { itemId: string; quantity: number }[];
+      notes?: string;
+      expectedDeliveryDate?: string;
+    }[];
+  }) =>
+    fetchApi<PurchaseOrder[]>('/purchase-order/award-from-rfq', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  createMultiDirect: (data: {
+    awards: {
+      vendorId: string;
+      items: {
+        itemId: string;
+        description?: string;
+        quantity: number;
+        unitPrice: number;
+        taxPercent?: number;
+        discountPercent?: number;
+      }[];
+      notes?: string;
+      expectedDeliveryDate?: string;
+    }[];
+  }) =>
+    fetchApi<PurchaseOrder[]>('/purchase-order/multi-direct', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

@@ -21,6 +21,7 @@ interface OrderItem {
     unitPrice: number;
     taxPercent?: number;
     discountPercent?: number;
+    vendorId?: string;
     // Display only
     itemName?: string;
     lineTotal?: number;
@@ -39,6 +40,7 @@ export default function CreateDirectPurchaseOrder() {
     const [notes, setNotes] = useState<string>('');
     const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+    const [multiVendorMode, setMultiVendorMode] = useState<boolean>(false);
 
     // Item Input State
     const [currentItemId, setCurrentItemId] = useState<string>('');
@@ -181,10 +183,6 @@ export default function CreateDirectPurchaseOrder() {
     };
 
     const handleSubmit = async () => {
-        if (!selectedVendorId) {
-            toast.error('Please select a vendor');
-            return;
-        }
         if (orderItems.length === 0) {
             toast.error('Please add at least one item');
             return;
@@ -192,22 +190,61 @@ export default function CreateDirectPurchaseOrder() {
 
         try {
             setLoading(true);
-            const po = await purchaseOrderApi.create({
-                vendorId: selectedVendorId,
-                items: orderItems.map(item => ({
-                    itemId: item.itemId,
-                    description: item.description,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                    taxPercent: item.taxPercent,
-                    discountPercent: item.discountPercent
-                })),
-                notes,
-                expectedDeliveryDate: expectedDeliveryDate || undefined
-            });
-
-            toast.success(`Purchase Order ${po.poNumber} created successfully`);
-            router.push(`/erp/procurement/purchase-order/${po.id}`);
+            if (!multiVendorMode) {
+                if (!selectedVendorId) {
+                    toast.error('Please select a vendor');
+                    return;
+                }
+                const po = await purchaseOrderApi.create({
+                    vendorId: selectedVendorId,
+                    items: orderItems.map(item => ({
+                        itemId: item.itemId,
+                        description: item.description,
+                        quantity: item.quantity,
+                        unitPrice: item.unitPrice,
+                        taxPercent: item.taxPercent,
+                        discountPercent: item.discountPercent
+                    })),
+                    notes,
+                    expectedDeliveryDate: expectedDeliveryDate || undefined
+                });
+                toast.success(`Purchase Order ${po.poNumber} created successfully`);
+                router.push(`/erp/procurement/purchase-order/${po.id}`);
+            } else {
+                // Group items by vendorId
+                const groups: Record<string, OrderItem[]> = {};
+                for (const item of orderItems) {
+                    if (!item.vendorId) {
+                        toast.error('Select vendor for all items');
+                        setLoading(false);
+                        return;
+                    }
+                    if (!groups[item.vendorId]) groups[item.vendorId] = [];
+                    groups[item.vendorId].push(item);
+                }
+                const payload = {
+                    awards: Object.entries(groups).map(([vendorId, items]) => ({
+                        vendorId,
+                        items: items.map(i => ({
+                            itemId: i.itemId,
+                            description: i.description,
+                            quantity: i.quantity,
+                            unitPrice: i.unitPrice,
+                            taxPercent: i.taxPercent,
+                            discountPercent: i.discountPercent
+                        })),
+                        notes,
+                        expectedDeliveryDate: expectedDeliveryDate || undefined
+                    }))
+                };
+                const result = await purchaseOrderApi.createMultiDirect(payload);
+                if (Array.isArray(result) && result.length > 0) {
+                    toast.success(`Created ${result.length} Purchase Orders`);
+                    router.push(`/erp/procurement/purchase-order/${result[0].id}`);
+                } else {
+                    toast.error('Failed to create Purchase Orders');
+                }
+            }
         } catch (error: any) {
             console.error('Failed to create PO:', error);
             toast.error(error.message || 'Failed to create Purchase Order');
@@ -236,6 +273,14 @@ export default function CreateDirectPurchaseOrder() {
                         <CardTitle>Vendor & Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label>Multi-vendor mode</Label>
+                            <Input
+                                type="checkbox"
+                                checked={multiVendorMode}
+                                onChange={(e) => setMultiVendorMode(e.target.checked)}
+                            />
+                        </div>
                         <div className="space-y-2">
                             <Label>Select PR (Optional)</Label>
                             <Select value={selectedPRId} onValueChange={handlePRSelect}>
@@ -252,6 +297,7 @@ export default function CreateDirectPurchaseOrder() {
                             </Select>
                         </div>
 
+                        {!multiVendorMode && (
                         <div className="space-y-2">
                             <Label>Vendor</Label>
                             <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
@@ -267,6 +313,7 @@ export default function CreateDirectPurchaseOrder() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        )}
 
                         <div className="space-y-2">
                             <Label>Expected Delivery Date</Label>
@@ -296,7 +343,7 @@ export default function CreateDirectPurchaseOrder() {
                     <CardContent className="space-y-6">
                         {/* Add Item Form */}
                         <div className="grid grid-cols-12 gap-2 items-end border-b pb-4">
-                            <div className="col-span-4 space-y-2">
+                            <div className="col-span-3 space-y-2">
                                 <Label>Item</Label>
                                 <Select value={currentItemId} onValueChange={handleItemSelect}>
                                     <SelectTrigger>
@@ -347,6 +394,23 @@ export default function CreateDirectPurchaseOrder() {
                                     placeholder="0"
                                 />
                             </div>
+                            {multiVendorMode && (
+                            <div className="col-span-2 space-y-2">
+                                <Label>Vendor</Label>
+                                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Vendor" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {vendors.map((vendor) => (
+                                            <SelectItem key={vendor.id} value={vendor.id}>
+                                                {vendor.name} ({vendor.code})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            )}
                             <div className="col-span-1">
                                 <Button size="icon" onClick={handleAddItem}>
                                     <Plus className="h-4 w-4" />
@@ -360,6 +424,7 @@ export default function CreateDirectPurchaseOrder() {
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Item</TableHead>
+                                        <TableHead>Vendor</TableHead>
                                         <TableHead className="text-right">Qty</TableHead>
                                         <TableHead className="text-right">Price</TableHead>
                                         <TableHead className="text-right">Tax %</TableHead>
@@ -381,7 +446,32 @@ export default function CreateDirectPurchaseOrder() {
                                                     <div className="font-medium">{item.itemName}</div>
                                                     <div className="text-xs text-muted-foreground">{item.description}</div>
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                            <TableCell>
+                                                {multiVendorMode ? (
+                                                    <Select
+                                                        value={item.vendorId || ''}
+                                                        onValueChange={(val) => {
+                                                            const newItems = [...orderItems];
+                                                            newItems[index] = { ...item, vendorId: val };
+                                                            setOrderItems(newItems);
+                                                        }}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select Vendor" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {vendors.map((vendor) => (
+                                                                <SelectItem key={vendor.id} value={vendor.id}>
+                                                                    {vendor.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                ) : (
+                                                    <span className="text-muted-foreground">Uses top vendor</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right">
                                                     <Input
                                                         type="number"
                                                         value={item.quantity}

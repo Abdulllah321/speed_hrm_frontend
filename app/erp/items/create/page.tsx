@@ -36,10 +36,9 @@ import { getChannelClasses } from "@/lib/actions/channel-class";
 import { getItemClasses } from "@/lib/actions/item-class";
 import { getItemSubclasses } from "@/lib/actions/item-subclass";
 import { getSeasons } from "@/lib/actions/season";
-import { getUoms } from "@/lib/actions/uom";
 import { getSizes } from "@/lib/actions/size";
 import { getSegments } from "@/lib/actions/segment";
-import { createItem } from "@/lib/actions/items";
+import { createItem, getNextItemId } from "@/lib/actions/items";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/upload";
@@ -53,7 +52,7 @@ const itemFormSchema = z.object({
     brandId: z.string().min(1, "Brand is required"),
     description: z.string().optional(),
     sku: z.string().min(1, "SKU is required"),
-    itemId: z.string().min(1, "Item ID is required"),
+    // itemId removed (auto-generated)
     barCode: z.string().optional(),
     hsCode: z.string().optional(),
     isActive: z.boolean(),
@@ -68,11 +67,13 @@ const itemFormSchema = z.object({
     channelClassId: z.string().optional(),
     genderId: z.string().optional(),
     seasonId: z.string().optional(),
-    uomId: z.string().optional(),
+    // uomId removed
     segmentId: z.string().optional(),
 
     // Step 3: Pricing & Discount
     unitPrice: z.coerce.number().min(0),
+    fob: z.coerce.number().min(0).optional(),
+    unitCost: z.coerce.number().min(0).optional(),
     taxRate1: z.coerce.number().min(0).optional(),
     taxRate2: z.coerce.number().min(0).optional(),
     discountRate: z.coerce.number().min(0).optional(),
@@ -109,7 +110,7 @@ export default function ItemCreatePage() {
         itemClasses: any[];
         itemSubclasses: any[];
         seasons: any[];
-        uoms: any[];
+        // uoms removed
         sizes: any[];
         segments: any[];
     }>({
@@ -123,12 +124,13 @@ export default function ItemCreatePage() {
         itemClasses: [],
         itemSubclasses: [],
         seasons: [],
-        uoms: [],
+        // uoms removed
         sizes: [],
         segments: [],
     });
 
     const [loading, setLoading] = useState(true);
+    const [nextItemId, setNextItemId] = useState<string>("");
 
     const form = useForm({
         resolver: zodResolver(itemFormSchema),
@@ -136,11 +138,12 @@ export default function ItemCreatePage() {
             brandId: "",
             description: "",
             sku: "",
-            itemId: "",
             barCode: "",
             hsCode: "",
             isActive: true,
             unitPrice: 0,
+            fob: 0,
+            unitCost: 0,
             taxRate1: 0,
             taxRate2: 0,
             discountRate: 0,
@@ -234,11 +237,11 @@ export default function ItemCreatePage() {
                 const [
                     brands, divisions, categories, genders, colors,
                     silhouettes, channelClasses, itemClasses, itemSubclasses,
-                    seasons, uoms, sizes, segments
+                    seasons, sizes, segments, nextIdResp
                 ] = await Promise.all([
                     getBrands(), getDivisions(), getCategories(), getGenders(), getColors(),
                     getSilhouettes(), getChannelClasses(), getItemClasses(), getItemSubclasses(),
-                    getSeasons(), getUoms(), getSizes(), getSegments()
+                    getSeasons(), getSizes(), getSegments(), getNextItemId()
                 ]);
 
                 setMasters({
@@ -252,10 +255,13 @@ export default function ItemCreatePage() {
                     itemClasses: itemClasses.data || [],
                     itemSubclasses: itemSubclasses.data || [],
                     seasons: seasons.data || [],
-                    uoms: uoms.data || [],
+                    // uoms removed
                     sizes: sizes.data || [],
                     segments: segments.data || [],
                 });
+                if (nextIdResp?.status && nextIdResp?.data?.nextId) {
+                    setNextItemId(nextIdResp.data.nextId);
+                }
             } catch (error) {
                 console.error("Failed to fetch masters:", error);
                 toast.error("Failed to load master data");
@@ -302,11 +308,11 @@ export default function ItemCreatePage() {
     const getFieldsForStep = (step: number): (keyof ItemFormValues)[] => {
         switch (step) {
             case 0:
-                return ["brandId", "segmentId", "sku", "itemId", "barCode", "hsCode", "isActive", "description"];
+                return ["brandId", "segmentId", "sku", "barCode", "hsCode", "isActive", "description"];
             case 1:
-                return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId", "uomId"];
+                return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId"];
             case 2:
-                return ["unitPrice", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
+                return ["unitPrice", "fob", "unitCost", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
             case 3:
                 return ["sizeId", "colorId", "silhouetteId", "case", "band", "movementType", "heelHeight", "width"];
             default:
@@ -422,19 +428,12 @@ export default function ItemCreatePage() {
                                                     />
                                                 )}
                                             />
-                                            <FormField
-                                                control={form.control}
-                                                name="itemId"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Item ID <span className="text-red-500">*</span></FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="Unique Item ID" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <FormItem>
+                                                <FormLabel>Item ID (Auto)</FormLabel>
+                                                <FormControl>
+                                                    <Input value={nextItemId || ""} disabled />
+                                                </FormControl>
+                                            </FormItem>
                                             <FormField
                                                 control={form.control}
                                                 name="sku"
@@ -607,17 +606,7 @@ export default function ItemCreatePage() {
                                                     />
                                                 )}
                                             />
-                                            <FormField
-                                                control={form.control}
-                                                name="uomId"
-                                                render={({ field }) => (
-                                                    <MasterSelect
-                                                        label="UOM"
-                                                        field={field}
-                                                        options={masters.uoms}
-                                                    />
-                                                )}
-                                            />
+                                            {/* UOM removed */}
 
                                         </div>
                                     )}
@@ -631,6 +620,32 @@ export default function ItemCreatePage() {
                                                 render={({ field }: { field: any }) => (
                                                     <FormItem>
                                                         <FormLabel>Unit Price</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" {...field} value={field.value ?? ""} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="fob"
+                                                render={({ field }: { field: any }) => (
+                                                    <FormItem>
+                                                        <FormLabel>FOB</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" {...field} value={field.value ?? ""} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="unitCost"
+                                                render={({ field }: { field: any }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Unit Cost</FormLabel>
                                                         <FormControl>
                                                             <Input type="number" {...field} value={field.value ?? ""} />
                                                         </FormControl>
@@ -889,7 +904,7 @@ export default function ItemCreatePage() {
                                                 </div>
                                                 <div className="border p-3 rounded-md bg-white">
                                                     <Label className="text-muted-foreground text-xs">Item ID</Label>
-                                                    <div className="font-medium">{form.getValues("itemId")}</div>
+                                                    <div className="font-medium">{nextItemId}</div>
                                                 </div>
                                                 <div className="border p-3 rounded-md bg-white">
                                                     <Label className="text-muted-foreground text-xs">SKU</Label>
