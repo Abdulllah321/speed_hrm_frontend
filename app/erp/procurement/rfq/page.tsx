@@ -83,7 +83,7 @@ export default function RfqList() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/erp/procurement/rfq/create/${rfq.id}`}>
+                                            <Link href={`/erp/procurement/rfq/${rfq.id}`}>
                                                 <Button variant="ghost" size="sm">View</Button>
                                             </Link>
                                         </TableCell>

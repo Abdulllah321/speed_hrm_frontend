@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { getRfqs, getRfq } from '@/lib/actions/rfq';
 import { createVendorQuotation } from '@/lib/actions/vendor-quotations';
 import { getVendors } from '@/lib/actions/procurement';
 import { toast } from 'sonner';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface Supplier {
     id: string;
@@ -184,7 +185,18 @@ export default function CreateVendorQuotation() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="expiryDate">Expiry Date</Label>
-                                <Input type="date" id="expiryDate" {...register('expiryDate', { required: true })} />
+                                <Controller
+                                    control={control}
+                                    name="expiryDate"
+                                    rules={{ required: true }}
+                                    render={({ field }) => (
+                                        <DatePicker
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            placeholder="Pick expiry date"
+                                        />
+                                    )}
+                                />
                                 {errors.expiryDate && <span className="text-red-500 text-sm">Required</span>}
                             </div>
                             <div className="space-y-2">

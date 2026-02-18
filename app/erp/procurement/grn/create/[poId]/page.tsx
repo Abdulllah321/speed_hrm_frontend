@@ -119,7 +119,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Item</TableHead>
+                                    <TableHead>Item ID</TableHead>
                                     <TableHead className="text-right">Ordered</TableHead>
                                     <TableHead className="text-right">Remaining</TableHead>
                                     <TableHead className="text-right w-32">Receiving</TableHead>

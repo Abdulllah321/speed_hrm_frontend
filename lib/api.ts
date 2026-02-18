@@ -423,6 +423,7 @@ export const purchaseOrderApi = {
   create: (data: {
     vendorQuotationId?: string;
     vendorId?: string;
+    purchaseRequisitionId?: string;
     items?: {
       itemId: string;
       description?: string;

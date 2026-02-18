@@ -15,7 +15,8 @@ import { getCategories, type Category } from '@/lib/actions/category';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import { Scissors } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface FormValues {
     department: string;
@@ -91,12 +92,22 @@ export default function CreatePurchaseRequisition() {
     const onSubmit = async (data: FormValues) => {
         try {
             setLoading(true);
+            const cleanedItems = data.items
+                .map(item => ({
+                    itemId: item.itemId,
+                    requiredQty: Number(item.requiredQty),
+                }))
+                .filter(item => item.itemId && item.requiredQty > 0);
+
+            if (cleanedItems.length === 0 || cleanedItems.length !== data.items.length) {
+                toast.error('Please fill all items correctly (Item ID and Quantity > 0)');
+                setLoading(false);
+                return;
+            }
+
             const pr = await purchaseRequisitionApi.create({
                 ...data,
-                items: data.items.map(item => ({
-                    ...item,
-                    requiredQty: Number(item.requiredQty)
-                }))
+                items: cleanedItems,
             });
             toast.success('Purchase Requisition submitted for approval');
             router.push(`/erp/procurement/purchase-requisition/${pr.id}`);
@@ -209,7 +220,11 @@ export default function CreatePurchaseRequisition() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Items</CardTitle>
-                        <Button type="button" size="sm" onClick={() => append({ itemId: '', description: '', requiredQty: 1, neededByDate: '' })}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => append({ itemId: '', requiredQty: 1 })}
+                        >
                             Add Item
                         </Button>
                     </CardHeader>
@@ -260,13 +275,31 @@ export default function CreatePurchaseRequisition() {
                                 </div>
                                 <div className="col-span-2 space-y-2">
                                     <Label>Quantity</Label>
-                                    <Input type="number" step="0.01" {...register(`items.${index}.requiredQty` as const, { required: true, min: 0.01 })} />
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        {...register(`items.${index}.requiredQty` as const, {
+                                            required: true,
+                                            min: 0.01,
+                                        })}
+                                    />
                                 </div>
                                 
                                 <div className="col-span-3 flex items-center justify-end mt-3">
-                                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} aria-label="Remove item">
-                                        <Scissors className="h-4 w-4" />
-                                    </Button>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                onClick={() => remove(index)}
+                                                aria-label="Remove item"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Remove item</TooltipContent>
+                                    </Tooltip>
                                 </div>
                             </div>
                         ))}

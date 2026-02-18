@@ -48,6 +48,7 @@ export default function CreateDirectPurchaseOrder() {
     const [currentPrice, setCurrentPrice] = useState<string>('');
     const [currentTax, setCurrentTax] = useState<string>('0');
     const [currentDiscount, setCurrentDiscount] = useState<string>('0');
+    const [currentVendorId, setCurrentVendorId] = useState<string>(''); // for multi-vendor add row
 
     useEffect(() => {
         fetchData();
@@ -140,8 +141,14 @@ export default function CreateDirectPurchaseOrder() {
             unitPrice: price,
             taxPercent: tax,
             discountPercent: discount,
-            lineTotal: lineTotal
+            lineTotal: lineTotal,
+            vendorId: multiVendorMode ? currentVendorId || undefined : undefined
         };
+
+        if (multiVendorMode && !currentVendorId) {
+            toast.error('Select vendor for this item');
+            return;
+        }
 
         setOrderItems([...orderItems, newItem]);
 
@@ -151,6 +158,7 @@ export default function CreateDirectPurchaseOrder() {
         setCurrentPrice('');
         setCurrentTax('0');
         setCurrentDiscount('0');
+        setCurrentVendorId('');
     };
 
     const handleRemoveItem = (index: number) => {
@@ -197,6 +205,7 @@ export default function CreateDirectPurchaseOrder() {
                 }
                 const po = await purchaseOrderApi.create({
                     vendorId: selectedVendorId,
+                    purchaseRequisitionId: selectedPRId || undefined,
                     items: orderItems.map(item => ({
                         itemId: item.itemId,
                         description: item.description,
@@ -397,7 +406,7 @@ export default function CreateDirectPurchaseOrder() {
                             {multiVendorMode && (
                             <div className="col-span-2 space-y-2">
                                 <Label>Vendor</Label>
-                                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                                <Select value={currentVendorId} onValueChange={setCurrentVendorId}>
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select Vendor" />
                                     </SelectTrigger>

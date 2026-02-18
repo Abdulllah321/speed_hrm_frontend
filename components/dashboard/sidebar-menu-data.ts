@@ -114,6 +114,15 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
+    title: "Old Season",
+    environment: "ERP",
+    permissions: ["erp.old-season.read", "erp.old-season.create"],
+    children: [
+      { title: "Add", href: "/master/old-season/add" },
+      { title: "View", href: "/master/old-season/list" },
+    ],
+  },
+  {
     title: "Channel Class",
     environment: "ERP",
     permissions: ["master.channel-class.read", "master.channel-class.create"],
