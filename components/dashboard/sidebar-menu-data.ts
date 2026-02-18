@@ -28,7 +28,7 @@ export type MenuItem = {
   children?: MenuItem[];
   permissions?: string[];
   requireAllPermissions?: boolean;
-  environment?: "HR" | "ERP" | "BOTH" | "ADMIN";
+  environment?: "HR" | "ERP" | "BOTH" | "ADMIN" | "POS";
 };
 
 export const masterMenuData: MenuItem[] = [
@@ -657,13 +657,44 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/vendor-opening/list" },
     ],
   },
-  // {
-  //   title: "Rebate Nature",
-  //   children: [
-  //     { title: "Add", href: "/master/rebate-nature/add" },
-  //     { title: "View", href: "/master/rebate-nature/list" },
-  //   ],
-  // },
+  {
+    title: "Retail & POS",
+    environment: "ERP",
+    icon: ShoppingCart,
+    permissions: ["master.pos.read", "pos.sales.read", "pos.inventory.read"],
+    children: [
+      {
+        title: "Management",
+        children: [
+          { title: "Manage Locations", href: "/master/location/list", permissions: ["master.location.read"] },
+          { title: "Terminal List", href: "/master/pos/list", permissions: ["master.pos.read"] },
+        ]
+      },
+      {
+        title: "Sales Operations",
+        children: [
+          { title: "New Sale", href: "/pos/sales/new", permissions: ["pos.sales.create"] },
+          { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.read"] },
+          { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
+        ]
+      },
+      {
+        title: "Inventory",
+        children: [
+          { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
+          { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
+        ]
+      },
+      {
+        title: "Terminal Settings",
+        children: [
+          { title: "Shifts", href: "/pos/shifts", permissions: ["pos.terminal.shifts"] },
+          { title: "Settings", href: "/pos/terminal/settings", permissions: ["pos.terminal.settings"] },
+          { title: "Logout Terminal", href: "/auth/logout" },
+        ]
+      }
+    ],
+  },
 ];
 
 export const menuData: MenuItem[] = [

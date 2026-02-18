@@ -9,7 +9,7 @@ export default async function CompaniesPage() {
   ]);
 
   const userPermissions = user?.permissions || [];
-
+  console.log(user);
   return (
     <div className="container mx-auto py-6">
       <CompanyList

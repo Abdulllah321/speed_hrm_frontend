@@ -141,11 +141,12 @@ interface TabsProps extends React.ComponentProps<typeof TabsPrimitive.Root> {
 function Tabs({
   className,
   value,
+  defaultValue,
   variant = "default",
   color = "default",
   ...props
 }: TabsProps) {
-  const [activeValue, setActiveValue] = React.useState<string | undefined>(value as string | undefined)
+  const [activeValue, setActiveValue] = React.useState<string | undefined>((value || defaultValue) as string | undefined)
 
   React.useEffect(() => {
     if (value !== undefined) {
@@ -155,21 +156,22 @@ function Tabs({
 
   return (
     <TabsContext.Provider value={{ activeValue, variant, color }}>
-    <TabsPrimitive.Root
-      data-slot="tabs"
+      <TabsPrimitive.Root
+        data-slot="tabs"
         value={value}
+        defaultValue={defaultValue}
         onValueChange={(val) => {
           setActiveValue(val)
           props.onValueChange?.(val)
         }}
         className={cn("flex flex-col gap-3", className)}
-      {...props}
-    />
+        {...props}
+      />
     </TabsContext.Provider>
   )
 }
 
-interface TabsListProps extends React.ComponentProps<typeof TabsPrimitive.List>, VariantProps<typeof tabsListVariants> {}
+interface TabsListProps extends React.ComponentProps<typeof TabsPrimitive.List>, VariantProps<typeof tabsListVariants> { }
 
 function TabsList({
   className,
@@ -181,7 +183,7 @@ function TabsList({
   const listRef = React.useRef<HTMLDivElement>(null)
   const [indicatorStyle, setIndicatorStyle] = React.useState<{ left: number; width: number } | null>(null)
   const { activeValue, variant: contextVariant, color: contextColor } = React.useContext(TabsContext)
-  
+
   const variant = variantProp ?? contextVariant
   const color = colorProp ?? contextColor
 
@@ -203,10 +205,10 @@ function TabsList({
       if (activeTrigger) {
         const listRect = listRef.current.getBoundingClientRect()
         const triggerRect = activeTrigger.getBoundingClientRect()
-        
+
         const left = triggerRect.left - listRect.left
         const width = triggerRect.width
-        
+
         setIndicatorStyle({ left, width })
       } else {
         setIndicatorStyle(null)
@@ -267,7 +269,7 @@ function TabsList({
   )
 }
 
-interface TabsTriggerProps extends React.ComponentProps<typeof TabsPrimitive.Trigger>, VariantProps<typeof tabsTriggerVariants> {}
+interface TabsTriggerProps extends React.ComponentProps<typeof TabsPrimitive.Trigger>, VariantProps<typeof tabsTriggerVariants> { }
 
 function TabsTrigger({
   className,
@@ -277,7 +279,7 @@ function TabsTrigger({
   ...props
 }: TabsTriggerProps) {
   const { variant: contextVariant, color: contextColor } = React.useContext(TabsContext)
-  
+
   const variant = variantProp ?? contextVariant
   const color = colorProp ?? contextColor
 

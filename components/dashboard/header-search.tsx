@@ -94,7 +94,21 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
     [hasAnyPermission, hasAllPermissions, isAdmin]
   );
 
-  const flatMenu = useMemo(() => flattenMenu(filteredMenuTree), [filteredMenuTree]);
+  const filteredMasterMenuTree = useMemo(
+    () =>
+      filterMenuByPermissions(masterMenuData, {
+        hasAnyPermission,
+        hasAllPermissions,
+        isAdmin,
+      }),
+    [hasAnyPermission, hasAllPermissions, isAdmin]
+  );
+
+  const flatMenu = useMemo(() => {
+    const main = flattenMenu(filteredMenuTree);
+    const master = flattenMenu(filteredMasterMenuTree);
+    return [...main, ...master];
+  }, [filteredMenuTree, filteredMasterMenuTree]);
 
   const filteredNav = useMemo(() => {
     if (!search) return flatMenu.slice(0, 5);

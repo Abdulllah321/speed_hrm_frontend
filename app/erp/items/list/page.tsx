@@ -21,7 +21,10 @@ export default async function ItemListPage() {
         return (
             <PermissionGuard permissions={["erp.item.read"]}>
                 <div className="container mx-auto py-10">
-                    <ItemList initialItems={result.data || []} />
+                    <ItemList
+                        initialItems={result.data || []}
+                        initialMeta={result.meta}
+                    />
                 </div>
             </PermissionGuard>
         );

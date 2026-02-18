@@ -12,12 +12,13 @@ import { HeaderNotifications } from "@/components/dashboard/header-notifications
 import { HeaderUserMenu } from "@/components/dashboard/header-user-menu";
 import { HeaderMasterMenu } from "@/components/dashboard/header-master-menu";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
+import { ModuleSwitcher } from "@/components/dashboard/module-switcher";
 import { SessionChecker } from "@/components/auth/session-checker";
 import { useAuth } from "@/components/providers/auth-provider";
 import { CompanyGuard } from "@/components/company/company-guard";
 import { useEnvironment } from "@/components/providers/environment-provider";
 import { Button } from "@/components/ui/button";
-import { Search, X, Sparkles, AlertTriangle, ArrowRight } from "lucide-react";
+import { Search, X, Sparkles, AlertTriangle, ArrowRight, ShoppingCart, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePathname } from "next/navigation";
 
@@ -74,6 +75,37 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
         }}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <SidebarTrigger className="shrink-0" />
+
+            <AnimatePresence mode="wait">
+              {environment === "POS" ? (
+                <motion.div
+                  key="pos-indicator"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold tracking-tight uppercase shadow-sm whitespace-nowrap"
+                >
+                  <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                  <ShoppingCart className="h-3 w-3" />
+                  Terminal Mode
+                </motion.div>
+              ) : environment === "ADMIN" ? (
+                <motion.div
+                  key="admin-indicator"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold tracking-tight uppercase shadow-sm whitespace-nowrap"
+                >
+                  <ShieldCheck className="h-3 w-3" />
+                  Admin Panel
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+
+            <div className="h-6 w-px bg-border/50 hidden md:block mx-1" />
+            <ModuleSwitcher />
+
             {/* Desktop Search */}
             <div className="hidden sm:block flex-1 max-w-xs lg:max-w-sm">
               <HeaderSearch />

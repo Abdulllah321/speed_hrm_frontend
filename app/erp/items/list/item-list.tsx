@@ -1,19 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
+import { useState, useEffect, useCallback } from "react";
+import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Upload, Loader2, Eye, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { deleteItem, getItems } from "@/lib/actions/items";
+import { BulkUploadModal } from "@/components/items/bulk-upload-modal";
+import { useUploadProgress } from "@/hooks/use-upload-progress";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import DataTable from "@/components/common/data-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -22,135 +21,326 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { deleteItem } from "@/lib/actions/items";
+import { MoreHorizontal } from "lucide-react";
 
-interface ItemListProps {
-    initialItems: any[];
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface Item {
+    id: string;
+    itemId: string;
+    sku: string;
+    description: string | null;
+    unitPrice: number;
+    isActive: boolean;
+    brand?: { name: string } | null;
+    category?: { name: string } | null;
+    division?: { name: string } | null;
 }
 
-export function ItemList({ initialItems }: ItemListProps) {
-    const [items, setItems] = useState(initialItems);
-    const [searchTerm, setSearchTerm] = useState("");
+// ─── Column Definitions ───────────────────────────────────────────────────────
 
-    const filteredItems = items.filter((item) =>
-        item.itemId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.sku.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+function useItemColumns(onDelete: (id: string) => void): ColumnDef<Item>[] {
+    return [
+        {
+            accessorKey: "itemId",
+            header: "Item ID",
+            cell: ({ row }) => (
+                <span className="font-medium font-mono text-sm">{row.original.itemId}</span>
+            ),
+        },
+        {
+            accessorKey: "sku",
+            header: "SKU",
+            cell: ({ row }) => (
+                <span className="font-mono text-sm text-muted-foreground">{row.original.sku}</span>
+            ),
+        },
+        {
+            accessorKey: "brand",
+            header: "Brand",
+            cell: ({ row }) => row.original.brand?.name ?? <span className="text-muted-foreground">—</span>,
+        },
+        {
+            accessorKey: "category",
+            header: "Category",
+            cell: ({ row }) => row.original.category?.name ?? <span className="text-muted-foreground">—</span>,
+        },
+        {
+            accessorKey: "division",
+            header: "Division",
+            cell: ({ row }) => row.original.division?.name ?? <span className="text-muted-foreground">—</span>,
+        },
+        {
+            accessorKey: "unitPrice",
+            header: "Price",
+            cell: ({ row }) => (
+                <span className="font-mono text-right block">
+                    {Number(row.original.unitPrice).toLocaleString("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                        minimumFractionDigits: 2,
+                    })}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "isActive",
+            header: "Status",
+            cell: ({ row }) => (
+                <Badge variant={row.original.isActive ? "default" : "secondary"}>
+                    {row.original.isActive ? "Active" : "Inactive"}
+                </Badge>
+            ),
+        },
+        {
+            id: "actions",
+            header: "Actions",
+            enableSorting: false,
+            cell: ({ row }) => {
+                const item = row.original;
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/erp/items/view/${item.id}`}>
+                                    <Eye className="mr-2 h-4 w-4" /> View Details
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/erp/items/edit/${item.id}`}>
+                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => onDelete(item.id)}
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                );
+            },
+        },
+    ];
+}
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this item?")) return;
+// ─── Query Key Factory ────────────────────────────────────────────────────────
 
-        try {
-            const result = await deleteItem(id);
-            if (result.status) {
-                toast.success("Item deleted successfully");
-                setItems((prev) => prev.filter((item) => item.id !== id));
-            } else {
-                toast.error(result.message || "Failed to delete item");
-            }
-        } catch (error) {
-            toast.error("An unexpected error occurred");
+const itemsQueryKey = (
+    page: number,
+    pageSize: number,
+    search: string,
+    sortBy: string,
+    sortOrder: "asc" | "desc",
+) => ["items", { page, pageSize, search, sortBy, sortOrder }] as const;
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+interface ItemListProps {
+    initialItems: Item[];
+    initialMeta?: any;
+}
+
+export function ItemList({ initialItems, initialMeta }: ItemListProps) {
+    const queryClient = useQueryClient();
+
+    // ── State ──────────────────────────────────────────────────────────────
+    const [pagination, setPagination] = useState<PaginationState>({
+        pageIndex: 0,
+        pageSize: 50,
+    });
+    const [sorting, setSorting] = useState<SortingState>([
+        { id: "createdAt", desc: true },
+    ]);
+    const [search, setSearch] = useState("");
+    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+    const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
+
+    // Persist and recover active uploadId
+    useEffect(() => {
+        const stored = localStorage.getItem("active_item_upload_id");
+        if (stored) setActiveUploadId(stored);
+    }, []);
+
+    const handleUploadIdChange = (id: string | null) => {
+        setActiveUploadId(id);
+        if (id) {
+            localStorage.setItem("active_item_upload_id", id);
+        } else {
+            localStorage.removeItem("active_item_upload_id");
         }
     };
 
-    return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
-                <CardTitle className="text-2xl font-bold">Items Catalog</CardTitle>
-                <Link href="/erp/items/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Add Item
-                    </Button>
-                </Link>
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center pb-4 space-x-2">
-                    <div className="relative flex-1 max-w-sm">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Search by Item ID or SKU..."
-                            className="pl-8"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-                </div>
+    const { data: uploadProgress } = useUploadProgress(activeUploadId);
 
-                <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Item ID</TableHead>
-                                <TableHead>SKU</TableHead>
-                                <TableHead>Brand</TableHead>
-                                <TableHead>Category</TableHead>
-                                <TableHead>Division</TableHead>
-                                <TableHead className="text-right">Price</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredItems.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="h-24 text-center">
-                                        No items found.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredItems.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="font-medium">{item.itemId}</TableCell>
-                                        <TableCell>{item.sku}</TableCell>
-                                        <TableCell>{item.brand?.name || "N/A"}</TableCell>
-                                        <TableCell>{item.category?.name || "N/A"}</TableCell>
-                                        <TableCell>{item.division?.name || "N/A"}</TableCell>
-                                        <TableCell className="text-right font-mono">
-                                            {item.unitPrice}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={item.isActive ? "default" : "secondary"}>
-                                                {item.isActive ? "Active" : "Inactive"}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" className="h-8 w-8 p-0">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                    <DropdownMenuItem asChild>
-                                                        <Link href={`/erp/items/view/${item.id}`}>
-                                                            <Eye className="mr-2 h-4 w-4" /> View Details
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem asChild>
-                                                        <Link href={`/erp/items/edit/${item.id}`}>
-                                                            <Edit className="mr-2 h-4 w-4" /> Edit
-                                                        </Link>
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:text-destructive"
-                                                        onClick={() => handleDelete(item.id)}
-                                                    >
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+    // ── Derived query params ───────────────────────────────────────────────
+    const currentPage = pagination.pageIndex + 1; // API is 1-indexed
+    const pageSize = pagination.pageSize;
+    const sortColumn = sorting[0]?.id ?? "createdAt";
+    const sortDir: "asc" | "desc" = sorting[0]?.desc === false ? "asc" : "desc";
+
+    // ── Server-side fetch ──────────────────────────────────────────────────
+    const { data, isLoading, isFetching } = useQuery({
+        queryKey: itemsQueryKey(currentPage, pageSize, search, sortColumn, sortDir),
+        queryFn: () => getItems(currentPage, pageSize, search || undefined, sortColumn, sortDir),
+        placeholderData: keepPreviousData,
+        staleTime: 30_000, // 30 s — treat cached pages as fresh for 30 s
+        initialData:
+            currentPage === 1 &&
+                pageSize === 50 &&
+                !search &&
+                sortColumn === "createdAt" &&
+                sortDir === "desc"
+                ? { status: true, data: initialItems, meta: initialMeta }
+                : undefined,
+    });
+
+    const items: Item[] = data?.data ?? [];
+    const meta = data?.meta ?? {
+        total: 0,
+        page: 1,
+        limit: pageSize,
+        totalPages: 0,
+    };
+
+    // ── Prefetch next page ─────────────────────────────────────────────────
+    useEffect(() => {
+        if (currentPage < meta.totalPages) {
+            queryClient.prefetchQuery({
+                queryKey: itemsQueryKey(currentPage + 1, pageSize, search, sortColumn, sortDir),
+                queryFn: () =>
+                    getItems(currentPage + 1, pageSize, search || undefined, sortColumn, sortDir),
+                staleTime: 30_000,
+            });
+        }
+    }, [currentPage, pageSize, search, sortColumn, sortDir, meta.totalPages, queryClient]);
+
+    // ── Reset to page 1 on search/sort change ─────────────────────────────
+    useEffect(() => {
+        setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    }, [search, sortColumn, sortDir]);
+
+    // ── Delete handler ─────────────────────────────────────────────────────
+    const handleDelete = useCallback(
+        async (id: string) => {
+            if (!confirm("Are you sure you want to delete this item?")) return;
+            try {
+                const result = await deleteItem(id);
+                if (result.status) {
+                    toast.success("Item deleted successfully");
+                    queryClient.invalidateQueries({ queryKey: ["items"] });
+                } else {
+                    toast.error(result.message || "Failed to delete item");
+                }
+            } catch {
+                toast.error("An unexpected error occurred");
+            }
+        },
+        [queryClient],
+    );
+
+    const columns = useItemColumns(handleDelete);
+
+    return (
+        <Card className="w-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-7">
+                <div>
+                    <CardTitle className="text-2xl font-bold">Items Catalog</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                        {meta.total > 0
+                            ? `${meta.total.toLocaleString()} items total`
+                            : "No items yet"}
+                        {isFetching && !isLoading && (
+                            <span className="ml-2 inline-flex items-center gap-1 text-primary">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Updating...
+                            </span>
+                        )}
+                    </p>
                 </div>
+                <div className="flex gap-2">
+                    {/* Background upload progress button */}
+                    {activeUploadId && !isBulkUploadOpen && (
+                        <Button
+                            variant="outline"
+                            className="border-primary text-primary relative overflow-hidden min-w-[180px]"
+                            onClick={() => setIsBulkUploadOpen(true)}
+                        >
+                            <div
+                                className="absolute inset-0 bg-primary/10 transition-all duration-500"
+                                style={{ width: `${uploadProgress?.progress ?? 0}%` }}
+                            />
+                            <div className="relative flex items-center gap-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="font-bold">
+                                    {uploadProgress?.status === "validating"
+                                        ? "Validating"
+                                        : "Importing"}{" "}
+                                    {uploadProgress?.progress ?? 0}%
+                                </span>
+                            </div>
+                        </Button>
+                    )}
+                    <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+                        <Upload className="mr-2 h-4 w-4" /> Bulk Upload
+                    </Button>
+                    <Link href="/erp/items/create">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> Add Item
+                        </Button>
+                    </Link>
+                </div>
+            </CardHeader>
+
+            <CardContent>
+                <DataTable
+                    columns={columns}
+                    data={items}
+                    tableId="items-catalog"
+                    searchFields={[
+                        { key: "itemId", label: "Item ID" },
+                        { key: "sku", label: "SKU" },
+                        { key: "brand", label: "Brand" },
+                        { key: "category", label: "Category" },
+                        { key: "division", label: "Division" },
+                    ]}
+                    /* ── Server-side controls ── */
+                    manualPagination
+                    manualSorting
+                    manualFiltering
+                    rowCount={meta.total}
+                    pageCount={meta.totalPages}
+                    onPaginationChange={setPagination}
+                    onSortingChange={setSorting}
+                    onSearchChange={setSearch}
+                    isLoading={isLoading}
+                    /* ── Disable built-in row actions (handled via dropdown) ── */
+                    canBulkEdit={false}
+                    canBulkDelete={false}
+                    canRowEdit={false}
+                    canRowDelete={false}
+                />
             </CardContent>
+
+            <BulkUploadModal
+                open={isBulkUploadOpen}
+                onOpenChange={setIsBulkUploadOpen}
+                uploadId={activeUploadId}
+                onUploadIdChange={handleUploadIdChange}
+                onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ["items"] });
+                    toast.success("Item list refreshed");
+                    handleUploadIdChange(null);
+                }}
+            />
         </Card>
     );
 }

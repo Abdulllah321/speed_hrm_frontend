@@ -73,16 +73,54 @@ export const subDepartmentApi = {
 
 export interface DashboardStats {
   overview: {
-    totalEmployees: number;
-    inactiveEmployees: number;
-    presentToday: number;
-    absentToday: number;
-    pendingLeaves: number;
-    pendingAttendanceQueries: number;
+    totalEmployees: { value: number; trend?: number; trendType?: 'up' | 'down' };
+    inactiveEmployees: { value: number };
+    presentToday: { value: number; trend?: number; trendType?: 'up' | 'down' };
+    absentToday: { value: number };
+    pendingLeaves: { value: number; trend?: number; trendType?: 'up' | 'down' };
+    pendingAttendanceQueries: { value: number; trend?: number; trendType?: 'up' | 'down' };
   };
   departmentStats: {
     name: string;
     count: number;
+  }[];
+  upcomingBirthdays: {
+    name: string;
+    date: string;
+    department: string;
+  }[];
+  upcomingAnniversaries: {
+    name: string;
+    date: string;
+    years: number;
+    department: string;
+  }[];
+  criticalAlerts: {
+    type: string;
+    priority: 'high' | 'medium' | 'low';
+    message: string;
+    employeeId: string;
+  }[];
+  analyticsSuggestions: {
+    title: string;
+    description: string;
+    impact: 'high' | 'medium' | 'low';
+  }[];
+
+  attendanceTrend: {
+    date: string;
+    present: number;
+    absent: number;
+  }[];
+  recentLeaveRequests: {
+    id: string;
+    employeeName: string;
+    department: string;
+    type: string;
+    status: string;
+    dateFrom: string;
+    dateTo: string;
+    days: number;
   }[];
 }
 
