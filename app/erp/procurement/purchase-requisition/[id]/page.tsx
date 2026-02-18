@@ -73,7 +73,7 @@ export default function PurchaseRequisitionDetail() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{pr.prNumber}</h1>
-                    <p className="text-muted-foreground">Requested by {pr.requestedBy} on {new Date(pr.requestDate).toLocaleDateString()}</p>
+                    <p className="text-muted-foreground">{new Date(pr.requestDate).toLocaleDateString()}</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => router.back()}>Back</Button>
@@ -125,7 +125,7 @@ export default function PurchaseRequisitionDetail() {
                                 <TableHead>SKU</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead>Qty</TableHead>
-                                <TableHead>Needed By</TableHead>
+                                
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -137,7 +137,6 @@ export default function PurchaseRequisitionDetail() {
                                         <TableCell>{masterItem?.sku || '-'}</TableCell>
                                         <TableCell>{item.description || masterItem?.description || '-'}</TableCell>
                                         <TableCell>{item.requiredQty}</TableCell>
-                                        <TableCell>{item.neededByDate ? new Date(item.neededByDate).toLocaleDateString() : '-'}</TableCell>
                                     </TableRow>
                                 );
                             })}

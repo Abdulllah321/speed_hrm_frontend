@@ -586,6 +586,15 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
+    title: "Tax Rate",
+    environment: "ERP",
+    permissions: ["master.tax-rate.read", "master.tax-rate.create"],
+    children: [
+      { title: "Add", href: "/master/tax-rate/add" },
+      { title: "View", href: "/master/tax-rate/list" },
+    ],
+  },
+  {
     title: "Demand Type",
     environment: "ERP",
     permissions: ["master.demand-type.read", "master.demand-type.create"],
@@ -758,6 +767,8 @@ export const menuData: MenuItem[] = [
       { title: "Vendor Quotation list", href: "/erp/procurement/vendor-quotation/list" },
       { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
       { title: "Goods Receipt Note", href: "/erp/procurement/grn" },
+      { title: "Landed Cost", href: "/erp/procurement/landed-cost" },
+      { title: "Landed Cost Setup", href: "/erp/procurement/landed-cost/setup" },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
     ],
   },

@@ -39,11 +39,13 @@ import { getSeasons } from "@/lib/actions/season";
 import { getSizes } from "@/lib/actions/size";
 import { getSegments } from "@/lib/actions/segment";
 import { createItem, getNextItemId } from "@/lib/actions/items";
+import { getTaxRates } from "@/lib/actions/tax-rate";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/upload";
 import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // --- Validation Schemas ---
 
@@ -113,6 +115,7 @@ export default function ItemCreatePage() {
         // uoms removed
         sizes: any[];
         segments: any[];
+        taxRates: { id: string; taxRate1: number }[];
     }>({
         brands: [],
         divisions: [],
@@ -127,6 +130,7 @@ export default function ItemCreatePage() {
         // uoms removed
         sizes: [],
         segments: [],
+        taxRates: [],
     });
 
     const [loading, setLoading] = useState(true);
@@ -237,11 +241,11 @@ export default function ItemCreatePage() {
                 const [
                     brands, divisions, categories, genders, colors,
                     silhouettes, channelClasses, itemClasses, itemSubclasses,
-                    seasons, sizes, segments, nextIdResp
+                    seasons, sizes, segments, nextIdResp, taxRates
                 ] = await Promise.all([
                     getBrands(), getDivisions(), getCategories(), getGenders(), getColors(),
                     getSilhouettes(), getChannelClasses(), getItemClasses(), getItemSubclasses(),
-                    getSeasons(), getSizes(), getSegments(), getNextItemId()
+                    getSeasons(), getSizes(), getSegments(), getNextItemId(), getTaxRates()
                 ]);
 
                 setMasters({
@@ -258,6 +262,7 @@ export default function ItemCreatePage() {
                     // uoms removed
                     sizes: sizes.data || [],
                     segments: segments.data || [],
+                    taxRates: taxRates.data || [],
                 });
                 if (nextIdResp?.status && nextIdResp?.data?.nextId) {
                     setNextItemId(nextIdResp.data.nextId);
@@ -659,9 +664,23 @@ export default function ItemCreatePage() {
                                                 render={({ field }: { field: any }) => (
                                                     <FormItem>
                                                         <FormLabel>Tax Rate 1 (%)</FormLabel>
-                                                        <FormControl>
-                                                            <Input type="number" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
+                                                        <Select
+                                                            value={field.value !== undefined && field.value !== null ? String(field.value) : ""}
+                                                            onValueChange={(val) => field.onChange(Number(val))}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Select Tax Rate 1" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                {masters.taxRates.map((tr) => (
+                                                                    <SelectItem key={tr.id} value={String(tr.taxRate1)}>
+                                                                        {tr.taxRate1}%
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}

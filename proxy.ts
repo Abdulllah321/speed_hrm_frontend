@@ -185,6 +185,7 @@ export default function middleware(request: NextRequest): NextResponse {
       "eobi/",
       "social-security/",
       "tax-slabs/",
+      "tax-rate/",
       "provident-fund/",
       "bonus-types/",
       "allowance-head/",

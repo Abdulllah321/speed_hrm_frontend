@@ -209,7 +209,6 @@ export interface SubDepartment {
 export interface PurchaseRequisition {
   id: string;
   prNumber: string;
-  requestedBy: string;
   department?: string;
   requestDate: string;
   status: string;
@@ -224,7 +223,6 @@ export interface PurchaseRequisitionItem {
   itemId: string;
   description?: string;
   requiredQty: string;
-  neededByDate?: string;
 }
 
 export const purchaseRequisitionApi = {
@@ -532,6 +530,52 @@ export const grnApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+};
+
+// Landed Cost API
+export interface LandedCostCharge {
+  accountId: string;
+  amount: number;
+}
+
+export const landedCostApi = {
+  post: (data: { grnId: string; charges?: LandedCostCharge[]; inventoryAccountId?: string }) =>
+    fetchApi<{ status: boolean; grnId: string; grnStatus: string; journalVoucherId?: string; stockEntriesCreated: number }>(
+      '/landed-cost/post',
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+};
+
+// Landed Cost Charge Types (client-side)
+export interface LandedCostChargeType {
+  id: string;
+  name: string;
+  accountId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  account?: { id: string; name: string; code: string; type: string };
+}
+export const landedCostChargeTypeApi = {
+  getAll: () => fetchApi<{ status: boolean; data: LandedCostChargeType[] }>('/landed-cost/charge-types'),
+  create: (data: { name: string; accountId: string }) =>
+    fetchApi<{ status: boolean; data: LandedCostChargeType }>('/landed-cost/charge-types', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+// Chart of Accounts API (client-side)
+export interface ChartOfAccount {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  isGroup: boolean;
+}
+
+export const chartOfAccountApi = {
+  getAll: () => fetchApi<ChartOfAccount[]>('/finance/chart-of-accounts'),
 };
 
 export const warehouseApi = {

@@ -119,7 +119,7 @@ export function getTargetSubdomain(path: string): string {
     "marital-status", "employee-grade", "employee-status", "qualification",
     "city", "location", "allocation", "loan-types", "leave-types", "leaves-policy",
     "equipment", "salary-breakup", "eobi", "social-security", "tax-slabs",
-    "provident-fund", "bonus-types", "allowance-head", "deduction-head",
+    "tax-rate", "provident-fund", "bonus-types", "allowance-head", "deduction-head",
     "banks", "rebate-nature"
   ];
   
