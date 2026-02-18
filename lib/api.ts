@@ -221,7 +221,6 @@ export interface PurchaseRequisition {
 export interface PurchaseRequisitionItem {
   id: string;
   itemId: string;
-  description?: string;
   requiredQty: string;
 }
 

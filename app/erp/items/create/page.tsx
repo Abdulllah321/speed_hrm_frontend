@@ -218,7 +218,7 @@ export default function ItemCreatePage() {
         try {
             const blob = await getCroppedBlob(cropSrc, croppedAreaPixels);
             const file = new File([blob], 'item-image.jpg', { type: 'image/jpeg' });
-            
+
             const reader = new FileReader();
             reader.onloadend = () => setImagePreview(reader.result as string);
             reader.readAsDataURL(file);
@@ -412,108 +412,110 @@ export default function ItemCreatePage() {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                 <FormField
+
                                                     control={form.control}
-                                                name="brandId"
-                                                render={({ field }) => (
-                                                    <MasterSelect
-                                                        label="Concept (Brand)"
-                                                        field={field}
-                                                        options={masters.brands}
-                                                    />
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="segmentId"
-                                                render={({ field }) => (
-                                                    <MasterSelect
-                                                        label="Segment"
-                                                        field={field}
-                                                        options={masters.segments}
-                                                    />
-                                                )}
-                                            />
-                                            <FormItem>
-                                                <FormLabel>Item ID (Auto)</FormLabel>
-                                                <FormControl>
-                                                    <Input value={nextItemId || ""} disabled />
-                                                </FormControl>
-                                            </FormItem>
-                                            <FormField
-                                                control={form.control}
-                                                name="sku"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem>
-                                                        <FormLabel>SKU <span className="text-red-500">*</span></FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="SKU Number" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="barCode"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Barcode</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="EAN / UPC" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="hsCode"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem>
-                                                        <FormLabel>HS Code</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="Harmonized System Code" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="description"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem className="col-span-full">
-                                                        <FormLabel>Description</FormLabel>
-                                                        <FormControl>
-                                                            <Textarea placeholder="Detailed product description..." {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="isActive"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-full">
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={field.value}
-                                                                onCheckedChange={field.onChange}
-                                                            />
-                                                        </FormControl>
-                                                        <div className="space-y-1 leading-none">
-                                                            <FormLabel>
-                                                                Active Item
-                                                            </FormLabel>
-                                                            <FormDescription>
-                                                                This item will be visible in sales and inventory channels.
-                                                            </FormDescription>
-                                                        </div>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
+                                                    name="segmentId"
+                                                    render={({ field }) => (
+                                                        <MasterSelect
+                                                            label="Segment"
+                                                            field={field}
+                                                            options={masters.segments}
+
+                                                        />
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="brandId"
+                                                    render={({ field }) => (
+                                                        <MasterSelect
+                                                            label="Concept (Brand)"
+                                                            field={field}
+                                                            options={masters.brands}
+                                                        />
+                                                    )}
+                                                />
+                                                <FormItem>
+                                                    <FormLabel>Item ID (Auto)</FormLabel>
+                                                    <FormControl>
+                                                        <Input value={nextItemId || ""} disabled />
+                                                    </FormControl>
+                                                </FormItem>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="sku"
+                                                    render={({ field }: { field: any }) => (
+                                                        <FormItem>
+                                                            <FormLabel>SKU <span className="text-red-500">*</span></FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="SKU Number" {...field} value={field.value ?? ""} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="barCode"
+                                                    render={({ field }: { field: any }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Barcode</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="EAN / UPC" {...field} value={field.value ?? ""} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="hsCode"
+                                                    render={({ field }: { field: any }) => (
+                                                        <FormItem>
+                                                            <FormLabel>HS Code</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Harmonized System Code" {...field} value={field.value ?? ""} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="description"
+                                                    render={({ field }: { field: any }) => (
+                                                        <FormItem className="col-span-full">
+                                                            <FormLabel>Description</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea placeholder="Detailed product description..." {...field} value={field.value ?? ""} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="isActive"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-full">
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                />
+                                                            </FormControl>
+                                                            <div className="space-y-1 leading-none">
+                                                                <FormLabel>
+                                                                    Active Item
+                                                                </FormLabel>
+                                                                <FormDescription>
+                                                                    This item will be visible in sales and inventory channels.
+                                                                </FormDescription>
+                                                            </div>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
                                         </>
                                     )}
 

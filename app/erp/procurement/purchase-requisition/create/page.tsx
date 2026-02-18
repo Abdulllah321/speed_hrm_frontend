@@ -15,21 +15,7 @@ import { getCategories, type Category } from '@/lib/actions/category';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Scissors } from "lucide-react";
 
 interface FormValues {
     department: string;
@@ -38,7 +24,6 @@ interface FormValues {
     type?: string;
     items: {
         itemId: string;
-        description: string;
         requiredQty: number;
     }[];
 }
@@ -68,7 +53,7 @@ export default function CreatePurchaseRequisition() {
             department: '',
             requestDate: new Date().toISOString().split('T')[0],
             type: 'local',
-            items: [{ itemId: '', description: '', requiredQty: 1 }]
+            items: [{ itemId: '', requiredQty: 1 }]
         }
     });
 
@@ -247,7 +232,7 @@ export default function CreatePurchaseRequisition() {
                                     </Select>
                                 </div>
                                 <div className="col-span-3 space-y-2">
-                                    <Label>Item Code</Label>
+                                    <Label>Item ID</Label>
                                     <Controller
                                         control={control}
                                         name={`items.${index}.itemId`}
@@ -257,8 +242,6 @@ export default function CreatePurchaseRequisition() {
                                                 value={itemField.value || ''}
                                                 onValueChange={(val) => {
                                                     itemField.onChange(val);
-                                                    const it = items.find(i => i.itemId === val);
-                                                    setValue(`items.${index}.description`, it?.description || it?.sku || '');
                                                 }}
                                             >
                                                 <SelectTrigger>
@@ -275,18 +258,14 @@ export default function CreatePurchaseRequisition() {
                                         )}
                                     />
                                 </div>
-                                <div className="col-span-3 space-y-2">
-                                    <Label>Item Name</Label>
-                                    <Input {...register(`items.${index}.description` as const)} placeholder="Item Name" disabled />
-                                </div>
                                 <div className="col-span-2 space-y-2">
                                     <Label>Quantity</Label>
                                     <Input type="number" step="0.01" {...register(`items.${index}.requiredQty` as const, { required: true, min: 0.01 })} />
                                 </div>
                                 
-                                <div className="col-span-1 pt-8">
-                                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
-                                        X
+                                <div className="col-span-3 flex items-center justify-end mt-3">
+                                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)} aria-label="Remove item">
+                                        <Scissors className="h-4 w-4" />
                                     </Button>
                                 </div>
                             </div>

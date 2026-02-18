@@ -123,7 +123,6 @@ export default function PurchaseRequisitionDetail() {
                             <TableRow>
                                 <TableHead>Item ID</TableHead>
                                 <TableHead>SKU</TableHead>
-                                <TableHead>Description</TableHead>
                                 <TableHead>Qty</TableHead>
                                 
                             </TableRow>
@@ -134,13 +133,11 @@ export default function PurchaseRequisitionDetail() {
                                 return (
                                     <TableRow key={item.id}>
                                         <TableCell className="font-medium">{item.itemId}</TableCell>
-                                        <TableCell>{masterItem?.sku || '-'}</TableCell>
                                         <TableCell>{item.description || masterItem?.description || '-'}</TableCell>
                                         <TableCell>{item.requiredQty}</TableCell>
                                     </TableRow>
                                 );
                             })}
-                        </TableBody>
                     </Table>
                 </CardContent>
             </Card>

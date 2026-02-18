@@ -586,7 +586,7 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-    title: "Tax Rate",
+    title: "Tax Rate 1",
     environment: "ERP",
     permissions: ["master.tax-rate.read", "master.tax-rate.create"],
     children: [
