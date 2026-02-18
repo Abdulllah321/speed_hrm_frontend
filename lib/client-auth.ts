@@ -135,3 +135,48 @@ export async function refreshTokenClient(): Promise<boolean> {
     return false;
   }
 }
+
+export async function loginPosUser(email: string, pass: string): Promise<{ status: boolean; message: string; data?: any }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/pos/user-login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, pass }),
+      credentials: "include",
+    });
+    return res.json();
+  } catch (error) {
+    return { status: false, message: "Network error" };
+  }
+}
+
+// Get all active profiles on this browser
+export async function getAvailableProfilesClient(): Promise<User[]> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/profiles`, {
+      method: "GET",
+      credentials: "include",
+    });
+    const data = await res.json();
+    if (data && data.status && Array.isArray(data.data)) {
+      return data.data;
+    }
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Fetch profiles error:", error);
+    return [];
+  }
+}
+
+export async function switchPosSessionClient(): Promise<{ status: boolean; message: string; data?: any }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/pos/switch-session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return res.json();
+  } catch (error) {
+    return { status: false, message: "Network error" };
+  }
+}

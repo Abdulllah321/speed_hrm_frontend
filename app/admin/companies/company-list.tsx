@@ -10,6 +10,7 @@ import { useCompany } from "@/components/providers/company-provider";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Check, Loader2, Plus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface CompanyListProps {
   initialCompanies: Company[];
@@ -18,7 +19,7 @@ interface CompanyListProps {
 
 export function CompanyList({ initialCompanies, userPermissions }: CompanyListProps) {
   const {
-    currentCompany,
+  currentCompany,
     companies: providerCompanies,
     selectCompany,
     createAndSelectCompany,
@@ -31,7 +32,7 @@ export function CompanyList({ initialCompanies, userPermissions }: CompanyListPr
   const [code, setCode] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
+  const {hasPermission} = useAuth()
   // Sync with provider companies
   useEffect(() => {
     if (providerCompanies.length > 0) {
@@ -40,7 +41,7 @@ export function CompanyList({ initialCompanies, userPermissions }: CompanyListPr
   }, [providerCompanies]);
 
   // Very strict restriction: only users with this permission can manage tenants/companies
-  const canManageCompanies = userPermissions.includes("admin.company.manage");
+  const canManageCompanies = hasPermission("admin.company.manage");
 
   // Auto-generate code from name
   const handleNameChange = (value: string) => {

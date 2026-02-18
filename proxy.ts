@@ -360,6 +360,12 @@ export default function middleware(request: NextRequest): NextResponse {
     return NextResponse.redirect(erpUrl);
   }
 
+  if (pathname.startsWith("/pos") && currentSubdomain !== "pos") {
+    const posPath = pathname.replace("/pos", "") || "/";
+    const posUrl = buildUrl("pos", posPath);
+    return NextResponse.redirect(posUrl);
+  }
+
   // Special handling for other subdomains (hr, admin, master)
   if (currentSubdomain && currentSubdomain !== "auth") {
     // If path doesn't start with subdomain prefix and it's not a system path

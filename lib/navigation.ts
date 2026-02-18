@@ -113,7 +113,7 @@ export function getTargetSubdomain(path: string): string {
   }
 
   // Auth-specific paths (without prefix)
-  if (cleanPath === "login" || cleanPath.startsWith("login/")) {
+  if (cleanPath === "login" || cleanPath.startsWith("login/") || cleanPath === "pos-login" || cleanPath.startsWith("pos-login/")) {
     return "auth";
   }
 
@@ -134,7 +134,7 @@ export function getTargetSubdomain(path: string): string {
   }
 
   // POS-specific paths (without prefix)
-  const posPaths = ["sales", "terminal", "inventory", "shifts", "pos-login"];
+  const posPaths = ["sales", "terminal", "inventory", "shifts"];
   for (const posPath of posPaths) {
     if (cleanPath.startsWith(`${posPath}/`) || cleanPath === posPath) {
       return "pos";

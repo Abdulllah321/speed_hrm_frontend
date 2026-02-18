@@ -13,12 +13,14 @@ import { Clock, MapPin, Monitor } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+import { navigateToPath } from "@/lib/navigation";
+
 interface PosLayoutProps {
     children: React.ReactNode;
 }
 
 export function PosLayout({ children }: PosLayoutProps) {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const [time, setTime] = useState(new Date());
 
     useEffect(() => {
@@ -26,8 +28,17 @@ export function PosLayout({ children }: PosLayoutProps) {
         return () => clearInterval(timer);
     }, []);
 
-    const terminalCode = (user as any)?.terminal?.code || "T-000";
-    const locationCode = (user as any)?.terminal?.location?.code || "L-000";
+    // Session Protection
+    useEffect(() => {
+        if (!loading && !user) {
+            navigateToPath("/pos-login");
+        }
+    }, [user, loading]);
+
+    if (!user) return null;
+
+    const terminalCode = (user as any)?.terminal?.code || (user as any)?.terminalId || "T-000";
+    const locationCode = (user as any)?.terminal?.location?.code || (user as any)?.locationId || "L-000";
 
     return (
         <SidebarProvider className="flex-1">

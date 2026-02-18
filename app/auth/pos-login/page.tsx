@@ -9,16 +9,19 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Monitor, AlertCircle, MapPin, CheckCircle2, RotateCcw, Building2, Grid, ArrowLeft, Store } from "lucide-react";
-import { posLoginClient, getPosContext } from "@/lib/client-auth";
+import { Loader2, Monitor, AlertCircle, MapPin, CheckCircle2, RotateCcw, Building2, Grid, ArrowLeft, Store, ChevronRight, Plus } from "lucide-react";
+import { posLoginClient, getPosContext, getAvailableProfilesClient, switchPosSessionClient } from "@/lib/client-auth";
 import { getApiBaseUrl } from "@/lib/utils";
 import { setPosTerminalAction, getPosTerminalAction, clearPosTerminalAction } from "@/lib/actions/pos";
 import Image from "next/image";
 import { buildSubdomainUrl } from "@/lib/navigation";
 import { toast } from "sonner";
+import { loginPosUser } from "@/lib/client-auth";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-provider";
+import { useEnvironment } from "@/components/providers/environment-provider";
 
-type LoginStep = 'detect' | 'location-code' | 'terminal-select' | 'pin';
+type LoginStep = 'detect' | 'location-code' | 'terminal-select' | 'pin' | 'user-login' | 'account-select';
 
 interface Terminal {
     id: string;
@@ -38,6 +41,8 @@ interface LocationContext {
 
 export default function PosLoginPage() {
     const router = useRouter();
+    const { environment, setEnvironment } = useEnvironment();
+    const { refreshUser } = useAuth();
     const [step, setStep] = useState<LoginStep>('detect');
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
@@ -51,7 +56,11 @@ export default function PosLoginPage() {
 
     // Auth Data
     const [pin, setPin] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [rememberTerminal, setRememberTerminal] = useState(true);
+    const [profiles, setProfiles] = useState<any[]>([]);
+    const [activeProfile, setActiveProfile] = useState<any | null>(null);
 
     useEffect(() => {
         const handleKey = (e: any) => {
@@ -146,7 +155,10 @@ export default function PosLoginPage() {
     };
 
     const handleBack = () => {
-        if (step === 'pin') {
+        if (step === 'user-login') {
+            setStep('pin');
+            setPin("");
+        } else if (step === 'pin') {
             // If we have a terminal selected (either from cookies or manual selection)
             // we decide whether to forget it or just go back to selection
             if (selectedTerminal) {
@@ -182,26 +194,101 @@ export default function PosLoginPage() {
             try {
                 const result = await posLoginClient(selectedTerminal.code, pin);
                 if (result.status && result.data) {
-                    toast.success("Login Successful");
+                    toast.success("Terminal Authenticated");
 
                     if (rememberTerminal) {
                         await setPosTerminalAction(selectedTerminal.code, selectedTerminal.name);
                     }
 
+                    // Check for active sessions/profiles
+                    const availableProfiles = await getAvailableProfilesClient();
+                    setProfiles(availableProfiles);
+
+                    if (availableProfiles.length > 0) {
+                        // Check if there's a highly active profile (already signed in)
+                        const active = availableProfiles.find(p => p.isActive);
+                        if (active) setActiveProfile(active);
+
+                        setStep('account-select');
+                    } else {
+                        // Move to User Login Step (Manual)
+                        setStep('user-login');
+                    }
+                    setError(null);
+                } else {
+                    setError(result.message || "Terminal Login Failed");
+                    setPin("");
+                }
+            } catch (err) {
+                setError("An error occurred during terminal login");
+                setPin("");
+            }
+        });
+    };
+
+    const handleSelectProfile = (profile: any) => {
+        if (profile.isActive) {
+            // "Proceed the user-login from the actual accessToken"
+            startTransition(async () => {
+                try {
+                    const result = await switchPosSessionClient();
+                    if (result.status) {
+                        toast.success(`Welcome back, ${profile.firstName}`);
+                        await refreshUser();
+
+                        // Redirect logic
+                        const params = new URLSearchParams(window.location.search);
+                        const callbackUrl = params.get("callbackUrl");
+                        if (callbackUrl) {
+                            window.location.href = buildSubdomainUrl("pos", callbackUrl);
+                        } else {
+                            window.location.href = buildSubdomainUrl("pos", "/pos/sales/new");
+                        }
+                    } else {
+                        // Fallback to manual if switch fails
+                        setEmail(profile.email);
+                        setStep('user-login');
+                        setError(result.message || "Session session failed. Please login manually.");
+                    }
+                } catch (err) {
+                    setError("Communication error with server.");
+                    setEmail(profile.email);
+                    setStep('user-login');
+                }
+            });
+        } else {
+            setEmail(profile.email);
+            setStep('user-login');
+        }
+    };
+
+    const handleUserLoginSubmit = () => {
+        if (!email || !password) {
+            setError("Please enter both email and password");
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                const result = await loginPosUser(email, password);
+
+                if (result.status) {
+                    toast.success(`Welcome, ${result.data?.user?.firstName || 'User'}`);
+                    await refreshUser();
+
                     // Redirect logic
                     const params = new URLSearchParams(window.location.search);
                     const callbackUrl = params.get("callbackUrl");
                     if (callbackUrl) {
-                        router.push(buildSubdomainUrl("pos", callbackUrl));
+                        window.location.href = buildSubdomainUrl("pos", callbackUrl);
                     } else {
-                        router.push(buildSubdomainUrl("pos", "/pos/sales/new"));
+                        window.location.href = buildSubdomainUrl("pos", "/pos/sales/new");
                     }
                 } else {
                     setError(result.message || "Login Failed");
-                    setPin("");
                 }
             } catch (err) {
-                setError("An error occurred during login");
+                setError("An error occurred during user login");
             }
         });
     };
@@ -393,43 +480,175 @@ export default function PosLoginPage() {
         </div>
     );
 
-    return (
-        <div className="min-h-screen bg-linear-to-br from-background to-secondary/20 flex items-center justify-center p-4 font-geist">
-            {/* Background decoration */}
-            <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] opacity-50" />
-                <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px] opacity-30" />
+    const renderAccountSelect = () => (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="text-center space-y-1 bg-muted/30 p-3 rounded-lg border">
+                <div className="flex items-center justify-center gap-2 text-green-600 mb-1">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Terminal Authenticated</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                    <Monitor className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-lg font-bold">{selectedTerminal?.name}</h3>
+                </div>
             </div>
 
-            <Card className="w-full max-w-md shadow-2xl border-t-4 border-t-primary backdrop-blur-sm bg-card/95">
-                <CardHeader className="pb-2">
-                    {step === 'location-code' || step === 'detect' ? (
-                        <CardTitle className="text-2xl text-center font-bold">POS Access</CardTitle>
-                    ) : null}
-                    {step === 'terminal-select' && <CardTitle className="text-xl text-center">Select Terminal</CardTitle>}
-                    {step === 'pin' && <CardTitle className="text-xl text-center">Authentication</CardTitle>}
-                </CardHeader>
-                <CardContent className="pt-2 min-h-[300px] flex flex-col justify-center">
-                    {error && (
-                        <Alert variant="destructive" className="mb-6 animate-in slide-in-from-top-2 shadow-sm border-destructive/50 bg-destructive/10 text-destructive-foreground">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertDescription className="font-medium">{error}</AlertDescription>
-                        </Alert>
-                    )}
+            <div className="space-y-2">
+                <Label className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold ml-1">Choose Account</Label>
+                <div className="divide-y border rounded-xl overflow-hidden bg-card">
+                    {profiles.map((profile) => (
+                        <button
+                            key={profile.id}
+                            onClick={() => handleSelectProfile(profile)}
+                            className="w-full flex items-center gap-4 p-4 text-left hover:bg-primary/5 transition-all group"
+                        >
+                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 group-hover:scale-110 transition-transform">
+                                {profile.firstName?.[0]}{profile.lastName?.[0]}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold text-sm truncate leading-tight group-hover:text-primary transition-colors">
+                                    {profile.firstName} {profile.lastName}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground truncate">
+                                    {profile.email}
+                                </p>
+                            </div>
+                            {profile.isActive && (
+                                <Badge variant="secondary" className="text-[9px] h-4 bg-green-500/10 text-green-600 border-green-500/20">
+                                    Active
+                                </Badge>
+                            )}
+                            <ChevronRight className="h-4 w-4 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setStep('user-login')}
+                        className="w-full flex items-center gap-4 p-4 text-left hover:bg-primary/5 transition-all group bg-muted/20"
+                    >
+                        <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground border border-dashed group-hover:scale-110 transition-transform">
+                            <Plus className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold text-sm text-muted-foreground group-hover:text-primary transition-colors">
+                                Use another account
+                            </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-30 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    </button>
+                </div>
+            </div>
 
-                    {step === 'detect' && renderDetecting()}
-                    {step === 'location-code' && renderLocationCode()}
-                    {step === 'terminal-select' && renderTerminalSelect()}
-                    {step === 'pin' && renderPinEntry()}
-
-                </CardContent>
-                <CardFooter className="justify-center border-t py-4 bg-muted/20">
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest font-semibold opacity-60">
-                        <Monitor className="h-3 w-3" />
-                        <span>Secure POS System • v2.5</span>
-                    </div>
-                </CardFooter>
-            </Card>
+            <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={handleBack}>
+                <ArrowLeft className="h-3 w-3 mr-2" />
+                Back to Terminal Lock
+            </Button>
         </div>
+    );
+
+    const renderUserLogin = () => (
+        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="text-center space-y-1 mb-6 bg-muted/30 p-3 rounded-lg border">
+                <div className="flex items-center justify-center gap-2 text-green-600 mb-1">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">Terminal Authenticated</span>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                    <Monitor className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-lg font-bold">{selectedTerminal?.name}</h3>
+                </div>
+            </div>
+
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <Label>Email Address</Label>
+                    <Input
+                        placeholder="user@example.com"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label>Password</Label>
+                    <Input
+                        placeholder="••••••••"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleUserLoginSubmit()}
+                    />
+                </div>
+
+                <Button
+                    className="w-full h-11 font-bold mt-2"
+                    onClick={handleUserLoginSubmit}
+                    disabled={isPending || !email || !password}
+                >
+                    {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+                    LOGIN to POS
+                </Button>
+
+                <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={handleBack}>
+                    <ArrowLeft className="h-3 w-3 mr-2" />
+                    Back to Terminal Lock
+                </Button>
+            </div>
+        </div>
+    );
+
+    return (
+        <Card className="shadow-2xl backdrop-blur-sm bg-card/95">
+            <CardHeader className="pb-2">
+                {step === 'location-code' || step === 'detect' ? (
+                    <CardTitle className="text-2xl text-center font-bold tracking-tight">POS Access</CardTitle>
+                ) : null}
+                {step === 'terminal-select' && <CardTitle className="text-2xl text-center font-bold tracking-tight">Select Terminal</CardTitle>}
+                {step === 'pin' && <CardTitle className="text-2xl text-center font-bold tracking-tight">Unlock Terminal</CardTitle>}
+                {step === 'account-select' && <CardTitle className="text-2xl text-center font-bold tracking-tight">Access Terminal</CardTitle>}
+                {step === 'user-login' && <CardTitle className="text-2xl text-center font-bold tracking-tight">User Login</CardTitle>}
+            </CardHeader>
+            <CardContent className="pt-2 min-h-[300px] flex flex-col justify-center">
+                {error && (
+                    <Alert variant="destructive" className="mb-6 animate-in slide-in-from-top-2 shadow-sm border-destructive/50 bg-destructive/10 text-destructive-foreground">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="font-medium text-sm">{error}</AlertDescription>
+                    </Alert>
+                )}
+
+                {step === 'detect' && renderDetecting()}
+                {step === 'location-code' && renderLocationCode()}
+                {step === 'terminal-select' && renderTerminalSelect()}
+                {step === 'pin' && renderPinEntry()}
+                {step === 'account-select' && renderAccountSelect()}
+                {step === 'user-login' && renderUserLogin()}
+
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4 pb-6">
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase tracking-widest font-bold opacity-60">
+                    <Monitor className="h-3 w-3" />
+                    <span>Secure POS System • v2.5</span>
+                </div>
+
+                <div className="w-full pt-4 mt-2 border-t border-border/50">
+                    <div className="flex items-center justify-center gap-2">
+                        <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground/60">
+                            Powered by
+                        </p>
+                        <div className="flex items-center gap-1.5 opacity-80">
+                            <Image
+                                src="/logo.png"
+                                alt="Innovative Network Logo"
+                                width={18}
+                                height={18}
+                                className="object-contain"
+                            />
+                            <span className="text-xs font-bold bg-linear-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+                                Innovative Network Pvt Ltd
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </CardFooter>
+        </Card>
     );
 }

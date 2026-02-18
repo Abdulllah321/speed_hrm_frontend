@@ -412,7 +412,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await logoutClient();
     setUser(null);
     setPreferences({});
-    router.push("/auth/login");
+    router.push("/auth/choose-account");
   }, [router]);
 
   const isAdmin = useCallback((): boolean => {

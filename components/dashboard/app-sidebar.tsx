@@ -133,35 +133,36 @@ function MenuItemComponent({
   const isActive = normalizedHref === normalizedPathname;
   const { state } = useSidebar();
 
+  // Hooks must be at the top level
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
+  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    setIsPopoverOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsPopoverOpen(false);
+    }, 150);
+  };
+
   if (item.children) {
     // When sidebar is collapsed, show sub-menu in popover on hover
     if (state === "collapsed") {
-      const [isOpen, setIsOpen] = React.useState(false);
-      const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-
-      const handleMouseEnter = () => {
-        if (timeoutRef.current) {
-          clearTimeout(timeoutRef.current);
-        }
-        setIsOpen(true);
-      };
-
-      const handleMouseLeave = () => {
-        timeoutRef.current = setTimeout(() => {
-          setIsOpen(false);
-        }, 150);
-      };
-
-      React.useEffect(() => {
-        return () => {
-          if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-          }
-        };
-      }, []);
-
       return (
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <SidebarMenuItem
             hasSubMenu={true}
             onMouseEnter={handleMouseEnter}

@@ -128,8 +128,8 @@ export function ManagePosModal({
 
     return (
         <>
-            <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col font-geist">
+            <Dialog open={open} onOpenChange={onOpenChange} >
+                <DialogContent showCloseButton={false} >
                     <DialogHeader>
                         <DialogTitle className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
