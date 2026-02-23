@@ -372,7 +372,7 @@ export default async function ViewEmployeePage({ params }: PageProps) {
             Back to List
           </Button>
         </Link>
-        <Link href={`/hr/employee/edit/${employeeId}`}>
+        <Link href={`/hr/employee/edit/${employeeId}`} className="absolute left-1/2 -translate-x-1/2">
           <Button>
             <Edit className="h-4 w-4 mr-2" />
             Edit Employee

@@ -263,7 +263,7 @@ export default function EmployeeListPage() {
         // Fetch employees, departments, and designations separately to prevent one from blocking others
         // (especially important for designation fetches that might fail for employees)
         const employeesRes = await getEmployees();
-        
+
         // Non-blocking fetches for metadata
         getDepartments().then(res => {
           if (res.status) setDepartments(res.data || []);
@@ -411,7 +411,9 @@ export default function EmployeeListPage() {
         return;
       }
 
-      window.open("/hr/my-dashboard", "_blank");
+      // Navigate in the same tab so the impersonation banner is visible
+      router.push("/hr/employee/list");
+      router.refresh();
     } catch (error) {
       console.error("Error impersonating user:", error);
       toast.error("Failed to open dashboard");

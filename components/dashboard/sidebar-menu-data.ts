@@ -1115,6 +1115,39 @@ export const menuData: MenuItem[] = [
       { title: "Edit Profile", href: "/hr/settings/profile" },
     ],
   },
+  {
+    title: "Points of Sale",
+    icon: ShoppingCart,
+    environment: "POS",
+    permissions: ["pos.sales.read", "pos.inventory.read", "master.pos.read"],
+    children: [
+      {
+        title: "Sales Operations",
+        permissions: ["pos.sales.create"],
+        children: [
+          { title: "New Sale", href: "/pos/sales/new", permissions: ["pos.sales.create"] },
+          { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.read"] },
+          { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
+        ]
+      },
+      {
+        title: "Inventory",
+        permissions: ["pos.inventory.read"],
+        children: [
+          { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
+          { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
+        ]
+      },
+      {
+        title: "Terminal",
+        children: [
+          { title: "Shifts", href: "/pos/shifts", permissions: ["pos.terminal.shifts"] },
+          { title: "Settings", href: "/pos/terminal/settings", permissions: ["pos.terminal.settings"] },
+          { title: "Logout Terminal", href: "/auth/logout" },
+        ]
+      }
+    ],
+  },
 ];
 
 

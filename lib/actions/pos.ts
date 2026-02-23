@@ -99,51 +99,35 @@ export async function deletePos(id: string, locationId: string): Promise<{ statu
     }
 }
 
-/**
- * Set the POS terminal details in cookies
- */
-export async function setPosTerminalAction(terminalCode: string, terminalName: string): Promise<void> {
-    const cookieStore = await cookies();
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const domain = getCookieDomain(host);
-    const cookieOptions = {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax" as const,
-        maxAge: 60 * 60 * 24 * 365, // 1 year
-        path: "/",
-        domain: domain,
-    };
+// ----------------------------------------------------------------------
+// Cookie Based Terminal Memory
+// ----------------------------------------------------------------------
 
-    cookieStore.set("pos_terminal_code", terminalCode, cookieOptions);
-    cookieStore.set("pos_terminal_name", terminalName, cookieOptions);
+export async function setPosTerminalAction(terminalInfo: any) {
+    const cookieStore = await cookies();
+    cookieStore.set("pos_remembered_terminal", JSON.stringify(terminalInfo), {
+        path: "/",
+        domain: process.env.COOKIE_DOMAIN || undefined,
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+    });
 }
 
-/**
- * Get the POS terminal details from cookies
- */
-export async function getPosTerminalAction(): Promise<{ code: string | null; name: string | null }> {
+export async function getPosTerminalAction() {
     const cookieStore = await cookies();
-    return {
-        code: cookieStore.get("pos_terminal_code")?.value || null,
-        name: cookieStore.get("pos_terminal_name")?.value || null,
-    };
+    const val = cookieStore.get("pos_remembered_terminal")?.value;
+    if (!val) return null;
+    try {
+        return JSON.parse(val);
+    } catch (e) {
+        return null;
+    }
 }
 
-/**
- * Clear the POS terminal details from cookies
- */
-export async function clearPosTerminalAction(): Promise<void> {
+export async function clearPosTerminalAction() {
     const cookieStore = await cookies();
-    const headersList = await headers();
-    const host = headersList.get("host") || "";
-    const domain = getCookieDomain(host);
-    const cookieOptions = {
+    cookieStore.set("pos_remembered_terminal", "", {
+        maxAge: 0,
         path: "/",
-        domain: domain,
-    };
-
-    cookieStore.delete({ name: "pos_terminal_code", ...cookieOptions });
-    cookieStore.delete({ name: "pos_terminal_name", ...cookieOptions });
+        domain: process.env.COOKIE_DOMAIN || undefined
+    });
 }

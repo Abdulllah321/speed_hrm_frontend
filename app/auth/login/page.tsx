@@ -44,14 +44,15 @@ export default function LoginPage() {
     const cb = params.get("callbackUrl");
     const subdomain = params.get("subdomain");
     const emailParam = params.get("email");
+    const forceLogin = params.get("forceLogin");
 
     // Check local storage for remembered profiles
     const remembered = JSON.parse(localStorage.getItem("rememberedProfiles") || "[]");
     setHasSavedAccounts(remembered.length > 0);
 
-    // If we have saved accounts and NO email param, redirect to choose-account
-    // This provides a better experience than landing on a blank login form
-    if (remembered.length > 0 && !emailParam && !params.get("forceLogin")) {
+    // If we have NO email param and NO forceLogin, ALWAYS redirect to choose-account
+    // This makes the choose-account page the primary entry point
+    if (!emailParam && !forceLogin) {
       const search = window.location.search;
       router.push(`/auth/choose-account${search}`);
       return;

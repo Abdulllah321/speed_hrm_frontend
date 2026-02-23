@@ -47,6 +47,11 @@ export function ModuleSwitcher() {
         }
     ];
 
+    // When inside POS, only show ERP and HR (not POS itself)
+    const visibleModules = environment === "POS"
+        ? modules.filter((m) => m.id !== "POS")
+        : modules;
+
     const handleSwitch = (mod: typeof modules[0]) => {
         setEnvironment(mod.id);
         router.push(mod.href);
@@ -79,7 +84,7 @@ export function ModuleSwitcher() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="opacity-50" />
                 <div className="space-y-1">
-                    {modules.map((mod) => (
+                    {visibleModules.map((mod) => (
                         <DropdownMenuItem
                             key={mod.id}
                             onClick={() => handleSwitch(mod)}

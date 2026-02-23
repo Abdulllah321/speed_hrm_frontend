@@ -115,7 +115,7 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
         });
         if (result.status) {
           toast.success("User account created and role assigned");
-          router.refresh();
+          window.location.reload()
         } else {
           toast.error(result.message || "Failed to create user");
         }
@@ -162,7 +162,8 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
         return;
       }
 
-      window.open("/hr/my-dashboard", "_blank");
+      // Navigate in the same tab so the impersonation banner is visible
+      window.location.href = "/hr"
     } catch (error) {
       console.error("Error impersonating user:", error);
       toast.error("Failed to open dashboard");

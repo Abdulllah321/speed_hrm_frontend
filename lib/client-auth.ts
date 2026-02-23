@@ -68,6 +68,7 @@ export async function getPosContext(
 export async function posLoginClient(terminalCode: string, pin: string): Promise<{
   status: boolean;
   message: string;
+  errorType?: string;
   data?: any;
 }> {
   if (!terminalCode || !pin) {
@@ -87,7 +88,8 @@ export async function posLoginClient(terminalCode: string, pin: string): Promise
     if (data.status) {
       return {
         status: true,
-        message: "POS Authentication successful",
+        message: data.message || "POS Authentication successful",
+        errorType: data.errorType,
         data: data.data
       };
     }

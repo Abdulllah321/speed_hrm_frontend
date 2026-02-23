@@ -24,7 +24,20 @@ export default function ChooseAccountPage() {
                 const activeProfiles = await getAvailableProfilesClient();
 
                 // Also check local storage for "remembered" profiles (Signed out)
-                const remembered = JSON.parse(localStorage.getItem("rememberedProfiles") || "[]");
+                let remembered: any[] = [];
+                try {
+                    const stored = localStorage.getItem("rememberedProfiles");
+                    if (stored) {
+                        const parsed = JSON.parse(stored);
+                        if (Array.isArray(parsed)) {
+                            remembered = parsed;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Failed to parse rememberedProfiles from localStorage", e);
+                    // Clear invalid data
+                    localStorage.removeItem("rememberedProfiles");
+                }
 
                 // Merge lists
                 const mergedMap = new Map();
@@ -33,7 +46,9 @@ export default function ChooseAccountPage() {
                 remembered.forEach((p: any) => mergedMap.set(p.email, { ...p, isActive: false }));
 
                 // Overwrite with active sessions
-                activeProfiles.forEach((p: any) => mergedMap.set(p.email, { ...p, isActive: true }));
+                if (Array.isArray(activeProfiles)) {
+                    activeProfiles.forEach((p: any) => mergedMap.set(p.email, { ...p, isActive: true }));
+                }
 
                 setProfiles(Array.from(mergedMap.values()));
             } catch (err) {
@@ -68,8 +83,8 @@ export default function ChooseAccountPage() {
     }
 
     return (
-    <Card className="shadow-2xl backdrop-blur-sm bg-card/95">
-           
+        <Card className="shadow-2xl backdrop-blur-sm bg-card/95">
+
             <CardHeader className="text-center space-y-2 pb-6">
                 <CardTitle className="text-2xl font-bold tracking-tight">Choose an account</CardTitle>
                 <CardDescription>Select an account to continue to Speed Limit</CardDescription>

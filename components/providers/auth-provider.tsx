@@ -1,9 +1,18 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { getApiBaseUrl } from "@/lib/utils";
+
+// Get base domain from host
+function getBaseDomain(host: string): string {
+  const hostWithoutPort = host.split(":")[0];
+  if (hostWithoutPort.includes("localhost") || hostWithoutPort.includes("127.0.0.1")) return "localhost";
+  if (hostWithoutPort.includes("localtest.me")) return "localtest.me";
+  const parts = hostWithoutPort.split(".");
+  return parts.length >= 2 ? parts.slice(-2).join(".") : hostWithoutPort;
+}
 
 export interface User {
   id: string;
@@ -38,6 +47,15 @@ export interface User {
     createdAt: string;
     updatedAt: string;
   }>;
+  // Impersonation context (present when admin is viewing as another user)
+  isImpersonating?: boolean;
+  impersonatorId?: string;
+
+  // POS fields
+  isPosUser?: boolean;
+  terminalId?: string;
+  locationId?: string;
+  posSessionId?: string;
 }
 
 interface AuthContextType {
@@ -338,28 +356,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user, refreshToken]);
 
-  // Check for first password status
+  const pathname = usePathname();
+
+  // Check for first password status or impersonation
   useEffect(() => {
-    if (user?.isFirstPassword) {
+    if (user?.isFirstPassword || user?.isImpersonating) {
       document.documentElement.style.setProperty("--banner-height", "2.5rem");
 
-      // You can implement forced redirect here if needed
-      // if (pathname !== '/hr/settings/password') router.push('/hr/settings/password');
+      if (user?.isFirstPassword && !user?.isImpersonating) {
+        // You can implement forced redirect here if needed
+        // if (pathname !== '/hr/settings/password') router.push('/hr/settings/password');
 
-      // For now, let's show a toast
-      const { toast } = require("sonner");
-      toast.warning("Please change your password", {
-        description: "You are using a temporary password. Please update it immediately.",
-        duration: Infinity,
-        action: {
-          label: "Change Now",
-          onClick: () => router.push("/hr/settings/password"),
-        },
-      });
+        // For now, let's show a toast
+        const { toast } = require("sonner");
+        toast.warning("Please change your password", {
+          description: "You are using a temporary password. Please update it immediately.",
+          duration: Infinity,
+          action: {
+            label: "Change Now",
+            onClick: () => router.push("/hr/settings/password"),
+          },
+        });
+      }
     } else {
       document.documentElement.style.setProperty("--banner-height", "0px");
     }
   }, [user, router]);
+
+  // POS Route Protection
+  useEffect(() => {
+    if (!mounted || loading || !user) return;
+
+    const host = typeof window !== "undefined" ? window.location.host : "";
+    const isPosSubdomain = host.startsWith("pos.");
+    const isPosPath = pathname === "/pos" || pathname?.startsWith("/pos/");
+    const isPosLoginPage = pathname === "/pos-login" || pathname === "/auth/pos-login";
+
+    // If accessing POS but not POS-authenticated (isPosUser comes from backend /auth/me)
+    if ((isPosSubdomain || isPosPath) && !user.isPosUser && !isPosLoginPage) {
+      // Determine where to redirect
+      const baseDomain = getBaseDomain(host);
+      const protocol = window.location.protocol;
+      const port = host.split(":")[1] ? `:${host.split(":")[1]}` : "";
+
+      // Redirect to auth subdomain for POS login
+      const loginUrl = `${protocol}//auth.${baseDomain}${port}/pos-login?callbackUrl=${encodeURIComponent(pathname)}&subdomain=pos`;
+
+      // Use window.location.href for cross-subdomain redirect
+      window.location.href = loginUrl;
+    }
+  }, [user, pathname, mounted, loading]);
 
   // Proactive session check - refresh token if needed
   const checkAndRefreshSession = useCallback(async () => {

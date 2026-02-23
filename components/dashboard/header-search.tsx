@@ -107,7 +107,14 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
   const flatMenu = useMemo(() => {
     const main = flattenMenu(filteredMenuTree);
     const master = flattenMenu(filteredMasterMenuTree);
-    return [...main, ...master];
+    const merged = [...main, ...master];
+    // De-duplicate by href — same route can appear in both menuData and masterMenuData
+    const seen = new Set<string>();
+    return merged.filter((item) => {
+      if (seen.has(item.href)) return false;
+      seen.add(item.href);
+      return true;
+    });
   }, [filteredMenuTree, filteredMasterMenuTree]);
 
   const filteredNav = useMemo(() => {
@@ -187,9 +194,9 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
 
           {filteredNav.length > 0 && (
             <CommandGroup heading="Navigation">
-              {filteredNav.map((item) => (
+              {filteredNav.map((item, index) => (
                 <CommandItem
-                  key={item.href}
+                  key={`nav-${index}-${item.href}`}
                   value={`nav-${item.title}-${item.path}`}
                   onSelect={() => handleSelect(item.href)}
                 >

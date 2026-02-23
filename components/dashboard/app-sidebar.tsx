@@ -439,7 +439,7 @@ export function AppSidebar({
 
       <SidebarContent className="px-2 ">
 
-        <div className="group-data-[collapsible=icon]:hidden mt-2">
+        {/* <div className="group-data-[collapsible=icon]:hidden mt-2">
           {environment === "ADMIN" ? (
             <div className="flex flex-col gap-2 p-3 bg-linear-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border border-primary/20 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 right-0 p-2 opacity-10">
@@ -499,7 +499,7 @@ export function AppSidebar({
               )}
             </>
           )}
-        </div>
+        </div> */}
 
         <ScrollArea className="-mx-2 px-2" showShadows>
           <SidebarGroup>

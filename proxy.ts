@@ -389,12 +389,13 @@ export default function middleware(request: NextRequest): NextResponse {
 
   // Special handling for POS subdomain
   if (currentSubdomain === 'pos') {
-    const posSessionId = request.cookies.get("posSessionId")?.value;
+    const accessToken = request.cookies.get("accessToken")?.value;
+    const hasAccess = !!accessToken;
 
     // Allow auth routes to pass through (they will be handled by auth redirect logic later if needed)
     if (pathname.startsWith("/auth") || pathname.startsWith("/_next") || pathname.startsWith("/api")) {
       // let it pass
-    } else if (!posSessionId) {
+    } else if (!hasAccess) {
       // Redirect to POS login if no session
       const loginUrl = buildUrl("auth", "/pos-login");
       loginUrl.searchParams.set("callbackUrl", pathname);
@@ -430,10 +431,9 @@ export default function middleware(request: NextRequest): NextResponse {
   }
   // Middleware reads cookies for authentication checks
   const accessToken = request.cookies.get("accessToken")?.value;
-  const posAccessToken = request.cookies.get("posAccessToken")?.value;
   const userRole = request.cookies.get("userRole")?.value;
 
-  const isAuthenticated = !!accessToken || !!posAccessToken;
+  const isAuthenticated = !!accessToken;
   const isProtectedRoute =
     protectedRoutes.some((route) => pathname.startsWith(route)) ||
     pathname.startsWith("/hr") ||

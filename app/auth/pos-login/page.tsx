@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Monitor, AlertCircle, MapPin, CheckCircle2, RotateCcw, Building2, Grid, ArrowLeft, Store, ChevronRight, Plus } from "lucide-react";
 import { posLoginClient, getPosContext, getAvailableProfilesClient, switchPosSessionClient } from "@/lib/client-auth";
 import { getApiBaseUrl } from "@/lib/utils";
-import { setPosTerminalAction, getPosTerminalAction, clearPosTerminalAction } from "@/lib/actions/pos";
 import Image from "next/image";
 import { buildSubdomainUrl } from "@/lib/navigation";
 import { toast } from "sonner";
 import { loginPosUser } from "@/lib/client-auth";
+import { setPosTerminalAction, getPosTerminalAction, clearPosTerminalAction } from "@/lib/actions/pos";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useEnvironment } from "@/components/providers/environment-provider";
@@ -46,6 +46,7 @@ export default function PosLoginPage() {
     const [step, setStep] = useState<LoginStep>('detect');
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | null>(null);
+    const submittingRef = useRef(false); // guard against concurrent PIN submits
 
     // Context Data
     const [context, setContext] = useState<LocationContext | null>(null);
@@ -78,16 +79,21 @@ export default function PosLoginPage() {
     }, [step]);
 
     useEffect(() => {
-        if (pin.length === 4 && !isPending) {
+        // Only trigger when pin first reaches 4 digits.
+        // Intentionally exclude isPending from deps — we rely on submittingRef
+        // to guard against concurrent calls. Having isPending here caused the
+        // effect to re-fire every time the transition finished while pin was still 4.
+        if (pin.length === 4) {
             handlePinSubmit();
         }
-    }, [pin, isPending]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pin]);
 
     useEffect(() => {
         // Check cookies for remembered terminal
         async function checkSavedTerminal() {
             const savedTerminal = await getPosTerminalAction();
-            if (savedTerminal.code) {
+            if (savedTerminal && savedTerminal.code) {
                 setSelectedTerminal({
                     code: savedTerminal.code,
                     name: savedTerminal.name || "Terminal",
@@ -95,10 +101,10 @@ export default function PosLoginPage() {
                     status: "active"
                 });
                 setStep('pin');
-            } else {
-                // Start auto-detection if no terminal remembered
-                detectLocation();
+                return;
             }
+            // Start auto-detection if no terminal remembered
+            detectLocation();
         }
 
         checkSavedTerminal();
@@ -177,78 +183,95 @@ export default function PosLoginPage() {
         }
     };
 
-    const handleForgetTerminal = async () => {
-        await clearPosTerminalAction();
-        setSelectedTerminal(null);
-        setPin("");
-        setError(null);
-        setStep('location-code');
-        setContext(null);
-        detectLocation();
+    const handleForgetTerminal = () => {
+        startTransition(async () => {
+            await clearPosTerminalAction();
+            setSelectedTerminal(null);
+            setPin("");
+            setError(null);
+            setStep('location-code');
+            setContext(null);
+            detectLocation();
+        });
     };
 
     const handlePinSubmit = () => {
         if (!selectedTerminal || !pin || pin.length < 4) return;
+        if (submittingRef.current) return; // already in-flight, ignore
+        submittingRef.current = true;
+        setPin(""); // clear immediately so the effect can't re-fire
 
         startTransition(async () => {
             try {
                 const result = await posLoginClient(selectedTerminal.code, pin);
                 if (result.status && result.data) {
-                    toast.success("Terminal Authenticated");
 
                     if (rememberTerminal) {
-                        await setPosTerminalAction(selectedTerminal.code, selectedTerminal.name);
+                        await setPosTerminalAction({
+                            code: selectedTerminal.code,
+                            name: selectedTerminal.name
+                        });
+                    } else {
+                        await clearPosTerminalAction();
                     }
 
-                    // Check for active sessions/profiles
+                    // ✅ Backend auto-linked an existing HR session — result.data.user exists.
+                    // Navigate directly without any extra steps.
+                    if (result.data?.user) {
+                        toast.success(`Welcome back, ${result.data.user.firstName || 'User'}`);
+                        await refreshUser();
+                        const params = new URLSearchParams(window.location.search);
+                        const callbackUrl = params.get("callbackUrl");
+                        window.location.href = buildSubdomainUrl("pos", callbackUrl || "/pos/sales/new");
+                        return;
+                    }
+
+                    // Terminal-only token was set. Check for previously known profiles.
+                    if (result.errorType === 'NO_POS_ACCESS') {
+                        toast.error(result.message || "Current user lacks POS access. Please select an authorized account.");
+                    } else {
+                        toast.success("Terminal Authenticated");
+                    }
+
                     const availableProfiles = await getAvailableProfilesClient();
                     setProfiles(availableProfiles);
 
                     if (availableProfiles.length > 0) {
-                        // Check if there's a highly active profile (already signed in)
                         const active = availableProfiles.find(p => p.isActive);
                         if (active) setActiveProfile(active);
-
                         setStep('account-select');
                     } else {
-                        // Move to User Login Step (Manual)
                         setStep('user-login');
                     }
                     setError(null);
                 } else {
                     setError(result.message || "Terminal Login Failed");
-                    setPin("");
                 }
             } catch (err) {
                 setError("An error occurred during terminal login");
-                setPin("");
+            } finally {
+                submittingRef.current = false;
             }
         });
     };
 
     const handleSelectProfile = (profile: any) => {
         if (profile.isActive) {
-            // "Proceed the user-login from the actual accessToken"
+            // Active HR session — use switch-session to create a linked POS token
             startTransition(async () => {
                 try {
                     const result = await switchPosSessionClient();
                     if (result.status) {
                         toast.success(`Welcome back, ${profile.firstName}`);
                         await refreshUser();
-
-                        // Redirect logic
                         const params = new URLSearchParams(window.location.search);
                         const callbackUrl = params.get("callbackUrl");
-                        if (callbackUrl) {
-                            window.location.href = buildSubdomainUrl("pos", callbackUrl);
-                        } else {
-                            window.location.href = buildSubdomainUrl("pos", "/pos/sales/new");
-                        }
+                        window.location.href = buildSubdomainUrl("pos", callbackUrl || "/pos/sales/new");
                     } else {
-                        // Fallback to manual if switch fails
+                        // switch-session failed — pre-fill email and let user type password
                         setEmail(profile.email);
                         setStep('user-login');
-                        setError(result.message || "Session session failed. Please login manually.");
+                        setError(result.message || "Auto-login failed. Please login manually.");
                     }
                 } catch (err) {
                     setError("Communication error with server.");
@@ -257,6 +280,7 @@ export default function PosLoginPage() {
                 }
             });
         } else {
+            // Known browser profile but not currently active — pre-fill email
             setEmail(profile.email);
             setStep('user-login');
         }
@@ -457,21 +481,25 @@ export default function PosLoginPage() {
             </div>
 
             <div className="space-y-4 mt-2">
+                {isPending && (
+                    <div className="flex items-center justify-center gap-2 text-primary animate-in fade-in duration-200">
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <span className="text-sm font-medium">Authenticating...</span>
+                    </div>
+                )}
+
+                {!isPending && pin.length < 4 && (
+                    <p className="text-center text-xs text-muted-foreground">
+                        Enter your 4-digit PIN to unlock
+                    </p>
+                )}
+
                 <div className="flex items-center space-x-2 justify-center py-2">
                     <Checkbox id="remember" checked={rememberTerminal} onCheckedChange={(c) => setRememberTerminal(!!c)} />
                     <Label htmlFor="remember" className="text-xs font-medium leading-none cursor-pointer">
                         Remember this terminal
                     </Label>
                 </div>
-
-                <Button
-                    className="w-full h-12 text-md font-bold tracking-wide"
-                    onClick={handlePinSubmit}
-                    disabled={isPending || pin.length < 4}
-                >
-                    {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle2 className="mr-2 h-5 w-5" />}
-                    LOGIN
-                </Button>
 
                 <Button variant="link" size="sm" className="w-full text-xs text-muted-foreground h-auto p-0" onClick={handleBack}>
                     {selectedTerminal ? "Not your terminal? Forget it." : "Switch Terminal"}
@@ -545,56 +573,79 @@ export default function PosLoginPage() {
         </div>
     );
 
-    const renderUserLogin = () => (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="text-center space-y-1 mb-6 bg-muted/30 p-3 rounded-lg border">
-                <div className="flex items-center justify-center gap-2 text-green-600 mb-1">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span className="text-xs font-bold uppercase tracking-wider">Terminal Authenticated</span>
+    const renderUserLogin = () => {
+        // Find the profile we are trying to log into to show their avatar if available
+        const targetProfile = profiles.find(p => p.email === email);
+
+        return (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="text-center space-y-1 mb-6 bg-muted/30 p-3 rounded-lg border">
+                    <div className="flex items-center justify-center gap-2 text-green-600 mb-1">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Terminal Authenticated</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                        <Monitor className="h-4 w-4 text-muted-foreground" />
+                        <h3 className="text-lg font-bold">{selectedTerminal?.name}</h3>
+                    </div>
                 </div>
-                <div className="flex items-center justify-center gap-2">
-                    <Monitor className="h-4 w-4 text-muted-foreground" />
-                    <h3 className="text-lg font-bold">{selectedTerminal?.name}</h3>
+
+                <div className="space-y-4">
+                    {targetProfile ? (
+                        <div className="flex items-center gap-4 p-4 rounded-xl border bg-card shadow-sm mb-2">
+                            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20 text-lg">
+                                {targetProfile.firstName?.[0] || email[0].toUpperCase()}{targetProfile.lastName?.[0]}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold text-base truncate leading-tight">
+                                    {targetProfile.firstName} {targetProfile.lastName}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                    {targetProfile.email}
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <Label>Email Address</Label>
+                            <Input
+                                placeholder="user@example.com"
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                            />
+                        </div>
+                    )}
+
+                    <div className="space-y-2">
+                        <Label>Password</Label>
+                        <Input
+                            placeholder="••••••••"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleUserLoginSubmit()}
+                            autoFocus
+                        />
+                    </div>
+
+                    <Button
+                        className="w-full h-11 font-bold mt-2"
+                        onClick={handleUserLoginSubmit}
+                        disabled={isPending || !email || !password}
+                    >
+                        {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+                        LOGIN to POS
+                    </Button>
+
+                    <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={handleBack}>
+                        <ArrowLeft className="h-3 w-3 mr-2" />
+                        Back to Terminal Lock
+                    </Button>
                 </div>
             </div>
-
-            <div className="space-y-4">
-                <div className="space-y-2">
-                    <Label>Email Address</Label>
-                    <Input
-                        placeholder="user@example.com"
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label>Password</Label>
-                    <Input
-                        placeholder="••••••••"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleUserLoginSubmit()}
-                    />
-                </div>
-
-                <Button
-                    className="w-full h-11 font-bold mt-2"
-                    onClick={handleUserLoginSubmit}
-                    disabled={isPending || !email || !password}
-                >
-                    {isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-                    LOGIN to POS
-                </Button>
-
-                <Button variant="ghost" size="sm" className="w-full text-xs text-muted-foreground" onClick={handleBack}>
-                    <ArrowLeft className="h-3 w-3 mr-2" />
-                    Back to Terminal Lock
-                </Button>
-            </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <Card className="shadow-2xl backdrop-blur-sm bg-card/95">
