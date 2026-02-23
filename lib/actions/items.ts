@@ -10,7 +10,7 @@ function sanitizeItemData(data: any) {
     const keysToCheck = [
         "brandId", "divisionId", "categoryId", "subCategoryId",
         "itemClassId", "itemSubclassId", "channelClassId",
-        "genderId", "seasonId", "uomId", "segmentId",
+        "genderId", "seasonId", "segmentId",
         "sizeId", "colorId", "silhouetteId"
     ];
 
@@ -89,6 +89,18 @@ export async function getItemById(id: string) {
         return response.json();
     } catch (error) {
         console.error("Get item error:", error);
+        return { status: false, data: null };
+    }
+}
+
+export async function getNextItemId() {
+    try {
+        const response = await authFetch(`/finance/items/next-id`, {
+            method: "GET",
+        });
+        return response.json();
+    } catch (error) {
+        console.error("Get next item id error:", error);
         return { status: false, data: null };
     }
 }

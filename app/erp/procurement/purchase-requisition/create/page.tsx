@@ -10,34 +10,22 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { purchaseRequisitionApi } from '@/lib/api';
 import { getItems } from '@/lib/actions/items';
+import { getDepartments, getSubDepartments, type Department, type SubDepartment } from '@/lib/actions/department';
+import { getCategories, type Category } from '@/lib/actions/category';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface FormValues {
-    requestedBy: string;
     department: string;
     requestDate: string;
     notes: string;
+    type?: string;
     items: {
         itemId: string;
-        description: string;
         requiredQty: number;
-        neededByDate: string;
     }[];
 }
 
@@ -53,14 +41,20 @@ export default function CreatePurchaseRequisition() {
     const [loading, setLoading] = useState(false);
     const [items, setItems] = useState<Item[]>([]);
     const [loadingItems, setLoadingItems] = useState(false);
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
+    const [selectedSubDepartmentId, setSelectedSubDepartmentId] = useState<string>('');
+    const [prAutoNumber] = useState<string>('Auto'); // display-only
 
     // Default values
     const { control, register, handleSubmit, setValue, formState: { errors } } = useForm<FormValues>({
         defaultValues: {
-            requestedBy: 'Current User', // Should be fetched from auth context
             department: '',
             requestDate: new Date().toISOString().split('T')[0],
-            items: [{ itemId: '', description: '', requiredQty: 1, neededByDate: '' }]
+            type: 'local',
+            items: [{ itemId: '', requiredQty: 1 }]
         }
     });
 
@@ -70,13 +64,21 @@ export default function CreatePurchaseRequisition() {
     });
 
     useEffect(() => {
-        const fetchItems = async () => {
+        const fetchData = async () => {
             try {
                 setLoadingItems(true);
                 const response = await getItems();
                 if (response.status) {
                     setItems(response.data);
                 }
+                const [deptRes, subDeptRes, catRes] = await Promise.all([
+                    getDepartments(),
+                    getSubDepartments(),
+                    getCategories(),
+                ]);
+                setDepartments(deptRes.data || []);
+                setSubDepartments(subDeptRes.data || []);
+                setCategories((catRes.data || []).filter((c) => !c.parentId));
             } catch (error) {
                 console.error("Failed to fetch items", error);
                 toast.error("Failed to load items");
@@ -84,22 +86,31 @@ export default function CreatePurchaseRequisition() {
                 setLoadingItems(false);
             }
         };
-        fetchItems();
+        fetchData();
     }, []);
 
     const onSubmit = async (data: FormValues) => {
         try {
             setLoading(true);
-            await purchaseRequisitionApi.create({
-                ...data,
-                items: data.items.map(item => ({
-                    ...item,
-                    requiredQty: Number(item.requiredQty), // Ensure number
-                    neededByDate: item.neededByDate ? new Date(item.neededByDate) : undefined
+            const cleanedItems = data.items
+                .map(item => ({
+                    itemId: item.itemId,
+                    requiredQty: Number(item.requiredQty),
                 }))
+                .filter(item => item.itemId && item.requiredQty > 0);
+
+            if (cleanedItems.length === 0 || cleanedItems.length !== data.items.length) {
+                toast.error('Please fill all items correctly (Item ID and Quantity > 0)');
+                setLoading(false);
+                return;
+            }
+
+            const pr = await purchaseRequisitionApi.create({
+                ...data,
+                items: cleanedItems,
             });
-            toast.success('Purchase Requisition created successfully');
-            router.push('/erp/procurement/purchase-requisition');
+            toast.success('Purchase Requisition submitted for approval');
+            router.push(`/erp/procurement/purchase-requisition/${pr.id}`);
         } catch (error) {
             console.error(error);
             toast.error('Failed to create requisition');
@@ -122,13 +133,50 @@ export default function CreatePurchaseRequisition() {
                     </CardHeader>
                     <CardContent className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="requestedBy">Requested By</Label>
-                            <Input id="requestedBy" {...register('requestedBy', { required: true })} />
-                            {errors.requestedBy && <span className="text-red-500 text-sm">Required</span>}
+                            <Label htmlFor="prNumber">PR No</Label>
+                            <Input id="prNumber" value={prAutoNumber} disabled />
+                        </div>
+                        
+                        <div className="space-y-2">
+                            <Label>Department</Label>
+                            <Select
+                                value={selectedDepartmentId}
+                                onValueChange={(val) => {
+                                    setSelectedDepartmentId(val);
+                                    const deptName = departments.find(d => d.id === val)?.name || '';
+                                    setValue('department', deptName);
+                                    setSelectedSubDepartmentId('');
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {departments.map((d) => (
+                                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="department">Department</Label>
-                            <Input id="department" {...register('department')} />
+                            <Label>Sub Department</Label>
+                            <Select
+                                value={selectedSubDepartmentId}
+                                onValueChange={(val) => {
+                                    setSelectedSubDepartmentId(val);
+                                    const subName = subDepartments.find(s => s.id === val)?.name || '';
+                                    setValue('department', subName || (departments.find(d=>d.id===selectedDepartmentId)?.name || ''));
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Sub Department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {subDepartments.filter(s => s.departmentId === selectedDepartmentId).map((s) => (
+                                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="requestDate">Request Date</Label>
@@ -144,6 +192,24 @@ export default function CreatePurchaseRequisition() {
                                 )}
                             />
                         </div>
+                        <div className="space-y-2">
+                            <Label>Type</Label>
+                            <Controller
+                                control={control}
+                                name="type"
+                                render={({ field }) => (
+                                    <Select value={field.value || ''} onValueChange={field.onChange}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="local">Local</SelectItem>
+                                            <SelectItem value="import">Import</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                        </div>
                         <div className="space-y-2 col-span-2">
                             <Label htmlFor="notes">Notes</Label>
                             <Textarea id="notes" {...register('notes')} />
@@ -154,94 +220,86 @@ export default function CreatePurchaseRequisition() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Items</CardTitle>
-                        <Button type="button" size="sm" onClick={() => append({ itemId: '', description: '', requiredQty: 1, neededByDate: '' })}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => append({ itemId: '', requiredQty: 1 })}
+                        >
                             Add Item
                         </Button>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {fields.map((field, index) => (
                             <div key={field.id} className="grid grid-cols-12 gap-4 items-start border-b pb-4">
-                                <div className="col-span-4 space-y-2">
-                                    <Label>Item</Label>
+                                <div className="col-span-3 space-y-2">
+                                    <Label>Category</Label>
+                                    <Select
+                                        onValueChange={() => {}}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {categories.map((c) => (
+                                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="col-span-3 space-y-2">
+                                    <Label>Item ID</Label>
                                     <Controller
                                         control={control}
                                         name={`items.${index}.itemId`}
                                         rules={{ required: true }}
                                         render={({ field: itemField }) => (
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        role="combobox"
-                                                        className={cn(
-                                                            "w-full justify-between font-normal",
-                                                            !itemField.value && "text-muted-foreground"
-                                                        )}
-                                                    >
-                                                        {itemField.value
-                                                            ? items.find((item) => item.itemId === itemField.value)?.itemId || items.find((item) => item.itemId === itemField.value)?.sku || "Select item"
-                                                            : "Select item"}
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[300px] p-0">
-                                                    <Command>
-                                                        <CommandInput placeholder="Search item..." />
-                                                        <CommandEmpty>No item found.</CommandEmpty>
-                                                        <CommandGroup>
-                                                            <CommandList>
-                                                                {items.map((item) => (
-                                                                    <CommandItem
-                                                                        key={item.id}
-                                                                        value={`${item.itemId} ${item.sku} ${item.description}`}
-                                                                        onSelect={() => {
-                                                                            itemField.onChange(item.itemId);
-                                                                            setValue(`items.${index}.description`, item.description || item.sku); 
-                                                                        }}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                                "mr-2 h-4 w-4",
-                                                                                item.itemId === itemField.value ? "opacity-100" : "opacity-0"
-                                                                            )}
-                                                                        />
-                                                                        {item.itemId} - {item.sku}
-                                                                    </CommandItem>
-                                                                ))}
-                                                            </CommandList>
-                                                        </CommandGroup>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
+                                            <Select
+                                                value={itemField.value || ''}
+                                                onValueChange={(val) => {
+                                                    itemField.onChange(val);
+                                                }}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {items.map((it) => (
+                                                        <SelectItem key={it.id} value={it.itemId}>
+                                                            {it.itemId}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
                                         )}
                                     />
-                                </div>
-                                <div className="col-span-3 space-y-2">
-                                    <Label>Description</Label>
-                                    <Input {...register(`items.${index}.description` as const)} placeholder="Description" />
                                 </div>
                                 <div className="col-span-2 space-y-2">
                                     <Label>Quantity</Label>
-                                    <Input type="number" step="0.01" {...register(`items.${index}.requiredQty` as const, { required: true, min: 0.01 })} />
-                                </div>
-                                <div className="col-span-2 space-y-2">
-                                    <Label>Needed By</Label>
-                                    <Controller
-                                        control={control}
-                                        name={`items.${index}.neededByDate`}
-                                        render={({ field: dateField }) => (
-                                            <DatePicker
-                                                value={dateField.value}
-                                                onChange={dateField.onChange}
-                                                placeholder="Pick a date"
-                                            />
-                                        )}
+                                    <Input
+                                        type="number"
+                                        step="0.01"
+                                        {...register(`items.${index}.requiredQty` as const, {
+                                            required: true,
+                                            min: 0.01,
+                                        })}
                                     />
                                 </div>
-                                <div className="col-span-1 pt-8">
-                                    <Button type="button" variant="destructive" size="icon" onClick={() => remove(index)}>
-                                        X
-                                    </Button>
+                                
+                                <div className="col-span-3 flex items-center justify-end mt-3">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="icon"
+                                                onClick={() => remove(index)}
+                                                aria-label="Remove item"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Remove item</TooltipContent>
+                                    </Tooltip>
                                 </div>
                             </div>
                         ))}
@@ -250,7 +308,7 @@ export default function CreatePurchaseRequisition() {
 
                 <div className="flex justify-end">
                     <Button type="submit" disabled={loading}>
-                        {loading ? 'Submitting...' : 'Create Draft'}
+                        {loading ? 'Submitting...' : 'Submit'}
                     </Button>
                 </div>
             </form>

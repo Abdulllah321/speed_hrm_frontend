@@ -126,6 +126,8 @@ export const routePermissions: Record<string, string[]> = {
   "/master/sub-category/list": ["erp.sub-category.read"],
   "/master/unit-of-measurement/add": ["erp.uom.create"],
   "/master/unit-of-measurement/list": ["erp.uom.read"],
+  "/master/tax-rate/add": ["master.tax-rate.create"],
+  "/master/tax-rate/list": ["master.tax-rate.read"],
 
   // Settings - public (all authenticated users)
   "/hr/settings/password": [],

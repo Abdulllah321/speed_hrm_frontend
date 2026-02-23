@@ -36,7 +36,6 @@ import { getChannelClasses } from "@/lib/actions/channel-class";
 import { getItemClasses } from "@/lib/actions/item-class";
 import { getItemSubclasses } from "@/lib/actions/item-subclass";
 import { getSeasons } from "@/lib/actions/season";
-import { getUoms } from "@/lib/actions/uom";
 import { getSizes } from "@/lib/actions/size";
 import { getSegments } from "@/lib/actions/segment";
 import { updateItem, getItemById } from "@/lib/actions/items";
@@ -65,7 +64,7 @@ const itemFormSchema = z.object({
     channelClassId: z.string().nullable().optional(),
     genderId: z.string().nullable().optional(),
     seasonId: z.string().nullable().optional(),
-    uomId: z.string().nullable().optional(),
+    // uomId removed
 
     // Step 3: Pricing & Discount
     unitPrice: z.coerce.number().min(0),
@@ -108,7 +107,7 @@ export default function ItemEditPage() {
         itemClasses: any[];
         itemSubclasses: any[];
         seasons: any[];
-        uoms: any[];
+        // uoms removed
         sizes: any[];
         segments: any[];
     }>({
@@ -122,7 +121,7 @@ export default function ItemEditPage() {
         itemClasses: [],
         itemSubclasses: [],
         seasons: [],
-        uoms: [],
+        // uoms removed
         sizes: [],
         segments: [],
     });
@@ -181,11 +180,11 @@ export default function ItemEditPage() {
                 const [
                     brands, divisions, categories, genders, colors,
                     silhouettes, channelClasses, itemClasses, itemSubclasses,
-                    seasons, uoms, sizes, segments
+                    seasons, sizes, segments
                 ] = await Promise.all([
                     getBrands(), getDivisions(), getCategories(), getGenders(), getColors(),
                     getSilhouettes(), getChannelClasses(), getItemClasses(), getItemSubclasses(),
-                    getSeasons(), getUoms(), getSizes(), getSegments()
+                    getSeasons(), getSizes(), getSegments()
                 ]);
 
                 setMasters({
@@ -199,7 +198,7 @@ export default function ItemEditPage() {
                     itemClasses: itemClasses.data || [],
                     itemSubclasses: itemSubclasses.data || [],
                     seasons: seasons.data || [],
-                    uoms: uoms.data || [],
+                    // uoms removed
                     sizes: sizes.data || [],
                     segments: segments.data || [],
                 });
@@ -243,7 +242,7 @@ export default function ItemEditPage() {
                         channelClassId: item.channelClassId || "",
                         genderId: item.genderId || "",
                         seasonId: item.seasonId || "",
-                        uomId: item.uomId || "",
+                        // uomId removed
                         unitPrice: item.unitPrice || 0,
                         taxRate1: item.taxRate1 || 0,
                         taxRate2: item.taxRate2 || 0,
@@ -313,7 +312,7 @@ export default function ItemEditPage() {
             case 0:
                 return ["brandId", "segmentId", "sku", "itemId", "barCode", "hsCode", "isActive", "description"];
             case 1:
-                return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId", "uomId"];
+                return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId"];
             case 2:
                 return ["unitPrice", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
             case 3:
@@ -578,17 +577,7 @@ export default function ItemEditPage() {
                                                 />
                                             )}
                                         />
-                                        <FormField
-                                            control={form.control}
-                                            name="uomId"
-                                            render={({ field }) => (
-                                                <MasterSelect
-                                                    label="UOM"
-                                                    field={field}
-                                                    options={masters.uoms}
-                                                />
-                                            )}
-                                        />
+                                        {/* UOM removed */}
 
                                     </div>
                                 )}

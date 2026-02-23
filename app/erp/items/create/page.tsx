@@ -36,15 +36,16 @@ import { getChannelClasses } from "@/lib/actions/channel-class";
 import { getItemClasses } from "@/lib/actions/item-class";
 import { getItemSubclasses } from "@/lib/actions/item-subclass";
 import { getSeasons } from "@/lib/actions/season";
-import { getUoms } from "@/lib/actions/uom";
 import { getSizes } from "@/lib/actions/size";
 import { getSegments } from "@/lib/actions/segment";
-import { createItem } from "@/lib/actions/items";
+import { createItem, getNextItemId } from "@/lib/actions/items";
+import { getTaxRates } from "@/lib/actions/tax-rate";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/upload";
 import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // --- Validation Schemas ---
 
@@ -53,7 +54,7 @@ const itemFormSchema = z.object({
     brandId: z.string().min(1, "Brand is required"),
     description: z.string().optional(),
     sku: z.string().min(1, "SKU is required"),
-    itemId: z.string().min(1, "Item ID is required"),
+    // itemId removed (auto-generated)
     barCode: z.string().optional(),
     hsCode: z.string().optional(),
     isActive: z.boolean(),
@@ -68,11 +69,13 @@ const itemFormSchema = z.object({
     channelClassId: z.string().optional(),
     genderId: z.string().optional(),
     seasonId: z.string().optional(),
-    uomId: z.string().optional(),
+    // uomId removed
     segmentId: z.string().optional(),
 
     // Step 3: Pricing & Discount
     unitPrice: z.coerce.number().min(0),
+    fob: z.coerce.number().min(0).optional(),
+    unitCost: z.coerce.number().min(0).optional(),
     taxRate1: z.coerce.number().min(0).optional(),
     taxRate2: z.coerce.number().min(0).optional(),
     discountRate: z.coerce.number().min(0).optional(),
@@ -109,9 +112,10 @@ export default function ItemCreatePage() {
         itemClasses: any[];
         itemSubclasses: any[];
         seasons: any[];
-        uoms: any[];
+        // uoms removed
         sizes: any[];
         segments: any[];
+        taxRates: { id: string; taxRate1: number }[];
     }>({
         brands: [],
         divisions: [],
@@ -123,12 +127,14 @@ export default function ItemCreatePage() {
         itemClasses: [],
         itemSubclasses: [],
         seasons: [],
-        uoms: [],
+        // uoms removed
         sizes: [],
         segments: [],
+        taxRates: [],
     });
 
     const [loading, setLoading] = useState(true);
+    const [nextItemId, setNextItemId] = useState<string>("");
 
     const form = useForm({
         resolver: zodResolver(itemFormSchema),
@@ -136,11 +142,12 @@ export default function ItemCreatePage() {
             brandId: "",
             description: "",
             sku: "",
-            itemId: "",
             barCode: "",
             hsCode: "",
             isActive: true,
             unitPrice: 0,
+            fob: 0,
+            unitCost: 0,
             taxRate1: 0,
             taxRate2: 0,
             discountRate: 0,
@@ -211,7 +218,7 @@ export default function ItemCreatePage() {
         try {
             const blob = await getCroppedBlob(cropSrc, croppedAreaPixels);
             const file = new File([blob], 'item-image.jpg', { type: 'image/jpeg' });
-            
+
             const reader = new FileReader();
             reader.onloadend = () => setImagePreview(reader.result as string);
             reader.readAsDataURL(file);
@@ -234,11 +241,11 @@ export default function ItemCreatePage() {
                 const [
                     brands, divisions, categories, genders, colors,
                     silhouettes, channelClasses, itemClasses, itemSubclasses,
-                    seasons, uoms, sizes, segments
+                    seasons, sizes, segments, nextIdResp, taxRates
                 ] = await Promise.all([
                     getBrands(), getDivisions(), getCategories(), getGenders(), getColors(),
                     getSilhouettes(), getChannelClasses(), getItemClasses(), getItemSubclasses(),
-                    getSeasons(), getUoms(), getSizes(), getSegments()
+                    getSeasons(), getSizes(), getSegments(), getNextItemId(), getTaxRates()
                 ]);
 
                 setMasters({
@@ -252,10 +259,14 @@ export default function ItemCreatePage() {
                     itemClasses: itemClasses.data || [],
                     itemSubclasses: itemSubclasses.data || [],
                     seasons: seasons.data || [],
-                    uoms: uoms.data || [],
+                    // uoms removed
                     sizes: sizes.data || [],
                     segments: segments.data || [],
+                    taxRates: taxRates.data || [],
                 });
+                if (nextIdResp?.status && nextIdResp?.data?.nextId) {
+                    setNextItemId(nextIdResp.data.nextId);
+                }
             } catch (error) {
                 console.error("Failed to fetch masters:", error);
                 toast.error("Failed to load master data");
@@ -302,11 +313,11 @@ export default function ItemCreatePage() {
     const getFieldsForStep = (step: number): (keyof ItemFormValues)[] => {
         switch (step) {
             case 0:
-                return ["brandId", "segmentId", "sku", "itemId", "barCode", "hsCode", "isActive", "description"];
+                return ["brandId", "segmentId", "sku", "barCode", "hsCode", "isActive", "description"];
             case 1:
-                return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId", "uomId"];
+                return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId"];
             case 2:
-                return ["unitPrice", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
+                return ["unitPrice", "fob", "unitCost", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
             case 3:
                 return ["sizeId", "colorId", "silhouetteId", "case", "band", "movementType", "heelHeight", "width"];
             default:
@@ -401,115 +412,110 @@ export default function ItemCreatePage() {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                 <FormField
+
                                                     control={form.control}
-                                                name="brandId"
-                                                render={({ field }) => (
-                                                    <MasterSelect
-                                                        label="Concept (Brand)"
-                                                        field={field}
-                                                        options={masters.brands}
-                                                    />
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="segmentId"
-                                                render={({ field }) => (
-                                                    <MasterSelect
-                                                        label="Segment"
-                                                        field={field}
-                                                        options={masters.segments}
-                                                    />
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="itemId"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Item ID <span className="text-red-500">*</span></FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="Unique Item ID" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="sku"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem>
-                                                        <FormLabel>SKU <span className="text-red-500">*</span></FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="SKU Number" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="barCode"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Barcode</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="EAN / UPC" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="hsCode"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem>
-                                                        <FormLabel>HS Code</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="Harmonized System Code" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="description"
-                                                render={({ field }: { field: any }) => (
-                                                    <FormItem className="col-span-full">
-                                                        <FormLabel>Description</FormLabel>
-                                                        <FormControl>
-                                                            <Textarea placeholder="Detailed product description..." {...field} value={field.value ?? ""} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="isActive"
-                                                render={({ field }) => (
-                                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-full">
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={field.value}
-                                                                onCheckedChange={field.onChange}
-                                                            />
-                                                        </FormControl>
-                                                        <div className="space-y-1 leading-none">
-                                                            <FormLabel>
-                                                                Active Item
-                                                            </FormLabel>
-                                                            <FormDescription>
-                                                                This item will be visible in sales and inventory channels.
-                                                            </FormDescription>
-                                                        </div>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
+                                                    name="segmentId"
+                                                    render={({ field }) => (
+                                                        <MasterSelect
+                                                            label="Segment"
+                                                            field={field}
+                                                            options={masters.segments}
+
+                                                        />
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="brandId"
+                                                    render={({ field }) => (
+                                                        <MasterSelect
+                                                            label="Concept (Brand)"
+                                                            field={field}
+                                                            options={masters.brands}
+                                                        />
+                                                    )}
+                                                />
+                                                <FormItem>
+                                                    <FormLabel>Item ID (Auto)</FormLabel>
+                                                    <FormControl>
+                                                        <Input value={nextItemId || ""} disabled />
+                                                    </FormControl>
+                                                </FormItem>
+                                                <FormField
+                                                    control={form.control}
+                                                    name="sku"
+                                                    render={({ field }: { field: any }) => (
+                                                        <FormItem>
+                                                            <FormLabel>SKU <span className="text-red-500">*</span></FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="SKU Number" {...field} value={field.value ?? ""} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="barCode"
+                                                    render={({ field }: { field: any }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Barcode</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="EAN / UPC" {...field} value={field.value ?? ""} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="hsCode"
+                                                    render={({ field }: { field: any }) => (
+                                                        <FormItem>
+                                                            <FormLabel>HS Code</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="Harmonized System Code" {...field} value={field.value ?? ""} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="description"
+                                                    render={({ field }: { field: any }) => (
+                                                        <FormItem className="col-span-full">
+                                                            <FormLabel>Description</FormLabel>
+                                                            <FormControl>
+                                                                <Textarea placeholder="Detailed product description..." {...field} value={field.value ?? ""} />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="isActive"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 col-span-full">
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                />
+                                                            </FormControl>
+                                                            <div className="space-y-1 leading-none">
+                                                                <FormLabel>
+                                                                    Active Item
+                                                                </FormLabel>
+                                                                <FormDescription>
+                                                                    This item will be visible in sales and inventory channels.
+                                                                </FormDescription>
+                                                            </div>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
                                         </>
                                     )}
 
@@ -607,17 +613,7 @@ export default function ItemCreatePage() {
                                                     />
                                                 )}
                                             />
-                                            <FormField
-                                                control={form.control}
-                                                name="uomId"
-                                                render={({ field }) => (
-                                                    <MasterSelect
-                                                        label="UOM"
-                                                        field={field}
-                                                        options={masters.uoms}
-                                                    />
-                                                )}
-                                            />
+                                            {/* UOM removed */}
 
                                         </div>
                                     )}
@@ -640,13 +636,53 @@ export default function ItemCreatePage() {
                                             />
                                             <FormField
                                                 control={form.control}
+                                                name="fob"
+                                                render={({ field }: { field: any }) => (
+                                                    <FormItem>
+                                                        <FormLabel>FOB</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" {...field} value={field.value ?? ""} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="unitCost"
+                                                render={({ field }: { field: any }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Unit Cost</FormLabel>
+                                                        <FormControl>
+                                                            <Input type="number" {...field} value={field.value ?? ""} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
                                                 name="taxRate1"
                                                 render={({ field }: { field: any }) => (
                                                     <FormItem>
                                                         <FormLabel>Tax Rate 1 (%)</FormLabel>
-                                                        <FormControl>
-                                                            <Input type="number" {...field} value={field.value ?? ""} />
-                                                        </FormControl>
+                                                        <Select
+                                                            value={field.value !== undefined && field.value !== null ? String(field.value) : ""}
+                                                            onValueChange={(val) => field.onChange(Number(val))}
+                                                        >
+                                                            <FormControl>
+                                                                <SelectTrigger>
+                                                                    <SelectValue placeholder="Select Tax Rate 1" />
+                                                                </SelectTrigger>
+                                                            </FormControl>
+                                                            <SelectContent>
+                                                                {masters.taxRates.map((tr) => (
+                                                                    <SelectItem key={tr.id} value={String(tr.taxRate1)}>
+                                                                        {tr.taxRate1}%
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </SelectContent>
+                                                        </Select>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
@@ -889,7 +925,7 @@ export default function ItemCreatePage() {
                                                 </div>
                                                 <div className="border p-3 rounded-md bg-white">
                                                     <Label className="text-muted-foreground text-xs">Item ID</Label>
-                                                    <div className="font-medium">{form.getValues("itemId")}</div>
+                                                    <div className="font-medium">{nextItemId}</div>
                                                 </div>
                                                 <div className="border p-3 rounded-md bg-white">
                                                     <Label className="text-muted-foreground text-xs">SKU</Label>

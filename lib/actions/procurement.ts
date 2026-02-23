@@ -50,7 +50,10 @@ export async function updateVendor(id: string, data: any) {
 
         const response = await authFetch(`/finance/suppliers/${id}`, {
             method: "PATCH",
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                ...payload,
+                chartOfAccountId: undefined, // ensure we don't send the old key
+            }),
         });
 
         const result = await response.json();
@@ -93,7 +96,10 @@ export async function createVendor(data: any) {
 
         const response = await authFetch("/finance/suppliers", {
             method: "POST",
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                ...payload,
+                chartOfAccountId: undefined,
+            }),
         });
 
         const result = await response.json();

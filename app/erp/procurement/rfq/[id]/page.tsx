@@ -78,7 +78,6 @@ export default async function RfqDetail({ params }: { params: Promise<{ id: stri
                                 <TableHead>Item ID</TableHead>
                                 <TableHead>Description</TableHead>
                                 <TableHead>Qty</TableHead>
-                                <TableHead>Needed By</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -87,7 +86,6 @@ export default async function RfqDetail({ params }: { params: Promise<{ id: stri
                                     <TableCell className="font-medium">{item.itemId}</TableCell>
                                     <TableCell>{item.description || '-'}</TableCell>
                                     <TableCell>{item.requiredQty}</TableCell>
-                                    <TableCell>{item.neededByDate ? new Date(item.neededByDate).toLocaleDateString() : '-'}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

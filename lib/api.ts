@@ -247,7 +247,6 @@ export interface SubDepartment {
 export interface PurchaseRequisition {
   id: string;
   prNumber: string;
-  requestedBy: string;
   department?: string;
   requestDate: string;
   status: string;
@@ -260,9 +259,7 @@ export interface PurchaseRequisition {
 export interface PurchaseRequisitionItem {
   id: string;
   itemId: string;
-  description?: string;
   requiredQty: string;
-  neededByDate?: string;
 }
 
 export const purchaseRequisitionApi = {
@@ -342,12 +339,13 @@ export interface MasterItem {
   name?: string;
   code?: string;
   unitPrice?: number;
+  fob?: number;
+  unitCost?: number;
   taxRate1?: number;
   taxRate2?: number;
   discountRate?: number;
   itemClass?: { name: string };
   itemSubclass?: { name: string };
-  uom?: { name: string };
   description?: string;
 }
 
@@ -375,6 +373,7 @@ export interface VendorQuotation {
   rfqId: string;
   vendorId: string;
   quotationDate: string;
+  expiryDate?: string;
   status: string;
   subtotal: string;
   taxAmount: string;
@@ -462,6 +461,7 @@ export const purchaseOrderApi = {
   create: (data: {
     vendorQuotationId?: string;
     vendorId?: string;
+    purchaseRequisitionId?: string;
     items?: {
       itemId: string;
       description?: string;
@@ -474,6 +474,38 @@ export const purchaseOrderApi = {
     expectedDeliveryDate?: string;
   }) =>
     fetchApi<PurchaseOrder>('/purchase-order', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  awardFromRfq: (data: {
+    rfqId: string;
+    awards: {
+      vendorQuotationId: string;
+      items: { itemId: string; quantity: number }[];
+      notes?: string;
+      expectedDeliveryDate?: string;
+    }[];
+  }) =>
+    fetchApi<PurchaseOrder[]>('/purchase-order/award-from-rfq', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  createMultiDirect: (data: {
+    awards: {
+      vendorId: string;
+      items: {
+        itemId: string;
+        description?: string;
+        quantity: number;
+        unitPrice: number;
+        taxPercent?: number;
+        discountPercent?: number;
+      }[];
+      notes?: string;
+      expectedDeliveryDate?: string;
+    }[];
+  }) =>
+    fetchApi<PurchaseOrder[]>('/purchase-order/multi-direct', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -536,6 +568,52 @@ export const grnApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+};
+
+// Landed Cost API
+export interface LandedCostCharge {
+  accountId: string;
+  amount: number;
+}
+
+export const landedCostApi = {
+  post: (data: { grnId: string; charges?: LandedCostCharge[]; inventoryAccountId?: string }) =>
+    fetchApi<{ status: boolean; grnId: string; grnStatus: string; journalVoucherId?: string; stockEntriesCreated: number }>(
+      '/landed-cost/post',
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+};
+
+// Landed Cost Charge Types (client-side)
+export interface LandedCostChargeType {
+  id: string;
+  name: string;
+  accountId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  account?: { id: string; name: string; code: string; type: string };
+}
+export const landedCostChargeTypeApi = {
+  getAll: () => fetchApi<{ status: boolean; data: LandedCostChargeType[] }>('/landed-cost/charge-types'),
+  create: (data: { name: string; accountId: string }) =>
+    fetchApi<{ status: boolean; data: LandedCostChargeType }>('/landed-cost/charge-types', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+// Chart of Accounts API (client-side)
+export interface ChartOfAccount {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  isGroup: boolean;
+}
+
+export const chartOfAccountApi = {
+  getAll: () => fetchApi<ChartOfAccount[]>('/finance/chart-of-accounts'),
 };
 
 export const warehouseApi = {

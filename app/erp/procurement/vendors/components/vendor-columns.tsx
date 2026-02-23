@@ -22,10 +22,10 @@ export type VendorRow = {
   address?: string;
   nature?: string;
   brand?: string;
-  chartOfAccount?: {
+  chartOfAccounts?: {
     code: string;
     name: string;
-  };
+  }[];
 };
 
 export const columns: ColumnDef<VendorRow>[] = [

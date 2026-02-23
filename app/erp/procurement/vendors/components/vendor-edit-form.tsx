@@ -23,6 +23,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Autocomplete } from "@/components/ui/autocomplete";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 interface VendorEditFormProps {
     vendor: any;
@@ -49,7 +50,7 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
             pra: vendor.praNo || "",
             ict: vendor.ictNo || "",
             brand: vendor.brand || "",
-            chartOfAccountId: vendor.chartOfAccountId || "",
+            chartOfAccountIds: vendor.chartOfAccounts ? vendor.chartOfAccounts.map((acc: any) => acc.id) : (vendor.chartOfAccountId ? [vendor.chartOfAccountId] : []),
         },
     });
 
@@ -78,7 +79,7 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to List
             </Button>
-            
+
             <Card className="w-full">
                 <CardHeader className="border-b flex flex-row items-center justify-between">
                     <CardTitle>Edit Vendor</CardTitle>
@@ -135,22 +136,22 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">Chart of Account <span className="text-destructive">*</span></Label>
                             <Controller
                                 control={form.control}
-                                name="chartOfAccountId"
+                                name="chartOfAccountIds"
                                 render={({ field }) => (
-                                    <Autocomplete
+                                    <MultiSelect
                                         options={accounts.map((acc) => ({
                                             value: acc.id,
                                             label: `${acc.code} - ${acc.name}`,
                                         }))}
                                         value={field.value}
                                         onValueChange={field.onChange}
-                                        placeholder="Select Account"
-                                        searchPlaceholder="Search account..."
+                                        placeholder="Select Accounts"
+                                        searchPlaceholder="Search accounts..."
                                     />
                                 )}
                             />
-                            {form.formState.errors.chartOfAccountId && (
-                                <p className="text-xs text-destructive">{form.formState.errors.chartOfAccountId.message}</p>
+                            {form.formState.errors.chartOfAccountIds && (
+                                <p className="text-xs text-destructive">{form.formState.errors.chartOfAccountIds.message}</p>
                             )}
                         </div>
 
