@@ -344,6 +344,12 @@ export interface MasterItem {
   taxRate1?: number;
   taxRate2?: number;
   discountRate?: number;
+  hsCodeId?: string;
+  hsCodeStr?: string;
+  hsCode?: HsCode;
+  brand?: { name: string };
+  category?: { name: string };
+  division?: { name: string };
   itemClass?: { name: string };
   itemSubclass?: { name: string };
   description?: string;
@@ -352,6 +358,7 @@ export interface MasterItem {
 export const itemApi = {
   getAll: () => fetchApi<{ status: boolean; data: MasterItem[] }>('/finance/items'),
   getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/finance/items/${id}`),
+  getByCode: (code: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/finance/items/code/${code}`),
 };
 
 
@@ -570,19 +577,70 @@ export const grnApi = {
     }),
 };
 
+// HS Code API
+export interface HsCode {
+  id: string;
+  hsCode: string;
+  customsDutyCd: number;
+  regulatoryDutyRd: number;
+  additionalCustomsDutyAcd: number;
+  salesTax: number;
+  additionalSalesTax: number;
+  incomeTax: number;
+  status: string;
+}
+
+export const hsCodeApi = {
+  getAll: () => fetchApi<{ status: boolean; data: HsCode[] }>('/hs-codes'),
+  getById: (id: string) => fetchApi<{ status: boolean; data: HsCode }>(`/hs-codes/${id}`),
+};
+
 // Landed Cost API
+export interface LandedCostItem {
+  itemId: string;
+  hsCode?: string;
+  qty: number;
+  unitFob: number;
+  freightForeign: number;
+  insuranceCharges: number;
+  landingCharges: number;
+  assessableValue: number;
+  unitCostPKR: number;
+  totalCostPKR: number;
+}
+
 export interface LandedCostCharge {
   accountId: string;
   amount: number;
+  description?: string;
+}
+
+export interface CreateLandedCostDto {
+  grnId: string;
+  supplierId: string;
+  purchaseOrderId?: string;
+  lcNo?: string;
+  blNo?: string;
+  blDate?: string;
+  countryOfOrigin?: string;
+  gdNo?: string;
+  gdDate?: string;
+  season?: string;
+  category?: string;
+  shippingInvoiceNo?: string;
+  currency: string;
+  exchangeRate: number;
+  items: LandedCostItem[];
+  charges?: LandedCostCharge[];
 }
 
 export const landedCostApi = {
-  post: (data: { grnId: string; charges?: LandedCostCharge[]; inventoryAccountId?: string }) =>
-    fetchApi<{ status: boolean; grnId: string; grnStatus: string; journalVoucherId?: string; stockEntriesCreated: number }>(
-      '/landed-cost/post',
-      { method: 'POST', body: JSON.stringify(data) }
-    ),
+  create: (data: CreateLandedCostDto) =>
+    fetchApi<any>('/landed-cost', { method: 'POST', body: JSON.stringify(data) }),
+  getAll: () => fetchApi<any[]>('/landed-cost'),
+  listChargeTypes: () => fetchApi<{ status: boolean; data: LandedCostChargeType[] }>('/landed-cost/charge-types'),
 };
+
 
 // Landed Cost Charge Types (client-side)
 export interface LandedCostChargeType {
@@ -602,6 +660,7 @@ export const landedCostChargeTypeApi = {
       body: JSON.stringify(data),
     }),
 };
+
 
 // Chart of Accounts API (client-side)
 export interface ChartOfAccount {

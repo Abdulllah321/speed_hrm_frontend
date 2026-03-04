@@ -1,31 +1,82 @@
 import { NextResponse } from "next/server";
-import { getAccessToken } from "@/lib/auth";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
+import { authFetch } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const token = await getAccessToken();
-    const headers: HeadersInit = {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-    const [depts, grades, designations, marital, statuses, locations, states, equipments, workingHours, leaves, qualifications, institutes, socialSecurity, allocations] = await Promise.all([
-      fetch(`${API_BASE}/departments`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/employee-grades`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/designations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/marital-statuses`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/employee-statuses`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/locations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/states`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/equipments`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/working-hours-policies`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/leaves-policies`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/qualifications`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/institutes`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/social-security-institutions`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
-      fetch(`${API_BASE}/allocations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
+    const options = { cache: "no-store" };
+    const [
+      depts,
+      grades,
+      designations,
+      marital,
+      statuses,
+      locations,
+      states,
+      equipments,
+      workingHours,
+      leaves,
+      qualifications,
+      institutes,
+      socialSecurity,
+      allocations,
+    ] = await Promise.all([
+      authFetch("/departments", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/employee-grades", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/designations", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/marital-statuses", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/employee-statuses", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/locations", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/states", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/equipments", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/working-hours-policies", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/leaves-policies", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/qualifications", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/institutes", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/social-security-institutions", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
+      authFetch("/allocations", options)
+        .then((r) => r.json())
+        .catch(() => ({ status: false, data: [] })),
     ]);
-    console.log(`[API Data] socialSecurityInstitutions length: ${socialSecurity.data?.length || 0}`);
+
+    console.log("--- Employee Create Page Data Fetch ---");
+    console.log(`Departments: ${depts.data?.length || 0}`);
+    console.log(`Grades: ${grades.data?.length || 0}`);
+    console.log(`Designations: ${designations.data?.length || 0}`);
+    console.log(`Locations: ${locations.data?.length || 0}`);
+    console.log(`Allocations: ${allocations.data?.length || 0}`);
+    if (allocations.data?.length > 0) {
+      console.log("Allocation Sample:", allocations.data[0]);
+    } else {
+      console.log("Allocations data is EMPTY from backend");
+      console.log("Full Allocations Response:", allocations);
+    }
+    console.log("---------------------------------------");
 
     return NextResponse.json({
       status: true,

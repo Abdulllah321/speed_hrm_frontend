@@ -84,7 +84,7 @@ export default function CreateDirectPurchaseOrder() {
 
         // Map PR items to Order Items
         const newItems = pr.items.map(prItem => {
-            const masterItem = items.find(i => i.id === prItem.itemId || i.itemId === prItem.itemId);
+            const masterItem = items.find(i => i.itemId === prItem.itemId);
             const qty = parseFloat(prItem.requiredQty);
             const price = masterItem?.unitPrice || 0;
             const tax = masterItem?.taxRate1 || 0;
@@ -107,9 +107,9 @@ export default function CreateDirectPurchaseOrder() {
         if (pr.notes) setNotes(prev => prev ? `${prev}\nPR Notes: ${pr.notes}` : `PR Notes: ${pr.notes}`);
     };
 
-    const handleItemSelect = (itemId: string) => {
-        setCurrentItemId(itemId);
-        const selectedItem = items.find(i => i.id === itemId || i.itemId === itemId);
+    const handleItemSelect = (itemIdValue: string) => {
+        setCurrentItemId(itemIdValue);
+        const selectedItem = items.find(i => i.itemId === itemIdValue);
         if (selectedItem) {
             setCurrentPrice(selectedItem.unitPrice?.toString() || '');
             setCurrentTax(selectedItem.taxRate1?.toString() || '0');
@@ -123,7 +123,7 @@ export default function CreateDirectPurchaseOrder() {
             return;
         }
 
-        const selectedItem = items.find(i => i.id === currentItemId);
+        const selectedItem = items.find(i => i.itemId === currentItemId);
         if (!selectedItem) return;
 
         const qty = parseFloat(currentQty);
@@ -360,7 +360,7 @@ export default function CreateDirectPurchaseOrder() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {items.map((item) => (
-                                            <SelectItem key={item.id} value={item.id}>
+                                            <SelectItem key={item.id} value={item.itemId}>
                                                 {item.sku || item.itemId} {item.description ? `- ${item.description}` : ''}
                                             </SelectItem>
                                         ))}

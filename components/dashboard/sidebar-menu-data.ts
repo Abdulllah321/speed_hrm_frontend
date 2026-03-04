@@ -105,6 +105,15 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
+    title: "HS Code",
+    environment: "ERP",
+    permissions: ["hs-code.read", "hs-code.create"],
+    children: [
+      { title: "Add", href: "/master/hs-code/add" },
+      { title: "View", href: "/master/hs-code/list" },
+    ],
+  },
+  {
     title: "Season",
     environment: "ERP",
     permissions: ["erp.season.read", "erp.season.create"],
