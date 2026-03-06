@@ -41,6 +41,7 @@ export default function CreateDirectPurchaseOrder() {
     const [expectedDeliveryDate, setExpectedDeliveryDate] = useState<string>('');
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
     const [multiVendorMode, setMultiVendorMode] = useState<boolean>(false);
+    const [vendorTypeFilter, setVendorTypeFilter] = useState<'all' | 'local' | 'import'>('all');
 
     // Item Input State
     const [currentItemId, setCurrentItemId] = useState<string>('');
@@ -309,18 +310,38 @@ export default function CreateDirectPurchaseOrder() {
                         {!multiVendorMode && (
                         <div className="space-y-2">
                             <Label>Vendor</Label>
-                            <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Vendor" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {vendors.map((vendor) => (
-                                        <SelectItem key={vendor.id} value={vendor.id}>
-                                            {vendor.name} ({vendor.code})
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="flex gap-2">
+                                <Select value={vendorTypeFilter} onValueChange={(v: any) => setVendorTypeFilter(v)}>
+                                    <SelectTrigger className="w-32">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Types</SelectItem>
+                                        <SelectItem value="local">Local</SelectItem>
+                                        <SelectItem value="import">Import</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                                    <SelectTrigger className="flex-1">
+                                        <SelectValue placeholder="Select Vendor" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {vendors
+                                            .filter(v => {
+                                                if (vendorTypeFilter === 'all') return true;
+                                                if (vendorTypeFilter === 'local') return v.type === 'LOCAL' || !v.type;
+                                                if (vendorTypeFilter === 'import') return v.type === 'IMPORT' || v.type === 'INTERNATIONAL';
+                                                return true;
+                                            })
+                                            .map((vendor) => (
+                                                <SelectItem key={vendor.id} value={vendor.id}>
+                                                    {vendor.name} ({vendor.code})
+                                                </SelectItem>
+                                            ))
+                                        }
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                         )}
 
@@ -432,7 +453,7 @@ export default function CreateDirectPurchaseOrder() {
                             <Table>
                                 <TableHeader>
                                     <TableRow>
-                                        <TableHead>Item</TableHead>
+                                        <TableHead>Item SKU</TableHead>
                                         <TableHead>Vendor</TableHead>
                                         <TableHead className="text-right">Qty</TableHead>
                                         <TableHead className="text-right">Price</TableHead>
@@ -453,7 +474,6 @@ export default function CreateDirectPurchaseOrder() {
                                             <TableRow key={index}>
                                                 <TableCell>
                                                     <div className="font-medium">{item.itemName}</div>
-                                                    <div className="text-xs text-muted-foreground">{item.description}</div>
                                                 </TableCell>
                                             <TableCell>
                                                 {multiVendorMode ? (
@@ -477,7 +497,9 @@ export default function CreateDirectPurchaseOrder() {
                                                         </SelectContent>
                                                     </Select>
                                                 ) : (
-                                                    <span className="text-muted-foreground">Uses top vendor</span>
+                                                    <span className="text-muted-foreground">
+                                                        {vendors.find(v => v.id === selectedVendorId)?.name || 'Select vendor above'}
+                                                    </span>
                                                 )}
                                             </TableCell>
                                             <TableCell className="text-right">

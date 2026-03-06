@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,10 +22,13 @@ import {
 import { getVendors } from '@/lib/actions/procurement';
 import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calculator, Save } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface LocalItem {
   itemId: string;
   itemName: string;
+  sku: string;
+  description: string;
   hsCodeId?: string;
   qty: number;
   unitFob: number;
@@ -52,6 +55,7 @@ interface LocalItem {
   incomeTaxAmount: number;
 
   otherChargesPKR: number;
+  totalOtherCharges: number;
   unitCostPKR: number;
   totalCostPKR: number;
   dutyPaidValue: number;
@@ -72,10 +76,24 @@ interface LocalItem {
   misDoThcDate: string;
   misInsurancePolicyNo: string;
   misClgFwdBillNo: string;
+  // Excise (calculated from HS Code like CD/RD/ACD)
+  exciseChargesRate: number;
+  exciseChargesAmount: number;
+  // Shipment Metadata
+  lcNo: string;
+  blNo: string;
+  blDate: string;
+  gdNo: string;
+  origin: string;
+  season: string;
+  category: string;
+  shippingInv: string;
+  invDate: string;
 }
 
 export default function LandedCostSetupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
   // Data State
@@ -91,11 +109,11 @@ export default function LandedCostSetupPage() {
   const [blNo, setBlNo] = useState('');
   const [blDate, setBlDate] = useState('');
   const [gdNo, setGdNo] = useState('');
-  const [gdDate, setGdDate] = useState('');
   const [countryOfOrigin, setCountryOfOrigin] = useState('');
   const [season, setSeason] = useState('');
   const [category, setCategory] = useState('');
   const [shippingInvoiceNo, setShippingInvoiceNo] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [exchangeRate, setExchangeRate] = useState(280);
   const [totalFreight, setTotalFreight] = useState(0);
@@ -119,6 +137,7 @@ export default function LandedCostSetupPage() {
   const [clgFwdCharges, setClgFwdCharges] = useState(0);
   const [clgFwdBillNo, setClgFwdBillNo] = useState('');
 
+
   const [items, setItems] = useState<LocalItem[]>([]);
 
   useEffect(() => {
@@ -127,7 +146,8 @@ export default function LandedCostSetupPage() {
 
   useEffect(() => {
     calculateTotals();
-  }, [totalFreight, totalInvoiceValue, freightUSD, freightPKR, doThcCharges, bankCharges, mInsuranceCharges, clgFwdCharges, exchangeRate]);
+  }, [totalFreight, totalInvoiceValue, freightUSD, freightPKR, doThcCharges, bankCharges, mInsuranceCharges, clgFwdCharges, exchangeRate,
+    lcNo, blNo, blDate, gdNo, countryOfOrigin, season, category, shippingInvoiceNo, invoiceDate]);
 
   useEffect(() => {
     console.log('GRNs state updated:', grns);
@@ -147,6 +167,15 @@ export default function LandedCostSetupPage() {
       if (vendorsRes?.data) setVendors(vendorsRes.data);
       if (hsRes?.data) setHsCodes(hsRes.data);
       if (ctRes?.data) setChargeTypes(ctRes.data);
+
+      // Auto-select GRN from query parameter
+      const grnIdFromUrl = searchParams.get('grnId');
+      if (grnIdFromUrl) {
+        const foundGrn = grnData.find((g: any) => g.id === grnIdFromUrl);
+        if (foundGrn) {
+          setTimeout(() => onGrnChange(grnIdFromUrl), 500);
+        }
+      }
     } catch (err) {
       toast.error('Failed to load initial data');
     }
@@ -180,6 +209,8 @@ export default function LandedCostSetupPage() {
         return {
           itemId: gi.itemId,
           itemName: gi.itemId, // Temporary
+          sku: '',
+          description: gi.description || '',
           qty: parseFloat(String(gi.receivedQty || 0)),
           unitFob: unitFob,
           invoiceForeign: 0,
@@ -221,6 +252,17 @@ export default function LandedCostSetupPage() {
           misDoThcDate: '',
           misInsurancePolicyNo: '',
           misClgFwdBillNo: '',
+          exciseChargesRate: 0,
+          exciseChargesAmount: 0,
+          lcNo: '',
+          blNo: '',
+          blDate: '',
+          gdNo: '',
+          origin: '',
+          season: '',
+          category: '',
+          shippingInv: '',
+          invDate: '',
         };
       });
 
@@ -246,7 +288,7 @@ export default function LandedCostSetupPage() {
 
           if (itemMaster) {
             const itemHsCode = (itemMaster.hsCode as any)?.hsCode || itemMaster.hsCodeStr;
-            let rates = { cd: 0, rd: 0, acd: 0, st: 0, ast: 0, it: 0 };
+            let rates = { cd: 0, rd: 0, acd: 0, st: 0, ast: 0, it: 0, excise: 0 };
             let hsCodeId = '';
 
             if (itemHsCode) {
@@ -259,14 +301,18 @@ export default function LandedCostSetupPage() {
                   acd: matchedHs.additionalCustomsDutyAcd,
                   st: matchedHs.salesTax,
                   ast: matchedHs.additionalSalesTax,
-                  it: matchedHs.incomeTax
+                  it: matchedHs.incomeTax,
+                  excise: matchedHs.exciseCharges
                 };
               }
             }
 
             const updatedItem: LocalItem = {
               ...item,
-              itemName: itemMaster?.sku || itemMaster?.itemId || item.itemId,
+              itemName: itemMaster?.name || itemMaster?.sku || itemMaster?.itemId || item.itemId,
+              sku: itemMaster?.sku || itemMaster?.itemId || item.itemId,
+              description: itemMaster?.description || item.description || '',
+              category: itemMaster?.category?.name || '',
               hsCodeId: hsCodeId,
               customsDutyRate: rates.cd,
               regulatoryDutyRate: rates.rd,
@@ -274,6 +320,7 @@ export default function LandedCostSetupPage() {
               salesTaxRate: rates.st,
               additionalSalesTaxRate: rates.ast,
               incomeTaxRate: rates.it,
+              exciseChargesRate: rates.excise,
             };
             return updatedItem;
           }
@@ -367,13 +414,15 @@ export default function LandedCostSetupPage() {
       const misInsurance = mInsuranceCharges * distributionRatio;
       const misClgFwd = clgFwdCharges * distributionRatio;
 
-      const otherChargesShare = misFreight + misDoThc + misBank + misInsurance + misClgFwd;
+      // excise Charges (calculated from HS Code like CD/RD/ACD)
+      const exciseAmount = (assessableValue * item.exciseChargesRate) / 100;
 
-      // 11. Total Duty Amount (Sum of all taxes)
-      const totalDutyAmount = cdAmount + rdAmount + acdAmount + stAmount + astAmount + itAmount;
+      // 11. Total Duty Amount (Sum of all taxes + excise)
+      const totalDutyAmount = cdAmount + rdAmount + acdAmount + stAmount + astAmount + itAmount + exciseAmount;
 
-      // 12. Total Cost PKR
-      const totalCostPKR = assessableValue + totalDutyAmount + otherChargesShare;
+      // 12. Total Cost PKR (Formula requested by user: Inv PKR + CD + RD + ACD + Excise)
+      const baseInvoicePKR = invoiceForeign * exchangeRate;
+      const totalCostPKR = baseInvoicePKR + cdAmount + rdAmount + acdAmount + exciseAmount;
       const unitCostPKR = item.qty > 0 ? totalCostPKR / item.qty : 0;
 
       return {
@@ -400,13 +449,24 @@ export default function LandedCostSetupPage() {
         misBankPKR: misBank,
         misInsurancePKR: misInsurance,
         misClgFwdPKR: misClgFwd,
+        totalOtherCharges: misFreight + misDoThc + misBank + misInsurance + misClgFwd,
         misFreightInvNo: freightInvNo,
         misFreightDate: freightDate,
         misDoThcPoNo: doThcPoNo,
         misDoThcDate: doThcDate,
         misInsurancePolicyNo: mInsurancePolicyNo,
         misClgFwdBillNo: clgFwdBillNo,
-        otherChargesPKR: otherChargesShare,
+        exciseChargesAmount: exciseAmount,
+        // Shipment Metadata
+        lcNo: lcNo,
+        blNo: blNo,
+        blDate: blDate,
+        gdNo: gdNo,
+        origin: countryOfOrigin,
+        season: season,
+        category: category,
+        shippingInv: shippingInvoiceNo,
+        invDate: invoiceDate,
         unitCostPKR,
         totalCostPKR
       };
@@ -427,6 +487,7 @@ export default function LandedCostSetupPage() {
         newItems[index].salesTaxRate = Number(hsc.salesTax);
         newItems[index].additionalSalesTaxRate = Number(hsc.additionalSalesTax);
         newItems[index].incomeTaxRate = Number(hsc.incomeTax);
+        newItems[index].exciseChargesRate = Number(hsc.exciseCharges);
       }
     }
 
@@ -448,43 +509,73 @@ export default function LandedCostSetupPage() {
         blNo,
         blDate: blDate || undefined,
         gdNo,
-        gdDate: gdDate || undefined,
         countryOfOrigin,
         season,
         category,
         shippingInvoiceNo,
         currency,
         exchangeRate,
-        items: items.map(i => ({
-          itemId: i.itemId,
-          hsCode: i.hsCodeId,
-          qty: i.qty,
-          unitFob: i.unitFob,
-          freightForeign: i.freightForeign,
-          insuranceCharges: i.insuranceCharges,
-          landingCharges: i.landingCharges,
-          assessableValue: i.assessableValue,
-          customsDutyRate: i.customsDutyRate,
-          customsDutyAmount: i.customsDutyAmount,
-          regulatoryDutyRate: i.regulatoryDutyRate,
-          regulatoryDutyAmount: i.regulatoryDutyAmount,
-          additionalCustomsDutyRate: i.additionalCustomsDutyRate,
-          additionalCustomsDutyAmount: i.additionalCustomsDutyAmount,
-          salesTaxRate: i.salesTaxRate,
-          salesTaxAmount: i.salesTaxAmount,
-          additionalSalesTaxRate: i.additionalSalesTaxRate,
-          additionalSalesTaxAmount: i.additionalSalesTaxAmount,
-          incomeTaxRate: i.incomeTaxRate,
-          incomeTaxAmount: i.incomeTaxAmount,
-          otherChargesPKR: i.otherChargesPKR,
-          unitCostPKR: i.unitCostPKR,
-          totalCostPKR: i.totalCostPKR
-        }))
+        // MIS Header Fields
+        freightUSD,
+        freightPKR,
+        freightInvNo,
+        freightDate,
+        doThcCharges,
+        doThcPoNo,
+        doThcDate,
+        bankCharges,
+        insuranceChargesH: mInsuranceCharges,
+        insurancePolicyNo: mInsurancePolicyNo,
+        clgFwdCharges,
+        clgFwdBillNo,
+        items: items.map(i => {
+          const hsCodeObj = hsCodes.find(h => h.id === i.hsCodeId);
+          return {
+            itemId: i.itemId,
+            sku: i.sku,
+            description: i.description,
+            hsCode: hsCodeObj?.hsCode || '', // Send the actual string (e.g. "8414.1000")
+            qty: i.qty,
+            unitFob: i.unitFob,
+            freightForeign: i.freightForeign,
+            insuranceCharges: i.insuranceCharges,
+            landingCharges: i.landingCharges,
+            assessableValue: i.assessableValue,
+            customsDutyRate: i.customsDutyRate,
+            customsDutyAmount: i.customsDutyAmount,
+            regulatoryDutyRate: i.regulatoryDutyRate,
+            regulatoryDutyAmount: i.regulatoryDutyAmount,
+            additionalCustomsDutyRate: i.additionalCustomsDutyRate,
+            additionalCustomsDutyAmount: i.additionalCustomsDutyAmount,
+            salesTaxRate: i.salesTaxRate,
+            salesTaxAmount: i.salesTaxAmount,
+            additionalSalesTaxRate: i.additionalSalesTaxRate,
+            additionalSalesTaxAmount: i.additionalSalesTaxAmount,
+            incomeTaxRate: i.incomeTaxRate,
+            incomeTaxAmount: i.incomeTaxAmount,
+            exciseChargesAmount: i.exciseChargesAmount,
+            unitCostPKR: i.unitCostPKR,
+            totalCostPKR: i.totalCostPKR,
+            // MIS Item Shares
+            misFreightUSD: i.misFreightUSD,
+            misFreightPKR: i.misFreightPKR,
+            misDoThcPKR: i.misDoThcPKR,
+            misBankPKR: i.misBankPKR,
+            misInsurancePKR: i.misInsurancePKR,
+            misClgFwdPKR: i.misClgFwdPKR,
+            misFreightInvNo: i.misFreightInvNo || freightInvNo,
+            misFreightDate: i.misFreightDate || freightDate,
+            misDoThcPoNo: i.misDoThcPoNo || doThcPoNo,
+            misDoThcDate: i.misDoThcDate || doThcDate,
+            misInsurancePolicyNo: i.misInsurancePolicyNo || mInsurancePolicyNo,
+            misClgFwdBillNo: i.misClgFwdBillNo || clgFwdBillNo,
+          };
+        })
       };
 
-      await landedCostApi.create(payload);
+      const res = await landedCostApi.create(payload);
       toast.success('Landed Cost values posted successfully');
-      router.push('/erp/inventory/transactions/stock-received'); // Go back to GRN list
+      router.push(`/erp/procurement/landed-cost/report/${res.id}`); // View report
     } catch (err: any) {
       toast.error(err.message || 'Submission failed');
     } finally {
@@ -506,83 +597,97 @@ export default function LandedCostSetupPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="md:col-span-1">
-          <CardHeader><CardTitle className="text-lg">Header Info</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <Label>Select GRN</Label>
-              <Select value={grnId} onValueChange={onGrnChange}>
-                <SelectTrigger><SelectValue placeholder="Select GRN" /></SelectTrigger>
-                <SelectContent>
-                  {grns.map(g => <SelectItem key={g.id} value={g.id}>{g.grnNumber}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Supplier</Label>
-              <Select value={supplierId} onValueChange={setSupplierId}>
-                <SelectTrigger><SelectValue placeholder="Select Supplier" /></SelectTrigger>
-                <SelectContent>
-                  {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
+      <Card>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Header Info Section */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold border-b pb-2">Header Info</h3>
               <div>
-                <Label>Currency</Label>
-                <Input value={currency} onChange={e => setCurrency(e.target.value)} />
+                <Label>Select GRN</Label>
+                <Select value={grnId} onValueChange={onGrnChange}>
+                  <SelectTrigger><SelectValue placeholder="Select GRN" /></SelectTrigger>
+                  <SelectContent>
+                    {grns.map(g => <SelectItem key={g.id} value={g.id}>{g.grnNumber}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
-                <Label>Ex. Rate</Label>
-                <Input type="number" value={exchangeRate} onChange={e => setExchangeRate(Number(e.target.value))} />
+                <Label>Supplier</Label>
+                <Select value={supplierId} onValueChange={setSupplierId}>
+                  <SelectTrigger><SelectValue placeholder="Select Supplier" /></SelectTrigger>
+                  <SelectContent>
+                    {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-            <div>
-              <Label>Total Freight ({currency})</Label>
-              <Input type="number" value={totalFreight} onChange={e => setTotalFreight(Number(e.target.value))} />
-            </div>
-            <div>
-              <Label>Total Invoice Value ({currency})</Label>
-              <Input type="number" value={totalInvoiceValue} onChange={e => setTotalInvoiceValue(Number(e.target.value))} />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardHeader className="pb-2"><CardTitle className="text-lg">Other Charges (MIS Detail)</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            {/* Freight Section */}
-            <div className="border p-2 rounded bg-gray-50">
-              <p className="text-xs font-bold text-green-700 mb-1">Freight</p>
-              <div className="grid grid-cols-4 gap-2">
-                <div><Label className="text-[10px]">US$ ($)</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-7 text-xs" /></div>
-                <div><Label className="text-[10px]">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-7 text-xs" /></div>
-                <div><Label className="text-[10px]">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-7 text-xs" /></div>
-                <div><Label className="text-[10px]">Date</Label><Input type="date" value={freightDate} onChange={e => setFreightDate(e.target.value)} className="h-7 text-xs" /></div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Currency</Label>
+                  <Input value={currency} onChange={e => setCurrency(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Ex. Rate</Label>
+                  <Input type="number" value={exchangeRate} onChange={e => setExchangeRate(Number(e.target.value))} />
+                </div>
               </div>
-            </div>
-
-            {/* DO/THC Section */}
-            <div className="border p-2 rounded bg-gray-50">
-              <p className="text-xs font-bold text-green-700 mb-1">DO/THC</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div><Label className="text-[10px]">Charges</Label><Input type="number" value={doThcCharges} onChange={e => setDoThcCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
-                <div><Label className="text-[10px]">P.O. #</Label><Input value={doThcPoNo} onChange={e => setDoThcPoNo(e.target.value)} className="h-7 text-xs" /></div>
-                <div><Label className="text-[10px]">Date</Label><Input type="date" value={doThcDate} onChange={e => setDoThcDate(e.target.value)} className="h-7 text-xs" /></div>
+              <div>
+                <Label>Total Freight ({currency})</Label>
+                <Input type="number" value={totalFreight} onChange={e => setTotalFreight(Number(e.target.value))} />
+              </div>
+              <div>
+                <Label>Total Invoice Value ({currency})</Label>
+                <Input type="number" value={totalInvoiceValue} onChange={e => setTotalInvoiceValue(Number(e.target.value))} />
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            {/* Shipment Details Section */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold border-b pb-2">Shipment Details</h3>
+              <div><Label>LC No.</Label><Input value={lcNo} onChange={e => setLcNo(e.target.value)} /></div>
+              <div><Label>B/L No.</Label><Input value={blNo} onChange={e => setBlNo(e.target.value)} /></div>
+              <div><Label>B/L Date</Label><DatePicker value={blDate} onChange={setBlDate} placeholder="Select B/L Date" /></div>
+              <div><Label>GD No.</Label><Input value={gdNo} onChange={e => setGdNo(e.target.value)} /></div>
+              <div><Label>Origin</Label><Input value={countryOfOrigin} onChange={e => setCountryOfOrigin(e.target.value)} /></div>
+              <div><Label>Season</Label><Input value={season} onChange={e => setSeason(e.target.value)} /></div>
+              <div><Label>Category</Label><Input value={category} onChange={e => setCategory(e.target.value)} /></div>
+              <div><Label>Shipping Inv.</Label><Input value={shippingInvoiceNo} onChange={e => setShippingInvoiceNo(e.target.value)} /></div>
+              <div><Label>Inv. Date</Label><DatePicker value={invoiceDate} onChange={setInvoiceDate} placeholder="Select Invoice Date" /></div>
+            </div>
+
+            {/* Other Charges (MIS Detail) Section */}
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold border-b pb-2">Other Charges (MIS Detail)</h3>
+              {/* Freight Section */}
+              <div className="border p-2 rounded">
+                <p className="text-xs font-bold text-green-700 mb-1">Freight</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div><Label className="text-[10px]">US$ ($)</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">Date</Label><DatePicker value={freightDate} onChange={setFreightDate} placeholder="Date" className="h-7 text-xs" /></div>
+                </div>
+              </div>
+
+              {/* DO/THC Section */}
+              <div className="border p-2 rounded">
+                <p className="text-xs font-bold text-green-700 mb-1">DO/THC</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div><Label className="text-[10px]">Charges</Label><Input type="number" value={doThcCharges} onChange={e => setDoThcCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">P.O. #</Label><Input value={doThcPoNo} onChange={e => setDoThcPoNo(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><Label className="text-[10px]">Date</Label><DatePicker value={doThcDate} onChange={setDoThcDate} placeholder="Date" className="h-7 text-xs" /></div>
+                </div>
+              </div>
+
               {/* Bank Section */}
-              <div className="border p-2 rounded bg-gray-50 text-center">
+              <div className="border p-2 rounded">
                 <p className="text-xs font-bold text-green-700 mb-1">Bank</p>
                 <Label className="text-[10px]">Charges</Label>
                 <Input type="number" value={bankCharges} onChange={e => setBankCharges(Number(e.target.value))} className="h-7 text-xs" />
               </div>
 
               {/* M. Insurance Section */}
-              <div className="border p-2 rounded bg-gray-50">
+              <div className="border p-2 rounded">
                 <p className="text-xs font-bold text-green-700 mb-1">M. Insurance</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div><Label className="text-[10px]">Charges</Label><Input type="number" value={mInsuranceCharges} onChange={e => setMInsuranceCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
@@ -591,7 +696,7 @@ export default function LandedCostSetupPage() {
               </div>
 
               {/* Clg/Fwd Section */}
-              <div className="border p-2 rounded bg-gray-50">
+              <div className="border p-2 rounded">
                 <p className="text-xs font-bold text-green-700 mb-1">Clg/Fwd</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div><Label className="text-[10px]">Charges</Label><Input type="number" value={clgFwdCharges} onChange={e => setClgFwdCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
@@ -599,33 +704,9 @@ export default function LandedCostSetupPage() {
                 </div>
               </div>
             </div>
-
-            <div className="pt-2 border-t flex justify-between items-center">
-              <Label className="text-sm font-bold">TOTAL OTHER CHARGES:</Label>
-              <span className="text-lg font-bold text-blue-700">
-                PKR {((freightUSD * exchangeRate) + freightPKR + doThcCharges + bankCharges + mInsuranceCharges + clgFwdCharges).toLocaleString()}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-2">
-          <CardHeader><CardTitle className="text-lg">Shipment Details</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-3 gap-4">
-            <div><Label>LC No.</Label><Input value={lcNo} onChange={e => setLcNo(e.target.value)} /></div>
-            <div><Label>LC Date</Label><Input type="date" /></div>
-            <div><Label>B/L No.</Label><Input value={blNo} onChange={e => setBlNo(e.target.value)} /></div>
-            <div><Label>B/L Date</Label><Input type="date" value={blDate} onChange={e => setBlDate(e.target.value)} /></div>
-            <div><Label>GD No.</Label><Input value={gdNo} onChange={e => setGdNo(e.target.value)} /></div>
-            <div><Label>GD Date</Label><Input type="date" value={gdDate} onChange={e => setGdDate(e.target.value)} /></div>
-            <div><Label>Origin</Label><Input value={countryOfOrigin} onChange={e => setCountryOfOrigin(e.target.value)} /></div>
-            <div><Label>Season</Label><Input value={season} onChange={e => setSeason(e.target.value)} /></div>
-            <div><Label>Category</Label><Input value={category} onChange={e => setCategory(e.target.value)} /></div>
-            <div><Label>Shipping Inv.</Label><Input value={shippingInvoiceNo} onChange={e => setShippingInvoiceNo(e.target.value)} /></div>
-            <div><Label>Inv. Date</Label><Input type="date" /></div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="p-0 overflow-x-auto">
@@ -633,24 +714,38 @@ export default function LandedCostSetupPage() {
             <TableHeader>
               {/* Primary Header Grouping */}
               <TableRow className="bg-gray-200 border-b-2 border-gray-300">
-                <TableHead colSpan={9} className="text-center font-bold border-r border-gray-300">SHIPMENT & BASIS</TableHead>
-                <TableHead colSpan={3} className="text-center font-bold border-r border-gray-300 bg-orange-50">DUTIES</TableHead>
-                <TableHead colSpan={6} className="text-center font-bold border-r border-gray-300 bg-blue-50">TAXES</TableHead>
+                <TableHead colSpan={11} className="text-center font-bold border-r border-gray-300">SHIPMENT DETAILS</TableHead>
+                <TableHead colSpan={10} className="text-center font-bold border-r border-gray-300 bg-blue-50 text-blue-800">ASSESSABLE VALUE</TableHead>
+                <TableHead colSpan={9} className="text-center font-bold border-r border-gray-300 bg-orange-50 text-orange-900">DUTY CALCULATION</TableHead>
+                <TableHead colSpan={1} className="text-center font-bold border-r border-gray-300 bg-purple-50 text-purple-900">EXCISE</TableHead>
                 <TableHead colSpan={4} className="text-center font-bold border-r border-gray-300 bg-green-100">FREIGHT (MIS)</TableHead>
                 <TableHead colSpan={3} className="text-center font-bold border-r border-gray-300 bg-green-100">DO/THC (MIS)</TableHead>
                 <TableHead colSpan={1} className="text-center font-bold border-r border-gray-300 bg-green-100">BANK (MIS)</TableHead>
                 <TableHead colSpan={2} className="text-center font-bold border-r border-gray-300 bg-green-100">INSURANCE (MIS)</TableHead>
                 <TableHead colSpan={2} className="text-center font-bold border-r border-gray-300 bg-green-100">CLG/FWD (MIS)</TableHead>
+                <TableHead className="text-center font-bold bg-yellow-50 text-yellow-900 border-r border-gray-300">Total Other Charges</TableHead>
                 <TableHead colSpan={3} className="text-center font-bold bg-gray-200">TOTALS</TableHead>
               </TableRow>
               {/* Secondary Detail Header */}
               <TableRow className="bg-gray-100">
-                <TableHead className="w-[120px] sticky left-0 bg-gray-100 z-10">Item Code</TableHead>
-                <TableHead className="w-[120px]">HS Code</TableHead>
+                <TableHead>L.C. #</TableHead>
+                <TableHead>B.L. #</TableHead>
+                <TableHead>B.L. Date</TableHead>
+                <TableHead>G.D. #</TableHead>
+                <TableHead>Origin</TableHead>
+                <TableHead>Season</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Shipping Inv.</TableHead>
+                <TableHead>Inv. Date</TableHead>
+                <TableHead>SKU No.</TableHead>
+                <TableHead className="border-r border-gray-300 min-w-[200px]">Description</TableHead>
+                <TableHead className="w-[120px] sticky left-0 bg-gray-100 z-10 border-l font-bold text-blue-800">Item Code</TableHead>
+                <TableHead className="w-[120px] font-bold text-blue-800">HS Code</TableHead>
                 <TableHead>Qty</TableHead>
                 <TableHead>FOB ($)</TableHead>
                 <TableHead>Inv ($)</TableHead>
                 <TableHead>Freight ($)</TableHead>
+                <TableHead>Ex. Rate</TableHead>
                 <TableHead>Inv PKR</TableHead>
                 <TableHead>1%+1%</TableHead>
                 <TableHead className="bg-blue-50 font-bold">ASSL. VALUE</TableHead>
@@ -662,7 +757,8 @@ export default function LandedCostSetupPage() {
                 <TableHead>AST</TableHead>
                 <TableHead>val Inc Tax</TableHead>
                 <TableHead>I.T.</TableHead>
-                <TableHead className="font-bold">Total Duty</TableHead>
+                <TableHead className="font-bold border-r border-gray-300">Total Duty</TableHead>
+                <TableHead className="bg-purple-50 border-r border-gray-300">Charges</TableHead>
                 <TableHead>$</TableHead>
                 <TableHead>PKR</TableHead>
                 <TableHead>Inv No.</TableHead>
@@ -674,8 +770,8 @@ export default function LandedCostSetupPage() {
                 <TableHead>Charges</TableHead>
                 <TableHead>Policy #</TableHead>
                 <TableHead>Charges</TableHead>
-                <TableHead>Bill #</TableHead>
-                <TableHead className="font-bold">Total Other</TableHead>
+                <TableHead className="border-r border-gray-300">Bill #</TableHead>
+                <TableHead className="bg-yellow-50 font-bold border-r border-gray-300">PKR</TableHead>
                 <TableHead>Unit Cost</TableHead>
                 <TableHead className="bg-green-50 font-bold">Total Cost</TableHead>
               </TableRow>
@@ -683,7 +779,7 @@ export default function LandedCostSetupPage() {
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={40} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={46} className="text-center py-10 text-gray-500">
                     {grnId ? (
                       <div className="flex flex-col items-center gap-2">
                         <span>Items failed to load from GRN ({grnId})</span>
@@ -699,7 +795,18 @@ export default function LandedCostSetupPage() {
               ) : (
                 items.map((item, idx) => (
                   <TableRow key={idx}>
-                    <TableCell className="font-medium text-xs sticky left-0 bg-white z-10 border-r">{item.itemId}</TableCell>
+                    <TableCell className="text-[10px]">{item.lcNo}</TableCell>
+                    <TableCell className="text-[10px]">{item.blNo}</TableCell>
+                    <TableCell className="text-[10px]">{item.blDate}</TableCell>
+                    <TableCell className="text-[10px]">{item.gdNo}</TableCell>
+                    <TableCell className="text-[10px]">{item.origin}</TableCell>
+                    <TableCell className="text-[10px]">{item.season}</TableCell>
+                    <TableCell className="text-[10px]">{item.category || '-'}</TableCell>
+                    <TableCell className="text-[10px]">{item.shippingInv}</TableCell>
+                    <TableCell className="text-[10px]">{item.invDate}</TableCell>
+                    <TableCell className="text-[10px] font-bold">{item.sku}</TableCell>
+                    <TableCell className="text-[10px] border-r max-w-[200px] truncate" title={item.description}>{item.description}</TableCell>
+                    <TableCell className="font-bold text-xs sticky left-0 bg-white z-10 border-l border-r-2 border-r-blue-200 text-blue-800">{item.itemId}</TableCell>
                     <TableCell>
                       <Select value={item.hsCodeId} onValueChange={val => handleItemChange(idx, 'hsCodeId', val)}>
                         <SelectTrigger className="h-8 text-[10px]"><SelectValue placeholder="HS Code" /></SelectTrigger>
@@ -719,6 +826,7 @@ export default function LandedCostSetupPage() {
                     </TableCell>
                     <TableCell className="text-[10px]">{item.invoiceForeign.toFixed(2)}</TableCell>
                     <TableCell className="text-[10px]">{item.freightForeign.toFixed(2)}</TableCell>
+                    <TableCell className="text-[10px]">{exchangeRate}</TableCell>
                     <TableCell className="text-[10px]">{Math.round(item.invoicePKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px]">{Math.round(item.insuranceCharges + item.landingCharges).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px] font-bold text-blue-600 bg-blue-50">{Math.round(item.assessableValue).toLocaleString()}</TableCell>
@@ -730,7 +838,8 @@ export default function LandedCostSetupPage() {
                     <TableCell className="text-[10px]">{Math.round(item.additionalSalesTaxAmount).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px]">{Math.round(item.valueForIncomeTax).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px]">{Math.round(item.incomeTaxAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px] font-bold">{Math.round(item.totalDutyAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px] font-bold border-r">{Math.round(item.totalDutyAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px] bg-purple-50 border-r">{Math.round(item.exciseChargesAmount).toLocaleString()}</TableCell>
                     {/* MIS Details Breakdown */}
                     <TableCell className="text-[10px]">{item.misFreightUSD.toFixed(2)}</TableCell>
                     <TableCell className="text-[10px]">{Math.round(item.misFreightPKR).toLocaleString()}</TableCell>
@@ -743,9 +852,9 @@ export default function LandedCostSetupPage() {
                     <TableCell className="text-[10px]">{Math.round(item.misInsurancePKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px]">{item.misInsurancePolicyNo}</TableCell>
                     <TableCell className="text-[10px]">{Math.round(item.misClgFwdPKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{item.misClgFwdBillNo}</TableCell>
+                    <TableCell className="text-[10px] border-r">{item.misClgFwdBillNo}</TableCell>
+                    <TableCell className="text-[10px] font-bold bg-yellow-50 border-r">{Math.round(item.totalOtherCharges).toLocaleString()}</TableCell>
 
-                    <TableCell className="text-[10px] font-bold">{Math.round(item.otherChargesPKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px] font-bold">{Math.round(item.unitCostPKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px] font-bold bg-green-50">{Math.round(item.totalCostPKR).toLocaleString()}</TableCell>
                   </TableRow>

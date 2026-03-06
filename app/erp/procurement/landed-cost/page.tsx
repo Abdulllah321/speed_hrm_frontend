@@ -140,7 +140,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
                            size="sm"
                            asChild
                          >
-                           <Link href={`/erp/procurement/landed-cost/post/${grn.id}`}>
+                           <Link href={`/erp/procurement/landed-cost/setup?grnId=${grn.id}`}>
                              <Check className="h-4 w-4 mr-2" />
                              Post Landed Cost
                            </Link>

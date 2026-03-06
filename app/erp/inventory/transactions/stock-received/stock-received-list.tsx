@@ -35,13 +35,15 @@ export function StockReceivedList({ initialEntries }: StockReceivedListProps) {
                             <TableHead>Item</TableHead>
                             <TableHead>Warehouse</TableHead>
                             <TableHead>Quantity</TableHead>
+                            <TableHead>Unit Cost (PKR)</TableHead>
+                            <TableHead>Total Rate (PKR)</TableHead>
                             <TableHead>Reference</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {entries.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center">
+                                <TableCell colSpan={7} className="text-center">
                                     No stock received records found.
                                 </TableCell>
                             </TableRow>
@@ -53,8 +55,14 @@ export function StockReceivedList({ initialEntries }: StockReceivedListProps) {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="font-medium">{entry.item?.sku || entry.item?.itemId || 'Unknown Item'}</span>
-                                            <span className="text-xs text-muted-foreground">{entry.item?.description || entry.itemId}</span>
+                                            <span className="font-medium">
+                                                {entry.item?.sku || 'Item'}
+                                            </span>
+                                            {entry.item?.description && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {entry.item.description}
+                                                </span>
+                                            )}
                                         </div>
                                     </TableCell>
                                     <TableCell>{entry.warehouse?.name || entry.warehouseId}</TableCell>
@@ -62,6 +70,15 @@ export function StockReceivedList({ initialEntries }: StockReceivedListProps) {
                                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                                             +{Number(entry.qty).toFixed(2)}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">
+                                        {entry.unitCost ? Number(entry.unitCost).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                                    </TableCell>
+                                    <TableCell className="text-right font-semibold">
+                                        {entry.rate && entry.qty 
+                                            ? (Number(entry.rate) * Number(entry.qty)).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                                            : '-'
+                                        }
                                     </TableCell>
                                     <TableCell className="font-mono text-xs">
                                         {entry.referenceType} #{entry.referenceId.slice(0, 8)}

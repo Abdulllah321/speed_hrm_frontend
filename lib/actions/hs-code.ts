@@ -11,6 +11,7 @@ export interface HsCode {
     salesTax: number;
     additionalSalesTax: number;
     incomeTax: number;
+    exciseCharges: number;
     status: string;
     createdAt: string;
     updatedAt: string;

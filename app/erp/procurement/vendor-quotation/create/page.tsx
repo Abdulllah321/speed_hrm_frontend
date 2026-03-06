@@ -119,7 +119,7 @@ export default function CreateVendorQuotation() {
             const result = await createVendorQuotation(data);
             if (result.status !== false && result.id) {
                 toast.success('Vendor quotation created successfully');
-                router.push(`/erp/procurement/vendor-quotation/list${result.id}`);
+                router.push('/erp/procurement/vendor-quotation/list');
             } else {
                 toast.error(result.message || 'Failed to create quotation');
             }

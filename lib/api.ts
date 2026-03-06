@@ -587,6 +587,7 @@ export interface HsCode {
   salesTax: number;
   additionalSalesTax: number;
   incomeTax: number;
+  exciseCharges: number;
   status: string;
 }
 
@@ -638,6 +639,7 @@ export const landedCostApi = {
   create: (data: CreateLandedCostDto) =>
     fetchApi<any>('/landed-cost', { method: 'POST', body: JSON.stringify(data) }),
   getAll: () => fetchApi<any[]>('/landed-cost'),
+  getById: (id: string) => fetchApi<any>(`/landed-cost/${id}`),
   listChargeTypes: () => fetchApi<{ status: boolean; data: LandedCostChargeType[] }>('/landed-cost/charge-types'),
 };
 
@@ -705,6 +707,8 @@ export interface StockLedgerEntry {
   itemId: string;
   warehouseId: string;
   qty: string;
+  unitCost?: string;
+  rate?: string;
   movementType: MovementType;
   referenceType: string;
   referenceId: string;

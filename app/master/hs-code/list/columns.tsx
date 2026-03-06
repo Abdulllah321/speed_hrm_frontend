@@ -91,6 +91,13 @@ export const columns: ColumnDef<HsCodeRow>[] = [
         cell: ({ row }) => <div>{Number(row.original.incomeTax).toFixed(2)}%</div>,
     },
     {
+        header: "Excise (%)",
+        accessorKey: "exciseCharges",
+        size: 120,
+        enableSorting: true,
+        cell: ({ row }) => <div>{Number(row.original.exciseCharges).toFixed(2)}%</div>,
+    },
+    {
         header: "Status",
         accessorKey: "status",
         size: 100,
