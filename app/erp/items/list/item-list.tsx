@@ -179,7 +179,14 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         }
     };
 
-    const { data: uploadProgress } = useUploadProgress(activeUploadId);
+    const { data: uploadProgress, error: uploadError } = useUploadProgress(activeUploadId);
+
+    // Auto-clear if the upload was deleted or not found on the server
+    useEffect(() => {
+        if (uploadError && activeUploadId) {
+            handleUploadIdChange(null);
+        }
+    }, [uploadError, activeUploadId]);
 
     // ── Derived query params ───────────────────────────────────────────────
     const currentPage = pagination.pageIndex + 1; // API is 1-indexed
@@ -270,21 +277,29 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     {/* Background upload progress button */}
                     {activeUploadId && !isBulkUploadOpen && (
                         <Button
-                            variant="outline"
-                            className="border-primary text-primary relative overflow-hidden min-w-[180px]"
+                            variant={uploadProgress?.status === 'failed' ? 'destructive' : uploadProgress?.status === 'completed' ? 'default' : 'outline'}
+                            className={`border-primary text-primary relative overflow-hidden min-w-[180px] ${uploadProgress?.status === 'failed' ? 'text-destructive-foreground! bg-destructive!' : uploadProgress?.status === 'completed' ? 'text-primary-foreground! bg-primary!' : ''}`}
                             onClick={() => setIsBulkUploadOpen(true)}
                         >
                             <div
-                                className="absolute inset-0 bg-primary/10 transition-all duration-500"
+                                className={`absolute inset-0 bg-primary/10 transition-all duration-500`}
                                 style={{ width: `${uploadProgress?.progress ?? 0}%` }}
                             />
                             <div className="relative flex items-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                {(uploadProgress?.status === "validating" || uploadProgress?.status === "processing" || uploadProgress?.status === "pending") && (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                )}
                                 <span className="font-bold">
-                                    {uploadProgress?.status === "validating"
-                                        ? "Validating"
-                                        : "Importing"}{" "}
-                                    {uploadProgress?.progress ?? 0}%
+                                    {uploadProgress?.status === "failed"
+                                        ? "Import Failed"
+                                        : uploadProgress?.status === "completed"
+                                            ? "Import Complete"
+                                            : uploadProgress?.status === "validated"
+                                                ? "Validation Complete"
+                                                : uploadProgress?.status === "validating"
+                                                    ? "Validating"
+                                                    : "Importing"}
+                                    {["failed", "completed", "validated"].includes(uploadProgress?.status || "") ? "" : ` ${uploadProgress?.progress ?? 0}%`}
                                 </span>
                             </div>
                         </Button>

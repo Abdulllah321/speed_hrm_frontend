@@ -19,6 +19,7 @@ import {
   Package,
   ShoppingCart,
   TrendingUp,
+  Monitor,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -151,7 +152,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Department",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.department.read", "master.department.create"],
     children: [
       { title: "Add", href: "/master/department/add" },
@@ -160,7 +161,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Sub Department",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.sub-department.read", "master.sub-department.create"],
     children: [
       { title: "Add", href: "/master/sub-department/add" },
@@ -232,7 +233,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "City",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.city.read", "master.city.create"],
     children: [
       { title: "Add", href: "/master/city/add" },
@@ -241,7 +242,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Location",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.location.read", "master.location.create"],
     children: [
       { title: "Add", href: "/master/location/add" },
@@ -249,8 +250,16 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
+    title: "POS Config",
+    environment: "HR",
+    permissions: ["master.location.read"],
+    children: [
+      { title: "Manage", href: "/master/pos-config" },
+    ],
+  },
+  {
     title: "Region",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.region.read", "master.region.create"],
     children: [
       { title: "Add", href: "/master/region/add" },
@@ -259,7 +268,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Contact",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.contact.read", "master.contact.create"],
     children: [
       { title: "Add", href: "/master/contact/add" },
@@ -389,7 +398,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Bank",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.bank.read", "master.bank.create"],
     children: [
       { title: "Add", href: "/master/banks/add" },
@@ -666,53 +675,44 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/vendor-opening/list" },
     ],
   },
+
+
+
+  { title: "Manage Outlets", href: "/master/location/list", permissions: ["master.location.read"], environment: "POS" },
+  { title: "Terminal List", href: "/master/pos/list", permissions: ["master.pos.read"], environment: "POS" },
   {
-    title: "Retail & POS",
-    environment: "ERP",
-    icon: ShoppingCart,
-    permissions: ["master.pos.read", "pos.sales.read", "pos.inventory.read"],
+    title: "POS Config",
+    environment: "POS",
+    permissions: ["master.pos.read"],
     children: [
-      {
-        title: "Management",
-        children: [
-          { title: "Manage Locations", href: "/master/location/list", permissions: ["master.location.read"] },
-          { title: "Terminal List", href: "/master/pos/list", permissions: ["master.pos.read"] },
-        ]
-      },
-      {
-        title: "Sales Operations",
-        children: [
-          { title: "New Sale", href: "/pos/sales/new", permissions: ["pos.sales.create"] },
-          { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.read"] },
-          { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
-        ]
-      },
-      {
-        title: "Inventory",
-        children: [
-          { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
-          { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
-        ]
-      },
-      {
-        title: "Terminal Settings",
-        children: [
-          { title: "Shifts", href: "/pos/shifts", permissions: ["pos.terminal.shifts"] },
-          { title: "Settings", href: "/pos/terminal/settings", permissions: ["pos.terminal.settings"] },
-          { title: "Logout Terminal", href: "/auth/logout" },
-        ]
-      }
-    ],
+      { title: "Promos", href: "/master/pos-config?tab=promos", permissions: ["master.pos.read"] },
+      { title: "Coupons", href: "/master/pos-config?tab=coupons", permissions: ["master.pos.read"] },
+      { title: "Alliances", href: "/master/pos-config?tab=alliances", permissions: ["master.pos.read"] },
+    ]
   },
+
+
 ];
 
 export const menuData: MenuItem[] = [
   {
-    title: "Dashboard",
+    title: "HRM Dashboard",
     icon: LayoutDashboard,
     href: "/hr",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["hr.dashboard.view"],
+  },
+  {
+    title: "ERP Dashboard",
+    icon: LayoutDashboard,
+    href: "/erp",
+    environment: "ERP",
+  },
+  {
+    title: "POS Dashboard",
+    icon: LayoutDashboard,
+    href: "/pos",
+    environment: "POS",
   },
   {
     title: "Finance & Accounts",
@@ -1139,44 +1139,42 @@ export const menuData: MenuItem[] = [
   {
     title: "Profile Settings",
     icon: Settings,
-    environment: "BOTH",
+    environment: "HR",
     children: [
       { title: "Change Password", href: "/hr/settings/password" },
       { title: "Edit Profile", href: "/hr/settings/profile" },
     ],
   },
   {
-    title: "Points of Sale",
+    title: "Sales Operations",
     icon: ShoppingCart,
     environment: "POS",
-    permissions: ["pos.sales.read", "pos.inventory.read", "master.pos.read"],
+    permissions: ["pos.sales.read", "pos.sales.create", "master.pos.read", "pos.sales.history.view"],
     children: [
-      {
-        title: "Sales Operations",
-        permissions: ["pos.sales.create"],
-        children: [
-          { title: "New Sale", href: "/pos/sales/new", permissions: ["pos.sales.create"] },
-          { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.read"] },
-          { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
-        ]
-      },
-      {
-        title: "Inventory",
-        permissions: ["pos.inventory.read"],
-        children: [
-          { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
-          { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
-        ]
-      },
-      {
-        title: "Terminal",
-        children: [
-          { title: "Shifts", href: "/pos/shifts", permissions: ["pos.terminal.shifts"] },
-          { title: "Settings", href: "/pos/terminal/settings", permissions: ["pos.terminal.settings"] },
-          { title: "Logout Terminal", href: "/auth/logout" },
-        ]
-      }
-    ],
+      { title: "New Sale", href: "/pos/new-sale", permissions: ["pos.sales.create"] },
+      { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.history.view"] },
+      { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
+    ]
+  },
+  {
+    title: "Inventory",
+    icon: Package,
+    environment: "POS",
+    permissions: ["pos.inventory.read", "pos.inventory.create"],
+    children: [
+      { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
+      { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
+    ]
+  },
+  {
+    title: "Terminal",
+    icon: Monitor,
+    environment: "POS",
+    children: [
+      { title: "Shifts", href: "/pos/shifts", permissions: ["pos.terminal.shifts"] },
+      { title: "Settings", href: "/pos/terminal/settings", permissions: ["pos.terminal.settings"] },
+      { title: "Logout Terminal", href: "/auth/logout" },
+    ]
   },
 ];
 

@@ -19,7 +19,8 @@ import { ImpersonationBanner } from "@/components/auth/impersonation-banner";
 import { CompanyGuard } from "@/components/company/company-guard";
 import { useEnvironment } from "@/components/providers/environment-provider";
 import { Button } from "@/components/ui/button";
-import { Search, X, Sparkles, AlertTriangle, ArrowRight, ShoppingCart, ShieldCheck, Monitor, Clock as ClockIcon } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, X, AlertTriangle, Monitor, ShieldCheck, Clock as ClockIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { usePathname } from "next/navigation";
 
@@ -94,10 +95,8 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
 
       <SessionChecker />
       <AppSidebar />
-      <SidebarInset>
-          <header className="flex shrink-0 h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm" style={{
-          top: "var(--banner-height)"
-        }}>
+      <SidebarInset className="flex flex-col h-screen overflow-hidden shrink-0">
+        <header className="flex shrink-0 h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm" >
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <SidebarTrigger className="shrink-0" />
 
@@ -169,11 +168,14 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
             <HeaderUserMenu />
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 pt-[calc(var(--banner-height)+1rem)]! bg-muted/30">
-          <CompanyGuard optional={companyOptional}>
-            {children}
-          </CompanyGuard>
-        </main>
+
+        <ScrollArea className="flex-1 bg-muted/30" showShadows={true}>
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 h-full w-full min-w-0">
+            <CompanyGuard optional={companyOptional}>
+              {children}
+            </CompanyGuard>
+          </main>
+        </ScrollArea>
       </SidebarInset>
 
       {/* Mobile Floating Search */}

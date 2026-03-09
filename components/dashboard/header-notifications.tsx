@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { io, Socket } from "socket.io-client";
 
 type NotificationStatus = "unread" | "read";
 
@@ -39,6 +40,32 @@ export function HeaderNotifications() {
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const socketRef = useRef<Socket | null>(null);
+
+  const playNotificationSound = useCallback(() => {
+    try {
+      const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const ctx = new AudioContextCtor();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
+
+      gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {
+      console.warn('AudioContext failed to play:', e);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -66,11 +93,32 @@ export function HeaderNotifications() {
     }
 
     refresh();
-    const timer = setInterval(() => {
-      refresh();
-    }, 30000);
-    return () => clearInterval(timer);
-  }, [isAuthenticated, refresh]);
+
+    const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+    const baseUrl = API_URL.replace(/\/api$/, '');
+
+    socketRef.current = io(baseUrl, {
+      transports: ['websocket'],
+    });
+
+    socketRef.current.on('connect', () => {
+      console.log('Connected to Notifications WebSocket');
+    });
+
+    socketRef.current.on('notification', (payload: any) => {
+      if (payload?.userId === user?.id && payload?.notification) {
+        setItems((prev) => [payload.notification, ...prev].slice(0, 50));
+        setUnreadCount((c) => c + 1);
+        playNotificationSound();
+      }
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [user?.id, isAuthenticated, refresh, playNotificationSound]);
 
   const handleMarkRead = useCallback(
     async (id: string) => {

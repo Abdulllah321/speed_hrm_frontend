@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { useRouter, usePathname } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { getApiBaseUrl } from "@/lib/utils";
+import { navigateToPath } from "@/lib/navigation";
 
 // Get base domain from host
 function getBaseDomain(host: string): string {
@@ -56,6 +57,16 @@ export interface User {
   terminalId?: string;
   locationId?: string;
   posSessionId?: string;
+  terminal?: {
+    id: string;
+    code: string;
+    name: string;
+    location?: {
+      id: string;
+      code: string;
+      name: string;
+    } | null;
+  };
 }
 
 interface AuthContextType {
@@ -85,6 +96,8 @@ interface AuthContextType {
   completeAuthStep: () => void;
   completeAppWait: (key: string) => void;
   registerAppWait: (key: string) => void;
+  // POS switch-user
+  posNeedsUserAuth: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -98,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("Initializing...");
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [posNeedsUserAuth, setPosNeedsUserAuth] = useState(false);
 
   // Track multiple initialization steps
   const [pendingSteps, setPendingSteps] = useState<Set<string>>(new Set(["auth"]));
@@ -383,29 +397,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, router]);
 
-  // POS Route Protection
+  // POS Route Protection — Two-Layer Auth
+  // Layer 1: Terminal setup (manager enters PIN via /pos-login)
+  // Layer 2: User logs in via standard auth, route guard auto-links to terminal
+  const posLinkAttemptedRef = useRef(false);
+
   useEffect(() => {
-    if (!mounted || loading || !user) return;
+    if (!mounted || loading) return;
 
     const host = typeof window !== "undefined" ? window.location.host : "";
     const isPosSubdomain = host.startsWith("pos.");
     const isPosPath = pathname === "/pos" || pathname?.startsWith("/pos/");
     const isPosLoginPage = pathname === "/pos-login" || pathname === "/auth/pos-login";
 
-    // If accessing POS but not POS-authenticated (isPosUser comes from backend /auth/me)
-    if ((isPosSubdomain || isPosPath) && !user.isPosUser && !isPosLoginPage) {
-      // Determine where to redirect
-      const baseDomain = getBaseDomain(host);
-      const protocol = window.location.protocol;
-      const port = host.split(":")[1] ? `:${host.split(":")[1]}` : "";
+    if (!(isPosSubdomain || isPosPath) || isPosLoginPage) return;
 
-      // Redirect to auth subdomain for POS login
-      const loginUrl = `${protocol}//auth.${baseDomain}${port}/pos-login?callbackUrl=${encodeURIComponent(pathname)}&subdomain=pos`;
-
-      // Use window.location.href for cross-subdomain redirect
-      window.location.href = loginUrl;
+    // No user at all — show switch-user form
+    if (!user) {
+      setPosNeedsUserAuth(true);
+      return;
     }
-  }, [user, pathname, mounted, loading]);
+
+    // All users on POS route must have a terminal assigned
+    if (!user.terminalId) {
+      navigateToPath("/pos-login");
+      return;
+    }
+
+    // Since they have a terminalId, allow access immediately
+    setPosNeedsUserAuth(false);
+  }, [user, pathname, mounted, loading, fetchUser]);
 
   // Proactive session check - refresh token if needed
   const checkAndRefreshSession = useCallback(async () => {
@@ -614,6 +635,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           completeAuthStep,
           completeAppWait,
           registerAppWait,
+          posNeedsUserAuth,
         }}
       >
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />
@@ -647,6 +669,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         completeAuthStep,
         completeAppWait,
         registerAppWait,
+        posNeedsUserAuth,
       }}
     >
       {mounted && children}

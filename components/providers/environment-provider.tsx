@@ -31,12 +31,13 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
 
       // Check subdomain strictly
       if (hostname.startsWith("erp.")) envFromUrl = "ERP";
+      else if (hostname.startsWith("master.")) envFromUrl = null; // Do not overwrite on master domain, let cookies decide
       else if (hostname.startsWith("pos.")) envFromUrl = "POS";
       else if (hostname.startsWith("admin.")) envFromUrl = "ADMIN";
       else if (hostname.startsWith("hr.")) envFromUrl = "HR";
 
       // If subdomain didn't give it, check pathname
-      if (!envFromUrl) {
+      if (!envFromUrl && !hostname.startsWith("master.")) {
         if (pathname.startsWith("/erp") || pathname.startsWith("/finance")) envFromUrl = "ERP";
         else if (pathname.startsWith("/pos")) envFromUrl = "POS";
         else if (pathname.startsWith("/admin") || pathname.startsWith("/activity-logs")) envFromUrl = "ADMIN";
@@ -49,12 +50,11 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
       if (typeof document !== "undefined") {
         document.documentElement.dataset.environment = envFromUrl;
       }
+      // Set the cross-domain cookie explicitly so subdomains like 'master.' can read it later
+      setEnvironmentCookie(envFromUrl).catch(console.error);
     } else {
-      // Load saved environment from cookies first, then local storage as fallback
-      const savedCookie = Cookies.get("app-environment");
-      const savedLocal = typeof window !== "undefined" ? localStorage.getItem("app-environment") : null;
-
-      const saved = savedCookie || savedLocal;
+      // Load saved environment from cookies
+      const saved = Cookies.get("app-environment");
 
       if (saved === "ERP") {
         setEnvironmentState("ERP");
@@ -93,11 +93,6 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
       // Update DOM
       if (typeof document !== "undefined") {
         document.documentElement.dataset.environment = env;
-      }
-
-      // Update LocalStorage (as backup)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("app-environment", env);
       }
 
       // Use Server Action to set cookie (handles cross-subdomain logic via server headers)

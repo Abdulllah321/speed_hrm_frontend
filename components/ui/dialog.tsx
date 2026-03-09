@@ -51,9 +51,11 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  noScroll = false,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  noScroll?: boolean
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -66,9 +68,13 @@ function DialogContent({
         )}
         {...props}
       >
-        <ScrollArea className="max-h-[calc(90vh-3rem)]">
-          {children}
-        </ScrollArea>
+        {noScroll ? (
+          children
+        ) : (
+          <ScrollArea className="max-h-[calc(90vh-3rem)]">
+            {children}
+          </ScrollArea>
+        )}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"

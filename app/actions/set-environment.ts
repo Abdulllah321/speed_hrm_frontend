@@ -3,7 +3,7 @@
 import { cookies, headers } from "next/headers";
 import { getCookieDomain } from "@/lib/utils";
 
-export type EnvironmentType = "HR" | "ERP" | "POS" | "ADMIN";
+export type EnvironmentType = "HR" | "ERP" | "POS" | "ADMIN" | "MASTER";
 
 export async function setEnvironmentCookie(env: EnvironmentType) {
   const cookieStore = await cookies();

@@ -10,6 +10,8 @@ export interface User {
   lastName: string;
   role: string | null;
   permissions: string[];
+  isActive?: boolean;
+  isSystem?: boolean;
 }
 
 // Client-side login function - now calls backend directly
@@ -58,6 +60,34 @@ export async function getPosContext(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, lat, lng }),
+    });
+    return res.json();
+  } catch (error) {
+    return { status: false, message: "Network error" };
+  }
+}
+
+export async function getGlobalPosContext(
+  code: string
+): Promise<{ status: boolean; message: string; data?: any }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/pos/global-context`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    return res.json();
+  } catch (error) {
+    return { status: false, message: "Network error" };
+  }
+}
+
+export async function adminFetchLocationsClient(): Promise<{ status: boolean; message: string; data?: any }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/locations?pos=true`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
     });
     return res.json();
   } catch (error) {
@@ -116,6 +146,21 @@ export async function logoutClient(): Promise<{ status: boolean; message: string
   } catch (error) {
     console.error("Logout error:", error);
     return { status: false, message: "Logout failed" };
+  }
+}
+
+// Client-side endpoint to explicitely verify the validity of an open POS session
+export async function verifyPosSessionClient(): Promise<any> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/pos/verify-session`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    return await res.json();
+  } catch (error) {
+    console.error("Error verifying POS session:", error);
+    return { status: false, message: "Verification failed" };
   }
 }
 
