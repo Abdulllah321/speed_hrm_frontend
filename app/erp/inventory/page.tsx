@@ -105,7 +105,7 @@ export default function InventoryDashboard() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{loading ? "..." : stats.lowStockItems}</div>
-                        <p className="text-xs text-muted-foreground">Items < 10 units</p>
+                        <p className="text-xs text-muted-foreground">Items &lt; 10 units</p>
                     </CardContent>
                 </Card>
 

@@ -9,7 +9,8 @@ import {
     ArrowRight,
     Search,
     Clock,
-    CheckCircle2
+    CheckCircle2,
+    FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 export default function StockReceivingPage() {
     const { user } = useAuth();
@@ -29,7 +31,7 @@ export default function StockReceivingPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isAccepting, setIsAccepting] = useState<string | null>(null);
 
-    const locationId = user?.terminal?.locationId || user?.locationId;
+    const locationId = user?.terminal?.location?.id || user?.locationId;
 
     const fetchRequests = async () => {
         if (!locationId) return;
@@ -164,7 +166,7 @@ export default function StockReceivingPage() {
                                                 </div>
                                             </div>
 
-                                            <div className="w-full md:w-auto">
+                                            <div className="w-full md:w-auto flex flex-col gap-2">
                                                 <Button
                                                     className="w-full md:w-40 h-14 text-lg font-bold gap-2 shadow-lg shadow-primary/20"
                                                     disabled={isAccepting === request.id}
@@ -176,6 +178,11 @@ export default function StockReceivingPage() {
                                                         <CheckCircle2 className="h-5 w-5" />
                                                     )}
                                                     {isAccepting === request.id ? "Accepting..." : "Accept"}
+                                                </Button>
+                                                <Button variant="outline" className="w-full md:w-40 h-10 font-semibold text-primary" asChild>
+                                                    <Link href={`/erp/inventory/transactions/stock-transfer/slip/${request.id}`} target="_blank">
+                                                        <FileText className="h-4 w-4 mr-2" /> View Slip
+                                                    </Link>
                                                 </Button>
                                             </div>
                                         </CardContent>

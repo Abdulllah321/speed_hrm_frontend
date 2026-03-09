@@ -707,7 +707,7 @@ export const warehouseApi = {
 };
 
 export const locationApi = {
-  getByWarehouse: (warehouseId: string) => fetchApi<WarehouseLocation[]>(`/warehouse/locations/${warehouseId}`),
+  getByWarehouse: (warehouseId: string) => fetchApi<WarehouseLocation[]>(`/warehouse/${warehouseId}/locations`),
   create: (data: Partial<WarehouseLocation>) => fetchApi<WarehouseLocation>('/warehouse/location', {
     method: 'POST',
     body: JSON.stringify(data),

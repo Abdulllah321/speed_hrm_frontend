@@ -20,8 +20,11 @@ import {
     ArrowRightLeft,
     MapPin,
     Calendar,
-    Hash
+    Hash,
+    Printer
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 interface StockTransferHistoryListProps {
     initialEntries: any[];
@@ -76,6 +79,7 @@ export function StockTransferHistoryList({ initialEntries }: StockTransferHistor
                             <TableHead className="font-bold"><Package className="h-4 w-4 inline mr-1" /> Item Details</TableHead>
                             <TableHead className="font-bold text-center">Qty</TableHead>
                             <TableHead className="font-bold">Status</TableHead>
+                            <TableHead className="font-bold text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -114,6 +118,14 @@ export function StockTransferHistoryList({ initialEntries }: StockTransferHistor
                                 </TableCell>
                                 <TableCell>
                                     {getStatusBadge(transfer.status)}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="outline" size="sm" asChild>
+                                        <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`} target="_blank">
+                                            <Printer className="h-4 w-4 mr-2" />
+                                            Print
+                                        </Link>
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}

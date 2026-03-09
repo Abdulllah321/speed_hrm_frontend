@@ -780,7 +780,7 @@ export const menuData: MenuItem[] = [
         children: [
 
           { title: "Dashboard", href: "/erp/inventory/warehouse" },
-          { title: "ADD Warehouse", href: "/erp/inventory/warehouse/add" },
+          { title: "Warehouse", href: "/erp/inventory/warehouse/add" },
           { title: "Inventory Explorer", href: "/erp/inventory/warehouse/inventory" },
 
         ]
