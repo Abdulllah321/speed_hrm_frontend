@@ -33,7 +33,7 @@ function getCategoryLabel(environment?: string) {
   switch (environment) {
     case "HR": return "HRM";
     case "ERP": return "ERP";
-    case "BOTH": return "Common";
+    case "POS": return "POS";
     default: return "";
   }
 }
@@ -123,7 +123,7 @@ export function HeaderMasterMenu() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("COMMON");
+  const [activeTab, setActiveTab] = useState<string>("POS");
   const { hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
 
   // Create navigation handler with router
@@ -154,7 +154,7 @@ export function HeaderMasterMenu() {
     }
 
     return {
-      COMMON: filteredMasterMenu.filter(item => item.environment === "BOTH"),
+      POS: filteredMasterMenu.filter(item => item.environment === "POS" || item.environment === "BOTH"),
       HRM: filteredMasterMenu.filter(item => item.environment === "HR"),
       ERP: filteredMasterMenu.filter(item => item.environment === "ERP"),
       isSearch: false
@@ -231,16 +231,16 @@ export function HeaderMasterMenu() {
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0" variant="underline">
-              <div className="px-0 pt-3 border-b bg-secondary/20">
+              <div className="px-0 pt-3 border-b bg-secondary/20 overflow-x-auto">
                 <TabsList className={cn(
-                  "grid w-full grid-cols-3",
+                  "grid w-full grid-cols-3 min-w-max",
                   Object.keys(filteredMenu).filter(k => k !== 'isSearch' && (filteredMenu as any)[k].length > 0).length === 2 && "grid-cols-2",
                   Object.keys(filteredMenu).filter(k => k !== 'isSearch' && (filteredMenu as any)[k].length > 0).length === 1 && "grid-cols-1",
                 )}>
-                  {(filteredMenu as any).COMMON.length > 0 && (
-                    <TabsTrigger value="COMMON">
-                      <LayoutGrid className="h-3.5 w-3.5" />
-                      Common
+                  {(filteredMenu as any).POS?.length > 0 && (
+                    <TabsTrigger value="POS">
+                      <Monitor className="h-3.5 w-3.5" />
+                      POS
                     </TabsTrigger>
                   )}
                   {(filteredMenu as any).HRM.length > 0 && (

@@ -682,3 +682,22 @@ export const stockLedgerApi = {
     return fetchApi<StockLevel[]>(`/stock-ledger/levels?${query}`);
   }
 };
+export const posSalesApi = {
+  lookup: (query: string) => fetchApi<{ status: boolean; data: any[] }>(`/pos-sales/lookup?q=${encodeURIComponent(query)}`),
+};
+
+export const transferRequestApi = {
+  create: (data: any) => fetchApi<{ status: boolean; data: any; message: string }>('/transfer-request', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/transfer-request'),
+  updateStatus: (id: string, status: string) => fetchApi<{ status: boolean; message: string }>(`/transfer-request/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }),
+};
+
+export const inventoryApi = {
+  getDetails: (itemId: string) => fetchApi<{ status: boolean; data: any[] }>(`/inventory/details/${itemId}`),
+};

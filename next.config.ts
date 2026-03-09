@@ -11,10 +11,11 @@ const nextConfig: NextConfig = {
   // Configure allowed development origins for cross-origin requests
   allowedDevOrigins: [
     "hr.localtest.me",
-    "admin.localtest.me", 
+    "admin.localtest.me",
     "master.localtest.me",
     "auth.localtest.me",
     "erp.localtest.me",
+    "pos.localtest.me",
     "localhost",
     "127.0.0.1",
   ],

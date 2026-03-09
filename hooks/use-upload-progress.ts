@@ -59,9 +59,13 @@ export function useUploadProgress(uploadId: string | null) {
             const result = await response.json();
             if (result.status && result.data) {
                 setData(result.data);
+                setError(null);
+            } else {
+                setError(result.message || 'Failed to fetch status');
             }
         } catch (err) {
             console.error('Initial fetch failed:', err);
+            setError(err instanceof Error ? err.message : 'Unknown error');
         }
     }, [uploadId]);
 
@@ -105,13 +109,23 @@ export function useUploadProgress(uploadId: string | null) {
                     const updated = { ...base };
 
                     if (type === 'status') {
-                        updated.status = payload.status || updated.status;
+                        // Prevent reverting to an active state if we are already done
+                        if (!['completed', 'failed', 'validated'].includes(updated.status)) {
+                            updated.status = payload.status || updated.status;
+                        }
                         updated.message = payload.message || updated.message;
                     } else if (type === 'progress') {
                         updated.progress = payload.progress ?? updated.progress;
                         updated.processedRecords = payload.processedRecords ?? updated.processedRecords;
                         updated.successRecords = payload.successRecords ?? updated.successRecords;
                         updated.failedRecords = payload.failedRecords ?? updated.failedRecords;
+
+                        // Prevent progress events from resetting completed status back to processing
+                        if (['completed', 'failed', 'validated'].includes(updated.status) && payload.status === 'processing') {
+                            // keep the terminal status
+                        } else if (payload.status) {
+                            updated.status = payload.status;
+                        }
                     } else if (type === 'completed') {
                         updated.status = payload.status || 'completed';
                         updated.successRecords = payload.successRecords ?? updated.successRecords;

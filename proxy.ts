@@ -114,7 +114,7 @@ function getSubdomain(host: string): string | null {
 // Get target subdomain for a given path
 function getTargetSubdomain(pathname: string): string | null {
   for (const [subdomain, routes] of Object.entries(SUBDOMAIN_ROUTES)) {
-    if (routes.some((route) => pathname.startsWith(route))) {
+    if (routes.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
       return subdomain;
     }
   }
@@ -129,7 +129,7 @@ function normalizePathForSubdomain(
   if (!subdomain) return pathname;
 
   const prefix = `/${subdomain}`;
-  if (pathname.startsWith(prefix)) {
+  if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
     const remaining = pathname.slice(prefix.length);
     return remaining || "/"; // Return "/" if path becomes empty
   }
@@ -337,31 +337,31 @@ export default function middleware(request: NextRequest): NextResponse {
 
   // IMPORTANT: Handle routes that start with subdomain prefixes but are on wrong subdomain
   // This MUST come BEFORE the rewrite logic for other subdomains
-  if (pathname.startsWith("/hr") && currentSubdomain !== "hr") {
+  if ((pathname === "/hr" || pathname.startsWith("/hr/")) && currentSubdomain !== "hr") {
     const hrPath = pathname.replace("/hr", "") || "/";
     const hrUrl = buildUrl("hr", hrPath);
     return NextResponse.redirect(hrUrl);
   }
 
-  if (pathname.startsWith("/master") && currentSubdomain !== "master") {
+  if ((pathname === "/master" || pathname.startsWith("/master/")) && currentSubdomain !== "master") {
     const masterPath = pathname.replace("/master", "") || "/";
     const masterUrl = buildUrl("master", masterPath);
     return NextResponse.redirect(masterUrl);
   }
 
-  if (pathname.startsWith("/admin") && currentSubdomain !== "admin") {
+  if ((pathname === "/admin" || pathname.startsWith("/admin/")) && currentSubdomain !== "admin") {
     const adminPath = pathname.replace("/admin", "") || "/";
     const adminUrl = buildUrl("admin", adminPath);
     return NextResponse.redirect(adminUrl);
   }
 
-  if (pathname.startsWith("/erp") && currentSubdomain !== "erp") {
+  if ((pathname === "/erp" || pathname.startsWith("/erp/")) && currentSubdomain !== "erp") {
     const erpPath = pathname.replace("/erp", "") || "/";
     const erpUrl = buildUrl("erp", erpPath);
     return NextResponse.redirect(erpUrl);
   }
 
-  if (pathname.startsWith("/pos") && currentSubdomain !== "pos") {
+  if ((pathname === "/pos" || pathname.startsWith("/pos/")) && currentSubdomain !== "pos") {
     const posPath = pathname.replace("/pos", "") || "/";
     const posUrl = buildUrl("pos", posPath);
     return NextResponse.redirect(posUrl);
@@ -390,18 +390,30 @@ export default function middleware(request: NextRequest): NextResponse {
 
   // Special handling for POS subdomain
   if (currentSubdomain === 'pos') {
+    const posTerminalToken = request.cookies.get("posTerminalToken")?.value;
     const accessToken = request.cookies.get("accessToken")?.value;
-    const hasAccess = !!accessToken;
 
-    // Allow auth routes to pass through (they will be handled by auth redirect logic later if needed)
-    if (pathname.startsWith("/auth") || pathname.startsWith("/_next") || pathname.startsWith("/api")) {
-      // let it pass
-    } else if (!hasAccess) {
-      // Redirect to POS login if no session
-      const loginUrl = buildUrl("auth", "/pos-login");
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      loginUrl.searchParams.set("subdomain", "pos");
-      return NextResponse.redirect(loginUrl);
+    const hasTerminal = !!posTerminalToken;
+    const hasUser = !!accessToken;
+
+    if (!pathname.startsWith("/auth") && !pathname.startsWith("/_next") && !pathname.startsWith("/api")) {
+      if (!hasTerminal) {
+        // Terminal is not registered -> Redirect to Terminal Setup
+        const setupUrl = buildUrl("auth", "/pos-login");
+        setupUrl.searchParams.set("callbackUrl", pathname);
+        setupUrl.searchParams.set("subdomain", "pos");
+        return NextResponse.redirect(setupUrl);
+      } else if (!hasUser) {
+        // Terminal is registered, but no cashier logged in -> Redirect to Cashier Login
+        const cashierUrl = buildUrl("auth", "/pos/user-login");
+        cashierUrl.searchParams.set("callbackUrl", pathname);
+        cashierUrl.searchParams.set("subdomain", "pos");
+        return NextResponse.redirect(cashierUrl);
+      }
+
+      // If both tokens exist, explicitly allow access to POS dashboard routes
+      // Without this return, it falls through to the global isProtectedRoute check
+      return NextResponse.next();
     }
   }
 

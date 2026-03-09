@@ -100,19 +100,20 @@ export default function LoginPage() {
     return path;
   }
 
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    setIsPending(true);
 
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
 
-    startTransition(async () => {
+    try {
       const result = await loginClient(email, password);
 
       if (result.status && result.user) {
@@ -136,8 +137,12 @@ export default function LoginPage() {
         window.location.href = redirectUrl;
       } else {
         setError(result.message);
+        setIsPending(false);
       }
-    });
+    } catch (err) {
+      setError("An unexpected error occurred during login.");
+      setIsPending(false);
+    }
   };
 
   return (
