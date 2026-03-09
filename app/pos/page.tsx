@@ -15,6 +15,7 @@ import {
     CheckCircle2,
     AlertCircle,
     ArrowRight,
+    PackageCheck,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -82,8 +83,15 @@ export default function PosPage() {
             title: "Stock Check",
             description: "View product availability",
             icon: Package,
-            href: "/pos/stock",
+            href: "/pos/inventory/view", // Updated from /pos/stock to match existing route
             color: "from-orange-600 to-red-600",
+        },
+        {
+            title: "Stock Receiving",
+            description: "Accept incoming transfers",
+            icon: PackageCheck,
+            href: "/pos/inventory/receiving",
+            color: "from-indigo-600 to-blue-600",
         },
         {
             title: "Reports",
