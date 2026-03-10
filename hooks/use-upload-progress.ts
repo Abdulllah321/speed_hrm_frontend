@@ -33,7 +33,7 @@ export interface UploadStatusResponse {
     completedAt: string | null;
 }
 
-export function useUploadProgress(uploadId: string | null) {
+export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'hscode' = 'item') {
     const [data, setData] = useState<UploadStatusResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -49,11 +49,19 @@ export function useUploadProgress(uploadId: string | null) {
         }
     }, []);
 
+    const getApiEndpoint = useCallback((endpoint: string) => {
+        const baseUrl = getApiBaseUrl();
+        if (uploadType === 'hscode') {
+            return `${baseUrl}/master/hs-codes/bulk-upload/${endpoint}`;
+        }
+        return `${baseUrl}/items/bulk-upload/${endpoint}`;
+    }, [uploadType]);
+
     const fetchInitialStatus = useCallback(async () => {
         if (!uploadId) return;
 
         try {
-            const response = await fetch(`${getApiBaseUrl()}/items/bulk-upload/${uploadId}/status`, {
+            const response = await fetch(getApiEndpoint(`${uploadId}/status`), {
                 credentials: "include"
             });
             const result = await response.json();
@@ -67,7 +75,7 @@ export function useUploadProgress(uploadId: string | null) {
             console.error('Initial fetch failed:', err);
             setError(err instanceof Error ? err.message : 'Unknown error');
         }
-    }, [uploadId]);
+    }, [uploadId, getApiEndpoint]);
 
     useEffect(() => {
         if (!uploadId) {
@@ -80,7 +88,7 @@ export function useUploadProgress(uploadId: string | null) {
         fetchInitialStatus();
 
         // Setup SSE
-        const url = `${getApiBaseUrl()}/items/bulk-upload/${uploadId}/events`;
+        const url = getApiEndpoint(`${uploadId}/events`);
         const eventSource = new EventSource(url, { withCredentials: true });
         eventSourceRef.current = eventSource;
 
@@ -153,7 +161,7 @@ export function useUploadProgress(uploadId: string | null) {
         return () => {
             stopStreaming();
         };
-    }, [uploadId, fetchInitialStatus, stopStreaming]);
+    }, [uploadId, fetchInitialStatus, stopStreaming, getApiEndpoint]);
 
     // Speed calculation
     useEffect(() => {
