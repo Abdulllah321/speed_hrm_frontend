@@ -18,7 +18,7 @@ export function AccessDenied({ message = "You do not have permission to access t
             </p>
             <div className="flex gap-4">
                 <Button asChild variant="outline">
-                    <Link href="/">Return to Dashboard</Link>
+                    <a href="/">Return to Dashboard</a>
                 </Button>
             </div>
         </div>

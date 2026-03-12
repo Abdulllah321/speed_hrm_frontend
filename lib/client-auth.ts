@@ -165,7 +165,7 @@ export async function verifyPosSessionClient(): Promise<any> {
 }
 
 // Client-side token refresh function - now calls backend directly
-export async function refreshTokenClient(): Promise<boolean> {
+export async function refreshTokenClient(): Promise<{ success: boolean; isNetworkError: boolean }> {
   try {
     // Get refresh token from cookie (sent automatically with credentials: include)
     const res = await fetch(`${getApiBaseUrl()}/auth/refresh-token`, {
@@ -175,11 +175,19 @@ export async function refreshTokenClient(): Promise<boolean> {
       body: JSON.stringify({}), // Backend will get refreshToken from cookie
     });
 
+    if (res.status === 401) {
+      return { success: false, isNetworkError: false }; // True token expiry
+    }
+
+    if (!res.ok) {
+      return { success: false, isNetworkError: true }; // Server error or gateway timeout
+    }
+
     const data = await res.json();
-    return data.status;
+    return { success: data.status, isNetworkError: false };
   } catch (error) {
     console.error("Token refresh error:", error);
-    return false;
+    return { success: false, isNetworkError: true }; // Network drop
   }
 }
 

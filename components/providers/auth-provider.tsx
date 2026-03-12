@@ -177,18 +177,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshPromiseRef.current = (async () => {
       try {
         const { refreshTokenClient } = await import("@/lib/client-auth");
-        const success = await refreshTokenClient();
+        const result = await refreshTokenClient();
 
-        if (!success) {
-          // Refresh failed, trigger session expiry UI
+        // Handle both older boolean return type (if cached somehow) and new object return type
+        const success = typeof result === 'boolean' ? result : result.success;
+        const isNetworkError = typeof result === 'boolean' ? false : result.isNetworkError;
+
+        if (!success && !isNetworkError) {
+          // Refresh failed due to 401 or invalid token, trigger session expiry UI
           await handleSessionExpiry();
+          return false;
+        }
+
+        if (isNetworkError) {
+          // It's a network glitch, don't clear the user's session
           return false;
         }
 
         return true;
       } catch (error) {
         console.error("Token refresh error:", error);
-        await handleSessionExpiry();
+        // Don't auto-logout on unexpected execution errors during refresh
         return false;
       } finally {
         refreshPromiseRef.current = null;
@@ -277,7 +286,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoadingProgress(100);
           return;
         }
-        throw new Error("Failed to fetch user");
+        // Do not throw here if it's a non-401 error. 
+        // We already have user from the cookie, so we can gracefully allow the user to proceed.
+        // We just log it and stop further loading.
+        console.warn(`Non-401 error fetching user: ${res.status}`);
+        setLoadingProgress(100);
+        return;
       }
 
       setLoadingMessage("Loading user data...");
@@ -324,8 +338,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
       console.error("Error fetching user:", error);
-      setUser(null);
-      setPreferences({});
+      // If we already have a user from the cookie, KEEP it instead of nullifying.
+      // This prevents "AccessDenied" flashes on temporary network drops/500 errors.
       setLoadingProgress(100);
     } finally {
       setLoading(false);
