@@ -200,8 +200,16 @@ export const employeeApi = {
 };
 
 export const dashboardApi = {
-  getStats: () => fetchApi<DashboardStats>('/dashboard/stats'),
-  getEmployeeStats: () => fetchApi<EmployeeDashboardStats>('/dashboard/employee-stats'),
+  getStats: async (fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>) => {
+    const res = await fetchWithAuth(`${getApiBaseUrl()}/dashboard/stats`);
+    if (!res.ok) throw new Error("Failed to fetch dashboard stats");
+    return res.json() as Promise<DashboardStats>;
+  },
+  getEmployeeStats: async (fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>) => {
+    const res = await fetchWithAuth(`${getApiBaseUrl()}/dashboard/employee-stats`);
+    if (!res.ok) throw new Error("Failed to fetch employee stats");
+    return res.json() as Promise<EmployeeDashboardStats>;
+  },
 };
 
 export interface EmployeeDashboardStats {
@@ -786,7 +794,7 @@ export const transferRequestApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  
+
   createReturn: (data: {
     fromLocationId: string;
     fromWarehouseId: string;
@@ -821,11 +829,11 @@ export const transferRequestApi = {
     return fetchApi<{ status: boolean; data: any[] }>(`/transfer-request?${query}`);
   },
   getIncoming: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/incoming?locationId=${locationId}`),
-  
+
   getReturnRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/return-requests?locationId=${locationId}`),
-  
+
   getOutboundRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/outbound-requests?locationId=${locationId}`),
-  
+
   getInboundRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/inbound-requests?locationId=${locationId}`),
 
   updateStatus: (id: string, status: string) => fetchApi<{ status: boolean; message: string }>(`/transfer-request/${id}/status`, {

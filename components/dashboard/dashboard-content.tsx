@@ -47,6 +47,7 @@ import { ScrollArea } from "../ui/scroll-area";
 
 export function DashboardContent() {
     const { currentCompany, loading: companyLoading } = useCompany();
+    const { fetchWithAuth } = useAuth();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export function DashboardContent() {
         async function loadStats() {
             try {
                 setLoading(true);
-                const data = await dashboardApi.getStats();
+                const data = await dashboardApi.getStats(fetchWithAuth);
                 setStats(data);
                 setError(null);
             } catch (err) {

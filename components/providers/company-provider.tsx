@@ -9,11 +9,13 @@ import React, {
     ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import Cookies from "js-cookie";
 import {
     Company,
+    getCompanies,
+    checkCompaniesExist,
     createCompany,
-    setCurrentCompany as setCurrentCompanyAction
+    setCurrentCompany as setCurrentCompanyAction,
+    getCurrentCompany
 } from "@/lib/actions/companies";
 import { useAuth } from "@/components/providers/auth-provider";
 
@@ -40,7 +42,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     const [loading, setLoading] = useState(true);
     const [needsSetup, setNeedsSetup] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const { fetchWithAuth } = useAuth();
+    // const { } = useAuth(); // Removed loading controls
 
     // Internal function to select company and update cookies via server action
     const selectCompanyInternal = useCallback(async (company: Company) => {
@@ -56,32 +58,24 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         try {
             setLoading(true);
 
-            // 1. Try to get current company from client cookie directly
-            let savedCompany = null;
-            const companyCookie = Cookies.get("currentCompany");
-            if (companyCookie) {
-                try {
-                    savedCompany = JSON.parse(companyCookie);
-                    setCurrentCompany(savedCompany);
-                } catch (e) { }
+            // 1. Try to get current company from server action (reads cookies correctly)
+            const savedCompany = await getCurrentCompany();
+            if (savedCompany) {
+                setCurrentCompany(savedCompany);
             }
 
-            // 2. Check if companies exist via standard API call
-            const checkRes = await fetchWithAuth("/admin/companies/check");
-            const checkJson = await checkRes.json();
-            const hasCompanies = checkJson.hasCompanies ?? false;
+            // 2. Check if companies exist via server action
+            const { hasCompanies } = await checkCompaniesExist();
 
             if (!hasCompanies) {
                 setNeedsSetup(true);
                 setCompanies([]);
-                if (!savedCompany) setCurrentCompany(null);
+                setCurrentCompany(null);
                 return;
             }
 
-            // 3. Fetch companies list via standard API call
-            const listRes = await fetchWithAuth("/admin/companies");
-            const listJson = await listRes.json();
-            const companiesList = listJson.data || [];
+            // 3. Fetch companies list via server action
+            const { data: companiesList } = await getCompanies();
 
             if (companiesList && companiesList.length > 0) {
                 setCompanies(companiesList);
@@ -100,7 +94,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         } finally {
             setLoading(false);
         }
-    }, [selectCompanyInternal, fetchWithAuth]);
+    }, [selectCompanyInternal]);
 
     // Public function to select company
     const selectCompany = useCallback(async (company: Company) => {
@@ -112,16 +106,15 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Refresh companies list
     const refreshCompanies = useCallback(async () => {
         try {
-            const listRes = await fetchWithAuth("/admin/companies");
-            const listJson = await listRes.json();
-            const list = listJson.data || [];
+            const { data } = await getCompanies();
+            const list = data || [];
 
             setCompanies(list);
             setNeedsSetup(list.length === 0);
         } catch (error) {
             console.error("Failed to refresh companies:", error);
         }
-    }, [fetchWithAuth]);
+    }, []);
 
     // Create a new company and select it using server actions
     const createAndSelectCompany = useCallback(

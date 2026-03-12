@@ -40,7 +40,7 @@ import { LeavesContent } from "./profile/leaves-content";
 import { WorkExperienceContent } from "./profile/work-experience-content";
 
 export function EmployeeDashboardContent() {
-    const { user } = useAuth();
+    const { user, fetchWithAuth } = useAuth();
     const [stats, setStats] = useState<EmployeeDashboardStats | null>(null);
     const [employeeProfile, setEmployeeProfile] = useState<Employee | null>(null);
     const [loading, setLoading] = useState(true);
@@ -49,12 +49,12 @@ export function EmployeeDashboardContent() {
     useEffect(() => {
         async function loadData() {
             if (!user) return;
-            
+
             try {
                 // Fetch stats and profile in parallel
-                const statsPromise = dashboardApi.getEmployeeStats();
-                const profilePromise = user.employee?.id 
-                    ? employeeApi.getProfile(user.employee.id, true) 
+                const statsPromise = dashboardApi.getEmployeeStats(fetchWithAuth);
+                const profilePromise = user.employee?.id
+                    ? employeeApi.getProfile(user.employee.id, true)
                     : Promise.resolve({ status: false, data: null });
 
                 const [statsData, profileRes] = await Promise.all([
@@ -73,7 +73,7 @@ export function EmployeeDashboardContent() {
                 setLoading(false);
             }
         }
-        
+
         loadData();
     }, [user]);
 
