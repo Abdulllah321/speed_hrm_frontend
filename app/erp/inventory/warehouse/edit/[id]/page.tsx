@@ -3,9 +3,11 @@
 import { use } from 'react';
 import { WarehouseForm } from '../../warehouse-form';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, List } from 'lucide-react';
+import { ArrowLeft, List, Building2, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WarehouseLocationManager } from '@/components/inventory/warehouse-location-manager';
 
 export default function EditWarehousePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -31,7 +33,26 @@ export default function EditWarehousePage({ params }: { params: Promise<{ id: st
                 </Button>
             </div>
 
-            <WarehouseForm id={id} />
+            <Tabs defaultValue="details" className="w-full">
+                <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+                    <TabsTrigger value="details">
+                        <Building2 className="h-4 w-4 mr-2" />
+                        Details
+                    </TabsTrigger>
+                    <TabsTrigger value="locations">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Shop Locations
+                    </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="details" className="mt-6">
+                    <WarehouseForm id={id} />
+                </TabsContent>
+
+                <TabsContent value="locations" className="mt-6">
+                    <WarehouseLocationManager warehouseId={id} />
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

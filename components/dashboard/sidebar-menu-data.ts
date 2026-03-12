@@ -249,14 +249,14 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/location/list" },
     ],
   },
-  {
-    title: "POS Config",
-    environment: "HR",
-    permissions: ["master.location.read"],
-    children: [
-      { title: "Manage", href: "/master/pos-config" },
-    ],
-  },
+  // {
+  //   title: "POS Config",
+  //   environment: "HR",
+  //   permissions: ["master.location.read"],
+  //   children: [
+  //     { title: "Manage", href: "/master/pos-config" },
+  //   ],
+  // },
   {
     title: "Region",
     environment: "HR",
@@ -780,7 +780,7 @@ export const menuData: MenuItem[] = [
         children: [
 
           { title: "Dashboard", href: "/erp/inventory/warehouse" },
-          { title: "ADD Warehouse", href: "/erp/inventory/warehouse/add" },
+          { title: "Warehouse", href: "/erp/inventory/warehouse/add" },
           { title: "Inventory Explorer", href: "/erp/inventory/warehouse/inventory" },
 
         ]

@@ -136,7 +136,7 @@ export default function CreatePurchaseRequisition() {
                             <Label htmlFor="prNumber">PR No</Label>
                             <Input id="prNumber" value={prAutoNumber} disabled />
                         </div>
-                        
+
                         <div className="space-y-2">
                             <Label>Department</Label>
                             <Select
@@ -165,7 +165,7 @@ export default function CreatePurchaseRequisition() {
                                 onValueChange={(val) => {
                                     setSelectedSubDepartmentId(val);
                                     const subName = subDepartments.find(s => s.id === val)?.name || '';
-                                    setValue('department', subName || (departments.find(d=>d.id===selectedDepartmentId)?.name || ''));
+                                    setValue('department', subName || (departments.find(d => d.id === selectedDepartmentId)?.name || ''));
                                 }}
                             >
                                 <SelectTrigger>
@@ -234,7 +234,7 @@ export default function CreatePurchaseRequisition() {
                                 <div className="col-span-3 space-y-2">
                                     <Label>Category</Label>
                                     <Select
-                                        onValueChange={() => {}}
+                                        onValueChange={() => { }}
                                     >
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select" />
@@ -284,7 +284,7 @@ export default function CreatePurchaseRequisition() {
                                         })}
                                     />
                                 </div>
-                                
+
                                 <div className="col-span-3 flex items-center justify-end mt-3">
                                     <Tooltip>
                                         <TooltipTrigger asChild>

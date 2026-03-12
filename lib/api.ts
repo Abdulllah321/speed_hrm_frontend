@@ -535,6 +535,19 @@ export interface Warehouse {
   isActive: boolean;
   managerId?: string;
   createdAt: string;
+  locations?: WarehouseLocation[];
+}
+
+export interface WarehouseLocation {
+  id: string;
+  warehouseId: string;
+  code: string;
+  name: string;
+  type: string;
+  barcode?: string;
+  isActive: boolean;
+  parent?: WarehouseLocation;
+  children?: WarehouseLocation[];
 }
 
 export interface GrnItem {
@@ -693,6 +706,19 @@ export const warehouseApi = {
   }),
 };
 
+export const locationApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/locations'),
+  getByWarehouse: (warehouseId: string) => fetchApi<WarehouseLocation[]>(`/warehouse/${warehouseId}/locations`),
+  create: (data: Partial<WarehouseLocation>) => fetchApi<WarehouseLocation>('/warehouse/location', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateStatus: (id: string, isActive: boolean) => fetchApi<WarehouseLocation>(`/warehouse/location/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive }),
+  }),
+};
+
 // Stock Ledger Types and API
 export enum MovementType {
   INBOUND = 'INBOUND',
@@ -722,6 +748,7 @@ export interface StockLedgerEntry {
 export interface StockLevel {
   itemId: string;
   warehouseId: string;
+  locationId?: string;
   totalQty: string;
   item: {
     itemId: string;
@@ -733,6 +760,11 @@ export interface StockLevel {
     name: string;
     code: string;
   } | null;
+  location: {
+    name: string;
+    code: string;
+    type: string;
+  } | null;
 }
 
 export const stockLedgerApi = {
@@ -740,7 +772,7 @@ export const stockLedgerApi = {
     const query = new URLSearchParams(params as any).toString();
     return fetchApi<StockLedgerEntry[]>(`/stock-ledger?${query}`);
   },
-  getLevels: (params?: { warehouseId?: string }) => {
+  getLevels: (params?: { warehouseId?: string, locationId?: string }) => {
     const query = new URLSearchParams(params as any).toString();
     return fetchApi<StockLevel[]>(`/stock-ledger/levels?${query}`);
   }
@@ -754,13 +786,81 @@ export const transferRequestApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/transfer-request'),
+  
+  createReturn: (data: {
+    fromLocationId: string;
+    fromWarehouseId: string;
+    items: { itemId: string; quantity: number }[];
+    notes?: string;
+    createdById?: string;
+  }) => fetchApi<{ status: boolean; data: any; message: string }>('/transfer-request', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...data,
+      transferType: 'OUTLET_TO_WAREHOUSE',
+      toLocationId: null,
+    }),
+  }),
+
+  createOutletToOutlet: (data: {
+    fromLocationId: string;
+    toLocationId: string;
+    items: { itemId: string; quantity: number }[];
+    notes?: string;
+    createdById?: string;
+  }) => fetchApi<{ status: boolean; data: any; message: string }>('/transfer-request', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...data,
+      transferType: 'OUTLET_TO_OUTLET',
+    }),
+  }),
+
+  getAll: (params?: { warehouseId?: string, status?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ status: boolean; data: any[] }>(`/transfer-request?${query}`);
+  },
+  getIncoming: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/incoming?locationId=${locationId}`),
+  
+  getReturnRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/return-requests?locationId=${locationId}`),
+  
+  getOutboundRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/outbound-requests?locationId=${locationId}`),
+  
+  getInboundRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/inbound-requests?locationId=${locationId}`),
+
   updateStatus: (id: string, status: string) => fetchApi<{ status: boolean; message: string }>(`/transfer-request/${id}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   }),
+  accept: (id: string, userId?: string) => fetchApi<{ status: boolean; data: any; message: string }>(`/transfer-request/${id}/accept`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  }),
+  approveSource: (id: string, userId?: string) => fetchApi<{ status: boolean; data: any; message: string }>(`/transfer-request/${id}/approve-source`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  }),
 };
 
 export const inventoryApi = {
+  search: (query: string, warehouseId?: string) => {
+    const params = new URLSearchParams({ q: query });
+    if (warehouseId) params.append('warehouseId', warehouseId);
+    return fetchApi<{ status: boolean; data: any[] }>(`/inventory/search?${params.toString()}`);
+  },
   getDetails: (itemId: string) => fetchApi<{ status: boolean; data: any[] }>(`/inventory/details/${itemId}`),
+};
+
+export const stockOperationApi = {
+  move: (data: {
+    itemId: string;
+    fromLocationId?: string;
+    toLocationId?: string;
+    quantity: number;
+    type: 'TRANSFER' | 'INBOUND' | 'OUTBOUND';
+    notes?: string;
+  }) => fetchApi<any>('/stock-operation/move', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
 };

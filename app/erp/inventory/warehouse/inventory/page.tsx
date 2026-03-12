@@ -119,9 +119,17 @@ export default function InventoryPage() {
                                         </TableCell>
                                         <TableCell>{level.item?.description || "-"}</TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="outline">{level.warehouse?.code}</Badge>
-                                                <span>{level.warehouse?.name}</span>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant="outline">{level.warehouse?.code}</Badge>
+                                                    <span>{level.warehouse?.name}</span>
+                                                </div>
+                                                {level.location && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/50 w-fit px-1.5 py-0.5 rounded border">
+                                                        <span className="font-semibold">{level.location.type || 'LOC'}:</span>
+                                                        <span>{level.location.name}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right font-mono font-bold text-lg">

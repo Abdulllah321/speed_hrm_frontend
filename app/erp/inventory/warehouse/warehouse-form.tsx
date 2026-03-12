@@ -15,9 +15,10 @@ import { Save, X, Building2 } from 'lucide-react';
 
 interface WarehouseFormProps {
     id?: string;
+    onSuccess?: () => void;
 }
 
-export function WarehouseForm({ id }: WarehouseFormProps) {
+export function WarehouseForm({ id, onSuccess }: WarehouseFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(!!id);
@@ -59,7 +60,12 @@ export function WarehouseForm({ id }: WarehouseFormProps) {
                 await warehouseApi.create(formData);
                 toast.success('Warehouse created successfully');
             }
-            router.push('/erp/inventory/warehouse');
+
+            if (onSuccess) {
+                onSuccess();
+            } else {
+                router.push('/erp/inventory/warehouse');
+            }
         } catch (error: any) {
             console.error('Failed to save warehouse:', error);
             toast.error(error.message || 'Failed to save warehouse');

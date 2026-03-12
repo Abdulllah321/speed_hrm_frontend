@@ -42,6 +42,7 @@ export default function CreateDirectPurchaseOrder() {
     const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
     const [multiVendorMode, setMultiVendorMode] = useState<boolean>(false);
     const [vendorTypeFilter, setVendorTypeFilter] = useState<'all' | 'local' | 'import'>('all');
+    const [multiVendorTypeFilter, setMultiVendorTypeFilter] = useState<'all' | 'local' | 'import'>('all');
 
     // Item Input State
     const [currentItemId, setCurrentItemId] = useState<string>('');
@@ -191,6 +192,15 @@ export default function CreateDirectPurchaseOrder() {
         return orderItems.reduce((sum, item) => sum + (item.lineTotal || 0), 0);
     };
 
+    const getFilteredVendors = (filterType: 'all' | 'local' | 'import') => {
+        return vendors.filter(v => {
+            if (filterType === 'all') return true;
+            if (filterType === 'local') return v.type === 'LOCAL' || !v.type;
+            if (filterType === 'import') return v.type === 'IMPORT' || v.type === 'INTERNATIONAL';
+            return true;
+        });
+    };
+
     const handleSubmit = async () => {
         if (orderItems.length === 0) {
             toast.error('Please add at least one item');
@@ -326,19 +336,11 @@ export default function CreateDirectPurchaseOrder() {
                                         <SelectValue placeholder="Select Vendor" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {vendors
-                                            .filter(v => {
-                                                if (vendorTypeFilter === 'all') return true;
-                                                if (vendorTypeFilter === 'local') return v.type === 'LOCAL' || !v.type;
-                                                if (vendorTypeFilter === 'import') return v.type === 'IMPORT' || v.type === 'INTERNATIONAL';
-                                                return true;
-                                            })
-                                            .map((vendor) => (
-                                                <SelectItem key={vendor.id} value={vendor.id}>
-                                                    {vendor.name} ({vendor.code})
-                                                </SelectItem>
-                                            ))
-                                        }
+                                        {getFilteredVendors(vendorTypeFilter).map((vendor) => (
+                                            <SelectItem key={vendor.id} value={vendor.id}>
+                                                {vendor.name} ({vendor.code})
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -372,80 +374,96 @@ export default function CreateDirectPurchaseOrder() {
                     </CardHeader>
                     <CardContent className="space-y-6">
                         {/* Add Item Form */}
-                        <div className="grid grid-cols-12 gap-2 items-end border-b pb-4">
-                            <div className="col-span-3 space-y-2">
-                                <Label>Item</Label>
-                                <Select value={currentItemId} onValueChange={handleItemSelect}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Item" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {items.map((item) => (
-                                            <SelectItem key={item.id} value={item.itemId}>
-                                                {item.sku || item.itemId} {item.description ? `- ${item.description}` : ''}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="col-span-2 space-y-2">
-                                <Label>Qty</Label>
-                                <Input
-                                    type="number"
-                                    value={currentQty}
-                                    onChange={(e) => setCurrentQty(e.target.value)}
-                                    placeholder="0"
-                                />
-                            </div>
-                            <div className="col-span-2 space-y-2">
-                                <Label>Price</Label>
-                                <Input
-                                    type="number"
-                                    value={currentPrice}
-                                    onChange={(e) => setCurrentPrice(e.target.value)}
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            <div className="col-span-2 space-y-2">
-                                <Label>Tax %</Label>
-                                <Input
-                                    type="number"
-                                    value={currentTax}
-                                    onChange={(e) => setCurrentTax(e.target.value)}
-                                    placeholder="0"
-                                />
-                            </div>
-                            <div className="col-span-1 space-y-2">
-                                <Label>Disc %</Label>
-                                <Input
-                                    type="number"
-                                    value={currentDiscount}
-                                    onChange={(e) => setCurrentDiscount(e.target.value)}
-                                    placeholder="0"
-                                />
+                        <div className="space-y-3 border-b pb-4">
+                            <div className="grid grid-cols-12 gap-2 items-end">
+                                <div className="col-span-3 space-y-2">
+                                    <Label>Item</Label>
+                                    <Select value={currentItemId} onValueChange={handleItemSelect}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Item" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {items.map((item) => (
+                                                <SelectItem key={item.id} value={item.itemId}>
+                                                    {item.sku || item.itemId} {item.description ? `- ${item.description}` : ''}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="col-span-2 space-y-2">
+                                    <Label>Qty</Label>
+                                    <Input
+                                        type="number"
+                                        value={currentQty}
+                                        onChange={(e) => setCurrentQty(e.target.value)}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="col-span-2 space-y-2">
+                                    <Label>Price</Label>
+                                    <Input
+                                        type="number"
+                                        value={currentPrice}
+                                        onChange={(e) => setCurrentPrice(e.target.value)}
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                                <div className="col-span-2 space-y-2">
+                                    <Label>Tax %</Label>
+                                    <Input
+                                        type="number"
+                                        value={currentTax}
+                                        onChange={(e) => setCurrentTax(e.target.value)}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="col-span-2 space-y-2">
+                                    <Label>Disc %</Label>
+                                    <Input
+                                        type="number"
+                                        value={currentDiscount}
+                                        onChange={(e) => setCurrentDiscount(e.target.value)}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="col-span-1">
+                                    <Button size="icon" onClick={handleAddItem}>
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
                             {multiVendorMode && (
-                            <div className="col-span-2 space-y-2">
-                                <Label>Vendor</Label>
-                                <Select value={currentVendorId} onValueChange={setCurrentVendorId}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select Vendor" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {vendors.map((vendor) => (
-                                            <SelectItem key={vendor.id} value={vendor.id}>
-                                                {vendor.name} ({vendor.code})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-1 space-y-2">
+                                        <Label>Vendor</Label>
+                                        <div className="flex gap-2">
+                                            <Select value={multiVendorTypeFilter} onValueChange={(v: any) => setMultiVendorTypeFilter(v)}>
+                                                <SelectTrigger className="w-32">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="all">All Types</SelectItem>
+                                                    <SelectItem value="local">Local</SelectItem>
+                                                    <SelectItem value="import">Import</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <Select value={currentVendorId} onValueChange={setCurrentVendorId}>
+                                                <SelectTrigger className="flex-1">
+                                                    <SelectValue placeholder="Select Vendor" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {getFilteredVendors(multiVendorTypeFilter).map((vendor) => (
+                                                        <SelectItem key={vendor.id} value={vendor.id}>
+                                                            {vendor.name} ({vendor.code})
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
-                            <div className="col-span-1">
-                                <Button size="icon" onClick={handleAddItem}>
-                                    <Plus className="h-4 w-4" />
-                                </Button>
-                            </div>
                         </div>
 
                         {/* Items Table */}
@@ -477,25 +495,9 @@ export default function CreateDirectPurchaseOrder() {
                                                 </TableCell>
                                             <TableCell>
                                                 {multiVendorMode ? (
-                                                    <Select
-                                                        value={item.vendorId || ''}
-                                                        onValueChange={(val) => {
-                                                            const newItems = [...orderItems];
-                                                            newItems[index] = { ...item, vendorId: val };
-                                                            setOrderItems(newItems);
-                                                        }}
-                                                    >
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Select Vendor" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {vendors.map((vendor) => (
-                                                                <SelectItem key={vendor.id} value={vendor.id}>
-                                                                    {vendor.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <span className="text-sm">
+                                                        {vendors.find(v => v.id === item.vendorId)?.name || 'No vendor'}
+                                                    </span>
                                                 ) : (
                                                     <span className="text-muted-foreground">
                                                         {vendors.find(v => v.id === selectedVendorId)?.name || 'Select vendor above'}
