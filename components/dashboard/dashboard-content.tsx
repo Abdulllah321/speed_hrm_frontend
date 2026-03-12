@@ -44,6 +44,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
+import { useAuth } from "../providers/auth-provider";
 
 export function DashboardContent() {
     const { currentCompany, loading: companyLoading } = useCompany();
