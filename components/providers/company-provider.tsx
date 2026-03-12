@@ -80,8 +80,9 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
             if (companiesList && companiesList.length > 0) {
                 setCompanies(companiesList);
 
-                // If no current company is set, select the first one
-                if (!savedCompany) {
+                // If no current company is set, or if the saved company is no longer active/valid
+                const isValidCompany = savedCompany && companiesList.some(c => c.id === savedCompany.id);
+                if (!isValidCompany) {
                     await selectCompanyInternal(companiesList[0]);
                 }
 
