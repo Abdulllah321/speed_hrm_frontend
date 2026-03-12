@@ -16,6 +16,7 @@ import {
     AlertCircle,
     ArrowRight,
     PackageCheck,
+    RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -92,6 +93,27 @@ export default function PosPage() {
             icon: PackageCheck,
             href: "/pos/inventory/receiving",
             color: "from-indigo-600 to-blue-600",
+        },
+        {
+            title: "Return Requests",
+            description: "Approve return requests",
+            icon: RotateCcw,
+            href: "/pos/inventory/returns",
+            color: "from-orange-600 to-amber-600",
+        },
+        {
+            title: "Outbound Transfers",
+            description: "Approve outgoing transfers",
+            icon: ArrowRight,
+            href: "/pos/inventory/outbound",
+            color: "from-blue-600 to-indigo-600",
+        },
+        {
+            title: "Inbound Transfers",
+            description: "Accept incoming transfers",
+            icon: ArrowRight,
+            href: "/pos/inventory/inbound",
+            color: "from-green-600 to-emerald-600",
         },
         {
             title: "Reports",

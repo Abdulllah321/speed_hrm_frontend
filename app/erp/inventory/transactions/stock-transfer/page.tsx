@@ -7,9 +7,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { warehouseApi, transferRequestApi, inventoryApi, posSalesApi, stockLedgerApi, Warehouse, WarehouseLocation } from '@/lib/api';
+import { warehouseApi, transferRequestApi, inventoryApi, posSalesApi, stockLedgerApi, locationApi, Warehouse, WarehouseLocation } from '@/lib/api';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -18,6 +18,7 @@ export default function StockTransferPage() {
     const router = useRouter();
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [locations, setLocations] = useState<WarehouseLocation[]>([]);
+    const [masterLocations, setMasterLocations] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
@@ -25,6 +26,7 @@ export default function StockTransferPage() {
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
     const [sourceLocationId, setSourceLocationId] = useState<string>('unassigned');
     const [destLocationId, setDestLocationId] = useState<string>('');
+    const [transferMode, setTransferMode] = useState<'WAREHOUSE_TO_OUTLET' | 'OUTLET_TO_WAREHOUSE' | 'OUTLET_TO_OUTLET'>('WAREHOUSE_TO_OUTLET');
 
     // Item Search
     const [itemQuery, setItemQuery] = useState('');
@@ -36,13 +38,30 @@ export default function StockTransferPage() {
 
     useEffect(() => {
         loadWarehouses();
+        loadMasterLocations();
     }, []);
+
+    const loadMasterLocations = async () => {
+        try {
+            const res = await locationApi.getAll();
+            if (res.status) {
+                setMasterLocations(res.data);
+                if (res.data.length > 0 && !destLocationId) {
+                    setDestLocationId(res.data[0].id);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load master locations', error);
+        }
+    };
 
     const loadWarehouses = async () => {
         try {
             const data = await warehouseApi.getAll();
+            console.log('Loaded warehouses:', data);
             setWarehouses(data);
             if (data.length > 0) {
+                console.log('Selected warehouse ID:', data[0].id);
                 setSelectedWarehouseId(data[0].id);
                 loadLocations(data[0].id);
             }
@@ -78,14 +97,81 @@ export default function StockTransferPage() {
     };
 
     const handleSearch = async () => {
-        if (!itemQuery) return;
+        if (!itemQuery || !selectedWarehouseId) return;
         setLoading(true);
         try {
-            const res = await posSalesApi.lookup(itemQuery);
-            if (res.status) {
-                setSearchResults(res.data || []);
-            } else {
-                toast.error('Search failed or no items found');
+            if (transferMode === 'WAREHOUSE_TO_OUTLET') {
+                // Normal search for warehouse stock
+                const res = await inventoryApi.search(itemQuery, selectedWarehouseId);
+                if (res.status) {
+                    setSearchResults(res.data || []);
+                } else {
+                    toast.error('Search failed or no items found');
+                }
+            } else if (transferMode === 'OUTLET_TO_WAREHOUSE') {
+                // Return mode: search for items with outlet stock
+                if (!destLocationId) {
+                    toast.error('Please select source outlet first');
+                    return;
+                }
+                
+                const res = await inventoryApi.search(itemQuery, selectedWarehouseId);
+                if (res.status) {
+                    // Filter items that have stock in the selected outlet
+                    const itemsWithOutletStock = await Promise.all(
+                        res.data.map(async (item: any) => {
+                            const details = await inventoryApi.getDetails(item.id);
+                            if (details.status) {
+                                const outletStock = details.data.find((d: any) => 
+                                    d.location?.id === destLocationId
+                                );
+                                return {
+                                    ...item,
+                                    totalQuantity: outletStock ? Number(outletStock.quantity) : 0
+                                };
+                            }
+                            return { ...item, totalQuantity: 0 };
+                        })
+                    );
+                    
+                    // Only show items with outlet stock > 0
+                    const availableItems = itemsWithOutletStock.filter(item => item.totalQuantity > 0);
+                    setSearchResults(availableItems);
+                } else {
+                    toast.error('Search failed or no items found');
+                }
+            } else if (transferMode === 'OUTLET_TO_OUTLET') {
+                // Outlet-to-outlet: search for items with source outlet stock
+                if (!sourceLocationId || sourceLocationId === 'unassigned') {
+                    toast.error('Please select source outlet first');
+                    return;
+                }
+                
+                const res = await inventoryApi.search(itemQuery, selectedWarehouseId);
+                if (res.status) {
+                    // Filter items that have stock in the source outlet
+                    const itemsWithSourceStock = await Promise.all(
+                        res.data.map(async (item: any) => {
+                            const details = await inventoryApi.getDetails(item.id);
+                            if (details.status) {
+                                const sourceStock = details.data.find((d: any) => 
+                                    d.location?.id === sourceLocationId
+                                );
+                                return {
+                                    ...item,
+                                    totalQuantity: sourceStock ? Number(sourceStock.quantity) : 0
+                                };
+                            }
+                            return { ...item, totalQuantity: 0 };
+                        })
+                    );
+                    
+                    // Only show items with source outlet stock > 0
+                    const availableItems = itemsWithSourceStock.filter(item => item.totalQuantity > 0);
+                    setSearchResults(availableItems);
+                } else {
+                    toast.error('Search failed or no items found');
+                }
             }
         } catch (error: any) {
             toast.error(error.message || 'Search failed');
@@ -100,26 +186,10 @@ export default function StockTransferPage() {
         setSelectedItem(item);
         setSearchResults([]);
         setItemQuery('');
-        setSourceStock(0);
+        
+        // Use the warehouse-specific stock from search results
+        setSourceStock(item.totalQuantity || 0);
         setWarehouseStockInfo([]);
-
-        // Load stock levels for this item across ALL locations in the warehouse
-        if (selectedWarehouseId) {
-            try {
-                const levels = await stockLedgerApi.getLevels({
-                    warehouseId: selectedWarehouseId
-                });
-
-                // Sum up ALL stock for this item in this warehouse (regardless of location)
-                const itemLevels = levels.filter(l => l.itemId === item.id);
-                setWarehouseStockInfo(itemLevels);
-
-                const totalInWh = itemLevels.reduce((sum, l) => sum + Number(l.totalQty), 0);
-                setSourceStock(totalInWh);
-            } catch (error) {
-                console.error("Failed to fetch source stock", error);
-            }
-        }
     };
 
     const handleTransfer = async () => {
@@ -128,21 +198,51 @@ export default function StockTransferPage() {
             return;
         }
 
+        if (transferMode === 'OUTLET_TO_OUTLET' && (!sourceLocationId || sourceLocationId === 'unassigned')) {
+            toast.error('Please select source outlet');
+            return;
+        }
+
         setSubmitting(true);
         try {
-            await transferRequestApi.create({
-                fromWarehouseId: selectedWarehouseId,
-                toWarehouseId: selectedWarehouseId, // Internal transfer
-                fromLocationId: sourceLocationId === 'unassigned' ? undefined : sourceLocationId,
-                toLocationId: destLocationId,
-                items: [{
-                    itemId: selectedItem.id,
-                    quantity: transferQty
-                }],
-                notes: notes
-            });
+            if (transferMode === 'WAREHOUSE_TO_OUTLET') {
+                // Normal transfer: Warehouse → Outlet
+                await transferRequestApi.create({
+                    fromWarehouseId: selectedWarehouseId,
+                    toLocationId: destLocationId,
+                    items: [{
+                        itemId: selectedItem.id,
+                        quantity: transferQty
+                    }],
+                    notes: notes
+                });
+                toast.success('Transfer request created! Awaiting shop acceptance.');
+            } else if (transferMode === 'OUTLET_TO_WAREHOUSE') {
+                // Return transfer: Outlet → Warehouse
+                await transferRequestApi.createReturn({
+                    fromLocationId: destLocationId,
+                    fromWarehouseId: selectedWarehouseId,
+                    items: [{
+                        itemId: selectedItem.id,
+                        quantity: transferQty
+                    }],
+                    notes: notes
+                });
+                toast.success('Return request created! Awaiting outlet manager approval.');
+            } else if (transferMode === 'OUTLET_TO_OUTLET') {
+                // Outlet-to-outlet transfer
+                await transferRequestApi.createOutletToOutlet({
+                    fromLocationId: sourceLocationId,
+                    toLocationId: destLocationId,
+                    items: [{
+                        itemId: selectedItem.id,
+                        quantity: transferQty
+                    }],
+                    notes: notes
+                });
+                toast.success('Outlet transfer request created! Awaiting dual approval from both outlets.');
+            }
 
-            toast.success('Transfer request created! Awaiting shop acceptance.');
             setSelectedItem(null);
             setTransferQty(0);
             setNotes('');
@@ -161,15 +261,48 @@ export default function StockTransferPage() {
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight">Internal Stock Transfer</h1>
-                        <p className="text-muted-foreground">Move stock between Bulk Area and Shop Locations.</p>
+                        <h1 className="text-3xl font-bold tracking-tight">
+                            {transferMode === 'WAREHOUSE_TO_OUTLET' ? 'Stock Transfer' : 
+                             transferMode === 'OUTLET_TO_WAREHOUSE' ? 'Return Transfer' : 'Outlet Transfer'}
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {transferMode === 'WAREHOUSE_TO_OUTLET' 
+                                ? 'Move stock from warehouse to outlets.' 
+                                : transferMode === 'OUTLET_TO_WAREHOUSE'
+                                ? 'Return stock from outlets to warehouse.'
+                                : 'Transfer stock between outlets with dual approval.'
+                            }
+                        </p>
                     </div>
                 </div>
-                <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
-                    <Link href="/erp/inventory/transactions/stock-transfer/history">
-                        <History className="h-4 w-4 mr-2" /> Transfer History
-                    </Link>
-                </Button>
+                <div className="flex gap-2">
+                    <Button 
+                        variant={transferMode === 'WAREHOUSE_TO_OUTLET' ? 'default' : 'outline'} 
+                        onClick={() => setTransferMode('WAREHOUSE_TO_OUTLET')}
+                        className="font-bold"
+                    >
+                        <ArrowRightLeft className="h-4 w-4 mr-2" /> Transfer Out
+                    </Button>
+                    <Button 
+                        variant={transferMode === 'OUTLET_TO_WAREHOUSE' ? 'default' : 'outline'} 
+                        onClick={() => setTransferMode('OUTLET_TO_WAREHOUSE')}
+                        className="font-bold"
+                    >
+                        <RotateCcw className="h-4 w-4 mr-2" /> Return
+                    </Button>
+                    <Button 
+                        variant={transferMode === 'OUTLET_TO_OUTLET' ? 'default' : 'outline'} 
+                        onClick={() => setTransferMode('OUTLET_TO_OUTLET')}
+                        className="font-bold"
+                    >
+                        <ArrowRightLeft className="h-4 w-4 mr-2" /> Outlet Transfer
+                    </Button>
+                    <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
+                        <Link href="/erp/inventory/transactions/stock-transfer/history">
+                            <History className="h-4 w-4 mr-2" /> History
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -198,36 +331,113 @@ export default function StockTransferPage() {
                             </Select>
                         </div>
 
-                        <div className="space-y-1 p-3 bg-primary/5 rounded-md border border-primary/10">
-                            <Label className="text-xs text-muted-foreground uppercase tracking-wider">Source (From)</Label>
-                            <div className="flex items-center gap-2 font-semibold">
-                                <Package className="h-4 w-4 text-primary" />
-                                <span>Main Warehouse Stock</span>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground">Moving directly from central storage pool.</p>
-                        </div>
+                        {transferMode === 'WAREHOUSE_TO_OUTLET' ? (
+                            <>
+                                <div className="space-y-1 p-3 bg-primary/5 rounded-md border border-primary/10">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Source (From)</Label>
+                                    <div className="flex items-center gap-2 font-semibold">
+                                        <Package className="h-4 w-4 text-primary" />
+                                        <span>Main Warehouse Stock</span>
+                                    </div>
+                                    <p className="text-[10px] text-muted-foreground">Moving directly from central storage pool.</p>
+                                </div>
 
-                        <div className="flex justify-center py-1">
-                            <ArrowRightLeft className="h-5 w-5 text-muted-foreground rotate-90" />
-                        </div>
+                                <div className="flex justify-center py-1">
+                                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground rotate-90" />
+                                </div>
 
-                        <div className="space-y-2">
-                            <Label>Destination Location (To Shop)</Label>
-                            <Select value={destLocationId} onValueChange={setDestLocationId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Shop" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {locations
-                                        .filter(l => l.type === 'SHOP')
-                                        .map(l => (
-                                            <SelectItem key={l.id} value={l.id}>
-                                                {l.name}
-                                            </SelectItem>
-                                        ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                                <div className="space-y-2">
+                                    <Label>Destination Location (Shop / Counter)</Label>
+                                    <Select value={destLocationId} onValueChange={setDestLocationId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Destination" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {masterLocations.map(l => (
+                                                <SelectItem key={l.id} value={l.id}>
+                                                    {l.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </>
+                        ) : transferMode === 'OUTLET_TO_WAREHOUSE' ? (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Source Location (Shop / Counter)</Label>
+                                    <Select value={destLocationId} onValueChange={setDestLocationId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Source Outlet" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {masterLocations.map(l => (
+                                                <SelectItem key={l.id} value={l.id}>
+                                                    {l.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="flex justify-center py-1">
+                                    <RotateCcw className="h-5 w-5 text-muted-foreground" />
+                                </div>
+
+                                <div className="space-y-1 p-3 bg-orange-50 rounded-md border border-orange-200">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wider">Destination (To)</Label>
+                                    <div className="flex items-center gap-2 font-semibold text-orange-800">
+                                        <Package className="h-4 w-4" />
+                                        <span>Main Warehouse Stock</span>
+                                    </div>
+                                    <p className="text-[10px] text-orange-600">Returning items to central storage pool.</p>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Source Location (From)</Label>
+                                    <Select value={sourceLocationId} onValueChange={setSourceLocationId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Source Outlet" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {masterLocations.map(l => (
+                                                <SelectItem key={l.id} value={l.id}>
+                                                    {l.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="flex justify-center py-1">
+                                    <ArrowRightLeft className="h-5 w-5 text-muted-foreground rotate-90" />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label>Destination Location (To)</Label>
+                                    <Select value={destLocationId} onValueChange={setDestLocationId}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Destination Outlet" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {masterLocations.filter(l => l.id !== sourceLocationId).map(l => (
+                                                <SelectItem key={l.id} value={l.id}>
+                                                    {l.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
+                                    <p className="text-[10px] text-blue-600 font-medium">
+                                        Dual Approval Required: Source outlet must approve first, then destination outlet accepts.
+                                    </p>
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -242,7 +452,12 @@ export default function StockTransferPage() {
                                     <div className="relative flex-1">
                                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input
-                                            placeholder="Search by SKU or Name..."
+                                            placeholder={transferMode === 'WAREHOUSE_TO_OUTLET' 
+                                                ? "Search by SKU or Name..." 
+                                                : transferMode === 'OUTLET_TO_WAREHOUSE'
+                                                ? "Search items available in selected outlet..."
+                                                : "Search items available in source outlet..."
+                                            }
                                             className="pl-9"
                                             value={itemQuery}
                                             onChange={(e) => setItemQuery(e.target.value)}
@@ -266,7 +481,14 @@ export default function StockTransferPage() {
                                                         <TableCell>
                                                             <div className="flex flex-col">
                                                                 <span>{item.description}</span>
-                                                                <span className="text-[10px] text-muted-foreground">Total System Stock: {item.stockQty || 0}</span>
+                                                                <span className="text-[10px] text-muted-foreground">
+                                                                    {transferMode === 'WAREHOUSE_TO_OUTLET' 
+                                                                        ? `Available in Warehouse: ${item.totalQuantity || 0}`
+                                                                        : transferMode === 'OUTLET_TO_WAREHOUSE'
+                                                                        ? `Available in Outlet: ${item.totalQuantity || 0}`
+                                                                        : `Available in Source: ${item.totalQuantity || 0}`
+                                                                    }
+                                                                </span>
                                                             </div>
                                                         </TableCell>
                                                         <TableCell className="text-right">
@@ -291,7 +513,12 @@ export default function StockTransferPage() {
                                             <p className="text-sm text-muted-foreground">{selectedItem.description}</p>
                                             <div className="flex flex-col gap-1">
                                                 <Badge variant={(sourceStock || 0) > 0 ? "secondary" : "outline"} className="w-fit">
-                                                    Available in Warehouse: {sourceStock || 0}
+                                                    {transferMode === 'WAREHOUSE_TO_OUTLET' 
+                                                        ? `Available in Warehouse: ${sourceStock || 0}`
+                                                        : transferMode === 'OUTLET_TO_WAREHOUSE'
+                                                        ? `Available in Outlet: ${sourceStock || 0}`
+                                                        : `Available in Source: ${sourceStock || 0}`
+                                                    }
                                                 </Badge>
                                             </div>
                                         </div>
@@ -327,7 +554,14 @@ export default function StockTransferPage() {
                                     onClick={handleTransfer}
                                 >
                                     <Save className="h-5 w-5 mr-2" />
-                                    {submitting ? 'Processing...' : 'Complete Transfer'}
+                                    {submitting 
+                                        ? 'Processing...' 
+                                        : transferMode === 'WAREHOUSE_TO_OUTLET' 
+                                            ? 'Complete Transfer' 
+                                            : transferMode === 'OUTLET_TO_WAREHOUSE'
+                                            ? 'Create Return Request'
+                                            : 'Create Outlet Transfer'
+                                    }
                                 </Button>
                             </div>
                         )}

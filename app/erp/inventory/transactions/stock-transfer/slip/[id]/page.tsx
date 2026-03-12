@@ -53,7 +53,8 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                 </Button>
                 <Button onClick={printSlip}>
-                    <Printer className="h-4 w-4 mr-2" /> Print Delivery Challan
+                    <Printer className="h-4 w-4 mr-2" /> 
+                    {transfer?.transferType === 'OUTLET_TO_WAREHOUSE' ? 'Print Return Challan' : 'Print Delivery Challan'}
                 </Button>
             </div>
 
@@ -63,8 +64,12 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                 {/* Header Section */}
                 <div className="flex justify-between items-start border-b-2 border-gray-800 pb-6 mb-8">
                     <div>
-                        <h1 className="text-4xl font-black uppercase tracking-tighter text-gray-900">Delivery Challan</h1>
-                        <p className="text-gray-500 font-medium tracking-widest mt-1 text-sm">INTERNAL STOCK TRANSFER</p>
+                        <h1 className="text-4xl font-black uppercase tracking-tighter text-gray-900">
+                            {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? 'Return Challan' : 'Delivery Challan'}
+                        </h1>
+                        <p className="text-gray-500 font-medium tracking-widest mt-1 text-sm">
+                            {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? 'INTERNAL STOCK RETURN' : 'INTERNAL STOCK TRANSFER'}
+                        </p>
                     </div>
                     <div className="text-right">
                         <div className="font-bold text-lg">Speed Limit (ERP)</div>
@@ -92,15 +97,33 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
 
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="border border-gray-200 p-3 rounded-md">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">From (Origin)</h3>
-                                <p className="font-bold text-gray-900">{transfer.fromWarehouse?.name || 'Main Warehouse'}</p>
-                            </div>
-                            <div className="border border-gray-200 p-3 rounded-md bg-blue-50/30">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">To (Destination)</h3>
-                                <p className="font-bold text-blue-900">{transfer.toLocation?.name || 'Shop Location'}</p>
-                                <p className="text-xs text-blue-700 font-mono mt-1">{transfer.toLocation?.code}</p>
-                            </div>
+                            {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? (
+                                // Return Transfer: Outlet → Warehouse
+                                <>
+                                    <div className="border border-orange-200 p-3 rounded-md bg-orange-50/30">
+                                        <h3 className="text-xs font-bold text-orange-700 uppercase tracking-wider mb-1">From (Origin)</h3>
+                                        <p className="font-bold text-orange-900">{transfer.fromLocation?.name || 'Outlet Location'}</p>
+                                        <p className="text-xs text-orange-700 font-mono mt-1">{transfer.fromLocation?.code}</p>
+                                    </div>
+                                    <div className="border border-gray-200 p-3 rounded-md">
+                                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">To (Destination)</h3>
+                                        <p className="font-bold text-gray-900">{transfer.fromWarehouse?.name || 'Main Warehouse'}</p>
+                                    </div>
+                                </>
+                            ) : (
+                                // Normal Transfer: Warehouse → Outlet
+                                <>
+                                    <div className="border border-gray-200 p-3 rounded-md">
+                                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">From (Origin)</h3>
+                                        <p className="font-bold text-gray-900">{transfer.fromWarehouse?.name || 'Main Warehouse'}</p>
+                                    </div>
+                                    <div className="border border-gray-200 p-3 rounded-md bg-blue-50/30">
+                                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">To (Destination)</h3>
+                                        <p className="font-bold text-blue-900">{transfer.toLocation?.name || 'Shop Location'}</p>
+                                        <p className="text-xs text-blue-700 font-mono mt-1">{transfer.toLocation?.code}</p>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -113,7 +136,9 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                                 <th className="py-3 px-2 font-bold text-sm w-12 text-center">#</th>
                                 <th className="py-3 px-2 font-bold text-sm">Item Code (SKU)</th>
                                 <th className="py-3 px-2 font-bold text-sm">Description</th>
-                                <th className="py-3 px-2 font-bold text-sm text-right">Quantity Transferred</th>
+                                <th className="py-3 px-2 font-bold text-sm text-right">
+                                    {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? 'Quantity Returned' : 'Quantity Transferred'}
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -130,7 +155,9 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                         </tbody>
                         <tfoot>
                             <tr className="border-t-2 border-gray-800">
-                                <td colSpan={3} className="py-4 px-2 text-right font-bold text-gray-800">Total Quantities Dispatched:</td>
+                                <td colSpan={3} className="py-4 px-2 text-right font-bold text-gray-800">
+                                    {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? 'Total Quantities Returned:' : 'Total Quantities Dispatched:'}
+                                </td>
                                 <td className="py-4 px-2 text-right font-black text-2xl">
                                     {transfer.items?.reduce((sum: number, item: any) => sum + Number(item.quantity), 0)}
                                 </td>
@@ -141,21 +168,45 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
 
                 {/* Signatures Section */}
                 <div className="grid grid-cols-3 gap-8 mt-24 pt-8 border-t border-dashed border-gray-300">
-                    <div className="text-center">
-                        <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-                        <p className="text-xs font-bold text-gray-600 uppercase">Prepared By (Warehouse)</p>
-                        <p className="text-xs text-gray-400 mt-1">Sign & Stamp</p>
-                    </div>
-                    <div className="text-center">
-                        <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-                        <p className="text-xs font-bold text-gray-600 uppercase">Delivered By (Driver)</p>
-                        <p className="text-xs text-gray-400 mt-1">Vehicle No. & Sign</p>
-                    </div>
-                    <div className="text-center">
-                        <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-                        <p className="text-xs font-bold text-gray-600 uppercase">Received By (Shop Manager)</p>
-                        <p className="text-xs text-gray-400 mt-1">Clear Name & Sign</p>
-                    </div>
+                    {transfer.transferType === 'OUTLET_TO_WAREHOUSE' ? (
+                        // Return Transfer Signatures
+                        <>
+                            <div className="text-center">
+                                <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
+                                <p className="text-xs font-bold text-gray-600 uppercase">Prepared By (Shop Manager)</p>
+                                <p className="text-xs text-gray-400 mt-1">Sign & Stamp</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
+                                <p className="text-xs font-bold text-gray-600 uppercase">Delivered By (Driver)</p>
+                                <p className="text-xs text-gray-400 mt-1">Vehicle No. & Sign</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
+                                <p className="text-xs font-bold text-gray-600 uppercase">Received By (Warehouse)</p>
+                                <p className="text-xs text-gray-400 mt-1">Clear Name & Sign</p>
+                            </div>
+                        </>
+                    ) : (
+                        // Normal Transfer Signatures
+                        <>
+                            <div className="text-center">
+                                <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
+                                <p className="text-xs font-bold text-gray-600 uppercase">Prepared By (Warehouse)</p>
+                                <p className="text-xs text-gray-400 mt-1">Sign & Stamp</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
+                                <p className="text-xs font-bold text-gray-600 uppercase">Delivered By (Driver)</p>
+                                <p className="text-xs text-gray-400 mt-1">Vehicle No. & Sign</p>
+                            </div>
+                            <div className="text-center">
+                                <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
+                                <p className="text-xs font-bold text-gray-600 uppercase">Received By (Shop Manager)</p>
+                                <p className="text-xs text-gray-400 mt-1">Clear Name & Sign</p>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Footer Note */}
