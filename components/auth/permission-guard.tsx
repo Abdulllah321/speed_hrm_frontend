@@ -18,21 +18,13 @@ export function PermissionGuard({
     requireAll = false,
     fallback,
 }: PermissionGuardProps) {
-    const { hasPermission, hasAllPermissions, hasAnyPermission, loading, isAdmin, user } = useAuth();
+    const { hasPermission, hasAllPermissions, hasAnyPermission, loading, isAdmin } = useAuth();
 
     // If fallback is not provided, default to AccessDenied
     const fallbackUI = fallback !== undefined ? fallback : <AccessDenied />;
 
-    // Show nothing while auth is loading (AuthProvider shows LoadingScreen globally)
     if (loading) {
-        return null;
-    }
-
-    // User not yet available (e.g. between cookie-early-render and real /auth/me response,
-    // or after session expiry). Don't flash AccessDenied — wait silently.
-    // AuthProvider / middleware will redirect to login if truly unauthenticated.
-    if (!user) {
-        return null;
+        return null; // Or a loading spinner if preferred
     }
 
     if (isAdmin()) {
