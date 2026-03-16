@@ -23,7 +23,7 @@ export async function getPFEmployees(): Promise<{ status: boolean; data?: PFEmpl
             method: 'GET',
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (!response.ok) {
             return {

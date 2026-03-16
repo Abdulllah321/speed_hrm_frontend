@@ -49,7 +49,7 @@ export async function getPaymentVouchers(type?: "bank" | "cash") {
             };
         }
 
-        const data = await response.json();
+        const data = response.data;
 
         // Map backend data to frontend interface if needed
         // Backend returns `creditAccount` object, frontend list expects `creditAccountName`
@@ -91,7 +91,7 @@ export async function createPaymentVoucher(data: any) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
+            const errorData = response.data || {};
             return {
                 status: false,
                 message: errorData.message || `Failed to create Payment Voucher: ${response.statusText || response.status}`

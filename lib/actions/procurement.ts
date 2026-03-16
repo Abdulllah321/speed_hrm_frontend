@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export async function getVendors() {
     try {
         const response = await authFetch("/finance/suppliers");
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Get vendors error:", error);
@@ -17,7 +17,7 @@ export async function getVendors() {
 export async function getVendor(id: string) {
     try {
         const response = await authFetch(`/finance/suppliers/${id}`);
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Get vendor error:", error);
@@ -56,7 +56,7 @@ export async function updateVendor(id: string, data: any) {
             }),
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (result.status) {
             revalidatePath("/erp/procurement/vendors");
@@ -102,7 +102,7 @@ export async function createVendor(data: any) {
             }),
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (result.status) {
             revalidatePath("/erp/procurement/vendors"); // Or list page

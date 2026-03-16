@@ -51,7 +51,7 @@ export async function getDepartments(): Promise<{ status: boolean; data: Departm
     const res = await authFetch("/departments", {
       cache: "no-store"
     });
-    return res.json();
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch departments:", error);
     return { status: false, data: [], message: "Failed to fetch departments" };
@@ -63,7 +63,7 @@ export async function getDepartmentById(id: string): Promise<{ status: boolean; 
     const res = await authFetch(`/departments/${id}`, {
       cache: "no-store"
     });
-    return res.json();
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch department:", error);
     return { status: false, data: null };
@@ -80,7 +80,7 @@ export async function createDepartments(items: { name: string; allocationId?: st
       method: "POST",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/department");
@@ -105,7 +105,7 @@ export async function updateDepartment(id: string, formData: FormData): Promise<
       method: "PUT",
       body: JSON.stringify({ id, name, headId: headId || null }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/department");
@@ -122,7 +122,7 @@ export async function deleteDepartment(id: string): Promise<{ status: boolean; m
     const res = await authFetch(`/departments/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/department");
@@ -144,7 +144,7 @@ export async function deleteDepartments(ids: string[]): Promise<{ status: boolea
       method: "DELETE",
       body: JSON.stringify({ ids }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/department");
@@ -168,7 +168,7 @@ export async function updateDepartments(
       method: "PUT",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/department");
@@ -186,7 +186,7 @@ export async function getSubDepartments(): Promise<{ status: boolean; data: SubD
     const res = await authFetch("/sub-departments", {
       cache: "no-store"
     });
-    return res.json();
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch sub-departments:", error);
     return { status: false, data: [], message: "Failed to fetch sub-departments" };
@@ -198,7 +198,7 @@ export async function getSubDepartmentsByDepartment(departmentId: string): Promi
     const res = await authFetch(`/sub-departments/department/${departmentId}`, {
       cache: "no-store"
     });
-    return res.json();
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch sub-departments:", error);
     return { status: false, data: [] };
@@ -221,7 +221,7 @@ export async function createSubDepartment(formData: FormData): Promise<{ status:
       method: "POST",
       body: JSON.stringify({ name, departmentId }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/sub-department");
@@ -245,7 +245,7 @@ export async function createSubDepartments(
       method: "POST",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/sub-department");
@@ -271,7 +271,7 @@ export async function updateSubDepartment(id: string, formData: FormData): Promi
       method: "PUT",
       body: JSON.stringify({ id, name, departmentId: departmentId || undefined, headId: headId || null }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/sub-department");
@@ -288,7 +288,7 @@ export async function deleteSubDepartment(id: string): Promise<{ status: boolean
     const res = await authFetch(`/sub-departments/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/sub-department");
@@ -310,7 +310,7 @@ export async function deleteSubDepartments(ids: string[]): Promise<{ status: boo
       method: "DELETE",
       body: JSON.stringify({ ids }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/sub-department");
@@ -334,7 +334,7 @@ export async function updateSubDepartments(
       method: "PUT",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const data = res.data;
 
     if (data.status) {
       revalidatePath("/master/sub-department");

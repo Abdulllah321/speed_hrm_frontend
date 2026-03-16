@@ -1,3 +1,4 @@
+import { authFetch } from "./auth";
 import { getApiBaseUrl } from "./utils";
 
 import axios from 'axios';
@@ -200,15 +201,15 @@ export const employeeApi = {
 };
 
 export const dashboardApi = {
-  getStats: async (fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>) => {
-    const res = await fetchWithAuth(`${getApiBaseUrl()}/dashboard/stats`);
+  getStats: async () => {
+    const res = await authFetch(`/dashboard/stats`);
     if (!res.ok) throw new Error("Failed to fetch dashboard stats");
-    return res.json() as Promise<DashboardStats>;
+    return res.data;
   },
-  getEmployeeStats: async (fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>) => {
-    const res = await fetchWithAuth(`${getApiBaseUrl()}/dashboard/employee-stats`);
+  getEmployeeStats: async () => {
+    const res = await authFetch(`/dashboard/employee-stats`);
     if (!res.ok) throw new Error("Failed to fetch employee stats");
-    return res.json() as Promise<EmployeeDashboardStats>;
+    return res.data;
   },
 };
 

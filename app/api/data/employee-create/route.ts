@@ -25,7 +25,8 @@ export async function GET() {
       fetch(`${API_BASE}/social-security-institutions`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
       fetch(`${API_BASE}/allocations`, { headers, cache: "no-store" }).then(r => r.json()).catch(() => ({ status: false, data: [] })),
     ]);
-    console.log(`[API Data] socialSecurityInstitutions length: ${socialSecurity.data?.length || 0}`);
+    
+    // console.log(`[API Data] socialSecurityInstitutions length: ${socialSecurity.data?.length || 0}`);
 
     return NextResponse.json({
       status: true,

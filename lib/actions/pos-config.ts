@@ -59,7 +59,7 @@ export interface AllianceDiscount {
 export async function getPromos(): Promise<{ status: boolean; data?: PromoCampaign[]; message?: string }> {
     try {
         const res = await authFetch(`/pos-config/promos`, {});
-        return res.json();
+        return res.data;
     } catch (error) {
         return { status: false, message: 'Failed to fetch promo campaigns' };
     }
@@ -82,7 +82,7 @@ export async function createPromo(data: {
             method: 'POST',
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {
@@ -96,7 +96,7 @@ export async function updatePromo(id: string, data: any): Promise<{ status: bool
             method: 'PUT',
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {
@@ -107,7 +107,7 @@ export async function updatePromo(id: string, data: any): Promise<{ status: bool
 export async function deletePromo(id: string): Promise<{ status: boolean; message: string }> {
     try {
         const res = await authFetch(`/pos-config/promos/${id}`, { method: 'DELETE' });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {
@@ -122,7 +122,7 @@ export async function deletePromo(id: string): Promise<{ status: boolean; messag
 export async function getCoupons(): Promise<{ status: boolean; data?: CouponCode[]; message?: string }> {
     try {
         const res = await authFetch(`/pos-config/coupons`, {});
-        return res.json();
+        return res.data;
     } catch (error) {
         return { status: false, message: 'Failed to fetch coupon codes' };
     }
@@ -145,7 +145,7 @@ export async function createCoupon(data: {
             method: 'POST',
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {
@@ -159,7 +159,7 @@ export async function updateCoupon(id: string, data: any): Promise<{ status: boo
             method: 'PUT',
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {
@@ -170,7 +170,7 @@ export async function updateCoupon(id: string, data: any): Promise<{ status: boo
 export async function deleteCoupon(id: string): Promise<{ status: boolean; message: string }> {
     try {
         const res = await authFetch(`/pos-config/coupons/${id}`, { method: 'DELETE' });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {
@@ -185,7 +185,7 @@ export async function deleteCoupon(id: string): Promise<{ status: boolean; messa
 export async function getAlliances(): Promise<{ status: boolean; data?: AllianceDiscount[]; message?: string }> {
     try {
         const res = await authFetch(`/pos-config/alliances`, {});
-        return res.json();
+        return res.data;
     } catch (error) {
         return { status: false, message: 'Failed to fetch alliance discounts' };
     }
@@ -204,7 +204,7 @@ export async function createAlliance(data: {
             method: 'POST',
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {
@@ -218,7 +218,7 @@ export async function updateAlliance(id: string, data: any): Promise<{ status: b
             method: 'PUT',
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {
@@ -229,7 +229,7 @@ export async function updateAlliance(id: string, data: any): Promise<{ status: b
 export async function deleteAlliance(id: string): Promise<{ status: boolean; message: string }> {
     try {
         const res = await authFetch(`/pos-config/alliances/${id}`, { method: 'DELETE' });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
     } catch (error) {

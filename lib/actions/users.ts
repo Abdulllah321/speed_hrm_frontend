@@ -27,7 +27,7 @@ export interface User {
 export async function getUsers(): Promise<{ status: boolean; data: User[]; message?: string }> {
   try {
     const res = await authFetch(`/auth/users`, {});
-    const payload = await res.json();
+    const payload = res.data;
     const users = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
     return { status: true, data: users };
   } catch (error) {
@@ -55,13 +55,7 @@ export async function createUser(data: {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      let message = "Failed to create user";
-      try {
-        const error = await res.json();
-        message = error.message || message;
-      } catch {
-        message = await res.text() || message;
-      }
+      const message = res.data?.message || "Failed to create user";
       return { status: false, message };
     }
     revalidatePath("/hr/employee/user-account");
@@ -81,7 +75,7 @@ export async function updateUserRole(userId: string, roleId: string | null) {
       }),
     });
     if (!res.ok) {
-      const error = await res.json();
+      const error = res.data;
       return { status: false, message: error.message || "Failed to update user role" };
     }
     revalidatePath("/hr/employee/user-account");
@@ -101,7 +95,7 @@ export async function updateUserDashboardAccess(userId: string, hasAccess: boole
       }),
     });
     if (!res.ok) {
-      const error = await res.json();
+      const error = res.data;
       return { status: false, message: error.message || "Failed to update dashboard access" };
     }
     revalidatePath("/hr/employee/user-account");
@@ -118,10 +112,10 @@ export async function verifyPassword(password: string): Promise<{ status: boolea
       body: JSON.stringify({ password }),
     });
     if (!res.ok) {
-      const error = await res.json().catch(() => ({ message: "Failed to verify password" }));
-      return { status: false, message: error.message || "Failed to verify password" };
+      const error = res.data;
+      return { status: false, message: error?.message || "Failed to verify password" };
     }
-    return res.json();
+    return res.data;
   } catch (error) {
     return { status: false, message: "Failed to verify password" };
   }

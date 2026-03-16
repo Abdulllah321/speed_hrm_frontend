@@ -22,7 +22,7 @@ export async function getStockLedger(filters?: {
             method: "GET",
         });
 
-        const result = await response.json();
+        const result = response.data;
         // Backend returns array directly or wrapped in { data: [] }
         // Based on StockLedgerController, it returns the array directly. 
         // But authFetch might wrap things? existing items.ts suggests it returns result which has .data

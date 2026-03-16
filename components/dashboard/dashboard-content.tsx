@@ -44,11 +44,9 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
-import { useAuth } from "../providers/auth-provider";
 
 export function DashboardContent() {
     const { currentCompany, loading: companyLoading } = useCompany();
-    const { fetchWithAuth } = useAuth();
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -60,7 +58,7 @@ export function DashboardContent() {
         async function loadStats() {
             try {
                 setLoading(true);
-                const data = await dashboardApi.getStats(fetchWithAuth);
+                const data = await dashboardApi.getStats();
                 setStats(data);
                 setError(null);
             } catch (err) {

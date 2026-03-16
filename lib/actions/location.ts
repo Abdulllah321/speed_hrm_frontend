@@ -36,10 +36,10 @@ export async function getLocations(): Promise<{ status: boolean; data?: Location
     try {
         const res = await authFetch(`/locations`, {});
         if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ message: 'Failed to fetch locations' }));
+            const errorData = res.data;
             return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
         }
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error('Error fetching locations:', error);
         return {
@@ -54,10 +54,10 @@ export async function getLocationById(id: string): Promise<{ status: boolean; da
     try {
         const res = await authFetch(`/locations/${id}`, {});
         if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ message: 'Failed to fetch location' }));
+            const errorData = res.data;
             return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
         }
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error('Error fetching location:', error);
         return {
@@ -77,7 +77,7 @@ export async function createLocations(items: { name: string; code: string; addre
             method: "POST",
             body: JSON.stringify({ items }),
         });
-        const data = await res.json();
+        const data = res.data;
         if (data.status) {
             revalidatePath("/master/location");
         }
@@ -109,7 +109,7 @@ export async function updateLocations(
             method: "PUT",
             body: JSON.stringify({ items }),
         });
-        const data = await res.json();
+        const data = res.data;
         if (data.status) {
             revalidatePath("/master/location");
         }
@@ -129,7 +129,7 @@ export async function deleteLocations(ids: string[]): Promise<{ status: boolean;
             method: "DELETE",
             body: JSON.stringify({ ids }),
         });
-        const data = await res.json();
+        const data = res.data;
         if (data.status) {
             revalidatePath("/master/location");
         }
@@ -145,7 +145,7 @@ export async function deleteLocation(id: string): Promise<{ status: boolean; mes
         const res = await authFetch(`/locations/${id}`, {
             method: 'DELETE',
         });
-        const data = await res.json();
+        const data = res.data;
         if (data.status) revalidatePath("/master/location");
         return data;
     } catch (error) {

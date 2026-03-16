@@ -3,6 +3,7 @@ import { IBM_Plex_Mono, Lora, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { SocketProvider } from "@/components/providers/socket-provider";
 import { EnvironmentProvider } from "@/components/providers/environment-provider";
 import { CompanyProvider } from "@/components/providers/company-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
@@ -53,12 +54,14 @@ export default async function RootLayout({
         >
           <EnvironmentProvider>
             <AuthProvider>
-              <QueryProvider>
-                <CompanyProvider>
-                  <Toaster />
-                  {children}
-                </CompanyProvider>
-              </QueryProvider>
+              <SocketProvider>
+                <QueryProvider>
+                  <CompanyProvider>
+                    <Toaster />
+                    {children}
+                  </CompanyProvider>
+                </QueryProvider>
+              </SocketProvider>
             </AuthProvider>
           </EnvironmentProvider>
         </ThemeProvider>

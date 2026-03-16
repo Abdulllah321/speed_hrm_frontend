@@ -38,9 +38,10 @@ import { PoliciesContent } from "./profile/policies-content";
 import { HistoryContent } from "./profile/history-content";
 import { LeavesContent } from "./profile/leaves-content";
 import { WorkExperienceContent } from "./profile/work-experience-content";
+import { authFetch } from "@/lib/auth";
 
 export function EmployeeDashboardContent() {
-    const { user, fetchWithAuth } = useAuth();
+    const { user } = useAuth();
     const [stats, setStats] = useState<EmployeeDashboardStats | null>(null);
     const [employeeProfile, setEmployeeProfile] = useState<Employee | null>(null);
     const [loading, setLoading] = useState(true);
@@ -52,7 +53,7 @@ export function EmployeeDashboardContent() {
 
             try {
                 // Fetch stats and profile in parallel
-                const statsPromise = dashboardApi.getEmployeeStats(fetchWithAuth);
+                const statsPromise = dashboardApi.getEmployeeStats(authFetch);
                 const profilePromise = user.employee?.id
                     ? employeeApi.getProfile(user.employee.id, true)
                     : Promise.resolve({ status: false, data: null });

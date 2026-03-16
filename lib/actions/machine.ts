@@ -17,9 +17,8 @@ export interface Machine {
 // Machine Actions
 export async function getMachines(): Promise<{ status: boolean; data: Machine[]; message?: string }> {
   try {
-    const res = await authFetch(`/machines`, {
-    });
-    const result = await res.json();
+    const res = await authFetch(`/machines`, {});
+    const result = res.data;
     if (!result.data && !Array.isArray(result)) {
       console.error("Fetch machines failed:", result);
     }
@@ -32,9 +31,8 @@ export async function getMachines(): Promise<{ status: boolean; data: Machine[];
 
 export async function getMachineById(id: string): Promise<{ status: boolean; data: Machine | null }> {
   try {
-    const res = await authFetch(`/machines/${id}`, {
-    });
-    return res.json();
+    const res = await authFetch(`/machines/${id}`, {});
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch machine:", error);
     return { status: false, data: null };
@@ -46,22 +44,23 @@ export async function createMachines(names: string[]): Promise<{ status: boolean
     return { status: false, message: "At least one name is required" };
   }
   try {
-    const results = await Promise.all(names.map(name => 
-      authFetch(`/machines`, {
-        method: "POST",
-        body: JSON.stringify({ name }),
-      }).then(r => r.json())
-    ));
-    
+    const results = await Promise.all(
+      names.map((name) =>
+        authFetch(`/machines`, {
+          method: "POST",
+          body: JSON.stringify({ name }),
+        }).then((r) => r.data)
+      )
+    );
+
     // Check if all succeeded (assuming success if id is present or status is not explicitly false)
-    const allSuccess = results.every(r => r.id || r.status !== false); 
-    
+    const allSuccess = results.every((r) => r.id || r.status !== false);
+
     if (allSuccess) {
-        revalidatePath("/master/machine/list");
-        return { status: true, message: "Machines created successfully" };
+      revalidatePath("/master/machine/list");
+      return { status: true, message: "Machines created successfully" };
     }
     return { status: false, message: "Some machines failed to create" };
-
   } catch (error) {
     return { status: false, message: "Failed to create machines" };
   }
@@ -74,7 +73,7 @@ export async function updateMachine(id: string, formData: FormData): Promise<{ s
       method: "PUT",
       body: JSON.stringify({ name }),
     });
-    const data = await res.json();
+    const data = res.data;
     if (data.id || data.status) {
       revalidatePath("/master/machine/list");
       return { status: true, message: "Machine updated successfully" };
@@ -87,12 +86,14 @@ export async function updateMachine(id: string, formData: FormData): Promise<{ s
 
 export async function updateMachines(items: { id: string; name: string }[]): Promise<{ status: boolean; message: string }> {
   try {
-    await Promise.all(items.map(item => 
-      authFetch(`/machines/${item.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ name: item.name }),
-      })
-    ));
+    await Promise.all(
+      items.map((item) =>
+        authFetch(`/machines/${item.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ name: item.name }),
+        })
+      )
+    );
     revalidatePath("/master/machine/list");
     return { status: true, message: "Machines updated successfully" };
   } catch (error) {
@@ -105,7 +106,7 @@ export async function deleteMachine(id: string): Promise<{ status: boolean; mess
     const res = await authFetch(`/machines/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const data = res.data;
     if (data.id || data.status) {
       revalidatePath("/erp/inventory-master/machine");
       return { status: true, message: "Machine deleted successfully" };
@@ -118,11 +119,13 @@ export async function deleteMachine(id: string): Promise<{ status: boolean; mess
 
 export async function deleteMachines(ids: string[]): Promise<{ status: boolean; message: string }> {
   try {
-    await Promise.all(ids.map(id => 
-      authFetch(`/machines/${id}`, {
-        method: "DELETE",
-      })
-    ));
+    await Promise.all(
+      ids.map((id) =>
+        authFetch(`/machines/${id}`, {
+          method: "DELETE",
+        })
+      )
+    );
     revalidatePath("/erp/inventory-master/machine");
     return { status: true, message: "Machines deleted successfully" };
   } catch (error) {

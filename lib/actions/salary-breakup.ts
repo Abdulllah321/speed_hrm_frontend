@@ -24,14 +24,14 @@ export async function createSalaryBreakup(
   try {
     const res = await authFetch(`/salary-breakups`, {
       method: "POST",
-      body: JSON.stringify({ 
-        name, 
-        percentage, 
+      body: JSON.stringify({
+        name,
+        percentage,
         isTaxable,
-        status: "active" 
+        status: "active"
       }),
     });
-    const data = await res.json();
+    const data = res.data;
     if (data.status) revalidatePath("/master/salary-breakup/list");
     return data;
   } catch {
@@ -47,13 +47,13 @@ export async function getSalaryBreakups(): Promise<{
     const res = await authFetch(`/salary-breakups`, {
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: "Failed to fetch salary breakups" }));
+      const errorData = res.data || { message: "Failed to fetch salary breakups" };
       return {
         status: false,
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-    const result = await res.json();
+    const result = res.data;
     return {
       status: result.status || true,
       data: result.data || result,
@@ -81,7 +81,7 @@ export async function updateSalaryBreakup(
       method: "PUT",
       body: JSON.stringify(data),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) revalidatePath("/master/salary-breakup/list");
     return result;
   } catch (error) {
@@ -93,14 +93,10 @@ export async function deleteSalaryBreakup(
 ): Promise<{ status: boolean; message: string }> {
   if (!id?.trim()) return { status: false, message: "ID is required" };
   try {
-    const headers: HeadersInit = {
-      ...(token && { Authorization: `Bearer ${token}` }),
-    };
     const res = await authFetch(`/salary-breakups/${id}`, {
       method: "DELETE",
-      headers,
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) revalidatePath("/master/salary-breakup/list");
     return result;
   } catch (error) {

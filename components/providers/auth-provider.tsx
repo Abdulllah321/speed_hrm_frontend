@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { getApiBaseUrl } from "@/lib/utils";
@@ -86,7 +86,7 @@ interface AuthContextType {
   // Token management
   refreshToken: () => Promise<boolean>;
   checkAndRefreshSession: () => Promise<boolean>;
-  fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+
   sessionExpired: boolean;
   setSessionExpired: (value: boolean) => void;
   handleSessionExpiry: () => Promise<void>;
@@ -207,7 +207,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return refreshPromiseRef.current;
   }, [handleSessionExpiry]);
 
-  const fetchWithAuth = useCallback(
+  const authFetch = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
       // Ensure URL is absolute; if relative, prepend BASE URL from ENV
       const finalUrl = url.startsWith("http") ? url : `${getApiBaseUrl()}${url.startsWith("/") ? "" : "/"}${url}`;
@@ -277,7 +277,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn("Failed to parse user cookie", e);
       }
 
-      const res = await fetchWithAuth(`${getApiBaseUrl()}/auth/me`);
+      const res = await authFetch(`${getApiBaseUrl()}/auth/me`);
 
       setLoadingProgress(50);
 
@@ -347,7 +347,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       completeAuthStep();
     }
-  }, [preferencesToObject, fetchWithAuth, completeAuthStep]);
+  }, [preferencesToObject, authFetch, completeAuthStep]);
 
   // Set mounted flag to prevent hydration mismatch
   useEffect(() => {
@@ -622,6 +622,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   }, [user, isAdmin]);
 
+  const contextValue = useMemo(() => ({
+    user,
+    preferences,
+    loading,
+    isAuthenticated: !!user,
+    refreshUser,
+    updatePreference,
+    getPreference,
+    logout,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    isAdmin,
+    refreshToken,
+    checkAndRefreshSession,
+
+    sessionExpired,
+    setSessionExpired,
+    handleSessionExpiry,
+    setLoadingProgress,
+    setLoadingMessage,
+    completeAuthStep,
+    completeAppWait,
+    registerAppWait,
+    posNeedsUserAuth,
+  }), [
+    user,
+    preferences,
+    loading,
+    refreshUser,
+    updatePreference,
+    getPreference,
+    logout,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    isAdmin,
+    refreshToken,
+    checkAndRefreshSession,
+
+    sessionExpired,
+    setSessionExpired,
+    handleSessionExpiry,
+    setLoadingProgress,
+    setLoadingMessage,
+    completeAuthStep,
+    completeAppWait,
+    registerAppWait,
+    posNeedsUserAuth,
+  ]);
+
   // Don't render children until mounted and initial load is complete
   // This prevents hydration mismatch between server and client
   if (!mounted || loading) {
@@ -642,7 +693,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAdmin: () => false,
           refreshToken: async () => false,
           checkAndRefreshSession: async () => false,
-          fetchWithAuth: async (url: string, options?: RequestInit) => fetch(url, options),
+
           sessionExpired: false,
           setSessionExpired: () => { },
           handleSessionExpiry: async () => { },
@@ -659,35 +710,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (loading && !mounted) {
+    return (
+      <AuthContext.Provider value={contextValue}>
+        <LoadingScreen progress={loadingProgress} message={loadingMessage} />
+      </AuthContext.Provider>
+    );
+  }
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        preferences,
-        loading,
-        isAuthenticated: !!user,
-        refreshUser,
-        updatePreference,
-        getPreference,
-        logout,
-        hasPermission,
-        hasAnyPermission,
-        hasAllPermissions,
-        isAdmin,
-        refreshToken,
-        checkAndRefreshSession,
-        fetchWithAuth,
-        sessionExpired,
-        setSessionExpired,
-        handleSessionExpiry,
-        setLoadingProgress,
-        setLoadingMessage,
-        completeAuthStep,
-        completeAppWait,
-        registerAppWait,
-        posNeedsUserAuth,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {mounted && children}
       {(!mounted || isInitializing) && (
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />

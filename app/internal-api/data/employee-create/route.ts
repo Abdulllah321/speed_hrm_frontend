@@ -21,46 +21,46 @@ export async function GET() {
       allocations,
     ] = await Promise.all([
       authFetch("/departments", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/employee-grades", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/designations", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/marital-statuses", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/employee-statuses", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/locations", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/states", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/equipments", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/working-hours-policies", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/leaves-policies", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/qualifications", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/institutes", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/social-security-institutions", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/allocations", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
     ]);
 

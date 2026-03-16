@@ -253,6 +253,9 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
     } catch (e) { }
   }
 
+  const allCookies = cookieStore.getAll();
+  const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
+
   try {
     const response = await axios({
       url: `${API_BASE}${url}`,
@@ -263,6 +266,7 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(companyId ? { "x-company-id": companyId } : {}),
         ...(companyCode ? { "x-tenant-id": companyCode } : {}),
+        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
         ...options.headers,
       },
       withCredentials: true,
@@ -272,15 +276,13 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
     return {
       ok: true,
       status: response.status,
-      json: async () => response.data,
-      text: async () => JSON.stringify(response.data),
+      data: response.data,
     };
   } catch (error: any) {
     return {
       ok: false,
       status: error.response?.status || 500,
-      json: async () => error.response?.data || { message: error.message },
-      text: async () => JSON.stringify(error.response?.data || { message: error.message }),
+      data: error.response?.data || { message: error.message },
     };
   }
 }
@@ -300,7 +302,7 @@ export async function changePassword(formData: FormData): Promise<{ status: bool
       body: JSON.stringify({ currentPassword, newPassword }),
     });
 
-    const data = await response.json();
+    const data = response.data;
     return { status: data.status, message: data.message };
   } catch (error) {
     console.error("Change password error:", error);

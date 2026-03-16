@@ -209,7 +209,7 @@ const ERPDashboard = () => {
                 {/* Main Analytics Section */}
                 <div className="md:col-span-8 space-y-6">
                   <Card className="transition-all hover:shadow-lg border-border/50 overflow-hidden min-h-[400px]">
-                    <CardHeader className="pb-2 bg-muted/10">
+                    <CardHeader className="pb-2">
                       <div className="flex items-center gap-2">
                         <div className="p-2 rounded-lg bg-primary/10 text-primary">
                           <TrendingUp className="h-4 w-4" />
