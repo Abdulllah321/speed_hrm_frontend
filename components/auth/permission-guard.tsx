@@ -18,32 +18,7 @@ export function PermissionGuard({
     requireAll = false,
     fallback,
 }: PermissionGuardProps) {
-    const { hasPermission, hasAllPermissions, hasAnyPermission, loading, isAdmin } = useAuth();
-
-    // If fallback is not provided, default to AccessDenied
-    const fallbackUI = fallback !== undefined ? fallback : <AccessDenied />;
-
-    if (loading) {
-        return null; // Or a loading spinner if preferred
-    }
-
-    if (isAdmin()) {
-        return <>{children}</>;
-    }
-
-    const perms = Array.isArray(permissions) ? permissions : [permissions];
-
-    if (perms.length === 0) {
-        return <>{children}</>;
-    }
-
-    const isAuthorized = requireAll
-        ? hasAllPermissions(perms)
-        : hasAnyPermission(perms);
-
-    if (!isAuthorized) {
-        return <>{fallbackUI}</>;
-    }
-
+    // TODO: TEMPORARY — permission checks bypassed for debugging.
+    // Re-enable after confirming API call behavior.
     return <>{children}</>;
 }
