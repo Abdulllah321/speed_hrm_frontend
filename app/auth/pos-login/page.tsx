@@ -33,6 +33,10 @@ interface LocationContext {
         code: string;
     };
     terminals: Terminal[];
+    tenantContext?: {
+        tenantId: string;
+        companyCode: string;
+    };
 }
 
 export default function PosLoginPage() {
@@ -149,7 +153,11 @@ export default function PosLoginPage() {
 
         startTransition(async () => {
             try {
-                const result = await posLoginClient(selectedTerminal.code, pin);
+                const result = await posLoginClient(
+                    selectedTerminal.code,
+                    pin,
+                    context?.tenantContext?.tenantId
+                );
                 if (result.status && result.data) {
                     if (rememberTerminal) {
                         await setPosTerminalAction({

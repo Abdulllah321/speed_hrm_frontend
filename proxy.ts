@@ -238,6 +238,13 @@ export default function middleware(request: NextRequest): NextResponse {
     return new URL(path + request.nextUrl.search, `${protocol}://${hostname}`);
   };
 
+  // Handle OPTIONS / 400 error - redirect to /hr or /auth/login
+  if (request.method === "OPTIONS" && pathname === "/") {
+    const accessToken = request.cookies.get("accessToken")?.value;
+    const targetUrl = accessToken ? buildUrl("hr", "/") : buildUrl("auth", "/login");
+    return NextResponse.redirect(targetUrl);
+  }
+
   // Special handling for auth routes - redirect to auth subdomain
   if (pathname.startsWith("/auth") && currentSubdomain !== "auth") {
     // Check if user is already authenticated

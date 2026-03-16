@@ -19,7 +19,7 @@ export const routePermissions: Record<string, string[]> = {
   "/erp/finance/receipt-voucher/list": ["erp.finance.receipt-voucher.read"],
   "/erp/finance/receipt-voucher/create": ["erp.finance.receipt-voucher.create"],
   "/erp/finance/reports": ["finance.reports.read"], // Assuming generic for now or specific if needed
-  
+
   // Employee Setup
   "/hr/employee/create": ["hr.employee.create"],
   "/hr/employee/list": ["hr.employee.read"],
@@ -28,12 +28,12 @@ export const routePermissions: Record<string, string[]> = {
   "/hr/employee/edit": ["hr.employee.update"],
   "/hr/employee/user-account": ["hr.employee.user-account"],
   "/hr/employee/user-account/create": ["hr.employee.user-account"],
-  
+
   // Exit Clearance
   "/hr/exit-clearance/create": ["hr.exit-clearance.create"],
   "/hr/exit-clearance/list": ["hr.exit-clearance.read"],
   "/hr/exit-clearance/edit": ["hr.exit-clearance.update"],
-  
+
   // Attendance Setup
   "/hr/attendance/manage": ["hr.attendance.update"],
   "/hr/attendance/view": ["hr.attendance.view"],
@@ -42,81 +42,81 @@ export const routePermissions: Record<string, string[]> = {
   "/hr/attendance/request-list": ["hr.attendance.request-list"],
   "/hr/attendance/exemptions": ["hr.attendance.exemptions"],
   "/hr/attendance/exemptions-list": ["hr.attendance.exemptions-list"],
-  
+
   // Working Hours
   "/hr/working-hours/create": ["hr.working-hour-policy.create"],
   "/hr/working-hours/view": ["hr.working-hour-policy.read"],
   "/hr/working-hours/assign-policy": ["hr.working-hour-policy.assign"],
-  
+
   // Holidays
   "/hr/holidays/add": ["hr.holiday.create"],
   "/hr/holidays/list": ["hr.holiday.read"],
-  
+
   // Leaves
   "/hr/leaves/create-leaves": ["hr.leave.create"],
   "/hr/leaves/requests": ["hr.leave.read"],
-  
+
   // Payroll Setup
   "/hr/payroll-setup/payroll/create": ["hr.payroll.create"],
   "/hr/payroll-setup/payroll/report": ["hr.payroll.read"],
   "/hr/payroll-setup/payroll/bank-report": ["hr.payroll.read"],
   "/hr/payroll-setup/payroll/payslips": ["hr.payroll.read"],
-  
+
   // Allowance
   "/hr/payroll-setup/allowance/create": ["hr.allowance.create"],
   "/hr/payroll-setup/allowance/view": ["hr.allowance.read"],
   "/hr/payroll-setup/allowance/bank-report": ["hr.allowance.read"],
   "/hr/payroll-setup/allowance/payslip": ["hr.allowance.read"],
-  
+
   // Deduction
   "/hr/payroll-setup/deduction/create": ["hr.deduction.create"],
   "/hr/payroll-setup/deduction/view": ["hr.deduction.read"],
-  
+
   // Advance Salary
   "/hr/payroll-setup/advance-salary/create": ["hr.advance-salary.create"],
   "/hr/payroll-setup/advance-salary/view": ["hr.advance-salary.read"],
-  
+
   // Loan Requests
   "/hr/loan-requests/create": ["hr.loan-request.create"],
   "/hr/loan-requests/view": ["hr.loan-request.read"],
-  
+
   // Increment
   "/hr/payroll-setup/increment/create": ["hr.increment.create"],
   "/hr/payroll-setup/increment/view": ["hr.increment.read"],
-  
+
   // Bonus
   "/hr/payroll-setup/bonus/issue": ["hr.bonus.create"],
   "/hr/payroll-setup/bonus/view": ["hr.bonus.read"],
   "/hr/payroll-setup/bonus/bank-report": ["hr.bonus.read"],
   "/hr/payroll-setup/bonus/payslip": ["hr.bonus.read"],
-  
+
   // Leave Encashment
   "/hr/payroll-setup/leave-encashment/create": ["hr.leave-encashment.create"],
   "/hr/payroll-setup/leave-encashment/list": ["hr.leave-encashment.read"],
-  
+
   // PF for Employee
   "/hr/payroll-setup/pf-employee/view": ["hr.provident-fund.read"],
   "/hr/payroll-setup/pf-employee/withdraw-create": ["hr.provident-fund.create"],
   "/hr/payroll-setup/pf-employee/withdraw-view": ["hr.provident-fund.read"],
   "/hr/payroll-setup/pf-employee/report": ["hr.provident-fund.read"],
   "/hr/payroll-setup/pf-employee/ledger": ["hr.provident-fund.read"],
-  
+
   // Rebate
   "/hr/payroll-setup/rebate/create": ["hr.rebate.create"],
   "/hr/payroll-setup/rebate/list": ["hr.rebate.read"],
   "/hr/payroll-setup/rebate-nature": ["hr.rebate-nature.read"],
-  
+
   // Final Settlement
   "/hr/payroll-setup/final-settlement/create": ["hr.payroll.create"],
   "/hr/payroll-setup/final-settlement/list": ["hr.payroll.read"],
-  
+
   // Salary Sheet & Social Security
   "/hr/salary-sheet/tax-certificate": ["hr.salary-sheet.read"],
   "/hr/payroll-setup/social-security-employee/view": ["hr.social-security.read"],
-  
+
   // Request Forwarding
   "/hr/request-forwarding": ["hr.request-forwarding.view"],
-  
+
   // Master - ERP
   "/master/category": ["erp.category.read"],
   "/master/category/add": ["erp.category.create"],
@@ -147,7 +147,7 @@ export function isPublicRoute(pathname: string): boolean {
   if (pathname === "/hr" || pathname.startsWith("/hr/settings")) {
     return true;
   }
-  
+
   // If route has explicit empty permissions, it's public
   const permissions = getRoutePermissions(pathname);
   return permissions.length === 0 && routePermissions[pathname] !== undefined;
@@ -159,30 +159,30 @@ export function isPublicRoute(pathname: string): boolean {
 export function getRoutePermissions(pathname: string): string[] {
   // Normalize pathname (remove trailing slash, handle query params)
   const normalizedPath = pathname.split('?')[0].replace(/\/$/, '') || pathname;
-  
+
   // Check exact match first
   if (routePermissions[normalizedPath]) {
     return routePermissions[normalizedPath];
   }
-  
+
   // Check prefix matches (for dynamic routes like /hr/employee/view/[id])
   // Sort by length (longest first) to match most specific routes first
   const sortedRoutes = Object.entries(routePermissions).sort((a, b) => b[0].length - a[0].length);
-  
+
   for (const [route, permissions] of sortedRoutes) {
     if (normalizedPath.startsWith(route)) {
       return permissions;
     }
   }
-  
+
   // If route is not in mapping, check if it's a known HR route
   // For unknown routes, require at least some HR permission to prevent unauthorized access
   if (normalizedPath.startsWith("/hr/")) {
-    // Return default permissions for unknown HR routes
-    // This ensures users can't access routes that aren't explicitly allowed
-    return DEFAULT_ROUTE_PERMISSIONS.length > 0 ? DEFAULT_ROUTE_PERMISSIONS : ["hr.employee.read"];
+    // Unknown /hr/ routes are open to all authenticated users.
+    // Add an explicit entry to routePermissions above to restrict a specific route.
+    return DEFAULT_ROUTE_PERMISSIONS;
   }
-  
+
   // Default: no permissions required (public route)
   return [];
 }

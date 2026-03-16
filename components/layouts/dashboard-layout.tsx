@@ -21,7 +21,7 @@ import { useEnvironment } from "@/components/providers/environment-provider";
 import { Button } from "@/components/ui/button";
 import { Search, X, Sparkles, AlertTriangle, ArrowRight, ShoppingCart, ShieldCheck, Monitor, Clock as ClockIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -31,6 +31,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, companyOptional = false }: DashboardLayoutProps) {
   const { user } = useAuth();
   const { environment, setEnvironment } = useEnvironment();
+  const router = useRouter();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const pathname = usePathname();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -83,7 +84,7 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
           variant="secondary"
           size="sm"
           className="h-6 px-3 text-xs bg-white text-orange-600 hover:bg-orange-50 hover:text-orange-700 font-semibold border-0"
-          onClick={() => (window.location.href = "/hr/settings/password")}
+          onClick={() => router.push("/hr/settings/password")}
         >
           Change Now
         </Button>
@@ -95,7 +96,7 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
       <SessionChecker />
       <AppSidebar />
       <SidebarInset>
-          <header className="flex shrink-0 h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm" style={{
+        <header className="flex shrink-0 h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm" style={{
           top: "var(--banner-height)"
         }}>
           <div className="flex items-center gap-3 flex-1 min-w-0">

@@ -163,7 +163,6 @@ export async function getCurrentUser(): Promise<User | null> {
     const apiUser = data.data;
     const permissions =
       apiUser.role?.permissions?.map((p: any) => p.permission?.name).filter(Boolean) ?? [];
-    console.log(apiUser);
     return {
       id: apiUser.id,
       email: apiUser.email,

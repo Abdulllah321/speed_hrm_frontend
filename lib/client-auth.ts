@@ -95,7 +95,7 @@ export async function adminFetchLocationsClient(): Promise<{ status: boolean; me
   }
 }
 
-export async function posLoginClient(terminalCode: string, pin: string): Promise<{
+export async function posLoginClient(terminalCode: string, pin: string, tenantId?: string): Promise<{
   status: boolean;
   message: string;
   errorType?: string;
@@ -106,9 +106,14 @@ export async function posLoginClient(terminalCode: string, pin: string): Promise
   }
 
   try {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (tenantId) {
+      headers["x-tenant-id"] = tenantId;
+    }
+
     const res = await fetch(`${getApiBaseUrl()}/auth/pos-login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ terminalCode, pin }),
       credentials: "include",
     });

@@ -268,8 +268,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           setUser(userData);
-          // If we have data from cookie, we can show UI immediately while fetching fresh data
-          setLoading(false);
+          // NOTE: We intentionally do NOT call setLoading(false) here.
+          // Loading stays true until /auth/me completes with real data.
+          // Calling it early caused PermissionGuard to render with a stale
+          // cookie user that might have incomplete permission structures.
         }
       } catch (e) {
         console.warn("Failed to parse user cookie", e);
