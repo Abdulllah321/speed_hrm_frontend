@@ -4,7 +4,7 @@ import { getApiBaseUrl } from "./utils";
 import axios from 'axios';
 
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE = getApiBaseUrl();
 
 async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
   // Helper to get cookie value in browser
@@ -21,7 +21,7 @@ async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
 
   try {
     const response = await axios({
-      url: `${API_BASE}${endpoint}`,
+      url: endpoint.startsWith('http') ? endpoint : `${getApiBaseUrl()}${endpoint}`,
       method: options?.method || 'GET',
       data: options?.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
       headers: {

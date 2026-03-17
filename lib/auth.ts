@@ -207,44 +207,46 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
   } else {
     // Client-side
     const getCookie = (name: string) => {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-        return null;
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+      return null;
     };
-    const companyId = getCookie("companyId") || getCookie("currentCompany") ? (() => {
-        try {
-            const c = getCookie("currentCompany");
-            return c ? JSON.parse(decodeURIComponent(c)).id : null;
-        } catch { return null; }
-    })() : null;
+    const companyId = getCookie("companyId") || (getCookie("currentCompany") ? (() => {
+      try {
+        const c = getCookie("currentCompany");
+        return c ? JSON.parse(decodeURIComponent(c)).id : null;
+      } catch { return null; }
+    })() : null);
     const companyCode = getCookie("companyCode");
 
     try {
-        const response = await axios({
-            url: fullUrl,
-            method: options.method || 'GET',
-            data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
-            headers: {
-                ...(options.body ? { "Content-Type": "application/json" } : {}),
-                ...(companyId ? { "x-company-id": companyId } : {}),
-                ...(companyCode ? { "x-tenant-id": companyCode } : {}),
-                ...options.headers,
-            },
-            withCredentials: true,
-        });
+      const response = await fetch(fullUrl, {
+        method: options.method || 'GET',
+        headers: {
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(companyId ? { "x-company-id": companyId } : {}),
+          ...(companyCode ? { "x-tenant-id": companyCode } : {}),
+          ...options.headers,
+        },
+        body: options.body,
+        credentials: "include",
+      });
 
-        return {
-            ok: true,
-            status: response.status,
-            data: response.data,
-        };
+      const data = await response.json();
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        data: data,
+      };
     } catch (error: any) {
-        return {
-            ok: false,
-            status: error.response?.status || 500,
-            data: error.response?.data || { message: error.message },
-        };
+      console.error(`[authFetch Client Error] ${options.method || 'GET'} ${fullUrl}:`, error.message);
+      return {
+        ok: false,
+        status: 500,
+        data: { message: error.message },
+      };
     }
   }
 }

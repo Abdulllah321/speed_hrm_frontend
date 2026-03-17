@@ -6,12 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getApiBaseUrl(): string {
-  // 1. Check for API_URL (standard for server-side)
-  if (process.env.API_URL) {
+  const isServer = typeof window === "undefined";
+
+  // 1. Check for API_URL (Only on server)
+  if (isServer && process.env.API_URL) {
     return process.env.API_URL;
   }
 
-  // 2. Check for NEXT_PUBLIC_API_BASE_URL (standard for client-side)
+  // 2. Check for NEXT_PUBLIC_API_BASE_URL (Client and Server fallback)
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
