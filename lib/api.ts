@@ -26,8 +26,8 @@ async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
       data: options?.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
       headers: {
         ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(companyId ? { 'x-company-id': companyId } : {}),
-        ...(companyCode ? { 'x-tenant-id': companyCode } : {}),
+        ...(companyId ? { 'X-Company-Id': companyId } : {}),
+        ...(companyCode ? { 'X-Tenant-Id': companyCode } : {}),
         ...options?.headers,
       },
       withCredentials: true,

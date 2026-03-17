@@ -181,8 +181,8 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
         headers: {
           ...(options.body ? { "Content-Type": "application/json" } : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          ...(companyId ? { "x-company-id": companyId } : {}),
-          ...(companyCode ? { "x-tenant-id": companyCode } : {}),
+          ...(companyId ? { "X-Company-Id": companyId } : {}),
+          ...(companyCode ? { "X-Tenant-Id": companyCode } : {}),
           ...(cookieHeader ? { Cookie: cookieHeader } : {}),
           ...options.headers,
         },
@@ -225,8 +225,8 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
         method: options.method || 'GET',
         headers: {
           ...(options.body ? { "Content-Type": "application/json" } : {}),
-          ...(companyId ? { "x-company-id": companyId } : {}),
-          ...(companyCode ? { "x-tenant-id": companyCode } : {}),
+          ...(companyId ? { "X-Company-Id": companyId } : {}),
+          ...(companyCode ? { "X-Tenant-Id": companyCode } : {}),
           ...options.headers,
         },
         body: options.body,
