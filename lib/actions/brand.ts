@@ -20,7 +20,7 @@ export async function getBrands(): Promise<{ status: boolean; data: Brand[]; mes
         const res = await authFetch("/brands", {
             cache: "no-store",
         });
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to fetch brands:", error);
         return { status: false, data: [], message: "Failed to fetch brands" };
@@ -32,7 +32,7 @@ export async function getBrandById(id: string): Promise<{ status: boolean; data:
         const res = await authFetch(`/brands/${id}`, {
             cache: "no-store",
         });
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to fetch brand:", error);
         return { status: false, data: null };
@@ -49,7 +49,7 @@ export async function createBrands(items: { name: string; status?: string }[]): 
             method: "POST",
             body: JSON.stringify({ items }),
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/brand");
@@ -74,7 +74,7 @@ export async function updateBrand(id: string, formData: FormData): Promise<{ sta
             method: "PUT",
             body: JSON.stringify({ name, status }),
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/brand");
@@ -96,7 +96,7 @@ export async function updateBrands(items: { id: string; name: string; status?: s
             method: "PUT",
             body: JSON.stringify({ items }),
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/brand");
@@ -113,7 +113,7 @@ export async function deleteBrand(id: string): Promise<{ status: boolean; messag
         const res = await authFetch(`/brands/${id}`, {
             method: "DELETE",
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/brand");
@@ -135,7 +135,7 @@ export async function deleteBrands(ids: string[]): Promise<{ status: boolean; me
             method: "DELETE",
             body: JSON.stringify({ ids }),
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/brand");

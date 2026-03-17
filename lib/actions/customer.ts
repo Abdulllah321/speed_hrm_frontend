@@ -14,7 +14,7 @@ export interface Customer {
 export async function getCustomers() {
   try {
     const response = await authFetch("/sales/customers");
-    const result = await response.json();
+    const result = response.data;
     return Array.isArray(result) ? result : (result?.data ?? []);
   } catch (error) {
     return [];
@@ -27,7 +27,7 @@ export async function createCustomer(data: Omit<Customer, "id">) {
       method: "POST",
       body: JSON.stringify(data),
     });
-    const result = await response.json();
+    const result = response.data;
     if (result?.status) {
       revalidatePath("/erp/sales/customers");
     }
@@ -43,7 +43,7 @@ export async function updateCustomer(id: string, data: Partial<Omit<Customer, "i
       method: "PATCH",
       body: JSON.stringify(data),
     });
-    const result = await response.json();
+    const result = response.data;
     if (result?.status) {
       revalidatePath("/erp/sales/customers");
     }
@@ -58,7 +58,7 @@ export async function deleteCustomer(id: string) {
     const response = await authFetch(`/sales/customers/${id}`, {
       method: "DELETE",
     });
-    const result = await response.json();
+    const result = response.data;
     if (result?.status) {
       revalidatePath("/erp/sales/customers");
     }
