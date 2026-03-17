@@ -6,7 +6,12 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getApiBaseUrl(): string {
-  // If explicitly configured in env, use that
+  // 1. Check for API_URL (standard for server-side)
+  if (process.env.API_URL) {
+    return process.env.API_URL;
+  }
+
+  // 2. Check for NEXT_PUBLIC_API_BASE_URL (standard for client-side)
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }

@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
     "localhost",
     "127.0.0.1",
   ],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   env: {
     API_URL: process.env.API_URL,
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,

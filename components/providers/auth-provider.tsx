@@ -211,6 +211,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (url: string, options: RequestInit = {}): Promise<Response> => {
       // Ensure URL is absolute; if relative, prepend BASE URL from ENV
       const finalUrl = url.startsWith("http") ? url : `${getApiBaseUrl()}${url.startsWith("/") ? "" : "/"}${url}`;
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[AuthProvider authFetch] ${options.method || 'GET'} ${finalUrl}`);
+      }
       let response = await fetch(finalUrl, {
         ...options,
         credentials: "include", // ✅ sends ALL cookies automatically
@@ -344,6 +347,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // This prevents "AccessDenied" flashes on temporary network drops/500 errors.
       setLoadingProgress(100);
     } finally {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[AuthProvider] fetchUser complete');
+      }
       setLoading(false);
       completeAuthStep();
     }
