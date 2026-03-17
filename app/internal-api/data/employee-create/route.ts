@@ -64,20 +64,6 @@ export async function GET() {
         .catch(() => ({ status: false, data: [] })),
     ]);
 
-    console.log("--- Employee Create Page Data Fetch ---");
-    console.log(`Departments: ${depts.data?.length || 0}`);
-    console.log(`Grades: ${grades.data?.length || 0}`);
-    console.log(`Designations: ${designations.data?.length || 0}`);
-    console.log(`Locations: ${locations.data?.length || 0}`);
-    console.log(`Allocations: ${allocations.data?.length || 0}`);
-    if (allocations.data?.length > 0) {
-      console.log("Allocation Sample:", allocations.data[0]);
-    } else {
-      console.log("Allocations data is EMPTY from backend");
-      console.log("Full Allocations Response:", allocations);
-    }
-    console.log("---------------------------------------");
-
     return NextResponse.json({
       status: true,
       data: {
