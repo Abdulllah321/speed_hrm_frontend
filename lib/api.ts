@@ -1,40 +1,31 @@
-import { authFetch } from "./auth";
 import { getApiBaseUrl } from "./utils";
 
-import axios from 'axios';
 
 
 const API_BASE = getApiBaseUrl();
 
 async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
-  // Helper to get cookie value in browser
-  const getCookie = (name: string) => {
-    if (typeof document === 'undefined') return '';
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift() || '';
-    return '';
-  };
-
-  const companyId = getCookie('companyId');
-  const companyCode = getCookie('companyCode');
+  const fullUrl = endpoint.startsWith('http') ? endpoint : `${getApiBaseUrl()}${endpoint}`;
 
   try {
-    const response = await axios({
-      url: endpoint.startsWith('http') ? endpoint : `${getApiBaseUrl()}${endpoint}`,
+    const response = await fetch(fullUrl, {
       method: options?.method || 'GET',
-      data: options?.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
       headers: {
         ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(companyId ? { 'X-Company-Id': companyId } : {}),
-        ...(companyCode ? { 'X-Tenant-Id': companyCode } : {}),
         ...options?.headers,
       },
-      withCredentials: true,
+      body: options?.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+      credentials: 'include',
     });
-    return response.data;
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Something went wrong');
+    }
+
+    return await response.json();
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || error.message || 'Something went wrong');
+    throw new Error(error.message || 'Something went wrong');
   }
 }
 
@@ -201,16 +192,8 @@ export const employeeApi = {
 };
 
 export const dashboardApi = {
-  getStats: async () => {
-    const res = await authFetch(`/dashboard/stats`);
-    if (!res.ok) throw new Error("Failed to fetch dashboard stats");
-    return res.data;
-  },
-  getEmployeeStats: async () => {
-    const res = await authFetch(`/dashboard/employee-stats`);
-    if (!res.ok) throw new Error("Failed to fetch employee stats");
-    return res.data;
-  },
+  getStats: () => fetchApi<{ status: boolean; data: DashboardStats }>('/dashboard/stats'),
+  getEmployeeStats: () => fetchApi<{ status: boolean; data: EmployeeDashboardStats }>('/dashboard/employee-stats'),
 };
 
 export interface EmployeeDashboardStats {

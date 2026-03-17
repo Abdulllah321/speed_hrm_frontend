@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import axios from "axios";
 import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,34 +21,7 @@ import DataTable from "@/components/common/data-table";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { PrintReceipt } from "@/components/pos/print-receipt";
 import { cn } from "@/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-
-function getCookie(name: string): string {
-    if (typeof document === "undefined") return "";
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
-    return "";
-}
-
-async function apiFetch<T>(endpoint: string, options?: any): Promise<T> {
-    const companyId = getCookie("companyId");
-    const companyCode = getCookie("companyCode");
-    const response = await axios({
-        url: `${API_BASE}${endpoint}`,
-        method: options?.method || "GET",
-        params: options?.params,
-        data: options?.body,
-        headers: {
-            "Content-Type": "application/json",
-            ...(companyId ? { "x-company-id": companyId } : {}),
-            ...(companyCode ? { "x-tenant-id": companyCode } : {}),
-        },
-        withCredentials: true,
-    });
-    return response.data;
-}
+import { authFetch } from "@/lib/auth";
 
 function fmtCurrency(val: number) {
     return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -78,7 +50,7 @@ export default function SalesHistoryPage() {
     const fetchOrders = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await apiFetch<any>("/pos-sales/orders", {
+            const res = await authFetch("/pos-sales/orders", {
                 params: {
                     page: pagination.pageIndex + 1,
                     limit: pagination.pageSize,
@@ -87,10 +59,10 @@ export default function SalesHistoryPage() {
                     endDate: dateRange.to?.toISOString(),
                 }
             });
-            if (res.status) {
-                setOrders(res.data || []);
-                setRowCount(res.meta?.total || 0);
-                setPageCount(res.meta?.totalPages || 0);
+            if (res.ok && res.data?.status) {
+                setOrders(res.data.data || []);
+                setRowCount(res.data.meta?.total || 0);
+                setPageCount(res.data.meta?.totalPages || 0);
             }
         } catch (error) {
             toast.error("Failed to load sales history");

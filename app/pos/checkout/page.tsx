@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,34 +24,8 @@ import {
     ChevronDown, ChevronUp,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
-import { cn } from "@/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-
-function getCookie(name: string): string {
-    if (typeof document === "undefined") return "";
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
-    return "";
-}
-
-async function apiFetch<T>(endpoint: string, options?: any): Promise<T> {
-    const companyId = getCookie("companyId");
-    const companyCode = getCookie("companyCode");
-    const response = await axios({
-        url: `${API_BASE}${endpoint}`,
-        method: options?.method || "GET",
-        data: options?.body,
-        headers: {
-            "Content-Type": "application/json",
-            ...(companyId ? { "x-company-id": companyId } : {}),
-            ...(companyCode ? { "x-tenant-id": companyCode } : {}),
-        },
-        withCredentials: true,
-    });
-    return response.data;
-}
+import { cn, getCookie } from "@/lib/utils";
+import { authFetch } from "@/lib/auth";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface PromoConfig {
@@ -222,17 +195,17 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
         try {
             // Generate a code if backend requires one and doesn't auto-gen
             const code = `CUST-${Date.now()}`;
-            const res = await apiFetch<{ status: boolean; data: Customer; message?: string }>(
+            const res = await authFetch(
                 "/sales/customers",
                 { method: "POST", body: { ...formData, code } }
             );
-            if (res.status) {
+            if (res.ok && res.data?.status) {
                 toast.success("Customer added successfully");
-                onSuccess(res.data);
+                onSuccess(res.data.data);
                 onOpenChange(false);
                 setFormData({ name: "", contactNo: "", address: "" });
             } else {
-                toast.error(res.message || "Failed to add customer");
+                toast.error(res.data?.message || "Failed to add customer");
             }
         } catch {
             toast.error("Failed to add customer. Check connection.");
@@ -342,22 +315,21 @@ export default function CheckoutPage() {
 
     // ── Load config ────────────────────────────────────────────────────
     useEffect(() => {
-        apiFetch<{ status: boolean; data: { promos: PromoConfig[]; alliances: AllianceConfig[] } }>(
-            `/pos-config/checkout-config`
-        ).then((res) => {
-            if (res.status) {
-                setPromos(res.data.promos ?? []);
-                setAlliances(res.data.alliances ?? []);
-            }
-        }).catch(() => { }).finally(() => setIsLoadingConfig(false));
+        authFetch(`/pos-config/checkout-config`)
+            .then((res) => {
+                if (res.ok && res.data?.status) {
+                    setPromos(res.data.data.promos ?? []);
+                    setAlliances(res.data.data.alliances ?? []);
+                }
+            }).catch(() => { }).finally(() => setIsLoadingConfig(false));
     }, []);
 
     // ── Fetch customers ────────────────────────────────────────────────
     useEffect(() => {
         setIsLoadingCustomers(true);
-        apiFetch<{ status: boolean; data: Customer[] }>(`/sales/customers?search=${customerSearch}`)
+        authFetch(`/sales/customers`, { params: { search: customerSearch } })
             .then(res => {
-                if (res.status) setCustomers(res.data || []);
+                if (res.ok && res.data?.status) setCustomers(res.data.data || []);
             })
             .catch(() => { })
             .finally(() => setIsLoadingCustomers(false));
@@ -413,16 +385,16 @@ export default function CheckoutPage() {
         setIsValidatingCoupon(true);
         setCouponError("");
         try {
-            const res = await apiFetch<{ status: boolean; data: AppliedCoupon; message: string }>(
+            const res = await authFetch(
                 "/pos-config/validate-coupon",
                 { method: "POST", body: { code: couponInput.trim().toUpperCase(), orderSubtotal: subtotalAfterItems } }
             );
-            if (res.status) {
-                setAppliedCoupon(res.data);
+            if (res.ok && res.data?.status) {
+                setAppliedCoupon(res.data.data);
                 setDiscountMode("coupon");
-                toast.success(`Coupon "${res.data.code}" — ${fmtCurrency(res.data.discountAmount)} off`);
+                toast.success(`Coupon "${res.data.data.code}" — ${fmtCurrency(res.data.data.discountAmount)} off`);
             } else {
-                setCouponError(res.message || "Invalid coupon");
+                setCouponError(res.data?.message || "Invalid coupon");
             }
         } catch { setCouponError("Failed to validate coupon"); }
         finally { setIsValidatingCoupon(false); }
@@ -481,15 +453,15 @@ export default function CheckoutPage() {
                 else body.globalDiscountAmount = orderDiscount;
             }
 
-            const res = await apiFetch<{ status: boolean; data: any; message?: string }>(
+            const res = await authFetch(
                 "/pos-sales/orders", { method: "POST", body }
             );
 
-            if (res.status) {
-                setCompletedOrder(res.data);
+            if (res.ok && res.data?.status) {
+                setCompletedOrder(res.data.data);
                 sessionStorage.removeItem("pos_cart");
             } else {
-                toast.error(res.message || "Checkout failed");
+                toast.error(res.data?.message || "Checkout failed");
             }
         } catch { toast.error("Checkout failed. Check connection."); }
         finally { setIsSubmitting(false); }

@@ -58,8 +58,16 @@ export const getCookieDomain = (host: string) => {
   if (parts.length >= 2) {
     // If it's a simple host like 'mysite.com', we want '.mysite.com'
     // If it's 'app.mysite.com', we also want '.mysite.com'
-    return "." + parts.slice(-2).join(".");
+  return "." + parts.slice(-2).join(".");
   }
 
   return undefined;
 };
+
+export function getCookie(name: string): string {
+  if (typeof document === "undefined") return "";
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
+  return "";
+}

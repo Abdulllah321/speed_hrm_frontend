@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,34 +18,7 @@ import {
 import { ArrowLeft, Wallet, Calculator, LogOut, CheckCircle2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-
-function getCookie(name: string): string {
-    if (typeof document === "undefined") return "";
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
-    return "";
-}
-
-async function apiFetch<T>(endpoint: string, options?: any): Promise<T> {
-    const companyId = getCookie("companyId");
-    const companyCode = getCookie("companyCode");
-    const response = await axios({
-        url: `${API_BASE}${endpoint}`,
-        method: options?.method || "GET",
-        params: options?.params,
-        data: options?.body,
-        headers: {
-            "Content-Type": "application/json",
-            ...(companyId ? { "x-company-id": companyId } : {}),
-            ...(companyCode ? { "x-tenant-id": companyCode } : {}),
-        },
-        withCredentials: true,
-    });
-    return response.data;
-}
+import { authFetch } from "@/lib/auth";
 
 function fmtCurrency(val: number) {
     return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -72,16 +44,16 @@ export default function DrawerManagementPage() {
     const fetchSession = async () => {
         setIsLoading(true);
         try {
-            const res = await apiFetch<any>("/pos-session/current");
-            // The backend returns the object directly, nestjs default or custom payload?
-            // Assuming the backend returns { session, metrics, isDrawerOpen }
-            setSessionData(res || null);
-        } catch (error) {
-            if (axios.isAxiosError(error) && error.response?.status === 404) {
+            const res = await authFetch("/pos-session/current");
+            if (res.ok) {
+                setSessionData(res.data || null);
+            } else if (res.status === 404) {
                 setSessionData(null);
             } else {
                 toast.error("Failed to load drawer status");
             }
+        } catch (error) {
+            toast.error("Failed to load drawer status");
         } finally {
             setIsLoading(false);
         }
@@ -97,15 +69,19 @@ export default function DrawerManagementPage() {
             return;
         }
         try {
-            await apiFetch("/pos-session/current/open", {
+            const res = await authFetch("/pos-session/current/open", {
                 method: "PUT",
                 body: { amount: Number(floatAmount), note: floatNote },
             });
-            toast.success("Cash drawer opened successfully");
-            setShowOpenModal(false);
-            fetchSession();
+            if (res.ok) {
+                toast.success("Cash drawer opened successfully");
+                setShowOpenModal(false);
+                fetchSession();
+            } else {
+                toast.error(res.data?.message || "Failed to open drawer");
+            }
         } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to open drawer");
+            toast.error("Failed to open drawer");
         }
     };
 
@@ -115,21 +91,25 @@ export default function DrawerManagementPage() {
             return;
         }
         try {
-            const res = await apiFetch<any>("/pos-session/current/close", {
+            const res = await authFetch("/pos-session/current/close", {
                 method: "POST",
                 body: { actualCash: Number(actualCash), note: closeNote },
             });
-            toast.success("Cash drawer closed successfully");
-            setCloseSummary({
-                expected: sessionData.metrics.expectedCash,
-                actual: Number(actualCash),
-                variance: res.variance,
-            });
-            setShowCloseModal(false);
-            setShowSummaryModal(true);
-            fetchSession();
+            if (res.ok) {
+                toast.success("Cash drawer closed successfully");
+                setCloseSummary({
+                    expected: sessionData.metrics.expectedCash,
+                    actual: Number(actualCash),
+                    variance: res.data.variance,
+                });
+                setShowCloseModal(false);
+                setShowSummaryModal(true);
+                fetchSession();
+            } else {
+                toast.error(res.data?.message || "Failed to close drawer");
+            }
         } catch (error: any) {
-            toast.error(error.response?.data?.message || "Failed to close drawer");
+            toast.error("Failed to close drawer");
         }
     };
 

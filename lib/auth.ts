@@ -136,12 +136,22 @@ export async function getAccessToken(): Promise<string | null> {
   return accessToken;
 }
 
-import axios from "axios";
 
 // Authenticated fetch helper - works on both server and client
 export async function authFetch(url: string, options: any = {}): Promise<any> {
   const BASE_URL = getApiBaseUrl();
-  const fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
+  let fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
+
+  // Handle query parameters
+  if (options.params) {
+    const urlObj = new URL(fullUrl);
+    Object.keys(options.params).forEach(key => {
+      if (options.params[key] !== undefined && options.params[key] !== null) {
+        urlObj.searchParams.append(key, String(options.params[key]));
+      }
+    });
+    fullUrl = urlObj.toString();
+  }
 
   if (typeof window === 'undefined') {
     // Server-side
@@ -150,20 +160,7 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
     let accessToken = cookieStore.get("accessToken")?.value || null;
 
     if (accessToken && isTokenExpired(accessToken)) {
-      // Note: we can't delete cookies here if it's not a server action
-      // but we can treat it as null for the request
       accessToken = null;
-    }
-
-    const companyCookie = cookieStore.get("currentCompany")?.value;
-    const companyCode = cookieStore.get("companyCode")?.value;
-    let companyId = "";
-
-    if (companyCookie) {
-      try {
-        const company = JSON.parse(companyCookie);
-        companyId = company.id;
-      } catch (e) { }
     }
 
     const allCookies = cookieStore.getAll();
@@ -174,66 +171,51 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
         console.log(`[authFetch Server] ${options.method || 'GET'} ${fullUrl}`);
       }
 
-      const response = await axios({
-        url: fullUrl,
+      const response = await fetch(fullUrl, {
         method: options.method || 'GET',
-        data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
         headers: {
           ...(options.body ? { "Content-Type": "application/json" } : {}),
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          ...(companyId ? { "X-Company-Id": companyId } : {}),
-          ...(companyCode ? { "X-Tenant-Id": companyCode } : {}),
           ...(cookieHeader ? { Cookie: cookieHeader } : {}),
           ...options.headers,
         },
-        withCredentials: true,
-        timeout: 8000, // 8-second timeout to prevent hanging in production
+        body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+        // @ts-ignore - signal for timeout if needed, normally fetch doesn't have timeout prop but we use AbortController if we wanted
       });
 
+      // No native timeout in fetch like axios, but we can add one if critical.
+      // For now keeping it simple as requested.
+      
+      const data = await response.json().catch(() => ({}));
+
       return {
-        ok: true,
+        ok: response.ok,
         status: response.status,
-        data: response.data,
+        data: data,
       };
     } catch (error: any) {
       console.error(`[authFetch Server Error] ${options.method || 'GET'} ${fullUrl}:`, error.message);
       
       return {
         ok: false,
-        status: error.response?.status || 500,
-        data: error.response?.data || { message: error.message },
+        status: 500,
+        data: { message: error.message },
       };
     }
   } else {
     // Client-side
-    const getCookie = (name: string) => {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-      return null;
-    };
-    const companyId = getCookie("companyId") || (getCookie("currentCompany") ? (() => {
-      try {
-        const c = getCookie("currentCompany");
-        return c ? JSON.parse(decodeURIComponent(c)).id : null;
-      } catch { return null; }
-    })() : null);
-    const companyCode = getCookie("companyCode");
-
     try {
       const response = await fetch(fullUrl, {
         method: options.method || 'GET',
         headers: {
           ...(options.body ? { "Content-Type": "application/json" } : {}),
-          ...(companyId ? { "X-Company-Id": companyId } : {}),
-          ...(companyCode ? { "X-Tenant-Id": companyCode } : {}),
           ...options.headers,
         },
-        body: options.body,
+        body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
         credentials: "include",
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
 
       return {
         ok: response.ok,
