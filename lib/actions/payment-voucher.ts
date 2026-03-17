@@ -49,17 +49,26 @@ export async function getPaymentVouchers(type?: "bank" | "cash") {
             };
         }
 
-        const data = await response.json();
+        const result = await response.json();
+        const vouchersArray = result.data || result;
+
+        if (!Array.isArray(vouchersArray)) {
+            console.error("Vouchers data is not an array:", result);
+            return {
+                status: false,
+                data: []
+            };
+        }
 
         // Map backend data to frontend interface if needed
         // Backend returns `creditAccount` object, frontend list expects `creditAccountName`
-        const mappedData = data.map((pv: any) => ({
+        const mappedData = vouchersArray.map((pv: any) => ({
             ...pv,
             creditAccountName: pv.creditAccount?.name || "Unknown Account",
-            details: pv.details.map((d: any) => ({
+            details: pv.details?.map((d: any) => ({
                 ...d,
                 accountName: d.account?.name || "Unknown Account"
-            }))
+            })) || []
         }));
 
         return {
@@ -105,5 +114,118 @@ export async function createPaymentVoucher(data: any) {
     } catch (error: any) {
         console.error("Error creating payment voucher:", error);
         return { status: false, message: error.message || "An unexpected error occurred" };
+    }
+}
+
+// Get suppliers with pending invoices
+export async function getSuppliersWithPendingInvoices() {
+    try {
+        console.log('FRONTEND - Calling API: /finance/payment-vouchers/suppliers-with-pending-invoices');
+        const response = await authFetch("/finance/payment-vouchers/suppliers-with-pending-invoices", {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            cache: 'no-store',
+            next: { revalidate: 0 }
+        });
+
+        console.log('FRONTEND - API Response status:', response.status);
+        console.log('FRONTEND - API Response headers:', response.headers);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("FRONTEND - Failed to fetch suppliers with pending invoices", response.status, errorText);
+            return {
+                status: false,
+                data: [],
+                error: `HTTP ${response.status}: ${errorText}`
+            };
+        }
+
+        const data = await response.json();
+        console.log('FRONTEND - Raw API Response data:', data);
+        console.log('FRONTEND - Data type:', typeof data);
+        console.log('FRONTEND - Data length:', Array.isArray(data) ? data.length : 'Not an array');
+        
+        return {
+            status: true,
+            data: data
+        };
+    } catch (error: any) {
+        console.error("FRONTEND - Error fetching suppliers with pending invoices:", error);
+        return {
+            status: false,
+            data: [],
+            error: error.message
+        };
+    }
+}
+
+// Get all suppliers (fallback for testing)
+export async function getAllSuppliers() {
+    try {
+        console.log('Calling API: /finance/suppliers');
+        const response = await authFetch("/finance/suppliers", {
+            cache: 'no-store',
+            next: { revalidate: 0 }
+        });
+
+        console.log('All suppliers API Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Failed to fetch all suppliers", response.status, errorText);
+            return {
+                status: false,
+                data: [],
+                error: `HTTP ${response.status}: ${errorText}`
+            };
+        }
+
+        const result = await response.json();
+        console.log('All suppliers API Response:', result);
+        
+        return {
+            status: result.status || true,
+            data: result.data || result || []
+        };
+    } catch (error: any) {
+        console.error("Error fetching all suppliers:", error);
+        return {
+            status: false,
+            data: [],
+            error: error.message
+        };
+    }
+}
+
+// Get pending invoices for a specific supplier
+export async function getPendingInvoicesBySupplier(supplierId: string) {
+    try {
+        const response = await authFetch(`/finance/payment-vouchers/pending-invoices/${supplierId}`, {
+            cache: 'no-store',
+            next: { revalidate: 0 }
+        });
+
+        if (!response.ok) {
+            console.error("Failed to fetch pending invoices", response.status);
+            return {
+                status: false,
+                data: []
+            };
+        }
+
+        const data = await response.json();
+        return {
+            status: true,
+            data: data
+        };
+    } catch (error) {
+        console.error("Error fetching pending invoices:", error);
+        return {
+            status: false,
+            data: []
+        };
     }
 }

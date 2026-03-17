@@ -103,49 +103,69 @@ export default function GrnListPage() {
                     {loading ? (
                         <div className="text-center py-10">Loading GRNs...</div>
                     ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>GRN Number</TableHead>
-                                    <TableHead>PO Number</TableHead>
-                                    <TableHead>Warehouse</TableHead>
-                                    <TableHead>Received Date</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {grns.length === 0 ? (
+                            <Table>
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell colSpan={6} className="text-center h-24">
-                                            No GRNs found.
-                                        </TableCell>
+                                        <TableHead>GRN Number</TableHead>
+                                        <TableHead>PO Number</TableHead>
+                                        <TableHead>Warehouse</TableHead>
+                                        <TableHead>Order Type</TableHead>
+                                        <TableHead>Goods Type</TableHead>
+                                        <TableHead>Received Date</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ) : (
-                                    grns.map((grn) => (
-                                        <TableRow key={grn.id}>
-                                            <TableCell className="font-medium">{grn.grnNumber}</TableCell>
-                                            <TableCell className="font-mono text-sm">{grn.purchaseOrder?.poNumber || 'N/A'}</TableCell>
-                                            <TableCell>{grn.warehouse?.name}</TableCell>
-                                            <TableCell>{new Date(grn.receivedDate).toLocaleDateString()}</TableCell>
-                                            <TableCell>
-                                                <Badge variant={grn.status === 'SUBMITTED' ? 'default' : 'secondary'}>
-                                                    {grn.status}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="sm" asChild>
-                                                    <Link href={`/erp/procurement/grn/${grn.id}`}>
-                                                        <Eye className="h-4 w-4 mr-2" />
-                                                        View
-                                                    </Link>
-                                                </Button>
+                                </TableHeader>
+                                <TableBody>
+                                    {grns.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="text-center h-24">
+                                                No GRNs found.
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
+                                    ) : (
+                                        grns.map((grn) => (
+                                            <TableRow key={grn.id}>
+                                                <TableCell className="font-medium">{grn.grnNumber}</TableCell>
+                                                <TableCell className="font-mono text-sm">{grn.purchaseOrder?.poNumber || 'N/A'}</TableCell>
+                                                <TableCell>{grn.warehouse?.name}</TableCell>
+                                                <TableCell>
+                                                    {grn.orderType ? (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {grn.orderType === 'IMPORT' ? 'Import' : 'Local'}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-xs">-</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {grn.goodsType ? (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            {grn.goodsType === 'FRESH' ? 'Fresh' : 'Consumable'}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-xs">-</span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>{new Date(grn.receivedDate).toLocaleDateString()}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={grn.status === 'SUBMITTED' ? 'default' : 'secondary'}>
+                                                        {grn.status}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" asChild>
+                                                        <Link href={`/erp/procurement/grn/${grn.id}`}>
+                                                            <Eye className="h-4 w-4 mr-2" />
+                                                            View
+                                                        </Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                     )}
                 </CardContent>
             </Card>

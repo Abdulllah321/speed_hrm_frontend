@@ -3,7 +3,7 @@ import { getApiBaseUrl } from "./utils";
 import axios from 'axios';
 
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE = `${getApiBaseUrl()}`;
 
 async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
   // Helper to get cookie value in browser
@@ -251,6 +251,8 @@ export interface PurchaseRequisition {
   requestDate: string;
   status: string;
   notes?: string;
+  type?: string;
+  goodsType?: string; // CONSUMABLE, FRESH
   items: PurchaseRequisitionItem[];
   createdAt: string;
   updatedAt: string;
@@ -565,6 +567,8 @@ export interface Grn {
   receivedDate: string;
   status: string;
   notes?: string;
+  orderType?: string;
+  goodsType?: string;
   items: GrnItem[];
   purchaseOrder?: {
     poNumber: string;
@@ -651,9 +655,13 @@ export interface CreateLandedCostDto {
 export const landedCostApi = {
   create: (data: CreateLandedCostDto) =>
     fetchApi<any>('/landed-cost', { method: 'POST', body: JSON.stringify(data) }),
+  createLocal: (data: any) =>
+    fetchApi<any>('/landed-cost/local', { method: 'POST', body: JSON.stringify(data) }),
   getAll: () => fetchApi<any[]>('/landed-cost'),
   getById: (id: string) => fetchApi<any>(`/landed-cost/${id}`),
   listChargeTypes: () => fetchApi<{ status: boolean; data: LandedCostChargeType[] }>('/landed-cost/charge-types'),
+  post: (data: { grnId: string; charges: { accountId: string; amount: number }[] }) =>
+    fetchApi<any>('/landed-cost/post', { method: 'POST', body: JSON.stringify(data) }),
 };
 
 
@@ -862,5 +870,259 @@ export const stockOperationApi = {
   }) => fetchApi<any>('/stock-operation/move', {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+};
+
+// Purchase Invoice Types and API
+export interface PurchaseInvoice {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate?: string;
+  supplierId: string;
+  grnId?: string;
+  landedCostId?: string;
+  subtotal: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'CANCELLED';
+  paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'FULLY_PAID' | 'OVERDUE';
+  notes?: string;
+  items: PurchaseInvoiceItem[];
+  supplier?: { id: string; name: string; code: string };
+  grn?: { id: string; grnNumber: string };
+  landedCost?: { id: string; landedCostNumber: string };
+  paymentVouchers?: {
+    id: string;
+    paidAmount: number;
+    paymentVoucher: { id: string; pvNo: string; pvDate: string };
+  }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseInvoiceItem {
+  id: string;
+  itemId: string;
+  grnItemId?: string;
+  landedCostItemId?: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  taxRate: number;
+  taxAmount: number;
+  discountRate: number;
+  discountAmount: number;
+}
+
+export const purchaseInvoiceApi = {
+  getAll: (params?: { 
+    page?: number; 
+    limit?: number; 
+    supplierId?: string; 
+    status?: string; 
+    paymentStatus?: string; 
+    search?: string; 
+  }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ data: PurchaseInvoice[]; pagination: any }>(`/purchase/purchase-invoices?${query}`);
+  },
+  
+  getById: (id: string) => fetchApi<PurchaseInvoice>(`/purchase/purchase-invoices/${id}`),
+  
+  create: (data: {
+    invoiceNumber: string;
+    invoiceDate: string;
+    dueDate?: string;
+    supplierId: string;
+    grnId?: string;
+    landedCostId?: string;
+    discountAmount?: number;
+    notes?: string;
+    items: {
+      itemId: string;
+      grnItemId?: string;
+      landedCostItemId?: string;
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      taxRate?: number;
+      discountRate?: number;
+    }[];
+  }) => fetchApi<PurchaseInvoice>('/purchase/purchase-invoices', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  update: (id: string, data: Partial<PurchaseInvoice>) => 
+    fetchApi<PurchaseInvoice>(`/purchase/purchase-invoices/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  approve: (id: string) => 
+    fetchApi<PurchaseInvoice>(`/purchase/purchase-invoices/${id}/approve`, {
+      method: 'PATCH',
+    }),
+  
+  cancel: (id: string, reason?: string) => 
+    fetchApi<PurchaseInvoice>(`/purchase/purchase-invoices/${id}/cancel`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
+  
+  delete: (id: string) => fetchApi<void>(`/purchase/purchase-invoices/${id}`, {
+    method: 'DELETE',
+  }),
+  
+  getNextInvoiceNumber: () => 
+    fetchApi<{ nextInvoiceNumber: string }>('/purchase/purchase-invoices/next-invoice-number'),
+  
+  getSummary: (supplierId?: string) => {
+    const query = supplierId ? `?supplierId=${supplierId}` : '';
+    return fetchApi<{
+      totalInvoices: number;
+      draftInvoices: number;
+      approvedInvoices: number;
+      totalAmount: number;
+      paidAmount: number;
+      pendingAmount: number;
+    }>(`/purchase/purchase-invoices/summary${query}`);
+  },
+  
+  getValuedGrns: () => fetchApi<any[]>('/purchase/purchase-invoices/valued-grns'),
+  
+  getAvailableLandedCosts: () => fetchApi<any[]>('/purchase/purchase-invoices/available-landed-costs'),
+};
+
+// Payment Voucher Types and API
+export interface PaymentVoucher {
+  id: string;
+  type: 'bank' | 'cash';
+  pvNo: string;
+  pvDate: string;
+  refBillNo?: string;
+  billDate?: string;
+  chequeNo?: string;
+  chequeDate?: string;
+  creditAccountId: string;
+  supplierId?: string;
+  creditAmount: number;
+  isAdvance: boolean;
+  isTaxApplicable: boolean;
+  description: string;
+  status: 'pending' | 'approved' | 'rejected';
+  details: PaymentVoucherDetail[];
+  creditAccount?: { id: string; name: string; code: string };
+  supplier?: { id: string; name: string; code: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentVoucherDetail {
+  id: string;
+  paymentVoucherId: string;
+  accountId: string;
+  debit: number;
+  account?: { id: string; name: string; code: string };
+}
+
+export const paymentVoucherApi = {
+  getAll: (params?: { 
+    page?: number; 
+    limit?: number; 
+    type?: string; 
+    status?: string; 
+    search?: string; 
+  }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ data: PaymentVoucher[]; pagination: any }>(`/finance/payment-vouchers?${query}`);
+  },
+  
+  getById: (id: string) => fetchApi<PaymentVoucher>(`/finance/payment-vouchers/${id}`),
+  
+  create: (data: {
+    type: 'bank' | 'cash';
+    pvNo: string;
+    pvDate: string;
+    refBillNo?: string;
+    billDate?: string;
+    chequeNo?: string;
+    chequeDate?: string;
+    creditAccountId: string;
+    supplierId?: string;
+    creditAmount: number;
+    isAdvance?: boolean;
+    isTaxApplicable?: boolean;
+    description: string;
+    details: {
+      accountId: string;
+      debit: number;
+    }[];
+  }) => fetchApi<PaymentVoucher>('/finance/payment-vouchers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  update: (id: string, data: Partial<PaymentVoucher>) => 
+    fetchApi<PaymentVoucher>(`/finance/payment-vouchers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  updateStatus: (id: string, status: string, remarks?: string) => 
+    fetchApi<PaymentVoucher>(`/finance/payment-vouchers/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, remarks }),
+    }),
+  
+  delete: (id: string) => fetchApi<void>(`/finance/payment-vouchers/${id}`, {
+    method: 'DELETE',
+  }),
+  
+  getNextPvNumber: (type: 'bank' | 'cash') => 
+    fetchApi<{ nextPvNumber: string }>(`/finance/payment-vouchers/next-pv-number?type=${type}`),
+  
+  getSummary: (type?: string) => {
+    const query = type ? `?type=${type}` : '';
+    return fetchApi<{
+      totalVouchers: number;
+      pendingVouchers: number;
+      approvedVouchers: number;
+      totalAmount: number;
+      pendingAmount: number;
+    }>(`/finance/payment-vouchers/summary${query}`);
+  },
+};
+
+// Supplier API (if not already exists)
+export interface Supplier {
+  id: string;
+  name: string;
+  code: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const supplierApi = {
+  getAll: () => fetchApi<{ status: boolean; data: Supplier[] }>('/finance/suppliers'),
+  getById: (id: string) => fetchApi<{ status: boolean; data: Supplier }>(`/finance/suppliers/${id}`),
+  create: (data: Partial<Supplier>) => fetchApi<{ status: boolean; data: Supplier }>('/finance/suppliers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: Partial<Supplier>) => fetchApi<{ status: boolean; data: Supplier }>(`/finance/suppliers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<{ status: boolean; message: string }>(`/finance/suppliers/${id}`, {
+    method: 'DELETE',
   }),
 };

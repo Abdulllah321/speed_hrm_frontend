@@ -13,16 +13,22 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Plus, Trash2, Loader2, CreditCard, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createPaymentVoucher } from "@/lib/actions/payment-voucher";
+import { createPaymentVoucher, getSuppliersWithPendingInvoices, getPendingInvoicesBySupplier, getAllSuppliers } from "@/lib/actions/payment-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
-import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] }) {
+export function PaymentVoucherForm({ accounts }: { 
+    accounts: ChartOfAccount[]; 
+}) {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
+    const [suppliers, setSuppliers] = useState<any[]>([]);
+    const [pendingInvoices, setPendingInvoices] = useState<any[]>([]);
+    const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+    const [loadingSuppliers, setLoadingSuppliers] = useState(true);
+    const [suppliersError, setSuppliersError] = useState<string>("");
 
     const form = useForm<PaymentVoucherFormValues>({
         resolver: zodResolver(paymentVoucherSchema) as any,
@@ -37,9 +43,15 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
             chequeDate: undefined,
             creditAccountId: "",
             creditAmount: 0,
+            supplierId: "",
+            selectedInvoiceId: "",
+            invoices: [],
             isTaxApplicable: false,
             description: "",
-            details: [{ accountId: "", debit: 0 }],
+            details: [
+                { accountId: "", debit: 0, credit: 0 },
+                { accountId: "", debit: 0, credit: 0 },
+            ],
         },
     });
 
@@ -50,6 +62,49 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
 
     const voucherType = form.watch("type");
 
+    // Load suppliers with pending invoices on component mount
+    useEffect(() => {
+        const loadSuppliers = async () => {
+            console.log('Loading suppliers with pending invoices...');
+            setLoadingSuppliers(true);
+            setSuppliersError("");
+            
+            // First debug - check what invoices exist
+            try {
+                const { authFetch } = await import("@/lib/auth");
+                const debugResponse = await authFetch("/finance/payment-vouchers/debug-invoices", {
+                    cache: 'no-store'
+                });
+                if (debugResponse.ok) {
+                    const debugData = await debugResponse.json();
+                    console.log('DEBUG - All invoices in database:', debugData);
+                } else {
+                    console.error('Debug endpoint failed:', debugResponse.status);
+                }
+            } catch (error) {
+                console.error('Debug endpoint error:', error);
+            }
+            
+            const result = await getSuppliersWithPendingInvoices();
+            console.log('Suppliers result:', result);
+            
+            if (result.status) {
+                console.log('Suppliers data:', result.data);
+                setSuppliers(result.data);
+                if (result.data.length === 0) {
+                    setSuppliersError("No suppliers with pending invoices found");
+                }
+            } else {
+                console.error('Failed to load suppliers:', result);
+                setSuppliers([]);
+                setSuppliersError(result.error || "Failed to load suppliers");
+            }
+            
+            setLoadingSuppliers(false);
+        };
+        loadSuppliers();
+    }, []);
+
     // Auto-generate PV No based on type
     useEffect(() => {
         const prefix = voucherType === "bank" ? "BPV" : "CPV";
@@ -58,10 +113,114 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
         form.setValue("pvNo", `${prefix}${datePart}${randomPart}`);
     }, [voucherType, form]);
 
+    // Load pending invoices when supplier changes
+    const selectedSupplierId = form.watch("supplierId");
+    useEffect(() => {
+        if (selectedSupplierId) {
+            const loadPendingInvoices = async () => {
+                const result = await getPendingInvoicesBySupplier(selectedSupplierId);
+                if (result.status) {
+                    setPendingInvoices(result.data);
+                } else {
+                    setPendingInvoices([]);
+                }
+            };
+            loadPendingInvoices();
+        } else {
+            setPendingInvoices([]);
+            setSelectedInvoice(null);
+            form.setValue("selectedInvoiceId", "");
+            form.setValue("creditAmount", 0);
+        }
+    }, [selectedSupplierId, form]);
+
+    // Handle invoice selection
+    const selectedInvoiceId = form.watch("selectedInvoiceId");
+    useEffect(() => {
+        if (selectedInvoiceId && pendingInvoices.length > 0) {
+            const invoice = pendingInvoices.find(inv => inv.id === selectedInvoiceId);
+            if (invoice) {
+                setSelectedInvoice(invoice);
+                const amount = Number(invoice.remainingAmount);
+                
+                // Auto-fill form fields
+                form.setValue("refBillNo", invoice.invoiceNumber);
+                form.setValue("billDate", new Date(invoice.invoiceDate));
+                
+                // Auto-populate first row with supplier account and debit amount
+                // Try to find supplier-specific account or general supplier payable account
+                let supplierAccount = null;
+                
+                // First try to find account with supplier name
+                const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId);
+                if (selectedSupplier) {
+                    supplierAccount = accounts.find(acc => 
+                        acc.name.toLowerCase().includes(selectedSupplier.name.toLowerCase()) ||
+                        acc.name.toLowerCase().includes(selectedSupplier.code?.toLowerCase() || '')
+                    );
+                }
+                
+                // If not found, try general supplier/payable accounts
+                if (!supplierAccount) {
+                    supplierAccount = accounts.find(acc => 
+                        acc.name.toLowerCase().includes('supplier') || 
+                        acc.name.toLowerCase().includes('payable') ||
+                        acc.name.toLowerCase().includes('creditor') ||
+                        acc.code.toLowerCase().includes('sup') ||
+                        acc.code.toLowerCase().includes('pay')
+                    );
+                }
+                
+                if (supplierAccount) {
+                    form.setValue("details.0.accountId", supplierAccount.id);
+                    form.setValue("details.0.debit", amount);
+                    form.setValue("details.0.credit", 0);
+                    console.log(`Auto-populated first row: ${supplierAccount.name} with debit ${amount}`);
+                } else {
+                    // Just set the amount, user will select account manually
+                    form.setValue("details.0.debit", amount);
+                    form.setValue("details.0.credit", 0);
+                    console.log('No supplier account found, user needs to select manually');
+                }
+            }
+        } else {
+            setSelectedInvoice(null);
+        }
+    }, [selectedInvoiceId, pendingInvoices, form, accounts]);
+
     const onSubmit: SubmitHandler<PaymentVoucherFormValues> = async (values) => {
         try {
             setIsPending(true);
-            const result = await createPaymentVoucher(values);
+            
+            // Calculate totals from details
+            const totalDebit = watchDetails.reduce((sum, detail) => sum + (Number(detail.debit) || 0), 0);
+            const totalCredit = watchDetails.reduce((sum, detail) => sum + (Number(detail.credit) || 0), 0);
+            
+            // Find the main credit account (bank account) from details
+            const creditAccountEntry = watchDetails.find(detail => Number(detail.credit) > 0);
+            const mainCreditAccountId = creditAccountEntry?.accountId || "";
+            const mainCreditAmount = totalCredit;
+            
+            // Prepare invoice data if an invoice is selected
+            const invoices = selectedInvoice ? [{
+                purchaseInvoiceId: selectedInvoice.id,
+                paidAmount: Number(selectedInvoice.remainingAmount)
+            }] : [];
+
+            // Remove frontend-only fields and prepare backend data
+            const { selectedInvoiceId, ...cleanData } = values;
+
+            // Prepare final data for backend with required fields
+            const finalSubmitData = {
+                ...cleanData,
+                creditAccountId: mainCreditAccountId || values.creditAccountId, // Use derived or original
+                creditAmount: mainCreditAmount || values.creditAmount, // Use derived or original
+                invoices: invoices.length > 0 ? invoices : undefined
+            };
+
+            console.log('Final data for backend:', JSON.stringify(finalSubmitData, null, 2));
+
+            const result = await createPaymentVoucher(finalSubmitData);
             if (result.status) {
                 toast.success(result.message);
                 router.push("/finance/payment-voucher/list");
@@ -75,10 +234,39 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
         }
     };
 
+    // Watch for changes in detail rows to auto-balance
     const watchDetails = form.watch("details") || [];
+    useEffect(() => {
+        // Calculate total debit from all rows
+        const totalDebit = watchDetails.reduce((sum, detail) => sum + (Number(detail.debit) || 0), 0);
+        
+        // Find the first row with debit amount (supplier row)
+        const supplierRowIndex = watchDetails.findIndex(detail => Number(detail.debit) > 0);
+        
+        // Find the second row with account selected but no debit (bank/company row)
+        const bankRowIndex = watchDetails.findIndex((detail, index) => 
+            index !== supplierRowIndex && 
+            detail.accountId && 
+            Number(detail.debit) === 0
+        );
+        
+        // If we have a supplier debit and a bank account selected, auto-fill credit
+        if (supplierRowIndex >= 0 && bankRowIndex >= 1) {
+            const supplierDebitAmount = Number(watchDetails[supplierRowIndex].debit);
+            const currentBankCredit = Number(watchDetails[bankRowIndex].credit) || 0;
+            
+            if (supplierDebitAmount > 0 && currentBankCredit !== supplierDebitAmount) {
+                // Auto-fill the credit amount in the bank row
+                form.setValue(`details.${bankRowIndex}.credit`, supplierDebitAmount);
+                form.setValue(`details.${bankRowIndex}.debit`, 0);
+                console.log(`Auto-filled bank row credit: ${supplierDebitAmount}`);
+            }
+        }
+    }, [watchDetails, form]);
+
     const totalDebit = watchDetails.reduce((sum, detail) => sum + (Number(detail.debit) || 0), 0);
-    const creditAmount = form.watch("creditAmount") || 0;
-    const isBalanced = Math.abs(totalDebit - creditAmount) < 0.01;
+    const totalCredit = watchDetails.reduce((sum, detail) => sum + (Number(detail.credit) || 0), 0);
+    const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 
     return (
         <Card className="w-full">
@@ -122,7 +310,7 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         </div>
 
                         <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">PV Date <span className="text-destructive">*</span></Label>
+                            <Label className="text-xs text-muted-foreground uppercase font-semibold">PV Date</Label>
                             <Controller
                                 control={form.control}
                                 name="pvDate"
@@ -155,14 +343,91 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         </div>
                     </div>
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-lg border border-dashed border-primary/20">
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Supplier</Label>
+                            <Controller
+                                control={form.control}
+                                name="supplierId"
+                                render={({ field }) => (
+                                    <Autocomplete
+                                        options={suppliers.map(supplier => ({ 
+                                            value: supplier.id, 
+                                            label: `${supplier.code || supplier.name} - ${supplier.name} (${supplier._count?.purchaseInvoices || 0} pending)` 
+                                        }))}
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                        placeholder={loadingSuppliers ? "Loading suppliers..." : "Select Supplier (Optional)"}
+                                        disabled={loadingSuppliers}
+                                    />
+                                )}
+                            />
+                            {suppliersError && (
+                                <p className="text-xs text-amber-600">{suppliersError}</p>
+                            )}
+                            {!loadingSuppliers && suppliers.length > 0 && (
+                                <p className="text-xs text-green-600">{suppliers.length} suppliers with pending invoices</p>
+                            )}
+                        </div>
+
+                        <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Purchase Invoice</Label>
+                            <Controller
+                                control={form.control}
+                                name="selectedInvoiceId"
+                                render={({ field }) => (
+                                    <Autocomplete
+                                        options={pendingInvoices.map(invoice => ({ 
+                                            value: invoice.id, 
+                                            label: `${invoice.invoiceNumber} - ${Number(invoice.remainingAmount).toLocaleString()} remaining` 
+                                        }))}
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                        placeholder="Select Purchase Invoice (Optional)"
+                                        disabled={!selectedSupplierId}
+                                    />
+                                )}
+                            />
+                        </div>
+                    </div>
+
+                    {selectedInvoice && (
+                        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+                            <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Selected Invoice Details</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                    <span className="text-muted-foreground">Invoice No:</span>
+                                    <p className="font-medium">{selectedInvoice.invoiceNumber}</p>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground">Total Amount:</span>
+                                    <p className="font-medium">{Number(selectedInvoice.totalAmount).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground">Paid Amount:</span>
+                                    <p className="font-medium">{Number(selectedInvoice.paidAmount).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground">Remaining:</span>
+                                    <p className="font-medium text-red-600">{Number(selectedInvoice.remainingAmount).toLocaleString()}</p>
+                                </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-800">
+                                <p className="text-sm text-green-700 dark:text-green-300">
+                                    ✅ This invoice will be marked as <strong>FULLY_PAID</strong> after payment voucher creation
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {voucherType === "bank" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-lg border border-dashed border-primary/20">
                             <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground uppercase font-semibold">Cheque No <span className="text-destructive">*</span></Label>
+                                <Label className="text-xs text-muted-foreground uppercase font-semibold">Cheque No</Label>
                                 <Input {...form.register("chequeNo")} placeholder="Enter Cheque No" />
                             </div>
                             <div className="space-y-1">
-                                <Label className="text-xs text-muted-foreground uppercase font-semibold">Cheque Date <span className="text-destructive">*</span></Label>
+                                <Label className="text-xs text-muted-foreground uppercase font-semibold">Cheque Date</Label>
                                 <Controller
                                     control={form.control}
                                     name="chequeDate"
@@ -177,111 +442,138 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-b pb-6">
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Credit From (Account) <span className="text-destructive">*</span></Label>
-                            <Controller
-                                control={form.control}
-                                name="creditAccountId"
-                                render={({ field }) => (
-                                    <Autocomplete
-                                        options={accounts.map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}` }))}
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        placeholder="Select Bank/Cash Account"
-                                    />
-                                )}
-                            />
-                            {form.formState.errors.creditAccountId && (
-                                <p className="text-xs text-destructive">{form.formState.errors.creditAccountId.message}</p>
-                            )}
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Amount <span className="text-destructive">*</span></Label>
-                            <Input
-                                type="number"
-                                step="0.01"
-                                {...form.register("creditAmount", { valueAsNumber: true })}
-                                className="text-lg font-bold"
-                            />
-                            {form.formState.errors.creditAmount && (
-                                <p className="text-xs text-destructive">{form.formState.errors.creditAmount.message}</p>
-                            )}
-                        </div>
-                    </div>
 
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold">{voucherType === "bank" ? "Bank" : "Cash"} Payment Voucher Detail</h3>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => append({ accountId: "", debit: 0 })}
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add More PV Rows
-                            </Button>
+
+                    <div className="space-y-4 pt-4">
+                        <div className="flex items-center justify-between border-b pb-2">
+                            <h2 className="text-xl font-bold text-gray-800 dark:text-foreground">{voucherType === "bank" ? "Bank" : "Cash"} Payment Voucher Detail</h2>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => append({ accountId: "", debit: 0, credit: 0 })}
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add More PV Rows
+                                </Button>
+                            </div>
                         </div>
 
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-border">
                             <table className="w-full text-sm">
-                                <thead className="dark:bg-muted font-bold">
+                                <thead className="dark:bg-muted text-foreground border-b font-bold">
                                     <tr>
                                         <th className="px-4 py-3 text-left">Account Head</th>
-                                        <th className="px-4 py-3 text-left w-[200px]">Debit <span className="text-destructive">*</span></th>
+                                        <th className="px-4 py-3 text-left w-[180px]">Debit</th>
+                                        <th className="px-4 py-3 text-left w-[180px]">Credit</th>
                                         <th className="px-4 py-3 text-center w-[80px]">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y">
+                                <tbody className="divide-y divide-gray-200">
                                     {fields.map((field, index) => (
-                                        <tr key={field.id}>
+                                        <tr key={field.id} className="hover:bg-gray-50/50 dark:hover:bg-muted/50">
                                             <td className="px-4 py-3">
                                                 <Controller
                                                     control={form.control}
                                                     name={`details.${index}.accountId`}
                                                     render={({ field }) => (
                                                         <Autocomplete
-                                                            options={accounts.map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}` }))}
+                                                            options={accounts.map((acc) => ({
+                                                                value: acc.id,
+                                                                label: `${acc.code} - ${acc.name}`,
+                                                            }))}
                                                             value={field.value}
                                                             onValueChange={field.onChange}
                                                             placeholder="Select Account"
+                                                            disabled={isPending}
+                                                            className="h-10 border-gray-300 dark:border-input"
                                                         />
                                                     )}
+                                                />
+                                                {form.formState.errors.details?.[index]?.accountId && (
+                                                    <p className="text-[10px] text-destructive mt-1">
+                                                        {form.formState.errors.details[index].accountId?.message}
+                                                    </p>
+                                                )}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    placeholder="0"
+                                                    {...form.register(`details.${index}.debit`, {
+                                                        valueAsNumber: true,
+                                                        onChange: (e) => {
+                                                            if (Number(e.target.value) > 0) {
+                                                                form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                                                            }
+                                                        }
+                                                    })}
+                                                    disabled={isPending}
+                                                    className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
                                                 <Input
                                                     type="number"
                                                     step="0.01"
-                                                    {...form.register(`details.${index}.debit`, { valueAsNumber: true })}
+                                                    placeholder="0"
+                                                    {...form.register(`details.${index}.credit`, {
+                                                        valueAsNumber: true,
+                                                        onChange: (e) => {
+                                                            if (Number(e.target.value) > 0) {
+                                                                form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                                            }
+                                                        }
+                                                    })}
+                                                    disabled={isPending}
+                                                    className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-3 text-center">
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => remove(index)}
-                                                    disabled={fields.length === 1}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                {fields.length > 2 ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => remove(index)}
+                                                        disabled={isPending}
+                                                        className="rounded-full"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                ) : (
+                                                    <span className="text-gray-300">---</span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="font-bold border-t border-slate-300">
+                                <tfoot className="font-bold border-t border-gray-200 dark:border-border">
                                     <tr>
-                                        <td className="px-4 py-4 text-right text-slate-600 dark:text-muted-foreground">Totals:</td>
+                                        <td className="px-4 py-4 text-right pr-8 text-gray-600 dark:text-muted-foreground">Totals:</td>
                                         <td className="px-4 py-4 text-right text-lg">
-                                            {totalDebit > 0 ? totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 }) : ""}
+                                            {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td></td>
+                                        <td className="px-4 py-4 text-right text-lg">
+                                            {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            {!isBalanced && totalDebit > 0 && (
+                                                <div className="mx-auto w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="Out of Balance" />
+                                            )}
+                                            {isBalanced && totalDebit > 0 && (
+                                                <div className="mx-auto w-2.5 h-2.5 rounded-full bg-green-500" title="Balanced" />
+                                            )}
+                                        </td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
+                        {form.formState.errors.details?.root && (
+                            <p className="text-sm text-destructive font-medium">{form.formState.errors.details.root.message}</p>
+                        )}
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -299,15 +591,24 @@ export function PaymentVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         <Label htmlFor="isTaxApplicable" className="text-sm font-medium leading-none">Tax Applicable</Label>
                     </div>
 
-                    <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground uppercase font-semibold">Description <span className="text-destructive">*</span></Label>
-                        <Textarea {...form.register("description")} placeholder="Enter payment description..." className="min-h-[100px]" />
+                    <div className="space-y-2 pt-4">
+                        <Label htmlFor="description" className="text-xs text-muted-foreground uppercase font-semibold">Description</Label>
+                        <Textarea
+                            id="description"
+                            placeholder="Enter payment description..."
+                            {...form.register("description")}
+                            disabled={isPending}
+                            className="min-h-[100px] border-gray-300 dark:border-input rounded-lg"
+                        />
+                        {form.formState.errors.description && (
+                            <p className="text-xs text-destructive font-medium">{form.formState.errors.description.message}</p>
+                        )}
                     </div>
 
-                    <div className="flex justify-center pt-6 border-t font-primary">
+                    <div className="flex justify-center pt-6 border-t">
                         <Button
                             type="submit"
-                            disabled={isPending || !isBalanced || creditAmount <= 0}
+                            disabled={isPending || !isBalanced}
                         >
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Create Payment Voucher

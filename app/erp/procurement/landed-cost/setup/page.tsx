@@ -95,6 +95,7 @@ export default function LandedCostSetupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'ALL' | 'LOCAL' | 'IMPORT'>('ALL');
 
   // Data State
   const [grns, setGrns] = useState<Grn[]>([]);
@@ -163,7 +164,20 @@ export default function LandedCostSetupPage() {
       ]);
       console.log('GRN Response:', grnsRes);
       const grnData = Array.isArray(grnsRes) ? grnsRes : (grnsRes as any)?.data || [];
-      setGrns(grnData.filter((g: any) => g.status === 'SUBMITTED' || g.status === 'RECEIVED_UNVALUED'));
+      // Filter for GRNs that need landed cost:
+      // 1. Direct PO (no PR/RFQ) - always needs landed cost  
+      // 2. PR-linked FRESH goods - needs landed cost
+      setGrns(grnData.filter((g: any) => {
+        if (g.status !== 'RECEIVED_UNVALUED') return false;
+        
+        const po = g.purchaseOrder;
+        if (!po) return false;
+        
+        const isDirectPo = !po.purchaseRequisitionId && !po.vendorQuotationId && !po.rfqId;
+        const isPrLinkedFresh = po.purchaseRequisition?.goodsType === 'FRESH';
+        
+        return isDirectPo || isPrLinkedFresh;
+      }));
       if (vendorsRes?.data) setVendors(vendorsRes.data);
       if (hsRes?.data) setHsCodes(hsRes.data);
       if (ctRes?.data) setChargeTypes(ctRes.data);
@@ -173,12 +187,29 @@ export default function LandedCostSetupPage() {
       if (grnIdFromUrl) {
         const foundGrn = grnData.find((g: any) => g.id === grnIdFromUrl);
         if (foundGrn) {
+          // Don't redirect for local GRNs anymore - handle them in same form
           setTimeout(() => onGrnChange(grnIdFromUrl), 500);
         }
       }
     } catch (err) {
       toast.error('Failed to load initial data');
     }
+  };
+
+  const isLocalGrn = () => {
+    if (!grnId) return false;
+    const grn = grns.find(g => g.id === grnId);
+    return (grn as any)?.orderType === 'LOCAL' || !(grn as any)?.orderType;
+  };
+
+  const getFilteredGrns = () => {
+    let filtered = grns;
+    if (orderTypeFilter === 'LOCAL') {
+      filtered = grns.filter(g => (g as any).orderType === 'LOCAL' || !(g as any).orderType);
+    } else if (orderTypeFilter === 'IMPORT') {
+      filtered = grns.filter(g => (g as any).orderType === 'IMPORT');
+    }
+    return filtered;
   };
 
   const onGrnChange = async (id: string) => {
@@ -189,6 +220,13 @@ export default function LandedCostSetupPage() {
       console.warn('GRN not found in state for ID:', id);
       return;
     }
+
+    // Don't redirect for local GRNs anymore - handle them in same form
+    // const isLocal = (grn as any).orderType === 'LOCAL' || !(grn as any).orderType;
+    // if (isLocal) {
+    //   router.push(`/erp/procurement/landed-cost/local?grnId=${id}`);
+    //   return;
+    // }
 
     setLoading(true);
     try {
@@ -234,6 +272,7 @@ export default function LandedCostSetupPage() {
           incomeTaxRate: 0,
           incomeTaxAmount: 0,
           otherChargesPKR: 0,
+          totalOtherCharges: 0,
           unitCostPKR: 0,
           totalCostPKR: 0,
           dutyPaidValue: 0,
@@ -345,6 +384,8 @@ export default function LandedCostSetupPage() {
     const currentItems = itemsToUse || items;
     if (currentItems.length === 0) return;
 
+    const isLocal = isLocalGrn();
+
     // First, calculate local invoice foreign for all items to get an accurate total
     const itemsWithFullValues = currentItems.map(item => ({
       ...item,
@@ -361,6 +402,57 @@ export default function LandedCostSetupPage() {
       // 1. Invoice Foreign (already calculated above)
       const invoiceForeign = item.invoiceForeign;
 
+      if (isLocal) {
+        // For local purchases, most fields are 0 or basic
+        return {
+          ...item,
+          invoiceForeign,
+          freightForeign: 0,
+          exchangeRate: 1,
+          invoicePKR: 0, // Show 0 for local
+          insuranceCharges: 0,
+          landingCharges: 0,
+          assessableValue: invoiceForeign, // Show Inv ($) value here
+          dutyPaidValue: 0,
+          valueForSaleTax: 0,
+          valueForIncomeTax: 0,
+          customsDutyAmount: 0,
+          regulatoryDutyAmount: 0,
+          additionalCustomsDutyAmount: 0,
+          salesTaxAmount: 0,
+          additionalSalesTaxAmount: 0,
+          incomeTaxAmount: 0,
+          totalDutyAmount: 0,
+          misFreightUSD: 0,
+          misFreightPKR: 0,
+          misDoThcPKR: 0,
+          misBankPKR: 0,
+          misInsurancePKR: 0,
+          misClgFwdPKR: 0,
+          totalOtherCharges: 0,
+          misFreightInvNo: '',
+          misFreightDate: '',
+          misDoThcPoNo: '',
+          misDoThcDate: '',
+          misInsurancePolicyNo: '',
+          misClgFwdBillNo: '',
+          exciseChargesAmount: 0,
+          // Shipment Metadata - empty for local
+          lcNo: '',
+          blNo: '',
+          blDate: '',
+          gdNo: '',
+          origin: '',
+          season: season,
+          category: category,
+          shippingInv: '',
+          invDate: '',
+          unitCostPKR: item.unitFob, // Same as unit FOB for local
+          totalCostPKR: invoiceForeign
+        };
+      }
+
+      // For import purchases, keep existing complex calculation
       // 2. Proportional Freight (based on Manual Total Invoice or Calculated Sum)
       // Formula: Total Freight / Total Invoice Value * Inv ($)
       const freightShare = denominator > 0
@@ -586,8 +678,21 @@ export default function LandedCostSetupPage() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-800">Landed Cost Setup</h1>
-        <div className="space-x-2">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Landed Cost Setup</h1>
+          <p className="text-sm text-gray-600">Complex import landed cost with duties and charges</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Select value={orderTypeFilter} onValueChange={(v: any) => setOrderTypeFilter(v)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Types</SelectItem>
+              <SelectItem value="LOCAL">Local</SelectItem>
+              <SelectItem value="IMPORT">Import</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" onClick={() => calculateTotals()}>
             <Calculator className="mr-2 h-4 w-4" /> Calculate
           </Button>
@@ -608,7 +713,11 @@ export default function LandedCostSetupPage() {
                 <Select value={grnId} onValueChange={onGrnChange}>
                   <SelectTrigger><SelectValue placeholder="Select GRN" /></SelectTrigger>
                   <SelectContent>
-                    {grns.map(g => <SelectItem key={g.id} value={g.id}>{g.grnNumber}</SelectItem>)}
+                    {getFilteredGrns().map(g => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.grnNumber} - {(g as any).orderType || 'Local'}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -623,32 +732,88 @@ export default function LandedCostSetupPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label>Currency</Label>
-                  <Input value={currency} onChange={e => setCurrency(e.target.value)} />
+                  <Label>Currency {isLocalGrn() && <span className="text-xs text-gray-400">(Show $ for local)</span>}</Label>
+                  <Input 
+                    value={isLocalGrn() ? 'USD ($)' : currency} 
+                    onChange={e => setCurrency(e.target.value)} 
+                    disabled={isLocalGrn()}
+                  />
                 </div>
                 <div>
-                  <Label>Ex. Rate</Label>
-                  <Input type="number" value={exchangeRate} onChange={e => setExchangeRate(Number(e.target.value))} />
+                  <Label>Ex. Rate {isLocalGrn() && <span className="text-xs text-gray-400">(Fixed 1 for local)</span>}</Label>
+                  <Input 
+                    type="number" 
+                    value={isLocalGrn() ? 1 : exchangeRate} 
+                    onChange={e => setExchangeRate(Number(e.target.value))} 
+                    disabled={isLocalGrn()}
+                  />
                 </div>
               </div>
               <div>
-                <Label>Total Freight ({currency})</Label>
-                <Input type="number" value={totalFreight} onChange={e => setTotalFreight(Number(e.target.value))} />
+                <Label>Total Freight ({isLocalGrn() ? '$' : currency}) {isLocalGrn() && <span className="text-xs text-gray-400">(0 for local)</span>}</Label>
+                <Input 
+                  type="number" 
+                  value={isLocalGrn() ? 0 : totalFreight} 
+                  onChange={e => setTotalFreight(Number(e.target.value))} 
+                  disabled={isLocalGrn()}
+                />
               </div>
               <div>
-                <Label>Total Invoice Value ({currency})</Label>
+                <Label>Total Invoice Value ({isLocalGrn() ? '$' : currency})</Label>
                 <Input type="number" value={totalInvoiceValue} onChange={e => setTotalInvoiceValue(Number(e.target.value))} />
               </div>
             </div>
 
             {/* Shipment Details Section */}
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold border-b pb-2">Shipment Details</h3>
-              <div><Label>LC No.</Label><Input value={lcNo} onChange={e => setLcNo(e.target.value)} /></div>
-              <div><Label>B/L No.</Label><Input value={blNo} onChange={e => setBlNo(e.target.value)} /></div>
-              <div><Label>B/L Date</Label><DatePicker value={blDate} onChange={setBlDate} placeholder="Select B/L Date" /></div>
-              <div><Label>GD No.</Label><Input value={gdNo} onChange={e => setGdNo(e.target.value)} /></div>
-              <div><Label>Origin</Label><Input value={countryOfOrigin} onChange={e => setCountryOfOrigin(e.target.value)} /></div>
+              <h3 className="text-lg font-semibold border-b pb-2">
+                Shipment Details {isLocalGrn() && <span className="text-sm text-gray-500">(Local - Limited Fields)</span>}
+              </h3>
+              <div>
+                <Label>LC No. {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
+                <Input 
+                  value={lcNo} 
+                  onChange={e => setLcNo(e.target.value)} 
+                  disabled={isLocalGrn()}
+                  placeholder={isLocalGrn() ? "-" : "Enter LC No."}
+                />
+              </div>
+              <div>
+                <Label>B/L No. {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
+                <Input 
+                  value={blNo} 
+                  onChange={e => setBlNo(e.target.value)} 
+                  disabled={isLocalGrn()}
+                  placeholder={isLocalGrn() ? "-" : "Enter B/L No."}
+                />
+              </div>
+              <div>
+                <Label>B/L Date {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
+                <DatePicker 
+                  value={blDate} 
+                  onChange={setBlDate} 
+                  placeholder={isLocalGrn() ? "-" : "Select B/L Date"}
+                  disabled={isLocalGrn()}
+                />
+              </div>
+              <div>
+                <Label>GD No. {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
+                <Input 
+                  value={gdNo} 
+                  onChange={e => setGdNo(e.target.value)} 
+                  disabled={isLocalGrn()}
+                  placeholder={isLocalGrn() ? "-" : "Enter GD No."}
+                />
+              </div>
+              <div>
+                <Label>Origin {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
+                <Input 
+                  value={countryOfOrigin} 
+                  onChange={e => setCountryOfOrigin(e.target.value)} 
+                  disabled={isLocalGrn()}
+                  placeholder={isLocalGrn() ? "-" : "Enter Origin"}
+                />
+              </div>
               <div><Label>Season</Label><Input value={season} onChange={e => setSeason(e.target.value)} /></div>
               <div><Label>Category</Label><Input value={category} onChange={e => setCategory(e.target.value)} /></div>
               <div><Label>Shipping Inv.</Label><Input value={shippingInvoiceNo} onChange={e => setShippingInvoiceNo(e.target.value)} /></div>
@@ -657,52 +822,63 @@ export default function LandedCostSetupPage() {
 
             {/* Other Charges (MIS Detail) Section */}
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold border-b pb-2">Other Charges (MIS Detail)</h3>
-              {/* Freight Section */}
-              <div className="border p-2 rounded">
-                <p className="text-xs font-bold text-green-700 mb-1">Freight</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-[10px]">US$ ($)</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-7 text-xs" /></div>
-                  <div><Label className="text-[10px]">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-7 text-xs" /></div>
-                  <div><Label className="text-[10px]">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-7 text-xs" /></div>
-                  <div><Label className="text-[10px]">Date</Label><DatePicker value={freightDate} onChange={setFreightDate} placeholder="Date" className="h-7 text-xs" /></div>
+              <h3 className="text-lg font-semibold border-b pb-2">
+                Other Charges (MIS Detail) {isLocalGrn() && <span className="text-sm text-gray-500">(Not applicable for local)</span>}
+              </h3>
+              {isLocalGrn() ? (
+                <div className="p-4 bg-gray-50 rounded border text-center text-gray-500">
+                  <p>Other charges are not applicable for local purchases</p>
+                  <p className="text-sm">All MIS detail fields will show as 0 or "-"</p>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Freight Section */}
+                  <div className="border p-2 rounded">
+                    <p className="text-xs font-bold text-green-700 mb-1">Freight</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-[10px]">US$ ($)</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-7 text-xs" /></div>
+                      <div><Label className="text-[10px]">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-7 text-xs" /></div>
+                      <div><Label className="text-[10px]">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-7 text-xs" /></div>
+                      <div><Label className="text-[10px]">Date</Label><DatePicker value={freightDate} onChange={setFreightDate} placeholder="Date" className="h-7 text-xs" /></div>
+                    </div>
+                  </div>
 
-              {/* DO/THC Section */}
-              <div className="border p-2 rounded">
-                <p className="text-xs font-bold text-green-700 mb-1">DO/THC</p>
-                <div className="grid grid-cols-3 gap-2">
-                  <div><Label className="text-[10px]">Charges</Label><Input type="number" value={doThcCharges} onChange={e => setDoThcCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
-                  <div><Label className="text-[10px]">P.O. #</Label><Input value={doThcPoNo} onChange={e => setDoThcPoNo(e.target.value)} className="h-7 text-xs" /></div>
-                  <div><Label className="text-[10px]">Date</Label><DatePicker value={doThcDate} onChange={setDoThcDate} placeholder="Date" className="h-7 text-xs" /></div>
-                </div>
-              </div>
+                  {/* DO/THC Section */}
+                  <div className="border p-2 rounded">
+                    <p className="text-xs font-bold text-green-700 mb-1">DO/THC</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div><Label className="text-[10px]">Charges</Label><Input type="number" value={doThcCharges} onChange={e => setDoThcCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
+                      <div><Label className="text-[10px]">P.O. #</Label><Input value={doThcPoNo} onChange={e => setDoThcPoNo(e.target.value)} className="h-7 text-xs" /></div>
+                      <div><Label className="text-[10px]">Date</Label><DatePicker value={doThcDate} onChange={setDoThcDate} placeholder="Date" className="h-7 text-xs" /></div>
+                    </div>
+                  </div>
 
-              {/* Bank Section */}
-              <div className="border p-2 rounded">
-                <p className="text-xs font-bold text-green-700 mb-1">Bank</p>
-                <Label className="text-[10px]">Charges</Label>
-                <Input type="number" value={bankCharges} onChange={e => setBankCharges(Number(e.target.value))} className="h-7 text-xs" />
-              </div>
+                  {/* Bank Section */}
+                  <div className="border p-2 rounded">
+                    <p className="text-xs font-bold text-green-700 mb-1">Bank</p>
+                    <Label className="text-[10px]">Charges</Label>
+                    <Input type="number" value={bankCharges} onChange={e => setBankCharges(Number(e.target.value))} className="h-7 text-xs" />
+                  </div>
 
-              {/* M. Insurance Section */}
-              <div className="border p-2 rounded">
-                <p className="text-xs font-bold text-green-700 mb-1">M. Insurance</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-[10px]">Charges</Label><Input type="number" value={mInsuranceCharges} onChange={e => setMInsuranceCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
-                  <div><Label className="text-[10px]">Policy #</Label><Input value={mInsurancePolicyNo} onChange={e => setMInsurancePolicyNo(e.target.value)} className="h-7 text-xs" /></div>
-                </div>
-              </div>
+                  {/* M. Insurance Section */}
+                  <div className="border p-2 rounded">
+                    <p className="text-xs font-bold text-green-700 mb-1">M. Insurance</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-[10px]">Charges</Label><Input type="number" value={mInsuranceCharges} onChange={e => setMInsuranceCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
+                      <div><Label className="text-[10px]">Policy #</Label><Input value={mInsurancePolicyNo} onChange={e => setMInsurancePolicyNo(e.target.value)} className="h-7 text-xs" /></div>
+                    </div>
+                  </div>
 
-              {/* Clg/Fwd Section */}
-              <div className="border p-2 rounded">
-                <p className="text-xs font-bold text-green-700 mb-1">Clg/Fwd</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><Label className="text-[10px]">Charges</Label><Input type="number" value={clgFwdCharges} onChange={e => setClgFwdCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
-                  <div><Label className="text-[10px]">Bill #</Label><Input value={clgFwdBillNo} onChange={e => setClgFwdBillNo(e.target.value)} className="h-7 text-xs" /></div>
-                </div>
-              </div>
+                  {/* Clg/Fwd Section */}
+                  <div className="border p-2 rounded">
+                    <p className="text-xs font-bold text-green-700 mb-1">Clg/Fwd</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><Label className="text-[10px]">Charges</Label><Input type="number" value={clgFwdCharges} onChange={e => setClgFwdCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
+                      <div><Label className="text-[10px]">Bill #</Label><Input value={clgFwdBillNo} onChange={e => setClgFwdBillNo(e.target.value)} className="h-7 text-xs" /></div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </CardContent>
@@ -795,11 +971,11 @@ export default function LandedCostSetupPage() {
               ) : (
                 items.map((item, idx) => (
                   <TableRow key={idx}>
-                    <TableCell className="text-[10px]">{item.lcNo}</TableCell>
-                    <TableCell className="text-[10px]">{item.blNo}</TableCell>
-                    <TableCell className="text-[10px]">{item.blDate}</TableCell>
-                    <TableCell className="text-[10px]">{item.gdNo}</TableCell>
-                    <TableCell className="text-[10px]">{item.origin}</TableCell>
+                    <TableCell className="text-[10px]">{item.lcNo || (isLocalGrn() ? '-' : '')}</TableCell>
+                    <TableCell className="text-[10px]">{item.blNo || (isLocalGrn() ? '-' : '')}</TableCell>
+                    <TableCell className="text-[10px]">{item.blDate || (isLocalGrn() ? '-' : '')}</TableCell>
+                    <TableCell className="text-[10px]">{item.gdNo || (isLocalGrn() ? '-' : '')}</TableCell>
+                    <TableCell className="text-[10px]">{item.origin || (isLocalGrn() ? '-' : '')}</TableCell>
                     <TableCell className="text-[10px]">{item.season}</TableCell>
                     <TableCell className="text-[10px]">{item.category || '-'}</TableCell>
                     <TableCell className="text-[10px]">{item.shippingInv}</TableCell>
@@ -808,8 +984,8 @@ export default function LandedCostSetupPage() {
                     <TableCell className="text-[10px] border-r max-w-[200px] truncate" title={item.description}>{item.description}</TableCell>
                     <TableCell className="font-bold text-xs sticky left-0 bg-white z-10 border-l border-r-2 border-r-blue-200 text-blue-800">{item.itemId}</TableCell>
                     <TableCell>
-                      <Select value={item.hsCodeId} onValueChange={val => handleItemChange(idx, 'hsCodeId', val)}>
-                        <SelectTrigger className="h-8 text-[10px]"><SelectValue placeholder="HS Code" /></SelectTrigger>
+                      <Select value={item.hsCodeId} onValueChange={val => handleItemChange(idx, 'hsCodeId', val)} disabled={isLocalGrn()}>
+                        <SelectTrigger className="h-8 text-[10px]"><SelectValue placeholder={isLocalGrn() ? "-" : "HS Code"} /></SelectTrigger>
                         <SelectContent>
                           {hsCodes.map(h => <SelectItem key={h.id} value={h.id}>{h.hsCode}</SelectItem>)}
                         </SelectContent>
@@ -825,35 +1001,35 @@ export default function LandedCostSetupPage() {
                       />
                     </TableCell>
                     <TableCell className="text-[10px]">{item.invoiceForeign.toFixed(2)}</TableCell>
-                    <TableCell className="text-[10px]">{item.freightForeign.toFixed(2)}</TableCell>
-                    <TableCell className="text-[10px]">{exchangeRate}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.invoicePKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.insuranceCharges + item.landingCharges).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px] font-bold text-blue-600 bg-blue-50">{Math.round(item.assessableValue).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.customsDutyAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.regulatoryDutyAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.additionalCustomsDutyAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.valueForSaleTax).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.salesTaxAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.additionalSalesTaxAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.valueForIncomeTax).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.incomeTaxAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px] font-bold border-r">{Math.round(item.totalDutyAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px] bg-purple-50 border-r">{Math.round(item.exciseChargesAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0.00' : item.freightForeign.toFixed(2)}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '1' : exchangeRate}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.invoicePKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.insuranceCharges + item.landingCharges).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px] font-bold text-blue-600 bg-blue-50">{isLocalGrn() ? Math.round(item.assessableValue).toLocaleString() : Math.round(item.assessableValue).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.customsDutyAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.regulatoryDutyAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.additionalCustomsDutyAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.valueForSaleTax).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.salesTaxAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.additionalSalesTaxAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.valueForIncomeTax).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.incomeTaxAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px] font-bold border-r">{isLocalGrn() ? '0' : Math.round(item.totalDutyAmount).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px] bg-purple-50 border-r">{isLocalGrn() ? '0' : Math.round(item.exciseChargesAmount).toLocaleString()}</TableCell>
                     {/* MIS Details Breakdown */}
-                    <TableCell className="text-[10px]">{item.misFreightUSD.toFixed(2)}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.misFreightPKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{item.misFreightInvNo}</TableCell>
-                    <TableCell className="text-[10px]">{item.misFreightDate}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.misDoThcPKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{item.misDoThcPoNo}</TableCell>
-                    <TableCell className="text-[10px]">{item.misDoThcDate}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.misBankPKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.misInsurancePKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{item.misInsurancePolicyNo}</TableCell>
-                    <TableCell className="text-[10px]">{Math.round(item.misClgFwdPKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px] border-r">{item.misClgFwdBillNo}</TableCell>
-                    <TableCell className="text-[10px] font-bold bg-yellow-50 border-r">{Math.round(item.totalOtherCharges).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0.00' : item.misFreightUSD.toFixed(2)}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misFreightPKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misFreightInvNo}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misFreightDate}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misDoThcPKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misDoThcPoNo}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misDoThcDate}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misBankPKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misInsurancePKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misInsurancePolicyNo}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misClgFwdPKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px] border-r">{isLocalGrn() ? '-' : item.misClgFwdBillNo}</TableCell>
+                    <TableCell className="text-[10px] font-bold bg-yellow-50 border-r">{isLocalGrn() ? '0' : Math.round(item.totalOtherCharges).toLocaleString()}</TableCell>
 
                     <TableCell className="text-[10px] font-bold">{Math.round(item.unitCostPKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px] font-bold bg-green-50">{Math.round(item.totalCostPKR).toLocaleString()}</TableCell>

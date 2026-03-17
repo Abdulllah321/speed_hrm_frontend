@@ -3,6 +3,12 @@ import { z } from "zod";
 export const paymentVoucherDetailSchema = z.object({
     accountId: z.string().min(1, "Account is required"),
     debit: z.coerce.number().min(0).default(0),
+    credit: z.coerce.number().min(0).default(0),
+});
+
+export const paymentVoucherInvoiceSchema = z.object({
+    purchaseInvoiceId: z.string().min(1, "Purchase Invoice is required"),
+    paidAmount: z.coerce.number().min(0.01, "Paid amount must be greater than 0"),
 });
 
 export const paymentVoucherSchema = z.object({
@@ -17,9 +23,13 @@ export const paymentVoucherSchema = z.object({
     // Bank specific fields
     chequeNo: z.string().optional(),
     chequeDate: z.date().optional(),
-    // Main credit account
-    creditAccountId: z.string().min(1, "Credit Account is required"),
-    creditAmount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
+    // Optional fields (not required anymore)
+    creditAccountId: z.string().optional(),
+    creditAmount: z.coerce.number().optional(),
+    // Supplier and invoice linking
+    supplierId: z.string().optional(),
+    selectedInvoiceId: z.string().optional(),
+    invoices: z.array(paymentVoucherInvoiceSchema).optional(),
 
     isTaxApplicable: z.boolean().default(false),
     description: z.string().min(1, "Description is required"),
@@ -33,10 +43,11 @@ export const paymentVoucherSchema = z.object({
     message: "Cheque details are required for Bank payments",
     path: ["chequeNo"],
 }).refine(data => {
-    const totalDebit = data.details.reduce((sum, item) => sum + item.debit, 0);
-    return Math.abs(totalDebit - data.creditAmount) < 0.01;
+    const totalDebit = data.details.reduce((sum, item) => sum + (item.debit || 0), 0);
+    const totalCredit = data.details.reduce((sum, item) => sum + (item.credit || 0), 0);
+    return Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 }, {
-    message: "Total Debits must equal Credit Amount",
+    message: "Total Debits must equal Total Credits and must be greater than 0",
     path: ["details"],
 });
 
