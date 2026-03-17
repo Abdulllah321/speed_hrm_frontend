@@ -136,7 +136,38 @@ export async function posLoginClient(terminalCode: string, pin: string, tenantId
   }
 }
 
-// Client-side logout function - now calls backend directly
+// Clear all auth-related cookies directly
+export function clearAuthCookies() {
+  const cookies = [
+    "accessToken",
+    "app-environment",
+    "app-theme",
+    "bid",
+    "refreshToken",
+    "sessionId",
+    "user",
+    "userRole",
+  ];
+
+  // Try to determine base domain for cross-subdomain clearing
+  const host = window.location.hostname;
+  const parts = host.split(".");
+  const isIP = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(host);
+  const baseDomain = (!isIP && parts.length >= 2) ? `.${parts.slice(-2).join(".")}` : host;
+
+  cookies.forEach((name) => {
+    // 1. Clear for current domain + path
+    document.cookie = `${name}=; Max-Age=-99999999; path=/;`;
+    
+    // 2. Clear for base domain if applicable
+    if (!isIP && parts.length >= 2) {
+      document.cookie = `${name}=; Max-Age=-99999999; path=/; domain=${baseDomain};`;
+      document.cookie = `${name}=; Max-Age=-99999999; path=/; domain=${parts.slice(-2).join(".")};`;
+    }
+  });
+}
+
+// Client-side logout function - now calls backend AND clears local cookies
 export async function logoutClient(): Promise<{ status: boolean; message: string }> {
   try {
     const res = await fetch(`${getApiBaseUrl()}/auth/logout`, {
@@ -147,9 +178,17 @@ export async function logoutClient(): Promise<{ status: boolean; message: string
     });
 
     const data = await res.json();
+    
+    // Always clear local cookies regardless of backend response status
+    clearAuthCookies();
+    
     return { status: data.status, message: data.message };
   } catch (error) {
     console.error("Logout error:", error);
+    
+    // Attempt to clear cookies even if network fails
+    clearAuthCookies();
+    
     return { status: false, message: "Logout failed" };
   }
 }
