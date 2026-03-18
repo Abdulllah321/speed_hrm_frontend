@@ -1,15 +1,16 @@
-"use client";
-
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function AdminLayout({
-  children,
+    children,
 }: {
-  children: React.ReactNode;
+    children: React.ReactNode;
 }) {
-  return (
-    <DashboardLayout companyOptional={true}>
-      {children}
-    </DashboardLayout>
-  );
+    return (
+        <DashboardLayout companyOptional={true}>
+            {children}
+        </DashboardLayout>
+    );
 }

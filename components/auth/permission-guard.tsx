@@ -18,13 +18,21 @@ export function PermissionGuard({
     requireAll = false,
     fallback,
 }: PermissionGuardProps) {
-    const { hasPermission, hasAllPermissions, hasAnyPermission, loading, isAdmin } = useAuth();
+    const { hasPermission, hasAllPermissions, hasAnyPermission, loading, isAdmin, user } = useAuth();
 
     // If fallback is not provided, default to AccessDenied
     const fallbackUI = fallback !== undefined ? fallback : <AccessDenied />;
 
     if (loading) {
         return null; // Or a loading spinner if preferred
+    }
+
+    // If user is null (session expired), redirect to login
+    if (!user) {
+        if (typeof window !== 'undefined') {
+            window.location.href = `/auth/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`;
+        }
+        return null;
     }
 
     if (isAdmin()) {
