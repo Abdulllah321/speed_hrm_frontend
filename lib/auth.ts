@@ -32,10 +32,10 @@ function decodeToken(token: string): { exp?: number; iat?: number } | null {
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
 
-    const decoded = typeof window === 'undefined' 
+    const decoded = typeof window === 'undefined'
       ? Buffer.from(padded, 'base64').toString('utf-8')
       : atob(padded);
-    
+
     const parsed = JSON.parse(decoded) as { exp?: number; iat?: number };
     return parsed;
   } catch {
@@ -72,7 +72,7 @@ export async function getCurrentUser(): Promise<User | null> {
     if (userCookie) {
       try {
         return JSON.parse(userCookie);
-      } catch {}
+      } catch { }
     }
   }
 
@@ -124,10 +124,10 @@ export async function getAccessToken(): Promise<string | null> {
   } else {
     // Client-side: parse document.cookie
     const getCookie = (name: string) => {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-        return null;
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+      return null;
     };
     accessToken = getCookie("accessToken");
     refreshToken = getCookie("refreshToken");
@@ -180,12 +180,13 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
           ...options.headers,
         },
         body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
-        // @ts-ignore - signal for timeout if needed, normally fetch doesn't have timeout prop but we use AbortController if we wanted
+        cache: "no-store",    // ✅ yeh sirf yahan add karo
+        next: { revalidate: 0 }, // ✅ yeh bhi
       });
 
       // No native timeout in fetch like axios, but we can add one if critical.
       // For now keeping it simple as requested.
-      
+
       const data = await response.json().catch(() => ({}));
 
       return {
@@ -195,7 +196,7 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
       };
     } catch (error: any) {
       console.error(`[authFetch Server Error] ${options.method || 'GET'} ${fullUrl}:`, error.message);
-      
+
       return {
         ok: false,
         status: 500,
