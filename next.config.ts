@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    staleTimes: {
+      dynamic: 0,  // ✅ dynamic pages cache nahi
+      static: 0,
+    },
   },
   env: {
     API_URL: process.env.API_URL,

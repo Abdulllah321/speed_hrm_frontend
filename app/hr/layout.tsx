@@ -1,5 +1,8 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { usePathname } from "next/navigation";
