@@ -42,44 +42,18 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
     return () => clearInterval(timer);
   }, []);
 
-  // Sync environment with route and handle cross-subdomain reloads
+  // Sync environment with route
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const host = window.location.hostname;
-    const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || 'spl.inplsoftwares.com';
-
-    // Helper to perform cross-subdomain navigation with full reload
-    const navigateToSubdomain = (subdomain: string, targetPath: string) => {
-      const isLocalhost = host === 'localhost' || host === '127.0.0.1';
-      if (isLocalhost) {
-        // On localhost, we just use silent sync since subdomains aren't used same way
-        return false;
-      }
-
-      if (!host.startsWith(`${subdomain}.`)) {
-        // Remove the environment prefix from target path if needed (e.g. /erp/dashboard -> /dashboard)
-        // because once on erp.domain.com, the prefix is redundant or handled by routing
-        const cleanPath = targetPath.replace(new RegExp(`^/${subdomain}`), '') || '/';
-        window.location.href = `https://${subdomain}.${baseDomain}${cleanPath}`;
-        return true;
-      }
-      return false;
-    };
-
-    if (pathname.startsWith("/erp")) {
-      if (navigateToSubdomain("erp", pathname)) return;
-      if (environment !== "ERP") setEnvironment("ERP", true);
-    } else if (pathname.startsWith("/hr")) {
-      if (navigateToSubdomain("hr", pathname)) return;
-      if (environment !== "HR") setEnvironment("HR", true);
-    } else if (pathname.startsWith("/pos")) {
-      if (navigateToSubdomain("pos", pathname)) return;
-      if (environment !== "POS") setEnvironment("POS", true);
-    } else if (pathname.startsWith("/admin")) {
-      if (navigateToSubdomain("admin", pathname)) return;
-      if (environment !== "ADMIN") setEnvironment("ADMIN", true);
+    if (pathname.startsWith("/erp") && environment !== "ERP") {
+      setEnvironment("ERP", true);
+    } else if (pathname.startsWith("/hr") && environment !== "HR") {
+      setEnvironment("HR", true);
+    } else if (pathname.startsWith("/pos") && environment !== "POS") {
+      setEnvironment("POS", true);
+    } else if (pathname.startsWith("/admin") && environment !== "ADMIN") {
+      setEnvironment("ADMIN", true);
     }
-  }, [pathname, environment, setEnvironment]);
+  }, [pathname, setEnvironment]);
 
   const isImpersonating = !!user?.isImpersonating;
   const currentUserDisplayName = user ? `${user.firstName} ${user.lastName}` : undefined;
