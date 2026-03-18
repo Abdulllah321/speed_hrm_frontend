@@ -771,6 +771,10 @@ export const stockLedgerApi = {
 };
 export const posSalesApi = {
   lookup: (query: string) => fetchApi<{ status: boolean; data: any[] }>(`/pos-sales/lookup?q=${encodeURIComponent(query)}`),
+  getAll: (params?: { page?: number; limit?: number; search?: string; startDate?: string; endDate?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ status: boolean; data: any[]; meta: any }>(`/pos-sales/orders?${query}`);
+  },
 };
 
 export const transferRequestApi = {
