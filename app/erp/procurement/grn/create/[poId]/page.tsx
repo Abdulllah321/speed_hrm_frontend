@@ -176,6 +176,24 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                             </Select>
                         </div>
 
+                        {order.orderType && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Order Type</label>
+                                <div className="p-2 bg-muted rounded text-sm">
+                                    {order.orderType === 'IMPORT' ? 'Import' : 'Local'}
+                                </div>
+                            </div>
+                        )}
+
+                        {order.goodsType && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Goods Type</label>
+                                <div className="p-2 bg-muted rounded text-sm">
+                                    {order.goodsType === 'FRESH' ? 'Fresh Goods' : 'Consumable'}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="pt-4">
                             <Button className="w-full" onClick={handleSubmit} disabled={submitting}>
                                 <Save className="h-4 w-4 mr-2" />

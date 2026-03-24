@@ -2,6 +2,7 @@
  
  import { useEffect, useState } from 'react';
  import Link from 'next/link';
+ import { useRouter } from 'next/navigation';
  import { Button } from '@/components/ui/button';
  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
  import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -15,8 +16,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
  
  export default function LandedCostPage() {
+   const router = useRouter();
    const [grns, setGrns] = useState<Grn[]>([]);
    const [loading, setLoading] = useState(true);
+   const [orderTypeFilter, setOrderTypeFilter] = useState<'ALL' | 'LOCAL' | 'IMPORT'>('ALL');
    const [postingId, setPostingId] = useState<string | null>(null);
   const [accounts, setAccounts] = useState<ChartOfAccount[]>([]);
   const [chargeTypes, setChargeTypes] = useState<LandedCostChargeType[]>([]);
@@ -32,12 +35,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
    const loadGrns = async () => {
      try {
        const data = await grnApi.getAll();
-       setGrns(data.filter((g) => g.status === 'RECEIVED_UNVALUED'));
+       // Filter for GRNs that need landed cost:
+       // 1. Direct PO (no PR/RFQ) - always needs landed cost
+       // 2. PR-linked FRESH goods - needs landed cost
+       setGrns(data.filter((g) => {
+         if (g.status !== 'RECEIVED_UNVALUED') return false;
+         
+         // Check if it's a direct PO or PR-linked fresh goods
+         const po = (g as any).purchaseOrder;
+         if (!po) return false;
+         
+         const isDirectPo = !po.purchaseRequisitionId && !po.vendorQuotationId && !po.rfqId;
+         const isPrLinkedFresh = po.purchaseRequisition?.goodsType === 'FRESH';
+         
+         return isDirectPo || isPrLinkedFresh;
+       }));
      } catch (error) {
        console.error('Failed to load GRNs:', error);
      } finally {
        setLoading(false);
      }
+   };
+
+   const getFilteredGrns = () => {
+     let filtered = grns;
+     if (orderTypeFilter === 'LOCAL') {
+       filtered = grns.filter(g => g.orderType === 'LOCAL' || !g.orderType);
+     } else if (orderTypeFilter === 'IMPORT') {
+       filtered = grns.filter(g => g.orderType === 'IMPORT');
+     }
+     return filtered;
    };
   
   const loadAccounts = async () => {
@@ -88,9 +115,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
            <h1 className="text-3xl font-bold tracking-tight">Landed Cost</h1>
           <p className="text-muted-foreground">Post Landed Cost for received, unvalued GRNs. Add charges to create JV.</p>
          </div>
-         <Button variant="outline" asChild>
-           <Link href="/erp/procurement/landed-cost/setup">Setup</Link>
-         </Button>
+         <div className="flex gap-2">
+           <Select value={orderTypeFilter} onValueChange={(v: any) => setOrderTypeFilter(v)}>
+             <SelectTrigger className="w-32">
+               <SelectValue />
+             </SelectTrigger>
+             <SelectContent>
+               <SelectItem value="ALL">All Types</SelectItem>
+               <SelectItem value="LOCAL">Local</SelectItem>
+               <SelectItem value="IMPORT">Import</SelectItem>
+             </SelectContent>
+           </Select>
+           <Button variant="outline" asChild>
+             <Link href="/erp/procurement/landed-cost/setup">Setup</Link>
+           </Button>
+         </div>
        </div>
  
        <Card>
@@ -107,24 +146,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
                    <TableHead>GRN Number</TableHead>
                    <TableHead>PO Number</TableHead>
                    <TableHead>Warehouse</TableHead>
+                   <TableHead>Order Type</TableHead>
+                   <TableHead>Goods Type</TableHead>
                    <TableHead>Received Date</TableHead>
                    <TableHead>Status</TableHead>
                    <TableHead className="text-right">Actions</TableHead>
                  </TableRow>
                </TableHeader>
                <TableBody>
-                 {grns.length === 0 ? (
+                 {getFilteredGrns().length === 0 ? (
                    <TableRow>
-                     <TableCell colSpan={6} className="text-center h-24">
+                     <TableCell colSpan={8} className="text-center h-24">
                        No GRNs pending valuation.
                      </TableCell>
                    </TableRow>
                  ) : (
-                   grns.map((grn) => (
+                   getFilteredGrns().map((grn) => (
                      <TableRow key={grn.id}>
                        <TableCell className="font-medium">{grn.grnNumber}</TableCell>
                        <TableCell className="font-mono text-sm">{grn.purchaseOrder?.poNumber || 'N/A'}</TableCell>
                        <TableCell>{grn.warehouse?.name}</TableCell>
+                       <TableCell>
+                         {grn.orderType ? (
+                           <Badge variant="outline" className="text-xs">
+                             {grn.orderType === 'IMPORT' ? 'Import' : 'Local'}
+                           </Badge>
+                         ) : (
+                           <span className="text-muted-foreground text-xs">-</span>
+                         )}
+                       </TableCell>
+                       <TableCell>
+                         {grn.goodsType ? (
+                           <Badge variant="outline" className="text-xs">
+                             {grn.goodsType === 'FRESH' ? 'Fresh' : 'Consumable'}
+                           </Badge>
+                         ) : (
+                           <span className="text-muted-foreground text-xs">-</span>
+                         )}
+                       </TableCell>
                        <TableCell>{new Date(grn.receivedDate).toLocaleDateString()}</TableCell>
                        <TableCell>
                          <Badge variant="secondary">{grn.status}</Badge>
@@ -138,12 +197,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
                          </Button>
                          <Button
                            size="sm"
-                           asChild
+                           onClick={() => {
+                             // Always go to setup page now - no more local redirect
+                             router.push(`/erp/procurement/landed-cost/setup?grnId=${grn.id}`);
+                           }}
                          >
-                           <Link href={`/erp/procurement/landed-cost/setup?grnId=${grn.id}`}>
-                             <Check className="h-4 w-4 mr-2" />
-                             Post Landed Cost
-                           </Link>
+                           <Check className="h-4 w-4 mr-2" />
+                           Post Landed Cost
                          </Button>
                        </TableCell>
                      </TableRow>

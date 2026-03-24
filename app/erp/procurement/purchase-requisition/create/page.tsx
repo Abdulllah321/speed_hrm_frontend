@@ -23,6 +23,7 @@ interface FormValues {
     requestDate: string;
     notes: string;
     type?: string;
+    goodsType?: string; // CONSUMABLE, FRESH
     items: {
         itemId: string;
         requiredQty: number;
@@ -54,6 +55,7 @@ export default function CreatePurchaseRequisition() {
             department: '',
             requestDate: new Date().toISOString().split('T')[0],
             type: 'local',
+            goodsType: 'CONSUMABLE', // Default to CONSUMABLE
             items: [{ itemId: '', requiredQty: 1 }]
         }
     });
@@ -205,6 +207,24 @@ export default function CreatePurchaseRequisition() {
                                         <SelectContent>
                                             <SelectItem value="local">Local</SelectItem>
                                             <SelectItem value="import">Import</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Goods Type</Label>
+                            <Controller
+                                control={control}
+                                name="goodsType"
+                                render={({ field }) => (
+                                    <Select value={field.value || ''} onValueChange={field.onChange}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select Goods Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="CONSUMABLE">Consumable</SelectItem>
+                                            <SelectItem value="FRESH">Fresh Goods</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 )}

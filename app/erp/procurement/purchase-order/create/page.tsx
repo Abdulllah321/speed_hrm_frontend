@@ -43,6 +43,8 @@ export default function CreateDirectPurchaseOrder() {
     const [multiVendorMode, setMultiVendorMode] = useState<boolean>(false);
     const [vendorTypeFilter, setVendorTypeFilter] = useState<'all' | 'local' | 'import'>('all');
     const [multiVendorTypeFilter, setMultiVendorTypeFilter] = useState<'all' | 'local' | 'import'>('all');
+    const [orderType, setOrderType] = useState<string>('');
+    const [goodsType, setGoodsType] = useState<string>('');
 
     // Item Input State
     const [currentItemId, setCurrentItemId] = useState<string>('');
@@ -226,7 +228,9 @@ export default function CreateDirectPurchaseOrder() {
                         discountPercent: item.discountPercent
                     })),
                     notes,
-                    expectedDeliveryDate: expectedDeliveryDate || undefined
+                    expectedDeliveryDate: expectedDeliveryDate || undefined,
+                    orderType: orderType || undefined,
+                    goodsType: goodsType || undefined
                 });
                 toast.success(`Purchase Order ${po.poNumber} created successfully`);
                 router.push(`/erp/procurement/purchase-order/${po.id}`);
@@ -254,7 +258,9 @@ export default function CreateDirectPurchaseOrder() {
                             discountPercent: i.discountPercent
                         })),
                         notes,
-                        expectedDeliveryDate: expectedDeliveryDate || undefined
+                        expectedDeliveryDate: expectedDeliveryDate || undefined,
+                        orderType: orderType || undefined,
+                        goodsType: goodsType || undefined
                     }))
                 };
                 const result = await purchaseOrderApi.createMultiDirect(payload);
@@ -354,6 +360,32 @@ export default function CreateDirectPurchaseOrder() {
                                 value={expectedDeliveryDate}
                                 onChange={(e) => setExpectedDeliveryDate(e.target.value)}
                             />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Order Type</Label>
+                            <Select value={orderType} onValueChange={setOrderType}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Order Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="LOCAL">Local</SelectItem>
+                                    <SelectItem value="IMPORT">Import</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Goods Type</Label>
+                            <Select value={goodsType} onValueChange={setGoodsType}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select Goods Type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="CONSUMABLE">Consumable</SelectItem>
+                                    <SelectItem value="FRESH">Fresh Goods</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div className="space-y-2">
