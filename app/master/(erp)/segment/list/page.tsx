@@ -7,7 +7,7 @@ export default async function SegmentListPage() {
     const segments = response.status ? response.data : [];
 
     return (
-        <PermissionGuard permissions="erp.segment.read">
+        <PermissionGuard permissions="master.segment.read">
             <div className="flex flex-col gap-4 p-4">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-2xl font-bold tracking-tight">Segments</h1>

@@ -7,7 +7,7 @@ export default async function ClassListPage() {
     const classes = response.status ? response.data : [];
 
     return (
-        <PermissionGuard permissions="erp.item-class.read">
+        <PermissionGuard permissions="master.item-class.read">
             <div className="flex flex-col gap-4 p-4">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-2xl font-bold tracking-tight">Item Classes</h1>

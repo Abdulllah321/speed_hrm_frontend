@@ -34,20 +34,18 @@ import { EllipsisIcon, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { SaleType, updateSaleType, deleteSaleType } from "@/lib/actions/sale-type";
+import { OldSeason, updateOldSeason, deleteOldSeason } from "@/lib/actions/old-season";
 import { useAuth } from "@/components/providers/auth-provider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export type SaleTypeRow = SaleType & { id: string };
+export type OldSeasonRow = OldSeason & { id: string };
 
-export const columns: ColumnDef<SaleTypeRow>[] = [
+export const columns: ColumnDef<OldSeasonRow>[] = [
   {
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
+        checked={table.getIsAllPageRowsSelected()}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
@@ -59,23 +57,32 @@ export const columns: ColumnDef<SaleTypeRow>[] = [
         aria-label="Select row"
       />
     ),
-    enableSorting: false,
+    size: 40,
     enableHiding: false,
-    size: 28,
   },
   {
-    header: "Name",
+    header: "Old Season",
     accessorKey: "name",
     size: 250,
+    cell: ({ row, getValue }) => <HighlightText text={String(getValue())} searchKey="name" />,
     enableSorting: true,
-    cell: ({ row }) => <HighlightText text={row.original.name} />,
+  },
+  {
+    header: "Status",
+    accessorKey: "status",
+    size: 140,
+    cell: ({ row }) => (
+      <span className={row.original.status === "active" ? "text-green-600" : "text-muted-foreground"}>
+        {row.original.status}
+      </span>
+    ),
+    enableSorting: true,
   },
   {
     header: "Created By",
     accessorKey: "createdBy",
-    size: 150,
-    enableSorting: true,
-    cell: ({ row }) => row.original.createdBy ? `${row.original.createdBy.firstName} ${row.original.createdBy.lastName}` : "—",
+    size: 200,
+    cell: ({ row }) => row.original.createdBy || "-",
   },
   {
     header: "Created At",
@@ -94,29 +101,32 @@ export const columns: ColumnDef<SaleTypeRow>[] = [
 ];
 
 type RowActionsProps = {
-  row: Row<SaleTypeRow>;
+  row: Row<OldSeasonRow>;
 };
 
 function RowActions({ row }: RowActionsProps) {
-  const item = row.original;
+  const season = row.original;
   const router = useRouter();
-  // const { hasPermission, isAdmin } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
+  const { hasPermission, isAdmin } = useAuth();
 
-  // const canEdit = hasPermission("sale-type.update");
-  // const canDelete = hasPermission("sale-type.delete");
-  const canEdit = true;
-  const canDelete = true;
+  const canEdit = isAdmin() || hasPermission("master.old-season.update");
+  const canDelete = isAdmin() || hasPermission("master.old-season.delete");
 
   if (!canEdit && !canDelete) {
     return null;
   }
 
-  const handleEditSubmit = async (formData: FormData) => {
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = String(formData.get("name") || "");
+    const status = String(formData.get("status") || "active");
+
     startTransition(async () => {
-      const result = await updateSaleType(item.id, formData);
+      const result = await updateOldSeason(season.id, { name, status });
       if (result.status) {
         toast.success(result.message);
         setEditDialog(false);
@@ -129,7 +139,7 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
-      const result = await deleteSaleType(item.id);
+      const result = await deleteOldSeason(season.id);
       if (result.status) {
         toast.success(result.message);
         setDeleteDialog(false);
@@ -144,16 +154,10 @@ function RowActions({ row }: RowActionsProps) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="flex justify-end">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="shadow-none"
-              aria-label="Actions"
-            >
-              <EllipsisIcon size={16} />
-            </Button>
-          </div>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <EllipsisIcon className="h-4 w-4" />
+          </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           {canEdit && (
@@ -163,10 +167,7 @@ function RowActions({ row }: RowActionsProps) {
             </DropdownMenuItem>
           )}
           {canDelete && (
-            <DropdownMenuItem
-              onClick={() => setDeleteDialog(true)}
-              className="text-destructive focus:text-destructive"
-            >
+            <DropdownMenuItem onClick={() => setDeleteDialog(true)} className="text-red-600">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
             </DropdownMenuItem>
@@ -174,30 +175,32 @@ function RowActions({ row }: RowActionsProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Edit Dialog */}
       <Dialog open={editDialog} onOpenChange={setEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Sale Type</DialogTitle>
-            <DialogDescription>Update the sale type name</DialogDescription>
+            <DialogTitle>Edit Old Season</DialogTitle>
+            <DialogDescription>Update the old season details</DialogDescription>
           </DialogHeader>
-          <form action={handleEditSubmit}>
+          <form onSubmit={handleEditSubmit}>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-name">Sale Type Name</Label>
-                <Input
-                  id="edit-name"
-                  name="name"
-                  defaultValue={item.name}
-                  disabled={isPending}
-                  required
-                />
+                <Label htmlFor="edit-name">Old Season Name</Label>
+                <Input id="edit-name" name="name" defaultValue={season.name} disabled={isPending} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-status">Status</Label>
+                <Select defaultValue={season.status} name="status" disabled={isPending}>
+                  <SelectTrigger id="edit-status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>
-                Cancel
-              </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Save Changes
@@ -207,22 +210,17 @@ function RowActions({ row }: RowActionsProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
       <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Sale Type</AlertDialogTitle>
+            <AlertDialogTitle>Delete Old Season</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &quot;{item.name}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{season.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              disabled={isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
               {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Delete
             </AlertDialogAction>

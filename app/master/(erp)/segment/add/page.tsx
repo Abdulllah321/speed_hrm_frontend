@@ -55,7 +55,7 @@ export default function AddSegmentPage() {
     };
 
     return (
-        <PermissionGuard permissions="erp.segment.create">
+        <PermissionGuard permissions="master.segment.create">
             <div className="p-6">
                 <form onSubmit={onSubmit}>
                     <Card className="max-w-4xl mx-auto">

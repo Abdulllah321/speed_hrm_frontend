@@ -40,7 +40,7 @@ export default async function SubCategoryListPage({
     });
 
     return (
-      <PermissionGuard permissions="erp.sub-category.read">
+      <PermissionGuard permissions="master.sub-category.read">
         <CategoryList
           initialCategories={categoriesWithAccountHeads}
           newItemId={newItemId}

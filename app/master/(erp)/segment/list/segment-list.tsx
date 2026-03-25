@@ -18,8 +18,8 @@ export function SegmentList({ initialData }: SegmentListProps) {
     const { hasPermission, isAdmin } = useAuth();
     const tableId = useId();
 
-    const canEdit = isAdmin() || hasPermission("erp.segment.update");
-    const canDelete = isAdmin() || hasPermission("erp.segment.delete");
+    const canEdit = isAdmin() || hasPermission("master.segment.update");
+    const canDelete = isAdmin() || hasPermission("master.segment.delete");
 
     const onBulkEdit = async (rows: SegmentRow[]) => {
         if (!canEdit) {

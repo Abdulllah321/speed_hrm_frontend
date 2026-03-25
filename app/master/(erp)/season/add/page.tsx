@@ -55,7 +55,7 @@ export default function AddSeasonPage() {
     };
 
     return (
-        <PermissionGuard permissions="erp.season.create">
+        <PermissionGuard permissions="master.season.create">
             <div className="p-6">
                 <form onSubmit={onSubmit}>
                     <Card className="max-w-4xl mx-auto">

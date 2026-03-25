@@ -69,7 +69,7 @@ export default function AddCategoryPage() {
   };
 
   return (
-    <PermissionGuard permissions="erp.category.create">
+    <PermissionGuard permissions="master.category.create">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <Link href="/master/category/list">

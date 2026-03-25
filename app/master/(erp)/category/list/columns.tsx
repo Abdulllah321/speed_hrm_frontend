@@ -145,8 +145,8 @@ function RowActions({ row }: { row: Row<CategoryRow> }) {
   const [isLoadingDeps, setIsLoadingDeps] = useState(false);
 
   const isSubCategory = !!item.parentId;
-  const updatePermission = isSubCategory ? "erp.sub-category.update" : "erp.category.update";
-  const deletePermission = isSubCategory ? "erp.sub-category.delete" : "erp.category.delete";
+  const updatePermission = isSubCategory ? "master.sub-category.update" : "master.category.update";
+  const deletePermission = isSubCategory ? "master.sub-category.delete" : "master.category.delete";
   const canUpdate = hasPermission(updatePermission);
   const canDelete = hasPermission(deletePermission);
 
