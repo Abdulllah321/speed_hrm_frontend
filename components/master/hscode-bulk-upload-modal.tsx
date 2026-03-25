@@ -368,9 +368,16 @@ export function HsCodeBulkUploadModal({ open, onOpenChange, onSuccess, uploadId,
                                                 <span className="text-xl font-bold text-primary/70">%</span>
                                             </div>
                                             {isProcessing && speed > 0 && (
-                                                <Badge variant="secondary" className="font-mono text-[10px] py-0 px-2">
-                                                    {speed} recs/sec
-                                                </Badge>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <Badge variant="secondary" className="font-mono text-[10px] py-0 px-2">
+                                                        {data?.recsPerSec || speed} recs/sec
+                                                    </Badge>
+                                                    {data?.memoryUsageMB && (
+                                                        <Badge variant="outline" className="font-mono text-[10px] py-0 px-2 bg-background/50">
+                                                            Server Mem: {data.memoryUsageMB}MB
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -444,7 +451,7 @@ export function HsCodeBulkUploadModal({ open, onOpenChange, onSuccess, uploadId,
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
-                                                            {data?.errors?.map((err, i) => (
+                                                            {data?.errors?.slice(0, 100).map((err, i) => (
                                                                 <TableRow key={i} className="hover:bg-muted/20 transition-colors">
                                                                     <TableCell className="font-mono text-xs font-bold text-muted-foreground">{err.row}</TableCell>
                                                                     <TableCell className="text-xs font-bold capitalize">{err.data?.field || 'unknown'}</TableCell>
@@ -456,6 +463,20 @@ export function HsCodeBulkUploadModal({ open, onOpenChange, onSuccess, uploadId,
                                                                     </TableCell>
                                                                 </TableRow>
                                                             ))}
+                                                            {data?.errors && data.errors.length > 100 && (
+                                                                <TableRow>
+                                                                    <TableCell colSpan={4} className="text-center py-4 bg-muted/10">
+                                                                        <div className="flex flex-col items-center gap-1">
+                                                                            <p className="text-sm font-bold text-muted-foreground">
+                                                                                Showing first 100 of {data.errors.length} errors
+                                                                            </p>
+                                                                            <p className="text-xs text-muted-foreground">
+                                                                                Please download the full report to see all issues.
+                                                                            </p>
+                                                                        </div>
+                                                                    </TableCell>
+                                                                </TableRow>
+                                                            )}
                                                             <div ref={errorEndRef} />
                                                         </TableBody>
                                                     </Table>

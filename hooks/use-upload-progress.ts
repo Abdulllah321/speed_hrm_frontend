@@ -29,6 +29,8 @@ export interface UploadStatusResponse {
     jobState: string;
     errors: UploadError[];
     message?: string;
+    recsPerSec?: number;
+    memoryUsageMB?: number;
     createdAt: string;
     completedAt: string | null;
 }
@@ -127,9 +129,11 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
                         updated.processedRecords = payload.processedRecords ?? updated.processedRecords;
                         updated.successRecords = payload.successRecords ?? updated.successRecords;
                         updated.failedRecords = payload.failedRecords ?? updated.failedRecords;
+                        updated.recsPerSec = payload.recsPerSec ?? updated.recsPerSec;
+                        updated.memoryUsageMB = payload.memoryUsageMB ?? updated.memoryUsageMB;
 
-                        // Prevent progress events from resetting completed status back to processing
-                        if (['completed', 'failed', 'validated'].includes(updated.status) && payload.status === 'processing') {
+                        // Support "validating" as an active state for progress updates
+                        if (['completed', 'failed'].includes(updated.status)) {
                             // keep the terminal status
                         } else if (payload.status) {
                             updated.status = payload.status;
