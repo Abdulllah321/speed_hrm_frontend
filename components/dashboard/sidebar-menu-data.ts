@@ -820,6 +820,7 @@ export const menuData: MenuItem[] = [
       { title: "Landed Cost Setup", href: "/erp/procurement/landed-cost/setup" },
       { title: "Landed Cost Report", href: "/erp/procurement/landed-cost/report" },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
+      { title: "Purchase Returns", href: "/erp/procurement/purchase-returns" },
     ],
   },
   {

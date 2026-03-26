@@ -56,3 +56,27 @@ export const getCookieDomain = (host: string) => {
 
   return undefined;
 };
+
+// Format currency
+export function formatCurrency(amount: number | string, currency = 'PKR'): string {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return '0.00';
+  
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency === 'PKR' ? 'USD' : currency, // Use USD formatting for PKR
+    minimumFractionDigits: 2,
+  }).format(num).replace('$', currency === 'PKR' ? 'PKR ' : '$');
+}
+
+// Format date
+export function formatDate(date: string | Date): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return 'Invalid Date';
+  
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  }).format(d);
+}

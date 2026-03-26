@@ -68,6 +68,7 @@ function computeLineItem(
         taxAmount,
         total,
         inStock: product.inStock ?? true,
+        stockQty: product.stockQty ?? 0,
     };
 }
 
@@ -177,6 +178,10 @@ export default function NewSalePage() {
                 setCartItems((prev) => {
                     const existing = prev.find((i) => i.id === product.id);
                     if (existing) {
+                        if (existing.quantity + 1 > product.stockQty) {
+                            toast.error(`Only ${product.stockQty} units available in stock`);
+                            return prev;
+                        }
                         return prev.map((i) =>
                             i.id === product.id
                                 ? computeLineItem(
@@ -187,9 +192,13 @@ export default function NewSalePage() {
                                 : i
                         );
                     }
-                    return [...prev, computeLineItem(product, 1, 0)];
+                    if (product.stockQty <= 0) {
+                        toast.error(`Item is out of stock`);
+                        return prev;
+                    }
+                    return [...prev, computeLineItem(product, 1, Number(product.discountRate) || 0)];
                 });
-                toast.success(`Added: ${product.description || product.sku}`);
+                // toast.success(`Added: ${product.description || product.sku}`); // Moved to individual logic if needed, but keeping it simple
             } else {
                 toast.error(res.message || "Item not found");
             }
@@ -206,6 +215,10 @@ export default function NewSalePage() {
         setCartItems((prev) => {
             const existing = prev.find((i) => i.id === product.id);
             if (existing) {
+                if (existing.quantity + 1 > product.stockQty) {
+                    toast.error(`Only ${product.stockQty} units available in stock`);
+                    return prev;
+                }
                 return prev.map((i) =>
                     i.id === product.id
                         ? computeLineItem(
@@ -216,9 +229,13 @@ export default function NewSalePage() {
                         : i
                 );
             }
-            return [...prev, computeLineItem(product, 1, 0)];
+            if (product.stockQty <= 0) {
+                toast.error(`Item is out of stock`);
+                return prev;
+            }
+            return [...prev, computeLineItem(product, 1, Number(product.discountRate) || 0)];
         });
-        toast.success(`Added: ${product.description || product.sku}`);
+        // toast.success(`Added: ${product.description || product.sku}`);
         setSearchQuery("");
         setSearchResults([]);
         searchInputRef.current?.focus();
@@ -229,6 +246,10 @@ export default function NewSalePage() {
         setCartItems((prev) =>
             prev.map((item) => {
                 if (item.id !== id) return item;
+                if (quantity > item.stockQty) {
+                    toast.error(`Only ${item.stockQty} units available in stock`);
+                    return item;
+                }
                 const subtotal = item.price * quantity;
                 const discountAmount = Math.round(subtotal * (item.discountPercent / 100));
                 const afterDiscount = subtotal - discountAmount;

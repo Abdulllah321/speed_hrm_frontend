@@ -101,7 +101,6 @@ export default function StockTransferPage() {
         setLoading(true);
         try {
             if (transferMode === 'WAREHOUSE_TO_OUTLET') {
-                // Normal search for warehouse stock
                 const res = await inventoryApi.search(itemQuery, selectedWarehouseId);
                 if (res.status) {
                     setSearchResults(res.data || []);
@@ -109,66 +108,26 @@ export default function StockTransferPage() {
                     toast.error('Search failed or no items found');
                 }
             } else if (transferMode === 'OUTLET_TO_WAREHOUSE') {
-                // Return mode: search for items with outlet stock
                 if (!destLocationId) {
                     toast.error('Please select source outlet first');
                     return;
                 }
-                
-                const res = await inventoryApi.search(itemQuery, selectedWarehouseId);
+                const res = await inventoryApi.search(itemQuery, selectedWarehouseId, destLocationId);
                 if (res.status) {
-                    // Filter items that have stock in the selected outlet
-                    const itemsWithOutletStock = await Promise.all(
-                        res.data.map(async (item: any) => {
-                            const details = await inventoryApi.getDetails(item.id);
-                            if (details.status) {
-                                const outletStock = details.data.find((d: any) => 
-                                    d.location?.id === destLocationId
-                                );
-                                return {
-                                    ...item,
-                                    totalQuantity: outletStock ? Number(outletStock.quantity) : 0
-                                };
-                            }
-                            return { ...item, totalQuantity: 0 };
-                        })
-                    );
-                    
-                    // Only show items with outlet stock > 0
-                    const availableItems = itemsWithOutletStock.filter(item => item.totalQuantity > 0);
-                    setSearchResults(availableItems);
+                    // Only show items with stock > 0
+                    setSearchResults(res.data?.filter((i: any) => i.totalQuantity > 0) || []);
                 } else {
                     toast.error('Search failed or no items found');
                 }
             } else if (transferMode === 'OUTLET_TO_OUTLET') {
-                // Outlet-to-outlet: search for items with source outlet stock
                 if (!sourceLocationId || sourceLocationId === 'unassigned') {
                     toast.error('Please select source outlet first');
                     return;
                 }
-                
-                const res = await inventoryApi.search(itemQuery, selectedWarehouseId);
+                const res = await inventoryApi.search(itemQuery, selectedWarehouseId, sourceLocationId);
                 if (res.status) {
-                    // Filter items that have stock in the source outlet
-                    const itemsWithSourceStock = await Promise.all(
-                        res.data.map(async (item: any) => {
-                            const details = await inventoryApi.getDetails(item.id);
-                            if (details.status) {
-                                const sourceStock = details.data.find((d: any) => 
-                                    d.location?.id === sourceLocationId
-                                );
-                                return {
-                                    ...item,
-                                    totalQuantity: sourceStock ? Number(sourceStock.quantity) : 0
-                                };
-                            }
-                            return { ...item, totalQuantity: 0 };
-                        })
-                    );
-                    
-                    // Only show items with source outlet stock > 0
-                    const availableItems = itemsWithSourceStock.filter(item => item.totalQuantity > 0);
-                    setSearchResults(availableItems);
+                    // Only show items with stock > 0
+                    setSearchResults(res.data?.filter((i: any) => i.totalQuantity > 0) || []);
                 } else {
                     toast.error('Search failed or no items found');
                 }
