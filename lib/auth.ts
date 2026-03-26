@@ -1,9 +1,7 @@
-"use server";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { getApiBaseUrl } from "./utils";
 
-const API_BASE = process.env.API_URL || "http://localhost:5000/api";
+const API_BASE = getApiBaseUrl();
 
 export interface User {
   id: number;
@@ -25,21 +23,19 @@ export interface AuthResponse {
 }
 
 // Decode JWT token to check expiration (without verification, just for reading)
-// JWT format: header.payload.signature - we only need the payload
 function decodeToken(token: string): { exp?: number; iat?: number } | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
 
-    // Decode base64url payload (JWT uses base64url encoding)
     const payload = parts[1];
-    // Replace URL-safe base64 characters
     const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-    // Add padding if needed
     const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
 
-    // Decode base64
-    const decoded = Buffer.from(padded, 'base64').toString('utf-8');
+    const decoded = typeof window === 'undefined'
+      ? Buffer.from(padded, 'base64').toString('utf-8')
+      : atob(padded);
+
     const parsed = JSON.parse(decoded) as { exp?: number; iat?: number };
     return parsed;
   } catch {
@@ -47,102 +43,36 @@ function decodeToken(token: string): { exp?: number; iat?: number } | null {
   }
 }
 
-// Check if token is already expired (SECURITY: Never refresh expired tokens)
+// Check if token is already expired
 function isTokenExpired(token: string | null | undefined): boolean {
   if (!token) return true;
-
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) return true;
-
-  const expirationTime = decoded.exp * 1000; // Convert to milliseconds
-  const now = Date.now();
-
-  // Return true if token is already expired
-  return now >= expirationTime;
+  return Date.now() >= decoded.exp * 1000;
 }
 
 // Check if token is expiring soon but still valid (within 30 minutes)
-// SECURITY: Only refresh if token is still valid (not expired)
 function isTokenExpiringSoon(token: string | null | undefined): boolean {
   if (!token) return false;
-
-  // SECURITY: If token is already expired, don't refresh
   if (isTokenExpired(token)) return false;
-
   const decoded = decodeToken(token);
   if (!decoded || !decoded.exp) return false;
-
-  const expirationTime = decoded.exp * 1000; // Convert to milliseconds
+  const expirationTime = decoded.exp * 1000;
   const now = Date.now();
-  const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
-
-  // Return true only if token is still valid AND expires within 30 minutes
+  const thirtyMinutes = 30 * 60 * 1000;
   return expirationTime - now < thirtyMinutes && expirationTime > now;
 }
 
-// Login action - for server-side use, calls backend directly
-// For client-side login, use loginClient from client-auth.ts
-export async function login(formData: FormData): Promise<{
-  status: boolean;
-  message: string;
-}> {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  if (!email || !password) {
-    return { status: false, message: "Email and password are required" };
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-      credentials: "include",
-    });
-
-    const data: AuthResponse = await res.json();
-
-    if (data.status && data.data) {
-      // Note: This server action cannot set cookies in the browser
-      // Use loginClient from client-auth.ts for proper cookie handling
-      return {
-        status: true,
-        message: "Login successful"
-      };
-    }
-
-    return { status: false, message: data.message || "Login failed" };
-  } catch (error) {
-    console.error("Login error:", error);
-    return { status: false, message: "Failed to connect to server" };
-  }
-}
-
-// Logout action - now calls Next.js API route
-export async function logout(): Promise<void> {
-  try {
-    await fetch("/api/auth/logout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-      credentials: "include",
-    });
-  } catch (error) {
-    console.error("Logout error:", error);
-  }
-
-  redirect("/login");
-}
-
 export async function getCurrentUser(): Promise<User | null> {
-  const cookieStore = await cookies();
-  const userCookie = cookieStore.get("user")?.value;
+  if (typeof window === 'undefined') {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user")?.value;
 
-  if (userCookie) {
-    try {
-      return JSON.parse(userCookie);
-    } catch {
+    if (userCookie) {
+      try {
+        return JSON.parse(userCookie);
+      } catch { }
     }
   }
 
@@ -163,7 +93,6 @@ export async function getCurrentUser(): Promise<User | null> {
     const apiUser = data.data;
     const permissions =
       apiUser.role?.permissions?.map((p: any) => p.permission?.name).filter(Boolean) ?? [];
-
     return {
       id: apiUser.id,
       email: apiUser.email,
@@ -178,134 +107,130 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 // Get access token (with automatic refresh if needed)
-// SECURITY: Never refresh expired tokens
 export async function getAccessToken(): Promise<string | null> {
-  const cookieStore = await cookies();
-  let accessToken = cookieStore.get("accessToken")?.value || null;
-  const refreshToken = cookieStore.get("refreshToken")?.value || null;
+  let accessToken: string | null = null;
+  let refreshToken: string | null = null;
 
-  // SECURITY CHECK: If access token is expired, don't return it
-  if (accessToken && isTokenExpired(accessToken)) {
-    // Token is expired - clear it (security: expired tokens are invalid)
-    cookieStore.delete("accessToken");
-    accessToken = null;
-  }
+  if (typeof window === 'undefined') {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    accessToken = cookieStore.get("accessToken")?.value || null;
+    refreshToken = cookieStore.get("refreshToken")?.value || null;
 
-  // If no access token but have refresh token, try to refresh (only if refresh token is valid)
-  if (!accessToken && refreshToken) {
-    // SECURITY: Only refresh if refresh token is not expired
-    if (!isTokenExpired(refreshToken)) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed) {
-        accessToken = (await cookies()).get("accessToken")?.value || null;
-      }
-    } else {
-      // Refresh token expired, clear everything
+    if (accessToken && isTokenExpired(accessToken)) {
       cookieStore.delete("accessToken");
-      cookieStore.delete("refreshToken");
-      cookieStore.delete("userRole");
-      cookieStore.delete("user");
+      accessToken = null;
     }
-    return accessToken;
-  }
-
-  // If access token exists and is expiring soon (but still valid), proactively refresh
-  if (accessToken && isTokenExpiringSoon(accessToken)) {
-    if (refreshToken && !isTokenExpired(refreshToken)) {
-      const refreshed = await refreshAccessToken();
-      if (refreshed) {
-        accessToken = (await cookies()).get("accessToken")?.value || null;
-      }
-    }
+  } else {
+    // Client-side: parse document.cookie
+    const getCookie = (name: string) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+      return null;
+    };
+    accessToken = getCookie("accessToken");
+    refreshToken = getCookie("refreshToken");
   }
 
   return accessToken;
 }
 
-// Refresh token - calls backend directly for server-side use
-// For client-side refresh, use refreshTokenClient from client-auth.ts
-export async function refreshAccessToken(): Promise<boolean> {
-  // Stateless refresh is handled by the Client Component auth-provider.tsx.
-  return false;
-}
 
-import axios from "axios";
-
-// Authenticated fetch helper (NextAuth-like with proactive refresh)
-// SECURITY: Never use expired tokens, never refresh expired tokens
+// Authenticated fetch helper - works on both server and client
 export async function authFetch(url: string, options: any = {}): Promise<any> {
-  const cookieStore = await cookies();
-  let accessToken = cookieStore.get("accessToken")?.value || null;
+  const BASE_URL = getApiBaseUrl();
+  let fullUrl = url.startsWith('http') ? url : `${BASE_URL}${url}`;
 
-  // SECURITY CHECK 1: If access token is expired, don't use it
-  if (accessToken && isTokenExpired(accessToken)) {
-    cookieStore.delete("accessToken");
-    accessToken = null;
+  // Handle query parameters
+  if (options.params) {
+    const urlObj = new URL(fullUrl);
+    Object.keys(options.params).forEach(key => {
+      if (options.params[key] !== undefined && options.params[key] !== null) {
+        urlObj.searchParams.append(key, String(options.params[key]));
+      }
+    });
+    fullUrl = urlObj.toString();
   }
 
-  const companyCookie = cookieStore.get("currentCompany")?.value;
-  const companyCode = cookieStore.get("companyCode")?.value;
-  let companyId = "";
+  if (typeof window === 'undefined') {
+    // Server-side
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    let accessToken = cookieStore.get("accessToken")?.value || null;
 
-  if (companyCookie) {
+    if (accessToken && isTokenExpired(accessToken)) {
+      accessToken = null;
+    }
+
+    const allCookies = cookieStore.getAll();
+    const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
+
     try {
-      const company = JSON.parse(companyCookie);
-      companyId = company.id;
-    } catch (e) { }
-  }
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[authFetch Server] ${options.method || 'GET'} ${fullUrl}`);
+      }
 
-  try {
-    const response = await axios({
-      url: `${API_BASE}${url}`,
-      method: options.method || 'GET',
-      data: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        ...(companyId ? { "x-company-id": companyId } : {}),
-        ...(companyCode ? { "x-tenant-id": companyCode } : {}),
-        ...options.headers,
-      },
-      withCredentials: true,
-      // Adapt axios response to look like fetch response for compatibility
-    });
+      const response = await fetch(fullUrl, {
+        method: options.method || 'GET',
+        headers: {
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+          ...options.headers,
+        },
+        body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+        cache: "no-store",    // ✅ yeh sirf yahan add karo
+        next: { revalidate: 0 }, // ✅ yeh bhi
+      });
 
-    return {
-      ok: true,
-      status: response.status,
-      json: async () => response.data,
-      text: async () => JSON.stringify(response.data),
-    };
-  } catch (error: any) {
-    return {
-      ok: false,
-      status: error.response?.status || 500,
-      json: async () => error.response?.data || { message: error.message },
-      text: async () => JSON.stringify(error.response?.data || { message: error.message }),
-    };
-  }
-}
+      // No native timeout in fetch like axios, but we can add one if critical.
+      // For now keeping it simple as requested.
 
-// Change password
-export async function changePassword(formData: FormData): Promise<{ status: boolean; message: string }> {
-  const currentPassword = formData.get("currentPassword") as string;
-  const newPassword = formData.get("newPassword") as string;
+      const data = await response.json().catch(() => ({}));
 
-  if (!currentPassword || !newPassword) {
-    return { status: false, message: "All fields are required" };
-  }
+      return {
+        ok: response.ok,
+        status: response.status,
+        data: data,
+      };
+    } catch (error: any) {
+      console.error(`[authFetch Server Error] ${options.method || 'GET'} ${fullUrl}:`, error.message);
 
-  try {
-    const response = await authFetch("/auth/change-password", {
-      method: "POST",
-      body: JSON.stringify({ currentPassword, newPassword }),
-    });
+      return {
+        ok: false,
+        status: 500,
+        data: { message: error.message },
+      };
+    }
+  } else {
+    // Client-side
+    try {
+      const response = await fetch(fullUrl, {
+        method: options.method || 'GET',
+        headers: {
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...options.headers,
+        },
+        body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+        credentials: "include",
+      });
 
-    const data = await response.json();
-    return { status: data.status, message: data.message };
-  } catch (error) {
-    console.error("Change password error:", error);
-    return { status: false, message: "Failed to change password" };
+      const data = await response.json().catch(() => ({}));
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        data: data,
+      };
+    } catch (error: any) {
+      console.error(`[authFetch Client Error] ${options.method || 'GET'} ${fullUrl}:`, error.message);
+      return {
+        ok: false,
+        status: 500,
+        data: { message: error.message },
+      };
+    }
   }
 }
 
@@ -316,8 +241,7 @@ export async function hasPermission(permission: string): Promise<boolean> {
   return user.permissions.includes(permission);
 }
 
-// Check session validity (NextAuth-like with proactive refresh)
-// SECURITY: Never validate expired tokens, never refresh expired tokens
+// Check session validity
 export async function checkSession(): Promise<{ valid: boolean; user?: User }> {
   try {
     const accessToken = await getAccessToken();

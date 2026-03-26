@@ -22,7 +22,7 @@ export async function getItemSubclasses(): Promise<{ status: boolean; data: Item
         const res = await authFetch("/master/erp/item-subclass", {
             cache: "no-store",
         });
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to fetch item subclasses:", error);
         return { status: false, data: [], message: "Failed to fetch item subclasses" };
@@ -34,7 +34,7 @@ export async function getItemSubclassesByClass(itemClassId: string): Promise<{ s
         const res = await authFetch(`/master/erp/item-subclass/class/${itemClassId}`, {
             cache: "no-store",
         });
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to fetch item subclasses by class:", error);
         return { status: false, data: [], message: "Failed to fetch item subclasses" };
@@ -47,7 +47,7 @@ export async function createItemSubclasses(items: { name: string; itemClassId: s
             method: "POST",
             body: JSON.stringify({ items }),
         });
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to create item subclasses:", error);
         return { status: false, message: "Failed to create item subclasses" };
@@ -61,7 +61,7 @@ export async function updateItemSubclass(id: string, data: { name?: string; item
             body: JSON.stringify(data),
         });
         revalidatePath("/master/subclass/list");
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to update item subclass:", error);
         return { status: false, message: "Failed to update item subclass" };
@@ -75,7 +75,7 @@ export async function bulkUpdateItemSubclasses(items: { id: string; name: string
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/subclass/list");
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to bulk update item subclasses:", error);
         return { status: false, message: "Failed to bulk update item subclasses" };
@@ -88,7 +88,7 @@ export async function deleteItemSubclass(id: string): Promise<{ status: boolean;
             method: "DELETE",
         });
         revalidatePath("/master/subclass/list");
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to delete item subclass:", error);
         return { status: false, message: "Failed to delete item subclass" };
@@ -102,7 +102,7 @@ export async function bulkDeleteItemSubclasses(ids: string[]): Promise<{ status:
             body: JSON.stringify({ ids }),
         });
         revalidatePath("/master/subclass/list");
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to bulk delete item subclasses:", error);
         return { status: false, message: "Failed to bulk delete item subclasses" };

@@ -1,39 +1,31 @@
 import { getApiBaseUrl } from "./utils";
 
-import axios from 'axios';
 
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE = getApiBaseUrl();
 
 async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
-  // Helper to get cookie value in browser
-  const getCookie = (name: string) => {
-    if (typeof document === 'undefined') return '';
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift() || '';
-    return '';
-  };
-
-  const companyId = getCookie('companyId');
-  const companyCode = getCookie('companyCode');
+  const fullUrl = endpoint.startsWith('http') ? endpoint : `${getApiBaseUrl()}${endpoint}`;
 
   try {
-    const response = await axios({
-      url: `${API_BASE}${endpoint}`,
+    const response = await fetch(fullUrl, {
       method: options?.method || 'GET',
-      data: options?.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
       headers: {
         ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(companyId ? { 'x-company-id': companyId } : {}),
-        ...(companyCode ? { 'x-tenant-id': companyCode } : {}),
         ...options?.headers,
       },
-      withCredentials: true,
+      body: options?.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
+      credentials: 'include',
     });
-    return response.data;
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Something went wrong');
+    }
+
+    return await response.json();
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || error.message || 'Something went wrong');
+    throw new Error(error.message || 'Something went wrong');
   }
 }
 
@@ -73,16 +65,54 @@ export const subDepartmentApi = {
 
 export interface DashboardStats {
   overview: {
-    totalEmployees: number;
-    inactiveEmployees: number;
-    presentToday: number;
-    absentToday: number;
-    pendingLeaves: number;
-    pendingAttendanceQueries: number;
+    totalEmployees: { value: number; trend?: number; trendType?: 'up' | 'down' };
+    inactiveEmployees: { value: number };
+    presentToday: { value: number; trend?: number; trendType?: 'up' | 'down' };
+    absentToday: { value: number };
+    pendingLeaves: { value: number; trend?: number; trendType?: 'up' | 'down' };
+    pendingAttendanceQueries: { value: number; trend?: number; trendType?: 'up' | 'down' };
   };
   departmentStats: {
     name: string;
     count: number;
+  }[];
+  upcomingBirthdays: {
+    name: string;
+    date: string;
+    department: string;
+  }[];
+  upcomingAnniversaries: {
+    name: string;
+    date: string;
+    years: number;
+    department: string;
+  }[];
+  criticalAlerts: {
+    type: string;
+    priority: 'high' | 'medium' | 'low';
+    message: string;
+    employeeId: string;
+  }[];
+  analyticsSuggestions: {
+    title: string;
+    description: string;
+    impact: 'high' | 'medium' | 'low';
+  }[];
+
+  attendanceTrend: {
+    date: string;
+    present: number;
+    absent: number;
+  }[];
+  recentLeaveRequests: {
+    id: string;
+    employeeName: string;
+    department: string;
+    type: string;
+    status: string;
+    dateFrom: string;
+    dateTo: string;
+    days: number;
   }[];
 }
 
@@ -162,8 +192,8 @@ export const employeeApi = {
 };
 
 export const dashboardApi = {
-  getStats: () => fetchApi<DashboardStats>('/dashboard/stats'),
-  getEmployeeStats: () => fetchApi<EmployeeDashboardStats>('/dashboard/employee-stats'),
+  getStats: () => fetchApi<{ status: boolean; data: DashboardStats }>('/dashboard/stats'),
+  getEmployeeStats: () => fetchApi<{ status: boolean; data: EmployeeDashboardStats }>('/dashboard/employee-stats'),
 };
 
 export interface EmployeeDashboardStats {
@@ -209,11 +239,12 @@ export interface SubDepartment {
 export interface PurchaseRequisition {
   id: string;
   prNumber: string;
-  requestedBy: string;
   department?: string;
   requestDate: string;
   status: string;
   notes?: string;
+  type?: string;
+  goodsType?: string; // CONSUMABLE, FRESH
   items: PurchaseRequisitionItem[];
   createdAt: string;
   updatedAt: string;
@@ -222,9 +253,7 @@ export interface PurchaseRequisition {
 export interface PurchaseRequisitionItem {
   id: string;
   itemId: string;
-  description?: string;
   requiredQty: string;
-  neededByDate?: string;
 }
 
 export const purchaseRequisitionApi = {
@@ -299,17 +328,31 @@ export const rfqApi = {
 // Item API
 export interface MasterItem {
   id: string;
-  code: string;
-  name: string;
+  itemId: string;
+  sku: string;
+  name?: string;
+  code?: string;
+  unitPrice?: number;
+  fob?: number;
+  unitCost?: number;
+  taxRate1?: number;
+  taxRate2?: number;
+  discountRate?: number;
+  hsCodeId?: string;
+  hsCodeStr?: string;
+  hsCode?: HsCode;
+  brand?: { name: string };
+  category?: { name: string };
+  division?: { name: string };
   itemClass?: { name: string };
   itemSubclass?: { name: string };
-  uom?: { name: string };
   description?: string;
 }
 
 export const itemApi = {
-  getAll: () => fetchApi<{ status: boolean; data: MasterItem[] }>('/master/erp/item'),
-  getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/master/erp/item/${id}`),
+  getAll: () => fetchApi<{ status: boolean; data: MasterItem[] }>('/finance/items'),
+  getById: (id: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/finance/items/${id}`),
+  getByCode: (code: string) => fetchApi<{ status: boolean; data: MasterItem }>(`/finance/items/code/${code}`),
 };
 
 
@@ -331,6 +374,7 @@ export interface VendorQuotation {
   rfqId: string;
   vendorId: string;
   quotationDate: string;
+  expiryDate?: string;
   status: string;
   subtotal: string;
   taxAmount: string;
@@ -369,6 +413,712 @@ export const vendorQuotationApi = {
     body: JSON.stringify(data),
   }),
   delete: (id: string) => fetchApi<void>(`/vendor-quotation/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// Purchase Order Types and API
+
+export interface PurchaseOrderItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  quantity: string;
+  receivedQty: string;
+  unitPrice: string;
+  taxPercent: string;
+  discountPercent: string;
+  lineTotal: string;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  poNumber: string;
+  vendorQuotationId: string;
+  vendorId: string;
+  rfqId?: string;
+  orderDate: string;
+  expectedDeliveryDate?: string;
+  status: string;
+  subtotal: string;
+  taxAmount: string;
+  discountAmount: string;
+  totalAmount: string;
+  notes?: string;
+  items: PurchaseOrderItem[];
+  vendor: {
+    name: string;
+    code: string;
+  };
+  vendorQuotation?: VendorQuotation;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const purchaseOrderApi = {
+  getAll: () => fetchApi<PurchaseOrder[]>('/purchase-order'),
+  getPendingQuotations: () => fetchApi<VendorQuotation[]>('/purchase-order/pending-quotations'),
+  getById: (id: string) => fetchApi<PurchaseOrder>(`/purchase-order/${id}`),
+  create: (data: {
+    vendorQuotationId?: string;
+    vendorId?: string;
+    purchaseRequisitionId?: string;
+    items?: {
+      itemId: string;
+      description?: string;
+      quantity: number;
+      unitPrice: number;
+      taxPercent?: number;
+      discountPercent?: number;
+    }[];
+    notes?: string;
+    expectedDeliveryDate?: string;
+  }) =>
+    fetchApi<PurchaseOrder>('/purchase-order', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  awardFromRfq: (data: {
+    rfqId: string;
+    awards: {
+      vendorQuotationId: string;
+      items: { itemId: string; quantity: number }[];
+      notes?: string;
+      expectedDeliveryDate?: string;
+    }[];
+  }) =>
+    fetchApi<PurchaseOrder[]>('/purchase-order/award-from-rfq', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  createMultiDirect: (data: {
+    awards: {
+      vendorId: string;
+      items: {
+        itemId: string;
+        description?: string;
+        quantity: number;
+        unitPrice: number;
+        taxPercent?: number;
+        discountPercent?: number;
+      }[];
+      notes?: string;
+      expectedDeliveryDate?: string;
+    }[];
+  }) =>
+    fetchApi<PurchaseOrder[]>('/purchase-order/multi-direct', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateStatus: (id: string, status: string) =>
+    fetchApi<PurchaseOrder>(`/purchase-order/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+};
+
+// GRN & Warehouse Types and API
+
+export interface Warehouse {
+  id: string;
+  code: string;
+  name: string;
+  address?: string;
+  type: string;
+  description?: string;
+  isActive: boolean;
+  managerId?: string;
+  createdAt: string;
+  locations?: WarehouseLocation[];
+}
+
+export interface WarehouseLocation {
+  id: string;
+  warehouseId: string;
+  code: string;
+  name: string;
+  type: string;
+  barcode?: string;
+  isActive: boolean;
+  parent?: WarehouseLocation;
+  children?: WarehouseLocation[];
+}
+
+export interface GrnItem {
+  id: string;
+  itemId: string;
+  description?: string;
+  receivedQty: string;
+}
+
+export interface Grn {
+  id: string;
+  grnNumber: string;
+  purchaseOrderId: string;
+  warehouseId: string;
+  receivedDate: string;
+  status: string;
+  notes?: string;
+  orderType?: string;
+  goodsType?: string;
+  items: GrnItem[];
+  purchaseOrder?: {
+    poNumber: string;
+  };
+  warehouse?: {
+    name: string;
+  };
+  createdAt: string;
+}
+
+export const grnApi = {
+  getAll: () => fetchApi<Grn[]>('/grn'),
+  getById: (id: string) => fetchApi<Grn>(`/grn/${id}`),
+  create: (data: {
+    purchaseOrderId: string;
+    warehouseId: string;
+    notes?: string;
+    items: { itemId: string; description?: string; receivedQty: number }[];
+  }) =>
+    fetchApi<Grn>('/grn', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+// HS Code API
+export interface HsCode {
+  id: string;
+  hsCode: string;
+  customsDutyCd: number;
+  regulatoryDutyRd: number;
+  additionalCustomsDutyAcd: number;
+  salesTax: number;
+  additionalSalesTax: number;
+  incomeTax: number;
+  exciseCharges: number;
+  status: string;
+}
+
+export const hsCodeApi = {
+  getAll: () => fetchApi<{ status: boolean; data: HsCode[] }>('/hs-codes'),
+  getById: (id: string) => fetchApi<{ status: boolean; data: HsCode }>(`/hs-codes/${id}`),
+};
+
+// Landed Cost API
+export interface LandedCostItem {
+  itemId: string;
+  hsCode?: string;
+  qty: number;
+  unitFob: number;
+  freightForeign: number;
+  insuranceCharges: number;
+  landingCharges: number;
+  assessableValue: number;
+  unitCostPKR: number;
+  totalCostPKR: number;
+}
+
+export interface LandedCostCharge {
+  accountId: string;
+  amount: number;
+  description?: string;
+}
+
+export interface CreateLandedCostDto {
+  grnId: string;
+  supplierId: string;
+  purchaseOrderId?: string;
+  lcNo?: string;
+  blNo?: string;
+  blDate?: string;
+  countryOfOrigin?: string;
+  gdNo?: string;
+  gdDate?: string;
+  season?: string;
+  category?: string;
+  shippingInvoiceNo?: string;
+  currency: string;
+  exchangeRate: number;
+  items: LandedCostItem[];
+  charges?: LandedCostCharge[];
+}
+
+export const landedCostApi = {
+  create: (data: CreateLandedCostDto) =>
+    fetchApi<any>('/landed-cost', { method: 'POST', body: JSON.stringify(data) }),
+  createLocal: (data: any) =>
+    fetchApi<any>('/landed-cost/local', { method: 'POST', body: JSON.stringify(data) }),
+  getAll: () => fetchApi<any[]>('/landed-cost'),
+  getById: (id: string) => fetchApi<any>(`/landed-cost/${id}`),
+  listChargeTypes: () => fetchApi<{ status: boolean; data: LandedCostChargeType[] }>('/landed-cost/charge-types'),
+  post: (data: { grnId: string; charges: { accountId: string; amount: number }[] }) =>
+    fetchApi<any>('/landed-cost/post', { method: 'POST', body: JSON.stringify(data) }),
+};
+
+
+// Landed Cost Charge Types (client-side)
+export interface LandedCostChargeType {
+  id: string;
+  name: string;
+  accountId: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  account?: { id: string; name: string; code: string; type: string };
+}
+export const landedCostChargeTypeApi = {
+  getAll: () => fetchApi<{ status: boolean; data: LandedCostChargeType[] }>('/landed-cost/charge-types'),
+  create: (data: { name: string; accountId: string }) =>
+    fetchApi<{ status: boolean; data: LandedCostChargeType }>('/landed-cost/charge-types', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
+
+// Chart of Accounts API (client-side)
+export interface ChartOfAccount {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  isGroup: boolean;
+}
+
+export const chartOfAccountApi = {
+  getAll: () => fetchApi<ChartOfAccount[]>('/finance/chart-of-accounts'),
+};
+
+export const warehouseApi = {
+  getAll: () => fetchApi<Warehouse[]>('/warehouse'),
+  getById: (id: string) => fetchApi<Warehouse>(`/warehouse/${id}`),
+  create: (data: Partial<Warehouse>) => fetchApi<Warehouse>('/warehouse', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: Partial<Warehouse>) => fetchApi<Warehouse>(`/warehouse/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<void>(`/warehouse/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+export const locationApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/locations'),
+  getByWarehouse: (warehouseId: string) => fetchApi<WarehouseLocation[]>(`/warehouse/${warehouseId}/locations`),
+  create: (data: Partial<WarehouseLocation>) => fetchApi<WarehouseLocation>('/warehouse/location', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  updateStatus: (id: string, isActive: boolean) => fetchApi<WarehouseLocation>(`/warehouse/location/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive }),
+  }),
+};
+
+// Stock Ledger Types and API
+export enum MovementType {
+  INBOUND = 'INBOUND',
+  OUTBOUND = 'OUTBOUND',
+  TRANSFER = 'TRANSFER',
+  ADJUSTMENT = 'ADJUSTMENT',
+  OPENING_BALANCE = 'OPENING_BALANCE'
+}
+
+export interface StockLedgerEntry {
+  id: string;
+  itemId: string;
+  warehouseId: string;
+  qty: string;
+  unitCost?: string;
+  rate?: string;
+  movementType: MovementType;
+  referenceType: string;
+  referenceId: string;
+  locationId?: string;
+  createdAt: string;
+  // Optional expanded relations if backend includes them
+  item?: { itemId: string; sku: string; description: string | null; name?: string };
+  warehouse?: { name: string };
+}
+
+export interface StockLevel {
+  itemId: string;
+  warehouseId: string;
+  locationId?: string;
+  totalQty: string;
+  item: {
+    itemId: string;
+    sku: string;
+    description: string | null;
+    uomId: string | null;
+  } | null;
+  warehouse: {
+    name: string;
+    code: string;
+  } | null;
+  location: {
+    name: string;
+    code: string;
+    type: string;
+  } | null;
+}
+
+export const stockLedgerApi = {
+  getAll: (params?: { warehouseId?: string, movementType?: MovementType, itemId?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<StockLedgerEntry[]>(`/stock-ledger?${query}`);
+  },
+  getLevels: (params?: { warehouseId?: string, locationId?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<StockLevel[]>(`/stock-ledger/levels?${query}`);
+  }
+};
+export const posSalesApi = {
+  lookup: (query: string) => fetchApi<{ status: boolean; data: any[] }>(`/pos-sales/lookup?q=${encodeURIComponent(query)}`),
+  getAll: (params?: { page?: number; limit?: number; search?: string; startDate?: string; endDate?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ status: boolean; data: any[]; meta: any }>(`/pos-sales/orders?${query}`);
+  },
+};
+
+export const transferRequestApi = {
+  create: (data: any) => fetchApi<{ status: boolean; data: any; message: string }>('/transfer-request', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+
+  createReturn: (data: {
+    fromLocationId: string;
+    fromWarehouseId: string;
+    items: { itemId: string; quantity: number }[];
+    notes?: string;
+    createdById?: string;
+  }) => fetchApi<{ status: boolean; data: any; message: string }>('/transfer-request', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...data,
+      transferType: 'OUTLET_TO_WAREHOUSE',
+      toLocationId: null,
+    }),
+  }),
+
+  createOutletToOutlet: (data: {
+    fromLocationId: string;
+    toLocationId: string;
+    items: { itemId: string; quantity: number }[];
+    notes?: string;
+    createdById?: string;
+  }) => fetchApi<{ status: boolean; data: any; message: string }>('/transfer-request', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...data,
+      transferType: 'OUTLET_TO_OUTLET',
+    }),
+  }),
+
+  getAll: (params?: { warehouseId?: string, status?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ status: boolean; data: any[] }>(`/transfer-request?${query}`);
+  },
+  getIncoming: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/incoming?locationId=${locationId}`),
+
+  getReturnRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/return-requests?locationId=${locationId}`),
+
+  getOutboundRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/outbound-requests?locationId=${locationId}`),
+
+  getInboundRequests: (locationId: string) => fetchApi<{ status: boolean; data: any[] }>(`/transfer-request/inbound-requests?locationId=${locationId}`),
+
+  updateStatus: (id: string, status: string) => fetchApi<{ status: boolean; message: string }>(`/transfer-request/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }),
+  accept: (id: string, userId?: string) => fetchApi<{ status: boolean; data: any; message: string }>(`/transfer-request/${id}/accept`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  }),
+  approveSource: (id: string, userId?: string) => fetchApi<{ status: boolean; data: any; message: string }>(`/transfer-request/${id}/approve-source`, {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  }),
+};
+
+export const inventoryApi = {
+  search: (query: string, warehouseId?: string) => {
+    const params = new URLSearchParams({ q: query });
+    if (warehouseId) params.append('warehouseId', warehouseId);
+    return fetchApi<{ status: boolean; data: any[] }>(`/inventory/search?${params.toString()}`);
+  },
+  getDetails: (itemId: string) => fetchApi<{ status: boolean; data: any[] }>(`/inventory/details/${itemId}`),
+};
+
+export const stockOperationApi = {
+  move: (data: {
+    itemId: string;
+    fromLocationId?: string;
+    toLocationId?: string;
+    quantity: number;
+    type: 'TRANSFER' | 'INBOUND' | 'OUTBOUND';
+    notes?: string;
+  }) => fetchApi<any>('/stock-operation/move', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
+// Purchase Invoice Types and API
+export interface PurchaseInvoice {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate?: string;
+  supplierId: string;
+  grnId?: string;
+  landedCostId?: string;
+  subtotal: number;
+  taxAmount: number;
+  discountAmount: number;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'CANCELLED';
+  paymentStatus: 'UNPAID' | 'PARTIALLY_PAID' | 'FULLY_PAID' | 'OVERDUE';
+  notes?: string;
+  items: PurchaseInvoiceItem[];
+  supplier?: { id: string; name: string; code: string };
+  grn?: { id: string; grnNumber: string };
+  landedCost?: { id: string; landedCostNumber: string };
+  paymentVouchers?: {
+    id: string;
+    paidAmount: number;
+    paymentVoucher: { id: string; pvNo: string; pvDate: string };
+  }[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PurchaseInvoiceItem {
+  id: string;
+  itemId: string;
+  grnItemId?: string;
+  landedCostItemId?: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  taxRate: number;
+  taxAmount: number;
+  discountRate: number;
+  discountAmount: number;
+}
+
+export const purchaseInvoiceApi = {
+  getAll: (params?: { 
+    page?: number; 
+    limit?: number; 
+    supplierId?: string; 
+    status?: string; 
+    paymentStatus?: string; 
+    search?: string; 
+  }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ data: PurchaseInvoice[]; pagination: any }>(`/purchase/purchase-invoices?${query}`);
+  },
+  
+  getById: (id: string) => fetchApi<PurchaseInvoice>(`/purchase/purchase-invoices/${id}`),
+  
+  create: (data: {
+    invoiceNumber: string;
+    invoiceDate: string;
+    dueDate?: string;
+    supplierId: string;
+    grnId?: string;
+    landedCostId?: string;
+    discountAmount?: number;
+    notes?: string;
+    items: {
+      itemId: string;
+      grnItemId?: string;
+      landedCostItemId?: string;
+      description: string;
+      quantity: number;
+      unitPrice: number;
+      taxRate?: number;
+      discountRate?: number;
+    }[];
+  }) => fetchApi<PurchaseInvoice>('/purchase/purchase-invoices', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  update: (id: string, data: Partial<PurchaseInvoice>) => 
+    fetchApi<PurchaseInvoice>(`/purchase/purchase-invoices/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  approve: (id: string) => 
+    fetchApi<PurchaseInvoice>(`/purchase/purchase-invoices/${id}/approve`, {
+      method: 'PATCH',
+    }),
+  
+  cancel: (id: string, reason?: string) => 
+    fetchApi<PurchaseInvoice>(`/purchase/purchase-invoices/${id}/cancel`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    }),
+  
+  delete: (id: string) => fetchApi<void>(`/purchase/purchase-invoices/${id}`, {
+    method: 'DELETE',
+  }),
+  
+  getNextInvoiceNumber: () => 
+    fetchApi<{ nextInvoiceNumber: string }>('/purchase/purchase-invoices/next-invoice-number'),
+  
+  getSummary: (supplierId?: string) => {
+    const query = supplierId ? `?supplierId=${supplierId}` : '';
+    return fetchApi<{
+      totalInvoices: number;
+      draftInvoices: number;
+      approvedInvoices: number;
+      totalAmount: number;
+      paidAmount: number;
+      pendingAmount: number;
+    }>(`/purchase/purchase-invoices/summary${query}`);
+  },
+  
+  getValuedGrns: () => fetchApi<any[]>('/purchase/purchase-invoices/valued-grns'),
+  
+  getAvailableLandedCosts: () => fetchApi<any[]>('/purchase/purchase-invoices/available-landed-costs'),
+};
+
+// Payment Voucher Types and API
+export interface PaymentVoucher {
+  id: string;
+  type: 'bank' | 'cash';
+  pvNo: string;
+  pvDate: string;
+  refBillNo?: string;
+  billDate?: string;
+  chequeNo?: string;
+  chequeDate?: string;
+  creditAccountId: string;
+  supplierId?: string;
+  creditAmount: number;
+  isAdvance: boolean;
+  isTaxApplicable: boolean;
+  description: string;
+  status: 'pending' | 'approved' | 'rejected';
+  details: PaymentVoucherDetail[];
+  creditAccount?: { id: string; name: string; code: string };
+  supplier?: { id: string; name: string; code: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentVoucherDetail {
+  id: string;
+  paymentVoucherId: string;
+  accountId: string;
+  debit: number;
+  account?: { id: string; name: string; code: string };
+}
+
+export const paymentVoucherApi = {
+  getAll: (params?: { 
+    page?: number; 
+    limit?: number; 
+    type?: string; 
+    status?: string; 
+    search?: string; 
+  }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ data: PaymentVoucher[]; pagination: any }>(`/finance/payment-vouchers?${query}`);
+  },
+  
+  getById: (id: string) => fetchApi<PaymentVoucher>(`/finance/payment-vouchers/${id}`),
+  
+  create: (data: {
+    type: 'bank' | 'cash';
+    pvNo: string;
+    pvDate: string;
+    refBillNo?: string;
+    billDate?: string;
+    chequeNo?: string;
+    chequeDate?: string;
+    creditAccountId: string;
+    supplierId?: string;
+    creditAmount: number;
+    isAdvance?: boolean;
+    isTaxApplicable?: boolean;
+    description: string;
+    details: {
+      accountId: string;
+      debit: number;
+    }[];
+  }) => fetchApi<PaymentVoucher>('/finance/payment-vouchers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  
+  update: (id: string, data: Partial<PaymentVoucher>) => 
+    fetchApi<PaymentVoucher>(`/finance/payment-vouchers/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  
+  updateStatus: (id: string, status: string, remarks?: string) => 
+    fetchApi<PaymentVoucher>(`/finance/payment-vouchers/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, remarks }),
+    }),
+  
+  delete: (id: string) => fetchApi<void>(`/finance/payment-vouchers/${id}`, {
+    method: 'DELETE',
+  }),
+  
+  getNextPvNumber: (type: 'bank' | 'cash') => 
+    fetchApi<{ nextPvNumber: string }>(`/finance/payment-vouchers/next-pv-number?type=${type}`),
+  
+  getSummary: (type?: string) => {
+    const query = type ? `?type=${type}` : '';
+    return fetchApi<{
+      totalVouchers: number;
+      pendingVouchers: number;
+      approvedVouchers: number;
+      totalAmount: number;
+      pendingAmount: number;
+    }>(`/finance/payment-vouchers/summary${query}`);
+  },
+};
+
+// Supplier API (if not already exists)
+export interface Supplier {
+  id: string;
+  name: string;
+  code: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const supplierApi = {
+  getAll: () => fetchApi<{ status: boolean; data: Supplier[] }>('/finance/suppliers'),
+  getById: (id: string) => fetchApi<{ status: boolean; data: Supplier }>(`/finance/suppliers/${id}`),
+  create: (data: Partial<Supplier>) => fetchApi<{ status: boolean; data: Supplier }>('/finance/suppliers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: Partial<Supplier>) => fetchApi<{ status: boolean; data: Supplier }>(`/finance/suppliers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<{ status: boolean; message: string }>(`/finance/suppliers/${id}`, {
     method: 'DELETE',
   }),
 };

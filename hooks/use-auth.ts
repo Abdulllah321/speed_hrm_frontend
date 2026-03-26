@@ -62,7 +62,7 @@ export function useAuth() {
 
   const logout = useCallback(async () => {
     // Call server action
-    const { logout: serverLogout } = await import("@/lib/auth");
+    const { logout: serverLogout } = await import("@/lib/actions/auth");
     await serverLogout();
   }, []);
 

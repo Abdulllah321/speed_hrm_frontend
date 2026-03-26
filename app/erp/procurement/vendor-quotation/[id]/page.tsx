@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { vendorQuotationApi, VendorQuotation } from '@/lib/api';
+import { vendorQuotationApi, VendorQuotation, purchaseOrderApi } from '@/lib/api';
+import { toast } from 'sonner';
 
-export default function VendorQuotationDetail({ params }: { params: { id: string } }) {
+export default function VendorQuotationDetail({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const [quotation, setQuotation] = useState<VendorQuotation | null>(null);
     const [loading, setLoading] = useState(true);
+    const [creatingPo, setCreatingPo] = useState(false);
     const router = useRouter();
-    const id = params.id;
 
     useEffect(() => {
         fetchQuotation();
@@ -34,9 +36,11 @@ export default function VendorQuotationDetail({ params }: { params: { id: string
         try {
             setLoading(true);
             await vendorQuotationApi.submit(id);
+            toast.success('Quotation submitted successfully');
             fetchQuotation();
         } catch (error) {
             console.error(error);
+            toast.error('Failed to submit quotation');
         } finally {
             setLoading(false);
         }
@@ -46,11 +50,27 @@ export default function VendorQuotationDetail({ params }: { params: { id: string
         try {
             setLoading(true);
             await vendorQuotationApi.select(id);
+            toast.success('Quotation selected successfully');
             fetchQuotation();
         } catch (error) {
             console.error(error);
+            toast.error('Failed to select quotation');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGeneratePo = async () => {
+        try {
+            setCreatingPo(true);
+            const po = await purchaseOrderApi.create({ vendorQuotationId: id });
+            toast.success('Purchase Order generated successfully');
+            router.push(`/erp/procurement/purchase-order/${po.id}`);
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || 'Failed to generate Purchase Order');
+        } finally {
+            setCreatingPo(false);
         }
     };
 
@@ -69,10 +89,15 @@ export default function VendorQuotationDetail({ params }: { params: { id: string
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => router.back()}>Back</Button>
                     {quotation.status === 'DRAFT' && (
-                        <Button onClick={handleSubmit}>Submit Quotation</Button>
+                        <Button onClick={handleSubmit} disabled={loading}>Submit Quotation</Button>
                     )}
                     {quotation.status === 'SUBMITTED' && (
-                        <Button onClick={handleSelect}>Select This Quotation</Button>
+                        <Button onClick={handleSelect} disabled={loading}>Select This Quotation</Button>
+                    )}
+                    {quotation.status === 'SELECTED' && (
+                        <Button onClick={handleGeneratePo} disabled={creatingPo}>
+                            {creatingPo ? 'Generating...' : 'Generate Purchase Order'}
+                        </Button>
                     )}
                 </div>
             </div>

@@ -60,7 +60,7 @@ export async function getRebates(params?: {
     const res = await authFetch(endpoint);
 
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: "Failed to fetch rebates" }));
+      const errorData = res.data || { message: "Failed to fetch rebates" };
       return {
         status: false,
         data: [],
@@ -68,7 +68,7 @@ export async function getRebates(params?: {
       };
     }
 
-    const result = await res.json();
+    const result = res.data;
     return {
       status: true,
       data: Array.isArray(result) ? result : result.data || [],
@@ -88,13 +88,13 @@ export async function getRebateById(id: string): Promise<{ status: boolean; data
   try {
     const res = await authFetch(`/rebates/${id}`);
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ message: "Failed to fetch rebate" }));
+      const errorData = res.data || { message: "Failed to fetch rebate" };
       return {
         status: false,
         message: errorData.message || `HTTP error! status: ${res.status}`,
       };
     }
-    const result = await res.json();
+    const result = res.data;
     return { status: true, data: result };
   } catch (error) {
     console.error("Error fetching rebate:", error);
@@ -126,7 +126,7 @@ export async function createRebate(data: {
         remarks: data.remarks,
       }),
     });
-    const result = await res.json();
+    const result = res.data;
     if (!res.ok || !result.status) {
       return {
         status: false,
@@ -174,7 +174,7 @@ export async function updateRebate(
       method: "PATCH",
       body: JSON.stringify(jsonData),
     });
-    const result = await res.json();
+    const result = res.data;
     if (!res.ok || !result.status) {
       return {
         status: false,
@@ -202,7 +202,7 @@ export async function deleteRebate(id: string): Promise<{ status: boolean; messa
     const res = await authFetch(`/rebates/${id}`, {
       method: "DELETE",
     });
-    const result = await res.json();
+    const result = res.data;
     if (!res.ok || !result.status) {
       return {
         status: false,

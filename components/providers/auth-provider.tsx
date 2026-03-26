@@ -1,9 +1,19 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { getApiBaseUrl } from "@/lib/utils";
+import { navigateToPath } from "@/lib/navigation";
+
+// Get base domain from host
+function getBaseDomain(host: string): string {
+  const hostWithoutPort = host.split(":")[0];
+  if (hostWithoutPort.includes("localhost") || hostWithoutPort.includes("127.0.0.1")) return "localhost";
+  if (hostWithoutPort.includes("localtest.me")) return "localtest.me";
+  const parts = hostWithoutPort.split(".");
+  return parts.length >= 2 ? parts.slice(-2).join(".") : hostWithoutPort;
+}
 
 export interface User {
   id: string;
@@ -38,6 +48,25 @@ export interface User {
     createdAt: string;
     updatedAt: string;
   }>;
+  // Impersonation context (present when admin is viewing as another user)
+  isImpersonating?: boolean;
+  impersonatorId?: string;
+
+  // POS fields
+  isPosUser?: boolean;
+  terminalId?: string;
+  locationId?: string;
+  posSessionId?: string;
+  terminal?: {
+    id: string;
+    code: string;
+    name: string;
+    location?: {
+      id: string;
+      code: string;
+      name: string;
+    } | null;
+  };
 }
 
 interface AuthContextType {
@@ -57,7 +86,7 @@ interface AuthContextType {
   // Token management
   refreshToken: () => Promise<boolean>;
   checkAndRefreshSession: () => Promise<boolean>;
-  fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+
   sessionExpired: boolean;
   setSessionExpired: (value: boolean) => void;
   handleSessionExpiry: () => Promise<void>;
@@ -67,6 +96,8 @@ interface AuthContextType {
   completeAuthStep: () => void;
   completeAppWait: (key: string) => void;
   registerAppWait: (key: string) => void;
+  // POS switch-user
+  posNeedsUserAuth: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -80,6 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("Initializing...");
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [posNeedsUserAuth, setPosNeedsUserAuth] = useState(false);
 
   // Track multiple initialization steps
   const [pendingSteps, setPendingSteps] = useState<Set<string>>(new Set(["auth"]));
@@ -145,18 +177,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshPromiseRef.current = (async () => {
       try {
         const { refreshTokenClient } = await import("@/lib/client-auth");
-        const success = await refreshTokenClient();
+        const result = await refreshTokenClient();
 
-        if (!success) {
-          // Refresh failed, trigger session expiry UI
+        // Handle both older boolean return type (if cached somehow) and new object return type
+        const success = typeof result === 'boolean' ? result : result.success;
+        const isNetworkError = typeof result === 'boolean' ? false : result.isNetworkError;
+
+        if (!success && !isNetworkError) {
+          // Refresh failed due to 401 or invalid token, trigger session expiry UI
           await handleSessionExpiry();
+          return false;
+        }
+
+        if (isNetworkError) {
+          // It's a network glitch, don't clear the user's session
           return false;
         }
 
         return true;
       } catch (error) {
         console.error("Token refresh error:", error);
-        await handleSessionExpiry();
+        // Don't auto-logout on unexpected execution errors during refresh
         return false;
       } finally {
         refreshPromiseRef.current = null;
@@ -166,10 +207,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return refreshPromiseRef.current;
   }, [handleSessionExpiry]);
 
-  const fetchWithAuth = useCallback(
+  const authFetch = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
       // Ensure URL is absolute; if relative, prepend BASE URL from ENV
       const finalUrl = url.startsWith("http") ? url : `${getApiBaseUrl()}${url.startsWith("/") ? "" : "/"}${url}`;
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[AuthProvider authFetch] ${options.method || 'GET'} ${finalUrl}`);
+      }
       let response = await fetch(finalUrl, {
         ...options,
         credentials: "include", // ✅ sends ALL cookies automatically
@@ -227,14 +271,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           setUser(userData);
-          // If we have data from cookie, we can show UI immediately while fetching fresh data
-          setLoading(false);
+          // NOTE: We intentionally do NOT call setLoading(false) here.
+          // Loading stays true until /auth/me completes with real data.
+          // Calling it early caused PermissionGuard to render with a stale
+          // cookie user that might have incomplete permission structures.
         }
       } catch (e) {
         console.warn("Failed to parse user cookie", e);
       }
 
-      const res = await fetchWithAuth(`${getApiBaseUrl()}/auth/me`);
+      const res = await authFetch(`${getApiBaseUrl()}/auth/me`);
 
       setLoadingProgress(50);
 
@@ -245,7 +291,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoadingProgress(100);
           return;
         }
-        throw new Error("Failed to fetch user");
+        // Do not throw here if it's a non-401 error. 
+        // We already have user from the cookie, so we can gracefully allow the user to proceed.
+        // We just log it and stop further loading.
+        console.warn(`Non-401 error fetching user: ${res.status}`);
+        setLoadingProgress(100);
+        return;
       }
 
       setLoadingMessage("Loading user data...");
@@ -292,14 +343,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
       console.error("Error fetching user:", error);
-      setUser(null);
-      setPreferences({});
+      // If we already have a user from the cookie, KEEP it instead of nullifying.
+      // This prevents "AccessDenied" flashes on temporary network drops/500 errors.
       setLoadingProgress(100);
     } finally {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[AuthProvider] fetchUser complete');
+      }
       setLoading(false);
       completeAuthStep();
     }
-  }, [preferencesToObject, fetchWithAuth, completeAuthStep]);
+  }, [preferencesToObject, authFetch, completeAuthStep]);
 
   // Set mounted flag to prevent hydration mismatch
   useEffect(() => {
@@ -338,28 +392,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [user, refreshToken]);
 
-  // Check for first password status
+  const pathname = usePathname();
+
+  // Check for first password status or impersonation
   useEffect(() => {
-    if (user?.isFirstPassword) {
+    if (user?.isFirstPassword || user?.isImpersonating) {
       document.documentElement.style.setProperty("--banner-height", "2.5rem");
 
-      // You can implement forced redirect here if needed
-      // if (pathname !== '/hr/settings/password') router.push('/hr/settings/password');
+      if (user?.isFirstPassword && !user?.isImpersonating) {
+        // You can implement forced redirect here if needed
+        // if (pathname !== '/hr/settings/password') router.push('/hr/settings/password');
 
-      // For now, let's show a toast
-      const { toast } = require("sonner");
-      toast.warning("Please change your password", {
-        description: "You are using a temporary password. Please update it immediately.",
-        duration: Infinity,
-        action: {
-          label: "Change Now",
-          onClick: () => router.push("/hr/settings/password"),
-        },
-      });
+        // For now, let's show a toast
+        const { toast } = require("sonner");
+        toast.warning("Please change your password", {
+          description: "You are using a temporary password. Please update it immediately.",
+          duration: Infinity,
+          action: {
+            label: "Change Now",
+            onClick: () => router.push("/hr/settings/password"),
+          },
+        });
+      }
     } else {
       document.documentElement.style.setProperty("--banner-height", "0px");
     }
   }, [user, router]);
+
+  // POS Route Protection — Two-Layer Auth
+  // Layer 1: Terminal setup (manager enters PIN via /pos-login)
+  // Layer 2: User logs in via standard auth, route guard auto-links to terminal
+  const posLinkAttemptedRef = useRef(false);
+
+  useEffect(() => {
+    if (!mounted || loading) return;
+
+    const host = typeof window !== "undefined" ? window.location.host : "";
+    const isPosSubdomain = host.startsWith("pos.");
+    const isPosPath = pathname === "/pos" || pathname?.startsWith("/pos/");
+    const isPosLoginPage = pathname === "/pos-login" || pathname === "/auth/pos-login";
+
+    if (!(isPosSubdomain || isPosPath) || isPosLoginPage) return;
+
+    // No user at all — show switch-user form
+    if (!user) {
+      setPosNeedsUserAuth(true);
+      return;
+    }
+
+    // All users on POS route must have a terminal assigned
+    if (!user.terminalId) {
+      navigateToPath("/pos-login");
+      return;
+    }
+
+    // Since they have a terminalId, allow access immediately
+    setPosNeedsUserAuth(false);
+  }, [user, pathname, mounted, loading, fetchUser]);
 
   // Proactive session check - refresh token if needed
   const checkAndRefreshSession = useCallback(async () => {
@@ -412,7 +501,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await logoutClient();
     setUser(null);
     setPreferences({});
-    router.push("/auth/login");
+    router.push("/auth/choose-account");
   }, [router]);
 
   const isAdmin = useCallback((): boolean => {
@@ -539,6 +628,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   }, [user, isAdmin]);
 
+  const contextValue = useMemo(() => ({
+    user,
+    preferences,
+    loading,
+    isAuthenticated: !!user,
+    refreshUser,
+    updatePreference,
+    getPreference,
+    logout,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    isAdmin,
+    refreshToken,
+    checkAndRefreshSession,
+
+    sessionExpired,
+    setSessionExpired,
+    handleSessionExpiry,
+    setLoadingProgress,
+    setLoadingMessage,
+    completeAuthStep,
+    completeAppWait,
+    registerAppWait,
+    posNeedsUserAuth,
+  }), [
+    user,
+    preferences,
+    loading,
+    refreshUser,
+    updatePreference,
+    getPreference,
+    logout,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    isAdmin,
+    refreshToken,
+    checkAndRefreshSession,
+
+    sessionExpired,
+    setSessionExpired,
+    handleSessionExpiry,
+    setLoadingProgress,
+    setLoadingMessage,
+    completeAuthStep,
+    completeAppWait,
+    registerAppWait,
+    posNeedsUserAuth,
+  ]);
+
   // Don't render children until mounted and initial load is complete
   // This prevents hydration mismatch between server and client
   if (!mounted || loading) {
@@ -559,7 +699,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAdmin: () => false,
           refreshToken: async () => false,
           checkAndRefreshSession: async () => false,
-          fetchWithAuth: async (url: string, options?: RequestInit) => fetch(url, options),
+
           sessionExpired: false,
           setSessionExpired: () => { },
           handleSessionExpiry: async () => { },
@@ -568,6 +708,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           completeAuthStep,
           completeAppWait,
           registerAppWait,
+          posNeedsUserAuth,
         }}
       >
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />
@@ -575,34 +716,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (loading && !mounted) {
+    return (
+      <AuthContext.Provider value={contextValue}>
+        <LoadingScreen progress={loadingProgress} message={loadingMessage} />
+      </AuthContext.Provider>
+    );
+  }
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        preferences,
-        loading,
-        isAuthenticated: !!user,
-        refreshUser,
-        updatePreference,
-        getPreference,
-        logout,
-        hasPermission,
-        hasAnyPermission,
-        hasAllPermissions,
-        isAdmin,
-        refreshToken,
-        checkAndRefreshSession,
-        fetchWithAuth,
-        sessionExpired,
-        setSessionExpired,
-        handleSessionExpiry,
-        setLoadingProgress,
-        setLoadingMessage,
-        completeAuthStep,
-        completeAppWait,
-        registerAppWait,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {mounted && children}
       {(!mounted || isInitializing) && (
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />

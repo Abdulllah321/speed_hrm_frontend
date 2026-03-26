@@ -92,7 +92,7 @@ export default function VendorQuotationList({ params }: { params: { rfqId: strin
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/erp/procurement/vendor-quotation/${quotation.id}`}>
+                                            <Link href={`/erp/procurement/vendor-quotation/list/${quotation.id}`}>
                                                 <Button variant="ghost" size="sm">View</Button>
                                             </Link>
                                         </TableCell>

@@ -49,16 +49,8 @@ export async function getCountries(): Promise<{
     const res = await authFetch(`/countries`, {
       cache: "no-store",
     });
-    if (!res.ok) {
-      const errorData = await res
-        .json()
-        .catch(() => ({ message: "Failed to fetch countries" }));
-      return {
-        status: false,
-        message: errorData.message || `HTTP error! status: ${res.status}`,
-      };
-    }
-    return res.json();
+    const { data } = res;
+    return data;
   } catch (error) {
     console.error("Failed to fetch countries:", error);
     return {
@@ -85,7 +77,7 @@ export async function createCountry(
       method: "POST",
       body: JSON.stringify({ name, code }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
@@ -104,7 +96,7 @@ export async function createCountries(
       method: "POST",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
@@ -126,7 +118,7 @@ export async function updateCountry(
       method: "PUT",
       body: JSON.stringify({ id, name, code }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
@@ -145,7 +137,7 @@ export async function updateCountries(
       method: "PUT",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
@@ -160,7 +152,7 @@ export async function deleteCountry(
     const res = await authFetch(`/countries/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
@@ -179,7 +171,7 @@ export async function deleteCountries(
       method: "DELETE",
       body: JSON.stringify({ ids }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/country");
     return data;
   } catch (error) {
@@ -197,16 +189,8 @@ export async function getCities(): Promise<{
     const res = await authFetch(`/cities`, {
       cache: "no-store",
     });
-    if (!res.ok) {
-      const errorData = await res
-        .json()
-        .catch(() => ({ message: "Failed to fetch cities" }));
-      return {
-        status: false,
-        message: errorData.message || `HTTP error! status: ${res.status}`,
-      };
-    }
-    return res.json();
+    const { data } = res;
+    return data;
   } catch (error) {
     console.error("Failed to fetch cities:", error);
     return {
@@ -227,7 +211,8 @@ export async function getCitiesByCountry(
     const res = await authFetch(`/cities/country/${countryId}`, {
       cache: "no-store",
     });
-    return res.json();
+    const { data } = res;
+    return data;
   } catch (error) {
     console.error("Failed to fetch cities:", error);
     return { status: false, data: [] };
@@ -244,16 +229,9 @@ export async function getStates(): Promise<{
     const res = await authFetch(`/states`, {
       cache: "no-store",
     });
-    if (!res.ok) {
-      const errorData = await res
-        .json()
-        .catch(() => ({ message: "Failed to fetch states" }));
-      return {
-        status: false,
-        message: errorData.message || `HTTP error! status: ${res.status}`,
-      };
-    }
-    return res.json();
+    const { data } = res;
+    return data;
+
   } catch (error) {
     console.error("Failed to fetch states:", error);
     return {
@@ -274,16 +252,8 @@ export async function getStatesByCountry(
     const res = await authFetch(`/states/country/${countryId}`, {
       cache: "no-store",
     });
-    if (!res.ok) {
-      const errorData = await res
-        .json()
-        .catch(() => ({ message: "Failed to fetch states" }));
-      return {
-        status: false,
-        message: errorData.message || `HTTP error! status: ${res.status}`,
-      };
-    }
-    return res.json();
+    const { data } = res;
+    return data;
   } catch (error) {
     console.error("Failed to fetch states:", error);
     return {
@@ -304,16 +274,9 @@ export async function getCitiesByState(
     const res = await authFetch(`/cities/state/${stateId}`, {
       cache: "no-store",
     });
-    if (!res.ok) {
-      const errorData = await res
-        .json()
-        .catch(() => ({ message: "Failed to fetch cities" }));
-      return {
-        status: false,
-        message: errorData.message || `HTTP error! status: ${res.status}`,
-      };
-    }
-    return res.json();
+    const { data } = res;
+    return data;
+
   } catch (error) {
     console.error("Failed to fetch cities:", error);
     return {
@@ -335,16 +298,8 @@ export async function getStateById(
     const res = await authFetch(`/states/${id}`, {
       cache: "no-store",
     });
-    if (!res.ok) {
-      const errorData = await res
-        .json()
-        .catch(() => ({ message: "Failed to fetch state" }));
-      return {
-        status: false,
-        message: errorData.message || `HTTP error! status: ${res.status}`,
-      };
-    }
-    return res.json();
+    const { data } = res;
+    return data;
   } catch (error) {
     console.error("Failed to fetch state:", error);
     return {
@@ -367,9 +322,9 @@ export async function createState(data: {
       method: "POST",
       body: JSON.stringify(data),
     });
-    const result = await res.json();
-    if (result.status) revalidatePath("/master/state");
-    return result;
+    const { data } = res;
+    if (data.status) revalidatePath("/master/state");
+    return data;
   } catch (error) {
     return { status: false, message: "Failed to create state" };
   }
@@ -386,7 +341,7 @@ export async function createStates(
       method: "POST",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/state");
     return data;
   } catch (error) {
@@ -403,9 +358,9 @@ export async function updateState(
       method: "PUT",
       body: JSON.stringify({ ...data, id }),
     });
-    const result = await res.json();
-    if (result.status) revalidatePath("/master/state");
-    return result;
+    const { data } = res;
+    if (data.status) revalidatePath("/master/state");
+    return data;
   } catch (error) {
     return { status: false, message: "Failed to update state" };
   }
@@ -419,7 +374,7 @@ export async function updateStates(
       method: "PUT",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/state");
     return data;
   } catch (error) {
@@ -434,7 +389,7 @@ export async function deleteState(
     const res = await authFetch(`/states/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/state");
     return data;
   } catch (error) {
@@ -450,7 +405,7 @@ export async function deleteStates(
       method: "DELETE",
       body: JSON.stringify({ ids }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/state");
     return data;
   } catch (error) {
@@ -478,7 +433,7 @@ export async function createCity(
       method: "POST",
       body: JSON.stringify({ name, countryId, stateId }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
@@ -497,7 +452,7 @@ export async function createCities(
       method: "POST",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
@@ -528,7 +483,7 @@ export async function updateCity(
         stateId,
       }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
@@ -547,7 +502,7 @@ export async function updateCities(
       method: "PUT",
       body: JSON.stringify({ items }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
@@ -562,7 +517,7 @@ export async function deleteCity(
     const res = await authFetch(`/cities/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {
@@ -581,7 +536,7 @@ export async function deleteCities(
       method: "DELETE",
       body: JSON.stringify({ ids }),
     });
-    const data = await res.json();
+    const { data } = res;
     if (data.status) revalidatePath("/master/city");
     return data;
   } catch (error) {

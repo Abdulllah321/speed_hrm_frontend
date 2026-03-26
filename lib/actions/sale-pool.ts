@@ -19,7 +19,7 @@ export async function getSalePools(): Promise<{ status: boolean; data: SalePool[
   try {
     const res = await authFetch(`/sale-pools`, {
     });
-    return res.json();
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch sale pools:", error);
     return { status: false, data: [], message: "Failed to fetch sale pools" };
@@ -30,7 +30,7 @@ export async function getSalePoolById(id: string): Promise<{ status: boolean; da
   try {
     const res = await authFetch(`/sale-pools/${id}`, {
     });
-    return res.json();
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch sale pool:", error);
     return { status: false, data: null };
@@ -53,7 +53,7 @@ export async function createSalePool(data: FormData | { name: string }): Promise
       method: "POST",
       body: JSON.stringify({ name }),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/sale-pool/list");
     }
@@ -68,18 +68,18 @@ export async function createSalePools(names: string[]): Promise<{ status: boolea
     return { status: false, message: "At least one name is required" };
   }
   try {
-    const results = await Promise.all(names.map(name => 
+    const results = await Promise.all(names.map(name =>
       authFetch(`/sale-pools`, {
         method: "POST",
         body: JSON.stringify({ name }),
-      }).then(r => r.json())
+      }).then(r => r.data)
     ));
-    
-    const allSuccess = results.every(r => r.id || r.status !== false); 
-    
+
+    const allSuccess = results.every(r => r.id || r.status !== false);
+
     if (allSuccess) {
-        revalidatePath("/master/sale-pool/list");
-        return { status: true, message: "Sale pools created successfully" };
+      revalidatePath("/master/sale-pool/list");
+      return { status: true, message: "Sale pools created successfully" };
     }
     return { status: false, message: "Some sale pools failed to create" };
 
@@ -100,7 +100,7 @@ export async function updateSalePool(id: string, data: FormData | { name: string
       method: "PUT",
       body: JSON.stringify({ name }),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.id || result.status) {
       revalidatePath("/master/sale-pool/list");
       return { status: true, message: "Sale pool updated successfully" };
@@ -116,7 +116,7 @@ export async function deleteSalePool(id: string): Promise<{ status: boolean; mes
     const res = await authFetch(`/sale-pools/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const data = res.data;
     if (data.id || data.status) {
       revalidatePath("/master/sale-pool/list");
       return { status: true, message: "Sale pool deleted successfully" };

@@ -1,4 +1,3 @@
-"use strict";
 "use server";
 
 import { authFetch } from "@/lib/auth";
@@ -8,10 +7,19 @@ function sanitizeItemData(data: any) {
     const sanitized = { ...data };
     // List of keys that are optional UUIDs or might be empty strings should be removed or set to undefined
     const keysToCheck = [
-        "brandId", "divisionId", "categoryId", "subCategoryId",
-        "itemClassId", "itemSubclassId", "channelClassId",
-        "genderId", "seasonId", "uomId", "segmentId",
-        "sizeId", "colorId", "silhouetteId"
+        "brandId",
+        "divisionId",
+        "categoryId",
+        "subCategoryId",
+        "itemClassId",
+        "itemSubclassId",
+        "channelClassId",
+        "genderId",
+        "seasonId",
+        "segmentId",
+        "sizeId",
+        "colorId",
+        "silhouetteId",
     ];
 
     for (const key of keysToCheck) {
@@ -42,7 +50,7 @@ export async function createItem(data: any) {
             body: JSON.stringify(sanitizedData),
         });
 
-        const result = await response.json();
+        const result = response.data;
         if (result.status) {
             revalidatePath("/erp/items/list");
         }
@@ -53,17 +61,24 @@ export async function createItem(data: any) {
     }
 }
 
-export async function getItems() {
+export async function getItems(page: number = 1, limit: number = 50, search?: string, sortBy?: string, sortOrder?: "asc" | "desc") {
     try {
-        const response = await authFetch("/finance/items", {
+        const queryParams = new URLSearchParams();
+        queryParams.append("page", page.toString());
+        queryParams.append("limit", limit.toString());
+        if (search) queryParams.append("search", search);
+        if (sortBy) queryParams.append("sortBy", sortBy);
+        if (sortOrder) queryParams.append("sortOrder", sortOrder);
+
+        const response = await authFetch(`/finance/items?${queryParams.toString()}`, {
             method: "GET",
         });
 
-        const result = await response.json();
-        return result; // Backend now returns { status: true, data: Item[] }
+        const result = response.data;
+        return result; // { status: true, data: Item[], meta: { total, page, limit, totalPages } }
     } catch (error) {
         console.error("Get items error:", error);
-        return { status: false, data: [] };
+        return { status: false, data: [], meta: { total: 0, page, limit, totalPages: 0 } };
     }
 }
 
@@ -73,9 +88,21 @@ export async function getItemById(id: string) {
             method: "GET",
         });
 
-        return response.json();
+        return response.data;
     } catch (error) {
         console.error("Get item error:", error);
+        return { status: false, data: null };
+    }
+}
+
+export async function getNextItemId() {
+    try {
+        const response = await authFetch(`/finance/items/next-id`, {
+            method: "GET",
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Get next item id error:", error);
         return { status: false, data: null };
     }
 }
@@ -88,7 +115,7 @@ export async function updateItem(id: string, data: any) {
             body: JSON.stringify(sanitizedData),
         });
 
-        const result = await response.json();
+        const result = response.data;
         if (result.status) {
             revalidatePath("/erp/items/list");
         }
@@ -105,7 +132,7 @@ export async function deleteItem(id: string) {
             method: "DELETE",
         });
 
-        const result = await response.json();
+        const result = response.data;
         if (result.status) {
             revalidatePath("/erp/items/list");
         }

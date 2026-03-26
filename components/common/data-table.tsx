@@ -60,6 +60,7 @@ export function HighlightText({
     </span>
   );
 }
+
 import {
   ChevronDownIcon,
   ChevronFirstIcon,
@@ -70,9 +71,9 @@ import {
   CircleXIcon,
   Columns3Icon,
   ListFilterIcon,
+  Loader2,
   PencilIcon,
   PlusIcon,
-  SearchIcon,
   TrashIcon,
 } from "lucide-react";
 
@@ -93,7 +94,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -157,12 +157,30 @@ type DataTableProps<TData extends DataTableRow> = {
   searchFields?: { key: string; label: string }[];
   filters?: FilterConfig[];
   onFilterChange?: (key: string, value: string) => void;
-  resetFilterKey?: string; // Key to reset a specific filter when it changes
-  tableId?: string; // Unique identifier for localStorage persistence
+  resetFilterKey?: string;
+  tableId?: string;
   canBulkEdit?: boolean;
   canBulkDelete?: boolean;
   canRowEdit?: boolean;
   canRowDelete?: boolean;
+  /** Enable server-side pagination. When true, pass rowCount/pageCount and handle onPaginationChange */
+  manualPagination?: boolean;
+  /** Total number of rows (for server-side pagination) */
+  rowCount?: number;
+  /** Total number of pages (for server-side pagination) */
+  pageCount?: number;
+  /** Called when page or pageSize changes (for server-side pagination) */
+  onPaginationChange?: (pagination: PaginationState) => void;
+  /** Enable server-side sorting. When true, client-side sort is disabled */
+  manualSorting?: boolean;
+  /** Called when sort column/direction changes (for server-side sorting) */
+  onSortingChange?: (sorting: SortingState) => void;
+  /** Enable server-side filtering. When true, client-side filter is disabled */
+  manualFiltering?: boolean;
+  /** Called when search text changes (for server-side searching) */
+  onSearchChange?: (search: string) => void;
+  /** Show loading skeleton */
+  isLoading?: boolean;
 };
 
 export default function DataTable<TData extends DataTableRow>({
@@ -186,6 +204,15 @@ export default function DataTable<TData extends DataTableRow>({
   canBulkDelete = true,
   canRowEdit = true,
   canRowDelete = true,
+  manualPagination = false,
+  rowCount,
+  pageCount,
+  onPaginationChange,
+  manualSorting = false,
+  onSortingChange: onSortingChangeProp,
+  manualFiltering = false,
+  onSearchChange,
+  isLoading = false,
 }: DataTableProps<TData>) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -193,9 +220,12 @@ export default function DataTable<TData extends DataTableRow>({
   const [sorting, setSorting] = useState<SortingState>(sortingColumns);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 10,
+    pageSize: 50,
   });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+
+  // Debounced search callback for server-side mode
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Get preferences from AuthProvider
   const { getPreference, updatePreference } = useAuth();
@@ -215,10 +245,9 @@ export default function DataTable<TData extends DataTableRow>({
   );
 
   const [search, setSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>(
-    {}
-  );
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const isMobile = useIsMobile();
+
   // Combine search and filters into a single global filter value to trigger re-filtering
   const globalFilterValue = JSON.stringify({ search, activeFilters });
 
@@ -264,13 +293,27 @@ export default function DataTable<TData extends DataTableRow>({
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    onSortingChange: setSorting,
+    onSortingChange: (updater) => {
+      const next = typeof updater === "function" ? updater(sorting) : updater;
+      setSorting(next);
+      onSortingChangeProp?.(next);
+    },
     enableSortingRemoval: false,
     getPaginationRowModel: getPaginationRowModel(),
-    onPaginationChange: setPagination,
+    onPaginationChange: (updater) => {
+      const next =
+        typeof updater === "function" ? updater(pagination) : updater;
+      setPagination(next);
+      onPaginationChange?.(next);
+    },
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     getFilteredRowModel: getFilteredRowModel(),
+    manualPagination,
+    manualSorting,
+    manualFiltering,
+    rowCount,
+    pageCount,
     globalFilterFn: (row) => {
       // Check search filter (OR across searchFields)
       if (search && searchFields?.length) {
@@ -287,17 +330,14 @@ export default function DataTable<TData extends DataTableRow>({
       // Check active filters (AND across all filters)
       for (const [key, value] of Object.entries(activeFilters)) {
         if (value && value !== "all") {
-          // Try to get value from column first, then fallback to original data
           let rowValue: any;
           try {
             rowValue = row.getValue(key);
           } catch {
-            // If getValue fails, try accessing original data directly
             const originalData = row.original as any;
             rowValue = originalData?.[key];
           }
 
-          // If still undefined, try accessing original data directly
           if (rowValue === undefined || rowValue === null) {
             const originalData = row.original as any;
             rowValue = originalData?.[key];
@@ -306,11 +346,8 @@ export default function DataTable<TData extends DataTableRow>({
           const rowValueStr = rowValue != null ? String(rowValue).trim() : "";
           const filterValueStr = String(value).trim();
 
-          // Skip if both are empty (null/undefined handling)
           if (!rowValueStr && !filterValueStr) continue;
 
-          // For department and other text fields, use case-insensitive comparison
-          // For IDs (UUIDs), use exact match
           const isIdField =
             key === "employeeId" || key === "id" || key.includes("Id");
           if (isIdField) {
@@ -337,13 +374,12 @@ export default function DataTable<TData extends DataTableRow>({
     setData(initialData);
   }, [initialData]);
 
-  // Load column visibility from AuthProvider preferences on mount and when preferences change
+  // Load column visibility from AuthProvider preferences on mount
   useEffect(() => {
     if (!storageKey) return;
     const saved = getPreference(storageKey);
     if (saved) {
       setColumnVisibility(saved);
-      // Reset initial mount flag if we loaded preferences
       isInitialMount.current = false;
     }
   }, [storageKey, getPreference]);
@@ -360,7 +396,6 @@ export default function DataTable<TData extends DataTableRow>({
     ) {
       setActiveFilters((prev) => {
         const newFilters = { ...prev };
-        // Clear employee filter when department changes
         const employeeFilter = filters?.find((f) => f.key === "employeeId");
         if (employeeFilter && prev[employeeFilter.key]) {
           delete newFilters[employeeFilter.key];
@@ -376,7 +411,7 @@ export default function DataTable<TData extends DataTableRow>({
       setHighlightedId(newItemId);
       const timeout = setTimeout(() => {
         setHighlightedId(null);
-      }, 10000); // 10 seconds
+      }, 10000);
 
       return () => clearTimeout(timeout);
     }
@@ -384,7 +419,6 @@ export default function DataTable<TData extends DataTableRow>({
 
   // Save column visibility to AuthProvider whenever it changes
   useEffect(() => {
-    // Skip saving on initial mount to avoid overwriting with loaded state
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
@@ -410,6 +444,13 @@ export default function DataTable<TData extends DataTableRow>({
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    if (onSearchChange) {
+      // Debounce server-side search by 400ms
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = setTimeout(() => {
+        onSearchChange(value);
+      }, 400);
+    }
   };
 
   const handleFilterChange = (key: string, value: string) => {
@@ -418,7 +459,6 @@ export default function DataTable<TData extends DataTableRow>({
         ...prev,
         [key]: value,
       };
-      // Call callback if provided
       onFilterChange?.(key, value);
       return newFilters;
     });
@@ -464,7 +504,6 @@ export default function DataTable<TData extends DataTableRow>({
             )}
             {/* Filter dropdowns */}
             {filters?.map((filter) => {
-              // Increase width for Department and Employee filters
               const isWideFilter =
                 filter.key === "department" || filter.key === "employeeId";
               const widthClass = isWideFilter ? "w-[220px]" : "w-[150px]";
@@ -500,7 +539,7 @@ export default function DataTable<TData extends DataTableRow>({
                         .rows.map((row) => row.original);
                       onBulkEdit(selectedItems);
                     }}
-                    className="!bg-primary/5 !border-primary/50 text-primary"
+                    className="bg-primary/5! border-primary/50! text-primary"
                   >
                     <PencilIcon className="-ms-1 opacity-60" size={16} />
                     Edit
@@ -514,7 +553,7 @@ export default function DataTable<TData extends DataTableRow>({
                     <AlertDialogTrigger asChild>
                       <Button
                         variant="outline"
-                        className="!bg-destructive/5 !border-destructive/50 text-destructive"
+                        className="bg-destructive/5! border-destructive/50! text-destructive"
                       >
                         <TrashIcon className="-ms-1 opacity-60" size={16} />{" "}
                         Delete
@@ -573,7 +612,7 @@ export default function DataTable<TData extends DataTableRow>({
                   ))}
               </DropdownMenuContent>
             </DropdownMenu>{" "}
-            {/* Add user button */}
+            {/* Add button */}
             {toggleAction && (
               <Button onClick={toggleAction}>
                 <PlusIcon className="-ms-1 opacity-60" size={16} /> {actionText}
@@ -652,7 +691,21 @@ export default function DataTable<TData extends DataTableRow>({
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows.length ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={tableColumns.length}
+                      className="h-32 text-center"
+                    >
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Loading data...
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : table.getRowModel().rows.length ? (
                   table.getRowModel().rows.map((row, index) => {
                     const isNew = row.original.id === highlightedId;
 
@@ -717,7 +770,7 @@ export default function DataTable<TData extends DataTableRow>({
                 <SelectValue placeholder="Select" />
               </SelectTrigger>
               <SelectContent>
-                {[5, 10, 20, 50].map((size) => (
+                {[10, 25, 50, 100].map((size) => (
                   <SelectItem key={size} value={size.toString()}>
                     {size}
                   </SelectItem>
@@ -747,7 +800,7 @@ export default function DataTable<TData extends DataTableRow>({
                       ? "default"
                       : "ghost"
                   }
-                  onClick={() => table.setPageIndex(page - 1)}
+                  onClick={() => table.setPageIndex((page as number) - 1)}
                 >
                   {page}
                 </Button>

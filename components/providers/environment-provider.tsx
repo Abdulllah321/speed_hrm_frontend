@@ -22,30 +22,51 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load saved environment from cookies first, then local storage as fallback
-    const savedCookie = Cookies.get("app-environment");
-    const savedLocal = typeof window !== "undefined" ? localStorage.getItem("app-environment") : null;
-    
-    const saved = savedCookie || savedLocal;
+    // Determine environment strictly from the URL first to avoid cookie crossover
+    let envFromUrl: EnvironmentType | null = null;
 
-    if (saved === "ERP") {
-      setEnvironmentState("ERP");
-      if (typeof document !== "undefined") {
-        document.documentElement.dataset.environment = "ERP";
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname;
+      const pathname = window.location.pathname;
+
+      // Check subdomain strictly
+      if (hostname.startsWith("erp.")) envFromUrl = "ERP";
+      else if (hostname.startsWith("master.")) envFromUrl = null; // Do not overwrite on master domain, let cookies decide
+      else if (hostname.startsWith("pos.")) envFromUrl = "POS";
+      else if (hostname.startsWith("admin.")) envFromUrl = "ADMIN";
+      else if (hostname.startsWith("hr.")) envFromUrl = "HR";
+
+      // If subdomain didn't give it, check pathname
+      if (!envFromUrl && !hostname.startsWith("master.")) {
+        if (pathname.startsWith("/erp") || pathname.startsWith("/finance")) envFromUrl = "ERP";
+        else if (pathname.startsWith("/pos")) envFromUrl = "POS";
+        else if (pathname.startsWith("/admin") || pathname.startsWith("/activity-logs")) envFromUrl = "ADMIN";
+        else if (pathname.startsWith("/hr") || pathname.startsWith("/dashboard")) envFromUrl = "HR";
       }
-    } else if (saved === "POS") {
-      setEnvironmentState("POS");
+    }
+
+    if (envFromUrl) {
+      setEnvironmentState(envFromUrl);
       if (typeof document !== "undefined") {
-        document.documentElement.dataset.environment = "POS";
+        document.documentElement.dataset.environment = envFromUrl;
       }
-    } else if (saved === "ADMIN") {
-      setEnvironmentState("ADMIN");
-      if (typeof document !== "undefined") {
-        document.documentElement.dataset.environment = "ADMIN";
-      }
+      // Set the cross-domain cookie explicitly so subdomains like 'master.' can read it later
+      setEnvironmentCookie(envFromUrl).catch(console.error);
     } else {
-      // Check current path for admin
-      if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin")) {
+      // Load saved environment from cookies
+      const saved = Cookies.get("app-environment");
+
+      if (saved === "ERP") {
+        setEnvironmentState("ERP");
+        if (typeof document !== "undefined") {
+          document.documentElement.dataset.environment = "ERP";
+        }
+      } else if (saved === "POS") {
+        setEnvironmentState("POS");
+        if (typeof document !== "undefined") {
+          document.documentElement.dataset.environment = "POS";
+        }
+      } else if (saved === "ADMIN") {
         setEnvironmentState("ADMIN");
         if (typeof document !== "undefined") {
           document.documentElement.dataset.environment = "ADMIN";
@@ -63,27 +84,35 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
 
   const setEnvironment = async (env: EnvironmentType, silent: boolean = false) => {
     try {
+      if (env === environment) {
+        return;
+      }
+
       setEnvironmentState(env);
-      
+
       // Update DOM
       if (typeof document !== "undefined") {
         document.documentElement.dataset.environment = env;
       }
-      
-      // Update LocalStorage (as backup)
-      if (typeof window !== "undefined") {
-        localStorage.setItem("app-environment", env);
-      }
 
       // Use Server Action to set cookie (handles cross-subdomain logic via server headers)
       await setEnvironmentCookie(env);
-      
+
       // Show feedback only if not silent
       if (!silent) {
-        toast.success(`Switched to ${env} Environment`, {
-          description: `You are now working in the ${env} environment.`,
+        toast.success(`Switching to ${env} Environment...`, {
           duration: 2000,
         });
+      }
+
+      // Only navigate when user explicitly switches environment (not silent route-sync).
+      // Silent calls come from dashboard-layout's route-sync effect on every page load —
+      // those must NOT navigate or they cause a second full reload mid-auth-initialization.
+      if (!silent && typeof window !== "undefined") {
+        const path = env === "ERP" ? "/erp" : env === "ADMIN" ? "/admin" : env === "POS" ? "/pos" : "/hr";
+        // Using window.location.href triggers a full page navigation allowing Next middleware
+        // (middleware.ts) to correctly physically assign the user to the target subdomain.
+        window.location.href = path;
       }
     } catch (error) {
       console.error("Failed to switch environment:", error);

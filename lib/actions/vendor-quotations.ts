@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export async function getVendorQuotations(rfqId?: string) {
     try {
         const response = await authFetch(`/vendor-quotation${rfqId ? `?rfqId=${rfqId}` : ""}`);
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Get vendor quotations error:", error);
@@ -17,7 +17,7 @@ export async function getVendorQuotations(rfqId?: string) {
 export async function getVendorQuotation(id: string) {
     try {
         const response = await authFetch(`/vendor-quotation/${id}`);
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Get vendor quotation error:", error);
@@ -31,7 +31,7 @@ export async function createVendorQuotation(data: any) {
             method: "POST",
             body: JSON.stringify(data),
         });
-        const result = await response.json();
+        const result = response.data;
         if (result.status) {
             revalidatePath("/erp/procurement/vendor-quotation");
             if (data.rfqId) {
@@ -48,7 +48,7 @@ export async function createVendorQuotation(data: any) {
 export async function compareQuotations(rfqId: string) {
     try {
         const response = await authFetch(`/vendor-quotation/compare/${rfqId}`);
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Compare quotations error:", error);
@@ -61,10 +61,10 @@ export async function submitVendorQuotation(id: string) {
         const response = await authFetch(`/vendor-quotation/${id}/submit`, {
             method: "POST",
         });
-        const result = await response.json();
+        const result = response.data;
         if (result.status) {
             revalidatePath("/erp/procurement/vendor-quotation");
-            revalidatePath(`/erp/procurement/vendor-quotation/${id}`);
+            revalidatePath(`/erp/procurement/vendor-quotation/list${id}`);
         }
         return result;
     } catch (error) {
@@ -78,7 +78,7 @@ export async function selectVendorQuotation(id: string) {
         const response = await authFetch(`/vendor-quotation/${id}/select`, {
             method: "POST",
         });
-        const result = await response.json();
+        const result = response.data;
         if (result.status) {
             revalidatePath("/erp/procurement/vendor-quotation");
             revalidatePath(`/erp/procurement/vendor-quotation/${id}`);

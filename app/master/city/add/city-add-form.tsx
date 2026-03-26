@@ -176,7 +176,7 @@ export function CityAddForm({ countries, defaultCountryId }: CityAddFormProps) {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-3">
-              <Label>Cities</Label>
+              <Label>Select countire</Label>
               {rows.map((row, index) => {
                 const stateOptions = getStateOptions(row.countryId);
                 const isLoadingStates = row.countryId ? loadingStates.get(row.countryId) || false : false;

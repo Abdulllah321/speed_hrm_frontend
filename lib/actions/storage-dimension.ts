@@ -23,7 +23,7 @@ export async function getStorageDimensions(): Promise<{ status: boolean; data: S
             return { status: false, data: [], message: "Failed to fetch storage dimensions" };
         }
 
-        const data = await res.json();
+        const data = res.data;
 
         // Handle array response directly if that's what the backend returns
         if (Array.isArray(data)) {
@@ -48,7 +48,7 @@ export async function createStorageDimension(data: { name: string }): Promise<{ 
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
 
         if (res.ok) {
             revalidatePath("/master/storage-dimension/list");
@@ -74,7 +74,7 @@ export async function updateStorageDimension(id: string, formData: FormData): Pr
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name }),
         });
-        const result = await res.json();
+        const result = res.data;
 
         if (res.ok) {
             revalidatePath("/master/storage-dimension/list");
@@ -92,7 +92,7 @@ export async function deleteStorageDimension(id: string): Promise<{ status: bool
         const res = await authFetch(`/storage-dimensions/${id}`, {
             method: "DELETE",
         });
-        const result = await res.json();
+        const result = res.data;
 
         if (res.ok) {
             revalidatePath("/master/storage-dimension/list");

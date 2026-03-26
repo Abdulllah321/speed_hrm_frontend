@@ -118,16 +118,8 @@ export const routePermissions: Record<string, string[]> = {
   "/hr/request-forwarding": ["hr.request-forwarding.view"],
   
   // Master - ERP
-<<<<<<< Updated upstream
-  "/master/category": ["erp.category.read"],
-  "/master/category/add": ["erp.category.create"],
-  "/master/category/list": ["erp.category.read"],
-  "/master/sub-category": ["erp.sub-category.read"],
-  "/master/sub-category/add": ["erp.sub-category.create"],
-  "/master/sub-category/list": ["erp.sub-category.read"],
-  "/master/unit-of-measurement/add": ["erp.uom.create"],
-  "/master/unit-of-measurement/list": ["erp.uom.read"],
-=======
+
+
   "/master/category": ["master.category.read"],
   "/master/category/add": ["master.category.create"],
   "/master/category/list": ["master.category.read"],
@@ -175,7 +167,7 @@ export const routePermissions: Record<string, string[]> = {
   "/master/old-season/add": ["master.old-season.create"],
   "/master/old-season/list": ["master.old-season.read"],
   "/master/pos-config": ["master.promo.read", "master.coupon.read", "master.alliance.read"],
->>>>>>> Stashed changes
+
 
   // Settings - public (all authenticated users)
   "/hr/settings/password": [],

@@ -2,21 +2,43 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { purchaseRequisitionApi, PurchaseRequisition } from '@/lib/api';
+import { getItems } from '@/lib/actions/items';
 
-export default function PurchaseRequisitionDetail({ params }: { params: { id: string } }) {
+export default function PurchaseRequisitionDetail() {
+    const params = useParams();
+    const id = params?.id as string;
     const [pr, setPr] = useState<PurchaseRequisition | null>(null);
+    const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
-    const id = params.id;
 
     useEffect(() => {
-        fetchPr();
+        if (!id) return;
+        
+        const loadData = async () => {
+            try {
+                setLoading(true);
+                const [prData, itemsResult] = await Promise.all([
+                    purchaseRequisitionApi.getById(id),
+                    getItems()
+                ]);
+                setPr(prData);
+                if (itemsResult.status) {
+                    setItems(itemsResult.data);
+                }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
     }, [id]);
 
     const fetchPr = async () => {
@@ -51,7 +73,7 @@ export default function PurchaseRequisitionDetail({ params }: { params: { id: st
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">{pr.prNumber}</h1>
-                    <p className="text-muted-foreground">Requested by {pr.requestedBy} on {new Date(pr.requestDate).toLocaleDateString()}</p>
+                    <p className="text-muted-foreground">{new Date(pr.requestDate).toLocaleDateString()}</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => router.back()}>Back</Button>
@@ -100,20 +122,22 @@ export default function PurchaseRequisitionDetail({ params }: { params: { id: st
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Item ID</TableHead>
-                                <TableHead>Description</TableHead>
+                                <TableHead>SKU</TableHead>
                                 <TableHead>Qty</TableHead>
-                                <TableHead>Needed By</TableHead>
+                                
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {pr.items.map((item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell className="font-medium">{item.itemId}</TableCell>
-                                    <TableCell>{item.description || '-'}</TableCell>
-                                    <TableCell>{item.requiredQty}</TableCell>
-                                    <TableCell>{item.neededByDate ? new Date(item.neededByDate).toLocaleDateString() : '-'}</TableCell>
-                                </TableRow>
-                            ))}
+                            {pr.items.map((item) => {
+                                const masterItem = items.find(i => i.itemId === item.itemId);
+                                return (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium">{item.itemId}</TableCell>
+                                        <TableCell>{masterItem?.sku || '-'}</TableCell>
+                                        <TableCell>{item.requiredQty}</TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </CardContent>

@@ -19,7 +19,7 @@ export async function getSaleTypes(): Promise<{ status: boolean; data: SaleType[
   try {
     const res = await authFetch(`/sale-types`, {
     });
-    return res.json();
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch sale types:", error);
     return { status: false, data: [], message: "Failed to fetch sale types" };
@@ -30,7 +30,7 @@ export async function getSaleTypeById(id: string): Promise<{ status: boolean; da
   try {
     const res = await authFetch(`/sale-types/${id}`, {
     });
-    return res.json();
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch sale type:", error);
     return { status: false, data: null };
@@ -52,7 +52,7 @@ export async function createSaleType(data: FormData | { name: string }): Promise
       method: "POST",
       body: JSON.stringify({ name }),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/sale-type/list");
     }
@@ -67,18 +67,18 @@ export async function createSaleTypes(names: string[]): Promise<{ status: boolea
     return { status: false, message: "At least one name is required" };
   }
   try {
-    const results = await Promise.all(names.map(name => 
+    const results = await Promise.all(names.map(name =>
       authFetch(`/sale-types`, {
         method: "POST",
         body: JSON.stringify({ name }),
-      }).then(r => r.json())
+      }).then(r => r.data)
     ));
-    
-    const allSuccess = results.every(r => r.id || r.status !== false); 
-    
+
+    const allSuccess = results.every(r => r.id || r.status !== false);
+
     if (allSuccess) {
-        revalidatePath("/master/sale-type/list");
-        return { status: true, message: "Sale types created successfully" };
+      revalidatePath("/master/sale-type/list");
+      return { status: true, message: "Sale types created successfully" };
     }
     return { status: false, message: "Some sale types failed to create" };
 
@@ -99,7 +99,7 @@ export async function updateSaleType(id: string, data: FormData | { name: string
       method: "PUT",
       body: JSON.stringify({ name }),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.id || result.status) {
       revalidatePath("/master/sale-type/list");
       return { status: true, message: "Sale type updated successfully" };
@@ -112,7 +112,7 @@ export async function updateSaleType(id: string, data: FormData | { name: string
 
 export async function updateSaleTypes(items: { id: string; name: string }[]): Promise<{ status: boolean; message: string }> {
   try {
-    await Promise.all(items.map(item => 
+    await Promise.all(items.map(item =>
       authFetch(`/sale-types/${item.id}`, {
         method: "PUT",
         body: JSON.stringify({ name: item.name }),
@@ -130,7 +130,7 @@ export async function deleteSaleType(id: string): Promise<{ status: boolean; mes
     const res = await authFetch(`/sale-types/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const data = res.data;
     if (data.id || data.status) {
       revalidatePath("/master/sale-type");
       return { status: true, message: "Sale type deleted successfully" };
@@ -143,7 +143,7 @@ export async function deleteSaleType(id: string): Promise<{ status: boolean; mes
 
 export async function deleteSaleTypes(ids: string[]): Promise<{ status: boolean; message: string }> {
   try {
-    await Promise.all(ids.map(id => 
+    await Promise.all(ids.map(id =>
       authFetch(`/sale-types/${id}`, {
         method: "DELETE",
       })

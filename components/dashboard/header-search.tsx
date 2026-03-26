@@ -15,9 +15,7 @@ import { menuData, masterMenuData, flattenMenu, filterMenuByPermissions } from "
 import { useAuth } from "@/components/providers/auth-provider";
 import { Search, Loader2, User, Package, Truck, FileText, Compass, Command as CommandIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import axios from "axios";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+import { authFetch } from "@/lib/auth";
 
 interface SearchResult {
   type: 'Employee' | 'Item' | 'Supplier' | 'RFQ';
@@ -62,15 +60,15 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_BASE}/search?q=${search}`, {
-          withCredentials: true,
+        const res = await authFetch(`/search`, {
+          params: { q: search },
           signal: controller.signal
         });
-        if (response.data.status) {
-          setDbResults(response.data.data);
+        if (res.ok && res.data?.status) {
+          setDbResults(res.data.data);
         }
       } catch (error: any) {
-        if (error.name !== 'CanceledError') {
+        if (error.name !== 'AbortError') {
           console.error("Search failed:", error);
         }
       } finally {
@@ -94,7 +92,28 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
     [hasAnyPermission, hasAllPermissions, isAdmin]
   );
 
-  const flatMenu = useMemo(() => flattenMenu(filteredMenuTree), [filteredMenuTree]);
+  const filteredMasterMenuTree = useMemo(
+    () =>
+      filterMenuByPermissions(masterMenuData, {
+        hasAnyPermission,
+        hasAllPermissions,
+        isAdmin,
+      }),
+    [hasAnyPermission, hasAllPermissions, isAdmin]
+  );
+
+  const flatMenu = useMemo(() => {
+    const main = flattenMenu(filteredMenuTree);
+    const master = flattenMenu(filteredMasterMenuTree);
+    const merged = [...main, ...master];
+    // De-duplicate by href — same route can appear in both menuData and masterMenuData
+    const seen = new Set<string>();
+    return merged.filter((item) => {
+      if (seen.has(item.href)) return false;
+      seen.add(item.href);
+      return true;
+    });
+  }, [filteredMenuTree, filteredMasterMenuTree]);
 
   const filteredNav = useMemo(() => {
     if (!search) return flatMenu.slice(0, 5);
@@ -173,9 +192,9 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
 
           {filteredNav.length > 0 && (
             <CommandGroup heading="Navigation">
-              {filteredNav.map((item) => (
+              {filteredNav.map((item, index) => (
                 <CommandItem
-                  key={item.href}
+                  key={`nav-${index}-${item.href}`}
                   value={`nav-${item.title}-${item.path}`}
                   onSelect={() => handleSelect(item.href)}
                 >

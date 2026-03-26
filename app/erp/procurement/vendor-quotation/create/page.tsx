@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import { getRfqs, getRfq } from '@/lib/actions/rfq';
 import { createVendorQuotation } from '@/lib/actions/vendor-quotations';
 import { getVendors } from '@/lib/actions/procurement';
 import { toast } from 'sonner';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface Supplier {
     id: string;
@@ -25,14 +26,13 @@ interface Supplier {
 interface FormValues {
     rfqId: string;
     vendorId: string;
+    expiryDate: string;
     notes: string;
     items: {
         itemId: string;
         description: string;
         quotedQty: number;
         unitPrice: number;
-        taxPercent: number;
-        discountPercent: number;
     }[];
 }
 
@@ -108,9 +108,7 @@ export default function CreateVendorQuotation() {
                 itemId: item.itemId,
                 description: item.description || '',
                 quotedQty: parseFloat(item.requiredQty),
-                unitPrice: 0,
-                taxPercent: 0,
-                discountPercent: 0
+                unitPrice: 0
             })));
         }
     };
@@ -121,7 +119,7 @@ export default function CreateVendorQuotation() {
             const result = await createVendorQuotation(data);
             if (result.status !== false && result.id) {
                 toast.success('Vendor quotation created successfully');
-                router.push(`/erp/procurement/vendor-quotation/${result.id}`);
+                router.push('/erp/procurement/vendor-quotation/list');
             } else {
                 toast.error(result.message || 'Failed to create quotation');
             }
@@ -184,12 +182,31 @@ export default function CreateVendorQuotation() {
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <Label htmlFor="notes">Notes</Label>
-                            <Textarea id="notes" {...register('notes')} placeholder="Optional notes" />
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="expiryDate">Expiry Date</Label>
+                                <Controller
+                                    control={control}
+                                    name="expiryDate"
+                                    rules={{ required: true }}
+                                    render={({ field }) => (
+                                        <DatePicker
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            placeholder="Pick expiry date"
+                                        />
+                                    )}
+                                />
+                                {errors.expiryDate && <span className="text-red-500 text-sm">Required</span>}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="notes">Notes</Label>
+                                <Textarea id="notes" {...register('notes')} placeholder="Optional notes" />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
+
 
                 {fields.length > 0 && (
                     <Card>
@@ -204,9 +221,7 @@ export default function CreateVendorQuotation() {
                                             <TableHead>Item ID</TableHead>
                                             <TableHead>Description</TableHead>
                                             <TableHead>Qty</TableHead>
-                                            <TableHead>Unit Price</TableHead>
-                                            <TableHead>Tax %</TableHead>
-                                            <TableHead>Disc %</TableHead>
+                                            <TableHead>Rate</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -223,12 +238,6 @@ export default function CreateVendorQuotation() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Input type="number" step="0.01" {...register(`items.${index}.unitPrice`, { valueAsNumber: true, required: true })} className="w-32" placeholder="0.00" />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Input type="number" step="0.01" {...register(`items.${index}.taxPercent`, { valueAsNumber: true })} className="w-20" placeholder="0" />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Input type="number" step="0.01" {...register(`items.${index}.discountPercent`, { valueAsNumber: true })} className="w-20" placeholder="0" />
                                                 </TableCell>
                                             </TableRow>
                                         ))}

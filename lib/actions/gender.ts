@@ -18,7 +18,7 @@ export interface Gender {
 export async function getGenders() {
     try {
         const response = await authFetch("/genders");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -27,7 +27,7 @@ export async function getGenders() {
 export async function getGenderById(id: string) {
     try {
         const response = await authFetch(`/genders/${id}`);
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -40,7 +40,7 @@ export async function createGenders(items: { name: string; status?: string }[]) 
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/gender/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -56,7 +56,7 @@ export async function updateGender(id: string, formData: FormData) {
             body: JSON.stringify({ name, status }),
         });
         revalidatePath("/master/gender/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -69,7 +69,7 @@ export async function updateGenders(items: { id: string; name: string; status?: 
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/gender/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -81,7 +81,7 @@ export async function deleteGender(id: string) {
             method: "DELETE",
         });
         revalidatePath("/master/gender/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -94,7 +94,7 @@ export async function deleteGenders(ids: string[]) {
             body: JSON.stringify({ ids }),
         });
         revalidatePath("/master/gender/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }

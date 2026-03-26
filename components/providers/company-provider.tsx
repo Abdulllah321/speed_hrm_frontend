@@ -42,7 +42,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     const [loading, setLoading] = useState(true);
     const [needsSetup, setNeedsSetup] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const { registerAppWait, completeAppWait, setLoadingProgress, setLoadingMessage } = useAuth();
+    // const { } = useAuth(); // Removed loading controls
 
     // Internal function to select company and update cookies via server action
     const selectCompanyInternal = useCallback(async (company: Company) => {
@@ -56,40 +56,57 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
     // Initialize company state from cookie or fetch
     const initializeCompany = useCallback(async () => {
         try {
+            if (process.env.NODE_ENV === 'development') {
+                console.log("[CompanyProvider] Starting initializeCompany");
+            }
             setLoading(true);
-            setLoadingMessage("Checking company settings...");
-            setLoadingProgress(60);
 
             // 1. Try to get current company from server action (reads cookies correctly)
+            if (process.env.NODE_ENV === 'development') {
+                console.log("[CompanyProvider] Calling getCurrentCompany");
+            }
             const savedCompany = await getCurrentCompany();
             if (savedCompany) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.log("[CompanyProvider] Saved company found:", savedCompany.name);
+                }
                 setCurrentCompany(savedCompany);
             }
 
-            setLoadingProgress(80);
-
             // 2. Check if companies exist via server action
+            if (process.env.NODE_ENV === 'development') {
+                console.log("[CompanyProvider] Calling checkCompaniesExist");
+            }
             const { hasCompanies } = await checkCompaniesExist();
 
             if (!hasCompanies) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.log("[CompanyProvider] No companies found");
+                }
                 setNeedsSetup(true);
                 setCompanies([]);
                 setCurrentCompany(null);
-                setLoadingProgress(100);
                 return;
             }
 
-            setLoadingMessage("Fetching companies...");
-            setLoadingProgress(90);
-
             // 3. Fetch companies list via server action
+            if (process.env.NODE_ENV === 'development') {
+                console.log("[CompanyProvider] Calling getCompanies");
+            }
             const { data: companiesList } = await getCompanies();
 
             if (companiesList && companiesList.length > 0) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[CompanyProvider] Found ${companiesList.length} companies`);
+                }
                 setCompanies(companiesList);
 
-                // If no current company is set, select the first one
-                if (!savedCompany) {
+                // If no current company is set, or if the saved company is no longer active/valid
+                const isValidCompany = savedCompany && companiesList.some(c => c.id === savedCompany.id);
+                if (!isValidCompany) {
+                    if (process.env.NODE_ENV === 'development') {
+                        console.log("[CompanyProvider] Selecting first available company");
+                    }
                     await selectCompanyInternal(companiesList[0]);
                 }
 
@@ -97,14 +114,15 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
             } else {
                 setNeedsSetup(true);
             }
-            setLoadingProgress(100);
         } catch (error) {
-            console.error("Failed to initialize company:", error);
+            console.error("[CompanyProvider Error] Failed to initialize company:", error);
         } finally {
+            if (process.env.NODE_ENV === 'development') {
+                console.log("[CompanyProvider] initializeCompany complete");
+            }
             setLoading(false);
-            completeAppWait("company");
         }
-    }, [completeAppWait, setLoadingProgress, setLoadingMessage, selectCompanyInternal]);
+    }, [selectCompanyInternal]);
 
     // Public function to select company
     const selectCompany = useCallback(async (company: Company) => {
@@ -118,6 +136,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         try {
             const { data } = await getCompanies();
             const list = data || [];
+
             setCompanies(list);
             setNeedsSetup(list.length === 0);
         } catch (error) {
@@ -163,9 +182,8 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
 
     // Mount and initialize
     useEffect(() => {
-        registerAppWait("company");
         setMounted(true);
-    }, [registerAppWait]);
+    }, []);
 
     useEffect(() => {
         if (mounted) {

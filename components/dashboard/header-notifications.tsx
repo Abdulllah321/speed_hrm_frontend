@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSocket } from "@/components/providers/socket-provider";
+import { authFetch } from "@/lib/auth";
 
 type NotificationStatus = "unread" | "read";
 
@@ -34,29 +36,59 @@ type NotificationItem = {
 };
 
 export function HeaderNotifications() {
-  const { user, isAuthenticated, fetchWithAuth } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { socket, isConnected } = useSocket();
   const router = useRouter();
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const playNotificationSound = useCallback(() => {
+    try {
+      const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const ctx = new AudioContextCtor();
+      const osc = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.1);
+
+      gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+
+      osc.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {
+      console.warn('AudioContext failed to play:', e);
+    }
+  }, []);
+
   const refresh = useCallback(async () => {
     if (!isAuthenticated) return;
-    const res = await fetchWithAuth(`/notifications?limit=10`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-    });
+    try {
+      const res = await authFetch(`/notifications?limit=10`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+      });
 
-    if (!res.ok) return;
-    const json = (await res.json()) as {
-      status: boolean;
-      data?: { items: NotificationItem[]; unreadCount: number };
-    };
-    if (!json?.status || !json.data) return;
-    setItems(json.data.items || []);
-    setUnreadCount(json.data.unreadCount || 0);
-  }, [fetchWithAuth, isAuthenticated]);
+      if (!res.ok) return;
+      const json = res.data as {
+        status: boolean;
+        data?: { items: NotificationItem[]; unreadCount: number };
+      };
+      if (!json?.status || !json.data) return;
+      setItems(json.data.items || []);
+      setUnreadCount(json.data.unreadCount || 0);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -66,11 +98,26 @@ export function HeaderNotifications() {
     }
 
     refresh();
-    const timer = setInterval(() => {
-      refresh();
-    }, 30000);
-    return () => clearInterval(timer);
   }, [isAuthenticated, refresh]);
+
+  useEffect(() => {
+    if (!socket || !isAuthenticated) return;
+
+    const handleNotification = (payload: any) => {
+      console.log("Notification received via WebSocket:", payload);
+      if (payload?.userId === user?.id && payload?.notification) {
+        setItems((prev) => [payload.notification, ...prev].slice(0, 50));
+        setUnreadCount((c) => c + 1);
+        playNotificationSound();
+      }
+    };
+
+    socket.on('notification', handleNotification);
+
+    return () => {
+      socket.off('notification', handleNotification);
+    };
+  }, [socket, isAuthenticated, user?.id, playNotificationSound]);
 
   const handleMarkRead = useCallback(
     async (id: string) => {
@@ -78,7 +125,7 @@ export function HeaderNotifications() {
       const current = items.find((n) => n.id === id);
       if (!current) return;
 
-      const res = await fetchWithAuth(`/notifications/${id}/read`, {
+      const res = await authFetch(`/notifications/${id}/read`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -92,12 +139,12 @@ export function HeaderNotifications() {
         setUnreadCount((c) => Math.max(0, c - 1));
       }
     },
-    [fetchWithAuth, isAuthenticated, items]
+    [isAuthenticated, items]
   );
 
   const handleMarkAllRead = useCallback(async () => {
     if (!isAuthenticated) return;
-    const res = await fetchWithAuth(`/notifications/read-all`, {
+    const res = await authFetch(`/notifications/read-all`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -107,7 +154,7 @@ export function HeaderNotifications() {
 
     setItems((prev) => prev.map((n) => ({ ...n, status: "read" })));
     setUnreadCount(0);
-  }, [fetchWithAuth, isAuthenticated]);
+  }, [isAuthenticated]);
 
   const getActionRoute = useCallback((n: NotificationItem) => {
     if (!n.actionType) return null;

@@ -22,7 +22,7 @@ export async function getCategories(parentId?: string): Promise<{ status: boolea
   try {
     const url = parentId ? `${BASE_URL}?parentId=${parentId}` : BASE_URL;
     const res = await authFetch(url);
-    const result = await res.json();
+    const result = res.data;
     return result;
   } catch (error) {
     return { status: false, data: [], message: "Failed to fetch categories" };
@@ -32,7 +32,7 @@ export async function getCategories(parentId?: string): Promise<{ status: boolea
 export async function getCategoryTree(): Promise<{ status: boolean; data: Category[]; message?: string }> {
   try {
     const res = await authFetch(`${BASE_URL}/tree`);
-    const result = await res.json();
+    const result = res.data;
     return result;
   } catch (error) {
     return { status: false, data: [], message: "Failed to fetch category tree" };
@@ -42,7 +42,7 @@ export async function getCategoryTree(): Promise<{ status: boolean; data: Catego
 export async function getCategory(id: string): Promise<{ status: boolean; data: Category | null; message?: string }> {
   try {
     const res = await authFetch(`${BASE_URL}/${id}`);
-    const result = await res.json();
+    const result = res.data;
     return result;
   } catch (error) {
     return { status: false, data: null, message: "Failed to fetch category" };
@@ -55,7 +55,7 @@ export async function createCategory(data: any): Promise<{ status: boolean; mess
       method: "POST",
       body: JSON.stringify(data),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/category");
       revalidatePath("/master/sub-category");
@@ -72,7 +72,7 @@ export async function updateCategory(id: string, data: any): Promise<{ status: b
       method: "PATCH",
       body: JSON.stringify(data),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/category");
       revalidatePath("/master/sub-category");
@@ -88,7 +88,7 @@ export async function deleteCategory(id: string): Promise<{ status: boolean; mes
     const res = await authFetch(`${BASE_URL}/${id}`, {
       method: "DELETE",
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/category");
       revalidatePath("/master/sub-category");

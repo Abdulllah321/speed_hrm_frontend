@@ -6,7 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getApiBaseUrl(): string {
-  // If explicitly configured in env, use that
+  const isServer = typeof window === "undefined";
+
+  // 1. Check for API_URL (Only on server)
+  if (isServer && process.env.API_URL) {
+    return process.env.API_URL;
+  }
+
+  // 2. Check for NEXT_PUBLIC_API_BASE_URL (Client and Server fallback)
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
@@ -51,8 +58,16 @@ export const getCookieDomain = (host: string) => {
   if (parts.length >= 2) {
     // If it's a simple host like 'mysite.com', we want '.mysite.com'
     // If it's 'app.mysite.com', we also want '.mysite.com'
-    return "." + parts.slice(-2).join(".");
+  return "." + parts.slice(-2).join(".");
   }
 
   return undefined;
 };
+
+export function getCookie(name: string): string {
+  if (typeof document === "undefined") return "";
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
+  return "";
+}

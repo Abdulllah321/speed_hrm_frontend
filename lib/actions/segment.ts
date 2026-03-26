@@ -18,7 +18,7 @@ export async function getSegments(): Promise<{ status: boolean; data: Segment[];
         const res = await authFetch("/master/erp/segment", {
             cache: "no-store",
         });
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to fetch segments:", error);
         return { status: false, data: [], message: "Failed to fetch segments" };
@@ -31,7 +31,7 @@ export async function createSegments(items: { name: string; status: string }[]) 
             method: "POST",
             body: JSON.stringify({ items }),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) {
             revalidatePath("/master/segment/list");
         }
@@ -51,7 +51,7 @@ export async function updateSegment(id: string, formData: FormData) {
             method: "PUT",
             body: JSON.stringify({ name, status }),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) {
             revalidatePath("/master/segment/list");
         }
@@ -67,7 +67,7 @@ export async function deleteSegment(id: string) {
         const res = await authFetch(`/master/erp/segment/${id}`, {
             method: "DELETE",
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) {
             revalidatePath("/master/segment/list");
         }
@@ -84,7 +84,7 @@ export async function bulkDeleteSegments(ids: string[]) {
             method: "DELETE",
             body: JSON.stringify({ ids }),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) {
             revalidatePath("/master/segment/list");
         }
@@ -101,7 +101,7 @@ export async function bulkUpdateSegments(items: { id: string; name: string; stat
             method: "PUT",
             body: JSON.stringify({ items }),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) {
             revalidatePath("/master/segment/list");
         }

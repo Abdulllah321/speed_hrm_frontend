@@ -1,105 +1,205 @@
 "use client";
 
-import Link from "next/link";
+import * as React from "react";
 import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  ShoppingCart, 
-  Package, 
-  Layers, 
-  Users, 
-  FileText, 
-  Settings, 
-  LogOut,
-  Archive,
-  Warehouse, // Added new icon
-  BarChart3, // Added new icon
-  Receipt // Added new icon
+import Link from "next/link";
+import Image from "next/image";
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarRail,
+    useSidebar,
+} from "@/components/ui/sidebar";
+import {
+    ShoppingCart,
+    Receipt,
+    Package,
+    Users,
+    Percent,
+    TrendingUp,
+    Settings,
+    LogOut,
+    Store,
+    Zap,
+    RefreshCw,
+    Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/providers/auth-provider";
 
-const mainNavItems = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { 
-        name: "POS / New Sale", 
-        href: "/pos", 
-        icon: ShoppingCart, 
-        active: true,
-        subItems: [
-            { name: "Return/Exchange", href: "/pos/return", active: true }, // Highlighted in screenshot
-            { name: "Request", href: "#" },
-            { name: "Report", href: "#" }
-        ]
+const posMenuGroups = [
+    {
+        label: "Sales Operations",
+        items: [
+            { title: "New Sale", icon: ShoppingCart, href: "/pos" },
+            { title: "Quick Sale", icon: Zap, href: "/pos/quick" },
+            { title: "Current Orders", icon: Receipt, href: "/pos/orders" },
+            { title: "Returns", icon: RefreshCw, href: "/pos/returns" },
+            { title: "Cash Drawer", icon: Wallet, href: "/pos/terminal/drawer" },
+        ],
     },
-    { name: "Products", href: "/products", icon: Package },
-    { name: "Categories", href: "/categories", icon: Layers },
-    { name: "Inventory", href: "/inventory", icon: Warehouse },
-    { name: "Customers", href: "/customers", icon: Users },
-    { name: "Reports", href: "/reports", icon: BarChart3 },
-    { name: "Receipts", href: "/receipts", icon: Receipt },
-    { name: "Settings", href: "/settings", icon: Settings },
+    {
+        label: "Inventory & Products",
+        items: [
+            { title: "Products", icon: Package, href: "/pos/products" },
+            { title: "Stock", icon: TrendingUp, href: "/pos/stock" },
+        ],
+    },
+    {
+        label: "Customers",
+        items: [
+            { title: "Search", icon: Users, href: "/pos/customers" },
+        ],
+    },
+    {
+        label: "Promotions",
+        items: [
+            { title: "Discounts", icon: Percent, href: "/pos/discounts" },
+        ],
+    },
 ];
 
 export function PosSidebar() {
-  const pathname = usePathname();
-  return (
-    <div className="flex flex-col h-full w-20 md:w-64 border-r bg-card text-card-foreground">
-      <div className="h-16 flex items-center justify-center md:justify-start md:px-6 border-b">
-        <div className="flex items-center gap-2 font-bold text-xl text-primary">
-            <div className="h-8 w-8 bg-primary text-primary-foreground rounded-lg flex items-center justify-center">
-                <ShoppingCart className="h-5 w-5" />
-            </div>
-            <span className="hidden md:inline">City Mart</span>
-        </div>
-      </div>
+    const pathname = usePathname();
+    const { user, logout } = useAuth();
+    const { state } = useSidebar();
 
-        <div className="flex-1 overflow-y-auto py-4">
-            <nav className="grid gap-1 px-2">
-                {mainNavItems.map((item, index) => (
-                    <div key={index}>
-                        <Link
-                            href={item.href}
-                            className={cn(
-                                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:text-primary",
-                                item.active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                            )}
-                        >
-                            <item.icon className="h-4 w-4" />
-                            {item.name}
-                            {item.subItems && (
-                                <span className="ml-auto text-xs">▼</span>
-                            )}
-                        </Link>
-                        {item.subItems && (
-                            <div className="ml-9 mt-1 grid gap-1 border-l pl-2">
-                                {item.subItems.map((sub, subIndex) => (
-                                    <Link
-                                        key={subIndex}
-                                        href={sub.href}
-                                        className={cn(
-                                            "block rounded-md px-3 py-1.5 text-xs font-medium transition-all hover:text-primary",
-                                           // Simple check for sub-item active state based on name specifically for this demo
-                                           sub.name === "Return/Exchange" && pathname?.includes("return") 
-                                                ? "bg-primary/10 text-primary" 
-                                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                        )}
-                                    >
-                                        {sub.name}
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
+    const terminalName = (user as any)?.terminal?.name || "Terminal";
+    const locationName = (user as any)?.terminal?.location?.name || "Store";
+
+    return (
+        <Sidebar collapsible="icon" className="border-0 overflow-hidden">
+            <SidebarRail />
+            <SidebarHeader className="border-b border-sidebar-border/50 bg-linear-to-r from-sidebar to-sidebar-accent/30 px-4 py-3 backdrop-blur-sm shadow-sm">
+                <div className="flex flex-col gap-3 group-data-[collapsible=icon]:gap-0">
+                    <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
+                        <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
+                            <Image
+                                src={"/image.png"}
+                                alt="Logo"
+                                width={30}
+                                height={30}
+                                className="object-contain"
+                            />
+                        </div>
+                        <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
+                            <span className="font-bold text-base leading-tight text-sidebar-foreground">
+                                Speed Pvt. Ltd
+                            </span>
+                            <span className="text-xs text-sidebar-foreground/60 font-medium">
+                                POS Terminal
+                            </span>
+                        </div>
                     </div>
-                ))}
-            </nav>
-        </div>
-      <div className="p-3 border-t">
-         <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-            <LogOut className="h-5 w-5 shrink-0" />
-            <span className="hidden md:inline">Logout</span>
-         </Button>
-      </div>
-    </div>
-  );
+                </div>
+            </SidebarHeader>
+
+            <SidebarContent className="px-2">
+                {/* Terminal Info Widget */}
+                <div className="group-data-[collapsible=icon]:hidden mt-2 p-3 bg-linear-to-br from-primary/10 via-primary/5 to-transparent rounded-xl border border-primary/20 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-2 opacity-10">
+                        <Store className="w-12 h-12 rotate-12" />
+                    </div>
+                    <div className="flex flex-col gap-1 relative z-10">
+                        <span className="font-bold text-xs tracking-wide leading-none text-primary uppercase">{terminalName}</span>
+                        <span className="text-[10px] text-muted-foreground font-medium">{locationName}</span>
+                    </div>
+                </div>
+
+                <div className="mt-4 space-y-4">
+                    {posMenuGroups.map((group) => (
+                        <div key={group.label} className="space-y-1">
+                            <div className="group-data-[collapsible=icon]:hidden px-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest px-4 py-2">
+                                {group.label}
+                            </div>
+                            <div className="space-y-1">
+                                {group.items.map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = pathname === item.href;
+                                    return (
+                                        <SidebarMenuItem key={item.title}>
+                                            <SidebarMenuButton
+                                                asChild
+                                                isActive={isActive}
+                                                className={cn(
+                                                    "group relative transition-all duration-200",
+                                                    "hover:bg-sidebar-accent/80 hover:shadow-sm",
+                                                    isActive && "bg-sidebar-accent shadow-md font-semibold",
+                                                )}
+                                            >
+                                                <Link href={item.href}>
+                                                    <Icon className={cn("h-4 w-4 transition-transform duration-200", isActive && "scale-110")} />
+                                                    <span>{item.title}</span>
+                                                    {isActive && (
+                                                        <div className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-l-full bg-primary group-data-[collapsible=icon]:hidden" />
+                                                    )}
+                                                </Link>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </SidebarContent>
+
+            <SidebarFooter className="border-t border-sidebar-border/50 px-4 py-3">
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild className="hover:bg-sidebar-accent/80 transition-colors">
+                            <Link href="/pos/settings">
+                                <Settings className="h-4 w-4" />
+                                <span>Terminal Settings</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton 
+                            onClick={logout}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors pointer-events-auto cursor-pointer"
+                        >
+                            <LogOut className="h-4 w-4" />
+                            <span>Close Terminal</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+
+                <div className="flex items-center gap-2 px-2 mt-2 group-data-[collapsible=icon]:justify-center">
+                    <div className="flex items-center gap-2 group-data-[collapsible=icon]:hidden transition-opacity duration-200">
+                        <div className="flex items-center justify-center size-8 rounded-lg overflow-hidden bg-transparent">
+                            <Image
+                                src="/logo.png"
+                                alt="Logo"
+                                width={32}
+                                height={32}
+                                className="object-contain"
+                            />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                            <span className="text-xs font-semibold text-sidebar-foreground truncate">
+                                Speed (Pvt.) Limited
+                            </span>
+                        </div>
+                    </div>
+                    <div className="group-data-[collapsible=icon]:block hidden">
+                        <div className="flex items-center justify-center size-8 rounded-lg overflow-hidden bg-transparent">
+                            <Image
+                                src="/logo.png"
+                                alt="Logo"
+                                width={32}
+                                height={32}
+                                className="object-contain"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </SidebarFooter>
+        </Sidebar>
+    );
 }

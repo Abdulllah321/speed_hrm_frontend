@@ -107,35 +107,27 @@ export function JournalVoucherList({
 
     return (
         <div className="space-y-6">
-            {/* Header with Page Title and Action Buttons */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-2xl font-bold tracking-tight">Journal Vouchers</h2>
-                    <p className="text-muted-foreground">View and manage journal vouchers</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    {permissions?.canCreate && (
-                        <Link href="/erp/finance/journal-voucher/create">
-                            <Button>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add Voucher
-                            </Button>
-                        </Link>
-                    )}
-                    <Button variant="outline">
-                        <Printer className="mr-2 h-4 w-4" />
-                        Print
-                    </Button>
-                    <Button variant="outline">
-                        <Download className="mr-2 h-4 w-4" />
-                        Export (xlsx)
-                    </Button>
-                </div>
-            </div>
-
             <Card>
-                <CardHeader className="border-b">
-                    <CardTitle>View Journal Voucher List</CardTitle>
+                <CardHeader className="border-b flex flex-row items-center justify-between">
+                    <CardTitle>Journal Vouchers</CardTitle>
+                    <div className="flex items-center gap-2">
+                        {permissions?.canCreate && (
+                            <Link href="/erp/finance/journal-voucher/create">
+                                <Button size="sm">
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add Voucher
+                                </Button>
+                            </Link>
+                        )}
+                        <Button variant="outline" size="sm">
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print
+                        </Button>
+                        <Button variant="outline" size="sm">
+                            <Download className="mr-2 h-4 w-4" />
+                            Export (xlsx)
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
                     {/* Filters Section */}

@@ -31,7 +31,6 @@ export default async function PurchaseRequisitionList() {
                             <TableRow>
                                 <TableHead>PR Number</TableHead>
                                 <TableHead>Date</TableHead>
-                                <TableHead>Requested By</TableHead>
                                 <TableHead>Department</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Actions</TableHead>
@@ -47,7 +46,6 @@ export default async function PurchaseRequisitionList() {
                                     <TableRow key={pr.id}>
                                         <TableCell className="font-medium">{pr.prNumber}</TableCell>
                                         <TableCell>{new Date(pr.requestDate).toLocaleDateString()}</TableCell>
-                                        <TableCell>{pr.requestedBy}</TableCell>
                                         <TableCell>{pr.department || '-'}</TableCell>
                                         <TableCell>
                                             <Badge variant={

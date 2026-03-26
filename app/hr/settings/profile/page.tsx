@@ -10,9 +10,10 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { authFetch } from "@/lib/auth";
 
 export default function ProfilePage() {
-    const { user, refreshUser, fetchWithAuth } = useAuth();
+    const { user, refreshUser } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         firstName: "",
@@ -37,13 +38,13 @@ export default function ProfilePage() {
         setLoading(true);
 
         try {
-            const res = await fetchWithAuth("/api/auth/update-profile", {
+            const res = await authFetch("/auth/update-profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
             });
 
-            const data = await res.json();
+            const { data } = res;
 
             if (data.status) {
                 toast.success("Profile updated successfully");

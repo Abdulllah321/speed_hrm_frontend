@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export async function getVendors() {
     try {
         const response = await authFetch("/finance/suppliers");
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Get vendors error:", error);
@@ -17,7 +17,7 @@ export async function getVendors() {
 export async function getVendor(id: string) {
     try {
         const response = await authFetch(`/finance/suppliers/${id}`);
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Get vendor error:", error);
@@ -50,10 +50,13 @@ export async function updateVendor(id: string, data: any) {
 
         const response = await authFetch(`/finance/suppliers/${id}`, {
             method: "PATCH",
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                ...payload,
+                chartOfAccountId: undefined, // ensure we don't send the old key
+            }),
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (result.status) {
             revalidatePath("/erp/procurement/vendors");
@@ -93,10 +96,13 @@ export async function createVendor(data: any) {
 
         const response = await authFetch("/finance/suppliers", {
             method: "POST",
-            body: JSON.stringify(payload),
+            body: JSON.stringify({
+                ...payload,
+                chartOfAccountId: undefined,
+            }),
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (result.status) {
             revalidatePath("/erp/procurement/vendors"); // Or list page

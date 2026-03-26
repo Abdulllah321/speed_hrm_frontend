@@ -114,7 +114,7 @@ function getSubdomain(host: string): string | null {
 // Get target subdomain for a given path
 function getTargetSubdomain(pathname: string): string | null {
   for (const [subdomain, routes] of Object.entries(SUBDOMAIN_ROUTES)) {
-    if (routes.some((route) => pathname.startsWith(route))) {
+    if (routes.some((route) => pathname === route || pathname.startsWith(`${route}/`))) {
       return subdomain;
     }
   }
@@ -129,7 +129,7 @@ function normalizePathForSubdomain(
   if (!subdomain) return pathname;
 
   const prefix = `/${subdomain}`;
-  if (pathname.startsWith(prefix)) {
+  if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
     const remaining = pathname.slice(prefix.length);
     return remaining || "/"; // Return "/" if path becomes empty
   }
@@ -185,6 +185,7 @@ export default function middleware(request: NextRequest): NextResponse {
       "eobi/",
       "social-security/",
       "tax-slabs/",
+      "tax-rate/",
       "provident-fund/",
       "bonus-types/",
       "allowance-head/",
@@ -237,6 +238,13 @@ export default function middleware(request: NextRequest): NextResponse {
     return new URL(path + request.nextUrl.search, `${protocol}://${hostname}`);
   };
 
+  // Handle OPTIONS / 400 error - redirect to /hr or /auth/login
+  if (request.method === "OPTIONS" && pathname === "/") {
+    const accessToken = request.cookies.get("accessToken")?.value;
+    const targetUrl = accessToken ? buildUrl("hr", "/") : buildUrl("auth", "/login");
+    return NextResponse.redirect(targetUrl);
+  }
+
   // Special handling for auth routes - redirect to auth subdomain
   if (pathname.startsWith("/auth") && currentSubdomain !== "auth") {
     // Check if user is already authenticated
@@ -287,7 +295,7 @@ export default function middleware(request: NextRequest): NextResponse {
     const accessToken = request.cookies.get("accessToken")?.value;
     const isAuthenticated = !!accessToken;
 
-    if (isAuthenticated) {
+    if (isAuthenticated && pathname !== "/pos-login") {
       // Check for callbackUrl in query parameters
       const callbackUrl = request.nextUrl.searchParams.get("callbackUrl");
       const callbackSubdomain = request.nextUrl.searchParams.get("subdomain");
@@ -336,28 +344,34 @@ export default function middleware(request: NextRequest): NextResponse {
 
   // IMPORTANT: Handle routes that start with subdomain prefixes but are on wrong subdomain
   // This MUST come BEFORE the rewrite logic for other subdomains
-  if (pathname.startsWith("/hr") && currentSubdomain !== "hr") {
+  if ((pathname === "/hr" || pathname.startsWith("/hr/")) && currentSubdomain !== "hr") {
     const hrPath = pathname.replace("/hr", "") || "/";
     const hrUrl = buildUrl("hr", hrPath);
     return NextResponse.redirect(hrUrl);
   }
 
-  if (pathname.startsWith("/master") && currentSubdomain !== "master") {
+  if ((pathname === "/master" || pathname.startsWith("/master/")) && currentSubdomain !== "master") {
     const masterPath = pathname.replace("/master", "") || "/";
     const masterUrl = buildUrl("master", masterPath);
     return NextResponse.redirect(masterUrl);
   }
 
-  if (pathname.startsWith("/admin") && currentSubdomain !== "admin") {
+  if ((pathname === "/admin" || pathname.startsWith("/admin/")) && currentSubdomain !== "admin") {
     const adminPath = pathname.replace("/admin", "") || "/";
     const adminUrl = buildUrl("admin", adminPath);
     return NextResponse.redirect(adminUrl);
   }
 
-  if (pathname.startsWith("/erp") && currentSubdomain !== "erp") {
+  if ((pathname === "/erp" || pathname.startsWith("/erp/")) && currentSubdomain !== "erp") {
     const erpPath = pathname.replace("/erp", "") || "/";
     const erpUrl = buildUrl("erp", erpPath);
     return NextResponse.redirect(erpUrl);
+  }
+
+  if ((pathname === "/pos" || pathname.startsWith("/pos/")) && currentSubdomain !== "pos") {
+    const posPath = pathname.replace("/pos", "") || "/";
+    const posUrl = buildUrl("pos", posPath);
+    return NextResponse.redirect(posUrl);
   }
 
   // Special handling for other subdomains (hr, admin, master)
@@ -379,6 +393,35 @@ export default function middleware(request: NextRequest): NextResponse {
 
     // If path already has subdomain prefix, just continue (don't redirect)
     // This allows URLs like hr.localtest.me/hr/payroll-setup/payroll/report to work
+  }
+
+  // Special handling for POS subdomain
+  if (currentSubdomain === 'pos') {
+    const posTerminalToken = request.cookies.get("posTerminalToken")?.value;
+    const accessToken = request.cookies.get("accessToken")?.value;
+
+    const hasTerminal = !!posTerminalToken;
+    const hasUser = !!accessToken;
+
+    if (!pathname.startsWith("/auth") && !pathname.startsWith("/_next") && !pathname.startsWith("/api")) {
+      if (!hasTerminal) {
+        // Terminal is not registered -> Redirect to Terminal Setup
+        const setupUrl = buildUrl("auth", "/pos-login");
+        setupUrl.searchParams.set("callbackUrl", pathname);
+        setupUrl.searchParams.set("subdomain", "pos");
+        return NextResponse.redirect(setupUrl);
+      } else if (!hasUser) {
+        // Terminal is registered, but no cashier logged in -> Redirect to Cashier Login
+        const cashierUrl = buildUrl("auth", "/pos/user-login");
+        cashierUrl.searchParams.set("callbackUrl", pathname);
+        cashierUrl.searchParams.set("subdomain", "pos");
+        return NextResponse.redirect(cashierUrl);
+      }
+
+      // If both tokens exist, explicitly allow access to POS dashboard routes
+      // Without this return, it falls through to the global isProtectedRoute check
+      return NextResponse.next();
+    }
   }
 
   // Determine target subdomain for this path
@@ -474,18 +517,21 @@ export default function middleware(request: NextRequest): NextResponse {
   img-src 'self' data: blob: http://localhost:* http://*.localtest.me:* https://localhost:* https://*.localtest.me:*;
   font-src 'self' data:;
 `;
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  const apiOrigin = apiBaseUrl ? new URL(apiBaseUrl).origin : '';
+
   const prodCSP = `
   default-src 'self';
   connect-src
     'self'
-    https://drivesafewarranty.co.uk
-    https://*.drivesafewarranty.co.uk;
+    ${apiOrigin}
+    https://${baseDomain}
+    https://*.${baseDomain};
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
-  img-src 'self' data: blob:;
+  img-src 'self' data: blob: https://${baseDomain} https://*.${baseDomain};
   font-src 'self' data:;
 `;
-
   // CSP: Allow API calls to localhost and localtest.me subdomains in development
   // ⭐ IMPORTANT: connect-src must come BEFORE default-src to override it
   const cspDirective = isDevelopment ? devCSP : prodCSP;

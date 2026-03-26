@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RequestForQuotation } from '@/lib/api';
 import { addVendorsToRfq, markRfqAsSent } from '@/lib/actions/rfq';
 import { toast } from 'sonner';
@@ -14,6 +16,7 @@ interface Supplier {
     name: string;
     email?: string;
     contactNo?: string;
+    type?: 'LOCAL' | 'INTERNATIONAL';
 }
 
 interface RfqDetailClientProps {
@@ -25,9 +28,22 @@ export function RfqDetailClient({ rfq, suppliers }: RfqDetailClientProps) {
     const [loading, setLoading] = useState(false);
     const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [search, setSearch] = useState('');
+    const [typeFilter, setTypeFilter] = useState<'all' | 'local' | 'import'>('all');
 
     const existingVendorIds = rfq.vendors.map(v => v.vendorId);
     const availableSuppliers = suppliers.filter(s => !existingVendorIds.includes(s.id));
+    const filteredSuppliers = availableSuppliers.filter((s) => {
+        const matchesSearch =
+            !search ||
+            s.name.toLowerCase().includes(search.toLowerCase()) ||
+            s.code.toLowerCase().includes(search.toLowerCase());
+        const matchesType =
+            typeFilter === 'all' ||
+            (typeFilter === 'local' && (s.type === 'LOCAL' || (s as any).type === 'local')) ||
+            (typeFilter === 'import' && (s.type === 'INTERNATIONAL' || (s as any).type === 'import'));
+        return matchesSearch && matchesType;
+    });
 
     const handleAddVendors = async () => {
         try {
@@ -77,11 +93,29 @@ export function RfqDetailClient({ rfq, suppliers }: RfqDetailClientProps) {
                     <DialogHeader>
                         <DialogTitle>Select Vendors</DialogTitle>
                     </DialogHeader>
+                    <div className="flex items-center gap-3 mb-3">
+                        <Input
+                            placeholder="Search vendor by name or code..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="flex-1"
+                        />
+                        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+                            <SelectTrigger className="w-[160px]">
+                                <SelectValue placeholder="Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Types</SelectItem>
+                                <SelectItem value="local">Local</SelectItem>
+                                <SelectItem value="import">Import</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                     <div className="max-h-96 overflow-y-auto space-y-2">
-                        {availableSuppliers.length === 0 ? (
+                        {filteredSuppliers.length === 0 ? (
                             <p className="text-muted-foreground">All suppliers have been added.</p>
                         ) : (
-                            availableSuppliers.map((supplier) => (
+                            filteredSuppliers.map((supplier) => (
                                 <div key={supplier.id} className="flex items-center space-x-2 p-2 hover:bg-muted rounded">
                                     <Checkbox
                                         id={supplier.id}

@@ -24,6 +24,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Autocomplete } from "@/components/ui/autocomplete";
+import { MultiSelect } from "@/components/ui/multi-select";
 
 interface VendorFormProps {
     initialData?: any;
@@ -60,7 +61,7 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
             pra: initialData?.praNo || "",
             ict: initialData?.ictNo || "",
             brand: initialData?.brand || "",
-            chartOfAccountId: initialData?.chartOfAccountId || "",
+            chartOfAccountIds: initialData?.chartOfAccounts ? initialData.chartOfAccounts.map((acc: any) => acc.id) : (initialData?.chartOfAccountId ? [initialData.chartOfAccountId] : []),
         },
     });
 
@@ -76,7 +77,7 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
             } else {
                 result = await createVendor(values);
             }
-            
+
             if (result.status) {
                 toast.success(result.message);
                 if (!id) {
@@ -98,16 +99,16 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
         <Card className="w-full">
             <CardHeader className="border-b flex flex-row items-center justify-between">
                 <CardTitle>
-                    {readOnly 
-                        ? (vendorType === "local" ? "View Local Supplier" : "View Import Supplier") 
-                        : id 
-                            ? (vendorType === "local" ? "Edit Local Supplier" : "Edit Import Supplier") 
+                    {readOnly
+                        ? (vendorType === "local" ? "View Local Supplier" : "View Import Supplier")
+                        : id
+                            ? (vendorType === "local" ? "Edit Local Supplier" : "Edit Import Supplier")
                             : (vendorType === "local" ? "Create Local Supplier" : "Create Import Supplier")
                     }
                 </CardTitle>
-                <Tabs 
-                    value={vendorType} 
-                    onValueChange={(val) => !readOnly && form.setValue("type", val as "local" | "import")} 
+                <Tabs
+                    value={vendorType}
+                    onValueChange={(val) => !readOnly && form.setValue("type", val as "local" | "import")}
                     className="w-[300px]"
                 >
                     <TabsList className="grid w-full grid-cols-2">
@@ -162,23 +163,23 @@ export function VendorForm({ initialData, id, readOnly = false }: VendorFormProp
                         <Label className="text-xs text-muted-foreground uppercase font-semibold">Chart of Account <span className="text-destructive">*</span></Label>
                         <Controller
                             control={form.control}
-                            name="chartOfAccountId"
+                            name="chartOfAccountIds"
                             render={({ field }) => (
-                                <Autocomplete
+                                <MultiSelect
                                     options={accounts.map((acc) => ({
                                         value: acc.id,
                                         label: `${acc.code} - ${acc.name}`,
                                     }))}
                                     value={field.value}
                                     onValueChange={field.onChange}
-                                    placeholder="Select Account"
-                                    searchPlaceholder="Search account..."
+                                    placeholder="Select Accounts"
+                                    searchPlaceholder="Search accounts..."
                                     disabled={readOnly}
                                 />
                             )}
                         />
-                        {form.formState.errors.chartOfAccountId && (
-                            <p className="text-xs text-destructive">{form.formState.errors.chartOfAccountId.message}</p>
+                        {form.formState.errors.chartOfAccountIds && (
+                            <p className="text-xs text-destructive">{form.formState.errors.chartOfAccountIds.message}</p>
                         )}
                     </div>
 

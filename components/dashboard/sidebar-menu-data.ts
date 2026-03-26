@@ -19,6 +19,7 @@ import {
   Package,
   ShoppingCart,
   TrendingUp,
+  Monitor,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -28,7 +29,7 @@ export type MenuItem = {
   children?: MenuItem[];
   permissions?: string[];
   requireAllPermissions?: boolean;
-  environment?: "HR" | "ERP" | "BOTH" | "ADMIN";
+  environment?: "HR" | "ERP" | "BOTH" | "ADMIN" | "POS";
 };
 
 export const masterMenuData: MenuItem[] = [
@@ -105,18 +106,17 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-<<<<<<< Updated upstream
-=======
     title: "HS Code",
     environment: "ERP",
     permissions: ["master.hs-code.read", "master.hs-code.create"],
+   
     children: [
       { title: "Add", href: "/master/hs-code/add" },
       { title: "View", href: "/master/hs-code/list" },
     ],
   },
   {
->>>>>>> Stashed changes
+
     title: "Season",
     environment: "ERP",
     permissions: ["master.season.read", "master.season.create"],
@@ -126,18 +126,17 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-<<<<<<< Updated upstream
-=======
+
     title: "Old Season",
     environment: "ERP",
     permissions: ["master.old-season.read", "master.old-season.create"],
-    children: [
+     children: [
       { title: "Add", href: "/master/old-season/add" },
       { title: "View", href: "/master/old-season/list" },
     ],
   },
   {
->>>>>>> Stashed changes
+
     title: "Channel Class",
     environment: "ERP",
     permissions: ["master.channel-class.read", "master.channel-class.create"],
@@ -157,7 +156,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Department",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.department.read", "master.department.create"],
     children: [
       { title: "Add", href: "/master/department/add" },
@@ -166,7 +165,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Sub Department",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.sub-department.read", "master.sub-department.create"],
     children: [
       { title: "Add", href: "/master/sub-department/add" },
@@ -238,7 +237,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "City",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.city.read", "master.city.create"],
     children: [
       { title: "Add", href: "/master/city/add" },
@@ -247,16 +246,24 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Location",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.location.read", "master.location.create"],
     children: [
       { title: "Add", href: "/master/location/add" },
       { title: "View", href: "/master/location/list" },
     ],
   },
+  // {
+  //   title: "POS Config",
+  //   environment: "HR",
+  //   permissions: ["master.location.read"],
+  //   children: [
+  //     { title: "Manage", href: "/master/pos-config" },
+  //   ],
+  // },
   {
     title: "Region",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.region.read", "master.region.create"],
     children: [
       { title: "Add", href: "/master/region/add" },
@@ -265,7 +272,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Contact",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.contact.read", "master.contact.create"],
     children: [
       { title: "Add", href: "/master/contact/add" },
@@ -395,7 +402,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Bank",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["master.bank.read", "master.bank.create"],
     children: [
       { title: "Add", href: "/master/banks/add" },
@@ -448,13 +455,22 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-<<<<<<< Updated upstream
+
     title: "Unit Of Measurment",
     environment: "ERP",
     permissions: ["master.unit-of-measurement.read", "master.unit-of-measurement.create"],
     children: [
       { title: "Add", href: "/master/unit-of-measurement/add" },
       { title: "View", href: "/master/unit-of-measurement/list" },
+    ],
+  },
+  {
+    title: "Tax Rate 1",
+    environment: "ERP",
+    permissions: ["master.tax-rate.read", "master.tax-rate.create"],
+    children: [
+      { title: "Add", href: "/master/tax-rate/add" },
+      { title: "View", href: "/master/tax-rate/list" },
     ],
   },
   {
@@ -511,14 +527,7 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/vendor-opening/list" },
     ],
   },
-  // {
-  //   title: "Rebate Nature",
-  //   children: [
-  //     { title: "Add", href: "/master/rebate-nature/add" },
-  //     { title: "View", href: "/master/rebate-nature/list" },
-  //   ],
-  // },
-=======
+  {
     title: "Tax Rate 1",
     environment: "ERP",
     permissions: ["master.tax-rate.read", "master.tax-rate.create"],
@@ -539,6 +548,7 @@ export const masterMenuData: MenuItem[] = [
 
 
 
+
   { title: "Manage Outlets", href: "/master/location/list", permissions: ["master.location.read"], environment: "POS" },
   { title: "Terminal List", href: "/master/pos/list", permissions: ["master.pos.read"], environment: "POS" },
   {
@@ -552,17 +562,27 @@ export const masterMenuData: MenuItem[] = [
     ]
   },
 
-
->>>>>>> Stashed changes
 ];
 
 export const menuData: MenuItem[] = [
   {
-    title: "Dashboard",
+    title: "HRM Dashboard",
     icon: LayoutDashboard,
     href: "/hr",
-    environment: "BOTH",
+    environment: "HR",
     permissions: ["hr.dashboard.view"],
+  },
+  {
+    title: "ERP Dashboard",
+    icon: LayoutDashboard,
+    href: "/erp",
+    environment: "ERP",
+  },
+  {
+    title: "POS Dashboard",
+    icon: LayoutDashboard,
+    href: "/pos",
+    environment: "POS",
   },
   {
     title: "Finance & Accounts",
@@ -628,8 +648,11 @@ export const menuData: MenuItem[] = [
       {
         title: "Warehouse WMS",
         children: [
+
           { title: "Dashboard", href: "/erp/inventory/warehouse" },
+          { title: "Warehouse", href: "/erp/inventory/warehouse/add" },
           { title: "Inventory Explorer", href: "/erp/inventory/warehouse/inventory" },
+
         ]
       },
       {
@@ -637,15 +660,15 @@ export const menuData: MenuItem[] = [
         children: [
           { title: "Create", href: "/erp/items/create" },
           { title: "List", href: "/erp/items/list" },
-          { title: "Categories", href: "/erp/inventory/categories" },
+          // { title: "Categories", href: "/erp/inventory/categories" },
         ]
       },
       {
         title: "Transactions",
         children: [
-          { title: "Stock Received", href: "/erp/inventory/stock-received" },
-          { title: "Delivery Note", href: "/erp/inventory/delivery-note" },
-          { title: "Stock Transfer", href: "/erp/inventory/stock-transfer" },
+          { title: "Stock Received", href: "/erp/inventory/transactions/stock-received" },
+          { title: "Delivery Note", href: "/erp/inventory/transactions/delivery-note" },
+          { title: "Stock Transfer", href: "/erp/inventory/transactions/stock-transfer" },
         ]
       }
     ],
@@ -658,7 +681,14 @@ export const menuData: MenuItem[] = [
     children: [
       { title: "Vendors", href: "/erp/procurement/vendors" },
       { title: "Purchase Requisition", href: "/erp/procurement/purchase-requisition" },
+      { title: "RFQ", href: "/erp/procurement/rfq" },
+      { title: "Vendor Quotation", href: "/erp/procurement/vendor-quotation/create" },
+      { title: "Vendor Quotation list", href: "/erp/procurement/vendor-quotation/list" },
       { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
+      { title: "Goods Receipt Note", href: "/erp/procurement/grn" },
+      { title: "Landed Cost", href: "/erp/procurement/landed-cost" },
+      { title: "Landed Cost Setup", href: "/erp/procurement/landed-cost/setup" },
+      { title: "Landed Cost Report", href: "/erp/procurement/landed-cost/report" },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
     ],
   },
@@ -979,11 +1009,42 @@ export const menuData: MenuItem[] = [
   {
     title: "Profile Settings",
     icon: Settings,
-    environment: "BOTH",
+    environment: "HR",
     children: [
       { title: "Change Password", href: "/hr/settings/password" },
       { title: "Edit Profile", href: "/hr/settings/profile" },
     ],
+  },
+  {
+    title: "Sales Operations",
+    icon: ShoppingCart,
+    environment: "POS",
+    permissions: ["pos.sales.read", "pos.sales.create", "master.pos.read", "pos.sales.history.view"],
+    children: [
+      { title: "New Sale", href: "/pos/new-sale", permissions: ["pos.sales.create"] },
+      { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.history.view"] },
+      { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
+    ]
+  },
+  {
+    title: "Inventory",
+    icon: Package,
+    environment: "POS",
+    permissions: ["pos.inventory.read", "pos.inventory.create"],
+    children: [
+      { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
+      { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
+    ]
+  },
+  {
+    title: "Terminal",
+    icon: Monitor,
+    environment: "POS",
+    children: [
+      { title: "Shifts", href: "/pos/shifts", permissions: ["pos.terminal.shifts"] },
+      { title: "Settings", href: "/pos/terminal/settings", permissions: ["pos.terminal.settings"] },
+      { title: "Logout Terminal", href: "/auth/logout" },
+    ]
   },
 ];
 

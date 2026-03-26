@@ -13,7 +13,7 @@ export async function previewPayroll(data: {
             body: JSON.stringify(data),
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (!response.ok) {
             return {
@@ -48,7 +48,7 @@ export async function confirmPayroll(data: {
             body: JSON.stringify(data),
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (!response.ok) {
             return {
@@ -91,7 +91,7 @@ export async function getPayrollReport(filters: {
             method: "GET",
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (!response.ok) {
             return {
@@ -129,7 +129,7 @@ export async function getBankReport(filters: {
             method: "GET",
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (!response.ok) {
             return {
@@ -170,7 +170,7 @@ export async function getPayslips(filters: {
             method: "GET",
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (!response.ok) {
             return {
@@ -198,7 +198,7 @@ export async function getPayslipDetail(detailId: string) {
             method: "GET",
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (!response.ok) {
             return {

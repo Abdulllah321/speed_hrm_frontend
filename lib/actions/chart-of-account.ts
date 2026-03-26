@@ -18,20 +18,8 @@ export interface ChartOfAccount {
 }
 export async function getChartOfAccounts(): Promise<{ status: boolean; data: ChartOfAccount[]; message?: string }> {
   try {
-    const res = await authFetch(`/finance/chart-of-accounts`, {
-    });
-    // Assuming backend returns standard format. If it returns array directly, wrap it.
-    // Based on Controller implementation: return this.chartOfAccountService.findAll();
-    // The service returns the array directly. 
-    // Wait, the backend controller returns the result of service.findAll() which is Promise<ChartOfAccount[]>.
-    // However, the frontend expects { status: boolean; data: any; message?: string }.
-    // I should probably check how the backend response interceptor works or wrap the response in the backend.
-    // But looking at department.ts, it expects `res.json()` to return `{ status: boolean; data: Department[] }`.
-    // Let me check `d:\projects\speed-limit\nestjs_backend\src\main.ts` or interceptors to see if there is global response transformation.
-    // For now, I will assume the backend returns the array directly and I might need to adjust the frontend or backend.
-    // Actually, usually in this project (based on previous interactions if any, or standard practices in this repo if I could see them), 
-    // let's check if there is a global interceptor.
-    const data = await res.json();
+    const res = await authFetch(`/finance/chart-of-accounts`, {});
+    const data = res.data;
     if (Array.isArray(data)) {
          return { status: true, data };
     }
@@ -43,9 +31,8 @@ export async function getChartOfAccounts(): Promise<{ status: boolean; data: Cha
 }
 export async function getChartOfAccountsTree(): Promise<{ status: boolean; data: ChartOfAccount[]; message?: string }> {
     try {
-      const res = await authFetch(`/finance/chart-of-accounts/tree`, {
-      });
-      const data = await res.json();
+    const res = await authFetch(`/finance/chart-of-accounts/tree`, {});
+    const data = res.data;
       if (Array.isArray(data)) {
         return { status: true, data };
       }
@@ -61,7 +48,7 @@ export async function createChartOfAccount(data: any): Promise<{ status: boolean
       method: "POST",
       body: JSON.stringify(data),
     });
-    const result = await res.json();
+    const result = res.data;
     // If backend returns the object directly
     if (result.id) {
         revalidatePath("/finance/chart-of-accounts");
@@ -81,7 +68,7 @@ export async function updateChartOfAccount(id: string, data: any): Promise<{ sta
         method: "PATCH",
         body: JSON.stringify(data),
       });
-      const result = await res.json();
+      const result = res.data;
       if (result.id) {
           revalidatePath("/finance/chart-of-accounts");
           return { status: true, message: "Account updated successfully", data: result };
@@ -101,10 +88,10 @@ export async function deleteChartOfAccount(id: string): Promise<{ status: boolea
     });
     // Check for 204 or 200
     if (res.ok) {
-         revalidatePath("/finance/chart-of-accounts");
-         return { status: true, message: "Account deleted successfully" };
+      revalidatePath("/finance/chart-of-accounts");
+      return { status: true, message: "Account deleted successfully" };
     }
-    const result = await res.json();
+    const result = res.data;
     return result;
   } catch (error) {
     return { status: false, message: "Failed to delete chart of account" };

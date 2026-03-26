@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export async function getRfqs(status?: string) {
     try {
         const response = await authFetch(`/rfq${status ? `?status=${status}` : ""}`);
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Get RFQs error:", error);
@@ -17,7 +17,7 @@ export async function getRfqs(status?: string) {
 export async function getRfq(id: string) {
     try {
         const response = await authFetch(`/rfq/${id}`);
-        const result = await response.json();
+        const result = response.data;
         return result;
     } catch (error) {
         console.error("Get RFQ error:", error);
@@ -31,7 +31,7 @@ export async function createRfq(data: any) {
             method: "POST",
             body: JSON.stringify(data),
         });
-        const result = await response.json();
+        const result = response.data;
         if (result.status) {
             revalidatePath("/erp/procurement/rfq");
         }
@@ -47,7 +47,7 @@ export async function markRfqAsSent(id: string) {
         const response = await authFetch(`/rfq/${id}/send`, {
             method: "POST",
         });
-        const result = await response.json();
+        const result = response.data;
         if (result.status) {
             revalidatePath("/erp/procurement/rfq");
             revalidatePath(`/erp/procurement/rfq/${id}`);
@@ -65,7 +65,7 @@ export async function addVendorsToRfq(id: string, vendorIds: string[]) {
             method: "POST",
             body: JSON.stringify({ vendorIds }),
         });
-        const result = await response.json();
+        const result = response.data;
         if (result.status !== false) {
             revalidatePath("/erp/procurement/rfq");
             revalidatePath(`/erp/procurement/rfq/${id}`);
