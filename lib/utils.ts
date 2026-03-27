@@ -71,3 +71,13 @@ export function getCookie(name: string): string {
   if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
   return "";
 }
+
+/**
+ * Format a number as Pakistani Rupees.
+ * Usage: `Rs. {fmtCurrency(amount)}`
+ */
+export function fmtCurrency(val: number | string | null | undefined): string {
+  const num = typeof val === 'string' ? parseFloat(val) : (val ?? 0);
+  if (isNaN(num)) return '0';
+  return num.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}

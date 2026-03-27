@@ -233,3 +233,12 @@ body {
     opacity: 1;
   }
 }
+
+@keyframes marquee-loop {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(var(--marquee-shift, -100px)); }
+}
+
+@theme inline {
+  --animate-marquee-loop: marquee-loop var(--marquee-duration, 3s) linear infinite;
+}

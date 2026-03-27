@@ -78,7 +78,7 @@ export default function PurchaseOrderList() {
                                         <TableCell className="font-medium">{order.poNumber}</TableCell>
                                         <TableCell>{order.vendor?.name}</TableCell>
                                         <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
-                                        <TableCell className="font-semibold">${parseFloat(order.totalAmount).toFixed(2)}</TableCell>
+                                        <TableCell className="font-semibold">Rs. {fmtCurrency(order.totalAmount)}</TableCell>
                                         <TableCell>
                                             <Badge variant={
                                                 order.status === 'OPEN' ? 'default' :

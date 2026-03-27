@@ -847,12 +847,43 @@ export const transferRequestApi = {
 };
 
 export const inventoryApi = {
-  search: (query: string, warehouseId?: string) => {
+  search: (
+    query: string,
+    warehouseId?: string,
+    locationId?: string,
+    filters?: {
+      brandIds?: string[];
+      categoryIds?: string[];
+      silhouetteIds?: string[];
+      genderIds?: string[];
+    }
+  ) => {
     const params = new URLSearchParams({ q: query });
     if (warehouseId) params.append('warehouseId', warehouseId);
+    if (locationId) params.append('locationId', locationId);
+    if (filters?.brandIds?.length) params.append('brandIds', filters.brandIds.join(','));
+    if (filters?.categoryIds?.length) params.append('categoryIds', filters.categoryIds.join(','));
+    if (filters?.silhouetteIds?.length) params.append('silhouetteIds', filters.silhouetteIds.join(','));
+    if (filters?.genderIds?.length) params.append('genderIds', filters.genderIds.join(','));
     return fetchApi<{ status: boolean; data: any[] }>(`/inventory/search?${params.toString()}`);
   },
   getDetails: (itemId: string) => fetchApi<{ status: boolean; data: any[] }>(`/inventory/details/${itemId}`),
+};
+
+export const brandApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/brands'),
+};
+
+export const categoryApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/master/erp/category'),
+};
+
+export const silhouetteApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/silhouettes'),
+};
+
+export const genderApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/genders'),
 };
 
 export const stockOperationApi = {

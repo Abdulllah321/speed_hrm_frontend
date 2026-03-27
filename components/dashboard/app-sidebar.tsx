@@ -77,15 +77,15 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
 
   if (item.children) {
     return (
-      <Collapsible className="group/submenu">
+      <Collapsible className="group/submenu w-full">
         <CollapsibleTrigger asChild>
-          <SidebarMenuSubButton className="cursor-pointer">
-            <span>{item.title}</span>
-            <ChevronRight className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/submenu:rotate-90" />
+          <SidebarMenuSubButton className="cursor-pointer w-full flex items-center justify-between pr-2">
+            <span className="truncate">{item.title}</span>
+            <ChevronRight className="shrink-0 h-4 w-4 transition-transform group-data-[state=open]/submenu:rotate-90" />
           </SidebarMenuSubButton>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <SidebarMenuSub>
+          <SidebarMenuSub className="mx-1.5 px-1">
             {item.children.map((child) => (
               <SidebarMenuSubItem key={child.title}>
                 <SubMenuItem item={child} pathname={pathname} />
@@ -211,7 +211,7 @@ function MenuItemComponent({
             </SidebarMenuButton>
           </CollapsibleTrigger>
           <CollapsibleContent className="overflow-hidden">
-            <SidebarMenuSub className="mt-1">
+            <SidebarMenuSub className="mt-1 mx-2 px-1.5">
               {item.children.map((child) => (
                 <SidebarMenuSubItem key={child.title}>
                   <SubMenuItem item={child} pathname={pathname} />
@@ -307,13 +307,13 @@ function SubMenuItemInPopover({
           <button
             className={`
               w-full flex items-center justify-between rounded-sm px-2 py-1.5 text-sm
-              hover:bg-accent hover:text-accent-foreground
+              hover:bg-accent hover:text-accent-foreground whitespace-nowrap
               ${isActive ? "bg-accent text-accent-foreground font-medium" : ""}
             `}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           >
-            <span>{item.title}</span>
+            <span className="whitespace-nowrap">{item.title}</span>
             <ChevronRight className="h-4 w-4" />
           </button>
         </PopoverTrigger>
