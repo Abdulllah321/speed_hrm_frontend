@@ -19,6 +19,7 @@ export async function GET() {
       institutes,
       socialSecurity,
       allocations,
+      banks,
     ] = await Promise.all([
       authFetch("/departments", options)
         .then((r) => r.data)
@@ -62,6 +63,9 @@ export async function GET() {
       authFetch("/allocations", options)
         .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
+      authFetch("/banks", options)
+        .then((r) => r.data)
+        .catch(() => ({ status: false, data: [] })),
     ]);
 
     return NextResponse.json({
@@ -81,6 +85,7 @@ export async function GET() {
         institutes: institutes.data || [],
         socialSecurityInstitutions: socialSecurity.data || [],
         allocations: allocations.data || [],
+        banks: banks.data || [],
       },
     });
   } catch (error: any) {

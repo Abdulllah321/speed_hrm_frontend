@@ -30,6 +30,7 @@ export function LeaveEncashmentList({ initialData = [] }: LeaveEncashmentListPro
       approvalStatus: encashment.approvalStatus || "pending",
       status: encashment.status || "active",
       createdAt: encashment.createdAt || new Date().toISOString(),
+      createdById: encashment.createdById,
     }));
   };
 

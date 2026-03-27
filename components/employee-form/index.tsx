@@ -408,6 +408,7 @@ interface EmployeeFormProps {
   qualifications?: Qualification[];
   institutes?: Institute[];
   socialSecurityInstitutions?: any[];
+  banks?: any[];
   loadingData: boolean;
   onQualificationAdded?: (qualification: { id: string; name: string }) => void;
   onInstituteAdded?: (institute: { id: string; name: string }) => void;
@@ -435,6 +436,7 @@ export function EmployeeForm({
   qualifications = [],
   institutes = [],
   socialSecurityInstitutions = [],
+  banks = [],
   loadingData,
   onQualificationAdded,
   onInstituteAdded,
@@ -665,13 +667,18 @@ export function EmployeeForm({
     "Standard Chartered",
   ];
 
-  const banks = useMemo(() => {
-    const bankList = [...defaultBanks];
-    if (initialData?.bankName && !bankList.includes(initialData.bankName)) {
-      bankList.push(initialData.bankName);
+  const bankList = useMemo(() => {
+    // Use passed banks data if available, otherwise use defaults
+    let list = banks && banks.length > 0 
+      ? banks.map((b: any) => typeof b === 'string' ? b : b.name || b.bankName)
+      : defaultBanks;
+    
+    // Add existing bank from initialData if not already in list
+    if (initialData?.bankName && !list.includes(initialData.bankName)) {
+      list = [...list, initialData.bankName];
     }
-    return bankList;
-  }, [initialData?.bankName]);
+    return list;
+  }, [banks, initialData?.bankName]);
   const daysOff = ["Sunday", "Saturday-Sunday", "Friday", "Friday-Saturday"];
 
   // Profile pic and documents state
@@ -1691,7 +1698,7 @@ export function EmployeeForm({
                   <CardHeader>
                     <CardTitle>Bank Account Details</CardTitle>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 ">
                     <div className="space-y-2">
                       <Label>Bank Name</Label>
                       <Controller
@@ -1707,7 +1714,7 @@ export function EmployeeForm({
                               <SelectValue placeholder="Select" />
                             </SelectTrigger>
                             <SelectContent>
-                              {banks.map((b) => (
+                              {bankList.map((b) => (
                                 <SelectItem key={b} value={b}>
                                   {b}
                                 </SelectItem>

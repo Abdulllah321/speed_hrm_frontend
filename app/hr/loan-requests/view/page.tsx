@@ -161,6 +161,7 @@ export default async function ViewLoanRequestPage() {
                 loanRequest.status === 'rejected' ? 'Rejected' : 'Pending',
         paidAmount: paymentProgress.paidAmount,
         remainingAmount: paymentProgress.remainingAmount,
+        createdById: loanRequest.createdById,
       };
     });
 

@@ -202,7 +202,7 @@ function RowActions({ row }: RowActionsProps) {
           )}
           {canAddSubDept && (
             <DropdownMenuItem
-              onClick={() => router.push(`/dashboard/master/sub-department/add?departmentId=${dept.id}`)}
+              onClick={() => router.push(`/master/sub-department/add?departmentId=${dept.id}`)}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Sub-Department

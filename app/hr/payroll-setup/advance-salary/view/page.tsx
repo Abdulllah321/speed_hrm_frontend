@@ -48,6 +48,7 @@ export default async function ViewAdvanceSalaryPage() {
               advanceSalary.status === 'completed' ? 'Completed' :
               advanceSalary.status === 'cancelled' ? 'Cancelled' :
               advanceSalary.status === 'rejected' ? 'Rejected' : 'Pending',
+      createdById: advanceSalary.createdById,
     }));
 
     return <AdvanceSalaryList initialData={initialData} />;

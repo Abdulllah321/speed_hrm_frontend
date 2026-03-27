@@ -39,9 +39,11 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import DataTable, { HighlightText } from "@/components/common/data-table";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export default function CreateLeaveEncashmentPage() {
   const router = useRouter();
+  const { user, hasPermission } = useAuth();
   const [loading, setLoading] = useState(true);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
@@ -50,6 +52,10 @@ export default function CreateLeaveEncashmentPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Check if user has permission to create leave encashment
+  const hasCreatePermission = hasPermission("hr.leave-encashment.create");
+  const isRestrictedToOwnEmployee = !hasCreatePermission && user?.employee?.id;
 
   // Sample data structure for results
   interface LeaveEncashmentResult {
@@ -80,7 +86,7 @@ export default function CreateLeaveEncashmentPage() {
   const [filters, setFilters] = useState({
     departmentId: "",
     subDepartmentId: "",
-    employeeId: "",
+    employeeId: isRestrictedToOwnEmployee ? user?.employee?.id || "" : "",
     encashmentDate: "",
   });
 
@@ -595,12 +601,13 @@ export default function CreateLeaveEncashmentPage() {
                       ...filters,
                       departmentId: value || "",
                       subDepartmentId: "",
-                      employeeId: "",
+                      employeeId: isRestrictedToOwnEmployee ? user?.employee?.id || "" : "",
                     });
                   }}
                   placeholder="Select Department"
                   searchPlaceholder="Search department..."
                   emptyMessage="No departments found"
+                  disabled={isRestrictedToOwnEmployee}
                 />
               )}
             </div>
@@ -630,7 +637,7 @@ export default function CreateLeaveEncashmentPage() {
                     setFilters({
                       ...filters,
                       subDepartmentId: value || "",
-                      employeeId: "",
+                      employeeId: isRestrictedToOwnEmployee ? user?.employee?.id || "" : "",
                     });
                   }}
                   placeholder={
@@ -643,7 +650,7 @@ export default function CreateLeaveEncashmentPage() {
                   searchPlaceholder="Search sub department..."
                   emptyMessage="No sub departments found"
                   disabled={
-                    !filters.departmentId || subDepartments.length === 0
+                    isRestrictedToOwnEmployee || !filters.departmentId || subDepartments.length === 0
                   }
                 />
               )}
@@ -661,12 +668,17 @@ export default function CreateLeaveEncashmentPage() {
                   setFilters({ ...filters, employeeId: value || "" });
                 }}
                 placeholder={
-                  filters.employeeId
-                    ? `All selected (${filteredEmployees.length})`
-                    : "Select Employee"
+                  isRestrictedToOwnEmployee
+                    ? user?.employee?.id
+                      ? `${user.employee.employeeId || ""} -- ${user.firstName} ${user.lastName}`
+                      : "Loading..."
+                    : filters.employeeId
+                      ? `All selected (${filteredEmployees.length})`
+                      : "Select Employee"
                 }
                 searchPlaceholder="Search employees..."
                 emptyMessage="No employees found"
+                disabled={isRestrictedToOwnEmployee}
               />
             </div>
 

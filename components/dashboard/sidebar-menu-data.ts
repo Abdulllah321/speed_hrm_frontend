@@ -982,7 +982,7 @@ export const menuData: MenuItem[] = [
             permissions: ["hr.provident-fund.read"],
           },
           { title: "View Report", href: "/hr/payroll-setup/pf-employee/report", permissions: ["hr.provident-fund.read"] },
-          { title: "View Ledger", href: "/hr/payroll-setup/pf-employee/ledger", permissions: ["hr.provident-fund.read"] },
+          // { title: "View Ledger", href: "/hr/payroll-setup/pf-employee/ledger", permissions: ["hr.provident-fund.read"] },
         ],
       },
       {
