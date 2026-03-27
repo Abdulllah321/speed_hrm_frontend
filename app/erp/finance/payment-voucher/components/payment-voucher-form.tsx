@@ -400,15 +400,19 @@ export function PaymentVoucherForm({ accounts }: {
                                     <p className="font-medium">{selectedInvoice.invoiceNumber}</p>
                                 </div>
                                 <div>
-                                    <span className="text-muted-foreground">Total Amount:</span>
+                                    <span className="text-muted-foreground">Original Total:</span>
                                     <p className="font-medium">{Number(selectedInvoice.totalAmount).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground">Returns/Adjustments:</span>
+                                    <p className="font-medium text-amber-600">-{Number(selectedInvoice.returnAmount || 0).toLocaleString()}</p>
                                 </div>
                                 <div>
                                     <span className="text-muted-foreground">Paid Amount:</span>
                                     <p className="font-medium">{Number(selectedInvoice.paidAmount).toLocaleString()}</p>
                                 </div>
                                 <div>
-                                    <span className="text-muted-foreground">Remaining:</span>
+                                    <span className="text-muted-foreground">Net Outstanding:</span>
                                     <p className="font-medium text-red-600">{Number(selectedInvoice.remainingAmount).toLocaleString()}</p>
                                 </div>
                             </div>

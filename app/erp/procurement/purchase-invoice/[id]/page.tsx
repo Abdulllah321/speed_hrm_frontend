@@ -350,10 +350,15 @@ export default function PurchaseInvoiceDetailPage() {
                   <span>Paid Amount:</span>
                   <span>{invoice.paidAmount.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-red-600">
-                  <span>Remaining:</span>
-                  <span>{invoice.remainingAmount.toLocaleString()}</span>
-                </div>
+                 <div className="flex justify-between text-amber-600">
+                   <span>Returns / Adjustments:</span>
+                   <span>-{invoice.returnAmount.toLocaleString()}</span>
+                 </div>
+                 <hr />
+                 <div className="flex justify-between text-red-600 font-bold">
+                   <span>Net Outstanding:</span>
+                   <span>{invoice.remainingAmount.toLocaleString()}</span>
+                 </div>
               </div>
             </CardContent>
           </Card>

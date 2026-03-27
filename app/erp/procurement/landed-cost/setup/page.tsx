@@ -199,13 +199,14 @@ export default function LandedCostSetupPage() {
   const isLocalGrn = () => {
     if (!grnId) return false;
     const grn = grns.find(g => g.id === grnId);
-    return (grn as any)?.orderType === 'LOCAL' || !(grn as any)?.orderType;
+    // Only return true if explicitly set to LOCAL
+    return (grn as any)?.orderType === 'LOCAL';
   };
 
   const getFilteredGrns = () => {
     let filtered = grns;
     if (orderTypeFilter === 'LOCAL') {
-      filtered = grns.filter(g => (g as any).orderType === 'LOCAL' || !(g as any).orderType);
+      filtered = grns.filter(g => (g as any).orderType === 'LOCAL');
     } else if (orderTypeFilter === 'IMPORT') {
       filtered = grns.filter(g => (g as any).orderType === 'IMPORT');
     }
@@ -330,8 +331,11 @@ export default function LandedCostSetupPage() {
             let rates = { cd: 0, rd: 0, acd: 0, st: 0, ast: 0, it: 0, excise: 0 };
             let hsCodeId = '';
 
+            console.log('Item:', item.itemId, 'HS Code from master:', itemHsCode);
+
             if (itemHsCode) {
               const matchedHs = hsCodes.find(h => String(h.hsCode) === String(itemHsCode));
+              console.log('Matched HS Code:', matchedHs);
               if (matchedHs) {
                 hsCodeId = matchedHs.id;
                 rates = {
@@ -343,6 +347,7 @@ export default function LandedCostSetupPage() {
                   it: matchedHs.incomeTax,
                   excise: matchedHs.exciseCharges
                 };
+                console.log('HS Code rates:', rates);
               }
             }
 
@@ -715,7 +720,7 @@ export default function LandedCostSetupPage() {
                   <SelectContent>
                     {getFilteredGrns().map(g => (
                       <SelectItem key={g.id} value={g.id}>
-                        {g.grnNumber} - {(g as any).orderType || 'Local'}
+                        {g.grnNumber} - {(g as any).orderType || 'Unset'}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -992,13 +997,8 @@ export default function LandedCostSetupPage() {
                       </Select>
                     </TableCell>
                     <TableCell className="text-[10px]">{item.qty}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={item.unitFob}
-                        onChange={e => handleItemChange(idx, 'unitFob', Number(e.target.value))}
-                        className="h-7 w-16 text-[10px]"
-                      />
+                    <TableCell className="text-[10px]">
+                      {item.unitFob.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-[10px]">{item.invoiceForeign.toFixed(2)}</TableCell>
                     <TableCell className="text-[10px]">{isLocalGrn() ? '0.00' : item.freightForeign.toFixed(2)}</TableCell>

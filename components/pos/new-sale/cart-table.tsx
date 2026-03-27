@@ -29,6 +29,7 @@ export interface CartItem {
     taxAmount: number;
     total: number;
     inStock: boolean;
+    stockQty: number;
 }
 
 interface CartTableProps {
@@ -160,20 +161,20 @@ export function CartTable({
                                 <TableCell className="text-center">
                                     <div className="flex items-center justify-center gap-1">
                                         <CircleDot
-                                            className={`h-3 w-3 ${item.inStock
+                                            className={`h-3 w-3 ${item.stockQty > 0
                                                 ? "text-emerald-500"
                                                 : "text-red-500"
                                                 }`}
                                         />
                                         <span
-                                            className={`text-[11px] font-medium ${item.inStock
+                                            className={`text-[11px] font-medium ${item.stockQty > 0
                                                 ? "text-emerald-600 dark:text-emerald-400"
                                                 : "text-red-600 dark:text-red-400"
                                                 }`}
                                         >
-                                            {item.inStock
-                                                ? "In Stock"
-                                                : "Out"}
+                                            {item.stockQty > 0
+                                                ? `Qty: ${item.stockQty}`
+                                                : "Out of Stock"}
                                         </span>
                                     </div>
                                 </TableCell>

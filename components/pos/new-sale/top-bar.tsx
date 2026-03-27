@@ -77,11 +77,18 @@ export function NewSaleTopBar({
                                                     <span className="text-sm font-semibold">{product.description || 'Unknown Product'}</span>
                                                     <span className="text-xs text-muted-foreground">SKU: {product.sku || product.barCode || '-'}</span>
                                                 </div>
-                                                <div className="flex flex-col items-end">
+                                                <div className="flex flex-col items-end gap-1">
                                                     <span className="text-sm font-bold">${product.unitPrice?.toFixed(2) || '0.00'}</span>
-                                                    {product.inStock === false && (
-                                                        <span className="text-[10px] text-red-500 font-bold">Out of Stock</span>
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        {product.stockQty !== undefined && (
+                                                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${product.stockQty <= 0 ? 'bg-orange-100 text-orange-700' : 'bg-muted text-muted-foreground'}`}>
+                                                                Qty: {product.stockQty}
+                                                            </span>
+                                                        )}
+                                                        {product.inStock === false && (
+                                                            <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Out of Stock</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </li>
                                         ))}

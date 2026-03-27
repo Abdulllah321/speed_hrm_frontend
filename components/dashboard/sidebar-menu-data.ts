@@ -836,6 +836,7 @@ export const menuData: MenuItem[] = [
         ],
       },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
+      { title: "Purchase Returns", href: "/erp/procurement/purchase-returns" },
     ],
   },
   {
