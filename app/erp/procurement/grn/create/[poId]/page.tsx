@@ -7,8 +7,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { warehouseApi, grnApi, PurchaseOrder, Warehouse } from '@/lib/api';
+import { warehouseApi, PurchaseOrder, Warehouse } from '@/lib/api';
 import { getPurchaseOrder } from '@/lib/actions/purchase-order';
+import { createGrn } from '@/lib/actions/grn';
 import { toast } from 'sonner';
 import { ArrowLeft, Save, Warehouse as WarehouseIcon } from 'lucide-react';
 
@@ -80,7 +81,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
 
         setSubmitting(true);
         try {
-            await grnApi.create({
+            await createGrn({
                 purchaseOrderId: poId,
                 warehouseId: selectedWarehouse,
                 items: itemsToReceive,
@@ -102,9 +103,9 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
     return (
         <div className="p-6 space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                {/* <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-5 w-5" />
-                </Button>
+                </Button> */}
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Create GRN</h1>
                     <p className="text-muted-foreground">PO Number: {order.poNumber}</p>

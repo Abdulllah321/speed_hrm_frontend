@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Grn, grnApi, landedCostApi } from '@/lib/api';
+import { Grn, landedCostApi } from '@/lib/api';
+import { getGrns } from '@/lib/actions/grn';
 import { Label } from '@/components/ui/label';
 import { Save, ArrowLeft } from 'lucide-react';
 
@@ -51,7 +52,7 @@ export default function LocalLandedCostPage() {
 
   const fetchGrns = async () => {
     try {
-      const data = await grnApi.getAll();
+      const data = await getGrns();
       // Filter for LOCAL GRNs that need landed cost:
       // 1. Direct PO + Local
       // 2. PR-linked FRESH goods + Local

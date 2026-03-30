@@ -9,9 +9,10 @@
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
  import { Plus } from 'lucide-react';
  import { toast } from 'sonner';
- import { grnApi, ChartOfAccount, chartOfAccountApi, landedCostApi } from '@/lib/api';
+ import { ChartOfAccount, chartOfAccountApi, landedCostApi } from '@/lib/api';
  import { landedCostChargeTypeApi, LandedCostChargeType } from '@/lib/api';
  import type { Grn } from '@/lib/api';
+ import { getGrn } from '@/lib/actions/grn';
  
  export default function LandedCostPostPage() {
    const params = useParams();
@@ -35,7 +36,7 @@
      try {
        setLoading(true);
        const [grnData, coaData, ctRes] = await Promise.all([
-         grnApi.getById(grnId),
+         getGrn(grnId),
          chartOfAccountApi.getAll(),
          landedCostChargeTypeApi.getAll(),
        ]);

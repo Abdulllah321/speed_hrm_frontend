@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { grnApi, Grn } from '@/lib/api';
+import { Grn } from '@/lib/api';
+import { getGrn } from '@/lib/actions/grn';
 import { ArrowLeft } from 'lucide-react';
 
 export default function GrnDetailPage() {
@@ -20,7 +21,7 @@ export default function GrnDetailPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const data = await grnApi.getById(id);
+        const data = await getGrn(id);
         setGrn(data);
       } catch (error) {
         console.error('Failed to load GRN:', error);

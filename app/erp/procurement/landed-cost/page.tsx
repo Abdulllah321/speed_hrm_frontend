@@ -7,8 +7,9 @@
  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
  import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
  import { Badge } from '@/components/ui/badge';
-import { grnApi, Grn, landedCostApi, chartOfAccountApi, ChartOfAccount } from '@/lib/api';
+import { Grn, landedCostApi, chartOfAccountApi, ChartOfAccount } from '@/lib/api';
 import { landedCostChargeTypeApi, LandedCostChargeType } from '@/lib/api';
+import { getGrns } from '@/lib/actions/grn';
 import { Eye, Check, Plus } from 'lucide-react';
  import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -34,7 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
  
    const loadGrns = async () => {
      try {
-       const data = await grnApi.getAll();
+       const data = await getGrns();
        // Filter for GRNs that need landed cost:
        // 1. Direct PO (no PR/RFQ) - always needs landed cost
        // 2. PR-linked FRESH goods - needs landed cost

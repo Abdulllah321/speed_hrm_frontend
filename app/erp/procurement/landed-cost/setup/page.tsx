@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import {
   Grn,
-  grnApi,
   landedCostApi,
   hsCodeApi,
   HsCode,
@@ -20,6 +19,7 @@ import {
   itemApi
 } from '@/lib/api';
 import { getVendors } from '@/lib/actions/procurement';
+import { getGrns } from '@/lib/actions/grn';
 import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calculator, Save } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -157,7 +157,7 @@ export default function LandedCostSetupPage() {
   const fetchInitialData = async () => {
     try {
       const [grnsRes, vendorsRes, hsRes, ctRes] = await Promise.all([
-        grnApi.getAll(),
+        getGrns(),
         getVendors(),
         hsCodeApi.getAll(),
         landedCostApi.listChargeTypes()

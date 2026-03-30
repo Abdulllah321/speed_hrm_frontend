@@ -428,6 +428,8 @@ export interface PurchaseOrder {
   discountAmount: string;
   totalAmount: string;
   notes?: string;
+  orderType?: string;
+  goodsType?: string;
   items: PurchaseOrderItem[];
   vendor: {
     name: string;
