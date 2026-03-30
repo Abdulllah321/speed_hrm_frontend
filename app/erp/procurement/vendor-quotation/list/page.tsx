@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
 import { vendorQuotationApi, VendorQuotation } from '@/lib/api';
 import { toast } from 'sonner';
+import { formatCurrency } from '@/lib/utils';
 
 export default function AllVendorQuotationList() {
     const [quotations, setQuotations] = useState<VendorQuotation[]>([]);
@@ -115,7 +116,7 @@ export default function AllVendorQuotationList() {
                                                 <TableCell>{quotation.vendor?.name || '-'}</TableCell>
                                                 <TableCell>{new Date(quotation.quotationDate).toLocaleDateString()}</TableCell>
                                                 <TableCell>{quotation.items.length} item(s)</TableCell>
-                                                <TableCell className="font-semibold">Rs. {fmtCurrency(quotation.totalAmount)}</TableCell>
+                                                <TableCell className="font-semibold">Rs. {formatCurrency(quotation.totalAmount)}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={
                                                         quotation.status === 'SELECTED' ? 'default' :
