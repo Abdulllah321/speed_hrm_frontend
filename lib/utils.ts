@@ -15,7 +15,7 @@ export function getApiBaseUrl(): string {
 
   // Client-side in production: use relative /api — same origin, zero CORS
   if (process.env.NODE_ENV === "production") {
-    return "/api";
+    return "/";
   }
 
   // Client-side dev: localtest.me support
