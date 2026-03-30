@@ -83,12 +83,21 @@ export default function CreateLeaveEncashmentPage() {
     sNo: number;
   }
 
+  const loginId = user?.employeeId || user?.employee?.id;
+
   const [filters, setFilters] = useState({
     departmentId: "",
     subDepartmentId: "",
-    employeeId: isRestrictedToOwnEmployee ? user?.employee?.id || "" : "",
+    employeeId: loginId || "",
     encashmentDate: "",
   });
+
+  // Pre-fill employeeId when user becomes available
+  useEffect(() => {
+    if (loginId && !filters.employeeId) {
+      setFilters(prev => ({ ...prev, employeeId: loginId as string }));
+    }
+  }, [loginId, filters.employeeId]);
 
   // Fetch departments on mount
   useEffect(() => {
@@ -177,12 +186,31 @@ export default function CreateLeaveEncashmentPage() {
 
   // Employee options for Autocomplete
   const employeeOptions = useMemo(() => {
-    return filteredEmployees.map((emp) => ({
+    const options = filteredEmployees.map((emp) => ({
       value: emp.id,
       label: `${emp.employeeId} -- ${emp.employeeName}`,
       description: emp.departmentName || undefined,
     }));
-  }, [filteredEmployees]);
+
+    if (loginId && !options.some(o => o.value === loginId)) {
+      const empInFullList = employees.find(e => e.id === loginId);
+      if (empInFullList) {
+        options.unshift({
+          value: empInFullList.id,
+          label: `${empInFullList.employeeId} -- ${empInFullList.employeeName}`,
+          description: empInFullList.departmentName || undefined,
+        });
+      } else if (user?.employee) {
+        options.unshift({
+          value: loginId as string,
+          label: `${user.employee.employeeId} -- ${user.firstName || ""} ${user.lastName || ""}`,
+          description: user.employee.department?.name || undefined,
+        });
+      }
+    }
+
+    return options;
+  }, [filteredEmployees, employees, user, loginId]);
 
   const handleSearch = async () => {
     if (!filters.encashmentDate) {

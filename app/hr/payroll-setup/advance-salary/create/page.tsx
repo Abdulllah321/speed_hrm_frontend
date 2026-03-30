@@ -94,18 +94,20 @@ export default function CreateAdvanceSalaryPage() {
     mode: "onBlur",
   });
 
+  const loginId = user?.employeeId || user?.employee?.id;
+
   // Pre-select current user if available
   useEffect(() => {
-    if (user?.employeeId) {
+    if (loginId) {
       // Set employee ID immediately (even before employees are loaded)
       const currentEmployeeIds = form.getValues("employeeIds");
       if (currentEmployeeIds.length === 0) {
-        form.setValue("employeeIds", [user.employeeId]);
+        form.setValue("employeeIds", [loginId as string]);
       }
 
       // If employees are loaded, also set department and sub-department
       if (employees.length > 0) {
-        const currentUserEmployee = employees.find(emp => emp.id === user.employeeId);
+        const currentUserEmployee = employees.find(emp => emp.id === loginId);
         
         if (currentUserEmployee) {
           // Set department if not already set
@@ -120,7 +122,7 @@ export default function CreateAdvanceSalaryPage() {
         }
       }
     }
-  }, [user, employees, form]);
+  }, [user, loginId, employees, form]);
 
   const selectedDepartmentId = form.watch("departmentId");
   const selectedSubDepartmentId = form.watch("subDepartmentId");
@@ -203,11 +205,11 @@ export default function CreateAdvanceSalaryPage() {
 
   // Find current employee object for display
   const currentEmployee = useMemo(() => {
-    if (user?.employeeId && employees.length > 0) {
-      return employees.find(emp => emp.id === user.employeeId);
+    if (loginId && employees.length > 0) {
+      return employees.find(emp => emp.id === loginId);
     }
     return null;
-  }, [user, employees]);
+  }, [loginId, employees]);
 
   // Filter employees based on department and sub-department
   const filteredEmployees = useMemo(() => {
@@ -226,12 +228,31 @@ export default function CreateAdvanceSalaryPage() {
 
   // Employee options for MultiSelect
   const employeeOptions = useMemo(() => {
-    return filteredEmployees.map((emp) => ({
+    const options = filteredEmployees.map((emp) => ({
       value: emp.id,
       label: `${emp.employeeName} (${emp.employeeId})`,
       description: emp.departmentName || undefined,
     }));
-  }, [filteredEmployees]);
+
+    if (loginId && !options.some(o => o.value === loginId)) {
+      const empInFullList = employees.find(e => e.id === loginId);
+      if (empInFullList) {
+        options.unshift({
+          value: empInFullList.id,
+          label: `${empInFullList.employeeName} (${empInFullList.employeeId})`,
+          description: empInFullList.departmentName || undefined,
+        });
+      } else if (user?.employee) {
+        options.unshift({
+          value: loginId as string,
+          label: `${user.firstName || ""} ${user.lastName || ""} (${user.employee.employeeId})`,
+          description: user.employee.department?.name || undefined,
+        });
+      }
+    }
+
+    return options;
+  }, [filteredEmployees, employees, user, loginId]);
 
   const onSubmit = async (data: AdvanceSalaryFormData) => {
     try {
@@ -410,8 +431,8 @@ export default function CreateAdvanceSalaryPage() {
                       ? `${currentEmployee.employeeName} (${currentEmployee.employeeId})` 
                       : user?.employee 
                         ? `${user.firstName || ""} ${user.lastName || ""} (${user.employee.employeeId})`
-                        : user?.employeeId
-                          ? `Employee ID: ${user.employeeId}`
+                        : loginId
+                          ? `Employee ID: ${loginId}`
                           : "Loading..."}
                   </div>
                   <FormDescription>
