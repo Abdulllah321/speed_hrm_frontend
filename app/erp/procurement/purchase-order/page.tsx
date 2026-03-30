@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus, Eye } from 'lucide-react';
 import { purchaseOrderApi, PurchaseOrder } from '@/lib/api';
+import { formatCurrency } from '@/lib/utils';
 
 export default function PurchaseOrderList() {
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
@@ -78,7 +79,7 @@ export default function PurchaseOrderList() {
                                         <TableCell className="font-medium">{order.poNumber}</TableCell>
                                         <TableCell>{order.vendor?.name}</TableCell>
                                         <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
-                                        <TableCell className="font-semibold">Rs. {fmtCurrency(order.totalAmount)}</TableCell>
+                                        <TableCell className="font-semibold">Rs. {formatCurrency(order.totalAmount)}</TableCell>
                                         <TableCell>
                                             <Badge variant={
                                                 order.status === 'OPEN' ? 'default' :

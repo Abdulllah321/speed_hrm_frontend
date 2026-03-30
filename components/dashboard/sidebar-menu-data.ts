@@ -1170,6 +1170,7 @@ export const menuData: MenuItem[] = [
     children: [
       { title: "New Sale", href: "/pos/new-sale", permissions: ["pos.sales.create"] },
       { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.history.view"] },
+      { title: "Customers", href: "/pos/customers", permissions: ["pos.sales.read"] },
       { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
     ]
   },
@@ -1181,6 +1182,10 @@ export const menuData: MenuItem[] = [
     children: [
       { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
       { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
+      { title: "Receiving", href: "/pos/inventory/receiving", permissions: ["pos.inventory.create"] },
+      { title: "Inbound", href: "/pos/inventory/inbound", permissions: ["pos.inventory.create"] },
+      { title: "Outbound", href: "/pos/inventory/outbound", permissions: ["pos.inventory.create"] },
+      { title: "Returns", href: "/pos/inventory/returns", permissions: ["pos.inventory.create"] },
     ]
   },
   {

@@ -163,7 +163,7 @@ export default function SalesHistoryPage() {
     ], []);
 
     return (
-        <div className="flex flex-col h-full bg-[#1e2124] text-white overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden">
             {/* Custom Styles to target DataTable internals to match screenshot */}
             {/* <style dangerouslySetInnerHTML={{
                 __html: `
