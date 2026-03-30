@@ -9,10 +9,11 @@
  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
  import { Plus } from 'lucide-react';
  import { toast } from 'sonner';
- import { ChartOfAccount, chartOfAccountApi, landedCostApi } from '@/lib/api';
+ import { ChartOfAccount, chartOfAccountApi } from '@/lib/api';
  import { landedCostChargeTypeApi, LandedCostChargeType } from '@/lib/api';
  import type { Grn } from '@/lib/api';
  import { getGrn } from '@/lib/actions/grn';
+ import { postLandedCost } from '@/lib/actions/landed-cost';
  
  export default function LandedCostPostPage() {
    const params = useParams();
@@ -75,7 +76,7 @@
            rate: Number(itemRates[it.id] || 0),
          })),
        };
-       const result = await landedCostApi.post(payload);
+       const result = await postLandedCost(payload);
        toast.success(`Landed Cost posted. GRN status: ${result.grnStatus}`);
        router.push('/erp/procurement/landed-cost');
      } catch (error: any) {

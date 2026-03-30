@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Grn, landedCostApi } from '@/lib/api';
+import { Grn } from '@/lib/api';
 import { getGrns } from '@/lib/actions/grn';
+import { createLocalLandedCost } from '@/lib/actions/landed-cost';
 import { Label } from '@/components/ui/label';
 import { Save, ArrowLeft } from 'lucide-react';
 
@@ -132,7 +133,7 @@ export default function LocalLandedCostPage() {
         }))
       };
 
-      const res = await landedCostApi.createLocal(payload);
+      const res = await createLocalLandedCost(payload);
       toast.success('Local Landed Cost posted successfully');
       router.push('/erp/procurement/landed-cost');
     } catch (err: any) {

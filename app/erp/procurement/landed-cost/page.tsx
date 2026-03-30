@@ -7,9 +7,10 @@
  import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
  import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
  import { Badge } from '@/components/ui/badge';
-import { Grn, landedCostApi, chartOfAccountApi, ChartOfAccount } from '@/lib/api';
+import { Grn, chartOfAccountApi, ChartOfAccount } from '@/lib/api';
 import { landedCostChargeTypeApi, LandedCostChargeType } from '@/lib/api';
 import { getGrns } from '@/lib/actions/grn';
+import { postLandedCost } from '@/lib/actions/landed-cost';
 import { Eye, Check, Plus } from 'lucide-react';
  import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -90,7 +91,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
         grnId,
         charges: charges.filter(c => c.accountId && c.amount > 0),
       };
-      const result = await landedCostApi.post(payload);
+      const result = await postLandedCost(payload);
        toast.success(`Landed Cost posted. GRN status: ${result.grnStatus}`);
        await loadGrns();
       setOpenForGrn(null);

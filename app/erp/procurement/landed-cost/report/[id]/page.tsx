@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { landedCostApi } from '@/lib/api';
+import { getLandedCost } from '@/lib/actions/landed-cost';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ export default function LandedCostReportPage() {
 
     const fetchData = async () => {
         try {
-            const res = await landedCostApi.getById(id);
+            const res = await getLandedCost(id);
             setData(res);
         } catch (err: any) {
             toast.error(err.message || 'Failed to fetch report data');

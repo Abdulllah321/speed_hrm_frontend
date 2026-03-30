@@ -138,12 +138,6 @@ export default function PurchaseInvoiceDetailPage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link href="/erp/procurement/purchase-invoice">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </Link>
           <div>
             <h1 className="text-3xl font-bold">Invoice {invoice.invoiceNumber}</h1>
             <p className="text-gray-600">Purchase Invoice Details</p>

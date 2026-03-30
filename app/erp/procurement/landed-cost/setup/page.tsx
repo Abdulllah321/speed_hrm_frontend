@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import {
   Grn,
-  landedCostApi,
   hsCodeApi,
   HsCode,
   chartOfAccountApi,
@@ -20,6 +19,7 @@ import {
 } from '@/lib/api';
 import { getVendors } from '@/lib/actions/procurement';
 import { getGrns } from '@/lib/actions/grn';
+import { createLandedCost, getLandedCostChargeTypes } from '@/lib/actions/landed-cost';
 import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calculator, Save } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -160,7 +160,7 @@ export default function LandedCostSetupPage() {
         getGrns(),
         getVendors(),
         hsCodeApi.getAll(),
-        landedCostApi.listChargeTypes()
+        getLandedCostChargeTypes()
       ]);
       console.log('GRN Response:', grnsRes);
       const grnData = Array.isArray(grnsRes) ? grnsRes : (grnsRes as any)?.data || [];
@@ -692,7 +692,7 @@ export default function LandedCostSetupPage() {
         })
       };
 
-      const res = await landedCostApi.create(payload);
+      const res = await createLandedCost(payload);
       toast.success('Landed Cost values posted successfully');
       router.push(`/erp/procurement/landed-cost/report/${res.id}`); // View report
     } catch (err: any) {

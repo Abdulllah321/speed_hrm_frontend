@@ -317,12 +317,6 @@ export default function CreatePurchaseInvoicePage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/erp/procurement/purchase-invoice">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-        </Link>
         <div>
           <h1 className="text-3xl font-bold">Create Purchase Invoice</h1>
           <p className="text-gray-600">Create a new supplier invoice</p>

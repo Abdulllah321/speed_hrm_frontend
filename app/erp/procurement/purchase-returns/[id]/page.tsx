@@ -79,12 +79,7 @@ export default function PurchaseReturnDetailPage() {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/erp/procurement/purchase-returns">
-            <Button variant="outline" size="sm">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </Link>
+        
           <div>
             <h1 className="text-2xl font-bold">Purchase Return {purchaseReturn.returnNumber}</h1>
             <p className="text-gray-600">Return details and status</p>
