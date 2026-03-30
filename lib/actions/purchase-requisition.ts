@@ -17,8 +17,7 @@ export async function getPurchaseRequisitions(status?: string) {
 export async function getPurchaseRequisition(id: string) {
     try {
         const response = await authFetch(`/purchase-requisition/${id}`);
-        const result = response.data;
-        return result?.data ?? null;
+        return response.data ?? null;
     } catch (error) {
         console.error("Get PR error:", error);
         return null;
