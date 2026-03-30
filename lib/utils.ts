@@ -33,6 +33,17 @@ export function getApiBaseUrl(): string {
 }
 // Helper to get cookie domain
 export const getCookieDomain = (host: string) => {
+ * Read a cookie value by name on the client side.
+ * Returns null if not found or called on the server.
+ */
+export function getCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : null;
+}
+
+// Helper to get cookie domain
+export const getCookieDomain = (host: string) => {
   // 1. Check if domain is explicitly configured
   if (process.env.NEXT_PUBLIC_COOKIE_DOMAIN) {
     return process.env.NEXT_PUBLIC_COOKIE_DOMAIN;
