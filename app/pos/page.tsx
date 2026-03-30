@@ -67,13 +67,6 @@ export default function PosPage() {
             badge: "Ctrl+N",
         },
         {
-            title: "Quick Sale",
-            description: "Fast checkout for regular items",
-            icon: Zap,
-            href: "/pos/quick-sale",
-            color: "from-green-600 to-teal-600",
-        },
-        {
             title: "Customer Lookup",
             description: "Search customer history",
             icon: Users,

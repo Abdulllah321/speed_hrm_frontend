@@ -26,6 +26,7 @@ export function getApiBaseUrl(): string {
 
   return "http://localhost:5000";
 }
+
 // Helper to get cookie domain
 export const getCookieDomain = (host: string) => {
   // 1. Check if domain is explicitly configured

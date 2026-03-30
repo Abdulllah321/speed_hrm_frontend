@@ -1170,6 +1170,7 @@ export const menuData: MenuItem[] = [
     children: [
       { title: "New Sale", href: "/pos/new-sale", permissions: ["pos.sales.create"] },
       { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.history.view"] },
+      { title: "Sales Return", href: "/pos/sales/returns", permissions: ["pos.sales.history.view"] },
       { title: "Customers", href: "/pos/customers", permissions: ["pos.sales.read"] },
       { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
     ]
