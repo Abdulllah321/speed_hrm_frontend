@@ -41,3 +41,37 @@ export async function createPurchaseRequisition(data: any) {
         return { status: false, message: "Failed to create PR" };
     }
 }
+
+export async function updatePurchaseRequisition(id: string, data: any) {
+    try {
+        const response = await authFetch(`/purchase-requisition/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify(data),
+        });
+        const result = response.data;
+        if (result.status !== false) {
+            revalidatePath("/erp/procurement/purchase-requisition");
+            revalidatePath(`/erp/procurement/purchase-requisition/${id}`);
+        }
+        return result;
+    } catch (error) {
+        console.error("Update PR error:", error);
+        return { status: false, message: "Failed to update PR" };
+    }
+}
+
+export async function deletePurchaseRequisition(id: string) {
+    try {
+        const response = await authFetch(`/purchase-requisition/${id}`, {
+            method: "DELETE",
+        });
+        const result = response.data;
+        if (result.status !== false) {
+            revalidatePath("/erp/procurement/purchase-requisition");
+        }
+        return result;
+    } catch (error) {
+        console.error("Delete PR error:", error);
+        return { status: false, message: "Failed to delete PR" };
+    }
+}

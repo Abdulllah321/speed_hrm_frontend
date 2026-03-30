@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { purchaseOrderApi, itemApi, MasterItem, purchaseRequisitionApi, PurchaseRequisition, inventoryApi } from '@/lib/api';
+import { purchaseOrderApi, itemApi, MasterItem, PurchaseRequisition, inventoryApi } from '@/lib/api';
 import { getVendors } from '@/lib/actions/procurement';
+import { getPurchaseRequisitions } from '@/lib/actions/purchase-requisition';
 import { toast } from 'sonner';
 import { Plus, Trash2, ArrowLeft, Search, CheckCircle2, Loader2 } from 'lucide-react';
 import { authFetch } from '@/lib/auth';
@@ -140,7 +141,7 @@ export default function CreateDirectPurchaseOrder() {
             const [vendorsData, itemsData, prsData] = await Promise.all([
                 getVendors(),
                 itemApi.getAll(),
-                purchaseRequisitionApi.getAll('APPROVED')
+                getPurchaseRequisitions('APPROVED')
             ]);
 
             if (vendorsData?.data) {

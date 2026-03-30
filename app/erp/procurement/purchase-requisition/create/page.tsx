@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { purchaseRequisitionApi } from '@/lib/api';
+import { createPurchaseRequisition } from '@/lib/actions/purchase-requisition';
 import { getItems } from '@/lib/actions/items';
 import { getDepartments, getSubDepartments, type Department, type SubDepartment } from '@/lib/actions/department';
 import { toast } from 'sonner';
@@ -177,7 +177,7 @@ export default function CreatePurchaseRequisition() {
                 return;
             }
 
-            const pr = await purchaseRequisitionApi.create({
+            const pr = await createPurchaseRequisition({
                 ...data,
                 items: addedItems.map(item => ({
                     itemId: item.itemId,
@@ -185,7 +185,7 @@ export default function CreatePurchaseRequisition() {
                 })),
             });
             toast.success('Purchase Requisition submitted for approval');
-            router.push(`/erp/procurement/purchase-requisition/${pr.id}`);
+            router.push(`/erp/procurement/purchase-requisition/${pr?.data?.id ?? pr?.id}`);
         } catch (error) {
             console.error(error);
             toast.error('Failed to create requisition');

@@ -200,6 +200,19 @@ export async function getAllSuppliers() {
     }
 }
 
+// Get vendor with their linked chart of accounts
+export async function getVendorWithAccounts(supplierId: string) {
+    try {
+        const response = await authFetch(`/finance/suppliers/${supplierId}`, {
+            cache: 'no-store',
+        });
+        if (!response.ok) return { status: false, data: null };
+        return { status: true, data: response.data?.data ?? response.data };
+    } catch (error) {
+        return { status: false, data: null };
+    }
+}
+
 // Get pending invoices for a specific supplier
 export async function getPendingInvoicesBySupplier(supplierId: string) {
     try {

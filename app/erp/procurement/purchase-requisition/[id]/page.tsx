@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { purchaseRequisitionApi, PurchaseRequisition } from '@/lib/api';
+import { PurchaseRequisition } from '@/lib/api';
+import { getPurchaseRequisition, updatePurchaseRequisition } from '@/lib/actions/purchase-requisition';
 import { getItems } from '@/lib/actions/items';
 
 export default function PurchaseRequisitionDetail() {
@@ -25,7 +26,7 @@ export default function PurchaseRequisitionDetail() {
             try {
                 setLoading(true);
                 const [prData, itemsResult] = await Promise.all([
-                    purchaseRequisitionApi.getById(id),
+                    getPurchaseRequisition(id),
                     getItems()
                 ]);
                 setPr(prData);
@@ -44,7 +45,7 @@ export default function PurchaseRequisitionDetail() {
     const fetchPr = async () => {
         try {
             setLoading(true);
-            const data = await purchaseRequisitionApi.getById(id);
+            const data = await getPurchaseRequisition(id);
             setPr(data);
         } catch (error) {
             console.error(error);
@@ -56,7 +57,7 @@ export default function PurchaseRequisitionDetail() {
     const handleStatusChange = async (newStatus: string) => {
         try {
             setLoading(true);
-            await purchaseRequisitionApi.update(id, { status: newStatus });
+            await updatePurchaseRequisition(id, { status: newStatus });
             fetchPr(); // Refresh
         } catch (error) {
             console.error(error);
