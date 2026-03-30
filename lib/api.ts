@@ -1,32 +1,12 @@
-import { getApiBaseUrl } from "./utils";
+import { authFetch } from "./auth";
 
-
-
-const API_BASE = getApiBaseUrl();
 
 export async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
-  const fullUrl = endpoint.startsWith('http') ? endpoint : `${getApiBaseUrl()}${endpoint}`;
-
-  try {
-    const response = await fetch(fullUrl, {
-      method: options?.method || 'GET',
-      headers: {
-        ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...options?.headers,
-      },
-      body: options?.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
-      credentials: 'include',
-    });
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Something went wrong');
-    }
-
-    return await response.json();
-  } catch (error: any) {
-    throw new Error(error.message || 'Something went wrong');
+  const res = await authFetch(endpoint, options);
+  if (!res.ok) {
+    throw new Error(res.data?.message || 'Something went wrong');
   }
+  return res.data as T;
 }
 
 // Department API
