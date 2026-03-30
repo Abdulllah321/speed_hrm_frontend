@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { vendorQuotationApi, VendorQuotation, purchaseOrderApi } from '@/lib/api';
+import { vendorQuotationApi, VendorQuotation } from '@/lib/api';
+import { createPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
 
 export default function VendorQuotationDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -63,7 +64,7 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
     const handleGeneratePo = async () => {
         try {
             setCreatingPo(true);
-            const po = await purchaseOrderApi.create({ vendorQuotationId: id });
+            const po = await createPurchaseOrder({ vendorQuotationId: id });
             toast.success('Purchase Order generated successfully');
             router.push(`/erp/procurement/purchase-order/${po.id}`);
         } catch (error: any) {

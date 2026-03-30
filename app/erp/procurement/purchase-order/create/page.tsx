@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { purchaseOrderApi, itemApi, MasterItem, PurchaseRequisition, inventoryApi } from '@/lib/api';
+import { itemApi, MasterItem, PurchaseRequisition, inventoryApi } from '@/lib/api';
 import { getVendors } from '@/lib/actions/procurement';
 import { getPurchaseRequisitions } from '@/lib/actions/purchase-requisition';
+import { createPurchaseOrder, createMultiDirectPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
 import { Plus, Trash2, ArrowLeft, Search, CheckCircle2, Loader2 } from 'lucide-react';
 import { authFetch } from '@/lib/auth';
@@ -234,7 +235,7 @@ export default function CreateDirectPurchaseOrder() {
                     toast.error('Please select a vendor');
                     return;
                 }
-                const po = await purchaseOrderApi.create({
+                const po = await createPurchaseOrder({
                     vendorId: selectedVendorId,
                     purchaseRequisitionId: selectedPRId || undefined,
                     items: orderItems.map(item => ({
@@ -277,7 +278,7 @@ export default function CreateDirectPurchaseOrder() {
                         goodsType: goodsType || undefined
                     }))
                 };
-                const result = await purchaseOrderApi.createMultiDirect(payload);
+                const result = await createMultiDirectPurchaseOrder(payload);
                 if (Array.isArray(result) && result.length > 0) {
                     toast.success(`Created ${result.length} Purchase Orders`);
                     router.push(`/erp/procurement/purchase-order/${result[0].id}`);

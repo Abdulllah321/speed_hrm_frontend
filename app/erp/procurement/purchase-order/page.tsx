@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Eye } from 'lucide-react';
-import { purchaseOrderApi, PurchaseOrder } from '@/lib/api';
+import { PurchaseOrder } from '@/lib/api';
+import { getPurchaseOrders } from '@/lib/actions/purchase-order';
 import { formatCurrency } from '@/lib/utils';
 
 export default function PurchaseOrderList() {
@@ -21,7 +22,7 @@ export default function PurchaseOrderList() {
     const fetchOrders = async () => {
         try {
             setLoading(true);
-            const data = await purchaseOrderApi.getAll();
+            const data = await getPurchaseOrders();
             setOrders(data);
         } catch (error) {
             console.error(error);

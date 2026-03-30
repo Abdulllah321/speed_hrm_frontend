@@ -8,7 +8,8 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { FileText, ArrowLeft, Loader2 } from 'lucide-react';
-import { purchaseOrderApi, VendorQuotation } from '@/lib/api';
+import { VendorQuotation } from '@/lib/api';
+import { getPendingQuotations, createPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
 
 export default function PendingPurchaseOrders() {
@@ -24,7 +25,7 @@ export default function PendingPurchaseOrders() {
     const fetchPendingQuotations = async () => {
         try {
             setLoading(true);
-            const data = await purchaseOrderApi.getPendingQuotations();
+            const data = await getPendingQuotations();
             setQuotations(data);
         } catch (error) {
             console.error('Failed to fetch pending quotations:', error);
@@ -37,7 +38,7 @@ export default function PendingPurchaseOrders() {
     const handleCreatePO = async (quotationId: string) => {
         try {
             setCreating(quotationId);
-            const po = await purchaseOrderApi.create({
+            const po = await createPurchaseOrder({
                 vendorQuotationId: quotationId,
                 notes: 'Generated from Pending POs page'
             });

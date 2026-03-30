@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { purchaseOrderApi, warehouseApi, grnApi, PurchaseOrder, Warehouse } from '@/lib/api';
+import { warehouseApi, grnApi, PurchaseOrder, Warehouse } from '@/lib/api';
+import { getPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
 import { ArrowLeft, Save, Warehouse as WarehouseIcon } from 'lucide-react';
 
@@ -28,7 +29,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
     const loadData = async () => {
         try {
             const [poData, warehouseData] = await Promise.all([
-                purchaseOrderApi.getById(poId),
+                getPurchaseOrder(poId),
                 warehouseApi.getAll(),
             ]);
             setOrder(poData);

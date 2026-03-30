@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Link from 'next/link';
-import { vendorQuotationApi, VendorQuotation, purchaseOrderApi } from '@/lib/api';
+import { vendorQuotationApi, VendorQuotation } from '@/lib/api';
+import { awardFromRfq } from '@/lib/actions/purchase-order';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -58,7 +59,7 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                     items
                 }))
             };
-            const result = await purchaseOrderApi.awardFromRfq(payload);
+            const result = await awardFromRfq(payload);
             if (Array.isArray(result) && result.length > 0) {
                 toast.success('Purchase Orders created for awarded items');
                 router.push(`/erp/procurement/purchase-order/${result[0].id}`);

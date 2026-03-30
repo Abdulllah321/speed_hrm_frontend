@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { grnApi, Grn, purchaseOrderApi, PurchaseOrder } from '@/lib/api';
+import { grnApi, Grn, PurchaseOrder } from '@/lib/api';
+import { getPurchaseOrders } from '@/lib/actions/purchase-order';
 import { Plus, Eye, Receipt, Search, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
@@ -27,7 +28,7 @@ export default function GrnListPage() {
         try {
             const [grnData, poData] = await Promise.all([
                 grnApi.getAll(),
-                purchaseOrderApi.getAll()
+                getPurchaseOrders()
             ]);
             setGrns(grnData);
             setGrns(grnData);
