@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
-import { transferRequestApi } from "@/lib/api";
+import { getInboundTransferRequests, acceptTransferRequest } from "@/lib/actions/transfer-request";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -34,7 +34,7 @@ export default function InboundRequestsPage() {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await transferRequestApi.getInboundRequests(locationId);
+            const res = await getInboundTransferRequests(locationId);
             if (res.status) {
                 setRequests(res.data || []);
             }
@@ -53,7 +53,7 @@ export default function InboundRequestsPage() {
     const handleAccept = async (requestId: string) => {
         setIsAccepting(requestId);
         try {
-            const res = await transferRequestApi.accept(requestId, user?.id);
+            const res = await acceptTransferRequest(requestId, user?.id);
             if (res.status) {
                 toast.success("Transfer completed! Items received successfully.");
                 setRequests(prev => prev.filter(r => r.id !== requestId));

@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/components/providers/auth-provider";
-import { transferRequestApi } from "@/lib/api";
+import { getIncomingTransferRequests, acceptTransferRequest } from "@/lib/actions/transfer-request";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -37,7 +37,7 @@ export default function StockReceivingPage() {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await transferRequestApi.getIncoming(locationId);
+            const res = await getIncomingTransferRequests(locationId);
             if (res.status) {
                 setRequests(res.data || []);
             }
@@ -56,7 +56,7 @@ export default function StockReceivingPage() {
     const handleAccept = async (requestId: string) => {
         setIsAccepting(requestId);
         try {
-            const res = await transferRequestApi.accept(requestId, user?.id);
+            const res = await acceptTransferRequest(requestId, user?.id);
             if (res.status) {
                 toast.success("Stock accepted successfully!");
                 setRequests(prev => prev.filter(r => r.id !== requestId));

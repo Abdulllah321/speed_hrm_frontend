@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/components/providers/auth-provider";
-import { transferRequestApi } from "@/lib/api";
+import { getReturnTransferRequests, acceptTransferRequest } from "@/lib/actions/transfer-request";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -36,7 +36,7 @@ export default function ReturnRequestsPage() {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await transferRequestApi.getReturnRequests(locationId);
+            const res = await getReturnTransferRequests(locationId);
             if (res.status) {
                 setRequests(res.data || []);
             }
@@ -55,7 +55,7 @@ export default function ReturnRequestsPage() {
     const handleAccept = async (requestId: string) => {
         setIsAccepting(requestId);
         try {
-            const res = await transferRequestApi.accept(requestId, user?.id);
+            const res = await acceptTransferRequest(requestId, user?.id);
             if (res.status) {
                 toast.success("Return request approved! Items returned to warehouse.");
                 setRequests(prev => prev.filter(r => r.id !== requestId));

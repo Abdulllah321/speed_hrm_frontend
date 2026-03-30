@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { warehouseApi, transferRequestApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation } from '@/lib/api';
+import { warehouseApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation } from '@/lib/api';
+import { createTransferRequest, createReturnTransferRequest, createOutletToOutletTransferRequest } from '@/lib/actions/transfer-request';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw, Trash2, Plus, CheckCircle2, Info, Loader2, WarehouseIcon, ArrowDown, Filter, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -256,7 +257,7 @@ export default function StockTransferPage() {
             }));
 
             if (transferMode === 'WAREHOUSE_TO_OUTLET') {
-                await transferRequestApi.create({
+                await createTransferRequest({
                     fromWarehouseId: selectedWarehouseId,
                     toLocationId: destLocationId,
                     items: itemsToTransfer,
@@ -264,7 +265,7 @@ export default function StockTransferPage() {
                 });
                 toast.success('Transfer request created! Awaiting shop acceptance.');
             } else if (transferMode === 'OUTLET_TO_WAREHOUSE') {
-                await transferRequestApi.createReturn({
+                await createReturnTransferRequest({
                     fromLocationId: destLocationId,
                     fromWarehouseId: selectedWarehouseId,
                     items: itemsToTransfer,
@@ -272,7 +273,7 @@ export default function StockTransferPage() {
                 });
                 toast.success('Return request created! Awaiting outlet manager approval.');
             } else if (transferMode === 'OUTLET_TO_OUTLET') {
-                await transferRequestApi.createOutletToOutlet({
+                await createOutletToOutletTransferRequest({
                     fromLocationId: sourceLocationId,
                     toLocationId: destLocationId,
                     items: itemsToTransfer,

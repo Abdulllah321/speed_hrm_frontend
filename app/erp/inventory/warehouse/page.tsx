@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertTriangle, TrendingUp, Package, ArrowRightLeft, Activity, Box, Clock } from 'lucide-react';
-import { stockLedgerApi, transferRequestApi, StockLevel, StockLedgerEntry } from '@/lib/api';
+import { stockLedgerApi, StockLevel, StockLedgerEntry } from '@/lib/api';
+import { getTransferRequests } from '@/lib/actions/transfer-request';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
@@ -49,7 +50,7 @@ export default function InventoryDashboardPage() {
             setRecentTransactions(ledger.slice(0, 6)); // Top 6
 
             // Fetch Transfer Requests
-            const transfersResponse = await transferRequestApi.getAll();
+            const transfersResponse = await getTransferRequests();
             const transfers = transfersResponse.data || [];
             const pending = transfers.filter(t => t.status === 'PENDING').length;
             const completed = transfers.filter(t => t.status === 'COMPLETED').length;

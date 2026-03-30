@@ -13,7 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/components/providers/auth-provider";
-import { transferRequestApi } from "@/lib/api";
+import { getTransferRequests } from "@/lib/actions/transfer-request";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -65,7 +65,7 @@ export default function StockReceiptPage() {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await transferRequestApi.getAll({ status: "COMPLETED" });
+            const res = await getTransferRequests({ status: "COMPLETED" });
             if (res.status) {
                 // Show all completed transfers that came INTO this location
                 // Covers: receiving (WAREHOUSE_TO_OUTLET), inbound (OUTLET_TO_OUTLET), returns accepted

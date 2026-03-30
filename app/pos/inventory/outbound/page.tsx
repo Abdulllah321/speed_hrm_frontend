@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
-import { transferRequestApi } from "@/lib/api";
+import { getOutboundTransferRequests, approveSourceTransferRequest } from "@/lib/actions/transfer-request";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -34,7 +34,7 @@ export default function OutboundRequestsPage() {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            const res = await transferRequestApi.getOutboundRequests(locationId);
+            const res = await getOutboundTransferRequests(locationId);
             if (res.status) {
                 setRequests(res.data || []);
             }
@@ -53,7 +53,7 @@ export default function OutboundRequestsPage() {
     const handleApprove = async (requestId: string) => {
         setIsApproving(requestId);
         try {
-            const res = await transferRequestApi.approveSource(requestId, user?.id);
+            const res = await approveSourceTransferRequest(requestId, user?.id);
             if (res.status) {
                 toast.success("Source approval completed! Items released for transfer.");
                 setRequests(prev => prev.filter(r => r.id !== requestId));

@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Package, Send, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { transferRequestApi } from "@/lib/api";
+import { createTransferRequest } from "@/lib/actions/transfer-request";
 
 interface RequestStockModalProps {
     item: {
@@ -65,7 +65,7 @@ export function RequestStockModal({
 
         setIsSubmitting(true);
         try {
-            const res = await transferRequestApi.create({
+            const res = await createTransferRequest({
                 fromWarehouseId: fromLocation.location.warehouse.id,
                 toWarehouseId: "CURRENT_WAREHOUSE_ID", // TODO: Replace with actual current POS warehouse ID from context/auth
                 items: [

@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { warehouseApi, inventoryApi, transferRequestApi, locationApi, Warehouse } from '@/lib/api';
+import { warehouseApi, inventoryApi, locationApi, Warehouse } from '@/lib/api';
+import { createReturnTransferRequest } from '@/lib/actions/transfer-request';
 import { toast } from 'sonner';
 import { ArrowLeft, Package, RotateCcw, Search, Save } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -143,7 +144,7 @@ export default function ReturnTransferPage() {
 
         setSubmitting(true);
         try {
-            await transferRequestApi.createReturn({
+            await createReturnTransferRequest({
                 fromLocationId: selectedLocationId,
                 fromWarehouseId: selectedWarehouseId,
                 items: [{

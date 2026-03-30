@@ -1,7 +1,7 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
-import { transferRequestApi } from '@/lib/api';
+import { getTransferRequests } from '@/lib/actions/transfer-request';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
@@ -21,7 +21,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
         try {
             // Re-using getAll by filtering locally if getById doesn't exist yet
             // Ideally backend should have a getById for transfer request
-            const res = await transferRequestApi.getAll();
+            const res = await getTransferRequests();
             const req = res.data?.find((t: any) => t.id === id);
             if (req) {
                 setTransfer(req);
