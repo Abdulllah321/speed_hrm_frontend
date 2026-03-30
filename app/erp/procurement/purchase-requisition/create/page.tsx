@@ -270,7 +270,7 @@ export default function CreatePurchaseRequisition() {
             const pr = await purchaseRequisitionApi.create({
                 ...data,
                 items: addedItems.map(item => ({
-                    itemId: item.itemId,
+                    itemId: item.id, // Fix: Send the UUID instead of the short string ID
                     requiredQty: item.requiredQty,
                 })),
             });

@@ -26,6 +26,7 @@ interface PurchaseInvoice extends ApiPurchaseInvoice {
 
 interface InvoiceItem {
   id: string;
+  itemId: string;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -34,6 +35,10 @@ interface InvoiceItem {
   taxAmount: number;
   discountRate: number;
   discountAmount: number;
+  item?: {
+    itemId: string;
+    description: string;
+  };
 }
 
 export default function PurchaseInvoiceDetailPage() {
@@ -281,6 +286,7 @@ export default function PurchaseInvoiceDetailPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
+                      <th className="text-left p-3">Item Code</th>
                       <th className="text-left p-3">Description</th>
                       <th className="text-right p-3">Qty</th>
                       <th className="text-right p-3">Unit Price</th>
@@ -292,6 +298,7 @@ export default function PurchaseInvoiceDetailPage() {
                   <tbody>
                     {invoice.items.map((item) => (
                       <tr key={item.id} className="border-b">
+                        <td className="p-3 font-medium">{item.item?.itemId || item.itemId}</td>
                         <td className="p-3">{item.description}</td>
                         <td className="p-3 text-right">{item.quantity}</td>
                         <td className="p-3 text-right">{item.unitPrice.toLocaleString()}</td>

@@ -108,7 +108,10 @@ export default function CreateRfq() {
                                     <ul className="list-disc list-inside mt-1">
                                         {selectedPR.items?.map((item) => (
                                             <li key={item.id}>
-                                                {item.itemId} - Qty: {item.requiredQty} {item.description && `(${item.description})`}
+                                                {(item as any).item
+                                                  ? `${(item as any).item.itemId} - ${(item as any).item.description} - Qty: ${item.requiredQty}`
+                                                  : 'Item missing'
+                                                }
                                             </li>
                                         ))}
                                     </ul>

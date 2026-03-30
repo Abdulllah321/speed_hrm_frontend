@@ -323,7 +323,7 @@ export default function LandedCostSetupPage() {
       // STEP 2: Fetch details in background and update
       const enrichedItems = await Promise.all(basicItems.map(async (item) => {
         try {
-          const itemMasterRes = await itemApi.getByCode(item.itemId);
+          const itemMasterRes = await itemApi.getById(item.itemId);
           const itemMaster = (itemMasterRes as any)?.data || itemMasterRes;
 
           if (itemMaster) {
@@ -398,10 +398,10 @@ export default function LandedCostSetupPage() {
     }));
 
     const totalInvoiceForeign = itemsWithFullValues.reduce((sum, i) => sum + i.invoiceForeign, 0);
-    // Use user-provided total if available, otherwise use calculated sum
-    const denominator = (manualTotalInvoice !== undefined && manualTotalInvoice > 0)
+    // Strictly use user-provided total value from header for distribution
+    const denominator = (manualTotalInvoice !== undefined)
       ? manualTotalInvoice
-      : (totalInvoiceValue > 0 ? totalInvoiceValue : totalInvoiceForeign);
+      : totalInvoiceValue;
 
     const updatedItems = itemsWithFullValues.map(item => {
       // 1. Invoice Foreign (already calculated above)
@@ -502,7 +502,7 @@ export default function LandedCostSetupPage() {
       // Use the header "Other Charges" breakdown
       const distributionRatio = (denominator > 0)
         ? (invoiceForeign / denominator)
-        : (totalInvoiceForeign > 0 ? (invoiceForeign / totalInvoiceForeign) : 0);
+        : 0;
 
       const misFreightUSDValue = freightUSD * distributionRatio;
       const misFreight = misFreightUSDValue * freightPKR; // freightPKR is the (Ex. rate other) from form
@@ -590,6 +590,28 @@ export default function LandedCostSetupPage() {
 
     setItems(newItems);
   };
+
+  const tableTotals = useMemo(() => {
+    return items.reduce((acc, item) => ({
+      qty: acc.qty + (item.qty || 0),
+      invForeign: acc.invForeign + (item.invoiceForeign || 0),
+      freightForeign: acc.freightForeign + (item.freightForeign || 0),
+      invPKR: acc.invPKR + (item.invoicePKR || 0),
+      assessableValue: acc.assessableValue + (item.assessableValue || 0),
+      totalDuty: acc.totalDuty + (item.totalDutyAmount || 0),
+      totalOther: acc.totalOther + (item.totalOtherCharges || 0),
+      totalCost: acc.totalCost + (item.totalCostPKR || 0),
+    }), {
+      qty: 0,
+      invForeign: 0,
+      freightForeign: 0,
+      invPKR: 0,
+      assessableValue: 0,
+      totalDuty: 0,
+      totalOther: 0,
+      totalCost: 0,
+    });
+  }, [items]);
 
   const handleSubmit = async () => {
     if (!grnId || !supplierId) {
@@ -728,7 +750,7 @@ export default function LandedCostSetupPage() {
               </div>
               <div>
                 <Label>Supplier</Label>
-                <Select value={supplierId} onValueChange={setSupplierId}>
+                <Select value={supplierId} onValueChange={setSupplierId} disabled={true}>
                   <SelectTrigger><SelectValue placeholder="Select Supplier" /></SelectTrigger>
                   <SelectContent>
                     {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
@@ -896,7 +918,7 @@ export default function LandedCostSetupPage() {
               {/* Primary Header Grouping */}
               <TableRow className="bg-gray-200 border-b-2 border-gray-300">
                 <TableHead colSpan={11} className="text-center font-bold border-r border-gray-300">SHIPMENT DETAILS</TableHead>
-                <TableHead colSpan={10} className="text-center font-bold border-r border-gray-300 bg-blue-50 text-blue-800">ASSESSABLE VALUE</TableHead>
+                <TableHead colSpan={9} className="text-center font-bold border-r border-gray-300 bg-blue-50 text-blue-800">ASSESSABLE VALUE</TableHead>
                 <TableHead colSpan={9} className="text-center font-bold border-r border-gray-300 bg-orange-50 text-orange-900">DUTY CALCULATION</TableHead>
                 <TableHead colSpan={1} className="text-center font-bold border-r border-gray-300 bg-purple-50 text-purple-900">EXCISE</TableHead>
                 <TableHead colSpan={4} className="text-center font-bold border-r border-gray-300 bg-green-100">FREIGHT (MIS)</TableHead>
@@ -920,7 +942,6 @@ export default function LandedCostSetupPage() {
                 <TableHead>Inv. Date</TableHead>
                 <TableHead>SKU No.</TableHead>
                 <TableHead className="border-r border-gray-300 min-w-[200px]">Description</TableHead>
-                <TableHead className="w-[120px] sticky left-0 bg-gray-100 z-10 border-l font-bold text-blue-800">Item Code</TableHead>
                 <TableHead className="w-[120px] font-bold text-blue-800">HS Code</TableHead>
                 <TableHead>Qty</TableHead>
                 <TableHead>FOB ($)</TableHead>
@@ -960,7 +981,7 @@ export default function LandedCostSetupPage() {
             <TableBody>
               {items.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={46} className="text-center py-10 text-gray-500">
+                  <TableCell colSpan={45} className="text-center py-10 text-gray-500">
                     {grnId ? (
                       <div className="flex flex-col items-center gap-2">
                         <span>Items failed to load from GRN ({grnId})</span>
@@ -987,10 +1008,9 @@ export default function LandedCostSetupPage() {
                     <TableCell className="text-[10px]">{item.invDate}</TableCell>
                     <TableCell className="text-[10px] font-bold">{item.sku}</TableCell>
                     <TableCell className="text-[10px] border-r max-w-[200px] truncate" title={item.description}>{item.description}</TableCell>
-                    <TableCell className="font-bold text-xs sticky left-0 bg-white z-10 border-l border-r-2 border-r-blue-200 text-blue-800">{item.itemId}</TableCell>
                     <TableCell>
-                      <Select value={item.hsCodeId} onValueChange={val => handleItemChange(idx, 'hsCodeId', val)} disabled={isLocalGrn()}>
-                        <SelectTrigger className="h-8 text-[10px]"><SelectValue placeholder={isLocalGrn() ? "-" : "HS Code"} /></SelectTrigger>
+                      <Select value={item.hsCodeId} onValueChange={val => handleItemChange(idx, 'hsCodeId', val)} disabled={true}>
+                        <SelectTrigger className="h-8 text-[10px]"><SelectValue placeholder="HS Code" /></SelectTrigger>
                         <SelectContent>
                           {hsCodes.map(h => <SelectItem key={h.id} value={h.id}>{h.hsCode}</SelectItem>)}
                         </SelectContent>
@@ -1035,6 +1055,34 @@ export default function LandedCostSetupPage() {
                     <TableCell className="text-[10px] font-bold bg-green-50">{Math.round(item.totalCostPKR).toLocaleString()}</TableCell>
                   </TableRow>
                 ))
+              )}
+
+              {/* Totals / Summary Row */}
+              {items.length > 0 && (
+                <>
+                  <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-400">
+                    <TableCell colSpan={12} className="text-right py-2">CALCULATED TOTALS:</TableCell>
+                    <TableCell className="text-[11px]">{tableTotals.qty.toLocaleString()}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-[11px] text-blue-700">{tableTotals.invForeign.toFixed(2)}</TableCell>
+                    <TableCell className="text-[11px] text-green-700">{tableTotals.freightForeign.toFixed(2)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-[11px]">{Math.round(tableTotals.invPKR).toLocaleString()}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-[11px] bg-blue-50">{Math.round(tableTotals.assessableValue).toLocaleString()}</TableCell>
+                    <TableCell colSpan={9} className="border-r"></TableCell>
+                    <TableCell colSpan={13} className="text-right border-r">TOTAL COST:</TableCell>
+                    <TableCell colSpan={2} className="text-[11px] bg-green-50 text-green-800 text-center">{Math.round(tableTotals.totalCost).toLocaleString()}</TableCell>
+                  </TableRow>
+
+                  <TableRow className="bg-blue-50 font-bold border-t border-blue-200">
+                    <TableCell colSpan={12} className="text-right py-2 text-blue-800">HEADER (MANUAL) VALUES:</TableCell>
+                    <TableCell colSpan={2}></TableCell>
+                    <TableCell className="text-[11px] text-blue-900 underline decoration-double">{totalInvoiceValue.toFixed(2)}</TableCell>
+                    <TableCell className="text-[11px] text-blue-900 underline decoration-double">{totalFreight.toFixed(2)}</TableCell>
+                    <TableCell colSpan={29}></TableCell>
+                  </TableRow>
+                </>
               )}
             </TableBody>
           </Table>

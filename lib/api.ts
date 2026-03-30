@@ -375,6 +375,7 @@ export interface VendorQuotationItem {
   taxPercent: string;
   discountPercent: string;
   lineTotal: string;
+  item?: MasterItem;
 }
 
 export interface VendorQuotation {
@@ -437,6 +438,7 @@ export interface PurchaseOrderItem {
   taxPercent: string;
   discountPercent: string;
   lineTotal: string;
+  item?: MasterItem;
 }
 
 export interface PurchaseOrder {
@@ -457,6 +459,8 @@ export interface PurchaseOrder {
   vendor: {
     name: string;
     code: string;
+    email?: string;
+    contactNo?: string;
   };
   vendorQuotation?: VendorQuotation;
   createdAt: string;
@@ -557,6 +561,7 @@ export interface GrnItem {
   itemId: string;
   description?: string;
   receivedQty: string;
+  item?: MasterItem;
 }
 
 export interface Grn {
@@ -738,6 +743,7 @@ export interface PurchaseReturnItem {
   unitPrice: number;
   lineTotal: number;
   reason?: string;
+  item?: MasterItem;
 }
 
 export interface CreatePurchaseReturnDto {
@@ -1015,6 +1021,7 @@ export interface PurchaseInvoiceItem {
   taxAmount: number;
   discountRate: number;
   discountAmount: number;
+  item?: MasterItem;
 }
 
 export const purchaseInvoiceApi = {

@@ -129,9 +129,26 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                             {allItems.map((prItem) => (
                                 <TableRow key={prItem.id}>
                                     <TableCell className="font-medium">
-                                        <div>{prItem.itemId}</div>
-                                        <div className="text-sm text-muted-foreground">{prItem.description || '-'}</div>
+                                        <div>{(prItem as any).item?.itemId || prItem.itemId}</div>
+                                        <div className="text-sm text-muted-foreground">{(prItem as any).item?.description || '-'}</div>
                                         <div className="text-sm text-muted-foreground">Qty: {prItem.requiredQty}</div>
+                                        {(prItem as any).lastPurchaseInfo && (
+                                            <div className="mt-2 p-2 bg-blue-50/50 dark:bg-blue-950/20 rounded-md text-[11px] border border-blue-100 dark:border-blue-900 line-height-tight">
+                                                <div className="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-tighter mb-1">Last Purchase</div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Rate:</span>
+                                                    <span className="font-semibold">${parseFloat((prItem as any).lastPurchaseInfo.rate).toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Date:</span>
+                                                    <span>{new Date((prItem as any).lastPurchaseInfo.date).toLocaleDateString()}</span>
+                                                </div>
+                                                <div className="truncate" title={(prItem as any).lastPurchaseInfo.vendor}>
+                                                    <span className="text-muted-foreground">Vendor: </span>
+                                                    <span className="font-medium">{(prItem as any).lastPurchaseInfo.vendor}</span>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="mt-2">
                                             <Select onValueChange={(value) => handleAwardChange(prItem.itemId, value)}>
                                                 <SelectTrigger className="w-[220px]">
