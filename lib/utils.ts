@@ -8,27 +8,22 @@ export function cn(...inputs: ClassValue[]) {
 export function getApiBaseUrl(): string {
   const isServer = typeof window === "undefined";
 
-  // 1. Check for API_URL (Only on server)
-  if (isServer && process.env.API_URL) {
-    return process.env.API_URL;
+  // Server-side: prefer internal API_URL (direct Docker/localhost connection, no nginx hop)
+  if (isServer) {
+    return process.env.API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
   }
 
-  // 2. Check for NEXT_PUBLIC_API_BASE_URL (Client and Server fallback)
+  // Client-side: use NEXT_PUBLIC_API_BASE_URL if set (set this to https://auth.spl.inplsoftwares.com in prod)
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
 
-  // Check if running in browser
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-
-    // If accessing via localtest.me (including subdomains), use api.localtest.me
-    if (hostname.includes("localtest.me")) {
-      return "http://api.localtest.me:5000";
-    }
+  // Client-side dev: localtest.me subdomain support
+  const hostname = window.location.hostname;
+  if (hostname.includes("localtest.me")) {
+    return "http://api.localtest.me:5000";
   }
 
-  // Fallback to localhost
   return "http://localhost:5000";
 }
 // Helper to get cookie domain
