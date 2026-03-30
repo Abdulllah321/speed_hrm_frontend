@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { getApiBaseUrl } from "@/lib/utils";
@@ -86,7 +86,7 @@ interface AuthContextType {
   // Token management
   refreshToken: () => Promise<boolean>;
   checkAndRefreshSession: () => Promise<boolean>;
-  fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+
   sessionExpired: boolean;
   setSessionExpired: (value: boolean) => void;
   handleSessionExpiry: () => Promise<void>;
@@ -177,18 +177,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshPromiseRef.current = (async () => {
       try {
         const { refreshTokenClient } = await import("@/lib/client-auth");
-        const success = await refreshTokenClient();
+        const result = await refreshTokenClient();
 
-        if (!success) {
-          // Refresh failed, trigger session expiry UI
+        // Handle both older boolean return type (if cached somehow) and new object return type
+        const success = typeof result === 'boolean' ? result : result.success;
+        const isNetworkError = typeof result === 'boolean' ? false : result.isNetworkError;
+
+        if (!success && !isNetworkError) {
+          // Refresh failed due to 401 or invalid token, trigger session expiry UI
           await handleSessionExpiry();
+          return false;
+        }
+
+        if (isNetworkError) {
+          // It's a network glitch, don't clear the user's session
           return false;
         }
 
         return true;
       } catch (error) {
         console.error("Token refresh error:", error);
-        await handleSessionExpiry();
+        // Don't auto-logout on unexpected execution errors during refresh
         return false;
       } finally {
         refreshPromiseRef.current = null;
@@ -198,10 +207,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return refreshPromiseRef.current;
   }, [handleSessionExpiry]);
 
-  const fetchWithAuth = useCallback(
+  const authFetch = useCallback(
     async (url: string, options: RequestInit = {}): Promise<Response> => {
       // Ensure URL is absolute; if relative, prepend BASE URL from ENV
       const finalUrl = url.startsWith("http") ? url : `${getApiBaseUrl()}${url.startsWith("/") ? "" : "/"}${url}`;
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[AuthProvider authFetch] ${options.method || 'GET'} ${finalUrl}`);
+      }
       let response = await fetch(finalUrl, {
         ...options,
         credentials: "include", // ✅ sends ALL cookies automatically
@@ -259,14 +271,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           setUser(userData);
-          // If we have data from cookie, we can show UI immediately while fetching fresh data
-          setLoading(false);
+          // NOTE: We intentionally do NOT call setLoading(false) here.
+          // Loading stays true until /auth/me completes with real data.
+          // Calling it early caused PermissionGuard to render with a stale
+          // cookie user that might have incomplete permission structures.
         }
       } catch (e) {
         console.warn("Failed to parse user cookie", e);
       }
 
-      const res = await fetchWithAuth(`${getApiBaseUrl()}/auth/me`);
+      const res = await authFetch(`${getApiBaseUrl()}/auth/me`);
 
       setLoadingProgress(50);
 
@@ -277,7 +291,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoadingProgress(100);
           return;
         }
-        throw new Error("Failed to fetch user");
+        // Do not throw here if it's a non-401 error. 
+        // We already have user from the cookie, so we can gracefully allow the user to proceed.
+        // We just log it and stop further loading.
+        console.warn(`Non-401 error fetching user: ${res.status}`);
+        setLoadingProgress(100);
+        return;
       }
 
       setLoadingMessage("Loading user data...");
@@ -324,14 +343,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 300));
     } catch (error) {
       console.error("Error fetching user:", error);
-      setUser(null);
-      setPreferences({});
+      // If we already have a user from the cookie, KEEP it instead of nullifying.
+      // This prevents "AccessDenied" flashes on temporary network drops/500 errors.
       setLoadingProgress(100);
     } finally {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[AuthProvider] fetchUser complete');
+      }
       setLoading(false);
       completeAuthStep();
     }
-  }, [preferencesToObject, fetchWithAuth, completeAuthStep]);
+  }, [preferencesToObject, authFetch, completeAuthStep]);
 
   // Set mounted flag to prevent hydration mismatch
   useEffect(() => {
@@ -606,6 +628,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   }, [user, isAdmin]);
 
+  const contextValue = useMemo(() => ({
+    user,
+    preferences,
+    loading,
+    isAuthenticated: !!user,
+    refreshUser,
+    updatePreference,
+    getPreference,
+    logout,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    isAdmin,
+    refreshToken,
+    checkAndRefreshSession,
+
+    sessionExpired,
+    setSessionExpired,
+    handleSessionExpiry,
+    setLoadingProgress,
+    setLoadingMessage,
+    completeAuthStep,
+    completeAppWait,
+    registerAppWait,
+    posNeedsUserAuth,
+  }), [
+    user,
+    preferences,
+    loading,
+    refreshUser,
+    updatePreference,
+    getPreference,
+    logout,
+    hasPermission,
+    hasAnyPermission,
+    hasAllPermissions,
+    isAdmin,
+    refreshToken,
+    checkAndRefreshSession,
+
+    sessionExpired,
+    setSessionExpired,
+    handleSessionExpiry,
+    setLoadingProgress,
+    setLoadingMessage,
+    completeAuthStep,
+    completeAppWait,
+    registerAppWait,
+    posNeedsUserAuth,
+  ]);
+
   // Don't render children until mounted and initial load is complete
   // This prevents hydration mismatch between server and client
   if (!mounted || loading) {
@@ -626,7 +699,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAdmin: () => false,
           refreshToken: async () => false,
           checkAndRefreshSession: async () => false,
-          fetchWithAuth: async (url: string, options?: RequestInit) => fetch(url, options),
+
           sessionExpired: false,
           setSessionExpired: () => { },
           handleSessionExpiry: async () => { },
@@ -643,35 +716,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (loading && !mounted) {
+    return (
+      <AuthContext.Provider value={contextValue}>
+        <LoadingScreen progress={loadingProgress} message={loadingMessage} />
+      </AuthContext.Provider>
+    );
+  }
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        preferences,
-        loading,
-        isAuthenticated: !!user,
-        refreshUser,
-        updatePreference,
-        getPreference,
-        logout,
-        hasPermission,
-        hasAnyPermission,
-        hasAllPermissions,
-        isAdmin,
-        refreshToken,
-        checkAndRefreshSession,
-        fetchWithAuth,
-        sessionExpired,
-        setSessionExpired,
-        handleSessionExpiry,
-        setLoadingProgress,
-        setLoadingMessage,
-        completeAuthStep,
-        completeAppWait,
-        registerAppWait,
-        posNeedsUserAuth,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {mounted && children}
       {(!mounted || isInitializing) && (
         <LoadingScreen progress={loadingProgress} message={loadingMessage} />

@@ -77,7 +77,7 @@ function useItemColumns(onDelete: (id: string) => void): ColumnDef<Item>[] {
                 <span className="font-mono text-right block">
                     {Number(row.original.unitPrice).toLocaleString("en-US", {
                         style: "currency",
-                        currency: "USD",
+                        currency: "PKR",
                         minimumFractionDigits: 2,
                     })}
                 </span>

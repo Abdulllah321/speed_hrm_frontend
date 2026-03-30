@@ -6,22 +6,24 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getApiBaseUrl(): string {
-  // If explicitly configured in env, use that
+  const isServer = typeof window === "undefined";
+
+  // Server-side: prefer internal API_URL (direct Docker/localhost connection, no nginx hop)
+  if (isServer) {
+    return process.env.API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
+  }
+
+  // Client-side: use NEXT_PUBLIC_API_BASE_URL if set (set this to https://auth.spl.inplsoftwares.com in prod)
   if (process.env.NEXT_PUBLIC_API_BASE_URL) {
     return process.env.NEXT_PUBLIC_API_BASE_URL;
   }
 
-  // Check if running in browser
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-
-    // If accessing via localtest.me (including subdomains), use api.localtest.me
-    if (hostname.includes("localtest.me")) {
-      return "http://api.localtest.me:5000";
-    }
+  // Client-side dev: localtest.me subdomain support
+  const hostname = window.location.hostname;
+  if (hostname.includes("localtest.me")) {
+    return "http://api.localtest.me:5000";
   }
 
-  // Fallback to localhost
   return "http://localhost:5000";
 }
 // Helper to get cookie domain
@@ -51,12 +53,17 @@ export const getCookieDomain = (host: string) => {
   if (parts.length >= 2) {
     // If it's a simple host like 'mysite.com', we want '.mysite.com'
     // If it's 'app.mysite.com', we also want '.mysite.com'
-    return "." + parts.slice(-2).join(".");
+  return "." + parts.slice(-2).join(".");
   }
 
   return undefined;
 };
 
+export function getCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : null;
+}
 // Format currency
 export function formatCurrency(amount: number | string, currency = 'PKR'): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;

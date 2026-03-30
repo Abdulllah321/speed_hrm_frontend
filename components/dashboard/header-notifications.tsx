@@ -15,7 +15,9 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { io, Socket } from "socket.io-client";
+import { useSocket } from "@/components/providers/socket-provider";
+import { authFetch } from "@/lib/auth";
+import { getApiBaseUrl } from "@/lib/utils";
 
 type NotificationStatus = "unread" | "read";
 
@@ -35,12 +37,12 @@ type NotificationItem = {
 };
 
 export function HeaderNotifications() {
-  const { user, isAuthenticated, fetchWithAuth } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { socket, isConnected } = useSocket();
   const router = useRouter();
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const socketRef = useRef<Socket | null>(null);
 
   const playNotificationSound = useCallback(() => {
     try {
@@ -69,21 +71,24 @@ export function HeaderNotifications() {
 
   const refresh = useCallback(async () => {
     if (!isAuthenticated) return;
-    const res = await fetchWithAuth(`/notifications?limit=10`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      cache: "no-store",
-    });
+    try {
+      const res = await authFetch(`${getApiBaseUrl()}/notifications?limit=10`, {
+        method: "GET",
+        cache: "no-store",
+      });
 
-    if (!res.ok) return;
-    const json = (await res.json()) as {
-      status: boolean;
-      data?: { items: NotificationItem[]; unreadCount: number };
-    };
-    if (!json?.status || !json.data) return;
-    setItems(json.data.items || []);
-    setUnreadCount(json.data.unreadCount || 0);
-  }, [fetchWithAuth, isAuthenticated]);
+      if (!res.ok) return;
+      const json = res.data as {
+        status: boolean;
+        data?: { items: NotificationItem[]; unreadCount: number };
+      };
+      if (!json?.status || !json.data) return;
+      setItems(json.data.items || []);
+      setUnreadCount(json.data.unreadCount || 0);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -93,32 +98,26 @@ export function HeaderNotifications() {
     }
 
     refresh();
+  }, [isAuthenticated, refresh]);
 
-    const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
-    const baseUrl = API_URL.replace(/\/api$/, '');
+  useEffect(() => {
+    if (!socket || !isAuthenticated) return;
 
-    socketRef.current = io(baseUrl, {
-      transports: ['websocket'],
-    });
-
-    socketRef.current.on('connect', () => {
-      console.log('Connected to Notifications WebSocket');
-    });
-
-    socketRef.current.on('notification', (payload: any) => {
+    const handleNotification = (payload: any) => {
+      console.log("Notification received via WebSocket:", payload);
       if (payload?.userId === user?.id && payload?.notification) {
         setItems((prev) => [payload.notification, ...prev].slice(0, 50));
         setUnreadCount((c) => c + 1);
         playNotificationSound();
       }
-    });
+    };
+
+    socket.on('notification', handleNotification);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
+      socket.off('notification', handleNotification);
     };
-  }, [user?.id, isAuthenticated, refresh, playNotificationSound]);
+  }, [socket, isAuthenticated, user?.id, playNotificationSound]);
 
   const handleMarkRead = useCallback(
     async (id: string) => {
@@ -126,7 +125,7 @@ export function HeaderNotifications() {
       const current = items.find((n) => n.id === id);
       if (!current) return;
 
-      const res = await fetchWithAuth(`/notifications/${id}/read`, {
+      const res = await authFetch(`${getApiBaseUrl()}/notifications/${id}/read`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
@@ -140,12 +139,12 @@ export function HeaderNotifications() {
         setUnreadCount((c) => Math.max(0, c - 1));
       }
     },
-    [fetchWithAuth, isAuthenticated, items]
+    [isAuthenticated, items]
   );
 
   const handleMarkAllRead = useCallback(async () => {
     if (!isAuthenticated) return;
-    const res = await fetchWithAuth(`/notifications/read-all`, {
+    const res = await authFetch(`${getApiBaseUrl()}/notifications/read-all`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -155,7 +154,7 @@ export function HeaderNotifications() {
 
     setItems((prev) => prev.map((n) => ({ ...n, status: "read" })));
     setUnreadCount(0);
-  }, [fetchWithAuth, isAuthenticated]);
+  }, [isAuthenticated]);
 
   const getActionRoute = useCallback((n: NotificationItem) => {
     if (!n.actionType) return null;
@@ -170,14 +169,15 @@ export function HeaderNotifications() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
+        <div className="relative">
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
-          {unreadCount > 0 && (
+        </Button>
+         {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
               {badgeText}
             </span>
-          )}
-        </Button>
+          )}</div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel>Notifications</DropdownMenuLabel>

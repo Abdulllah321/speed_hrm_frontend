@@ -6,37 +6,7 @@ import { NewSaleTopBar } from "@/components/pos/new-sale/top-bar";
 import { CartTable, type CartItem } from "@/components/pos/new-sale/cart-table";
 import { SummaryFooter } from "@/components/pos/new-sale/summary-footer";
 import { toast } from "sonner";
-import axios from "axios";
-
-const API_BASE =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-
-// Helper to get cookie
-function getCookie(name: string): string {
-    if (typeof document === "undefined") return "";
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
-    return "";
-}
-
-async function apiFetch<T>(endpoint: string, options?: any): Promise<T> {
-    const companyId = getCookie("companyId");
-    const companyCode = getCookie("companyCode");
-
-    const response = await axios({
-        url: `${API_BASE}${endpoint}`,
-        method: options?.method || "GET",
-        data: options?.body,
-        headers: {
-            "Content-Type": "application/json",
-            ...(companyId ? { "x-company-id": companyId } : {}),
-            ...(companyCode ? { "x-tenant-id": companyCode } : {}),
-        },
-        withCredentials: true,
-    });
-    return response.data;
-}
+import { authFetch } from "@/lib/auth";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function computeLineItem(
@@ -142,11 +112,11 @@ export default function NewSalePage() {
             if (searchQuery.trim().length >= 2) {
                 setIsSearching(true);
                 try {
-                    const res = await apiFetch<{ status: boolean; data: any[] }>(
-                        `/pos-sales/lookup?q=${encodeURIComponent(searchQuery.trim())}`
+                    const res = await authFetch(
+                        `/pos-sales/lookup`, { params: { q: searchQuery.trim() } }
                     );
-                    if (res.status && res.data) {
-                        setSearchResults(res.data);
+                    if (res.ok && res.data?.status && res.data.data) {
+                        setSearchResults(res.data.data);
                     } else {
                         setSearchResults([]);
                     }
@@ -167,14 +137,10 @@ export default function NewSalePage() {
         if (!searchQuery.trim()) return;
 
         try {
-            const res = await apiFetch<{
-                status: boolean;
-                data: any;
-                message?: string;
-            }>(`/pos-sales/scan?barcode=${encodeURIComponent(searchQuery.trim())}`);
+            const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
 
-            if (res.status && res.data) {
-                const product = res.data;
+            if (res.ok && res.data?.status && res.data.data) {
+                const product = res.data.data;
                 setCartItems((prev) => {
                     const existing = prev.find((i) => i.id === product.id);
                     if (existing) {
@@ -200,7 +166,7 @@ export default function NewSalePage() {
                 });
                 // toast.success(`Added: ${product.description || product.sku}`); // Moved to individual logic if needed, but keeping it simple
             } else {
-                toast.error(res.message || "Item not found");
+                toast.error(res.data?.message || "Item not found");
             }
         } catch {
             toast.error("Failed to scan item. Check connection.");

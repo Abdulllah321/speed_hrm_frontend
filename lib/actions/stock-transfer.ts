@@ -18,7 +18,7 @@ export async function getStockTransfers(filters?: {
             method: "GET",
         });
 
-        const result = await response.json();
+        const result = response.data;
 
         if (result.status) {
             return { status: true, data: result.data };

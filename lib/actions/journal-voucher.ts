@@ -36,7 +36,7 @@ export async function getJournalVouchers() {
             };
         }
 
-        const data = await response.json();
+        const data = response.data;
         return {
             status: true,
             data: data
@@ -58,14 +58,14 @@ export async function createJournalVoucher(data: any) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
+            const errorData = response.data || {};
             return {
                 status: false,
                 message: errorData.message || `Failed to create Journal Voucher: ${response.statusText || response.status}`
             };
         }
 
-        const result = await response.json();
+        const result = response.data;
 
         revalidatePath("/finance/journal-voucher/list");
         revalidatePath("/erp/finance/journal-voucher/list"); // Ensure correct path revalidation

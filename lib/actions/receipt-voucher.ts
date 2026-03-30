@@ -47,7 +47,7 @@ export async function getReceiptVouchers(type?: "bank" | "cash") {
             };
         }
 
-        const data = await response.json();
+        const data = response.data;
 
         // Map backend data to frontend interface if needed
         const mappedData = data.map((rv: any) => ({
@@ -88,7 +88,7 @@ export async function createReceiptVoucher(data: any) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
+            const errorData = response.data || {};
             return {
                 status: false,
                 message: errorData.message || `Failed to create Receipt Voucher: ${response.statusText || response.status}`

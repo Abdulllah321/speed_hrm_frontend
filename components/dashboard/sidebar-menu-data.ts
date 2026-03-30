@@ -781,7 +781,8 @@ export const menuData: MenuItem[] = [
 
           { title: "Dashboard", href: "/erp/inventory/warehouse" },
           { title: "Warehouse", href: "/erp/inventory/warehouse/add" },
-          { title: "Inventory Explorer", href: "/erp/inventory/warehouse/inventory" },
+          { title: "Inventory Explorer", href: "/erp/inventory/explorer" },
+          { title: "Inventory List", href: "/erp/inventory/warehouse/inventory" },
 
         ]
       },
@@ -810,15 +811,30 @@ export const menuData: MenuItem[] = [
     permissions: ["procurement.read"],
     children: [
       { title: "Vendors", href: "/erp/procurement/vendors" },
-      { title: "Purchase Requisition", href: "/erp/procurement/purchase-requisition" },
-      { title: "RFQ", href: "/erp/procurement/rfq" },
-      { title: "Vendor Quotation", href: "/erp/procurement/vendor-quotation/create" },
-      { title: "Vendor Quotation list", href: "/erp/procurement/vendor-quotation/list" },
-      { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
-      { title: "Goods Receipt Note", href: "/erp/procurement/grn" },
-      { title: "Landed Cost", href: "/erp/procurement/landed-cost" },
-      { title: "Landed Cost Setup", href: "/erp/procurement/landed-cost/setup" },
-      { title: "Landed Cost Report", href: "/erp/procurement/landed-cost/report" },
+      {
+        title: "Requisition & Quotation",
+        children: [
+          { title: "Purchase Requisition", href: "/erp/procurement/purchase-requisition" },
+          { title: "RFQ", href: "/erp/procurement/rfq" },
+          { title: "Create Vendor Quotation", href: "/erp/procurement/vendor-quotation/create" },
+          { title: "Vendor Quotation List", href: "/erp/procurement/vendor-quotation/list" },
+        ],
+      },
+      {
+        title: "Orders & Receiving",
+        children: [
+          { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
+          { title: "Goods Receipt Note", href: "/erp/procurement/grn" },
+        ],
+      },
+      {
+        title: "Landed Cost",
+        children: [
+          { title: "Landed Cost", href: "/erp/procurement/landed-cost" },
+          { title: "Setup", href: "/erp/procurement/landed-cost/setup" },
+          { title: "Report", href: "/erp/procurement/landed-cost/report" },
+        ],
+      },
       { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
       { title: "Purchase Returns", href: "/erp/procurement/purchase-returns" },
     ],
@@ -1154,6 +1170,7 @@ export const menuData: MenuItem[] = [
     children: [
       { title: "New Sale", href: "/pos/new-sale", permissions: ["pos.sales.create"] },
       { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.history.view"] },
+      { title: "Customers", href: "/pos/customers", permissions: ["pos.sales.read"] },
       { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
     ]
   },
@@ -1165,6 +1182,10 @@ export const menuData: MenuItem[] = [
     children: [
       { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
       { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
+      { title: "Receiving", href: "/pos/inventory/receiving", permissions: ["pos.inventory.create"] },
+      { title: "Inbound", href: "/pos/inventory/inbound", permissions: ["pos.inventory.create"] },
+      { title: "Outbound", href: "/pos/inventory/outbound", permissions: ["pos.inventory.create"] },
+      { title: "Returns", href: "/pos/inventory/returns", permissions: ["pos.inventory.create"] },
     ]
   },
   {

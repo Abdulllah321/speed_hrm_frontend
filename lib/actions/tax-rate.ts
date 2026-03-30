@@ -14,7 +14,7 @@ const BASE_URL = "/master/erp/tax-rate";
 export async function getTaxRates(): Promise<{ status: boolean; data: TaxRate[]; message?: string }> {
   try {
     const res = await authFetch(BASE_URL);
-    const result = await res.json();
+    const result = res.data;
     return result;
   } catch {
     return { status: false, data: [], message: "Failed to fetch Tax Rates" };
@@ -27,7 +27,7 @@ export async function createTaxRate(data: Partial<TaxRate>): Promise<{ status: b
       method: "POST",
       body: JSON.stringify(data),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/tax-rate");
     }
@@ -42,7 +42,7 @@ export async function deleteTaxRate(id: string): Promise<{ status: boolean; mess
     const res = await authFetch(`${BASE_URL}/${id}`, {
       method: "DELETE",
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/tax-rate");
     }

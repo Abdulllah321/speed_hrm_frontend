@@ -16,7 +16,7 @@ export interface Color {
 export async function getColors() {
     try {
         const response = await authFetch("/colors");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -29,7 +29,7 @@ export async function createColors(items: { name: string; status?: string }[]) {
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/color/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -45,7 +45,7 @@ export async function updateColor(id: string, formData: FormData) {
             body: JSON.stringify({ name, status }),
         });
         revalidatePath("/master/color/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -58,7 +58,7 @@ export async function updateColors(items: { id: string; name: string; status?: s
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/color/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -70,7 +70,7 @@ export async function deleteColor(id: string) {
             method: "DELETE",
         });
         revalidatePath("/master/color/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -83,7 +83,7 @@ export async function deleteColors(ids: string[]) {
             body: JSON.stringify({ ids }),
         });
         revalidatePath("/master/color/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }

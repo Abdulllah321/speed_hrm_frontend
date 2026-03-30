@@ -17,9 +17,8 @@ export interface CompanyGroup {
 // CompanyGroup Actions
 export async function getCompanyGroups(): Promise<{ status: boolean; data: CompanyGroup[]; message?: string }> {
   try {
-    const res = await authFetch(`/company-groups`, {
-    });
-    return res.json();
+    const res = await authFetch(`/company-groups`, {});
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch company groups:", error);
     return { status: false, data: [], message: "Failed to fetch company groups" };
@@ -28,9 +27,8 @@ export async function getCompanyGroups(): Promise<{ status: boolean; data: Compa
 
 export async function getCompanyGroupById(id: string): Promise<{ status: boolean; data: CompanyGroup | null }> {
   try {
-    const res = await authFetch(`/company-groups/${id}`, {
-    });
-    return res.json();
+    const res = await authFetch(`/company-groups/${id}`, {});
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch company group:", error);
     return { status: false, data: null };
@@ -52,7 +50,7 @@ export async function createCompanyGroup(data: FormData | { name: string }): Pro
       method: "POST",
       body: JSON.stringify({ name }),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/company-group/list");
     }
@@ -71,7 +69,7 @@ export async function createCompanyGroups(names: string[]): Promise<{ status: bo
       authFetch(`/company-groups`, {
         method: "POST",
         body: JSON.stringify({ name }),
-      }).then(r => r.json())
+      }).then(r => r.data)
     ));
     
     const allSuccess = results.every(r => r.id || r.status !== false); 
@@ -99,7 +97,7 @@ export async function updateCompanyGroup(id: string, data: FormData | { name: st
       method: "PUT",
       body: JSON.stringify({ name }),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.id || result.status) {
       revalidatePath("/master/company-group/list");
       return { status: true, message: "Company group updated successfully" };
@@ -115,7 +113,7 @@ export async function deleteCompanyGroup(id: string): Promise<{ status: boolean;
     const res = await authFetch(`/company-groups/${id}`, {
       method: "DELETE",
     });
-    const data = await res.json();
+    const data = res.data;
     if (data.id || data.status) {
       revalidatePath("/master/company-group/list");
       return { status: true, message: "Company group deleted successfully" };

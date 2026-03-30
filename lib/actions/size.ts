@@ -16,7 +16,7 @@ export interface Size {
 export async function getSizes() {
     try {
         const response = await authFetch("/sizes");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -25,7 +25,7 @@ export async function getSizes() {
 export async function getSizeById(id: string) {
     try {
         const response = await authFetch(`/sizes/${id}`);
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -38,7 +38,7 @@ export async function createSizes(items: { name: string; status?: string }[]) {
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/size/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -54,7 +54,7 @@ export async function updateSize(id: string, formData: FormData) {
             body: JSON.stringify({ name, status }),
         });
         revalidatePath("/master/size/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -67,7 +67,7 @@ export async function updateSizes(items: { id: string; name: string; status?: st
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/size/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -79,7 +79,7 @@ export async function deleteSize(id: string) {
             method: "DELETE",
         });
         revalidatePath("/master/size/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -92,7 +92,7 @@ export async function deleteSizes(ids: string[]) {
             body: JSON.stringify({ ids }),
         });
         revalidatePath("/master/size/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }

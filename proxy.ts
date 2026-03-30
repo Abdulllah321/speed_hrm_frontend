@@ -238,6 +238,13 @@ export default function middleware(request: NextRequest): NextResponse {
     return new URL(path + request.nextUrl.search, `${protocol}://${hostname}`);
   };
 
+  // Handle OPTIONS / 400 error - redirect to /hr or /auth/login
+  if (request.method === "OPTIONS" && pathname === "/") {
+    const accessToken = request.cookies.get("accessToken")?.value;
+    const targetUrl = accessToken ? buildUrl("hr", "/") : buildUrl("auth", "/login");
+    return NextResponse.redirect(targetUrl);
+  }
+
   // Special handling for auth routes - redirect to auth subdomain
   if (pathname.startsWith("/auth") && currentSubdomain !== "auth") {
     // Check if user is already authenticated
@@ -510,18 +517,21 @@ export default function middleware(request: NextRequest): NextResponse {
   img-src 'self' data: blob: http://localhost:* http://*.localtest.me:* https://localhost:* https://*.localtest.me:*;
   font-src 'self' data:;
 `;
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  const apiOrigin = apiBaseUrl ? new URL(apiBaseUrl).origin : '';
+
   const prodCSP = `
   default-src 'self';
   connect-src
     'self'
-    https://drivesafewarranty.co.uk
-    https://*.drivesafewarranty.co.uk;
+    ${apiOrigin}
+    https://${baseDomain}
+    https://*.${baseDomain};
   script-src 'self' 'unsafe-inline' 'unsafe-eval';
   style-src 'self' 'unsafe-inline';
-  img-src 'self' data: blob:;
+  img-src 'self' data: blob: https://${baseDomain} https://*.${baseDomain};
   font-src 'self' data:;
 `;
-
   // CSP: Allow API calls to localhost and localtest.me subdomains in development
   // ⭐ IMPORTANT: connect-src must come BEFORE default-src to override it
   const cspDirective = isDevelopment ? devCSP : prodCSP;

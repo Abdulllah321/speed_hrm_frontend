@@ -7,6 +7,9 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { columns, HsCodeRow } from "./columns";
 import { HsCode, deleteHsCode } from "@/lib/actions/hs-code";
 import { toast } from "sonner";
+import { HsCodeBulkUploadModal } from "@/components/master/hscode-bulk-upload-modal";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
 
 interface HsCodeListProps {
     initialHsCodes: HsCode[];
@@ -17,6 +20,8 @@ export function HsCodeList({ initialHsCodes, newItemId }: HsCodeListProps) {
     const router = useRouter();
     const { hasPermission } = useAuth();
     const [isPending, startTransition] = useTransition();
+    const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
+    const [uploadId, setUploadId] = useState<string | null>(null);
 
     const handleToggle = () => {
         router.push("/master/hs-code/add");
@@ -24,6 +29,7 @@ export function HsCodeList({ initialHsCodes, newItemId }: HsCodeListProps) {
 
     const showAddAction = hasPermission("hs-code.create");
     const canBulkDelete = hasPermission("hs-code.delete");
+    const canBulkUpload = hasPermission("hs-code.create"); // Assuming same permission for bulk upload
 
     const handleMultiDelete = (ids: string[]) => {
         // Implementing simple delete for each since I don't have bulk delete for HS Code yet
@@ -36,6 +42,12 @@ export function HsCodeList({ initialHsCodes, newItemId }: HsCodeListProps) {
         });
     };
 
+    const handleBulkUploadSuccess = () => {
+        toast.success("HS Codes imported successfully!");
+        router.refresh();
+        setIsBulkUploadOpen(false);
+    };
+
     // Transform data to ensure string id
     const data: HsCodeRow[] = initialHsCodes.map((item) => ({
         ...item,
@@ -44,11 +56,24 @@ export function HsCodeList({ initialHsCodes, newItemId }: HsCodeListProps) {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold tracking-tight">HS Codes</h2>
-                <p className="text-muted-foreground">
-                    Manage Harmonized System Codes and tax percentages
-                </p>
+            <div className="flex justify-between items-start">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">HS Codes</h2>
+                    <p className="text-muted-foreground">
+                        Manage Harmonized System Codes and tax percentages
+                    </p>
+                </div>
+                
+                {canBulkUpload && (
+                    <Button
+                        onClick={() => setIsBulkUploadOpen(true)}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                    >
+                        <Upload className="h-4 w-4" />
+                        Bulk Upload
+                    </Button>
+                )}
             </div>
 
             <DataTable<HsCodeRow>
@@ -60,6 +85,14 @@ export function HsCodeList({ initialHsCodes, newItemId }: HsCodeListProps) {
                 searchFields={[{ key: "hsCode", label: "HS Code" }]}
                 onMultiDelete={canBulkDelete ? handleMultiDelete : undefined}
                 tableId="hs-code-list"
+            />
+
+            <HsCodeBulkUploadModal
+                open={isBulkUploadOpen}
+                onOpenChange={setIsBulkUploadOpen}
+                onSuccess={handleBulkUploadSuccess}
+                uploadId={uploadId}
+                onUploadIdChange={setUploadId}
             />
         </div>
     );

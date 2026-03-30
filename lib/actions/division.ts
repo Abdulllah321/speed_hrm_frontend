@@ -21,7 +21,7 @@ export async function getDivisions(): Promise<{ status: boolean; data: Division[
         const res = await authFetch("/divisions", {
             cache: "no-store",
         });
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to fetch divisions:", error);
         return { status: false, data: [], message: "Failed to fetch divisions" };
@@ -33,7 +33,7 @@ export async function getDivisionsByBrand(brandId: string): Promise<{ status: bo
         const res = await authFetch(`/divisions/brand/${brandId}`, {
             cache: "no-store",
         });
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error("Failed to fetch divisions by brand:", error);
         return { status: false, data: [] };
@@ -50,7 +50,7 @@ export async function createDivisions(items: { name: string; brandId: string }[]
             method: "POST",
             body: JSON.stringify({ items }),
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/division");
@@ -78,7 +78,7 @@ export async function updateDivision(id: string, formData: FormData): Promise<{ 
             method: "PUT",
             body: JSON.stringify({ name, brandId }),
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/division");
@@ -100,7 +100,7 @@ export async function updateDivisions(items: { id: string; name: string; brandId
             method: "PUT",
             body: JSON.stringify({ items }),
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/division");
@@ -117,7 +117,7 @@ export async function deleteDivision(id: string): Promise<{ status: boolean; mes
         const res = await authFetch(`/divisions/${id}`, {
             method: "DELETE",
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/division");
@@ -139,7 +139,7 @@ export async function deleteDivisions(ids: string[]): Promise<{ status: boolean;
             method: "DELETE",
             body: JSON.stringify({ ids }),
         });
-        const data = await res.json();
+        const data = res.data;
 
         if (data.status) {
             revalidatePath("/master/division");

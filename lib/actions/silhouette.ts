@@ -16,7 +16,7 @@ export interface Silhouette {
 export async function getSilhouettes() {
     try {
         const response = await authFetch("/silhouettes");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -25,7 +25,7 @@ export async function getSilhouettes() {
 export async function getSilhouetteById(id: string) {
     try {
         const response = await authFetch(`/silhouettes/${id}`);
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -38,7 +38,7 @@ export async function createSilhouettes(items: { name: string; status?: string }
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/silhouette/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -54,7 +54,7 @@ export async function updateSilhouette(id: string, formData: FormData) {
             body: JSON.stringify({ name, status }),
         });
         revalidatePath("/master/silhouette/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -67,7 +67,7 @@ export async function updateSilhouettes(items: { id: string; name: string; statu
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/silhouette/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -79,7 +79,7 @@ export async function deleteSilhouette(id: string) {
             method: "DELETE",
         });
         revalidatePath("/master/silhouette/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -92,7 +92,7 @@ export async function deleteSilhouettes(ids: string[]) {
             body: JSON.stringify({ ids }),
         });
         revalidatePath("/master/silhouette/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }

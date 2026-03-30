@@ -8,9 +8,10 @@ import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { authFetch } from "@/lib/auth";
 
 export default function PasswordPage() {
-    const { fetchWithAuth, logout } = useAuth();
+    const { logout } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         oldPassword: "",
@@ -34,7 +35,7 @@ export default function PasswordPage() {
         setLoading(true);
 
         try {
-            const res = await fetchWithAuth("/auth/change-password", {
+            const res = await authFetch("/auth/change-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -43,7 +44,7 @@ export default function PasswordPage() {
                 }),
             });
 
-            const data = await res.json();
+            const data = res.data;
 
             if (data.status) {
                 toast.success("Password changed successfully. Please login again.");

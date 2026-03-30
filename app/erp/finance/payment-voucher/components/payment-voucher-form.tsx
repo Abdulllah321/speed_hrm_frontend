@@ -13,7 +13,7 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Plus, Trash2, Loader2, CreditCard, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createPaymentVoucher, getSuppliersWithPendingInvoices, getPendingInvoicesBySupplier, getAllSuppliers } from "@/lib/actions/payment-voucher";
+import { createPaymentVoucher, getSuppliersWithPendingInvoices, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts } from "@/lib/actions/payment-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -134,59 +134,54 @@ export function PaymentVoucherForm({ accounts }: {
         }
     }, [selectedSupplierId, form]);
 
-    // Handle invoice selection
+    // When supplier changes, fetch their linked chart of accounts and pre-fill debit rows
     const selectedInvoiceId = form.watch("selectedInvoiceId");
+    useEffect(() => {
+        if (!selectedSupplierId) return;
+        getVendorWithAccounts(selectedSupplierId).then(res => {
+            if (res.status && res.data?.chartOfAccounts?.length > 0) {
+                const linkedAccounts: { id: string }[] = res.data.chartOfAccounts;
+
+                if (linkedAccounts.length === 1) {
+                    // Single account — set first row
+                    form.setValue("details.0.accountId", linkedAccounts[0].id);
+                } else {
+                    // Multiple accounts (e.g. GOODS/SERVICES vendor) — one row per account
+                    // Ensure enough rows exist
+                    const currentRows = form.getValues("details").length;
+                    linkedAccounts.forEach((acc, i) => {
+                        if (i < currentRows) {
+                            form.setValue(`details.${i}.accountId`, acc.id);
+                            form.setValue(`details.${i}.debit`, 0);
+                            form.setValue(`details.${i}.credit`, 0);
+                        } else {
+                            append({ accountId: acc.id, debit: 0, credit: 0 });
+                        }
+                    });
+                }
+            }
+        });
+    }, [selectedSupplierId, form, append]);
+
+    // Handle invoice selection — auto-fill amount from selected invoice
     useEffect(() => {
         if (selectedInvoiceId && pendingInvoices.length > 0) {
             const invoice = pendingInvoices.find(inv => inv.id === selectedInvoiceId);
             if (invoice) {
                 setSelectedInvoice(invoice);
                 const amount = Number(invoice.remainingAmount);
-                
-                // Auto-fill form fields
                 form.setValue("refBillNo", invoice.invoiceNumber);
                 form.setValue("billDate", new Date(invoice.invoiceDate));
-                
-                // Auto-populate first row with supplier account and debit amount
-                // Try to find supplier-specific account or general supplier payable account
-                let supplierAccount = null;
-                
-                // First try to find account with supplier name
-                const selectedSupplier = suppliers.find(s => s.id === selectedSupplierId);
-                if (selectedSupplier) {
-                    supplierAccount = accounts.find(acc => 
-                        acc.name.toLowerCase().includes(selectedSupplier.name.toLowerCase()) ||
-                        acc.name.toLowerCase().includes(selectedSupplier.code?.toLowerCase() || '')
-                    );
-                }
-                
-                // If not found, try general supplier/payable accounts
-                if (!supplierAccount) {
-                    supplierAccount = accounts.find(acc => 
-                        acc.name.toLowerCase().includes('supplier') || 
-                        acc.name.toLowerCase().includes('payable') ||
-                        acc.name.toLowerCase().includes('creditor') ||
-                        acc.code.toLowerCase().includes('sup') ||
-                        acc.code.toLowerCase().includes('pay')
-                    );
-                }
-                
-                if (supplierAccount) {
-                    form.setValue("details.0.accountId", supplierAccount.id);
-                    form.setValue("details.0.debit", amount);
-                    form.setValue("details.0.credit", 0);
-                    console.log(`Auto-populated first row: ${supplierAccount.name} with debit ${amount}`);
-                } else {
-                    // Just set the amount, user will select account manually
-                    form.setValue("details.0.debit", amount);
-                    form.setValue("details.0.credit", 0);
-                    console.log('No supplier account found, user needs to select manually');
-                }
+
+                // Put full amount in first debit row — if vendor has 2 accounts,
+                // user can manually split between the two rows
+                form.setValue("details.0.debit", amount);
+                form.setValue("details.0.credit", 0);
             }
         } else {
             setSelectedInvoice(null);
         }
-    }, [selectedInvoiceId, pendingInvoices, form, accounts]);
+    }, [selectedInvoiceId, pendingInvoices, form]);
 
     const onSubmit: SubmitHandler<PaymentVoucherFormValues> = async (values) => {
         try {

@@ -70,7 +70,7 @@ export function SessionChecker() {
         await handleSessionExpiry();
     } catch {}
     const callbackUrl = encodeURIComponent(pathname || "/hr");
-    router.push(`/auth/login?callbackUrl=${callbackUrl}`);
+    window.location.href = `/auth/login?callbackUrl=${callbackUrl}`;
   };
 
   return (

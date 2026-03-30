@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, X, AlertTriangle, Monitor, ShieldCheck, Clock as ClockIcon } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -32,6 +32,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, companyOptional = false }: DashboardLayoutProps) {
   const { user } = useAuth();
   const { environment, setEnvironment } = useEnvironment();
+  const router = useRouter();
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const pathname = usePathname();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -84,7 +85,7 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
           variant="secondary"
           size="sm"
           className="h-6 px-3 text-xs bg-white text-orange-600 hover:bg-orange-50 hover:text-orange-700 font-semibold border-0"
-          onClick={() => (window.location.href = "/hr/settings/password")}
+          onClick={() => router.push("/hr/settings/password")}
         >
           Change Now
         </Button>

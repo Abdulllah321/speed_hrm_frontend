@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, Printer, Download, RefreshCw, Filter, ChevronLeft, ChevronRight, Activity } from "lucide-react";
 import { toast } from "sonner";
-import { io, Socket } from "socket.io-client";
+import { useSocket } from "@/components/providers/socket-provider";
+import { authFetch } from "@/lib/auth";
 
 interface ActivityLog {
   id: string;
@@ -72,14 +74,14 @@ export default function ActivityLogsPage() {
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
   const limit = 20;
-  const socketRef = useRef<Socket | null>(null);
+  const { socket } = useSocket();
 
   const fetchLogs = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ 
-        page: page.toString(), 
-        limit: limit.toString() 
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString()
       });
       if (actionFilter && actionFilter !== "all") params.append('action', actionFilter);
       if (moduleFilter && moduleFilter !== "all") params.append('module', moduleFilter);
@@ -87,20 +89,16 @@ export default function ActivityLogsPage() {
       if (startDate) params.append('startDate', startDate);
       if (endDate) params.append('endDate', endDate);
 
-      const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
-      const res = await fetch(`${API_URL}/activity-logs?${params}`, {
-        headers: {
-          'Content-Type': 'application/json',
-          // Add Authorization header if needed, assuming cookie based or handled globally
-        },
-        credentials: 'include',
+      const res = await authFetch(`/activity-logs?${params}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
       });
 
       if (!res.ok) {
         throw new Error('Failed to fetch logs');
       }
 
-      const result = await res.json();
+      const result = await res.data;
       setData(result);
     } catch (error) {
       console.error(error);
@@ -112,35 +110,19 @@ export default function ActivityLogsPage() {
 
   useEffect(() => {
     fetchLogs();
-  }, [page, actionFilter, moduleFilter, startDate, endDate]); // Removed search from dependency to avoid debouncing issues, search triggers manually or debounced ideally. But here let's keep it simple or add search button.
-  // Actually, let's add search to dependencies if we want auto-search, but usually we want debounce.
-  // For now, I'll add a search button or 'Enter' key handler.
-  
-  // Realtime connection
+  }, [page, actionFilter, moduleFilter, startDate, endDate]);
+
   useEffect(() => {
-    const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
-    // Extract base URL (remove /api)
-    const baseUrl = API_URL.replace(/\/api$/, '');
-    
-    socketRef.current = io(baseUrl, {
-      transports: ['websocket'],
-    });
+    if (!socket) return;
 
-    socketRef.current.on('connect', () => {
-      console.log('Connected to Activity Logs WebSocket');
-    });
-
-    socketRef.current.on('activity_log', (newLog: ActivityLog) => {
-      // Only prepend if filters match or no filters active
-      // This is a simple client-side check, might not be perfect for all cases but good for UX
+    const handleNewLog = (newLog: ActivityLog) => {
       let matches = true;
       if (actionFilter && actionFilter !== "all" && newLog.action !== actionFilter) matches = false;
       if (moduleFilter && moduleFilter !== "all" && newLog.module !== moduleFilter) matches = false;
-      
+
       if (matches) {
         setData(prev => {
           if (!prev) return null;
-          // Prepend new log and keep limit
           const newLogs = [newLog, ...prev.logs].slice(0, limit);
           return {
             ...prev,
@@ -150,25 +132,25 @@ export default function ActivityLogsPage() {
         });
         toast.info(`New activity: ${newLog.action} by ${newLog.user?.email || 'System'}`);
       }
-    });
+    };
+
+    socket.on('activity_log', handleNewLog);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
+      socket.off('activity_log', handleNewLog);
     };
-  }, [actionFilter, moduleFilter]); // Re-connect or just update listener logic? 
+  }, [socket, actionFilter, moduleFilter]); // Re-connect or just update listener logic? 
   // Updating listener logic is better. But with useEffect dependency it will reconnect. 
   // Better to use a ref for filters or just always update state and let the filter logic inside 'on' handle it.
   // However, the 'on' callback captures the scope variables. 
   // To avoid reconnecting, we can use a ref for the current filters.
-  
+
   // Ref approach for filters to avoid reconnecting socket
   const filtersRef = useRef({ actionFilter, moduleFilter });
   useEffect(() => {
     filtersRef.current = { actionFilter, moduleFilter };
   }, [actionFilter, moduleFilter]);
-  
+
   // Wait, I put [actionFilter, moduleFilter] in the socket useEffect dependency, so it reconnects.
   // That's fine for now, it ensures the closure has fresh values.
 
@@ -253,18 +235,18 @@ export default function ActivityLogsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportCSV} disabled={!data?.logs.length}>
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-            </Button>
-            <Button variant="outline" onClick={handlePrint} disabled={!data?.logs.length}>
-                <Printer className="h-4 w-4 mr-2" />
-                Print
-            </Button>
-            <Button variant="outline" onClick={() => fetchLogs()} disabled={loading}>
+          <Button variant="outline" onClick={handleExportCSV} disabled={!data?.logs.length}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button variant="outline" onClick={handlePrint} disabled={!data?.logs.length}>
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
+          <Button variant="outline" onClick={() => fetchLogs()} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
-            </Button>
+          </Button>
         </div>
       </div>
 
@@ -332,7 +314,7 @@ export default function ActivityLogsPage() {
             />
           </div>
           <div className="mt-4 flex justify-end">
-             <Button onClick={handleSearch}>Apply Search</Button>
+            <Button onClick={handleSearch}>Apply Search</Button>
           </div>
         </CardContent>
       </Card>
@@ -414,34 +396,34 @@ export default function ActivityLogsPage() {
           </Table>
         </CardContent>
         {data && data.totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t">
-                <div className="text-sm text-muted-foreground">
-                    Showing {(data.page - 1) * data.limit + 1} to {Math.min(data.page * data.limit, data.total)} of {data.total} entries
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                        Previous
-                    </Button>
-                    <div className="text-sm font-medium">
-                        Page {page} of {data.totalPages}
-                    </div>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage(p => Math.min(data.totalPages, p + 1))}
-                        disabled={page === data.totalPages}
-                    >
-                        Next
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
+          <div className="flex items-center justify-between p-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              Showing {(data.page - 1) * data.limit + 1} to {Math.min(data.page * data.limit, data.total)} of {data.total} entries
             </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <div className="text-sm font-medium">
+                Page {page} of {data.totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(data.totalPages, p + 1))}
+                disabled={page === data.totalPages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         )}
       </Card>
     </div>

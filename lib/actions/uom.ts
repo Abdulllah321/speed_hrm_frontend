@@ -14,7 +14,7 @@ const BASE_URL = "/master/erp/uom";
 export async function getUoms(): Promise<{ status: boolean; data: Uom[]; message?: string }> {
   try {
     const res = await authFetch(BASE_URL);
-    const result = await res.json();
+    const result = res.data;
     return result;
   } catch (error) {
     return { status: false, data: [], message: "Failed to fetch UOMs" };
@@ -24,7 +24,7 @@ export async function getUoms(): Promise<{ status: boolean; data: Uom[]; message
 export async function getUom(id: string): Promise<{ status: boolean; data: Uom | null; message?: string }> {
   try {
     const res = await authFetch(`${BASE_URL}/${id}`);
-    const result = await res.json();
+    const result = res.data;
     return result;
   } catch (error) {
     return { status: false, data: null, message: "Failed to fetch UOM" };
@@ -37,7 +37,7 @@ export async function createUom(data: any): Promise<{ status: boolean; message: 
       method: "POST",
       body: JSON.stringify(data),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/unit-of-measurement");
     }
@@ -53,7 +53,7 @@ export async function updateUom(id: string, data: any): Promise<{ status: boolea
       method: "PATCH",
       body: JSON.stringify(data),
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/unit-of-measurement");
     }
@@ -68,7 +68,7 @@ export async function deleteUom(id: string): Promise<{ status: boolean; message:
     const res = await authFetch(`${BASE_URL}/${id}`, {
       method: "DELETE",
     });
-    const result = await res.json();
+    const result = res.data;
     if (result.status) {
       revalidatePath("/master/uom");
     }

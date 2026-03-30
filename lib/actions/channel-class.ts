@@ -16,7 +16,7 @@ export interface ChannelClass {
 export async function getChannelClasses() {
     try {
         const response = await authFetch("/channel-classes");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -29,7 +29,7 @@ export async function createChannelClasses(items: { name: string; status?: strin
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/channel-class/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -45,7 +45,7 @@ export async function updateChannelClass(id: string, formData: FormData) {
             body: JSON.stringify({ name, status }),
         });
         revalidatePath("/master/channel-class/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -58,7 +58,7 @@ export async function updateChannelClasses(items: { id: string; name: string; st
             body: JSON.stringify({ items }),
         });
         revalidatePath("/master/channel-class/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -70,7 +70,7 @@ export async function deleteChannelClass(id: string) {
             method: "DELETE",
         });
         revalidatePath("/master/channel-class/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }
@@ -83,7 +83,7 @@ export async function deleteChannelClasses(ids: string[]) {
             body: JSON.stringify({ ids }),
         });
         revalidatePath("/master/channel-class/list");
-        return response.json();
+        return response.data;
     } catch (error: any) {
         return { status: false, message: error.message, data: null };
     }

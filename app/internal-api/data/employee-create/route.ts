@@ -21,62 +21,48 @@ export async function GET() {
       allocations,
     ] = await Promise.all([
       authFetch("/departments", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/employee-grades", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/designations", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/marital-statuses", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/employee-statuses", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/locations", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/states", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/equipments", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/working-hours-policies", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/leaves-policies", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/qualifications", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/institutes", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/social-security-institutions", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
       authFetch("/allocations", options)
-        .then((r) => r.json())
+        .then((r) => r.data)
         .catch(() => ({ status: false, data: [] })),
     ]);
-
-    console.log("--- Employee Create Page Data Fetch ---");
-    console.log(`Departments: ${depts.data?.length || 0}`);
-    console.log(`Grades: ${grades.data?.length || 0}`);
-    console.log(`Designations: ${designations.data?.length || 0}`);
-    console.log(`Locations: ${locations.data?.length || 0}`);
-    console.log(`Allocations: ${allocations.data?.length || 0}`);
-    if (allocations.data?.length > 0) {
-      console.log("Allocation Sample:", allocations.data[0]);
-    } else {
-      console.log("Allocations data is EMPTY from backend");
-      console.log("Full Allocations Response:", allocations);
-    }
-    console.log("---------------------------------------");
 
     return NextResponse.json({
       status: true,

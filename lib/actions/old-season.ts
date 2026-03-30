@@ -18,7 +18,10 @@ export async function getOldSeasons(): Promise<{ status: boolean; data: OldSeaso
     const res = await authFetch("/master/erp/old-season", {
       cache: "no-store",
     });
-    return res.json();
+    if (!res.ok) {
+      return { status: false, data: [], message: "Failed to fetch old seasons" };
+    }
+    return res.data;
   } catch (error) {
     console.error("Failed to fetch old seasons:", error);
     return { status: false, data: [], message: "Failed to fetch old seasons" };
@@ -31,7 +34,10 @@ export async function createOldSeasons(items: { name: string; status?: string }[
       method: "POST",
       body: JSON.stringify({ items }),
     });
-    return res.json();
+    if (!res.ok) {
+      return { status: false, message: "Failed to create old seasons" };
+    }
+    return res.data;
   } catch (error) {
     console.error("Failed to create old seasons:", error);
     return { status: false, message: "Failed to create old seasons" };
@@ -45,7 +51,10 @@ export async function updateOldSeason(id: string, data: { name?: string; status?
       body: JSON.stringify(data),
     });
     revalidatePath("/master/old-season/list");
-    return res.json();
+    if (!res.ok) {
+      return { status: false, message: "Failed to update old season" };
+    }
+    return res.data;
   } catch (error) {
     console.error("Failed to update old season:", error);
     return { status: false, message: "Failed to update old season" };
@@ -58,7 +67,10 @@ export async function deleteOldSeason(id: string): Promise<{ status: boolean; me
       method: "DELETE",
     });
     revalidatePath("/master/old-season/list");
-    return res.json();
+    if (!res.ok) {
+      return { status: false, message: "Failed to delete old season" };
+    }
+    return res.data;
   } catch (error) {
     console.error("Failed to delete old season:", error);
     return { status: false, message: "Failed to delete old season" };
@@ -72,7 +84,10 @@ export async function bulkUpdateOldSeasons(items: { id: string; name: string; st
       body: JSON.stringify({ items }),
     });
     revalidatePath("/master/old-season/list");
-    return res.json();
+    if (!res.ok) {
+      return { status: false, message: "Failed to bulk update old seasons" };
+    }
+    return res.data;
   } catch (error) {
     console.error("Failed to bulk update old seasons:", error);
     return { status: false, message: "Failed to bulk update old seasons" };
@@ -86,7 +101,10 @@ export async function bulkDeleteOldSeasons(ids: string[]): Promise<{ status: boo
       body: JSON.stringify({ ids }),
     });
     revalidatePath("/master/old-season/list");
-    return res.json();
+    if (!res.ok) {
+      return { status: false, message: "Failed to bulk delete old seasons" };
+    }
+    return res.data;
   } catch (error) {
     console.error("Failed to bulk delete old seasons:", error);
     return { status: false, message: "Failed to bulk delete old seasons" };

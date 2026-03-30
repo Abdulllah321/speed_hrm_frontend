@@ -25,6 +25,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
+import { authFetch } from "@/lib/auth";
 
 interface Session {
     id: string;
@@ -36,7 +37,6 @@ interface Session {
 }
 
 export default function SessionsPage() {
-    const { fetchWithAuth } = useAuth();
     const [loading, setLoading] = useState(true);
     const [sessions, setSessions] = useState<Session[]>([]);
     const [terminatingId, setTerminatingId] = useState<string | null>(null);
@@ -45,9 +45,9 @@ export default function SessionsPage() {
     const fetchSessions = async () => {
         try {
             setLoading(true);
-            const res = await fetchWithAuth("/auth/sessions");
-            const data = await res.json();
-            
+            const res = await authFetch("/auth/sessions");
+            const { data } = res;
+
             if (data.status && Array.isArray(data.data)) {
                 setSessions(data.data);
             }
@@ -64,17 +64,17 @@ export default function SessionsPage() {
 
     const handleTerminate = async () => {
         if (!sessionToTerminate) return;
-        
+
         try {
             setTerminatingId(sessionToTerminate.id);
-            const res = await fetchWithAuth("/auth/sessions/terminate", {
+            const res = await authFetch("/auth/sessions/terminate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ sessionId: sessionToTerminate.id }),
             });
-            
-            const data = await res.json();
-            
+
+            const { data } = res;
+
             if (data.status) {
                 toast.success("Session terminated successfully");
                 setSessions(sessions.filter(s => s.id !== sessionToTerminate.id));
@@ -161,9 +161,9 @@ export default function SessionsPage() {
                                         </div>
                                     </div>
                                     {!session.isCurrent && (
-                                        <Button 
-                                            variant="ghost" 
-                                            size="sm" 
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
                                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                             onClick={() => setSessionToTerminate(session)}
                                             disabled={terminatingId === session.id}
@@ -180,7 +180,7 @@ export default function SessionsPage() {
                             </CardHeader>
                         </Card>
                     ))}
-                    
+
                     {sessions.length === 0 && (
                         <div className="text-center p-8 text-muted-foreground">
                             No active sessions found.

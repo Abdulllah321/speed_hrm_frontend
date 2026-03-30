@@ -105,11 +105,13 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
         });
       }
 
-      // Force a redirect to the matching subdomain path
-      if (typeof window !== "undefined") {
+      // Only navigate when user explicitly switches environment (not silent route-sync).
+      // Silent calls come from dashboard-layout's route-sync effect on every page load —
+      // those must NOT navigate or they cause a second full reload mid-auth-initialization.
+      if (!silent && typeof window !== "undefined") {
         const path = env === "ERP" ? "/erp" : env === "ADMIN" ? "/admin" : env === "POS" ? "/pos" : "/hr";
         // Using window.location.href triggers a full page navigation allowing Next middleware
-        // (proxy.ts) to correctly physically assign the user to the target subdomain.
+        // (middleware.ts) to correctly physically assign the user to the target subdomain.
         window.location.href = path;
       }
     } catch (error) {

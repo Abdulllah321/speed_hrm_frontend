@@ -100,7 +100,7 @@ export async function createPaymentVoucher(data: any) {
         });
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
+            const errorData = response.data || {};
             return {
                 status: false,
                 message: errorData.message || `Failed to create Payment Voucher: ${response.statusText || response.status}`
@@ -197,6 +197,19 @@ export async function getAllSuppliers() {
             data: [],
             error: error.message
         };
+    }
+}
+
+// Get vendor with their linked chart of accounts
+export async function getVendorWithAccounts(supplierId: string) {
+    try {
+        const response = await authFetch(`/finance/suppliers/${supplierId}`, {
+            cache: 'no-store',
+        });
+        if (!response.ok) return { status: false, data: null };
+        return { status: true, data: response.data?.data ?? response.data };
+    } catch (error) {
+        return { status: false, data: null };
     }
 }
 

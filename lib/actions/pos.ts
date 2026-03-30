@@ -22,10 +22,10 @@ export async function getPosByLocation(locationId: string): Promise<{ status: bo
     try {
         const res = await authFetch(`/pos/location/${locationId}`, {});
         if (!res.ok) {
-            const errorData = await res.json().catch(() => ({ message: 'Failed to fetch POS terminals' }));
+            const errorData = res.data || { message: 'Failed to fetch POS terminals' };
             return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
         }
-        return res.json();
+        return res.data;
     } catch (error) {
         console.error('Error fetching POS terminals:', error);
         return {
@@ -49,7 +49,7 @@ export async function createPos(data: {
             method: "POST",
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) {
             revalidatePath(`/master/location/pos/${data.locationId}`);
         }
@@ -73,7 +73,7 @@ export async function updatePos(
             method: "PUT",
             body: JSON.stringify(data),
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) {
             revalidatePath("/master/location/list");
         }
@@ -89,7 +89,7 @@ export async function deletePos(id: string, locationId: string): Promise<{ statu
         const res = await authFetch(`/pos/${id}`, {
             method: "DELETE",
         });
-        const result = await res.json();
+        const result = res.data;
         if (result.status) {
             revalidatePath(`/master/location/pos/${locationId}`);
         }

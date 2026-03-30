@@ -6,7 +6,7 @@ import { EmployeeDashboardContent } from "@/components/dashboard/employee-dashbo
 import { useAuth } from "@/components/providers/auth-provider";
 
 export default function HRPage() {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
 
   // Show admin dashboard for admin/super_admin
   if (isAdmin()) {

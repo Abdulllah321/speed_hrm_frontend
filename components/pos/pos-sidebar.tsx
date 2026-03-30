@@ -66,7 +66,7 @@ const posMenuGroups = [
 
 export function PosSidebar() {
     const pathname = usePathname();
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const { state } = useSidebar();
 
     const terminalName = (user as any)?.terminal?.name || "Terminal";
@@ -160,11 +160,12 @@ export function PosSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                        <SidebarMenuButton asChild className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors">
-                            <Link href="/auth/logout">
-                                <LogOut className="h-4 w-4" />
-                                <span>Close Terminal</span>
-                            </Link>
+                        <SidebarMenuButton 
+                            onClick={logout}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors pointer-events-auto cursor-pointer"
+                        >
+                            <LogOut className="h-4 w-4" />
+                            <span>Close Terminal</span>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>

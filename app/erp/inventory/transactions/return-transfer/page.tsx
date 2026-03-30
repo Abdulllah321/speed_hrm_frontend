@@ -54,15 +54,35 @@ export default function ReturnTransferPage() {
 
     const loadLocations = async () => {
         try {
-            const res = await locationApi.getAll();
-            if (res.status) {
-                setLocations(res.data);
-                if (res.data.length > 0) {
-                    setSelectedLocationId(res.data[0].id);
+            // Fetch all warehouses to get their locations
+            const whs = await warehouseApi.getAll();
+            const allLocs: any[] = [];
+            
+            for (const wh of whs) {
+                try {
+                    const locs = await locationApi.getByWarehouse(wh.id);
+                    // Add warehouse name to each location for better UX
+                    const enrichedLocs = locs.map(l => ({
+                        ...l,
+                        name: `${wh.name} - ${l.name}`,
+                        warehouseName: wh.name
+                    }));
+                    allLocs.push(...enrichedLocs);
+                } catch (err) {
+                    console.error(`Failed to load locations for warehouse ${wh.id}`, err);
                 }
             }
+            
+            // Filter: Usually we want to return from SHOP locations
+            const filteredLocs = allLocs.sort((a, b) => a.name.localeCompare(b.name));
+            
+            setLocations(filteredLocs);
+            if (filteredLocs.length > 0 && !selectedLocationId) {
+                setSelectedLocationId(filteredLocs[0].id);
+            }
         } catch (error) {
-            console.error('Failed to load locations', error);
+            console.error('Failed to load warehouse locations', error);
+            toast.error('Failed to load outlet locations');
         }
     };
 

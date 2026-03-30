@@ -15,9 +15,7 @@ import { menuData, masterMenuData, flattenMenu, filterMenuByPermissions } from "
 import { useAuth } from "@/components/providers/auth-provider";
 import { Search, Loader2, User, Package, Truck, FileText, Compass, Command as CommandIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import axios from "axios";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api';
+import { authFetch } from "@/lib/auth";
 
 interface SearchResult {
   type: 'Employee' | 'Item' | 'Supplier' | 'RFQ';
@@ -62,15 +60,15 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
     const delayDebounceFn = setTimeout(async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${API_BASE}/search?q=${search}`, {
-          withCredentials: true,
+        const res = await authFetch(`/search`, {
+          params: { q: search },
           signal: controller.signal
         });
-        if (response.data.status) {
-          setDbResults(response.data.data);
+        if (res.ok && res.data?.status) {
+          setDbResults(res.data.data);
         }
       } catch (error: any) {
-        if (error.name !== 'CanceledError') {
+        if (error.name !== 'AbortError') {
           console.error("Search failed:", error);
         }
       } finally {

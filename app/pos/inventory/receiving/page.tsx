@@ -118,7 +118,7 @@ export default function StockReceivingPage() {
                     ) : (
                         <div className="grid gap-4">
                             {requests.map((request) => (
-                                <Card key={request.id} className="overflow-hidden border-2 hover:border-primary/20 transition-all shadow-sm">
+                                <Card key={request.id} className="overflow-hidden border-2 hover:border-primary/20 transition-all shadow-sm !py-0">
                                     <div className="flex flex-col md:flex-row md:items-stretch">
                                         {/* Status Sidebar */}
                                         <div className="bg-primary/5 p-4 md:w-48 flex flex-col justify-between border-b md:border-b-0 md:border-r border-primary/10">

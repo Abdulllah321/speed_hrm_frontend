@@ -9,40 +9,17 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import { purchaseOrderApi, itemApi, MasterItem, purchaseRequisitionApi, PurchaseRequisition } from '@/lib/api';
+import { purchaseOrderApi, itemApi, MasterItem, PurchaseRequisition, inventoryApi } from '@/lib/api';
 import { getVendors } from '@/lib/actions/procurement';
+import { getPurchaseRequisitions } from '@/lib/actions/purchase-requisition';
 import { toast } from 'sonner';
-import { Plus, Trash2, ArrowLeft, Search } from 'lucide-react';
-import axios from 'axios';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-
-// Helper to get cookie
-function getCookie(name: string): string {
-    if (typeof document === "undefined") return "";
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift() || "";
-    return "";
-}
-
-async function apiFetch<T>(endpoint: string, options?: any): Promise<T> {
-    const companyId = getCookie("companyId");
-    const companyCode = getCookie("companyCode");
-
-    const response = await axios({
-        url: `${API_BASE}${endpoint}`,
-        method: options?.method || "GET",
-        data: options?.body,
-        headers: {
-            "Content-Type": "application/json",
-            ...(companyId ? { "x-company-id": companyId } : {}),
-            ...(companyCode ? { "x-tenant-id": companyCode } : {}),
-        },
-        withCredentials: true,
-    });
-    return response.data;
-}
+import { Plus, Trash2, ArrowLeft, Search, CheckCircle2, Loader2 } from 'lucide-react';
+import { authFetch } from '@/lib/auth';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface OrderItem {
     itemId: string;
@@ -74,16 +51,16 @@ export default function CreateDirectPurchaseOrder() {
     const [orderType, setOrderType] = useState<string>('');
     const [goodsType, setGoodsType] = useState<string>('');
 
-    // Search functionality
+    // Search — Popover multi-select (same as stock-transfer)
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const [quantity, setQuantity] = useState<number>(1);
     const [price, setPrice] = useState<number>(0);
-    const [currentVendorId, setCurrentVendorId] = useState<string>(''); // for multi-vendor add row
+    const [currentVendorId, setCurrentVendorId] = useState<string>('');
     const searchInputRef = useRef<HTMLInputElement>(null);
-
+    
     useEffect(() => {
         fetchData();
         searchInputRef.current?.focus();
@@ -105,83 +82,66 @@ export default function CreateDirectPurchaseOrder() {
     }, []);
 
     // ─── Search Functionality ─────────────────────────────────
-    const handleSearchChange = useCallback((query: string) => {
+    const handleSearchChange = useCallback(async (query: string) => {
         setSearchQuery(query);
-        // Clear selected item if user is typing something different
-        if (selectedItem && query !== (selectedItem.description || selectedItem.itemId)) {
-            setSelectedItem(null);
-            setPrice(0);
-        }
-    }, [selectedItem]);
-
-    // Debounced search
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (searchQuery.trim().length >= 2 && !selectedItem) {
-                setIsSearching(true);
-                try {
-                    const res = await apiFetch<{ status: boolean; data: any[] }>(
-                        `/pos-sales/lookup?q=${encodeURIComponent(searchQuery.trim())}`
-                    );
-                    if (res.status && res.data) {
-                        setSearchResults(res.data);
-                    } else {
-                        setSearchResults([]);
-                    }
-                } catch {
-                    setSearchResults([]);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setSearchResults([]);
-            }
-        }, 300);
-
-        return () => clearTimeout(timer);
-    }, [searchQuery, selectedItem]);
-
-    const handleSelectItem = useCallback((item: any) => {
-        setSelectedItem(item);
-        setSearchQuery(item.description || item.itemId);
-        setSearchResults([]);
-        // Set price from item if available
-        if (item.unitPrice) {
-            setPrice(item.unitPrice);
-        }
-        toast.success(`Selected: ${item.description || item.itemId}`);
-    }, []);
-
-    const handleSearchSubmit = useCallback(async () => {
-        if (!searchQuery.trim()) return;
-
+        if (query.trim().length < 2) { setSearchResults([]); return; }
+        setIsSearching(true);
         try {
-            const res = await apiFetch<{ status: boolean; data: any }>(
-                `/pos-sales/scan?barcode=${encodeURIComponent(searchQuery.trim())}`
-            );
+            const res = await inventoryApi.search(query.trim());
             if (res.status && res.data) {
-                const item = res.data;
-                setSelectedItem(item);
-                setSearchQuery(item.description || item.itemId);
-                setSearchResults([]);
-                if (item.unitPrice) {
-                    setPrice(item.unitPrice);
-                }
-                toast.success(`Selected: ${item.description || item.itemId}`);
+                setSearchResults(res.data.map((item: any) => ({
+                    value: item.id,
+                    label: `${item.sku} - ${item.description}`,
+                    item: { ...item, availableStock: item.totalQuantity ?? 0 },
+                })));
+                if (!isPopoverOpen) setIsPopoverOpen(true);
             } else {
-                toast.error("Item not found");
+                setSearchResults([]);
             }
         } catch {
-            toast.error("Failed to find item");
+            setSearchResults([]);
+        } finally {
+            setIsSearching(false);
         }
-    }, [searchQuery]);
+    }, [isPopoverOpen]);
+
+    const handleSelectItem = useCallback((item: any) => {
+        // For PO: single select — clicking adds directly with current qty/price
+        if (multiVendorMode && !currentVendorId) {
+            toast.error('Select vendor for this item first');
+            return;
+        }
+        const existingIndex = orderItems.findIndex(i => i.itemId === (item.itemId || item.id));
+        if (existingIndex >= 0) {
+            const updated = [...orderItems];
+            updated[existingIndex].quantity += quantity;
+            updated[existingIndex].lineTotal = updated[existingIndex].quantity * updated[existingIndex].unitPrice;
+            setOrderItems(updated);
+            toast.info(`Updated quantity for ${item.description}`);
+        } else {
+            const unitPrice = price || item.unitPrice || 0;
+            setOrderItems(prev => [...prev, {
+                itemId: item.itemId || item.id,
+                itemName: item.sku,
+                description: item.description,
+                quantity,
+                unitPrice,
+                lineTotal: quantity * unitPrice,
+                vendorId: multiVendorMode ? currentVendorId : undefined,
+            }]);
+            toast.success(`Added ${item.description}`);
+        }
+        setIsPopoverOpen(false);
+        setSearchQuery('');
+        setSearchResults([]);
+    }, [orderItems, quantity, price, multiVendorMode, currentVendorId]);
 
     const fetchData = async () => {
         try {
             const [vendorsData, itemsData, prsData] = await Promise.all([
                 getVendors(),
                 itemApi.getAll(),
-                purchaseRequisitionApi.getAll('APPROVED')
+                getPurchaseRequisitions('APPROVED')
             ]);
 
             if (vendorsData?.data) {
@@ -228,51 +188,6 @@ export default function CreateDirectPurchaseOrder() {
         setOrderItems(newItems);
         if (pr.notes) setNotes(prev => prev ? `${prev}\nPR Notes: ${pr.notes}` : `PR Notes: ${pr.notes}`);
     };
-
-    const handleAddItem = useCallback(() => {
-        if (!selectedItem || !quantity || quantity <= 0 || !price || price <= 0) {
-            toast.error("Please select an item and enter valid quantity and price");
-            return;
-        }
-
-        if (multiVendorMode && !currentVendorId) {
-            toast.error('Select vendor for this item');
-            return;
-        }
-
-        // Check if item already exists
-        const existingIndex = orderItems.findIndex(item => item.itemId === selectedItem.id);
-        if (existingIndex >= 0) {
-            // Update quantity of existing item
-            const updatedItems = [...orderItems];
-            updatedItems[existingIndex].quantity += quantity;
-            updatedItems[existingIndex].lineTotal = updatedItems[existingIndex].quantity * updatedItems[existingIndex].unitPrice;
-            setOrderItems(updatedItems);
-            toast.success(`Updated quantity for ${selectedItem.description || selectedItem.itemId}`);
-        } else {
-            // Add new item
-            const lineTotal = quantity * price;
-            const newItem: OrderItem = {
-                itemId: selectedItem.id, // Enforce UUID
-                itemName: selectedItem.sku || selectedItem.itemId,
-                description: selectedItem.description || selectedItem.sku || '',
-                quantity: quantity,
-                unitPrice: price,
-                lineTotal: lineTotal,
-                vendorId: multiVendorMode ? currentVendorId || undefined : undefined
-            };
-            setOrderItems(prev => [...prev, newItem]);
-            toast.success(`Added ${selectedItem.description || selectedItem.itemId}`);
-        }
-
-        // Reset form
-        setSelectedItem(null);
-        setSearchQuery('');
-        setQuantity(1);
-        setPrice(0);
-        setCurrentVendorId('');
-        searchInputRef.current?.focus();
-    }, [selectedItem, quantity, price, multiVendorMode, currentVendorId, orderItems]);
 
     const handleRemoveItem = useCallback((itemId: string) => {
         setOrderItems(prev => prev.filter(item => item.itemId !== itemId));
@@ -513,127 +428,93 @@ export default function CreateDirectPurchaseOrder() {
 
                 <Card className="md:col-span-2">
                     <CardHeader>
-                        <CardTitle>Add Items</CardTitle>
+                        <CardTitle className="flex items-center justify-between">
+                            <span>Add Items</span>
+                            {orderItems.length > 0 && <Badge variant="secondary">{orderItems.length} items</Badge>}
+                        </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                         {/* Add Item Form */}
-                        <div className="space-y-3 border-b pb-4">
-                            <div className="grid grid-cols-12 gap-2 items-end">
-                                <div className="col-span-5 space-y-2">
-                                    <Label className="text-sm font-semibold">Item Search</Label>
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            ref={searchInputRef}
-                                            placeholder="Search by Item ID, SKU, Barcode, or Description..."
-                                            value={searchQuery}
-                                            onChange={(e) => handleSearchChange(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                    e.preventDefault();
-                                                    handleSearchSubmit();
-                                                }
-                                            }}
-                                            className="pl-9 bg-muted/50 border-input h-10 w-full"
-                                        />
-
-                                        {/* Autocomplete Dropdown */}
-                                        {searchQuery.trim().length > 0 && 
-                                         !selectedItem &&
-                                         (searchResults.length > 0 || isSearching) && (
-                                            <div className="absolute left-0 right-0 top-12 bg-popover border border-border shadow-md rounded-md overflow-hidden z-50 max-h-64 overflow-y-auto">
-                                                {isSearching ? (
-                                                    <div className="p-3 text-sm text-muted-foreground flex items-center justify-center">
-                                                        Searching...
-                                                    </div>
-                                                ) : (
-                                                    <ul className="flex flex-col">
-                                                        {searchResults.map((item) => (
-                                                            <li
-                                                                key={item.id}
-                                                                className="px-4 py-2 hover:bg-muted cursor-pointer flex items-center justify-between border-b border-border/50 last:border-0"
-                                                                onClick={() => handleSelectItem(item)}
-                                                            >
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-sm font-semibold">{item.description || 'Unknown Item'}</span>
-                                                                    <span className="text-xs text-muted-foreground">
-                                                                        ID: {item.itemId} | SKU: {item.sku || '-'}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="text-sm font-medium">
-                                                                    {item.unitPrice ? `$${item.unitPrice.toFixed(2)}` : 'No price'}
-                                                                </div>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                )}
+                        <div className="space-y-3 border-b pb-4 p-4 bg-primary/5 rounded-lg border border-primary/10">
+                            <div className="flex gap-3 items-end flex-wrap">
+                                {/* Search Popover */}
+                                <div className="flex-1 min-w-[200px] space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Search & Select Item</Label>
+                                    <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                                        <PopoverTrigger asChild>
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    ref={searchInputRef}
+                                                    placeholder="Type SKU or description…"
+                                                    value={searchQuery}
+                                                    onChange={(e) => handleSearchChange(e.target.value)}
+                                                    onFocus={() => searchResults.length > 0 && setIsPopoverOpen(true)}
+                                                    className="h-10 pl-10 border-primary/20"
+                                                />
+                                                {isSearching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />}
                                             </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Show selected item */}
-                                    {selectedItem && (
-                                        <div className="text-xs text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded flex items-center gap-1">
-                                            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                            Selected: {selectedItem.description || selectedItem.itemId}
-                                        </div>
-                                    )}
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 shadow-xl" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+                                            <Command shouldFilter={false}>
+                                                <CommandList className="max-h-[320px]">
+                                                    {searchResults.length === 0 ? (
+                                                        <div className="py-6 text-center text-sm text-muted-foreground">
+                                                            {isSearching ? 'Searching…' : searchQuery.length > 0 ? `No items match "${searchQuery}"` : 'Type at least 2 characters'}
+                                                        </div>
+                                                    ) : (
+                                                        <CommandGroup>
+                                                            <div className="px-3 py-1.5 border-b border-muted/50">
+                                                                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Results ({searchResults.length}) — click to add</span>
+                                                            </div>
+                                                            <ScrollArea className="h-[260px]">
+                                                                {searchResults.map((opt: any) => {
+                                                                    const item = opt.item;
+                                                                    const isAdded = orderItems.some(i => i.itemId === (item.itemId || item.id));
+                                                                    return (
+                                                                        <CommandItem key={item.id} value={`${item.sku} ${item.description}`} onSelect={() => handleSelectItem(item)}
+                                                                            className={cn("flex items-center justify-between gap-3 px-4 py-3 cursor-pointer border-b border-muted/50 last:border-0",
+                                                                                isAdded ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-accent")}>
+                                                                            <div className="flex flex-col gap-1 min-w-0 flex-1">
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <span className={cn("font-mono text-[10px] px-1.5 py-0.5 rounded border font-bold",
+                                                                                        isAdded ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-muted-foreground/20")}>
+                                                                                        {item.sku}
+                                                                                    </span>
+                                                                                    <span className={cn("truncate text-sm", isAdded ? "font-bold text-primary" : "font-medium")}>{item.description}</span>
+                                                                                </div>
+                                                                                <span className="text-[11px] text-muted-foreground">Stock: <span className={cn("font-bold", item.availableStock > 0 ? "text-foreground" : "text-destructive")}>{item.availableStock ?? 0}</span></span>
+                                                                            </div>
+                                                                            <div className="shrink-0">
+                                                                                {isAdded ? <CheckCircle2 className="h-5 w-5 text-primary fill-primary/10" /> : <Plus className="h-4 w-4 text-muted-foreground opacity-50" />}
+                                                                            </div>
+                                                                        </CommandItem>
+                                                                    );
+                                                                })}
+                                                            </ScrollArea>
+                                                        </CommandGroup>
+                                                    )}
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                 </div>
-                                <div className="col-span-2 space-y-2">
-                                    <Label className="text-sm font-semibold">Quantity</Label>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0.01"
-                                        value={quantity}
-                                        onChange={(e) => setQuantity(Number(e.target.value))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                handleAddItem();
-                                            }
-                                        }}
-                                        className="h-10"
-                                    />
+                                <div className="w-24 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Qty</Label>
+                                    <Input type="number" step="0.01" min="0.01" value={quantity} onChange={(e) => setQuantity(Number(e.target.value))} className="h-10" />
                                 </div>
-                                <div className="col-span-2 space-y-2">
-                                    <Label className="text-sm font-semibold">Unit Price</Label>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        value={price}
-                                        onChange={(e) => setPrice(Number(e.target.value))}
-                                        onKeyDown={(e) => {
-                                            if (e.key === "Enter") {
-                                                e.preventDefault();
-                                                handleAddItem();
-                                            }
-                                        }}
-                                        className="h-10"
-                                        placeholder="0.00"
-                                    />
-                                </div>
-                                <div className="col-span-3">
-                                    <Button
-                                        type="button"
-                                        onClick={handleAddItem}
-                                        disabled={!selectedItem || !quantity || quantity <= 0 || !price || price <= 0}
-                                        className="h-10 w-full"
-                                    >
-                                        Add Item
-                                    </Button>
+                                <div className="w-28 space-y-1.5">
+                                    <Label className="text-xs text-muted-foreground">Unit Price</Label>
+                                    <Input type="number" step="0.01" min="0" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="h-10" placeholder="0.00" />
                                 </div>
                             </div>
                             {multiVendorMode && (
                                 <div className="flex gap-2 items-end">
-                                    <div className="flex-1 space-y-2">
-                                        <Label>Vendor for this item</Label>
+                                    <div className="flex-1 space-y-1.5">
+                                        <Label className="text-xs text-muted-foreground">Vendor for this item</Label>
                                         <div className="flex gap-2">
                                             <Select value={multiVendorTypeFilter} onValueChange={(v: any) => setMultiVendorTypeFilter(v)}>
-                                                <SelectTrigger className="w-32">
-                                                    <SelectValue />
-                                                </SelectTrigger>
+                                                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
                                                 <SelectContent>
                                                     <SelectItem value="all">All Types</SelectItem>
                                                     <SelectItem value="local">Local</SelectItem>
@@ -641,14 +522,10 @@ export default function CreateDirectPurchaseOrder() {
                                                 </SelectContent>
                                             </Select>
                                             <Select value={currentVendorId} onValueChange={setCurrentVendorId}>
-                                                <SelectTrigger className="flex-1">
-                                                    <SelectValue placeholder="Select Vendor" />
-                                                </SelectTrigger>
+                                                <SelectTrigger className="flex-1"><SelectValue placeholder="Select Vendor" /></SelectTrigger>
                                                 <SelectContent>
                                                     {getFilteredVendors(multiVendorTypeFilter).map((vendor) => (
-                                                        <SelectItem key={vendor.id} value={vendor.id}>
-                                                            {vendor.name} ({vendor.code})
-                                                        </SelectItem>
+                                                        <SelectItem key={vendor.id} value={vendor.id}>{vendor.name} ({vendor.code})</SelectItem>
                                                     ))}
                                                 </SelectContent>
                                             </Select>
@@ -656,6 +533,7 @@ export default function CreateDirectPurchaseOrder() {
                                     </div>
                                 </div>
                             )}
+                            <p className="text-xs text-muted-foreground italic">Click an item in the dropdown to add it with the qty/price above.</p>
                         </div>
 
                         {/* Items Table */}

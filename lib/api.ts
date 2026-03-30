@@ -1,40 +1,13 @@
+import { authFetch } from "./auth";
 import { getApiBaseUrl } from "./utils";
 
-import axios from 'axios';
 
-
-const API_BASE = `${getApiBaseUrl()}`;
-
-async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
-  // Helper to get cookie value in browser
-  const getCookie = (name: string) => {
-    if (typeof document === 'undefined') return '';
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift() || '';
-    return '';
-  };
-
-  const companyId = getCookie('companyId');
-  const companyCode = getCookie('companyCode');
-
-  try {
-    const response = await axios({
-      url: `${API_BASE}${endpoint}`,
-      method: options?.method || 'GET',
-      data: options?.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined,
-      headers: {
-        ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(companyId ? { 'x-company-id': companyId } : {}),
-        ...(companyCode ? { 'x-tenant-id': companyCode } : {}),
-        ...options?.headers,
-      },
-      withCredentials: true,
-    });
-    return response.data;
-  } catch (error: any) {
-    throw new Error(error.response?.data?.message || error.message || 'Something went wrong');
+export async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
+  const res = await authFetch(`${getApiBaseUrl()}${endpoint}`, options);
+  if (!res.ok) {
+    throw new Error(res.data?.message || 'Something went wrong');
   }
+  return res.data as T;
 }
 
 // Department API
@@ -200,8 +173,8 @@ export const employeeApi = {
 };
 
 export const dashboardApi = {
-  getStats: () => fetchApi<DashboardStats>('/dashboard/stats'),
-  getEmployeeStats: () => fetchApi<EmployeeDashboardStats>('/dashboard/employee-stats'),
+  getStats: () => fetchApi<{ status: boolean; data: DashboardStats }>('/dashboard/stats'),
+  getEmployeeStats: () => fetchApi<{ status: boolean; data: EmployeeDashboardStats }>('/dashboard/employee-stats'),
 };
 
 export interface EmployeeDashboardStats {
@@ -243,7 +216,7 @@ export interface SubDepartment {
   updatedAt: string;
 }
 
-// Purchase Requisition Types and API
+// purchaseRequisitionApise Requisition Types and API
 export interface PurchaseRequisition {
   id: string;
   prNumber: string;
@@ -889,6 +862,10 @@ export const stockLedgerApi = {
 };
 export const posSalesApi = {
   lookup: (query: string) => fetchApi<{ status: boolean; data: any[] }>(`/pos-sales/lookup?q=${encodeURIComponent(query)}`),
+  getAll: (params?: { page?: number; limit?: number; search?: string; startDate?: string; endDate?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return fetchApi<{ status: boolean; data: any[]; meta: any }>(`/pos-sales/orders?${query}`);
+  },
 };
 
 export const transferRequestApi = {
@@ -953,13 +930,43 @@ export const transferRequestApi = {
 };
 
 export const inventoryApi = {
-  search: (query: string, warehouseId?: string, locationId?: string) => {
+  search: (
+    query: string,
+    warehouseId?: string,
+    locationId?: string,
+    filters?: {
+      brandIds?: string[];
+      categoryIds?: string[];
+      silhouetteIds?: string[];
+      genderIds?: string[];
+    }
+  ) => {
     const params = new URLSearchParams({ q: query });
     if (warehouseId) params.append('warehouseId', warehouseId);
     if (locationId) params.append('locationId', locationId);
+    if (filters?.brandIds?.length) params.append('brandIds', filters.brandIds.join(','));
+    if (filters?.categoryIds?.length) params.append('categoryIds', filters.categoryIds.join(','));
+    if (filters?.silhouetteIds?.length) params.append('silhouetteIds', filters.silhouetteIds.join(','));
+    if (filters?.genderIds?.length) params.append('genderIds', filters.genderIds.join(','));
     return fetchApi<{ status: boolean; data: any[] }>(`/inventory/search?${params.toString()}`);
   },
   getDetails: (itemId: string) => fetchApi<{ status: boolean; data: any[] }>(`/inventory/details/${itemId}`),
+};
+
+export const brandApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/brands'),
+};
+
+export const categoryApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/master/erp/category'),
+};
+
+export const silhouetteApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/silhouettes'),
+};
+
+export const genderApi = {
+  getAll: () => fetchApi<{ status: boolean; data: any[] }>('/genders'),
 };
 
 export const stockOperationApi = {
