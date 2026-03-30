@@ -4,7 +4,7 @@ import { getApiBaseUrl } from "./utils";
 
 const API_BASE = getApiBaseUrl();
 
-async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
+export async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
   const fullUrl = endpoint.startsWith('http') ? endpoint : `${getApiBaseUrl()}${endpoint}`;
 
   try {

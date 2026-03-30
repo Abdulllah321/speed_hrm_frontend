@@ -17,6 +17,7 @@ import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/components/providers/socket-provider";
 import { authFetch } from "@/lib/auth";
+import { fetchApi } from "@/lib/api";
 
 type NotificationStatus = "unread" | "read";
 
@@ -71,14 +72,13 @@ export function HeaderNotifications() {
   const refresh = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const res = await authFetch(`/notifications?limit=10`, {
+      const data = await fetchApi(`/notifications?limit=10`, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
 
-      if (!res.ok) return;
-      const json = res.data as {
+      const json = data as {
         status: boolean;
         data?: { items: NotificationItem[]; unreadCount: number };
       };

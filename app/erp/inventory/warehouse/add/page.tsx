@@ -7,7 +7,7 @@ import DataTable from '@/components/common/data-table';
 import { ColumnDef } from '@tanstack/react-table';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { warehouseApi, Warehouse } from '@/lib/api';
+import { getWarehouses, deleteWarehouse, Warehouse } from '@/lib/actions/warehouse';
 import { Plus, Building2, ArrowLeft, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -26,7 +26,7 @@ export default function AddWarehousePage() {
     const loadWarehouses = async () => {
         setLoading(true);
         try {
-            const data = await warehouseApi.getAll();
+            const data = await getWarehouses();
             setWarehouses(data);
         } catch (error) {
             console.error('Failed to load warehouses:', error);
@@ -38,9 +38,8 @@ export default function AddWarehousePage() {
 
     const handleDelete = async (warehouse: Warehouse) => {
         if (!confirm(`Are you sure you want to delete warehouse "${warehouse.name}"?`)) return;
-
         try {
-            await warehouseApi.delete(warehouse.id);
+            await deleteWarehouse(warehouse.id);
             toast.success('Warehouse deleted successfully');
             loadWarehouses();
         } catch (error) {
@@ -122,7 +121,6 @@ export default function AddWarehousePage() {
                     <WarehouseForm
                         onSuccess={handleSuccess}
                         onCancel={() => setShowForm(false)}
-                        footer={SheetFooter}
                     />
                 </SheetContent>
             </Sheet>

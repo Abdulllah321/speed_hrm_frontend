@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { warehouseApi, Warehouse } from '@/lib/api';
+import { createWarehouse, updateWarehouse, getWarehouseById, Warehouse } from '@/lib/actions/warehouse';
 import { toast } from 'sonner';
 import { Save, X, Building2 } from 'lucide-react';
 import { SheetFooter } from '@/components/ui/sheet';
@@ -41,8 +41,8 @@ export function WarehouseForm({ id, onSuccess, onCancel }: WarehouseFormProps) {
 
     const loadWarehouse = async () => {
         try {
-            const data = await warehouseApi.getById(id!);
-            setFormData(data);
+            const data = await getWarehouseById(id!);
+            if (data) setFormData(data);
         } catch (error) {
             console.error('Failed to load warehouse:', error);
             toast.error('Failed to load warehouse details');
@@ -56,10 +56,10 @@ export function WarehouseForm({ id, onSuccess, onCancel }: WarehouseFormProps) {
         setLoading(true);
         try {
             if (id) {
-                await warehouseApi.update(id, formData);
+                await updateWarehouse(id, formData);
                 toast.success('Warehouse updated successfully');
             } else {
-                await warehouseApi.create(formData);
+                await createWarehouse(formData);
                 toast.success('Warehouse created successfully');
             }
 
