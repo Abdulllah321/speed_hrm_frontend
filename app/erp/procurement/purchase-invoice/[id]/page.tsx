@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Edit, DollarSign, FileText, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { purchaseInvoiceApi, PurchaseInvoice as ApiPurchaseInvoice } from '@/lib/api';
+import { getPurchaseInvoice, approvePurchaseInvoice, cancelPurchaseInvoice } from '@/lib/actions/purchase-invoice';
+import { PurchaseInvoice as ApiPurchaseInvoice } from '@/lib/api';
 import { toast } from 'sonner';
 
 interface PaymentVoucherInvoice {
@@ -58,7 +59,7 @@ export default function PurchaseInvoiceDetailPage() {
   const fetchInvoice = async () => {
     try {
       setLoading(true);
-      const data = await purchaseInvoiceApi.getById(id);
+      const data = await getPurchaseInvoice(id);
       setInvoice(data);
     } catch (error) {
       console.error('Error fetching invoice:', error);
@@ -71,7 +72,7 @@ export default function PurchaseInvoiceDetailPage() {
   const handleApprove = async () => {
     try {
       setActionLoading(true);
-      await purchaseInvoiceApi.approve(id);
+      await approvePurchaseInvoice(id);
       toast.success('Invoice approved successfully');
       fetchInvoice();
     } catch (error: any) {
@@ -86,7 +87,7 @@ export default function PurchaseInvoiceDetailPage() {
     if (!window.confirm('Are you sure you want to cancel this invoice?')) return;
     try {
       setActionLoading(true);
-      await purchaseInvoiceApi.cancel(id);
+      await cancelPurchaseInvoice(id);
       toast.success('Invoice cancelled successfully');
       fetchInvoice();
     } catch (error: any) {

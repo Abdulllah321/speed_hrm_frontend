@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supplierApi, purchaseInvoiceApi } from '@/lib/api';
+import { supplierApi } from '@/lib/api';
+import { getValuedGrns, getAvailableLandedCosts, getNextInvoiceNumber, createPurchaseInvoice } from '@/lib/actions/purchase-invoice';
 import { Switch } from '@/components/ui/switch';
 import { DatePicker } from '@/components/ui/date-picker';
 
@@ -105,8 +106,8 @@ export default function CreatePurchaseInvoicePage() {
 
       const [suppliersData, grnsData, landedCostsData] = await Promise.all([
         supplierApi.getAll(),
-        purchaseInvoiceApi.getValuedGrns(),
-        purchaseInvoiceApi.getAvailableLandedCosts(),
+        getValuedGrns(),
+        getAvailableLandedCosts(),
       ]);
 
       console.log('API Responses:', {
@@ -148,7 +149,7 @@ export default function CreatePurchaseInvoicePage() {
 
   const fetchNextInvoiceNumber = async () => {
     try {
-      const response = await purchaseInvoiceApi.getNextInvoiceNumber();
+      const response = await getNextInvoiceNumber();
       console.log('Next Invoice Number:', response);
       setFormData(prev => ({
         ...prev,
@@ -298,7 +299,7 @@ export default function CreatePurchaseInvoicePage() {
 
       console.log('Final Payload:', payload);
 
-      const invoice = await purchaseInvoiceApi.create(payload);
+      const invoice = await createPurchaseInvoice(payload);
 
       if (invoice) {
         router.push('/erp/procurement/purchase-invoice');

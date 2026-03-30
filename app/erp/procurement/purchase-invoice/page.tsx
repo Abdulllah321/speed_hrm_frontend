@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Filter, Eye, Edit, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { purchaseInvoiceApi } from '@/lib/api';
+import { getPurchaseInvoices } from '@/lib/actions/purchase-invoice';
 
 interface PurchaseInvoice {
   id: string;
@@ -45,7 +45,7 @@ export default function PurchaseInvoiceListPage() {
         ...(paymentStatusFilter && { paymentStatus: paymentStatusFilter }),
       };
 
-      const response = await purchaseInvoiceApi.getAll(params);
+      const response = await getPurchaseInvoices(params);
       setInvoices(response.data || []);
     } catch (error) {
       console.error('Error fetching invoices:', error);
