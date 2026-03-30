@@ -173,7 +173,7 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
                         <TableBody>
                             {quotation.items.map((item) => (
                                 <TableRow key={item.id}>
-                                    <TableCell className="font-medium">{item.itemId}</TableCell>
+                                    <TableCell className="font-medium">{item.item?.itemId || item.itemId}</TableCell>
                                     <TableCell>{item.description || '-'}</TableCell>
                                     <TableCell>{item.quotedQty}</TableCell>
                                     <TableCell>${parseFloat(item.unitPrice).toFixed(2)}</TableCell>

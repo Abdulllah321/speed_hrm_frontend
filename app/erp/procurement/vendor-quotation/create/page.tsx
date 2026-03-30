@@ -26,11 +26,12 @@ interface Supplier {
 interface FormValues {
     rfqId: string;
     vendorId: string;
-    expiryDate: string;
+    expiryDate?: string;
     notes: string;
     items: {
-        itemId: string;
-        description: string;
+        itemId: string;         // UUID — submitted to backend
+        displayCode: string;    // Human-readable item code — display only
+        description: string;    // Item description — display only
         quotedQty: number;
         unitPrice: number;
     }[];
@@ -102,11 +103,12 @@ export default function CreateVendorQuotation() {
         setSelectedRfq(rfq || null);
 
         if (rfq) {
-            // Pre-populate items from PR
+            // Pre-populate items from PR using nested item relation
             const prItems = rfq.purchaseRequisition?.items || [];
-            replace(prItems.map(item => ({
-                itemId: item.itemId,
-                description: item.description || '',
+            replace(prItems.map((item: any) => ({
+                itemId: item.itemId,                           // UUID for backend submission
+                displayCode: item.item?.itemId || item.itemId, // Human-readable code for display
+                description: item.item?.description || '',
                 quotedQty: parseFloat(item.requiredQty),
                 unitPrice: 0
             })));
@@ -116,7 +118,21 @@ export default function CreateVendorQuotation() {
     const onSubmit = async (data: FormValues) => {
         try {
             setLoading(true);
-            const result = await createVendorQuotation(data);
+            
+            // Strip display-only fields and clean up empty expiryDate
+            const { expiryDate, items, ...rest } = data;
+            const cleanedData: any = {
+                ...rest,
+                items: items.map(({ displayCode, ...item }) => item),
+            };
+            
+            if (expiryDate && expiryDate.trim() !== '') {
+                cleanedData.expiryDate = expiryDate;
+            }
+            
+            console.log('Submitting data:', cleanedData);
+            
+            const result = await createVendorQuotation(cleanedData);
             if (result.status !== false && result.id) {
                 toast.success('Vendor quotation created successfully');
                 router.push('/erp/procurement/vendor-quotation/list');
@@ -184,11 +200,10 @@ export default function CreateVendorQuotation() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="expiryDate">Expiry Date</Label>
+                                <Label htmlFor="expiryDate">Expiry Date (Optional)</Label>
                                 <Controller
                                     control={control}
                                     name="expiryDate"
-                                    rules={{ required: true }}
                                     render={({ field }) => (
                                         <DatePicker
                                             value={field.value}
@@ -197,7 +212,6 @@ export default function CreateVendorQuotation() {
                                         />
                                     )}
                                 />
-                                {errors.expiryDate && <span className="text-red-500 text-sm">Required</span>}
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="notes">Notes</Label>
@@ -218,7 +232,7 @@ export default function CreateVendorQuotation() {
                                 <Table className="w-full">
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Item ID</TableHead>
+                                            <TableHead>Item Code</TableHead>
                                             <TableHead>Description</TableHead>
                                             <TableHead>Qty</TableHead>
                                             <TableHead>Rate</TableHead>
@@ -228,7 +242,9 @@ export default function CreateVendorQuotation() {
                                         {fields.map((field, index) => (
                                             <TableRow key={field.id}>
                                                 <TableCell className="font-medium">
-                                                    <Input {...register(`items.${index}.itemId`)} readOnly className="w-32" />
+                                                    {/* Show human-readable code; UUID stays in hidden field */}
+                                                    <Input {...register(`items.${index}.displayCode`)} readOnly className="w-32" />
+                                                    <input type="hidden" {...register(`items.${index}.itemId`)} />
                                                 </TableCell>
                                                 <TableCell>
                                                     <Input {...register(`items.${index}.description`)} readOnly className="w-48" />

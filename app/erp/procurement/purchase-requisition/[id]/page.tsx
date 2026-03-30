@@ -15,7 +15,6 @@ export default function PurchaseRequisitionDetail() {
     const params = useParams();
     const id = params?.id as string;
     const [pr, setPr] = useState<PurchaseRequisition | null>(null);
-    const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
@@ -30,9 +29,6 @@ export default function PurchaseRequisitionDetail() {
                     getItems()
                 ]);
                 setPr(prData);
-                if (itemsResult.status) {
-                    setItems(itemsResult.data);
-                }
             } catch (error) {
                 console.error(error);
             } finally {
@@ -122,19 +118,24 @@ export default function PurchaseRequisitionDetail() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Item ID</TableHead>
+                                <TableHead>Item Code</TableHead>
+                                <TableHead>Description</TableHead>
                                 <TableHead>SKU</TableHead>
                                 <TableHead>Qty</TableHead>
-                                
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {pr.items.map((item) => {
-                                const masterItem = items.find(i => i.itemId === item.itemId);
+                            {(pr.items as PRItem[]).map((item) => {
+                                const itemData = item.item;
                                 return (
                                     <TableRow key={item.id}>
-                                        <TableCell className="font-medium">{item.itemId}</TableCell>
-                                        <TableCell>{masterItem?.sku || '-'}</TableCell>
+                                        <TableCell className="font-medium">
+                                            {itemData ? itemData.itemId : 'Item data unavailable'}
+                                        </TableCell>
+                                        <TableCell>
+                                            {itemData ? itemData.description : '-'}
+                                        </TableCell>
+                                        <TableCell>{itemData ? itemData.sku : '-'}</TableCell>
                                         <TableCell>{item.requiredQty}</TableCell>
                                     </TableRow>
                                 );

@@ -170,13 +170,13 @@ export default function CreateDirectPurchaseOrder() {
 
         // Map PR items to Order Items
         const newItems = pr.items.map(prItem => {
-            const masterItem = items.find(i => i.itemId === prItem.itemId);
+            const masterItem = items.find(i => i.id === prItem.itemId || i.itemId === prItem.itemId);
             const qty = parseFloat(prItem.requiredQty);
             const price = masterItem?.unitPrice || 0;
             const lineTotal = qty * price;
 
             return {
-                itemId: prItem.itemId,
+                itemId: masterItem ? masterItem.id : prItem.itemId, // Enforce UUID
                 itemName: masterItem?.sku || masterItem?.itemId || 'Unknown Item',
                 description: masterItem?.description || '',
                 quantity: qty,

@@ -94,6 +94,7 @@ export default function CreatePurchaseReturnPage() {
         sourceItemType: sourceType === 'GRN' ? 'GRN_ITEM' : 'LANDED_COST_ITEM',
         [sourceType === 'GRN' ? 'grnItemId' : 'landedCostItemId']: item.id,
         itemId: item.itemId,
+        displayCode: (item as any).displayCode || item.itemId,
         description: item.description || '',
         returnQty: 0,
         unitPrice: sourceType === 'GRN' ? (item.unitPrice || 0) : (item.unitCostPKR || 0),
@@ -135,9 +136,14 @@ export default function CreatePurchaseReturnPage() {
 
     try {
       setLoading(true);
+      
+      // Strip displayCode from items before sending to API 
+      // (Redundant as itemId is already sent and causes 400 error due to forbidNonWhitelisted in backend)
+      const apiItems = validItems.map(({ displayCode, ...item }: any) => item);
+
       await purchaseReturnApi.create({
         ...formData,
-        items: validItems,
+        items: apiItems,
       });
       router.push('/erp/procurement/purchase-returns');
     } catch (error) {
@@ -265,8 +271,8 @@ export default function CreatePurchaseReturnPage() {
                         <tr key={index} className="border-b">
                           <td className="p-3">
                             <div>
-                              <div className="font-medium">{item.description}</div>
-                              <div className="text-sm text-gray-500">{item.itemId}</div>
+                              <div className="font-medium">{item.description || 'Item data unavailable'}</div>
+                              <div className="text-sm text-gray-500">{(item as any).displayCode || item.itemId}</div>
                             </div>
                           </td>
                           <td className="p-3">{availableQty}</td>

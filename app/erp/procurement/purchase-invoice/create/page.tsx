@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supplierApi, purchaseInvoiceApi } from '@/lib/api';
 import { Switch } from '@/components/ui/switch';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface Supplier {
   id: string;
@@ -76,7 +77,7 @@ export default function CreatePurchaseInvoicePage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [grns, setGrns] = useState<GRN[]>([]);
   const [landedCosts, setLandedCosts] = useState<LandedCost[]>([]);
-  
+
   const [formData, setFormData] = useState({
     invoiceNumber: '', // Will be auto-generated
     invoiceDate: new Date().toISOString().split('T')[0],
@@ -101,7 +102,7 @@ export default function CreatePurchaseInvoicePage() {
   const fetchInitialData = async () => {
     try {
       console.log('Fetching initial data...');
-      
+
       const [suppliersData, grnsData, landedCostsData] = await Promise.all([
         supplierApi.getAll(),
         purchaseInvoiceApi.getValuedGrns(),
@@ -149,9 +150,9 @@ export default function CreatePurchaseInvoicePage() {
     try {
       const response = await purchaseInvoiceApi.getNextInvoiceNumber();
       console.log('Next Invoice Number:', response);
-      setFormData(prev => ({ 
-        ...prev, 
-        invoiceNumber: response.nextInvoiceNumber 
+      setFormData(prev => ({
+        ...prev,
+        invoiceNumber: response.nextInvoiceNumber
       }));
     } catch (error) {
       console.error('Error fetching next invoice number:', error);
@@ -162,18 +163,18 @@ export default function CreatePurchaseInvoicePage() {
   const handleGRNSelection = (grnId: string) => {
     const grn = grns.find(g => g.id === grnId);
     console.log('Selected GRN:', grn);
-    
+
     if (grn) {
       setSelectedGRN(grn);
       const supplierId = grn.purchaseOrder?.vendor?.id || grn.supplier?.id;
-      setFormData(prev => ({ 
-        ...prev, 
-        grnId, 
+      setFormData(prev => ({
+        ...prev,
+        grnId,
         supplierId: supplierId || '',
-        landedCostId: '' 
+        landedCostId: ''
       }));
       setSelectedLandedCost(null);
-      
+
       // Auto-populate items from GRN
       console.log('GRN Items:', grn.items);
       const grnItems: InvoiceItem[] = grn.items.map(item => ({
@@ -193,17 +194,17 @@ export default function CreatePurchaseInvoicePage() {
   const handleLandedCostSelection = (landedCostId: string) => {
     const landedCost = landedCosts.find(lc => lc.id === landedCostId);
     console.log('Selected Landed Cost:', landedCost);
-    
+
     if (landedCost) {
       setSelectedLandedCost(landedCost);
-      setFormData(prev => ({ 
-        ...prev, 
-        landedCostId, 
+      setFormData(prev => ({
+        ...prev,
+        landedCostId,
         supplierId: landedCost.supplier?.id || landedCost.grn?.purchaseOrder?.vendor?.id || '',
-        grnId: '' 
+        grnId: ''
       }));
       setSelectedGRN(null);
-      
+
       // Auto-populate items from Landed Cost
       console.log('Landed Cost Items:', landedCost.items);
       const lcItems: InvoiceItem[] = landedCost.items.map(item => ({
@@ -236,7 +237,7 @@ export default function CreatePurchaseInvoicePage() {
   };
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
-    setItems(prev => prev.map((item, i) => 
+    setItems(prev => prev.map((item, i) =>
       i === index ? { ...item, [field]: value } : item
     ));
   };
@@ -268,11 +269,11 @@ export default function CreatePurchaseInvoicePage() {
       // Debug: Log the data being sent
       console.log('Form Data:', formData);
       console.log('Items:', items);
-      
+
       // Validate items before sending
       const validItems = items.filter(item => item.itemId && item.quantity > 0);
       console.log('Valid Items:', validItems);
-      
+
       if (validItems.length === 0) {
         alert('Please add at least one item with valid data');
         setLoading(false);
@@ -294,7 +295,7 @@ export default function CreatePurchaseInvoicePage() {
         items: validItems,
         status: formData.isApproved ? 'APPROVED' : undefined,
       };
-      
+
       console.log('Final Payload:', payload);
 
       const invoice = await purchaseInvoiceApi.create(payload);
@@ -337,51 +338,36 @@ export default function CreatePurchaseInvoicePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="invoiceNumber">Invoice Number *</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="invoiceNumber"
-                    value={formData.invoiceNumber}
-                    disabled
-                    className="bg-gray-50 font-medium flex-1"
-                    placeholder="Auto-generating..."
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchNextInvoiceNumber}
-                    className="px-3"
-                    title="Generate New Invoice Number"
-                  >
-                    🔄
-                  </Button>
-                </div>
+                <Input
+                  id="invoiceNumber"
+                  value={formData.invoiceNumber}
+                  disabled
+                  className="bg-gray-50 font-medium"
+                  placeholder="Auto-generating..."
+                />
               </div>
               <div>
                 <Label htmlFor="invoiceDate">Invoice Date *</Label>
-                <Input
-                  id="invoiceDate"
-                  type="date"
+                <DatePicker
                   value={formData.invoiceDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, invoiceDate: e.target.value }))}
-                  required
+                  onChange={(date) => setFormData(prev => ({ ...prev, invoiceDate: date }))}
+                  placeholder="Select Invoice Date"
                 />
               </div>
               <div>
                 <Label htmlFor="dueDate">Due Date</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
+                <DatePicker
                   value={formData.dueDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                  onChange={(date) => setFormData(prev => ({ ...prev, dueDate: date }))}
+                  placeholder="Select Due Date"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="grn">Select GRN (Optional)</Label>
-                <Select value={formData.grnId} onValueChange={handleGRNSelection}>
+                <Label htmlFor="grn">Select GRN</Label>
+                <Select value={formData.grnId} onValueChange={handleGRNSelection} disabled={!!formData.landedCostId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select GRN" />
                   </SelectTrigger>
@@ -395,8 +381,8 @@ export default function CreatePurchaseInvoicePage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="landedCost">Select Landed Cost (Optional)</Label>
-                <Select value={formData.landedCostId} onValueChange={handleLandedCostSelection}>
+                <Label htmlFor="landedCost">Select Landed Cost</Label>
+                <Select value={formData.landedCostId} onValueChange={handleLandedCostSelection} disabled={!!formData.grnId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Landed Cost" />
                   </SelectTrigger>
@@ -413,9 +399,10 @@ export default function CreatePurchaseInvoicePage() {
 
             <div>
               <Label htmlFor="supplier">Supplier *</Label>
-              <Select 
-                value={formData.supplierId} 
+              <Select
+                value={formData.supplierId}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, supplierId: value }))}
+                disabled={true}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select Supplier" />
@@ -435,25 +422,20 @@ export default function CreatePurchaseInvoicePage() {
         {/* Invoice Items */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Invoice Items</CardTitle>
-              <Button type="button" onClick={addItem} variant="outline">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Item
-              </Button>
-            </div>
+            <CardTitle>Invoice Items</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {items.map((item, index) => (
                 <div key={index} className="border p-4 rounded-lg">
                   <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                    <div>
+                    <div className="md:col-span-2">
                       <Label>Description</Label>
                       <Input
                         value={item.description}
                         onChange={(e) => updateItem(index, 'description', e.target.value)}
                         placeholder="Item description"
+                        disabled={true}
                       />
                     </div>
                     <div>
@@ -463,6 +445,7 @@ export default function CreatePurchaseInvoicePage() {
                         step="0.01"
                         value={item.quantity}
                         onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        disabled={true}
                       />
                     </div>
                     <div>
@@ -472,6 +455,7 @@ export default function CreatePurchaseInvoicePage() {
                         step="0.01"
                         value={item.unitPrice}
                         onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        disabled={true}
                       />
                     </div>
                     <div>
@@ -492,17 +476,6 @@ export default function CreatePurchaseInvoicePage() {
                         onChange={(e) => updateItem(index, 'discountRate', parseFloat(e.target.value) || 0)}
                       />
                     </div>
-                    <div className="flex items-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItem(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -511,42 +484,7 @@ export default function CreatePurchaseInvoicePage() {
         </Card>
 
         {/* Totals and Notes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Additional Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="discountAmount">Invoice Discount Amount</Label>
-                <Input
-                  id="discountAmount"
-                  type="number"
-                  step="0.01"
-                  value={formData.discountAmount}
-                  onChange={(e) => setFormData(prev => ({ ...prev, discountAmount: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  rows={4}
-                />
-              </div>
-              <div className="flex items-center space-x-2 pt-2">
-                <Switch
-                  id="isApproved"
-                  checked={formData.isApproved}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isApproved: checked }))}
-                />
-                <Label htmlFor="isApproved" className="cursor-pointer">Approve Invoice on Creation</Label>
-              </div>
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 gap-6">
           <Card>
             <CardHeader>
               <CardTitle>Invoice Summary</CardTitle>

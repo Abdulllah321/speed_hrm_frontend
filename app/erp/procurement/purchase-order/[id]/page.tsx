@@ -164,7 +164,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                             <TableBody>
                                 {order.items.map((item) => (
                                     <TableRow key={item.id}>
-                                        <TableCell className="font-medium">{item.itemId}</TableCell>
+                                        <TableCell className="font-medium">{item.item?.itemId || item.itemId}</TableCell>
                                         <TableCell>{item.description || 'No description'}</TableCell>
                                         <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
                                         <TableCell className="text-right font-mono text-blue-600">{parseFloat(item.receivedQty || '0').toFixed(2)}</TableCell>
@@ -260,7 +260,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                 {order.items.map((item) => (
                                     <TableRow key={item.id} className="hover:bg-transparent">
                                         <TableCell>
-                                            <div className="font-medium text-gray-900">{item.itemId}</div>
+                                            <div className="font-medium text-gray-900">{item.item?.itemId || item.itemId}</div>
                                             <div className="text-sm text-muted-foreground">{item.description || '-'}</div>
                                         </TableCell>
                                         <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>

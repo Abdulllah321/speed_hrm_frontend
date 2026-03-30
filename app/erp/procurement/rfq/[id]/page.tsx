@@ -75,19 +75,28 @@ export default async function RfqDetail({ params }: { params: Promise<{ id: stri
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Item ID</TableHead>
+                                <TableHead>Item Code</TableHead>
                                 <TableHead>Description</TableHead>
+                                <TableHead>SKU</TableHead>
                                 <TableHead>Qty</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {rfq.purchaseRequisition?.items.map((item: PurchaseRequisitionItem) => (
-                                <TableRow key={item.id}>
-                                    <TableCell className="font-medium">{item.itemId}</TableCell>
-                                    <TableCell>{item.description || '-'}</TableCell>
-                                    <TableCell>{item.requiredQty}</TableCell>
-                                </TableRow>
-                            ))}
+                            {rfq.purchaseRequisition?.items.map((item: any) => {
+                                const itemData = item.item;
+                                return (
+                                    <TableRow key={item.id}>
+                                        <TableCell className="font-medium">
+                                            {itemData ? itemData.itemId : 'Item data unavailable'}
+                                        </TableCell>
+                                        <TableCell>
+                                            {itemData ? itemData.description : '-'}
+                                        </TableCell>
+                                        <TableCell>{itemData ? itemData.sku : '-'}</TableCell>
+                                        <TableCell>{item.requiredQty}</TableCell>
+                                    </TableRow>
+                                );
+                            })}
                         </TableBody>
                     </Table>
                 </CardContent>

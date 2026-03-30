@@ -102,7 +102,7 @@ export default function GrnDetailPage() {
               ) : (
                 grn.items.map((it) => (
                   <TableRow key={it.id}>
-                    <TableCell className="font-mono text-sm">{it.itemId}</TableCell>
+                    <TableCell className="font-mono text-sm">{it.item?.itemId || it.itemId}</TableCell>
                     <TableCell>{it.description || '-'}</TableCell>
                     <TableCell className="text-right">{it.receivedQty}</TableCell>
                   </TableRow>

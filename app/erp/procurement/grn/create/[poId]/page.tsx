@@ -119,7 +119,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Item ID</TableHead>
+                                    <TableHead>Item Code</TableHead>
                                     <TableHead className="text-right">Ordered</TableHead>
                                     <TableHead className="text-right">Remaining</TableHead>
                                     <TableHead className="text-right w-32">Receiving</TableHead>
@@ -128,11 +128,16 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                             <TableBody>
                                 {order.items.map((item) => {
                                     const remaining = parseFloat(item.quantity) - parseFloat(item.receivedQty || '0');
+                                    const itemData = (item as any).item;
                                     return (
                                         <TableRow key={item.id}>
                                             <TableCell>
-                                                <div className="font-medium">{item.itemId}</div>
-                                                <div className="text-xs text-muted-foreground">{item.description}</div>
+                                                <div className="font-medium">
+                                                    {itemData ? itemData.itemId : 'Item data unavailable'}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {itemData ? itemData.description : '-'}
+                                                </div>
                                             </TableCell>
                                             <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
                                             <TableCell className="text-right font-mono text-blue-600">{remaining.toFixed(2)}</TableCell>
