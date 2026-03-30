@@ -8,28 +8,24 @@ export function cn(...inputs: ClassValue[]) {
 export function getApiBaseUrl(): string {
   const isServer = typeof window === "undefined";
 
-  // 1. Check for API_URL (Only on server)
-  if (isServer && process.env.API_URL) {
-    return process.env.API_URL;
+  // Server-side: use internal API_URL if set (Docker internal network etc.)
+  if (isServer) {
+    return process.env.API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
   }
 
-  // 2. Check for NEXT_PUBLIC_API_BASE_URL (Client and Server fallback)
-  if (process.env.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  // Client-side in production: use relative /api — same origin, zero CORS
+  if (process.env.NODE_ENV === "production") {
+    return "/api";
   }
 
-  // Check if running in browser
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-
-    // If accessing via localtest.me (including subdomains), use api.localtest.me
-    if (hostname.includes("localtest.me")) {
-      return "http://api.localtest.me:5000";
-    }
+  // Client-side dev: localtest.me support
+  const hostname = window.location.hostname;
+  if (hostname.includes("localtest.me")) {
+    return "http://api.localtest.me:5000";
   }
 
-  // Fallback to localhost
-  return "http://localhost:5000";
+  // Client-side dev fallback
+  return process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 }
 // Helper to get cookie domain
 export const getCookieDomain = (host: string) => {

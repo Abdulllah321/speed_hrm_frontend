@@ -144,7 +144,8 @@ export async function authFetch(url: string, options: any = {}): Promise<any> {
 
   // Handle query parameters
   if (options.params) {
-    const urlObj = new URL(fullUrl);
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const urlObj = new URL(fullUrl.startsWith('/') ? `${base}${fullUrl}` : fullUrl);
     Object.keys(options.params).forEach(key => {
       if (options.params[key] !== undefined && options.params[key] !== null) {
         urlObj.searchParams.append(key, String(options.params[key]));
