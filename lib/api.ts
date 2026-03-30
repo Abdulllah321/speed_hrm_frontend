@@ -1,8 +1,9 @@
 import { authFetch } from "./auth";
+import { getApiBaseUrl } from "./utils";
 
 
 export async function fetchApi<T>(endpoint: string, options?: any): Promise<T> {
-  const res = await authFetch(endpoint, options);
+  const res = await authFetch(`${getApiBaseUrl()}/${endpoint}`, options);
   if (!res.ok) {
     throw new Error(res.data?.message || 'Something went wrong');
   }
@@ -215,7 +216,7 @@ export interface SubDepartment {
   updatedAt: string;
 }
 
-// Purchase Requisition Types and API
+// purchaseRequisitionApise Requisition Types and API
 export interface PurchaseRequisition {
   id: string;
   prNumber: string;
