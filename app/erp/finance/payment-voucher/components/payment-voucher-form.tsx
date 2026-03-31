@@ -76,7 +76,7 @@ export function PaymentVoucherForm({ accounts }: {
                     cache: 'no-store'
                 });
                 if (debugResponse.ok) {
-                    const debugData = await debugResponse.json();
+                    const debugData = debugResponse.data;
                     console.log('DEBUG - All invoices in database:', debugData);
                 } else {
                     console.error('Debug endpoint failed:', debugResponse.status);

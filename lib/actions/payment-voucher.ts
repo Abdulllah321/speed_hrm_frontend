@@ -49,7 +49,7 @@ export async function getPaymentVouchers(type?: "bank" | "cash") {
             };
         }
 
-        const result = await response.json();
+        const result = response.data;
         const vouchersArray = result.data || result;
 
         if (!Array.isArray(vouchersArray)) {
@@ -134,7 +134,7 @@ export async function getSuppliersWithPendingInvoices() {
         console.log('FRONTEND - API Response headers:', response.headers);
         
         if (!response.ok) {
-            const errorText = await response.text();
+            const errorText = response.data?.message || 'Unknown error';
             console.error("FRONTEND - Failed to fetch suppliers with pending invoices", response.status, errorText);
             return {
                 status: false,
@@ -143,7 +143,7 @@ export async function getSuppliersWithPendingInvoices() {
             };
         }
 
-        const data = await response.json();
+        const data = response.data;
         console.log('FRONTEND - Raw API Response data:', data);
         console.log('FRONTEND - Data type:', typeof data);
         console.log('FRONTEND - Data length:', Array.isArray(data) ? data.length : 'Not an array');
@@ -174,7 +174,7 @@ export async function getAllSuppliers() {
         console.log('All suppliers API Response status:', response.status);
         
         if (!response.ok) {
-            const errorText = await response.text();
+            const errorText = response.data?.message || 'Unknown error';
             console.error("Failed to fetch all suppliers", response.status, errorText);
             return {
                 status: false,
@@ -183,7 +183,7 @@ export async function getAllSuppliers() {
             };
         }
 
-        const result = await response.json();
+        const result = response.data;
         console.log('All suppliers API Response:', result);
         
         return {
@@ -229,7 +229,7 @@ export async function getPendingInvoicesBySupplier(supplierId: string) {
             };
         }
 
-        const data = await response.json();
+        const data = response.data;
         return {
             status: true,
             data: data
