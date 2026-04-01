@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, PauseCircle } from "lucide-react";
 
 interface SummaryFooterProps {
     subtotal: number;
@@ -9,6 +9,7 @@ interface SummaryFooterProps {
     tax: number;
     grandTotal: number;
     onCheckout: () => void;
+    onHold?: () => void;
     disabled?: boolean;
 }
 
@@ -18,6 +19,7 @@ export function SummaryFooter({
     tax,
     grandTotal,
     onCheckout,
+    onHold,
     disabled = false,
 }: SummaryFooterProps) {
     return (
@@ -66,16 +68,31 @@ export function SummaryFooter({
                     </div>
                 </div>
 
-                {/* Checkout Button */}
-                <Button
-                    onClick={onCheckout}
-                    disabled={disabled}
-                    size="lg"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base px-8 h-14 rounded-xl shadow-lg hover:shadow-xl transition-all min-w-[200px]"
-                >
-                    CHECKOUT
-                    <ArrowRight className="h-5 w-5 ml-2" />
-                </Button>
+                {/* Action Buttons */}
+                <div className="flex items-center gap-3">
+                    {onHold && (
+                        <Button
+                            onClick={onHold}
+                            disabled={disabled}
+                            size="lg"
+                            variant="outline"
+                            className="border-amber-500 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 font-bold text-base px-6 h-14 rounded-xl"
+                        >
+                            <PauseCircle className="h-5 w-5 mr-2" />
+                            HOLD
+                            <span className="ml-2 text-[10px] font-mono bg-amber-100 dark:bg-amber-900/40 px-1.5 py-0.5 rounded">F8</span>
+                        </Button>
+                    )}
+                    <Button
+                        onClick={onCheckout}
+                        disabled={disabled}
+                        size="lg"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base px-8 h-14 rounded-xl shadow-lg hover:shadow-xl transition-all min-w-[200px]"
+                    >
+                        CHECKOUT
+                        <ArrowRight className="h-5 w-5 ml-2" />
+                    </Button>
+                </div>
             </div>
         </div>
     );

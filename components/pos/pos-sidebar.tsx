@@ -28,6 +28,7 @@ import {
     Zap,
     RefreshCw,
     Wallet,
+    PauseCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -39,6 +40,7 @@ const posMenuGroups = [
             { title: "New Sale", icon: ShoppingCart, href: "/pos" },
             { title: "Quick Sale", icon: Zap, href: "/pos/quick" },
             { title: "Current Orders", icon: Receipt, href: "/pos/orders" },
+            { title: "Hold Orders", icon: PauseCircle, href: "/pos/holds" },
             { title: "Returns", icon: RefreshCw, href: "/pos/returns" },
             { title: "Cash Drawer", icon: Wallet, href: "/pos/terminal/drawer" },
         ],

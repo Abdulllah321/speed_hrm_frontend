@@ -131,6 +131,7 @@ export default function LandedCostSetupPage() {
 
   const [clgFwdCharges, setClgFwdCharges] = useState(0);
   const [clgFwdBillNo, setClgFwdBillNo] = useState('');
+  const [globalExciseRate, setGlobalExciseRate] = useState(0);
 
 
   const [items, setItems] = useState<LocalItem[]>([]);
@@ -141,7 +142,7 @@ export default function LandedCostSetupPage() {
 
   useEffect(() => {
     calculateTotals();
-  }, [totalFreight, totalInvoiceValue, freightUSD, freightPKR, doThcCharges, bankCharges, mInsuranceCharges, clgFwdCharges, exchangeRate,
+  }, [totalFreight, totalInvoiceValue, freightUSD, freightPKR, doThcCharges, bankCharges, mInsuranceCharges, clgFwdCharges, globalExciseRate, exchangeRate,
     lcNo, blNo, blDate, gdNo, countryOfOrigin, season, category, shippingInvoiceNo, invoiceDate]);
 
   useEffect(() => {
@@ -348,6 +349,47 @@ export default function LandedCostSetupPage() {
         };
       });
 
+            if (itemHsCode) {
+              const matchedHs = hsCodes.find(h => String(h.hsCode) === String(itemHsCode));
+              console.log('Matched HS Code:', matchedHs);
+              if (matchedHs) {
+                hsCodeId = matchedHs.id;
+                rates = {
+                  cd: matchedHs.customsDutyCd,
+                  rd: matchedHs.regulatoryDutyRd,
+                  acd: matchedHs.additionalCustomsDutyAcd,
+                  st: matchedHs.salesTax,
+                  ast: matchedHs.additionalSalesTax,
+                  it: matchedHs.incomeTax,
+                  excise: 0 // Set to 0 instead of matchedHs.exciseCharges
+                };
+                console.log('HS Code rates:', rates);
+              }
+            }
+
+            const updatedItem: LocalItem = {
+              ...item,
+              itemName: itemMaster?.name || itemMaster?.sku || itemMaster?.itemId || item.itemId,
+              sku: itemMaster?.sku || itemMaster?.itemId || item.itemId,
+              description: itemMaster?.description || item.description || '',
+              category: itemMaster?.category?.name || '',
+              hsCodeId: hsCodeId,
+              customsDutyRate: rates.cd,
+              regulatoryDutyRate: rates.rd,
+              additionalCustomsDutyRate: rates.acd,
+              salesTaxRate: rates.st,
+              additionalSalesTaxRate: rates.ast,
+              incomeTaxRate: rates.it,
+              exciseChargesRate: globalExciseRate, // Use global rate instead of rates.excise
+            };
+            return updatedItem;
+          }
+          return item;
+        } catch (err) {
+          console.error('Error enriching item:', item.itemId, err);
+          return item;
+        }
+      })); console.log('Setting enriched items');
       setItems(enrichedItems);
       calculateTotals(enrichedItems);
       setLoading(false);
@@ -484,8 +526,8 @@ export default function LandedCostSetupPage() {
       const misInsurance = mInsuranceCharges * distributionRatio;
       const misClgFwd = clgFwdCharges * distributionRatio;
 
-      // excise Charges (calculated from HS Code like CD/RD/ACD)
-      const exciseAmount = (assessableValue * item.exciseChargesRate) / 100;
+      // excise Charges (using global rate)
+      const exciseAmount = (assessableValue * globalExciseRate) / 100;
 
       // 11. Total Duty Amount (Sum of all taxes + excise)
       const totalDutyAmount = cdAmount + rdAmount + acdAmount + stAmount + astAmount + itAmount + exciseAmount;
@@ -557,7 +599,6 @@ export default function LandedCostSetupPage() {
         newItems[index].salesTaxRate = Number(hsc.salesTax);
         newItems[index].additionalSalesTaxRate = Number(hsc.additionalSalesTax);
         newItems[index].incomeTaxRate = Number(hsc.incomeTax);
-        newItems[index].exciseChargesRate = Number(hsc.exciseCharges);
       }
     }
 
@@ -874,6 +915,21 @@ export default function LandedCostSetupPage() {
                     <div className="grid grid-cols-2 gap-2">
                       <div><Label className="text-[10px]">Charges</Label><Input type="number" value={clgFwdCharges} onChange={e => setClgFwdCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
                       <div><Label className="text-[10px]">Bill #</Label><Input value={clgFwdBillNo} onChange={e => setClgFwdBillNo(e.target.value)} className="h-7 text-xs" /></div>
+                    </div>
+                  </div>
+
+                  {/* Excise Rate Section (NEW) */}
+                  <div className="border p-2 rounded bg-purple-50">
+                    <p className="text-xs font-bold text-purple-700 mb-1">Excise Charges</p>
+                    <div>
+                      <Label className="text-[10px]">Excise Rate (%)</Label>
+                      <Input 
+                        type="number" 
+                        value={globalExciseRate} 
+                        onChange={e => setGlobalExciseRate(Number(e.target.value))} 
+                        className="h-7 text-xs" 
+                        placeholder="Enter Rate %"
+                      />
                     </div>
                   </div>
                 </>
