@@ -36,7 +36,6 @@ const formSchema = z.object({
     salesTax: z.coerce.number().min(0).default(0),
     additionalSalesTax: z.coerce.number().min(0).default(0),
     incomeTax: z.coerce.number().min(0).default(0),
-    exciseCharges: z.coerce.number().min(0).default(0),
     status: z.string().default("active"),
 });
 
@@ -57,7 +56,6 @@ export default function EditHsCodePage() {
             salesTax: 0,
             additionalSalesTax: 0,
             incomeTax: 0,
-            exciseCharges: 0,
             status: "active",
         },
     });
@@ -74,7 +72,6 @@ export default function EditHsCodePage() {
                     salesTax: Number(result.data.salesTax),
                     additionalSalesTax: Number(result.data.additionalSalesTax),
                     incomeTax: Number(result.data.incomeTax),
-                    exciseCharges: Number(result.data.exciseCharges),
                     status: result.data.status,
                 });
             } else {
@@ -227,19 +224,6 @@ export default function EditHsCodePage() {
                                         )}
                                     />
 
-                                    <FormField
-                                        control={form.control}
-                                        name="exciseCharges"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Excise Charges (%)</FormLabel>
-                                                <FormControl>
-                                                    <Input type="number" step="0.01" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
                                 </div>
 
                                 <div className="flex gap-4 pt-4">
