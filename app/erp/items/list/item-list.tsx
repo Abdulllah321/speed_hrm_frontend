@@ -179,14 +179,10 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         }
     };
 
-    const { data: uploadProgress, error: uploadError } = useUploadProgress(activeUploadId);
+    const { data: uploadProgress } = useUploadProgress(activeUploadId);
 
-    // Auto-clear if the upload was deleted or not found on the server
-    useEffect(() => {
-        if (uploadError && activeUploadId) {
-            handleUploadIdChange(null);
-        }
-    }, [uploadError, activeUploadId]);
+    // Note: don't auto-clear on error — a transient network failure shouldn't
+    // wipe the active upload ID. The user can manually dismiss via the modal.
 
     // ── Derived query params ───────────────────────────────────────────────
     const currentPage = pagination.pageIndex + 1; // API is 1-indexed

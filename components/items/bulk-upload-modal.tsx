@@ -68,7 +68,12 @@ export function BulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUpl
         }
     }, [uploadId]);
 
-    const activeId = (internalUploadId || uploadId) ?? null;
+    // Drive the hook from internal state — never from the prop directly.
+    // The prop is only used to restore state on mount (e.g. after page refresh).
+    // Using the prop directly causes the view to flicker back to the file picker
+    // during the brief window where onUploadIdChange(null) is called before the
+    // new uploadId comes back, which kills the SSE connection mid-job.
+    const activeId = internalUploadId ?? null;
 
     const { data, speed, isComplete, isValidated, isValidating, isFailed, isProcessing, isCancelled } = useUploadProgress(activeId);
 
@@ -96,8 +101,8 @@ export function BulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUpl
         if (!file) return;
 
         setIsUploading(true);
+        // Reset internal state only — don't touch the prop until we have a new ID
         setInternalUploadId(null);
-        onUploadIdChange?.(null);
         const formData = new FormData();
         formData.append('file', file);
 
@@ -172,10 +177,50 @@ export function BulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUpl
         window.open(`${getApiBaseUrl()}/items/bulk-upload/template/download`, '_blank');
     };
 
-    const downloadErrorReport = () => {
-        if (!activeId) return;
-        window.open(`${getApiBaseUrl()}/items/bulk-upload/${activeId}/error-report`, '_blank');
+    const [isPreparingReport, setIsPreparingReport] = useState(false);
+    const reportPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // React to SSE report generation events from the backend
+    React.useEffect(() => {
+        if (!data) return;
+        const d = data as any;
+        if (d.reportReady === true && isPreparingReport) {
+            setIsPreparingReport(false);
+            if (reportPollRef.current) { clearInterval(reportPollRef.current); reportPollRef.current = null; }
+            toast.success('Error report ready. Downloading...');
+            window.open(`${getApiBaseUrl()}/items/bulk-upload/${activeId}/error-report`, '_blank');
+        }
+    }, [(data as any)?.reportReady, (data as any)?.reportGenerating]);
+
+    const downloadErrorReport = async () => {
+        if (!activeId || isPreparingReport) return;
+
+        setIsPreparingReport(true);
+        try {
+            const res = await fetch(`${getApiBaseUrl()}/items/bulk-upload/${activeId}/error-report?prepare=true`, {
+                credentials: 'include',
+            });
+            const result = await res.json();
+
+            if (result.data?.ready) {
+                // JSONL already on disk — download immediately
+                window.open(`${getApiBaseUrl()}/items/bulk-upload/${activeId}/error-report`, '_blank');
+                setIsPreparingReport(false);
+                return;
+            }
+
+            // Generation kicked off in background — SSE will fire reportReady when done
+            toast.info('Generating error report in background. You\'ll be notified when it\'s ready...');
+        } catch {
+            toast.error('Failed to prepare error report');
+            setIsPreparingReport(false);
+        }
     };
+
+    // Cleanup poll on unmount
+    React.useEffect(() => {
+        return () => { if (reportPollRef.current) clearInterval(reportPollRef.current); };
+    }, []);
 
     const reset = () => {
         setFile(null);
@@ -242,7 +287,7 @@ export function BulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUpl
 
                 <ScrollArea className="flex-1 w-full overflow-y-auto">
                     <div className="p-6 space-y-6">
-                        {!uploadId ? (
+                        {!activeId ? (
                             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 {/* File Dropzone */}
                                 <div
@@ -359,7 +404,11 @@ export function BulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUpl
                                             </div>
                                             <h3 className="text-2xl font-black truncate max-w-[400px]">{data?.filename}</h3>
                                             <p className="text-sm text-muted-foreground italic font-medium">
-                                                {isValidating ? `Scanning row ${data?.processedRecords ?? 0}...` : (data?.message || 'Preparing...')}
+                                                {isValidating
+                                                    ? (data?.processedRecords ?? 0) > 0
+                                                        ? `Scanning row ${data!.processedRecords.toLocaleString()}...`
+                                                        : (data?.message || 'Preparing...')
+                                                    : (data?.message || 'Preparing...')}
                                             </p>
                                         </div>
                                         <div className="text-right space-y-1">
@@ -432,8 +481,11 @@ export function BulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUpl
                                                 <Button variant="outline" size="sm" onClick={() => setShowErrors(!showErrors)} className="h-9 font-bold bg-background">
                                                     {showErrors ? 'Hide Error Details' : 'View Error Details'}
                                                 </Button>
-                                                <Button variant="ghost" size="sm" onClick={downloadErrorReport} className="h-9 font-bold text-destructive hover:bg-destructive/5">
-                                                    <Download className="h-4 w-4 mr-2" /> Download Full Report
+                                                <Button variant="ghost" size="sm" onClick={downloadErrorReport} disabled={isPreparingReport} className="h-9 font-bold text-destructive hover:bg-destructive/5">
+                                                    {isPreparingReport
+                                                        ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> {(data as any)?.reportGenerating ? ((data as any)?.message || 'Generating...') : 'Preparing...'}</>
+                                                        : <><Download className="h-4 w-4 mr-2" /> Download Full Report</>
+                                                    }
                                                 </Button>
                                             </div>
                                         )}
@@ -447,20 +499,18 @@ export function BulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUpl
                                                                 <TableHead className="w-[60px] font-black uppercase text-[10px]">Row</TableHead>
                                                                 <TableHead className="w-[100px] font-black uppercase text-[10px]">Field</TableHead>
                                                                 <TableHead className="font-black uppercase text-[10px]">Issue Description</TableHead>
-                                                                <TableHead className="text-right font-black uppercase text-[10px]">Value</TableHead>
+                                                                <TableHead className="font-black uppercase text-[10px]">Item ID</TableHead>
+                                                                <TableHead className="font-black uppercase text-[10px]">BarCode</TableHead>
                                                             </TableRow>
                                                         </TableHeader>
                                                         <TableBody>
                                                             {data?.errors?.slice(0, 100).map((err, i) => (
                                                                 <TableRow key={i} className="hover:bg-muted/20 transition-colors">
                                                                     <TableCell className="font-mono text-xs font-bold text-muted-foreground">{err.row}</TableCell>
-                                                                    <TableCell className="text-xs font-bold capitalize">{err.data?.field || 'unknown'}</TableCell>
+                                                                    <TableCell className="text-xs font-bold capitalize">{err.data?.field || (err as any).field || 'unknown'}</TableCell>
                                                                     <TableCell className="text-xs text-destructive font-semibold">{err.reason}</TableCell>
-                                                                    <TableCell className="text-right">
-                                                                        <Badge variant="outline" className="text-[10px] font-mono font-bold bg-background">
-                                                                            {String(err.data?.value || 'N/A')}
-                                                                        </Badge>
-                                                                    </TableCell>
+                                                                    <TableCell className="text-xs font-mono">{(err as any).itemId || '—'}</TableCell>
+                                                                    <TableCell className="text-xs font-mono">{(err as any).barCode || '—'}</TableCell>
                                                                 </TableRow>
                                                             ))}
                                                             {data?.errors && data.errors.length > 100 && (

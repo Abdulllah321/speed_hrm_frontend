@@ -45,7 +45,15 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
     const eventSourceRef = useRef<EventSource | null>(null);
     const isTerminalRef = useRef(false); // stops reconnects once job is done
 
+    const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const reconnectAttemptsRef = useRef(0);
+    const MAX_RECONNECT_ATTEMPTS = 8;
+
     const stopStreaming = useCallback(() => {
+        if (reconnectTimerRef.current) {
+            clearTimeout(reconnectTimerRef.current);
+            reconnectTimerRef.current = null;
+        }
         if (eventSourceRef.current) {
             eventSourceRef.current.close();
             eventSourceRef.current = null;
@@ -65,7 +73,7 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
         try {
             const response = await fetch(getApiEndpoint(`${uploadId}/status`), {
                 credentials: "include",
-                signal: AbortSignal.timeout(8000), // never hang longer than 8s
+                // No timeout — large files can take time to respond during heavy DB load
             });
             const result = await response.json();
             if (result.status && result.data) {
@@ -79,8 +87,8 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
                 setError(result.message || 'Failed to fetch status');
             }
         } catch (err) {
-            console.error('Initial fetch failed:', err);
-            setError(err instanceof Error ? err.message : 'Unknown error');
+            // Non-fatal — SSE will still deliver updates even if initial status fetch fails
+            console.warn('Initial status fetch failed (non-fatal):', err);
         }
     }, [uploadId, getApiEndpoint]);
 
@@ -89,95 +97,128 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
             setData(null);
             setSpeed(0);
             isTerminalRef.current = false;
+            reconnectAttemptsRef.current = 0;
             stopStreaming();
             return;
         }
 
         isTerminalRef.current = false;
+        reconnectAttemptsRef.current = 0;
 
         // Fetch initial status once — gives us data before first SSE event arrives
         fetchInitialStatus();
 
-        // Setup SSE
-        const url = getApiEndpoint(`${uploadId}/events`);
-        const eventSource = new EventSource(url, { withCredentials: true });
-        eventSourceRef.current = eventSource;
+        const connectSSE = () => {
+            if (isTerminalRef.current) return;
 
-        eventSource.onmessage = (event) => {
-            try {
-                const eventData = JSON.parse(event.data);
-                const { type, data: payload } = eventData;
+            // Use the Next.js SSE proxy — EventSource can't send headers and
+            // SameSite:Lax blocks cross-origin cookies, so we proxy through Next.js
+            // which reads the httpOnly accessToken server-side and forwards the stream.
+            const sseUrl = `/api/bulk-upload/${uploadId}/events${uploadType === 'hscode' ? '?type=hscode' : ''}`;
+            const eventSource = new EventSource(sseUrl);
+            eventSourceRef.current = eventSource;
 
-                setData((prev) => {
-                    const base = prev || {
-                        uploadId: uploadId || '',
-                        filename: '',
-                        status: 'pending',
-                        totalRecords: 0,
-                        processedRecords: 0,
-                        successRecords: 0,
-                        failedRecords: 0,
-                        skippedRecords: 0,
-                        progress: 0,
-                        jobState: 'active',
-                        errors: [],
-                        createdAt: new Date().toISOString(),
-                        completedAt: null
-                    } as UploadStatusResponse;
+            eventSource.onmessage = (event) => {
+                try {
+                    const eventData = JSON.parse(event.data);
+                    const { type, data: payload } = eventData;
 
-                    const updated = { ...base };
+                    // Ignore keepalive heartbeats — they exist only to prevent proxy timeouts
+                    if (type === 'heartbeat') return;
 
-                    if (type === 'status') {
-                        if (!['completed', 'failed', 'validated'].includes(updated.status)) {
-                            updated.status = payload.status || updated.status;
+                    // Reset reconnect counter on successful message
+                    reconnectAttemptsRef.current = 0;
+
+                    setData((prev) => {
+                        const base = prev || {
+                            uploadId: uploadId || '',
+                            filename: '',
+                            status: 'pending',
+                            totalRecords: 0,
+                            processedRecords: 0,
+                            successRecords: 0,
+                            failedRecords: 0,
+                            skippedRecords: 0,
+                            progress: 0,
+                            jobState: 'active',
+                            errors: [],
+                            createdAt: new Date().toISOString(),
+                            completedAt: null
+                        } as UploadStatusResponse;
+
+                        const updated = { ...base };
+
+                        if (type === 'status') {
+                            if (!['completed', 'failed', 'validated'].includes(updated.status)) {
+                                updated.status = payload.status || updated.status;
+                            }
+                            updated.message = payload.message || updated.message;
+                            if (payload.progress !== undefined) updated.progress = payload.progress;
+                        } else if (type === 'progress') {
+                            updated.progress = payload.progress ?? updated.progress;
+                            updated.processedRecords = payload.processedRecords ?? updated.processedRecords;
+                            updated.successRecords = payload.successRecords ?? updated.successRecords;
+                            updated.failedRecords = payload.failedRecords ?? updated.failedRecords;
+                            updated.recsPerSec = payload.recsPerSec ?? updated.recsPerSec;
+                            updated.memoryUsageMB = payload.memoryUsageMB ?? updated.memoryUsageMB;
+                            if (!['completed', 'failed'].includes(updated.status) && payload.status) {
+                                updated.status = payload.status;
+                            }
+                        } else if (type === 'completed') {
+                            updated.status = payload.status || 'completed';
+                            updated.successRecords = payload.successRecords ?? updated.successRecords;
+                            updated.failedRecords = payload.failedRecords ?? updated.failedRecords;
+                            updated.totalRecords = payload.totalRecords ?? updated.totalRecords;
+                            updated.errors = payload.errors || updated.errors;
+                            updated.progress = 100;
+                        } else if (type === 'failed') {
+                            updated.status = 'failed';
+                            updated.message = payload.message;
                         }
-                        updated.message = payload.message || updated.message;
-                        if (payload.progress !== undefined) updated.progress = payload.progress;
-                    } else if (type === 'progress') {
-                        updated.progress = payload.progress ?? updated.progress;
-                        updated.processedRecords = payload.processedRecords ?? updated.processedRecords;
-                        updated.successRecords = payload.successRecords ?? updated.successRecords;
-                        updated.failedRecords = payload.failedRecords ?? updated.failedRecords;
-                        updated.recsPerSec = payload.recsPerSec ?? updated.recsPerSec;
-                        updated.memoryUsageMB = payload.memoryUsageMB ?? updated.memoryUsageMB;
-                        if (!['completed', 'failed'].includes(updated.status) && payload.status) {
-                            updated.status = payload.status;
-                        }
-                    } else if (type === 'completed') {
-                        updated.status = payload.status || 'completed';
-                        updated.successRecords = payload.successRecords ?? updated.successRecords;
-                        updated.failedRecords = payload.failedRecords ?? updated.failedRecords;
-                        updated.totalRecords = payload.totalRecords ?? updated.totalRecords;
-                        updated.errors = payload.errors || updated.errors;
-                        updated.progress = 100;
-                    } else if (type === 'failed') {
-                        updated.status = 'failed';
-                        updated.message = payload.message;
+
+                        return updated;
+                    });
+
+                    // Close SSE once terminal — no point keeping the connection open
+                    if (['completed', 'failed', 'validated', 'cancelled'].includes(type) ||
+                        ['completed', 'failed', 'cancelled'].includes(payload?.status)) {
+                        isTerminalRef.current = true;
+                        stopStreaming();
+                        // Fetch final status from DB to get complete error list
+                        fetchInitialStatus();
                     }
-
-                    return updated;
-                });
-
-                // Close SSE once terminal — no point keeping the connection open
-                if (['completed', 'failed', 'validated', 'cancelled'].includes(type) ||
-                    ['completed', 'failed', 'cancelled'].includes(payload?.status)) {
-                    isTerminalRef.current = true;
-                    stopStreaming();
+                } catch (err) {
+                    console.error('Failed to parse SSE event:', err);
                 }
-            } catch (err) {
-                console.error('Failed to parse SSE event:', err);
-            }
+            };
+
+            eventSource.onerror = () => {
+                eventSource.close();
+                eventSourceRef.current = null;
+
+                if (isTerminalRef.current) return;
+
+                // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s cap
+                const attempt = reconnectAttemptsRef.current;
+                if (attempt >= MAX_RECONNECT_ATTEMPTS) {
+                    console.warn(`SSE: max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached, falling back to status polling`);
+                    // Fall back to polling the status endpoint every 3s
+                    const pollInterval = setInterval(async () => {
+                        await fetchInitialStatus();
+                        if (isTerminalRef.current) clearInterval(pollInterval);
+                    }, 3000);
+                    reconnectTimerRef.current = null;
+                    return;
+                }
+
+                const delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+                reconnectAttemptsRef.current += 1;
+                console.warn(`SSE dropped, reconnecting in ${delay}ms (attempt ${attempt + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
+                reconnectTimerRef.current = setTimeout(connectSSE, delay);
+            };
         };
 
-        eventSource.onerror = () => {
-            // If job is done, don't reconnect — just close cleanly
-            if (isTerminalRef.current) {
-                stopStreaming();
-                return;
-            }
-            // Otherwise browser will auto-reconnect — that's fine, log quietly
-            console.warn('SSE connection dropped, browser will retry...');
-        };
+        connectSSE();
 
         return () => {
             stopStreaming();
