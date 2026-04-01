@@ -1,0 +1,764 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Plus, Search, Eye, FileText, Truck, Filter, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { salesOrderApi, customerApi, warehouseApi, inventoryApi, brandApi, categoryApi, SalesOrder, Customer } from "@/lib/api";
+import { toast } from "sonner";
+
+interface SelectedItem {
+  id: string;
+  sku: string;
+  description: string;
+  costPrice: number;
+  salePrice: number;
+  quantity: number;
+  discount: number;
+  total: number;
+  availableStock: number;
+}
+
+export default function SalesOrdersPage() {
+  const [orders, setOrders] = useState<SalesOrder[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // Create Order Form State
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  const [taxRate, setTaxRate] = useState(5);
+  const [orderDiscount, setOrderDiscount] = useState(0);
+  const [notes, setNotes] = useState("");
+
+  // Item Selection State
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [itemOptions, setItemOptions] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [itemSearchQuery, setItemSearchQuery] = useState("");
+
+  // Filter State
+  const [brands, setBrands] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<{
+    brandIds: string[];
+    categoryIds: string[];
+  }>({ brandIds: [], categoryIds: [] });
+
+  // Load data
+  useEffect(() => {
+    loadOrders();
+    loadCustomers();
+    loadWarehouses();
+    loadFilterData();
+  }, []);
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await salesOrderApi.getAll(searchTerm, statusFilter);
+      setOrders(response.data || []);
+    } catch (error) {
+      toast.error("Failed to load sales orders");
+      console.error(error);
+      setOrders([]); // Set empty array on error
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCustomers = async () => {
+    try {
+      const response = await customerApi.getAll();
+      setCustomers(response.data);
+    } catch (error) {
+      console.error("Failed to load customers:", error);
+    }
+  };
+
+  const loadWarehouses = async () => {
+    try {
+      const response = await warehouseApi.getAll();
+      setWarehouses(response);
+    } catch (error) {
+      console.error("Failed to load warehouses:", error);
+    }
+  };
+
+  const loadFilterData = async () => {
+    try {
+      const [brandsRes, catsRes] = await Promise.allSettled([
+        brandApi.getAll(),
+        categoryApi.getAll(),
+      ]);
+
+      if (brandsRes.status === 'fulfilled' && brandsRes.value.status) {
+        setBrands(brandsRes.value.data);
+      }
+      if (catsRes.status === 'fulfilled' && catsRes.value.status) {
+        setCategories(catsRes.value.data);
+      }
+    } catch (error) {
+      console.error("Failed to load filter data:", error);
+    }
+  };
+
+  // Search items
+  const searchItems = async (query: string) => {
+    if ((!query || query.length < 2) && appliedFilters.brandIds.length === 0 && appliedFilters.categoryIds.length === 0) {
+      setItemOptions([]);
+      return;
+    }
+
+    if (!selectedWarehouseId) {
+      toast.error("Please select a warehouse first");
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const res = await inventoryApi.search(query, selectedWarehouseId, undefined, appliedFilters);
+      if (res.status && res.data) {
+        const options = res.data.map((item: any) => ({
+          value: item.id,
+          label: `${item.sku} - ${item.description}`,
+          description: `Available: ${item.totalQuantity || 0} | Cost: Rs. ${item.unitCost || 0}`,
+          item: {
+            ...item,
+            availableStock: item.totalQuantity || 0,
+            costPrice: item.unitCost || 0,
+          }
+        }));
+        setItemOptions(options);
+        if (!isPopoverOpen) setIsPopoverOpen(true);
+      }
+    } catch (error) {
+      console.error("Search failed", error);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Add item to order
+  const addItem = (itemData: any) => {
+    const isSelected = selectedItems.find(i => i.id === itemData.id);
+    if (isSelected) {
+      toast.warning("Item already added to order");
+      return;
+    }
+
+    const newItem: SelectedItem = {
+      id: itemData.id,
+      sku: itemData.sku,
+      description: itemData.description,
+      costPrice: itemData.costPrice,
+      salePrice: itemData.costPrice * 1.2, // Default 20% markup
+      quantity: 1,
+      discount: 0,
+      total: itemData.costPrice * 1.2,
+      availableStock: itemData.availableStock,
+    };
+
+    setSelectedItems(prev => [...prev, newItem]);
+    setItemSearchQuery("");
+    setIsPopoverOpen(false);
+  };
+
+  // Update item
+  const updateItem = (id: string, field: keyof SelectedItem, value: number) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [field]: value };
+        // Recalculate total
+        updated.total = (updated.salePrice * updated.quantity) - updated.discount;
+        return updated;
+      }
+      return item;
+    }));
+  };
+
+  // Remove item
+  const removeItem = (id: string) => {
+    setSelectedItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  // Calculate totals
+  const subtotal = selectedItems.reduce((sum, item) => sum + item.total, 0);
+  const taxAmount = subtotal * (taxRate / 100);
+  const grandTotal = subtotal + taxAmount - orderDiscount;
+
+  // Search and filter
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      loadOrders();
+    }, 300);
+    return () => clearTimeout(debounce);
+  }, [searchTerm, statusFilter]);
+
+  // Item search
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      searchItems(itemSearchQuery);
+    }, 300);
+    return () => clearTimeout(debounce);
+  }, [itemSearchQuery, selectedWarehouseId, appliedFilters]);
+
+  const handleCreateOrder = async () => {
+    if (!selectedCustomerId || !selectedWarehouseId || selectedItems.length === 0) {
+      toast.error("Please fill all required fields and add at least one item");
+      return;
+    }
+
+    try {
+      const orderData = {
+        customerId: selectedCustomerId,
+        warehouseId: selectedWarehouseId,
+        taxRate,
+        discount: orderDiscount,
+        items: selectedItems.map(item => ({
+          itemId: item.id,
+          quantity: item.quantity,
+          salePrice: item.salePrice,
+          discount: item.discount,
+        })),
+      };
+
+      await salesOrderApi.create(orderData);
+      toast.success("Sales order created successfully");
+      
+      // Reset form
+      setSelectedCustomerId("");
+      setSelectedWarehouseId("");
+      setSelectedItems([]);
+      setNotes("");
+      setIsCreateOpen(false);
+      loadOrders();
+    } catch (error) {
+      toast.error("Failed to create sales order");
+      console.error(error);
+    }
+  };
+
+  const handleConfirm = async (id: string) => {
+    try {
+      await salesOrderApi.confirm(id);
+      toast.success("Sales order confirmed successfully");
+      loadOrders();
+    } catch (error) {
+      toast.error("Failed to confirm sales order");
+      console.error(error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "DRAFT":
+        return "bg-gray-100 text-gray-800";
+      case "CONFIRMED":
+        return "bg-green-100 text-green-800";
+      case "CANCELLED":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Loading sales orders...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Sales Orders</h1>
+          <p className="text-muted-foreground">
+            Create and manage sales orders
+          </p>
+        </div>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Sales Order
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create Sales Order</DialogTitle>
+              <DialogDescription>
+                Create a new sales order for a customer
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="grid gap-6 py-4">
+              {/* Customer & Warehouse Selection */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Customer *</Label>
+                  <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name} ({customer.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Warehouse *</Label>
+                  <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select warehouse" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {warehouses.map((warehouse) => (
+                        <SelectItem key={warehouse.id} value={warehouse.id}>
+                          {warehouse.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Item Selection */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Add Items</Label>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsFilterOpen(true)}
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filters
+                    {(appliedFilters.brandIds.length + appliedFilters.categoryIds.length) > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {appliedFilters.brandIds.length + appliedFilters.categoryIds.length}
+                      </Badge>
+                    )}
+                  </Button>
+                </div>
+
+                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        placeholder="Search items by SKU or description..."
+                        value={itemSearchQuery}
+                        onChange={(e) => setItemSearchQuery(e.target.value)}
+                        className="pl-10"
+                        disabled={!selectedWarehouseId}
+                      />
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {searchLoading ? (
+                            <div className="p-4 text-center">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                              <p className="mt-2 text-sm text-muted-foreground">Searching...</p>
+                            </div>
+                          ) : itemOptions.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-muted-foreground">
+                              {itemSearchQuery.length < 2 ? "Type at least 2 characters to search" : "No items found"}
+                            </div>
+                          ) : (
+                            itemOptions.map((option) => (
+                              <CommandItem
+                                key={option.value}
+                                onSelect={() => addItem(option.item)}
+                                className="cursor-pointer"
+                              >
+                                <div className="flex flex-col w-full">
+                                  <span className="font-medium">{option.label}</span>
+                                  <span className="text-sm text-muted-foreground">{option.description}</span>
+                                </div>
+                              </CommandItem>
+                            ))
+                          )}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Selected Items */}
+              {selectedItems.length > 0 && (
+                <div className="space-y-4">
+                  <Label>Selected Items ({selectedItems.length})</Label>
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>Cost</TableHead>
+                          <TableHead>Sale Price</TableHead>
+                          <TableHead>Qty</TableHead>
+                          <TableHead>Discount</TableHead>
+                          <TableHead>Total</TableHead>
+                          <TableHead></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedItems.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{item.sku}</div>
+                                <div className="text-sm text-muted-foreground">{item.description}</div>
+                                <div className="text-xs text-muted-foreground">Stock: {item.availableStock}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>Rs. {item.costPrice.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={item.salePrice}
+                                onChange={(e) => updateItem(item.id, 'salePrice', Number(e.target.value))}
+                                className="w-24"
+                                min="0"
+                                step="0.01"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
+                                className="w-20"
+                                min="1"
+                                max={item.availableStock}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                value={item.discount}
+                                onChange={(e) => updateItem(item.id, 'discount', Number(e.target.value))}
+                                className="w-24"
+                                min="0"
+                                step="0.01"
+                              />
+                            </TableCell>
+                            <TableCell>Rs. {item.total.toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeItem(item.id)}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* Order Totals */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tax Rate (%)</Label>
+                  <Input
+                    type="number"
+                    value={taxRate}
+                    onChange={(e) => setTaxRate(Number(e.target.value))}
+                    min="0"
+                    max="100"
+                    step="0.01"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Order Discount</Label>
+                  <Input
+                    type="number"
+                    value={orderDiscount}
+                    onChange={(e) => setOrderDiscount(Number(e.target.value))}
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+              </div>
+
+              {/* Order Summary */}
+              {selectedItems.length > 0 && (
+                <div className="p-4 bg-muted rounded-lg space-y-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span>Rs. {subtotal.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax ({taxRate}%):</span>
+                    <span>Rs. {taxAmount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Discount:</span>
+                    <span>Rs. {orderDiscount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-lg border-t pt-2">
+                    <span>Grand Total:</span>
+                    <span>Rs. {grandTotal.toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label>Notes</Label>
+                <Textarea
+                  placeholder="Order notes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateOrder} disabled={selectedItems.length === 0}>
+                Create Order
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Filter Sheet */}
+      <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Filter Items</SheetTitle>
+          </SheetHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Brands</Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {brands.map((brand) => (
+                  <label key={brand.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={appliedFilters.brandIds.includes(brand.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setAppliedFilters(prev => ({
+                            ...prev,
+                            brandIds: [...prev.brandIds, brand.id]
+                          }));
+                        } else {
+                          setAppliedFilters(prev => ({
+                            ...prev,
+                            brandIds: prev.brandIds.filter(id => id !== brand.id)
+                          }));
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{brand.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Categories</Label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {categories.map((category) => (
+                  <label key={category.id} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={appliedFilters.categoryIds.includes(category.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setAppliedFilters(prev => ({
+                            ...prev,
+                            categoryIds: [...prev.categoryIds, category.id]
+                          }));
+                        } else {
+                          setAppliedFilters(prev => ({
+                            ...prev,
+                            categoryIds: prev.categoryIds.filter(id => id !== category.id)
+                          }));
+                        }
+                      }}
+                    />
+                    <span className="text-sm">{category.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          <SheetFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAppliedFilters({ brandIds: [], categoryIds: [] })}
+            >
+              Clear All
+            </Button>
+            <Button onClick={() => setIsFilterOpen(false)}>
+              Apply Filters
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Orders List */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Search orders..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="confirmed">Confirmed</SelectItem>
+            <SelectItem value="cancelled">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Order No</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Items</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {(orders || []).length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8">
+                  <div className="text-muted-foreground">
+                    {searchTerm ? "No orders found matching your search." : "No sales orders found. Create your first order."}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              (orders || []).map((order) => (
+                <TableRow key={order.id}>
+                  <TableCell className="font-medium">{order.orderNo}</TableCell>
+                  <TableCell>{order.customer.name}</TableCell>
+                  <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{order.items.length} items</TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(order.status)}>
+                      {order.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    Rs. {order.grandTotal.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button variant="ghost" size="sm" title="View">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      {order.status === "DRAFT" && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          title="Confirm Order"
+                          onClick={() => handleConfirm(order.id)}
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {order.status === "CONFIRMED" && (
+                        <Button variant="ghost" size="sm" title="Create Delivery Challan">
+                          <Truck className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}

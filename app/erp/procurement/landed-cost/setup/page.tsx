@@ -349,47 +349,7 @@ export default function LandedCostSetupPage() {
         };
       });
 
-            if (itemHsCode) {
-              const matchedHs = hsCodes.find(h => String(h.hsCode) === String(itemHsCode));
-              console.log('Matched HS Code:', matchedHs);
-              if (matchedHs) {
-                hsCodeId = matchedHs.id;
-                rates = {
-                  cd: matchedHs.customsDutyCd,
-                  rd: matchedHs.regulatoryDutyRd,
-                  acd: matchedHs.additionalCustomsDutyAcd,
-                  st: matchedHs.salesTax,
-                  ast: matchedHs.additionalSalesTax,
-                  it: matchedHs.incomeTax,
-                  excise: 0 // Set to 0 instead of matchedHs.exciseCharges
-                };
-                console.log('HS Code rates:', rates);
-              }
-            }
-
-            const updatedItem: LocalItem = {
-              ...item,
-              itemName: itemMaster?.name || itemMaster?.sku || itemMaster?.itemId || item.itemId,
-              sku: itemMaster?.sku || itemMaster?.itemId || item.itemId,
-              description: itemMaster?.description || item.description || '',
-              category: itemMaster?.category?.name || '',
-              hsCodeId: hsCodeId,
-              customsDutyRate: rates.cd,
-              regulatoryDutyRate: rates.rd,
-              additionalCustomsDutyRate: rates.acd,
-              salesTaxRate: rates.st,
-              additionalSalesTaxRate: rates.ast,
-              incomeTaxRate: rates.it,
-              exciseChargesRate: globalExciseRate, // Use global rate instead of rates.excise
-            };
-            return updatedItem;
-          }
-          return item;
-        } catch (err) {
-          console.error('Error enriching item:', item.itemId, err);
-          return item;
-        }
-      })); console.log('Setting enriched items');
+      console.log('Setting enriched items');
       setItems(enrichedItems);
       calculateTotals(enrichedItems);
       setLoading(false);

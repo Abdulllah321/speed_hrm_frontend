@@ -845,10 +845,18 @@ export const menuData: MenuItem[] = [
     environment: "ERP",
     permissions: ["sales.read"],
     children: [
-      { title: "Customers", href: "/erp/sales/customers" },
-      { title: "Quotations", href: "/erp/sales/quotations" },
-      { title: "Sales Order", href: "/erp/sales/sales-order" },
-      { title: "Sales Invoice", href: "/erp/sales/sales-invoice" },
+      { title: "Customers", href: "/erp/sales/customers", permissions: ["sales.customer.read"] },
+      { title: "Sales Orders", href: "/erp/sales/orders", permissions: ["sales.order.read"] },
+      { title: "Delivery Challans", href: "/erp/sales/delivery-challans", permissions: ["sales.challan.read"] },
+      { title: "Sales Invoices", href: "/erp/sales/invoices", permissions: ["sales.invoice.read"] },
+      {
+        title: "Reports",
+        children: [
+          { title: "Sales Summary", href: "/erp/sales/reports/summary" },
+          { title: "Customer Ledger", href: "/erp/sales/reports/customer-ledger" },
+          { title: "Outstanding Invoices", href: "/erp/sales/reports/outstanding" },
+        ],
+      },
     ],
   },
   {

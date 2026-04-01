@@ -196,7 +196,7 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
             // Generate a code if backend requires one and doesn't auto-gen
             const code = `CUST-${Date.now()}`;
             const res = await authFetch(
-                "/sales/customers",
+                "/api/sales/customers",
                 { method: "POST", body: { ...formData, code } }
             );
             if (res.ok && res.data?.status) {
@@ -327,7 +327,7 @@ export default function CheckoutPage() {
     // ── Fetch customers ────────────────────────────────────────────────
     useEffect(() => {
         setIsLoadingCustomers(true);
-        authFetch(`/sales/customers`, { params: { search: customerSearch } })
+        authFetch(`/api/sales/customers`, { params: { search: customerSearch } })
             .then(res => {
                 if (res.ok && res.data?.status) setCustomers(res.data.data || []);
             })
