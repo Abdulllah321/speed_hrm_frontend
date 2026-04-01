@@ -10,14 +10,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from 'sonner';
 import {
   Grn,
-  hsCodeApi,
-  HsCode,
-  chartOfAccountApi,
-  ChartOfAccount,
   LandedCostChargeType,
-  itemApi
 } from '@/lib/api';
-import { getVendors } from '@/lib/actions/procurement';
 import { getGrns } from '@/lib/actions/grn';
 import { createLandedCost, getLandedCostChargeTypes } from '@/lib/actions/landed-cost';
 import { Label } from '@/components/ui/label';
@@ -99,9 +93,9 @@ export default function LandedCostSetupPage() {
 
   // Data State
   const [grns, setGrns] = useState<Grn[]>([]);
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [hsCodes, setHsCodes] = useState<HsCode[]>([]);
   const [chargeTypes, setChargeTypes] = useState<LandedCostChargeType[]>([]);
+  // HS codes derived from GRN item master data — no separate API call needed
+  const [hsCodes, setHsCodes] = useState<any[]>([]);
 
   // Form State
   const [grnId, setGrnId] = useState('');
@@ -157,10 +151,8 @@ export default function LandedCostSetupPage() {
 
   const fetchInitialData = async () => {
     try {
-      const [grnsRes, vendorsRes, hsRes, ctRes] = await Promise.all([
+      const [grnsRes, ctRes] = await Promise.all([
         getGrns(),
-        getVendors(),
-        hsCodeApi.getAll(),
         getLandedCostChargeTypes()
       ]);
       console.log('GRN Response:', grnsRes);
@@ -179,8 +171,6 @@ export default function LandedCostSetupPage() {
         
         return isDirectPo || isPrLinkedFresh;
       }));
-      if (vendorsRes?.data) setVendors(vendorsRes.data);
-      if (hsRes?.data) setHsCodes(hsRes.data);
       if (ctRes?.data) setChargeTypes(ctRes.data);
 
       // Auto-select GRN from query parameter
@@ -188,7 +178,6 @@ export default function LandedCostSetupPage() {
       if (grnIdFromUrl) {
         const foundGrn = grnData.find((g: any) => g.id === grnIdFromUrl);
         if (foundGrn) {
-          // Don't redirect for local GRNs anymore - handle them in same form
           setTimeout(() => onGrnChange(grnIdFromUrl), 500);
         }
       }
@@ -214,7 +203,7 @@ export default function LandedCostSetupPage() {
     return filtered;
   };
 
-  const onGrnChange = async (id: string) => {
+  const onGrnChange = (id: string) => {
     console.log('onGrnChange triggered with ID:', id);
     setGrnId(id);
     const grn = grns.find(g => g.id === id);
@@ -223,8 +212,13 @@ export default function LandedCostSetupPage() {
       return;
     }
 
-    // Don't redirect for local GRNs anymore - handle them in same form
-    // const isLocal = (grn as any).orderType === 'LOCAL' || !(grn as any).orderType;
+    // Extract unique HS codes from GRN item master data
+    const hsMap = new Map<string, any>();
+    ((grn as any).items || []).forEach((gi: any) => {
+      const hs = gi.item?.hsCode;
+      if (hs?.id && !hsMap.has(hs.id)) hsMap.set(hs.id, hs);
+    });
+    setHsCodes(Array.from(hsMap.values()));
     // if (isLocal) {
     //   router.push(`/erp/procurement/landed-cost/local?grnId=${id}`);
     //   return;
@@ -321,18 +315,39 @@ export default function LandedCostSetupPage() {
         return;
       }
 
-      // STEP 2: Fetch details in background and update
-      const enrichedItems = await Promise.all(basicItems.map(async (item) => {
-        try {
-          const itemMasterRes = await itemApi.getById(item.itemId);
-          const itemMaster = (itemMasterRes as any)?.data || itemMasterRes;
+      // STEP 2: Enrich items from GRN-included item master data (no extra API calls)
+      const enrichedItems: LocalItem[] = basicItems.map((item) => {
+        const gi = grnItems.find((g: any) => String(g.itemId) === String(item.itemId));
+        const itemMaster = gi?.item;
+        if (!itemMaster) return item;
 
-          if (itemMaster) {
-            const itemHsCode = (itemMaster.hsCode as any)?.hsCode || itemMaster.hsCodeStr;
-            let rates = { cd: 0, rd: 0, acd: 0, st: 0, ast: 0, it: 0, excise: 0 };
-            let hsCodeId = '';
+        const hs = itemMaster.hsCode;
+        const rates = hs ? {
+          cd: Number(hs.customsDutyCd ?? 0),
+          rd: Number(hs.regulatoryDutyRd ?? 0),
+          acd: Number(hs.additionalCustomsDutyAcd ?? 0),
+          st: Number(hs.salesTax ?? 0),
+          ast: Number(hs.additionalSalesTax ?? 0),
+          it: Number(hs.incomeTax ?? 0),
+          excise: Number(hs.exciseCharges ?? 0),
+        } : { cd: 0, rd: 0, acd: 0, st: 0, ast: 0, it: 0, excise: 0 };
 
-            console.log('Item:', item.itemId, 'HS Code from master:', itemHsCode);
+        return {
+          ...item,
+          itemName: itemMaster.sku || itemMaster.itemId || item.itemId,
+          sku: itemMaster.sku || itemMaster.itemId || item.itemId,
+          description: itemMaster.description || item.description || '',
+          category: itemMaster.category?.name || '',
+          hsCodeId: hs?.id || '',
+          customsDutyRate: rates.cd,
+          regulatoryDutyRate: rates.rd,
+          additionalCustomsDutyRate: rates.acd,
+          salesTaxRate: rates.st,
+          additionalSalesTaxRate: rates.ast,
+          incomeTaxRate: rates.it,
+          exciseChargesRate: rates.excise,
+        };
+      });
 
             if (itemHsCode) {
               const matchedHs = hsCodes.find(h => String(h.hsCode) === String(itemHsCode));
@@ -377,11 +392,10 @@ export default function LandedCostSetupPage() {
       })); console.log('Setting enriched items');
       setItems(enrichedItems);
       calculateTotals(enrichedItems);
-
+      setLoading(false);
     } catch (err: any) {
       console.error('onGrnChange Error:', err);
       toast.error('Failed to load items from GRN: ' + (err.message || String(err)));
-    } finally {
       setLoading(false);
     }
   };
@@ -750,12 +764,11 @@ export default function LandedCostSetupPage() {
               </div>
               <div>
                 <Label>Supplier</Label>
-                <Select value={supplierId} onValueChange={setSupplierId} disabled={true}>
-                  <SelectTrigger><SelectValue placeholder="Select Supplier" /></SelectTrigger>
-                  <SelectContent>
-                    {vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Input
+                  value={grns.find(g => g.id === grnId) ? ((grns.find(g => g.id === grnId) as any).purchaseOrder?.vendor?.name || supplierId) : ''}
+                  disabled
+                  placeholder="Auto-filled from GRN"
+                />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
