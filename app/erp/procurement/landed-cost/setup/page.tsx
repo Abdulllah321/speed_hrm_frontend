@@ -329,8 +329,7 @@ export default function LandedCostSetupPage() {
           st: Number(hs.salesTax ?? 0),
           ast: Number(hs.additionalSalesTax ?? 0),
           it: Number(hs.incomeTax ?? 0),
-          excise: Number(hs.exciseCharges ?? 0),
-        } : { cd: 0, rd: 0, acd: 0, st: 0, ast: 0, it: 0, excise: 0 };
+        } : { cd: 0, rd: 0, acd: 0, st: 0, ast: 0, it: 0 };
 
         return {
           ...item,
@@ -345,7 +344,7 @@ export default function LandedCostSetupPage() {
           salesTaxRate: rates.st,
           additionalSalesTaxRate: rates.ast,
           incomeTaxRate: rates.it,
-          exciseChargesRate: rates.excise,
+          exciseChargesRate: globalExciseRate,
         };
       });
 

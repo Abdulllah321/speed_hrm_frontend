@@ -127,7 +127,6 @@ export function HeaderNotifications() {
 
       const res = await authFetch(`${getApiBaseUrl()}/notifications/${id}/read`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         cache: "no-store",
       });
       if (!res.ok) return;
