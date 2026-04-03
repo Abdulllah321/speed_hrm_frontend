@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { NewSaleTopBar } from "@/components/pos/new-sale/top-bar";
 import { CartTable, type CartItem } from "@/components/pos/new-sale/cart-table";
 import { SummaryFooter } from "@/components/pos/new-sale/summary-footer";
@@ -60,6 +61,7 @@ function timeLeft(expiresAt: string) {
 
 export default function NewSalePage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -92,6 +94,11 @@ export default function NewSalePage() {
                 sessionStorage.removeItem("pos_resume_cart");
                 toast.success("Hold order resumed");
             } catch { /* ignore */ }
+        }
+        // Auto-open hold orders panel if navigated from history with ?showHolds=1
+        if (searchParams.get("showHolds") === "1") {
+            loadHoldOrders();
+            setShowHoldOrders(true);
         }
     }, []);
 

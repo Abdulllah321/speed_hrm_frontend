@@ -216,7 +216,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Employement Status",
     environment: "HR",
-    permissions: ["master.employee-status.read", "master.employee-status.create"],
+    permissions: [
+      "master.employee-status.read",
+      "master.employee-status.create",
+    ],
     children: [
       { title: "Add", href: "/master/employee-status/add" },
       { title: "View", href: "/master/employee-status/list" },
@@ -345,7 +348,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Social Security",
     environment: "HR",
-    permissions: ["master.social-security.read", "master.social-security.create"],
+    permissions: [
+      "master.social-security.read",
+      "master.social-security.create",
+    ],
     children: [
       { title: "Add", href: "/master/social-security/add" },
       { title: "View", href: "/master/social-security/list" },
@@ -444,7 +450,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Storage Dimension",
     environment: "ERP",
-    permissions: ["master.storage-dimension.read", "master.storage-dimension.create"],
+    permissions: [
+      "master.storage-dimension.read",
+      "master.storage-dimension.create",
+    ],
     children: [
       { title: "Add", href: "/master/storage-dimension/add" },
       { title: "View", href: "/master/storage-dimension/list" },
@@ -462,7 +471,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Mode of Delivery",
     environment: "ERP",
-    permissions: ["master.mode-of-delivery.read", "master.mode-of-delivery.create"],
+    permissions: [
+      "master.mode-of-delivery.read",
+      "master.mode-of-delivery.create",
+    ],
     children: [
       { title: "Add", href: "/master/mode-of-delivery/add" },
       { title: "View", href: "/master/mode-of-delivery/list" },
@@ -507,7 +519,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Stock Adjustment",
     environment: "ERP",
-    permissions: ["master.stock-adjustment.read", "master.stock-adjustment.create"],
+    permissions: [
+      "master.stock-adjustment.read",
+      "master.stock-adjustment.create",
+    ],
     children: [
       { title: "Add", href: "/master/stock-adjustment/add" },
       { title: "View", href: "/master/stock-adjustment/list" },
@@ -543,7 +558,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Bank Charges Type",
     environment: "ERP",
-    permissions: ["master.bank-charges-type.read", "master.bank-charges-type.create"],
+    permissions: [
+      "master.bank-charges-type.read",
+      "master.bank-charges-type.create",
+    ],
     children: [
       { title: "Add", href: "/master/bank-charges-type/add" },
       { title: "View", href: "/master/bank-charges-type/list" },
@@ -552,7 +570,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Shipment Status",
     environment: "ERP",
-    permissions: ["master.shipment-status.read", "master.shipment-status.create"],
+    permissions: [
+      "master.shipment-status.read",
+      "master.shipment-status.create",
+    ],
     children: [
       { title: "Add", href: "/master/shipment-status/add" },
       { title: "View", href: "/master/shipment-status/list" },
@@ -606,7 +627,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Unit Of Measurment",
     environment: "ERP",
-    permissions: ["master.unit-of-measurement.read", "master.unit-of-measurement.create"],
+    permissions: [
+      "master.unit-of-measurement.read",
+      "master.unit-of-measurement.create",
+    ],
     children: [
       { title: "Add", href: "/master/unit-of-measurement/add" },
       { title: "View", href: "/master/unit-of-measurement/list" },
@@ -660,7 +684,10 @@ export const masterMenuData: MenuItem[] = [
   {
     title: "Opening Inventory",
     environment: "ERP",
-    permissions: ["master.opening-inventory.read", "master.opening-inventory.create"],
+    permissions: [
+      "master.opening-inventory.read",
+      "master.opening-inventory.create",
+    ],
     children: [
       { title: "Add", href: "/master/opening-inventory/add" },
       { title: "View", href: "/master/opening-inventory/list" },
@@ -676,22 +703,40 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
 
-
-
-  { title: "Manage Outlets", href: "/master/location/list", permissions: ["master.location.read"], environment: "POS" },
-  { title: "Terminal List", href: "/master/pos/list", permissions: ["master.pos.read"], environment: "POS" },
+  {
+    title: "Manage Outlets",
+    href: "/master/location/list",
+    permissions: ["master.location.read"],
+    environment: "POS",
+  },
+  {
+    title: "Terminal List",
+    href: "/master/pos/list",
+    permissions: ["master.pos.read"],
+    environment: "POS",
+  },
   {
     title: "POS Config",
     environment: "POS",
     permissions: ["master.pos.read"],
     children: [
-      { title: "Promos", href: "/master/pos-config?tab=promos", permissions: ["master.pos.read"] },
-      { title: "Coupons", href: "/master/pos-config?tab=coupons", permissions: ["master.pos.read"] },
-      { title: "Alliances", href: "/master/pos-config?tab=alliances", permissions: ["master.pos.read"] },
-    ]
+      {
+        title: "Promos",
+        href: "/master/pos-config?tab=promos",
+        permissions: ["master.pos.read"],
+      },
+      {
+        title: "Coupons",
+        href: "/master/pos-config?tab=coupons",
+        permissions: ["master.pos.read"],
+      },
+      {
+        title: "Alliances",
+        href: "/master/pos-config?tab=alliances",
+        permissions: ["master.pos.read"],
+      },
+    ],
   },
-
-
 ];
 
 export const menuData: MenuItem[] = [
@@ -722,47 +767,88 @@ export const menuData: MenuItem[] = [
       "erp.finance.chart-of-account.read",
       "erp.finance.journal-voucher.read",
       "erp.finance.payment-voucher.read",
-      "erp.finance.receipt-voucher.read"
+      "erp.finance.receipt-voucher.read",
     ],
     children: [
       {
         title: "Chart of Accounts",
         permissions: ["erp.finance.chart-of-account.read"],
         children: [
-          { title: "List", href: "/erp/finance/chart-of-accounts", permissions: ["erp.finance.chart-of-account.read"] },
-          { title: "Create", href: "/erp/finance/chart-of-accounts/create", permissions: ["erp.finance.chart-of-account.create"] },
+          {
+            title: "List",
+            href: "/erp/finance/chart-of-accounts",
+            permissions: ["erp.finance.chart-of-account.read"],
+          },
+          {
+            title: "Create",
+            href: "/erp/finance/chart-of-accounts/create",
+            permissions: ["erp.finance.chart-of-account.create"],
+          },
         ],
       },
       {
         title: "Journal Voucher",
         permissions: ["erp.finance.journal-voucher.read"],
         children: [
-          { title: "Create", href: "/erp/finance/journal-voucher/create", permissions: ["erp.finance.journal-voucher.create"] },
-          { title: "List", href: "/erp/finance/journal-voucher/list", permissions: ["erp.finance.journal-voucher.read"] },
+          {
+            title: "Create",
+            href: "/erp/finance/journal-voucher/create",
+            permissions: ["erp.finance.journal-voucher.create"],
+          },
+          {
+            title: "List",
+            href: "/erp/finance/journal-voucher/list",
+            permissions: ["erp.finance.journal-voucher.read"],
+          },
         ],
       },
       {
         title: "Payment Voucher",
         permissions: ["erp.finance.payment-voucher.read"],
         children: [
-          { title: "List", href: "/erp/finance/payment-voucher/list", permissions: ["erp.finance.payment-voucher.read"] },
-          { title: "Create", href: "/erp/finance/payment-voucher/create", permissions: ["erp.finance.payment-voucher.create"] },
+          {
+            title: "List",
+            href: "/erp/finance/payment-voucher/list",
+            permissions: ["erp.finance.payment-voucher.read"],
+          },
+          {
+            title: "Create",
+            href: "/erp/finance/payment-voucher/create",
+            permissions: ["erp.finance.payment-voucher.create"],
+          },
         ],
       },
       {
         title: "Receipt Voucher",
         permissions: ["erp.finance.receipt-voucher.read"],
         children: [
-          { title: "List", href: "/erp/finance/receipt-voucher/list", permissions: ["erp.finance.receipt-voucher.read"] },
-          { title: "Create", href: "/erp/finance/receipt-voucher/create", permissions: ["erp.finance.receipt-voucher.create"] },
+          {
+            title: "List",
+            href: "/erp/finance/receipt-voucher/list",
+            permissions: ["erp.finance.receipt-voucher.read"],
+          },
+          {
+            title: "Create",
+            href: "/erp/finance/receipt-voucher/create",
+            permissions: ["erp.finance.receipt-voucher.create"],
+          },
         ],
       },
       {
         title: "Reports",
         children: [
-          { title: "General Ledger", href: "/erp/finance/reports/general-ledger" },
-          { title: "Trial Balance", href: "/erp/finance/reports/trial-balance" },
-          { title: "Balance Sheet", href: "/erp/finance/reports/balance-sheet" },
+          {
+            title: "General Ledger",
+            href: "/erp/finance/reports/general-ledger",
+          },
+          {
+            title: "Trial Balance",
+            href: "/erp/finance/reports/trial-balance",
+          },
+          {
+            title: "Balance Sheet",
+            href: "/erp/finance/reports/balance-sheet",
+          },
           { title: "Profit & Loss", href: "/erp/finance/reports/profit-loss" },
         ],
       },
@@ -778,13 +864,14 @@ export const menuData: MenuItem[] = [
       {
         title: "Warehouse WMS",
         children: [
-
           { title: "Dashboard", href: "/erp/inventory/warehouse" },
           { title: "Warehouse", href: "/erp/inventory/warehouse/add" },
           { title: "Inventory Explorer", href: "/erp/inventory/explorer" },
-          { title: "Inventory List", href: "/erp/inventory/warehouse/inventory" },
-
-        ]
+          {
+            title: "Inventory List",
+            href: "/erp/inventory/warehouse/inventory",
+          },
+        ],
       },
       {
         title: "Item Setup",
@@ -792,16 +879,25 @@ export const menuData: MenuItem[] = [
           { title: "Create", href: "/erp/items/create" },
           { title: "List", href: "/erp/items/list" },
           // { title: "Categories", href: "/erp/inventory/categories" },
-        ]
+        ],
       },
       {
         title: "Transactions",
         children: [
-          { title: "Stock Received", href: "/erp/inventory/transactions/stock-received" },
-          { title: "Delivery Note", href: "/erp/inventory/transactions/delivery-note" },
-          { title: "Stock Transfer", href: "/erp/inventory/transactions/stock-transfer" },
-        ]
-      }
+          {
+            title: "Stock Received",
+            href: "/erp/inventory/transactions/stock-received",
+          },
+          {
+            title: "Delivery Note",
+            href: "/erp/inventory/transactions/delivery-note",
+          },
+          {
+            title: "Stock Transfer",
+            href: "/erp/inventory/transactions/stock-transfer",
+          },
+        ],
+      },
     ],
   },
   {
@@ -814,10 +910,19 @@ export const menuData: MenuItem[] = [
       {
         title: "Requisition & Quotation",
         children: [
-          { title: "Purchase Requisition", href: "/erp/procurement/purchase-requisition" },
+          {
+            title: "Purchase Requisition",
+            href: "/erp/procurement/purchase-requisition",
+          },
           { title: "RFQ", href: "/erp/procurement/rfq" },
-          { title: "Create Vendor Quotation", href: "/erp/procurement/vendor-quotation/create" },
-          { title: "Vendor Quotation List", href: "/erp/procurement/vendor-quotation/list" },
+          {
+            title: "Create Vendor Quotation",
+            href: "/erp/procurement/vendor-quotation/create",
+          },
+          {
+            title: "Vendor Quotation List",
+            href: "/erp/procurement/vendor-quotation/list",
+          },
         ],
       },
       {
@@ -845,12 +950,48 @@ export const menuData: MenuItem[] = [
     environment: "ERP",
     permissions: ["sales.read"],
     children: [
-      { title: "Customers", href: "/erp/sales/customers" },
-      { title: "Quotations", href: "/erp/sales/quotations" },
-      { title: "Sales Order", href: "/erp/sales/sales-order" },
-      { title: "Sales Invoice", href: "/erp/sales/sales-invoice" },
+      {
+        title: "Customers",
+        href: "/erp/sales/customers",
+        permissions: ["sales.customer.read"],
+      },
+      {
+        title: "Sales Orders",
+        href: "/erp/sales/orders",
+        permissions: ["sales.order.read"],
+      },
+      {
+        title: "Delivery Challans",
+        href: "/erp/sales/delivery-challans",
+        permissions: ["sales.challan.read"],
+      },
+      {
+        title: "Sales Invoices",
+        href: "/erp/sales/invoices",
+        permissions: ["sales.invoice.read"],
+      },
+      {
+        title: "Reports",
+        children: [
+          { title: "Sales Summary", href: "/erp/sales/reports/summary" },
+          {
+            title: "Customer Ledger",
+            href: "/erp/sales/reports/customer-ledger",
+          },
+          {
+            title: "Outstanding Invoices",
+            href: "/erp/sales/reports/outstanding",
+          },
+        ],
+      },
+      {
+        title: "Return Claims",
+        href: "/erp/claims",
+        permissions: ["sales.returns.claims"],
+      },
     ],
   },
+
   {
     title: "Employee Setup",
     icon: Users,
@@ -864,18 +1005,42 @@ export const menuData: MenuItem[] = [
       {
         title: "Employee",
         children: [
-          { title: "Create", href: "/hr/employee/create", permissions: ["hr.employee.create"] },
-          { title: "List", href: "/hr/employee/list", permissions: ["hr.employee.read"] },
-          { title: "Transfer", href: "/hr/employee/transfer", permissions: ["hr.employee.transfer"] },
-          { title: "User Accounts", href: "/hr/employee/user-account", permissions: ["hr.employee.user-account"] },
+          {
+            title: "Create",
+            href: "/hr/employee/create",
+            permissions: ["hr.employee.create"],
+          },
+          {
+            title: "List",
+            href: "/hr/employee/list",
+            permissions: ["hr.employee.read"],
+          },
+          {
+            title: "Transfer",
+            href: "/hr/employee/transfer",
+            permissions: ["hr.employee.transfer"],
+          },
+          {
+            title: "User Accounts",
+            href: "/hr/employee/user-account",
+            permissions: ["hr.employee.user-account"],
+          },
         ],
       },
       {
         title: "Exit Clearance",
         icon: LogOut,
         children: [
-          { title: "Create", href: "/hr/exit-clearance/create", permissions: ["hr.exit-clearance.create"] },
-          { title: "List", href: "/hr/exit-clearance/list", permissions: ["hr.exit-clearance.read"] },
+          {
+            title: "Create",
+            href: "/hr/exit-clearance/create",
+            permissions: ["hr.exit-clearance.create"],
+          },
+          {
+            title: "List",
+            href: "/hr/exit-clearance/list",
+            permissions: ["hr.exit-clearance.read"],
+          },
         ],
       },
     ],
@@ -906,11 +1071,31 @@ export const menuData: MenuItem[] = [
           "hr.request-forwarding.attendance",
         ],
         children: [
-          { title: "Manage", href: "/hr/attendance/manage", permissions: ["hr.attendance.update"] },
-          { title: "View", href: "/hr/attendance/view", permissions: ["hr.attendance.view"] },
-          { title: "Summary", href: "/hr/attendance/summary", permissions: ["hr.attendance.summary"] },
-          { title: "Request", href: "/hr/attendance/request", permissions: ["hr.attendance.request"] },
-          { title: "Request List", href: "/hr/attendance/request-list", permissions: ["hr.attendance.request-list"] },
+          {
+            title: "Manage",
+            href: "/hr/attendance/manage",
+            permissions: ["hr.attendance.update"],
+          },
+          {
+            title: "View",
+            href: "/hr/attendance/view",
+            permissions: ["hr.attendance.view"],
+          },
+          {
+            title: "Summary",
+            href: "/hr/attendance/summary",
+            permissions: ["hr.attendance.summary"],
+          },
+          {
+            title: "Request",
+            href: "/hr/attendance/request",
+            permissions: ["hr.attendance.request"],
+          },
+          {
+            title: "Request List",
+            href: "/hr/attendance/request-list",
+            permissions: ["hr.attendance.request-list"],
+          },
           // {
           //   title: "Exemptions",
           //   href: "/hr/attendance/exemptions",
@@ -927,8 +1112,16 @@ export const menuData: MenuItem[] = [
         title: "Working Hours Policy",
         permissions: ["hr.working-hour-policy.read"],
         children: [
-          { title: "Create", href: "/hr/working-hours/create", permissions: ["hr.working-hour-policy.create"] },
-          { title: "View", href: "/hr/working-hours/view", permissions: ["hr.working-hour-policy.read"] },
+          {
+            title: "Create",
+            href: "/hr/working-hours/create",
+            permissions: ["hr.working-hour-policy.create"],
+          },
+          {
+            title: "View",
+            href: "/hr/working-hours/view",
+            permissions: ["hr.working-hour-policy.read"],
+          },
           {
             title: "Assign Policy",
             href: "/hr/working-hours/assign-policy",
@@ -940,8 +1133,16 @@ export const menuData: MenuItem[] = [
         title: "Holidays",
         permissions: ["hr.holiday.read"],
         children: [
-          { title: "Create", href: "/hr/holidays/add", permissions: ["hr.holiday.create"] },
-          { title: "List", href: "/hr/holidays/list", permissions: ["hr.holiday.read"] },
+          {
+            title: "Create",
+            href: "/hr/holidays/add",
+            permissions: ["hr.holiday.create"],
+          },
+          {
+            title: "List",
+            href: "/hr/holidays/list",
+            permissions: ["hr.holiday.read"],
+          },
         ],
       },
     ],
@@ -950,16 +1151,17 @@ export const menuData: MenuItem[] = [
     title: "Leaves Setup",
     icon: Palmtree,
     environment: "HR",
-    permissions: [
-      "hr.leave.read",
-      "hr.leave.create",
-    ],
+    permissions: ["hr.leave.read", "hr.leave.create"],
     children: [
-      { title: "Create Leave", href: "/hr/leaves/create-leaves", permissions: ["hr.leave.create"] },
+      {
+        title: "Create Leave",
+        href: "/hr/leaves/create-leaves",
+        permissions: ["hr.leave.create"],
+      },
       {
         title: "View Requests",
         href: "/hr/leaves/requests",
-        permissions: ["hr.leave.read"] // Allowed for anyone with read permission
+        permissions: ["hr.leave.read"], // Allowed for anyone with read permission
       },
     ],
   },
@@ -972,12 +1174,18 @@ export const menuData: MenuItem[] = [
       {
         title: "Attendance",
         href: "/hr/request-forwarding?type=attendance",
-        permissions: ["hr.request-forwarding.attendance", "request-forwarding.read"],
+        permissions: [
+          "hr.request-forwarding.attendance",
+          "request-forwarding.read",
+        ],
       },
       {
         title: "Advance Salary",
         href: "/hr/request-forwarding?type=advance-salary",
-        permissions: ["hr.request-forwarding.advance-salary", "request-forwarding.read"],
+        permissions: [
+          "hr.request-forwarding.advance-salary",
+          "request-forwarding.read",
+        ],
       },
       {
         title: "Loan",
@@ -987,12 +1195,18 @@ export const menuData: MenuItem[] = [
       {
         title: "Leave Application",
         href: "/hr/request-forwarding?type=leave-application",
-        permissions: ["hr.request-forwarding.leave-application", "request-forwarding.read"],
+        permissions: [
+          "hr.request-forwarding.leave-application",
+          "request-forwarding.read",
+        ],
       },
       {
         title: "Leave Encashment",
         href: "/hr/request-forwarding?type=leave-encashment",
-        permissions: ["hr.request-forwarding.leave-encashment", "request-forwarding.read"],
+        permissions: [
+          "hr.request-forwarding.leave-encashment",
+          "request-forwarding.read",
+        ],
       },
     ],
   },
@@ -1024,53 +1238,121 @@ export const menuData: MenuItem[] = [
         title: "Payroll",
         permissions: ["hr.payroll.read", "hr.payroll.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/payroll/create", permissions: ["hr.payroll.create"] },
-          { title: "View Report", href: "/hr/payroll-setup/payroll/report", permissions: ["hr.payroll.create"] },
-          { title: "Bank Report", href: "/hr/payroll-setup/payroll/bank-report", permissions: ["hr.payroll.create"] },
-          { title: "Payslips Emails", href: "/hr/payroll-setup/payroll/payslips", permissions: ["hr.payroll.read"] },
+          {
+            title: "Create",
+            href: "/hr/payroll-setup/payroll/create",
+            permissions: ["hr.payroll.create"],
+          },
+          {
+            title: "View Report",
+            href: "/hr/payroll-setup/payroll/report",
+            permissions: ["hr.payroll.create"],
+          },
+          {
+            title: "Bank Report",
+            href: "/hr/payroll-setup/payroll/bank-report",
+            permissions: ["hr.payroll.create"],
+          },
+          {
+            title: "Payslips Emails",
+            href: "/hr/payroll-setup/payroll/payslips",
+            permissions: ["hr.payroll.read"],
+          },
         ],
       },
       {
         title: "Allowance",
         permissions: ["hr.allowance.read", "hr.allowance.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/allowance/create", permissions: ["hr.allowance.create"] },
-          { title: "View", href: "/hr/payroll-setup/allowance/view", permissions: ["hr.allowance.read"] },
-          { title: "Bank Report", href: "/hr/payroll-setup/allowance/bank-report", permissions: ["hr.allowance.read"] },
-          { title: "Allowance Payslip", href: "/hr/payroll-setup/allowance/payslip", permissions: ["hr.allowance.read"] },
+          {
+            title: "Create",
+            href: "/hr/payroll-setup/allowance/create",
+            permissions: ["hr.allowance.create"],
+          },
+          {
+            title: "View",
+            href: "/hr/payroll-setup/allowance/view",
+            permissions: ["hr.allowance.read"],
+          },
+          {
+            title: "Bank Report",
+            href: "/hr/payroll-setup/allowance/bank-report",
+            permissions: ["hr.allowance.read"],
+          },
+          {
+            title: "Allowance Payslip",
+            href: "/hr/payroll-setup/allowance/payslip",
+            permissions: ["hr.allowance.read"],
+          },
         ],
       },
       {
         title: "Deduction",
         permissions: ["hr.deduction.read", "hr.deduction.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/deduction/create", permissions: ["hr.deduction.create"] },
-          { title: "View", href: "/hr/payroll-setup/deduction/view", permissions: ["hr.deduction.read"] },
+          {
+            title: "Create",
+            href: "/hr/payroll-setup/deduction/create",
+            permissions: ["hr.deduction.create"],
+          },
+          {
+            title: "View",
+            href: "/hr/payroll-setup/deduction/view",
+            permissions: ["hr.deduction.read"],
+          },
         ],
       },
       {
         title: "Advance Salary",
         permissions: ["hr.advance-salary.read", "hr.advance-salary.create"],
         children: [
-          { title: "Create Request", href: "/hr/payroll-setup/advance-salary/create", permissions: ["hr.advance-salary.create"] },
-          { title: "View Requests", href: "/hr/payroll-setup/advance-salary/view", permissions: ["hr.advance-salary.read"] },
+          {
+            title: "Create Request",
+            href: "/hr/payroll-setup/advance-salary/create",
+            permissions: ["hr.advance-salary.create"],
+          },
+          {
+            title: "View Requests",
+            href: "/hr/payroll-setup/advance-salary/view",
+            permissions: ["hr.advance-salary.read"],
+          },
         ],
       },
       {
         title: "Loan Requests",
         permissions: ["hr.loan-request.read", "hr.loan-request.create"],
         children: [
-          { title: "Create Request", href: "/hr/loan-requests/create", permissions: ["hr.loan-request.create"] },
-          { title: "View & Reports", href: "/hr/loan-requests/view", permissions: ["hr.loan-request.read"] },
-          { title: "Request Forwarding", href: "/hr/request-forwarding?type=loan", permissions: ["hr.request-forwarding.loan"] },
+          {
+            title: "Create Request",
+            href: "/hr/loan-requests/create",
+            permissions: ["hr.loan-request.create"],
+          },
+          {
+            title: "View & Reports",
+            href: "/hr/loan-requests/view",
+            permissions: ["hr.loan-request.read"],
+          },
+          {
+            title: "Request Forwarding",
+            href: "/hr/request-forwarding?type=loan",
+            permissions: ["hr.request-forwarding.loan"],
+          },
         ],
       },
       {
         title: "Increment/Decrement",
         permissions: ["hr.increment.read", "hr.increment.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/increment/create", permissions: ["hr.increment.create"] },
-          { title: "View", href: "/hr/payroll-setup/increment/view", permissions: ["hr.increment.read"] },
+          {
+            title: "Create",
+            href: "/hr/payroll-setup/increment/create",
+            permissions: ["hr.increment.create"],
+          },
+          {
+            title: "View",
+            href: "/hr/payroll-setup/increment/view",
+            permissions: ["hr.increment.read"],
+          },
         ],
       },
       {
@@ -1078,10 +1360,26 @@ export const menuData: MenuItem[] = [
         icon: Gift,
         permissions: ["hr.bonus.read", "hr.bonus.create"],
         children: [
-          { title: "Issue Bonus", href: "/hr/payroll-setup/bonus/issue", permissions: ["hr.bonus.create"] },
-          { title: "View & Reports", href: "/hr/payroll-setup/bonus/view", permissions: ["hr.bonus.read"] },
-          { title: "Bank Report", href: "/hr/payroll-setup/bonus/bank-report", permissions: ["hr.bonus.read"] },
-          { title: "Bonus Payslip", href: "/hr/payroll-setup/bonus/payslip", permissions: ["hr.bonus.read"] },
+          {
+            title: "Issue Bonus",
+            href: "/hr/payroll-setup/bonus/issue",
+            permissions: ["hr.bonus.create"],
+          },
+          {
+            title: "View & Reports",
+            href: "/hr/payroll-setup/bonus/view",
+            permissions: ["hr.bonus.read"],
+          },
+          {
+            title: "Bank Report",
+            href: "/hr/payroll-setup/bonus/bank-report",
+            permissions: ["hr.bonus.read"],
+          },
+          {
+            title: "Bonus Payslip",
+            href: "/hr/payroll-setup/bonus/payslip",
+            permissions: ["hr.bonus.read"],
+          },
         ],
       },
       // {
@@ -1102,8 +1400,16 @@ export const menuData: MenuItem[] = [
         icon: Coins,
         permissions: ["hr.leave-encashment.read", "hr.leave-encashment.create"],
         children: [
-          { title: "Create", href: "/hr/payroll-setup/leave-encashment/create", permissions: ["hr.leave-encashment.create"] },
-          { title: "List", href: "/hr/payroll-setup/leave-encashment/list", permissions: ["hr.leave-encashment.read"] },
+          {
+            title: "Create",
+            href: "/hr/payroll-setup/leave-encashment/create",
+            permissions: ["hr.leave-encashment.create"],
+          },
+          {
+            title: "List",
+            href: "/hr/payroll-setup/leave-encashment/list",
+            permissions: ["hr.leave-encashment.read"],
+          },
           {
             title: "Request Forwarding",
             href: "/hr/request-forwarding?type=leave-encashment",
@@ -1117,7 +1423,11 @@ export const menuData: MenuItem[] = [
         permissions: ["hr.provident-fund.read", "hr.provident-fund.create"],
         children: [
           // { title: "Create PF", href: "/hr/payroll-setup/pf-employee/create", permissions: ["hr.provident-fund.create"] },
-          { title: "View PF", href: "/hr/payroll-setup/pf-employee/view", permissions: ["hr.provident-fund.read"] },
+          {
+            title: "View PF",
+            href: "/hr/payroll-setup/pf-employee/view",
+            permissions: ["hr.provident-fund.read"],
+          },
           {
             title: "Create Withdraw",
             href: "/hr/payroll-setup/pf-employee/withdraw-create",
@@ -1128,15 +1438,27 @@ export const menuData: MenuItem[] = [
             href: "/hr/payroll-setup/pf-employee/withdraw-view",
             permissions: ["hr.provident-fund.read"],
           },
-          { title: "View Report", href: "/hr/payroll-setup/pf-employee/report", permissions: ["hr.provident-fund.read"] },
-          { title: "View Ledger", href: "/hr/payroll-setup/pf-employee/ledger", permissions: ["hr.provident-fund.read"] },
+          {
+            title: "View Report",
+            href: "/hr/payroll-setup/pf-employee/report",
+            permissions: ["hr.provident-fund.read"],
+          },
+          {
+            title: "View Ledger",
+            href: "/hr/payroll-setup/pf-employee/ledger",
+            permissions: ["hr.provident-fund.read"],
+          },
         ],
       },
       {
         title: "Social Security",
         permissions: ["hr.social-security.read"],
         children: [
-          { title: "View Social Security", href: "/hr/payroll-setup/social-security-employee/view", permissions: ["hr.social-security.read"] },
+          {
+            title: "View Social Security",
+            href: "/hr/payroll-setup/social-security-employee/view",
+            permissions: ["hr.social-security.read"],
+          },
         ],
       },
     ],
@@ -1166,14 +1488,49 @@ export const menuData: MenuItem[] = [
     title: "Sales Operations",
     icon: ShoppingCart,
     environment: "POS",
-    permissions: ["pos.sales.read", "pos.sales.create", "master.pos.read", "pos.sales.history.view"],
+    permissions: [
+      "pos.sales.read",
+      "pos.sales.create",
+      "master.pos.read",
+      "pos.sales.history.view",
+    ],
     children: [
-      { title: "New Sale", href: "/pos/new-sale", permissions: ["pos.sales.create"] },
-      { title: "Sale History", href: "/pos/sales/history", permissions: ["pos.sales.history.view"] },
-      { title: "Sales Return", href: "/pos/sales/returns", permissions: ["pos.sales.history.view"] },
-      { title: "Customers", href: "/pos/customers", permissions: ["pos.sales.read"] },
-      { title: "Cash Drawer", href: "/pos/terminal/drawer", permissions: ["pos.terminal.drawer"] },
-    ]
+      {
+        title: "New Sale",
+        href: "/pos/new-sale",
+        permissions: ["pos.sales.create"],
+      },
+      {
+        title: "Sale History",
+        href: "/pos/sales/history",
+        permissions: ["pos.sales.history.view"],
+      },
+      {
+        title: "Hold Orders",
+        href: "/pos/holds",
+        permissions: ["pos.holds.view"],
+      },
+      {
+        title: "Returns & Exchanges",
+        href: "/pos/sales/returns",
+        permissions: ["pos.sales.history.view"],
+      },
+      {
+        title: "Customers",
+        href: "/pos/customers",
+        permissions: ["pos.sales.read"],
+      },
+      {
+        title: "Customer Ledgers",
+        href: "/pos/customer-ledgers",
+        permissions: ["pos.customer.ledger.view"],
+      },
+      {
+        title: "Cash Drawer",
+        href: "/pos/terminal/drawer",
+        permissions: ["pos.terminal.drawer"],
+      },
+    ],
   },
   {
     title: "Inventory",
@@ -1181,30 +1538,61 @@ export const menuData: MenuItem[] = [
     environment: "POS",
     permissions: ["pos.inventory.read", "pos.inventory.create"],
     children: [
-      { title: "Stock View", href: "/pos/inventory/view", permissions: ["pos.inventory.read"] },
-      { title: "Stock Receipt", href: "/pos/inventory/receipt", permissions: ["pos.inventory.create"] },
-      { title: "Receiving", href: "/pos/inventory/receiving", permissions: ["pos.inventory.create"] },
-      { title: "Inbound", href: "/pos/inventory/inbound", permissions: ["pos.inventory.create"] },
-      { title: "Outbound", href: "/pos/inventory/outbound", permissions: ["pos.inventory.create"] },
-      { title: "Returns", href: "/pos/inventory/returns", permissions: ["pos.inventory.create"] },
-    ]
+      {
+        title: "Stock View",
+        href: "/pos/inventory/view",
+        permissions: ["pos.inventory.read"],
+      },
+      {
+        title: "Stock Receipt",
+        href: "/pos/inventory/receipt",
+        permissions: ["pos.inventory.create"],
+      },
+      {
+        title: "Receiving",
+        href: "/pos/inventory/receiving",
+        permissions: ["pos.inventory.create"],
+      },
+      {
+        title: "Inbound",
+        href: "/pos/inventory/inbound",
+        permissions: ["pos.inventory.create"],
+      },
+      {
+        title: "Outbound",
+        href: "/pos/inventory/outbound",
+        permissions: ["pos.inventory.create"],
+      },
+      {
+        title: "Returns",
+        href: "/pos/inventory/returns",
+        permissions: ["pos.inventory.create"],
+      },
+    ],
   },
   {
     title: "Terminal",
     icon: Monitor,
     environment: "POS",
     children: [
-      { title: "Shifts", href: "/pos/shifts", permissions: ["pos.terminal.shifts"] },
-      { title: "Settings", href: "/pos/terminal/settings", permissions: ["pos.terminal.settings"] },
+      {
+        title: "Shifts",
+        href: "/pos/shifts",
+        permissions: ["pos.terminal.shifts"],
+      },
+      {
+        title: "Settings",
+        href: "/pos/terminal/settings",
+        permissions: ["pos.terminal.settings"],
+      },
       { title: "Logout Terminal", href: "/auth/logout" },
-    ]
+    ],
   },
 ];
 
-
 export function flattenMenu(
   items: MenuItem[],
-  parentPath = ""
+  parentPath = "",
 ): { title: string; href: string; path: string }[] {
   const result: { title: string; href: string; path: string }[] = [];
   for (const item of items) {
@@ -1227,7 +1615,7 @@ export function filterMenuByPermissions(
     hasAnyPermission: (permissions: string[]) => boolean;
     hasAllPermissions: (permissions: string[]) => boolean;
     isAdmin: () => boolean;
-  }
+  },
 ): MenuItem[] {
   const { hasAnyPermission, hasAllPermissions, isAdmin } = options;
 
@@ -1251,9 +1639,16 @@ export function filterMenuByPermissions(
 
       // If item has children and all children were filtered out, hide parent
       // UNLESS it's "Profile Settings" which should always be shown
-      if (item.children && (!children || children.length === 0) && !item.href && item.title !== "Profile Settings") {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`RBAC Filter Parent: ${item.title} - All children filtered out, hiding parent`);
+      if (
+        item.children &&
+        (!children || children.length === 0) &&
+        !item.href &&
+        item.title !== "Profile Settings"
+      ) {
+        if (process.env.NODE_ENV === "development") {
+          console.log(
+            `RBAC Filter Parent: ${item.title} - All children filtered out, hiding parent`,
+          );
         }
         continue;
       }
@@ -1268,27 +1663,32 @@ export function filterMenuByPermissions(
           ? hasAllPermissions(item.permissions!)
           : hasAnyPermission(item.permissions!);
 
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === "development") {
           console.log(`RBAC Filter Item: ${item.title}`, {
             required: item.permissions,
             allowed,
             hasOwnPermissions,
             hasAnyPermission: hasAnyPermission(item.permissions!),
             hasAllPermissions: hasAllPermissions(item.permissions!),
-            accessibleChildren: children?.length || 0
+            accessibleChildren: children?.length || 0,
           });
         }
 
         // If user doesn't have required permissions, skip this item
         // UNLESS it has accessible children (in which case we already checked above)
-        if (!allowed && (!item.children || !children || children.length === 0)) {
+        if (
+          !allowed &&
+          (!item.children || !children || children.length === 0)
+        ) {
           continue;
         }
 
         // If parent doesn't have permissions but has accessible children, show it
         if (!allowed && children && children.length > 0) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`RBAC Filter Parent: ${item.title} - Showing parent because user has access to ${children.length} child(ren) even without parent permissions`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              `RBAC Filter Parent: ${item.title} - Showing parent because user has access to ${children.length} child(ren) even without parent permissions`,
+            );
           }
           allowed = true; // Override to show parent
         }
@@ -1297,13 +1697,19 @@ export function filterMenuByPermissions(
         // if they're explicitly public items like Dashboard
         // For security, we'll hide items without permissions unless they're explicitly marked
         // Dashboard is an exception - it should be visible to all authenticated users
-        if (item.title === "Profile Settings" || item.title === "Change Password" || item.title === "Edit Profile") {
+        if (
+          item.title === "Profile Settings" ||
+          item.title === "Change Password" ||
+          item.title === "Edit Profile"
+        ) {
           allowed = true; // Allow Profile Settings for all authenticated users
         } else if (item.children && (!children || children.length === 0)) {
           // Hide items without permissions if they have no accessible children
           // UNLESS it's "Profile Settings"
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`RBAC Filter Item: ${item.title} - No permissions defined and no accessible children, hiding for security`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              `RBAC Filter Item: ${item.title} - No permissions defined and no accessible children, hiding for security`,
+            );
           }
           if (item.title !== "Profile Settings") {
             continue;
@@ -1313,8 +1719,10 @@ export function filterMenuByPermissions(
           allowed = true;
         } else {
           // Hide other items without permissions for security
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`RBAC Filter Item: ${item.title} - No permissions defined, hiding for security`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(
+              `RBAC Filter Item: ${item.title} - No permissions defined, hiding for security`,
+            );
           }
           continue;
         }

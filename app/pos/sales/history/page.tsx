@@ -222,7 +222,9 @@ export default function SalesHistoryPage() {
                 }
             });
             if (res.ok && res.data?.status) {
-                setOrders(res.data.data || []);
+                // Filter out expired hold orders — they're noise in the history view
+                const filtered = (res.data.data || []).filter((o: any) => o.status !== 'hold_expired');
+                setOrders(filtered);
                 setRowCount(res.data.meta?.total || 0);
                 setPageCount(res.data.meta?.totalPages || 0);
             }
@@ -390,6 +392,19 @@ export default function SalesHistoryPage() {
                             placeholder="Filter by date"
                         />
                     </div>
+                    <Button
+                        variant="outline"
+                        onClick={() => router.push("/pos/new-sale?showHolds=1")}
+                        className="gap-2 border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                    >
+                        <PauseCircle className="h-4 w-4" />
+                        Hold Orders
+                        {orders.filter(o => o.status === 'hold').length > 0 && (
+                            <Badge className="bg-amber-500 text-white text-[10px] px-1.5 py-0 h-4 ml-0.5">
+                                {orders.filter(o => o.status === 'hold').length}
+                            </Badge>
+                        )}
+                    </Button>
                     <Button onClick={() => router.push("/pos/new-sale")}>
                         <ShoppingCart className="h-4 w-4" /> New Sale
                     </Button>

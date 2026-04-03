@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
+    Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
+} from "@/components/ui/sheet";
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -218,20 +218,22 @@ export default function ClaimsPage() {
             <DataTable columns={columns} data={claims} isLoading={isLoading} tableId="erp-claims"
                 searchFields={[{ key: "claimNumber", label: "Claim #" }]} />
 
-            {/* Detail / Review Modal */}
-            <Dialog open={showDetail} onOpenChange={setShowDetail}>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            {/* Detail / Review Sheet */}
+            <Sheet open={showDetail} onOpenChange={setShowDetail}>
+                <SheetContent side="bottom" className="flex flex-col h-[90vh] p-0 gap-0 rounded-t-2xl">
                     {selectedClaim && (
                         <>
-                            <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2">
+                            <SheetHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
+                                <SheetTitle className="flex items-center gap-2">
                                     <FileText className="h-5 w-5" />
                                     Claim {selectedClaim.claimNumber}
                                     <Badge variant="outline" className={cn("text-[10px] px-2 h-5 ml-2", STATUS_META[selectedClaim.status]?.cls)}>
                                         {STATUS_META[selectedClaim.status]?.label}
                                     </Badge>
-                                </DialogTitle>
-                            </DialogHeader>
+                                </SheetTitle>
+                            </SheetHeader>
+
+                            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
 
                             {/* Header info */}
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -352,7 +354,9 @@ export default function ClaimsPage() {
                                 </div>
                             )}
 
-                            <DialogFooter className="gap-2">
+                            </div>{/* end scrollable */}
+
+                            <SheetFooter className="shrink-0 border-t px-6 py-4 gap-2 flex-row justify-end">
                                 <Button variant="ghost" onClick={() => setShowDetail(false)}>Close</Button>
                                 {selectedClaim.status === "SUBMITTED" && (
                                     <Button variant="outline" onClick={handleStartReview} disabled={isStartingReview} className="gap-2">
@@ -366,11 +370,11 @@ export default function ClaimsPage() {
                                         Submit Decision
                                     </Button>
                                 )}
-                            </DialogFooter>
+                            </SheetFooter>
                         </>
                     )}
-                </DialogContent>
-            </Dialog>
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }
