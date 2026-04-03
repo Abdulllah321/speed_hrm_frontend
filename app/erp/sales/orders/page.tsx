@@ -101,6 +101,7 @@ export default function SalesOrdersPage() {
     try {
       setLoading(true);
       const response = await salesOrderApi.getAll(searchTerm, statusFilter);
+      console.log('Sales orders response:', response); // Debug log
       setOrders(response.data || []);
     } catch (error) {
       toast.error("Failed to load sales orders");
@@ -195,13 +196,16 @@ export default function SalesOrdersPage() {
       id: itemData.id,
       sku: itemData.sku,
       description: itemData.description,
-      costPrice: itemData.costPrice,
-      salePrice: itemData.costPrice * 1.2, // Default 20% markup
+      costPrice: itemData.unitPrice || 0, // Use unitPrice as cost price
+      salePrice: itemData.unitPrice || 0, // Use unitPrice as default sale price (editable)
       quantity: 1,
       discount: 0,
-      total: itemData.costPrice * 1.2,
+      total: itemData.unitPrice || 0,
       availableStock: itemData.availableStock,
     };
+
+    console.log('Item data:', itemData); // Debug log
+    console.log('Unit cost:', itemData.unitCost); // Debug log
 
     setSelectedItems(prev => [...prev, newItem]);
     setItemSearchQuery("");
@@ -455,7 +459,7 @@ export default function SalesOrdersPage() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Item</TableHead>
-                          <TableHead>Cost</TableHead>
+                          <TableHead>Unit Cost</TableHead>
                           <TableHead>Sale Price</TableHead>
                           <TableHead>Qty</TableHead>
                           <TableHead>Discount</TableHead>

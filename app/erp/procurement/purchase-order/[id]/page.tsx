@@ -127,19 +127,19 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                         <CardContent className="space-y-2">
                             <div className="flex justify-between">
                                 <span>Subtotal</span>
-                                <span className="font-medium">${parseFloat(order.subtotal).toFixed(2)}</span>
+                                <span className="font-medium">{parseFloat(order.subtotal).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Tax</span>
-                                <span className="font-medium text-red-500">+${parseFloat(order.taxAmount).toFixed(2)}</span>
+                                <span className="font-medium text-red-500">+{parseFloat(order.taxAmount).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Discount</span>
-                                <span className="font-medium text-green-600">-${parseFloat(order.discountAmount).toFixed(2)}</span>
+                                <span className="font-medium text-green-600">-{parseFloat(order.discountAmount).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between border-t pt-2 text-lg font-bold">
                                 <span>Total</span>
-                                <span>${parseFloat(order.totalAmount).toFixed(2)}</span>
+                                <span>{parseFloat(order.totalAmount).toFixed(2)}</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -169,9 +169,9 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                         <TableCell>{item.description || 'No description'}</TableCell>
                                         <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
                                         <TableCell className="text-right font-mono text-blue-600">{parseFloat(item.receivedQty || '0').toFixed(2)}</TableCell>
-                                        <TableCell className="text-right">${parseFloat(item.unitPrice).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
                                         <TableCell className="text-right">{item.taxPercent}%</TableCell>
-                                        <TableCell className="text-right font-semibold">${parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right font-semibold">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -265,9 +265,9 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                             <div className="text-sm text-muted-foreground">{item.description || '-'}</div>
                                         </TableCell>
                                         <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
-                                        <TableCell className="text-right font-mono">${parseFloat(item.unitPrice).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right font-mono">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
                                         <TableCell className="text-right font-mono">{item.taxPercent}%</TableCell>
-                                        <TableCell className="text-right font-mono font-medium">${parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                                        <TableCell className="text-right font-mono font-medium">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -280,19 +280,19 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                             <div className="w-64 space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Subtotal:</span>
-                                    <span className="font-mono font-medium">${parseFloat(order.subtotal).toFixed(2)}</span>
+                                    <span className="font-mono font-medium">{parseFloat(order.subtotal).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Tax Total:</span>
-                                    <span className="font-mono font-medium">${parseFloat(order.taxAmount).toFixed(2)}</span>
+                                    <span className="font-mono font-medium">{parseFloat(order.taxAmount).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Discount:</span>
-                                    <span className="font-mono font-medium text-green-600">-${parseFloat(order.discountAmount).toFixed(2)}</span>
+                                    <span className="font-mono font-medium text-green-600">-{parseFloat(order.discountAmount).toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between border-t border-gray-300 pt-3 mt-3">
                                     <span className="font-bold text-lg">Total:</span>
-                                    <span className="font-bold text-lg font-mono">${parseFloat(order.totalAmount).toFixed(2)}</span>
+                                    <span className="font-bold text-lg font-mono">{parseFloat(order.totalAmount).toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>

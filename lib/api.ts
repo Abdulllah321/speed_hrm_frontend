@@ -1405,6 +1405,9 @@ export const deliveryChallanApi = {
   markDelivered: (id: string) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/delivery-challans/${id}/delivered`, {
     method: 'POST',
   }),
+  cancel: (id: string) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/delivery-challans/${id}/cancel`, {
+    method: 'POST',
+  }),
   createInvoice: (id: string, data: any) => fetchApi<{ status: boolean; data: SalesInvoice }>(`/sales/delivery-challans/${id}/invoice`, {
     method: 'POST',
     body: JSON.stringify(data),
