@@ -20,6 +20,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { DatePicker } from '@/components/ui/date-picker';
+import { Autocomplete } from '@/components/ui/autocomplete';
 import { cn } from '@/lib/utils';
 import { PoBulkUploadModal } from '@/components/purchase-order/po-bulk-upload-modal';
 
@@ -361,66 +363,64 @@ export default function CreateDirectPurchaseOrder() {
                         {!multiVendorMode && (
                         <div className="space-y-2">
                             <Label>Vendor</Label>
-                            <div className="flex gap-2">
-                                <Select value={vendorTypeFilter} onValueChange={(v: any) => setVendorTypeFilter(v)}>
-                                    <SelectTrigger className="w-32">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="all">All Types</SelectItem>
-                                        <SelectItem value="local">Local</SelectItem>
-                                        <SelectItem value="import">Import</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                                    <SelectTrigger className="flex-1">
-                                        <SelectValue placeholder="Select Vendor" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {getFilteredVendors(vendorTypeFilter).map((vendor) => (
-                                            <SelectItem key={vendor.id} value={vendor.id}>
-                                                {vendor.name} ({vendor.code})
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                            <div className="flex flex-col gap-2">
+                                <Autocomplete
+                                    options={[
+                                        { value: 'all', label: 'All Types' },
+                                        { value: 'local', label: 'Local' },
+                                        { value: 'import', label: 'Import' }
+                                    ]}
+                                    value={vendorTypeFilter}
+                                    onValueChange={(v: any) => setVendorTypeFilter(v)}
+                                    placeholder="Filter Vendor Type"
+                                />
+                                <Autocomplete
+                                    options={getFilteredVendors(vendorTypeFilter).map(v => ({
+                                        value: v.id,
+                                        label: `${v.name} (${v.code})`
+                                    }))}
+                                    value={selectedVendorId}
+                                    onValueChange={setSelectedVendorId}
+                                    placeholder="Select Vendor"
+                                    className="w-full"
+                                />
                             </div>
                         </div>
                         )}
 
                         <div className="space-y-2">
                             <Label>Expected Delivery Date</Label>
-                            <Input
-                                type="date"
+                            <DatePicker
                                 value={expectedDeliveryDate}
-                                onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                                onChange={(val) => setExpectedDeliveryDate(val)}
+                                placeholder="Select delivery date"
                             />
                         </div>
 
                         <div className="space-y-2">
                             <Label>Order Type</Label>
-                            <Select value={orderType} onValueChange={setOrderType}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Order Type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="LOCAL">Local</SelectItem>
-                                    <SelectItem value="IMPORT">Import</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Autocomplete
+                                options={[
+                                    { value: 'LOCAL', label: 'Local' },
+                                    { value: 'IMPORT', label: 'Import' }
+                                ]}
+                                value={orderType}
+                                onValueChange={setOrderType}
+                                placeholder="Select Order Type"
+                            />
                         </div>
 
                         <div className="space-y-2">
                             <Label>Goods Type</Label>
-                            <Select value={goodsType} onValueChange={setGoodsType}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Goods Type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="CONSUMABLE">Consumable</SelectItem>
-                                    <SelectItem value="FRESH">Fresh Goods</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Autocomplete
+                                options={[
+                                    { value: 'CONSUMABLE', label: 'Consumable' },
+                                    { value: 'FRESH', label: 'Fresh Goods' }
+                                ]}
+                                value={goodsType}
+                                onValueChange={setGoodsType}
+                                placeholder="Select Goods Type"
+                            />
                         </div>
 
                         <div className="space-y-2">
@@ -521,23 +521,27 @@ export default function CreateDirectPurchaseOrder() {
                                 <div className="flex gap-2 items-end">
                                     <div className="flex-1 space-y-1.5">
                                         <Label className="text-xs text-muted-foreground">Vendor for this item</Label>
-                                        <div className="flex gap-2">
-                                            <Select value={multiVendorTypeFilter} onValueChange={(v: any) => setMultiVendorTypeFilter(v)}>
-                                                <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="all">All Types</SelectItem>
-                                                    <SelectItem value="local">Local</SelectItem>
-                                                    <SelectItem value="import">Import</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <Select value={currentVendorId} onValueChange={setCurrentVendorId}>
-                                                <SelectTrigger className="flex-1"><SelectValue placeholder="Select Vendor" /></SelectTrigger>
-                                                <SelectContent>
-                                                    {getFilteredVendors(multiVendorTypeFilter).map((vendor) => (
-                                                        <SelectItem key={vendor.id} value={vendor.id}>{vendor.name} ({vendor.code})</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                        <div className="flex flex-col gap-2">
+                                            <Autocomplete
+                                                options={[
+                                                    { value: 'all', label: 'All Types' },
+                                                    { value: 'local', label: 'Local' },
+                                                    { value: 'import', label: 'Import' }
+                                                ]}
+                                                value={multiVendorTypeFilter}
+                                                onValueChange={(v: any) => setMultiVendorTypeFilter(v)}
+                                                placeholder="Filter Vendor Type"
+                                            />
+                                            <Autocomplete
+                                                options={getFilteredVendors(multiVendorTypeFilter).map(v => ({
+                                                    value: v.id,
+                                                    label: `${v.name} (${v.code})`
+                                                }))}
+                                                value={currentVendorId}
+                                                onValueChange={setCurrentVendorId}
+                                                placeholder="Select Vendor"
+                                                className="w-full"
+                                            />
                                         </div>
                                     </div>
                                 </div>

@@ -304,11 +304,12 @@ export default function LandedCostSetupPage() {
       console.log('Setting basic items:', basicItems.length);
       setItems(basicItems);
 
-      const sumInvoice = basicItems.reduce((acc, item) => acc + (item.qty * item.unitFob), 0);
-      setTotalInvoiceValue(sumInvoice);
+      // Remove auto-calculation - let user enter manually
+      // const sumInvoice = basicItems.reduce((acc, item) => acc + (item.qty * item.unitFob), 0);
+      // setTotalInvoiceValue(sumInvoice);
 
       if (basicItems.length > 0) {
-        calculateTotals(basicItems, sumInvoice);
+        calculateTotals(basicItems, totalInvoiceValue); // Use current manual value
       } else {
         toast.info('No items found in selected GRN');
         setLoading(false);
@@ -770,7 +771,15 @@ console.log(res)
               </div>
               <div>
                 <Label>Total Invoice Value ({isLocalGrn() ? '$' : currency})</Label>
-                <Input type="number" value={totalInvoiceValue} onChange={e => setTotalInvoiceValue(Number(e.target.value))} />
+                <Input 
+                  type="number" 
+                  value={totalInvoiceValue} 
+                  onChange={e => setTotalInvoiceValue(Number(e.target.value))} 
+                  placeholder="Enter total invoice value manually"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the total invoice value manually. Calculated total from items will be shown in the table below for comparison.
+                </p>
               </div>
             </div>
 
@@ -1039,15 +1048,15 @@ console.log(res)
                     <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misFreightPKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misFreightInvNo}</TableCell>
                     <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misFreightDate}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misDoThcPKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misDoThcPKR.toFixed(2)}</TableCell>
                     <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misDoThcPoNo}</TableCell>
                     <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misDoThcDate}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misBankPKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misInsurancePKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misBankPKR.toFixed(2)}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misInsurancePKR.toFixed(2)}</TableCell>
                     <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misInsurancePolicyNo}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misClgFwdPKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misClgFwdPKR.toFixed(2)}</TableCell>
                     <TableCell className="text-[10px] border-r">{isLocalGrn() ? '-' : item.misClgFwdBillNo}</TableCell>
-                    <TableCell className="text-[10px] font-bold bg-yellow-50 border-r">{isLocalGrn() ? '0' : Math.round(item.totalOtherCharges).toLocaleString()}</TableCell>
+                    <TableCell className="text-[10px] font-bold bg-yellow-50 border-r">{isLocalGrn() ? '0' : item.totalOtherCharges.toFixed(2)}</TableCell>
 
                     <TableCell className="text-[10px] font-bold">{Math.round(item.unitCostPKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px] font-bold bg-green-50">{Math.round(item.totalCostPKR).toLocaleString()}</TableCell>

@@ -30,60 +30,10 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
-// Sample data
-const sampleInvoices = [
-  {
-    id: "1",
-    invoiceNo: "INV-001",
-    salesOrder: "SO-001",
-    deliveryChallan: "DC-001",
-    customer: "ZAHID ASSOCIATES",
-    invoiceDate: "2024-01-16",
-    dueDate: "2024-02-15",
-    status: "PAID",
-    subtotal: 119048,
-    taxAmount: 5952,
-    grandTotal: 125000,
-    paidAmount: 125000,
-    balanceAmount: 0,
-  },
-  {
-    id: "2",
-    invoiceNo: "INV-002",
-    salesOrder: "SO-002",
-    deliveryChallan: "DC-002",
-    customer: "NIZAM WATCH HOUSE",
-    invoiceDate: "2024-01-17",
-    dueDate: "2024-02-16",
-    status: "PENDING",
-    subtotal: 80952,
-    taxAmount: 4048,
-    grandTotal: 85000,
-    paidAmount: 0,
-    balanceAmount: 85000,
-  },
-  {
-    id: "3",
-    invoiceNo: "INV-003",
-    salesOrder: "SO-003",
-    deliveryChallan: "DC-003",
-    customer: "INTERNATIONAL WATCH CO",
-    invoiceDate: "2024-01-18",
-    dueDate: "2024-02-17",
-    status: "PARTIAL",
-    subtotal: 190476,
-    taxAmount: 9524,
-    grandTotal: 200000,
-    paidAmount: 100000,
-    balanceAmount: 100000,
-  },
-];
+// Sample data - Remove this dummy data
+const sampleInvoices: any[] = []; // Empty array instead of dummy data
 
-const deliveryChallans = [
-  { id: "1", challanNo: "DC-001", customer: "ZAHID ASSOCIATES", status: "DELIVERED" },
-  { id: "2", challanNo: "DC-002", customer: "NIZAM WATCH HOUSE", status: "DELIVERED" },
-  { id: "3", challanNo: "DC-004", customer: "GMT DISTRIBUTORS", status: "DELIVERED" },
-];
+const deliveryChallans: any[] = []; // Empty array instead of dummy data
 
 export default function SalesInvoicesPage() {
   const [invoices, setInvoices] = useState(sampleInvoices);

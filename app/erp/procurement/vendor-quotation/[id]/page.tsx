@@ -125,7 +125,7 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
                 <Card>
                     <CardHeader><CardTitle>Total Amount</CardTitle></CardHeader>
                     <CardContent>
-                        <p className="text-3xl font-bold">${parseFloat(quotation.totalAmount).toFixed(2)}</p>
+                        <p className="text-3xl font-bold">{parseFloat(quotation.totalAmount).toFixed(2)}</p>
                     </CardContent>
                 </Card>
             </div>
@@ -137,19 +137,19 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
                 <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                         <p className="text-sm text-muted-foreground">Subtotal</p>
-                        <p className="text-xl font-semibold">${parseFloat(quotation.subtotal).toFixed(2)}</p>
+                        <p className="text-xl font-semibold">{parseFloat(quotation.subtotal).toFixed(2)}</p>
                     </div>
                     <div>
                         <p className="text-sm text-muted-foreground">Tax Amount</p>
-                        <p className="text-xl font-semibold">${parseFloat(quotation.taxAmount).toFixed(2)}</p>
+                        <p className="text-xl font-semibold">{parseFloat(quotation.taxAmount).toFixed(2)}</p>
                     </div>
                     <div>
                         <p className="text-sm text-muted-foreground">Discount</p>
-                        <p className="text-xl font-semibold text-green-600">-${parseFloat(quotation.discountAmount).toFixed(2)}</p>
+                        <p className="text-xl font-semibold text-green-600">-{parseFloat(quotation.discountAmount).toFixed(2)}</p>
                     </div>
                     <div>
                         <p className="text-sm text-muted-foreground">Grand Total</p>
-                        <p className="text-2xl font-bold">${parseFloat(quotation.totalAmount).toFixed(2)}</p>
+                        <p className="text-2xl font-bold">{parseFloat(quotation.totalAmount).toFixed(2)}</p>
                     </div>
                 </CardContent>
             </Card>
@@ -177,10 +177,10 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
                                     <TableCell className="font-medium">{item.item?.itemId || item.itemId}</TableCell>
                                     <TableCell>{item.description || '-'}</TableCell>
                                     <TableCell>{item.quotedQty}</TableCell>
-                                    <TableCell>${parseFloat(item.unitPrice).toFixed(2)}</TableCell>
+                                    <TableCell>{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
                                     <TableCell>{item.taxPercent}%</TableCell>
                                     <TableCell>{item.discountPercent}%</TableCell>
-                                    <TableCell className="text-right font-semibold">${parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                                    <TableCell className="text-right font-semibold">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
