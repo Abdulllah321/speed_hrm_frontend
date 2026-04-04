@@ -13,7 +13,7 @@ import {
   LandedCostChargeType,
 } from '@/lib/api';
 import { getGrns } from '@/lib/actions/grn';
-import { createLandedCost, getLandedCostChargeTypes } from '@/lib/actions/landed-cost';
+import { createLandedCost, createLocalLandedCost, getLandedCostChargeTypes } from '@/lib/actions/landed-cost';
 import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calculator, Save } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -241,8 +241,8 @@ export default function LandedCostSetupPage() {
         const unitFob = poItem ? parseFloat(String(poItem.unitPrice)) : 0;
 
         return {
-          itemId: gi.itemId,
-          itemName: gi.itemId, // Temporary
+          itemId: gi.item?.itemId || gi.itemId, // business itemId (e.g. NK-AIR-001), fallback to DB id
+          itemName: gi.item?.sku || gi.item?.itemId || gi.itemId,
           sku: '',
           description: gi.description || '',
           qty: parseFloat(String(gi.receivedQty || 0)),
@@ -594,6 +594,8 @@ export default function LandedCostSetupPage() {
 
     setLoading(true);
     try {
+      const isLocal = isLocalGrn();
+
       const payload = {
         grnId,
         supplierId,
@@ -626,9 +628,10 @@ export default function LandedCostSetupPage() {
             itemId: i.itemId,
             sku: i.sku,
             description: i.description,
-            hsCode: hsCodeObj?.hsCode || '', // Send the actual string (e.g. "8414.1000")
+            hsCode: hsCodeObj?.hsCode || '',
             qty: i.qty,
             unitFob: i.unitFob,
+            unitPrice: i.unitFob, // backend uses unitPrice for stock ledger rate
             freightForeign: i.freightForeign,
             insuranceCharges: i.insuranceCharges,
             landingCharges: i.landingCharges,
@@ -648,7 +651,6 @@ export default function LandedCostSetupPage() {
             exciseChargesAmount: i.exciseChargesAmount,
             unitCostPKR: i.unitCostPKR,
             totalCostPKR: i.totalCostPKR,
-            // MIS Item Shares
             misFreightUSD: i.misFreightUSD,
             misFreightPKR: i.misFreightPKR,
             misDoThcPKR: i.misDoThcPKR,
@@ -665,9 +667,18 @@ export default function LandedCostSetupPage() {
         })
       };
 
-      const res = await createLandedCost(payload);
+      const res = isLocal
+        ? await createLocalLandedCost(payload)
+        : await createLandedCost(payload);
+console.log(res)
+      if (!res || res.status === false) {
+        toast.error(res?.message || 'Submission failed');
+        return;
+      }
+
       toast.success('Landed Cost values posted successfully');
-      router.push(`/erp/procurement/landed-cost/report/${res.id}`); // View report
+      const reportId = res.id || res.data?.id;
+      if (reportId) router.push(`/erp/procurement/landed-cost/report/${reportId}`);
     } catch (err: any) {
       toast.error(err.message || 'Submission failed');
     } finally {

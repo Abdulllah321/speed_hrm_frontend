@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Eye, Trash2 } from "lucide-react";
+import { Plus, Search, Edit, Eye, Trash2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,12 +25,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { customerApi, Customer } from "@/lib/api";
 import { toast } from "sonner";
+import { CustomerBulkUploadModal } from "@/components/customers/customer-bulk-upload-modal";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -70,7 +72,13 @@ export default function CustomersPage() {
     try {
       await customerApi.create(formData);
       toast.success("Customer created successfully");
-      setFormData({ code: "", name: "", address: "", contactNo: "", email: "" });
+      setFormData({
+        code: "",
+        name: "",
+        address: "",
+        contactNo: "",
+        email: "",
+      });
       setIsCreateOpen(false);
       loadCustomers();
     } catch (error) {
@@ -81,7 +89,7 @@ export default function CustomersPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this customer?")) return;
-    
+
     try {
       await customerApi.delete(id);
       toast.success("Customer deleted successfully");
@@ -114,6 +122,8 @@ export default function CustomersPage() {
             Manage customer information and accounts
           </p>
         </div>
+              <div className="flex items-center gap-2">
+
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -137,7 +147,9 @@ export default function CustomersPage() {
                   <Input
                     id="code"
                     value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, code: e.target.value })
+                    }
                     className="col-span-3"
                     placeholder="Auto-generated if empty"
                   />
@@ -149,7 +161,9 @@ export default function CustomersPage() {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, name: e.target.value })
+                    }
                     className="col-span-3"
                     placeholder="Customer Name"
                     required
@@ -162,7 +176,9 @@ export default function CustomersPage() {
                   <Input
                     id="contactNo"
                     value={formData.contactNo}
-                    onChange={(e) => setFormData({ ...formData, contactNo: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contactNo: e.target.value })
+                    }
                     className="col-span-3"
                     placeholder="03001234567"
                   />
@@ -175,7 +191,9 @@ export default function CustomersPage() {
                     id="email"
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
                     className="col-span-3"
                     placeholder="customer@example.com"
                   />
@@ -187,7 +205,9 @@ export default function CustomersPage() {
                   <Textarea
                     id="address"
                     value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
                     className="col-span-3"
                     placeholder="Customer address"
                   />
@@ -199,6 +219,13 @@ export default function CustomersPage() {
             </form>
           </DialogContent>
         </Dialog>
+        <Button onClick={() => setBulkOpen(true)} variant={"outline"} ><Upload className="mr-2"/>Bulk Import</Button>
+        <CustomerBulkUploadModal
+          open={bulkOpen}
+          onOpenChange={setBulkOpen}
+          onSuccess={loadCustomers}
+        />
+      </div>
       </div>
 
       <div className="flex items-center gap-4">
@@ -230,7 +257,9 @@ export default function CustomersPage() {
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
                   <div className="text-muted-foreground">
-                    {searchTerm ? "No customers found matching your search." : "No customers found. Create your first customer."}
+                    {searchTerm
+                      ? "No customers found matching your search."
+                      : "No customers found. Create your first customer."}
                   </div>
                 </TableCell>
               </TableRow>
@@ -240,9 +269,15 @@ export default function CustomersPage() {
                   <TableCell className="font-medium">{customer.code}</TableCell>
                   <TableCell>{customer.name}</TableCell>
                   <TableCell>{customer.contactNo || "-"}</TableCell>
-                  <TableCell className="max-w-xs truncate">{customer.address || "-"}</TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {customer.address || "-"}
+                  </TableCell>
                   <TableCell className="text-right">
-                    <span className={customer.balance > 0 ? "text-red-600" : "text-green-600"}>
+                    <span
+                      className={
+                        customer.balance > 0 ? "text-red-600" : "text-green-600"
+                      }
+                    >
                       Rs. {customer.balance.toLocaleString()}
                     </span>
                   </TableCell>
@@ -254,9 +289,9 @@ export default function CustomersPage() {
                       <Button variant="ghost" size="sm">
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-red-600"
                         onClick={() => handleDelete(customer.id)}
                       >

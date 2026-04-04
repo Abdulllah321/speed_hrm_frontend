@@ -14,13 +14,14 @@ import { getVendors } from '@/lib/actions/procurement';
 import { getPurchaseRequisitions } from '@/lib/actions/purchase-requisition';
 import { createPurchaseOrder, createMultiDirectPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
-import { Plus, Trash2, ArrowLeft, Search, CheckCircle2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Search, CheckCircle2, Loader2, FileSpreadsheet } from 'lucide-react';
 import { authFetch } from '@/lib/auth';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PoBulkUploadModal } from '@/components/purchase-order/po-bulk-upload-modal';
 
 interface OrderItem {
     itemId: string;
@@ -51,6 +52,7 @@ export default function CreateDirectPurchaseOrder() {
     const [multiVendorTypeFilter, setMultiVendorTypeFilter] = useState<'all' | 'local' | 'import'>('all');
     const [orderType, setOrderType] = useState<string>('');
     const [goodsType, setGoodsType] = useState<string>('');
+    const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
     // Search — Popover multi-select (same as stock-transfer)
     const [searchQuery, setSearchQuery] = useState('');
@@ -303,9 +305,15 @@ export default function CreateDirectPurchaseOrder() {
                     </Button>
                     <h1 className="text-3xl font-bold tracking-tight">Create Direct Purchase Order</h1>
                 </div>
-                <Button onClick={handleSubmit} disabled={loading || orderItems.length === 0}>
-                    {loading ? 'Creating...' : 'Create Purchase Order'}
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setBulkUploadOpen(true)}>
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        Bulk Import
+                    </Button>
+                    <Button onClick={handleSubmit} disabled={loading || orderItems.length === 0}>
+                        {loading ? 'Creating...' : 'Create Purchase Order'}
+                    </Button>
+                </div>
             </div>
 
             {/* Keyboard shortcut hints */}
@@ -615,6 +623,12 @@ export default function CreateDirectPurchaseOrder() {
                     </CardContent>
                 </Card>
             </div>
+
+            <PoBulkUploadModal
+                open={bulkUploadOpen}
+                onOpenChange={setBulkUploadOpen}
+                onSuccess={() => router.push('/erp/procurement/purchase-order')}
+            />
         </div>
     );
 }
