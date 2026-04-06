@@ -138,7 +138,7 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                                                 <div className="font-bold text-blue-700 dark:text-blue-400 uppercase tracking-tighter mb-1">Last Purchase</div>
                                                 <div className="flex justify-between">
                                                     <span className="text-muted-foreground">Rate:</span>
-                                                    <span className="font-semibold">${parseFloat((prItem as any).lastPurchaseInfo.rate).toFixed(2)}</span>
+                                                    <span className="font-semibold">{parseFloat((prItem as any).lastPurchaseInfo.rate).toFixed(2)}</span>
                                                 </div>
                                                 <div className="flex justify-between">
                                                     <span className="text-muted-foreground">Date:</span>
@@ -174,7 +174,7 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                                             <TableCell key={quotation.id} className="text-center">
                                                 {item ? (
                                                     <div>
-                                                        <div className="font-semibold text-lg">${parseFloat(item.unitPrice).toFixed(2)}</div>
+                                                        <div className="font-semibold text-lg">{parseFloat(item.unitPrice).toFixed(2)}</div>
                                                         <div className="text-sm text-muted-foreground">
                                                             Qty: {item.quotedQty}
                                                         </div>
@@ -185,7 +185,7 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                                                             <div className="text-xs text-green-600">Disc: {item.discountPercent}%</div>
                                                         )}
                                                         <div className="text-sm font-medium mt-1">
-                                                            Total: ${parseFloat(item.lineTotal).toFixed(2)}
+                                                            Total: {parseFloat(item.lineTotal).toFixed(2)}
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -200,18 +200,18 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                                 <TableCell className="font-bold">Grand Total</TableCell>
                                 {quotations.map((quotation) => (
                                     <TableCell key={quotation.id} className="text-center">
-                                        <div className="text-xl font-bold">${parseFloat(quotation.totalAmount).toFixed(2)}</div>
+                                        <div className="text-xl font-bold">{parseFloat(quotation.totalAmount).toFixed(2)}</div>
                                         <div className="text-xs text-muted-foreground">
-                                            Subtotal: ${parseFloat(quotation.subtotal).toFixed(2)}
+                                            Subtotal: {parseFloat(quotation.subtotal).toFixed(2)}
                                         </div>
                                         {parseFloat(quotation.taxAmount) > 0 && (
                                             <div className="text-xs text-muted-foreground">
-                                                Tax: ${parseFloat(quotation.taxAmount).toFixed(2)}
+                                                Tax: {parseFloat(quotation.taxAmount).toFixed(2)}
                                             </div>
                                         )}
                                         {parseFloat(quotation.discountAmount) > 0 && (
                                             <div className="text-xs text-green-600">
-                                                Discount: -${parseFloat(quotation.discountAmount).toFixed(2)}
+                                                Discount: -{parseFloat(quotation.discountAmount).toFixed(2)}
                                             </div>
                                         )}
                                     </TableCell>

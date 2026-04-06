@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getLandedCost } from '@/lib/actions/landed-cost';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -94,7 +94,7 @@ export default function LandedCostReportPage() {
                         <CardTitle className="text-xl font-bold text-gray-800">Landed Cost Detailed Report</CardTitle>
                         <div className="text-right">
                             <p className="text-sm font-semibold text-blue-700">{data.landedCostNumber}</p>
-                            <p className="text-[10px] text-gray-500">{format(new Date(data.date), 'dd MMM yyyy HH:mm')}</p>
+                            <p className="text-[10px] text-gray-500">{data.date ? format(new Date(data.date), 'dd MMM yyyy HH:mm') : '-'}</p>
                         </div>
                     </div>
                 </CardHeader>
@@ -133,12 +133,12 @@ export default function LandedCostReportPage() {
                         <TableHeader className="table-header">
                             {/* Group Headers */}
                             <TableRow className="bg-gray-200 divide-x divide-gray-300">
-                                <TableHead colSpan={13} className="text-center font-bold text-black border-r border-gray-300">SHIPMENT & ITEM DETAILS</TableHead>
+                                <TableHead colSpan={12} className="text-center font-bold text-black border-r border-gray-300">SHIPMENT & ITEM DETAILS</TableHead>
                                 <TableHead colSpan={10} className="text-center font-bold bg-blue-50 text-blue-900 border-r border-gray-300">ASSESSABLE VALUE</TableHead>
                                 <TableHead colSpan={9} className="text-center font-bold bg-orange-50 text-orange-950 border-r border-gray-300">DUTY CALCULATION</TableHead>
-                                <TableHead colSpan={1} className="text-center font-bold bg-purple-50 text-purple-950 border-r border-gray-300">EXCISE</TableHead>
+                                <TableHead colSpan={1} className="text-center font-bold bg-purple-50 text-purple-950 border-r border-gray-300">FREIGHT (MIS)</TableHead>
                                 <TableHead colSpan={12} className="text-center font-bold bg-green-100 text-green-950 border-r border-gray-300">MIS BREAKDOWN (SHARES)</TableHead>
-                                <TableHead colSpan={2} className="text-center font-bold bg-gray-300 text-black">TOTALS</TableHead>
+                                <TableHead colSpan={3} className="text-center font-bold bg-gray-300 text-black">TOTALS</TableHead>
                             </TableRow>
                             {/* Detailed Headers */}
                             <TableRow className="bg-gray-100 divide-x divide-gray-200">
@@ -154,7 +154,6 @@ export default function LandedCostReportPage() {
                                 <TableHead className="px-1 text-center">Date</TableHead>
                                 <TableHead className="px-1 text-center font-bold">SKU</TableHead>
                                 <TableHead className="px-1 text-center">Description</TableHead>
-                                <TableHead className="px-1 text-center font-bold">Code</TableHead>
                                 <TableHead className="px-1 text-center border-r-2 border-gray-400">HS Code</TableHead>
 
                                 {/* AV */}
@@ -179,8 +178,8 @@ export default function LandedCostReportPage() {
                                 <TableHead className="px-1 text-center bg-orange-50">IT</TableHead>
                                 <TableHead className="px-1 text-center bg-orange-50 font-bold border-r-2 border-orange-300">Total Duty</TableHead>
 
-                                {/* Excise */}
-                                <TableHead className="px-1 text-center bg-purple-50 border-r-2 border-purple-300">Excise</TableHead>
+                                {/* Freight (MIS) */}
+                                <TableHead className="px-1 text-center bg-purple-50 border-r-2 border-purple-300">Freight (MIS)</TableHead>
 
                                 {/* MIS */}
                                 <TableHead className="px-1 text-center bg-green-50">Frg$</TableHead>
@@ -196,6 +195,7 @@ export default function LandedCostReportPage() {
                                 <TableHead className="px-1 text-center bg-green-50">Clg/Fwd</TableHead>
                                 <TableHead className="px-1 text-center bg-green-50 border-r-2 border-green-300">Bill#</TableHead>
 
+                                <TableHead className="px-1 text-center bg-gray-50">Total Other Charges</TableHead>
                                 <TableHead className="px-1 text-center bg-gray-50">UnitCost</TableHead>
                                 <TableHead className="px-1 text-center bg-blue-700 text-white font-bold">Final Total</TableHead>
                             </TableRow>
@@ -215,7 +215,6 @@ export default function LandedCostReportPage() {
                                     <TableCell className="px-1">{data.shippingInvoiceDate ? format(new Date(data.shippingInvoiceDate), 'dd-yy') : '-'}</TableCell>
                                     <TableCell className="px-1 font-bold">{item.sku}</TableCell>
                                     <TableCell className="px-1 max-w-[100px] truncate" title={item.description}>{item.description}</TableCell>
-                                    <TableCell className="px-1 font-semibold">{item.itemId}</TableCell>
                                     <TableCell className="px-1 border-r-2 border-gray-400">{item.hsCode}</TableCell>
 
                                     {/* AV */}
@@ -242,8 +241,8 @@ export default function LandedCostReportPage() {
                                         {(Number(item.customsDutyAmount) + Number(item.regulatoryDutyAmount) + Number(item.additionalCustomsDutyAmount) + Number(item.salesTaxAmount) + Number(item.additionalSalesTaxAmount) + Number(item.incomeTaxAmount)).toLocaleString()}
                                     </TableCell>
 
-                                    {/* Excise */}
-                                    <TableCell className="px-1 text-right bg-purple-50 font-bold border-r-2 border-purple-300">{Number(item.exciseChargesAmount || 0).toLocaleString()}</TableCell>
+                                    {/* Freight (MIS) */}
+                                    <TableCell className="px-1 text-right bg-purple-50 font-bold border-r-2 border-purple-300">{Number(item.misFreightPKR || 0).toLocaleString()}</TableCell>
 
                                     {/* MIS shares */}
                                     <TableCell className="px-1 text-right">{Number(item.misFreightUSD || 0).toFixed(2)}</TableCell>
@@ -260,6 +259,9 @@ export default function LandedCostReportPage() {
                                     <TableCell className="px-1 text-center border-r-2 border-green-300">{item.misClgFwdBillNo || '-'}</TableCell>
 
                                     {/* Totals */}
+                                    <TableCell className="px-1 text-right font-bold bg-yellow-50 text-orange-800">
+                                        {(Number(item.misFreightPKR || 0) + Number(item.misDoThcPKR || 0) + Number(item.misBankPKR || 0) + Number(item.misInsurancePKR || 0) + Number(item.misClgFwdPKR || 0)).toLocaleString()}
+                                    </TableCell>
                                     <TableCell className="px-1 text-right font-bold bg-gray-50 text-blue-800">{Number(item.unitCostPKR).toLocaleString()}</TableCell>
                                     <TableCell className="px-1 text-right font-black bg-blue-700 text-white text-[10px]">{Number(item.totalCostPKR).toLocaleString()}</TableCell>
                                 </TableRow>

@@ -21,12 +21,14 @@ import {
     ArrowLeft, Loader2, Tag, TicketPercent, Handshake, CheckCircle2,
     XCircle, Search, ShoppingCart, Printer, Trash2, Plus, Percent,
     BadgeDollarSign, CreditCard, Banknote, Building2, Ticket,
-    ChevronDown, ChevronUp, BookOpen,
+    ChevronDown, ChevronUp, BookOpen,PauseCircle,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import { cn, getCookie } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 import { PrintReceipt } from "@/components/pos/print-receipt";
+import { usePosSettings } from "@/hooks/use-pos-settings";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface PromoConfig {
@@ -85,7 +87,7 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
             // Generate a code if backend requires one and doesn't auto-gen
             const code = `CUST-${Date.now()}`;
             const res = await authFetch(
-                "/sales/customers",
+                "/api/sales/customers",
                 { method: "POST", body: { ...formData, code } }
             );
             if (res.ok && res.data?.status) {
@@ -150,11 +152,17 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
 }
 export default function CheckoutPage() {
     const router = useRouter();
+    const { settings } = usePosSettings();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [promos, setPromos] = useState<PromoConfig[]>([]);
     const [alliances, setAlliances] = useState<AllianceConfig[]>([]);
     const [allianceSearch, setAllianceSearch] = useState("");
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+
+    // ── Hold state ──────────────────────────────────────────────────────
+    const [showHoldModal, setShowHoldModal] = useState(false);
+    const [isHolding, setIsHolding] = useState(false);
+    const [holdOrderId, setHoldOrderId] = useState<string | null>(null);
 
     // ── Customer state ──────────────────────────────────────────────────
     const [customers, setCustomers] = useState<Customer[]>([]);
@@ -181,6 +189,13 @@ export default function CheckoutPage() {
     // ── Payment state ──────────────────────────────────────────────────
     const [tenders, setTenders] = useState<Tender[]>([]);
     const [tenderMethod, setTenderMethod] = useState("cash");
+
+    // Apply default payment method from settings once loaded
+    useEffect(() => {
+        if (settings.defaultPaymentMethod) {
+            setTenderMethod(settings.defaultPaymentMethod);
+        }
+    }, [settings.defaultPaymentMethod]);
     const [tenderAmount, setTenderAmount] = useState<number>(0);
     const [tenderCardLast4, setTenderCardLast4] = useState("");
     const [tenderSlip, setTenderSlip] = useState("");
@@ -200,6 +215,9 @@ export default function CheckoutPage() {
         const items: CartItem[] = JSON.parse(raw);
         setCartItems(items);
         setPromoScopedItems(new Set(items.map((i) => i.id)));
+        // Restore hold order ID if resuming from hold
+        const holdId = sessionStorage.getItem("pos_hold_order_id");
+        if (holdId) setHoldOrderId(holdId);
     }, [router]);
 
     // ── Load config ────────────────────────────────────────────────────
@@ -216,7 +234,7 @@ export default function CheckoutPage() {
     // ── Fetch customers ────────────────────────────────────────────────
     useEffect(() => {
         setIsLoadingCustomers(true);
-        authFetch(`/sales/customers`, { params: { search: customerSearch } })
+        authFetch(`/api/sales/customers`, { params: { search: customerSearch } })
             .then(res => {
                 if (res.ok && res.data?.status) setCustomers(res.data.data || []);
             })
@@ -303,8 +321,41 @@ export default function CheckoutPage() {
     };
 
     // ── Submit order ───────────────────────────────────────────────────
+    const handleHold = useCallback(async (holdUntilTime?: string) => {
+        if (!holdUntilTime) { setShowHoldModal(true); return; }
+        setIsHolding(true);
+        try {
+            const payload = {
+                items: cartItems.map(item => ({
+                    itemId: item.id,
+                    quantity: item.quantity,
+                    unitPrice: item.price,
+                    discountPercent: item.discountPercent,
+                    taxPercent: item.taxPercent,
+                    isStockInTransit: item.isStockInTransit || false,
+                })),
+            };
+            const res = await authFetch("/pos-sales/orders/hold", { method: "POST", body: payload });
+            if (res.ok && res.data?.status) {
+                toast.success(res.data.message || "Order placed on hold");
+                setShowHoldModal(false);
+                router.push("/pos/new-sale");
+            } else {
+                toast.error(res.data?.message || "Failed to hold order");
+            }
+        } catch {
+            toast.error("Failed to hold order. Check connection.");
+        } finally {
+            setIsHolding(false);
+        }
+    }, [cartItems, router]);
+
     const handleConfirm = useCallback(async () => {
         if (balanceDue > 0) { toast.error("Balance due must be 0 before completing."); return; }
+        if (settings.requireCustomer && !selectedCustomer) {
+            toast.error("A customer must be selected to complete this sale.");
+            return;
+        }
         setIsSubmitting(true);
         try {
             const orderItems = cartItems.map((item) => ({
@@ -323,6 +374,9 @@ export default function CheckoutPage() {
                 tenders: tenders.length > 0 ? tenders : [{ method: "cash", amount: grandTotal }],
                 customerId: selectedCustomer?.id || null,
             };
+
+            // If resuming from a hold order, pass holdOrderId to skip double stock deduction
+            if (holdOrderId) body.holdOrderId = holdOrderId;
 
             if (discountMode === "promo" && selectedPromo) {
                 body.promoId = selectedPromo.id;
@@ -349,6 +403,7 @@ export default function CheckoutPage() {
             if (res.ok && res.data?.status) {
                 setCompletedOrder(res.data.data);
                 sessionStorage.removeItem("pos_cart");
+                sessionStorage.removeItem("pos_hold_order_id");
             } else {
                 toast.error(res.data?.message || "Checkout failed");
             }
@@ -404,20 +459,6 @@ export default function CheckoutPage() {
             {/* Print-only styles */}
             <style>{`@media print { body > * { display: none; } #receipt-content, #receipt-content * { display: block !important; } }`}</style>
 
-            {/* Receipt modal — shown on order completion */}
-            {completedOrder && (
-                <PrintReceipt
-                    order={completedOrder}
-                    cartItems={cartItems}
-                    tenders={completedOrder.tenders ?? tenders}
-                    discountMode={discountMode}
-                    selectedPromo={selectedPromo}
-                    appliedCoupon={appliedCoupon}
-                    selectedAlliance={selectedAlliance}
-                    onClose={() => router.push("/pos/new-sale")}
-                />
-            )}
-
             <div className="flex flex-col h-full gap-4">
                 {/* Header */}
                 <div className="flex items-center gap-3">
@@ -465,7 +506,9 @@ export default function CheckoutPage() {
 
                         {/* Customer Section */}
                         <div className="px-4 py-4 border-b space-y-3">
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer</Label>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Customer{settings.requireCustomer && <span className="text-destructive ml-1">*</span>}
+                        </Label>
                             <div className="flex gap-2">
                                 <div className="flex-1 relative">
                                     <Select
@@ -609,7 +652,7 @@ export default function CheckoutPage() {
                                         <p className="text-xs text-muted-foreground italic py-2">No active promos for this location.</p>
                                     ) : (
                                         <div className="space-y-2">
-                                            <ScrollArea className="max-h-[200px]">
+                                            <div className="max-h-[200px] overflow-y-auto">
                                                 <div className="space-y-2 pr-1">
                                                     {promos.map((promo) => {
                                                         const discount = calcPromoDiscount(promo, subtotalAfterItems);
@@ -693,7 +736,7 @@ export default function CheckoutPage() {
                                                         );
                                                     })}
                                                 </div>
-                                            </ScrollArea>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -749,7 +792,7 @@ export default function CheckoutPage() {
                                             <Loader2 className="h-4 w-4 animate-spin" /> Loading...
                                         </div>
                                     ) : (
-                                        <ScrollArea className="max-h-[200px]">
+                                        <div className="max-h-[200px] overflow-y-auto">
                                             <div className="space-y-1.5 pr-1">
                                                 {filteredAlliances.length === 0 && (
                                                     <p className="text-xs text-muted-foreground italic py-1">No matching alliances.</p>
@@ -825,7 +868,7 @@ export default function CheckoutPage() {
                                                     );
                                                 })}
                                             </div>
-                                        </ScrollArea>
+                                        </div>
                                     )}
                                 </div>
                             </details>
@@ -1051,19 +1094,33 @@ export default function CheckoutPage() {
                         </div>
 
                         {/* ── Complete Sale ─────────────────────────────────────── */}
-                        <Button
-                            size="lg"
-                            className="h-14 text-base font-bold gap-2 rounded-xl"
-                            onClick={handleConfirm}
-                            disabled={isSubmitting || cartItems.length === 0 || balanceDue > 0}
-                        >
-                            {isSubmitting
-                                ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
-                                : balanceDue > 0
-                                    ? `Balance Due: Rs. ${fmtCurrency(balanceDue)}`
-                                    : <><Printer className="h-5 w-5" /> Complete Sale & Print Receipt</>
-                            }
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="h-14 font-bold gap-2 rounded-xl border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                onClick={() => handleHold()}
+                                disabled={isSubmitting || isHolding || cartItems.length === 0}
+                            >
+                                {isHolding
+                                    ? <><Loader2 className="h-5 w-5 animate-spin" /> Holding...</>
+                                    : <><PauseCircle className="h-5 w-5" /> Hold</>
+                                }
+                            </Button>
+                            <Button
+                                size="lg"
+                                className="h-14 flex-1 text-base font-bold gap-2 rounded-xl"
+                                onClick={handleConfirm}
+                                disabled={isSubmitting || cartItems.length === 0 || balanceDue > 0}
+                            >
+                                {isSubmitting
+                                    ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
+                                    : balanceDue > 0
+                                        ? `Balance Due: Rs. ${fmtCurrency(balanceDue)}`
+                                        : <><Printer className="h-5 w-5" /> Complete Sale & Print Receipt</>
+                                }
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1078,12 +1135,22 @@ export default function CheckoutPage() {
                     selectedPromo={selectedPromo}
                     appliedCoupon={appliedCoupon}
                     selectedAlliance={selectedAlliance}
+                    settings={settings}
                     onClose={() => {
                         setCompletedOrder(null);
                         router.push("/pos/new-sale");
                     }}
                 />
             )}
+
+            {/* Hold Order Modal */}
+            <HoldOrderModal
+                open={showHoldModal}
+                onOpenChange={setShowHoldModal}
+                onConfirm={handleHold}
+                isHolding={isHolding}
+                itemCount={cartItems.length}
+            />
         </>
     );
 }

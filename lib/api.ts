@@ -1263,3 +1263,174 @@ export const debitNoteApi = {
   getBySupplier: (supplierId: string) => fetchApi<DebitNote[]>(`/purchase/debit-notes/supplier/${supplierId}`),
   getByInvoice: (invoiceId: string) => fetchApi<DebitNote[]>(`/purchase/debit-notes/invoice/${invoiceId}`),
 };
+// Sales Module APIs
+export interface Customer {
+  id: string;
+  code: string;
+  name: string;
+  address?: string;
+  contactNo?: string;
+  email?: string;
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SalesOrder {
+  id: string;
+  orderNo: string;
+  customerId: string;
+  customer: Customer;
+  warehouseId?: string;
+  orderDate: string;
+  status: 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  discount: number;
+  grandTotal: number;
+  items: SalesOrderItem[];
+}
+
+export interface SalesOrderItem {
+  id: string;
+  itemId: string;
+  item: any;
+  costPrice: number;
+  salePrice: number;
+  quantity: number;
+  discount: number;
+  total: number;
+}
+
+export interface DeliveryChallan {
+  id: string;
+  challanNo: string;
+  salesOrderId: string;
+  salesOrder: SalesOrder;
+  customerId: string;
+  customer: Customer;
+  challanDate: string;
+  deliveryDate?: string;
+  status: 'PENDING' | 'DELIVERED' | 'INVOICED' | 'CANCELLED';
+  driverName?: string;
+  vehicleNo?: string;
+  transportMode?: string;
+  totalQty: number;
+  totalAmount: number;
+}
+
+export interface SalesInvoice {
+  id: string;
+  invoiceNo: string;
+  salesOrderId?: string;
+  deliveryChallanId?: string;
+  customerId: string;
+  customer: Customer;
+  invoiceDate: string;
+  dueDate?: string;
+  status: 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED';
+  subtotal: number;
+  taxAmount: number;
+  grandTotal: number;
+  paidAmount: number;
+  balanceAmount: number;
+}
+
+// Customer API
+export const customerApi = {
+  getAll: (search?: string) => {
+    const query = search ? `?search=${encodeURIComponent(search)}` : '';
+    return fetchApi<{ status: boolean; data: Customer[] }>(`/sales/customers${query}`);
+  },
+  getById: (id: string) => fetchApi<{ status: boolean; data: Customer }>(`/sales/customers/${id}`),
+  create: (data: Partial<Customer>) => fetchApi<{ status: boolean; data: Customer }>('/sales/customers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: Partial<Customer>) => fetchApi<{ status: boolean; data: Customer }>(`/sales/customers/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  delete: (id: string) => fetchApi<{ status: boolean; message: string }>(`/sales/customers/${id}`, {
+    method: 'DELETE',
+  }),
+  getBalance: (id: string) => fetchApi<{ status: boolean; data: any }>(`/sales/customers/${id}/balance`),
+};
+
+// Sales Order API
+export const salesOrderApi = {
+  getAll: (search?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return fetchApi<{ status: boolean; data: SalesOrder[] }>(`/sales/orders${query}`);
+  },
+  getById: (id: string) => fetchApi<{ status: boolean; data: SalesOrder }>(`/sales/orders/${id}`),
+  create: (data: any) => fetchApi<{ status: boolean; data: SalesOrder }>('/sales/orders', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  update: (id: string, data: any) => fetchApi<{ status: boolean; data: SalesOrder }>(`/sales/orders/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
+  confirm: (id: string) => fetchApi<{ status: boolean; data: SalesOrder }>(`/sales/orders/${id}/confirm`, {
+    method: 'POST',
+  }),
+  cancel: (id: string) => fetchApi<{ status: boolean; data: SalesOrder }>(`/sales/orders/${id}/cancel`, {
+    method: 'POST',
+  }),
+  createDeliveryChallan: (id: string, data: any) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/orders/${id}/delivery-challan`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
+// Delivery Challan API
+export const deliveryChallanApi = {
+  getAll: (search?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return fetchApi<{ status: boolean; data: DeliveryChallan[] }>(`/sales/delivery-challans${query}`);
+  },
+  getById: (id: string) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/delivery-challans/${id}`),
+  create: (data: any) => fetchApi<{ status: boolean; data: DeliveryChallan }>('/sales/delivery-challans', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  markDelivered: (id: string) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/delivery-challans/${id}/delivered`, {
+    method: 'POST',
+  }),
+  cancel: (id: string) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/delivery-challans/${id}/cancel`, {
+    method: 'POST',
+  }),
+  createInvoice: (id: string, data: any) => fetchApi<{ status: boolean; data: SalesInvoice }>(`/sales/delivery-challans/${id}/invoice`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+};
+
+// Sales Invoice API
+export const salesInvoiceApi = {
+  getAll: (search?: string, status?: string) => {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return fetchApi<{ status: boolean; data: SalesInvoice[] }>(`/sales/invoices${query}`);
+  },
+  getById: (id: string) => fetchApi<{ status: boolean; data: SalesInvoice }>(`/sales/invoices/${id}`),
+  create: (data: any) => fetchApi<{ status: boolean; data: SalesInvoice }>('/sales/invoices', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
+  downloadPdf: (id: string) => fetchApi<Blob>(`/sales/invoices/${id}/pdf`, {
+    method: 'GET',
+    headers: { 'Accept': 'application/pdf' },
+  }),
+  getSummary: () => fetchApi<{ status: boolean; data: any }>('/sales/invoices/summary'),
+};

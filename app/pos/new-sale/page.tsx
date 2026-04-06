@@ -14,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PauseCircle, Clock, Truck, RotateCcw } from "lucide-react";
+import { HoldOrderModal } from "@/components/pos/hold-order-modal";
+import { usePosSettings } from "@/hooks/use-pos-settings";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function computeLineItem(
@@ -21,12 +23,13 @@ function computeLineItem(
     quantity: number,
     discountPercent: number,
     isStockInTransit = false,
+    defaultTaxPercent = 0,
 ): CartItem {
     const price = Number(product.unitPrice) || 0;
     const subtotal = price * quantity;
     const discountAmount = Math.round(subtotal * (discountPercent / 100));
     const afterDiscount = subtotal - discountAmount;
-    const taxPercent = Number(product.taxRate1) || 0;
+    const taxPercent = Number(product.taxRate1) || defaultTaxPercent;
     const taxAmount = Math.round(afterDiscount * (taxPercent / 100));
     const total = afterDiscount + taxAmount;
 
@@ -62,6 +65,7 @@ function timeLeft(expiresAt: string) {
 export default function NewSalePage() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { settings } = usePosSettings();
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -75,6 +79,8 @@ export default function NewSalePage() {
     const [isLoadingHolds, setIsLoadingHolds] = useState(false);
     const [isHolding, setIsHolding] = useState(false);
     const [holdTimerTick, setHoldTimerTick] = useState(0);
+    const [showHoldModal, setShowHoldModal] = useState(false);
+    const [resumedHoldOrderId, setResumedHoldOrderId] = useState<string | null>(null);
 
     // ─── Tick timer for hold countdowns ────────────────────────────
     useEffect(() => {
@@ -118,8 +124,9 @@ export default function NewSalePage() {
     }, []);
 
     // ─── Place current cart on hold ─────────────────────────────────
-    const handleHold = useCallback(async () => {
+    const handleHold = useCallback(async (holdUntilTime?: string) => {
         if (cartItems.length === 0) return;
+        if (!holdUntilTime) { setShowHoldModal(true); return; }
         setIsHolding(true);
         try {
             const payload = {
@@ -137,6 +144,8 @@ export default function NewSalePage() {
                 toast.success(res.data.message || "Order placed on hold");
                 setCartItems([]);
                 setSearchQuery("");
+                setResumedHoldOrderId(null);
+                setShowHoldModal(false);
                 searchInputRef.current?.focus();
             } else {
                 toast.error(res.data?.message || "Failed to hold order");
@@ -174,6 +183,7 @@ export default function NewSalePage() {
                     isStockInTransit: oi.isStockInTransit || false,
                 }));
                 setCartItems(resumedItems);
+                setResumedHoldOrderId(order.id);
                 setShowHoldOrders(false);
                 toast.success(`Order ${order.orderNumber} resumed`);
             } else {
@@ -256,6 +266,7 @@ export default function NewSalePage() {
             const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
             if (res.ok && res.data?.status && res.data.data) {
                 const product = res.data.data;
+                const defTax = parseFloat(settings.defaultTaxPercent) || 0;
                 setCartItems((prev) => {
                     const existing = prev.find((i) => i.id === product.id);
                     if (existing) {
@@ -265,11 +276,11 @@ export default function NewSalePage() {
                         }
                         return prev.map((i) =>
                             i.id === product.id
-                                ? computeLineItem(product, i.quantity + 1, i.discountPercent, i.isStockInTransit)
+                                ? computeLineItem(product, i.quantity + 1, i.discountPercent, i.isStockInTransit, defTax)
                                 : i
                         );
                     }
-                    return [...prev, computeLineItem(product, 1, Number(product.discountRate) || 0)];
+                    return [...prev, computeLineItem(product, 1, Number(product.discountRate) || 0, false, defTax)];
                 });
             } else {
                 toast.error(res.data?.message || "Item not found");
@@ -283,6 +294,7 @@ export default function NewSalePage() {
 
     // ─── Select from Autocomplete ───────────────────────────────────
     const handleSelectProduct = useCallback((product: any) => {
+        const defTax = parseFloat(settings.defaultTaxPercent) || 0;
         setCartItems((prev) => {
             const existing = prev.find((i) => i.id === product.id);
             if (existing) {
@@ -292,16 +304,16 @@ export default function NewSalePage() {
                 }
                 return prev.map((i) =>
                     i.id === product.id
-                        ? computeLineItem(product, i.quantity + 1, i.discountPercent, i.isStockInTransit)
+                        ? computeLineItem(product, i.quantity + 1, i.discountPercent, i.isStockInTransit, defTax)
                         : i
                 );
             }
-            return [...prev, computeLineItem(product, 1, Number(product.discountRate) || 0)];
+            return [...prev, computeLineItem(product, 1, Number(product.discountRate) || 0, false, defTax)];
         });
         setSearchQuery("");
         setSearchResults([]);
         searchInputRef.current?.focus();
-    }, []);
+    }, [settings.defaultTaxPercent]);
 
     // ─── Cart operations ────────────────────────────────────────────
     const handleQuantityChange = useCallback((id: string, quantity: number) => {
@@ -356,8 +368,13 @@ export default function NewSalePage() {
     const handleCheckout = useCallback(() => {
         if (cartItems.length === 0) return;
         sessionStorage.setItem("pos_cart", JSON.stringify(cartItems));
+        if (resumedHoldOrderId) {
+            sessionStorage.setItem("pos_hold_order_id", resumedHoldOrderId);
+        } else {
+            sessionStorage.removeItem("pos_hold_order_id");
+        }
         router.push("/pos/checkout");
-    }, [cartItems, router]);
+    }, [cartItems, router, resumedHoldOrderId]);
 
     // ─── Derived state ──────────────────────────────────────────────
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -484,6 +501,15 @@ export default function NewSalePage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Hold Order Modal */}
+            <HoldOrderModal
+                open={showHoldModal}
+                onOpenChange={setShowHoldModal}
+                onConfirm={handleHold}
+                isHolding={isHolding}
+                itemCount={cartItems.length}
+            />
         </div>
     );
 }

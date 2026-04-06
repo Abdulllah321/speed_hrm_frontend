@@ -1527,7 +1527,7 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Cash Drawer",
-        href: "/pos/terminal/drawer",
+        href: "/pos/shifts",
         permissions: ["pos.terminal.drawer"],
       },
     ],
@@ -1585,7 +1585,7 @@ export const menuData: MenuItem[] = [
         href: "/pos/terminal/settings",
         permissions: ["pos.terminal.settings"],
       },
-      { title: "Logout Terminal", href: "/auth/logout" },
+      { title: "Logout Terminal", href: "/pos/terminal/logout" },
     ],
   },
 ];

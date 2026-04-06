@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -9,6 +9,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Printer } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
+import type { PosSettings } from "@/hooks/use-pos-settings";
+import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
 
 function getCookie(name: string): string {
     if (typeof document === "undefined") return "";
@@ -32,6 +34,7 @@ interface PrintReceiptProps {
     selectedPromo?: any;
     appliedCoupon?: any;
     selectedAlliance?: any;
+    settings?: Partial<PosSettings>;
     onClose: () => void;
 }
 
@@ -43,8 +46,18 @@ export function PrintReceipt({
     selectedPromo,
     appliedCoupon,
     selectedAlliance,
+    settings: settingsOverride,
     onClose,
 }: PrintReceiptProps) {
+    const settings: PosSettings = { ...POS_SETTINGS_DEFAULTS, ...settingsOverride };
+
+    // Auto-print if setting is enabled
+    useEffect(() => {
+        if (settings.receiptAutoPrint) {
+            const timer = setTimeout(() => window.print(), 400);
+            return () => clearTimeout(timer);
+        }
+    }, [settings.receiptAutoPrint]);
     // Normalise items — works from both live cart and order.items (history view)
     const items: any[] = propCartItems?.length
         ? propCartItems
@@ -95,12 +108,14 @@ export function PrintReceipt({
 
                         {/* ── Header ─────────────────────────────────────────── */}
                         <div className="text-center space-y-0.5">
-                            <p className="font-bold text-sm">{getCookie("companyName") || "Store"}</p>
+                            <p className="font-bold text-sm">
+                                {settings.receiptStoreName || getCookie("companyName") || "Store"}
+                            </p>
                             <p className="text-muted-foreground">
                                 {new Date(order?.createdAt || Date.now()).toLocaleString("en-PK")}
                             </p>
                             <p className="font-semibold">Receipt #: {order?.orderNumber}</p>
-                            {order?.cashierUserId && (
+                            {settings.receiptShowCashier && order?.cashierUserId && (
                                 <p className="text-muted-foreground">Cashier: {order.cashierUserId.slice(0, 8)}</p>
                             )}
                         </div>
@@ -187,7 +202,7 @@ export function PrintReceipt({
                                 </div>
                             )}
 
-                            {totalTax > 0 && (
+                            {totalTax > 0 && settings.receiptShowTax && (
                                 <div className="flex justify-between text-amber-600 dark:text-amber-400">
                                     <span>Total Tax</span>
                                     <span>+{fmt(totalTax)}</span>
@@ -229,7 +244,9 @@ export function PrintReceipt({
                         </div>
 
                         <Separator />
-                        <p className="text-center text-muted-foreground">*** THANK YOU FOR SHOPPING ***</p>
+                        <p className="text-center text-muted-foreground">
+                            {settings.receiptFooter || "*** THANK YOU FOR SHOPPING ***"}
+                        </p>
                         <p className="text-center text-muted-foreground tracking-widest">{order?.orderNumber}</p>
                     </div>
                 </ScrollArea>
