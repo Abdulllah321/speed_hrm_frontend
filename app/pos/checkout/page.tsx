@@ -748,7 +748,7 @@ export default function CheckoutPage() {
                             <details>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors border-b">
                                     <TicketPercent className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-semibold text-sm flex-1">Coupon Code</span>
+                                    <span className="font-semibold text-sm flex-1">Coupon / Voucher Code</span>
                                     {appliedCoupon && <Badge variant="secondary" className="text-xs">{appliedCoupon.code}</Badge>}
                                 </summary>
                                 <div className="p-3 space-y-2">
@@ -756,7 +756,7 @@ export default function CheckoutPage() {
                                         <Input
                                             ref={couponInputRef}
                                             className="uppercase font-mono flex-1"
-                                            placeholder="Coupon code... (F2)"
+                                            placeholder="Coupon or voucher code... (F2)"
                                             value={couponInput}
                                             onChange={(e) => { setCouponInput(e.target.value); setCouponError(""); }}
                                             onKeyDown={(e) => e.key === "Enter" && handleValidateCoupon()}

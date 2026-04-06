@@ -1530,6 +1530,11 @@ export const menuData: MenuItem[] = [
         href: "/pos/shifts",
         permissions: ["pos.terminal.drawer"],
       },
+      {
+        title: "Vouchers",
+        href: "/pos/vouchers",
+        permissions: ["pos.vouchers.manage"],
+      },
     ],
   },
   {
