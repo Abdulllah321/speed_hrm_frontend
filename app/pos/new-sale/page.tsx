@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PauseCircle, Clock, Truck, RotateCcw } from "lucide-react";
+import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function computeLineItem(
@@ -73,6 +74,8 @@ export default function NewSalePage() {
     const [isLoadingHolds, setIsLoadingHolds] = useState(false);
     const [isHolding, setIsHolding] = useState(false);
     const [holdTimerTick, setHoldTimerTick] = useState(0);
+    const [showHoldModal, setShowHoldModal] = useState(false);
+    const [resumedHoldOrderId, setResumedHoldOrderId] = useState<string | null>(null);
 
     // ─── Tick timer for hold countdowns ────────────────────────────
     useEffect(() => {
@@ -111,8 +114,9 @@ export default function NewSalePage() {
     }, []);
 
     // ─── Place current cart on hold ─────────────────────────────────
-    const handleHold = useCallback(async () => {
+    const handleHold = useCallback(async (holdUntilTime?: string) => {
         if (cartItems.length === 0) return;
+        if (!holdUntilTime) { setShowHoldModal(true); return; }
         setIsHolding(true);
         try {
             const payload = {
@@ -130,6 +134,8 @@ export default function NewSalePage() {
                 toast.success(res.data.message || "Order placed on hold");
                 setCartItems([]);
                 setSearchQuery("");
+                setResumedHoldOrderId(null);
+                setShowHoldModal(false);
                 searchInputRef.current?.focus();
             } else {
                 toast.error(res.data?.message || "Failed to hold order");
@@ -167,6 +173,7 @@ export default function NewSalePage() {
                     isStockInTransit: oi.isStockInTransit || false,
                 }));
                 setCartItems(resumedItems);
+                setResumedHoldOrderId(order.id);
                 setShowHoldOrders(false);
                 toast.success(`Order ${order.orderNumber} resumed`);
             } else {
@@ -349,8 +356,13 @@ export default function NewSalePage() {
     const handleCheckout = useCallback(() => {
         if (cartItems.length === 0) return;
         sessionStorage.setItem("pos_cart", JSON.stringify(cartItems));
+        if (resumedHoldOrderId) {
+            sessionStorage.setItem("pos_hold_order_id", resumedHoldOrderId);
+        } else {
+            sessionStorage.removeItem("pos_hold_order_id");
+        }
         router.push("/pos/checkout");
-    }, [cartItems, router]);
+    }, [cartItems, router, resumedHoldOrderId]);
 
     // ─── Derived state ──────────────────────────────────────────────
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -477,6 +489,15 @@ export default function NewSalePage() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Hold Order Modal */}
+            <HoldOrderModal
+                open={showHoldModal}
+                onOpenChange={setShowHoldModal}
+                onConfirm={handleHold}
+                isHolding={isHolding}
+                itemCount={cartItems.length}
+            />
         </div>
     );
 }
