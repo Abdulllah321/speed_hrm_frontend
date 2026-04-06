@@ -68,13 +68,14 @@ export function getCookie(name: string): string | null {
 // Format currency
 export function formatCurrency(amount: number | string, currency = 'PKR'): string {
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-  if (isNaN(num)) return '0.00';
-  
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency === 'PKR' ? 'USD' : currency, // Use USD formatting for PKR
+  if (isNaN(num)) return 'PKR 0.00';
+
+  const formatted = new Intl.NumberFormat('en-PK', {
     minimumFractionDigits: 2,
-  }).format(num).replace('$', currency === 'PKR' ? 'PKR ' : '$');
+    maximumFractionDigits: 2,
+  }).format(num);
+
+  return `${currency} ${formatted}`;
 }
 
 // Format date
