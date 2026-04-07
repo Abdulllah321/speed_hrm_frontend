@@ -995,8 +995,8 @@ const ERPDashboard = () => {
               />
             </div>
 
-            <Card className="border-border/50 shadow-sm overflow-hidden">
-              <CardHeader className="bg-muted/5 border-b py-4">
+            <Card className="border-border/50 shadow-sm overflow-hidden gap-0">
+              <CardHeader className="bg-muted/5 border-b py-0">
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-lg font-bold">Inventory Reconciliation</CardTitle>
@@ -1008,7 +1008,7 @@ const ERPDashboard = () => {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 mt-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead className="bg-muted/30 text-[10px] uppercase tracking-wider font-bold text-muted-foreground border-b">
