@@ -775,35 +775,52 @@ const ERPDashboard = () => {
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
                       </div>
                     ) : (
-                      <div className="h-[350px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            layout="vertical"
-                            data={funnelData}
-                            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                            <XAxis type="number" hide />
-                            <YAxis
-                              dataKey="stage"
-                              type="category"
-                              axisLine={false}
-                              tickLine={false}
-                              fontSize={12}
-                              fontWeight={600}
-                            />
-                            <Tooltip
-                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                              cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                            />
-                            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
-                              {funnelData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
+                      <ChartContainer
+                        config={{
+                          value: { label: "Orders" },
+                        }}
+                        className="h-[350px] w-full"
+                      >
+                        <BarChart
+                          layout="vertical"
+                          data={funnelData}
+                          margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                          <XAxis type="number" hide />
+                          <YAxis
+                            dataKey="stage"
+                            type="category"
+                            axisLine={false}
+                            tickLine={false}
+                            fontSize={12}
+                            fontWeight={600}
+                          />
+                          <ChartTooltip
+                            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                            content={
+                              <ChartTooltipContent
+                                indicator="line"
+                                labelKey="stage"
+                                nameKey="stage"
+                                formatter={(value, name, item) => (
+                                  <div className="flex items-center justify-between gap-4 w-full">
+                                    <span className="text-muted-foreground">{item.payload.stage}</span>
+                                    <span className="font-mono font-semibold tabular-nums text-foreground">
+                                      {Number(value).toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              />
+                            }
+                          />
+                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
+                            {funnelData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.fill} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ChartContainer>
                     )}
                   </CardContent>
                 </Card>
@@ -891,18 +908,29 @@ const ERPDashboard = () => {
                         </div>
                       ) : (
                         <>
-                          <div className="h-[280px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RadarChart cx="50%" cy="50%" outerRadius="80%" data={performanceRadarData}>
-                                <PolarGrid stroke="#e2e8f0" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 700 }} />
-                                <PolarRadiusAxis angle={30} domain={[0, 150]} hide />
-                                <Radar name="Your Business" dataKey="A" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.5} />
-                                <Radar name="Benchmark" dataKey="B" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
-                                <Tooltip />
-                              </RadarChart>
-                            </ResponsiveContainer>
-                          </div>
+                          <ChartContainer
+                            config={{
+                              A: { label: "Your Business", color: "var(--primary)" },
+                              B: { label: "Benchmark",     color: "#10b981" },
+                            }}
+                            className="h-[280px] w-full"
+                          >
+                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={performanceRadarData}>
+                              <PolarGrid stroke="#e2e8f0" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 700 }} />
+                              <PolarRadiusAxis angle={30} domain={[0, 150]} hide />
+                              <Radar name="Your Business" dataKey="A" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.5} />
+                              <Radar name="Benchmark" dataKey="B" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
+                              <ChartTooltip
+                                content={
+                                  <ChartTooltipContent
+                                    indicator="line"
+                                    labelKey="subject"
+                                  />
+                                }
+                              />
+                            </RadarChart>
+                          </ChartContainer>
                           <div className="flex justify-center gap-4 mt-2">
                             <div className="flex items-center gap-1.5">
                               <div className="w-3 h-3 rounded-full bg-primary" />

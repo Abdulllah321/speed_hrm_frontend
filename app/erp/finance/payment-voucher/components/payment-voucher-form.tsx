@@ -13,11 +13,31 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Plus, Trash2, Loader2, CreditCard, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createPaymentVoucher, getSuppliersWithPendingInvoices, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts } from "@/lib/actions/payment-voucher";
+import { createPaymentVoucher, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts, getAdvancesBySupplier } from "@/lib/actions/payment-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+
+// Per-invoice payment entry managed outside the form
+type InvoicePaymentEntry = {
+    purchaseInvoiceId: string;
+    invoiceNumber: string;
+    totalAmount: number;
+    paidAmount: number;       // already paid before this voucher
+    remainingAmount: number;  // outstanding before this voucher
+    payingNow: number;        // what the user wants to pay in this voucher
+};
+
+type AdvanceEntry = {
+    pvId: string;
+    pvNo: string;
+    pvDate: string;
+    totalAmount: number;
+    availableAmount: number;
+    applyingNow: number;
+};
 
 export function PaymentVoucherForm({ accounts }: { 
     accounts: ChartOfAccount[]; 
@@ -26,7 +46,9 @@ export function PaymentVoucherForm({ accounts }: {
     const [isPending, setIsPending] = useState(false);
     const [suppliers, setSuppliers] = useState<any[]>([]);
     const [pendingInvoices, setPendingInvoices] = useState<any[]>([]);
-    const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+    const [selectedInvoices, setSelectedInvoices] = useState<InvoicePaymentEntry[]>([]);
+    const [availableAdvances, setAvailableAdvances] = useState<any[]>([]);
+    const [selectedAdvances, setSelectedAdvances] = useState<AdvanceEntry[]>([]);
     const [loadingSuppliers, setLoadingSuppliers] = useState(true);
     const [suppliersError, setSuppliersError] = useState<string>("");
 
@@ -44,7 +66,6 @@ export function PaymentVoucherForm({ accounts }: {
             creditAccountId: "",
             creditAmount: 0,
             supplierId: "",
-            selectedInvoiceId: "",
             invoices: [],
             isTaxApplicable: false,
             description: "",
@@ -62,44 +83,18 @@ export function PaymentVoucherForm({ accounts }: {
 
     const voucherType = form.watch("type");
 
-    // Load suppliers with pending invoices on component mount
+    // Load ALL suppliers on mount (advance payments don't require a pending invoice)
     useEffect(() => {
         const loadSuppliers = async () => {
-            console.log('Loading suppliers with pending invoices...');
             setLoadingSuppliers(true);
             setSuppliersError("");
-            
-            // First debug - check what invoices exist
-            try {
-                const { authFetch } = await import("@/lib/auth");
-                const debugResponse = await authFetch("/finance/payment-vouchers/debug-invoices", {
-                    cache: 'no-store'
-                });
-                if (debugResponse.ok) {
-                    const debugData = debugResponse.data;
-                    console.log('DEBUG - All invoices in database:', debugData);
-                } else {
-                    console.error('Debug endpoint failed:', debugResponse.status);
-                }
-            } catch (error) {
-                console.error('Debug endpoint error:', error);
-            }
-            
-            const result = await getSuppliersWithPendingInvoices();
-            console.log('Suppliers result:', result);
-            
+            const result = await getAllSuppliers();
             if (result.status) {
-                console.log('Suppliers data:', result.data);
                 setSuppliers(result.data);
-                if (result.data.length === 0) {
-                    setSuppliersError("No suppliers with pending invoices found");
-                }
             } else {
-                console.error('Failed to load suppliers:', result);
                 setSuppliers([]);
                 setSuppliersError(result.error || "Failed to load suppliers");
             }
-            
             setLoadingSuppliers(false);
         };
         loadSuppliers();
@@ -113,42 +108,35 @@ export function PaymentVoucherForm({ accounts }: {
         form.setValue("pvNo", `${prefix}${datePart}${randomPart}`);
     }, [voucherType, form]);
 
-    // Load pending invoices when supplier changes
+    // Load pending invoices + available advances when supplier changes
     const selectedSupplierId = form.watch("supplierId");
     useEffect(() => {
         if (selectedSupplierId) {
-            const loadPendingInvoices = async () => {
-                const result = await getPendingInvoicesBySupplier(selectedSupplierId);
-                if (result.status) {
-                    setPendingInvoices(result.data);
-                } else {
-                    setPendingInvoices([]);
-                }
-            };
-            loadPendingInvoices();
+            getPendingInvoicesBySupplier(selectedSupplierId).then(result => {
+                setPendingInvoices(result.status ? result.data : []);
+            });
+            getAdvancesBySupplier(selectedSupplierId).then(result => {
+                setAvailableAdvances(result.status ? result.data : []);
+            });
         } else {
             setPendingInvoices([]);
-            setSelectedInvoice(null);
-            form.setValue("selectedInvoiceId", "");
+            setSelectedInvoices([]);
+            setAvailableAdvances([]);
+            setSelectedAdvances([]);
             form.setValue("creditAmount", 0);
         }
     }, [selectedSupplierId, form]);
 
     // When supplier changes, fetch their linked chart of accounts and pre-fill debit rows
-    const selectedInvoiceId = form.watch("selectedInvoiceId");
     useEffect(() => {
         if (!selectedSupplierId) return;
         getVendorWithAccounts(selectedSupplierId).then(res => {
             if (res.status && res.data?.chartOfAccounts?.length > 0) {
                 const linkedAccounts: { id: string }[] = res.data.chartOfAccounts;
-
+                const currentRows = form.getValues("details").length;
                 if (linkedAccounts.length === 1) {
-                    // Single account — set first row
                     form.setValue("details.0.accountId", linkedAccounts[0].id);
                 } else {
-                    // Multiple accounts (e.g. GOODS/SERVICES vendor) — one row per account
-                    // Ensure enough rows exist
-                    const currentRows = form.getValues("details").length;
                     linkedAccounts.forEach((acc, i) => {
                         if (i < currentRows) {
                             form.setValue(`details.${i}.accountId`, acc.id);
@@ -163,57 +151,72 @@ export function PaymentVoucherForm({ accounts }: {
         });
     }, [selectedSupplierId, form, append]);
 
-    // Handle invoice selection — auto-fill amount from selected invoice
-    useEffect(() => {
-        if (selectedInvoiceId && pendingInvoices.length > 0) {
-            const invoice = pendingInvoices.find(inv => inv.id === selectedInvoiceId);
-            if (invoice) {
-                setSelectedInvoice(invoice);
-                const amount = Number(invoice.remainingAmount);
-                form.setValue("refBillNo", invoice.invoiceNumber);
-                form.setValue("billDate", new Date(invoice.invoiceDate));
+    // Toggle an invoice in/out of the selected list
+    const toggleInvoice = (invoice: any) => {
+        setSelectedInvoices(prev => {
+            const exists = prev.find(i => i.purchaseInvoiceId === invoice.id);
+            if (exists) return prev.filter(i => i.purchaseInvoiceId !== invoice.id);
+            return [...prev, {
+                purchaseInvoiceId: invoice.id,
+                invoiceNumber: invoice.invoiceNumber,
+                totalAmount: Number(invoice.totalAmount),
+                paidAmount: Number(invoice.paidAmount),
+                remainingAmount: Number(invoice.remainingAmount),
+                payingNow: Number(invoice.remainingAmount),
+            }];
+        });
+    };
 
-                // Put full amount in first debit row — if vendor has 2 accounts,
-                // user can manually split between the two rows
-                form.setValue("details.0.debit", amount);
-                form.setValue("details.0.credit", 0);
-            }
-        } else {
-            setSelectedInvoice(null);
-        }
-    }, [selectedInvoiceId, pendingInvoices, form]);
+    const updatePayingNow = (invoiceId: string, value: number) => {
+        setSelectedInvoices(prev =>
+            prev.map(i => i.purchaseInvoiceId === invoiceId ? { ...i, payingNow: value } : i)
+        );
+    };
+
+    const toggleAdvance = (adv: any) => {
+        setSelectedAdvances(prev => {
+            const exists = prev.find(a => a.pvId === adv.pvId);
+            if (exists) return prev.filter(a => a.pvId !== adv.pvId);
+            return [...prev, { ...adv, applyingNow: adv.availableAmount }];
+        });
+    };
+
+    const updateApplyingNow = (pvId: string, value: number) => {
+        setSelectedAdvances(prev =>
+            prev.map(a => a.pvId === pvId ? { ...a, applyingNow: value } : a)
+        );
+    };
+
+    const totalInvoicePayments = selectedInvoices.reduce((s, i) => s + (i.payingNow || 0), 0);
+    const totalAdvanceApplied = selectedAdvances.reduce((s, a) => s + (a.applyingNow || 0), 0);
 
     const onSubmit: SubmitHandler<PaymentVoucherFormValues> = async (values) => {
         try {
             setIsPending(true);
-            
-            // Calculate totals from details
+
             const totalDebit = watchDetails.reduce((sum, detail) => sum + (Number(detail.debit) || 0), 0);
             const totalCredit = watchDetails.reduce((sum, detail) => sum + (Number(detail.credit) || 0), 0);
-            
-            // Find the main credit account (bank account) from details
+            const totalSettled = totalDebit + totalAdvanceApplied;
+
+            if (selectedInvoices.length > 0 && totalInvoicePayments > totalSettled + 0.01) {
+                toast.error(`Invoice payments (${totalInvoicePayments.toLocaleString()}) exceed cash (${totalDebit.toLocaleString()}) + advance (${totalAdvanceApplied.toLocaleString()}) = ${totalSettled.toLocaleString()}`);
+                return;
+            }
+
             const creditAccountEntry = watchDetails.find(detail => Number(detail.credit) > 0);
             const mainCreditAccountId = creditAccountEntry?.accountId || "";
-            const mainCreditAmount = totalCredit;
-            
-            // Prepare invoice data if an invoice is selected
-            const invoices = selectedInvoice ? [{
-                purchaseInvoiceId: selectedInvoice.id,
-                paidAmount: Number(selectedInvoice.remainingAmount)
-            }] : [];
 
-            // Remove frontend-only fields and prepare backend data
-            const { selectedInvoiceId, ...cleanData } = values;
-
-            // Prepare final data for backend with required fields
             const finalSubmitData = {
-                ...cleanData,
-                creditAccountId: mainCreditAccountId || values.creditAccountId, // Use derived or original
-                creditAmount: mainCreditAmount || values.creditAmount, // Use derived or original
-                invoices: invoices.length > 0 ? invoices : undefined
+                ...values,
+                creditAccountId: mainCreditAccountId || values.creditAccountId,
+                creditAmount: totalCredit || values.creditAmount,
+                invoices: selectedInvoices.length > 0
+                    ? selectedInvoices.map(i => ({ purchaseInvoiceId: i.purchaseInvoiceId, paidAmount: i.payingNow }))
+                    : undefined,
+                advanceApplications: selectedAdvances.length > 0
+                    ? selectedAdvances.map(a => ({ advanceVoucherId: a.pvId, appliedAmount: a.applyingNow }))
+                    : undefined,
             };
-
-            console.log('Final data for backend:', JSON.stringify(finalSubmitData, null, 2));
 
             const result = await createPaymentVoucher(finalSubmitData);
             if (result.status) {
@@ -338,7 +341,8 @@ export function PaymentVoucherForm({ accounts }: {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-lg border border-dashed border-primary/20">
+                    <div className="space-y-4 p-4 rounded-lg border border-dashed border-primary/20">
+                        {/* Supplier selector */}
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">Supplier</Label>
                             <Controller
@@ -348,7 +352,7 @@ export function PaymentVoucherForm({ accounts }: {
                                     <Autocomplete
                                         options={suppliers.map(supplier => ({ 
                                             value: supplier.id, 
-                                            label: `${supplier.code || supplier.name} - ${supplier.name} (${supplier._count?.purchaseInvoices || 0} pending)` 
+                                            label: `${supplier.code || supplier.name} - ${supplier.name}` 
                                         }))}
                                         value={field.value}
                                         onValueChange={field.onChange}
@@ -357,67 +361,188 @@ export function PaymentVoucherForm({ accounts }: {
                                     />
                                 )}
                             />
-                            {suppliersError && (
-                                <p className="text-xs text-amber-600">{suppliersError}</p>
-                            )}
-                            {!loadingSuppliers && suppliers.length > 0 && (
-                                <p className="text-xs text-green-600">{suppliers.length} suppliers with pending invoices</p>
-                            )}
+                            {suppliersError && <p className="text-xs text-amber-600">{suppliersError}</p>}
                         </div>
 
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Purchase Invoice</Label>
-                            <Controller
-                                control={form.control}
-                                name="selectedInvoiceId"
-                                render={({ field }) => (
-                                    <Autocomplete
-                                        options={pendingInvoices.map(invoice => ({ 
-                                            value: invoice.id, 
-                                            label: `${invoice.invoiceNumber} - ${Number(invoice.remainingAmount).toLocaleString()} remaining` 
-                                        }))}
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        placeholder="Select Purchase Invoice (Optional)"
-                                        disabled={!selectedSupplierId}
-                                    />
+                        {/* Invoice checklist — shown once a supplier is selected */}
+                        {selectedSupplierId && (
+                            <div className="space-y-2">
+                                <Label className="text-xs text-muted-foreground uppercase font-semibold">
+                                    Purchase Invoices
+                                    <span className="ml-2 font-normal normal-case text-muted-foreground">
+                                        (check to include — leave all unchecked for advance payment)
+                                    </span>
+                                </Label>
+
+                                {pendingInvoices.length === 0 ? (
+                                    <p className="text-xs text-amber-500 py-2">
+                                        No pending invoices — payment will be recorded as advance
+                                    </p>
+                                ) : (
+                                    <div className="rounded-lg border border-border overflow-hidden">
+                                        <table className="w-full text-sm">
+                                            <thead className="bg-muted text-muted-foreground">
+                                                <tr>
+                                                    <th className="px-3 py-2 text-left w-8"></th>
+                                                    <th className="px-3 py-2 text-left">Invoice No</th>
+                                                    <th className="px-3 py-2 text-right">Total</th>
+                                                    <th className="px-3 py-2 text-right">Already Paid</th>
+                                                    <th className="px-3 py-2 text-right">Outstanding</th>
+                                                    <th className="px-3 py-2 text-right w-36">Paying Now</th>
+                                                    <th className="px-3 py-2 text-center w-20">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-border">
+                                                {pendingInvoices.map(invoice => {
+                                                    const entry = selectedInvoices.find(i => i.purchaseInvoiceId === invoice.id);
+                                                    const isChecked = !!entry;
+                                                    const payingNow = entry?.payingNow ?? 0;
+                                                    const willBeFullyPaid = isChecked && Math.abs(payingNow - Number(invoice.remainingAmount)) < 0.01;
+                                                    return (
+                                                        <tr key={invoice.id} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
+                                                            <td className="px-3 py-2">
+                                                                <Checkbox
+                                                                    checked={isChecked}
+                                                                    onCheckedChange={() => toggleInvoice(invoice)}
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2 font-medium">{invoice.invoiceNumber}</td>
+                                                            <td className="px-3 py-2 text-right tabular-nums">{Number(invoice.totalAmount).toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{Number(invoice.paidAmount).toLocaleString()}</td>
+                                                            <td className="px-3 py-2 text-right tabular-nums font-semibold text-red-500">{Number(invoice.remainingAmount).toLocaleString()}</td>
+                                                            <td className="px-3 py-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min={0.01}
+                                                                    max={Number(invoice.remainingAmount)}
+                                                                    value={isChecked ? payingNow : ""}
+                                                                    disabled={!isChecked}
+                                                                    onChange={e => updatePayingNow(invoice.id, Number(e.target.value))}
+                                                                    className="h-8 text-right font-mono text-sm"
+                                                                />
+                                                            </td>
+                                                            <td className="px-3 py-2 text-center">
+                                                                {isChecked && (
+                                                                    <Badge variant={willBeFullyPaid ? "default" : "secondary"} className="text-[10px]">
+                                                                        {willBeFullyPaid ? "Full" : "Partial"}
+                                                                    </Badge>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                            {selectedInvoices.length > 0 && (
+                                                <tfoot className="border-t border-border bg-muted/50 font-semibold text-sm">
+                                                    <tr>
+                                                        <td colSpan={5} className="px-3 py-2 text-right text-muted-foreground">
+                                                            Total invoice payments:
+                                                        </td>
+                                                        <td className={`px-3 py-2 text-right tabular-nums font-mono ${totalInvoicePayments > totalDebit + 0.01 ? "text-red-500" : "text-green-600"}`}>
+                                                            {totalInvoicePayments.toLocaleString()}
+                                                        </td>
+                                                        <td />
+                                                    </tr>
+                                                </tfoot>
+                                            )}
+                                        </table>
+                                    </div>
                                 )}
-                            />
-                        </div>
-                    </div>
 
-                    {selectedInvoice && (
-                        <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-                            <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Selected Invoice Details</h4>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                <div>
-                                    <span className="text-muted-foreground">Invoice No:</span>
-                                    <p className="font-medium">{selectedInvoice.invoiceNumber}</p>
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground">Original Total:</span>
-                                    <p className="font-medium">{Number(selectedInvoice.totalAmount).toLocaleString()}</p>
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground">Returns/Adjustments:</span>
-                                    <p className="font-medium text-amber-600">-{Number(selectedInvoice.returnAmount || 0).toLocaleString()}</p>
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground">Paid Amount:</span>
-                                    <p className="font-medium">{Number(selectedInvoice.paidAmount).toLocaleString()}</p>
-                                </div>
-                                <div>
-                                    <span className="text-muted-foreground">Net Outstanding:</span>
-                                    <p className="font-medium text-red-600">{Number(selectedInvoice.remainingAmount).toLocaleString()}</p>
-                                </div>
+                                {selectedInvoices.length === 0 && pendingInvoices.length > 0 && (
+                                    <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                                        <p className="text-sm text-amber-700 dark:text-amber-300">
+                                            ⚡ No invoices selected — payment will be recorded as advance against this supplier.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {totalInvoicePayments > totalDebit + 0.01 && (
+                                    <p className="text-xs text-red-500 font-medium">
+                                        ⚠ Invoice payments ({totalInvoicePayments.toLocaleString()}) exceed cash paid ({totalDebit.toLocaleString()}) + advance applied ({totalAdvanceApplied.toLocaleString()}). Adjust amounts.
+                                    </p>
+                                )}
+
+                                {/* ── Apply Advances section ── shown when invoices are selected and advances exist */}
+                                {selectedInvoices.length > 0 && availableAdvances.length > 0 && (
+                                    <div className="mt-4 space-y-2">
+                                        <Label className="text-xs text-muted-foreground uppercase font-semibold">
+                                            Apply Advance Payments
+                                            <span className="ml-2 font-normal normal-case text-muted-foreground">
+                                                (check to apply existing advances toward selected invoices)
+                                            </span>
+                                        </Label>
+                                        <div className="rounded-lg border border-border overflow-hidden">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-muted text-muted-foreground">
+                                                    <tr>
+                                                        <th className="px-3 py-2 text-left w-8"></th>
+                                                        <th className="px-3 py-2 text-left">Advance PV</th>
+                                                        <th className="px-3 py-2 text-right">Total Advance</th>
+                                                        <th className="px-3 py-2 text-right">Available</th>
+                                                        <th className="px-3 py-2 text-right w-36">Applying Now</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-border">
+                                                    {availableAdvances.map((adv: any) => {
+                                                        const entry = selectedAdvances.find(a => a.pvId === adv.pvId);
+                                                        const isChecked = !!entry;
+                                                        return (
+                                                            <tr key={adv.pvId} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
+                                                                <td className="px-3 py-2">
+                                                                    <Checkbox
+                                                                        checked={isChecked}
+                                                                        onCheckedChange={() => toggleAdvance(adv)}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-3 py-2 font-medium">
+                                                                    {adv.pvNo}
+                                                                    <span className="ml-2 text-xs text-muted-foreground">
+                                                                        {new Date(adv.pvDate).toLocaleDateString()}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right tabular-nums">{Number(adv.totalAmount).toLocaleString()}</td>
+                                                                <td className="px-3 py-2 text-right tabular-nums font-semibold text-green-600">{Number(adv.availableAmount).toLocaleString()}</td>
+                                                                <td className="px-3 py-2">
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        min={0.01}
+                                                                        max={adv.availableAmount}
+                                                                        value={isChecked ? entry!.applyingNow : ""}
+                                                                        disabled={!isChecked}
+                                                                        onChange={e => updateApplyingNow(adv.pvId, Number(e.target.value))}
+                                                                        className="h-8 text-right font-mono text-sm"
+                                                                    />
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                                {selectedAdvances.length > 0 && (
+                                                    <tfoot className="border-t border-border bg-muted/50 font-semibold text-sm">
+                                                        <tr>
+                                                            <td colSpan={4} className="px-3 py-2 text-right text-muted-foreground">Total advance applied:</td>
+                                                            <td className="px-3 py-2 text-right tabular-nums font-mono text-green-600">
+                                                                {totalAdvanceApplied.toLocaleString()}
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                            <td colSpan={4} className="px-3 py-2 text-right text-muted-foreground">Total settled (cash + advance):</td>
+                                                            <td className="px-3 py-2 text-right tabular-nums font-mono font-bold">
+                                                                {(totalDebit + totalAdvanceApplied).toLocaleString()}
+                                                            </td>
+                                                        </tr>
+                                                    </tfoot>
+                                                )}
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="mt-3 p-2 bg-green-50 dark:bg-green-950/20 rounded border border-green-200 dark:border-green-800">
-                                <p className="text-sm text-green-700 dark:text-green-300">
-                                    ✅ This invoice will be marked as <strong>FULLY_PAID</strong> after payment voucher creation
-                                </p>
-                            </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {voucherType === "bank" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-lg border border-dashed border-primary/20">
