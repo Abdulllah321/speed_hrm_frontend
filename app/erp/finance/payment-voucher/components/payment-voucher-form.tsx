@@ -286,19 +286,61 @@ export function PaymentVoucherForm({ accounts }: {
             <CardContent className="pt-6">
                 <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
 
-                    <div className="flex items-center space-x-2">
-                        <Controller
-                            control={form.control}
-                            name="isAdvance"
-                            render={({ field }) => (
-                                <Checkbox
-                                    id="isAdvance"
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                />
-                            )}
-                        />
-                        <Label htmlFor="isAdvance" className="text-sm font-medium leading-none">Advance Payment</Label>
+                    {/* ── Advance Payment toggle + guidance ── */}
+                    <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
+                        <div className="flex items-center space-x-2">
+                            <Controller
+                                control={form.control}
+                                name="isAdvance"
+                                render={({ field }) => (
+                                    <Checkbox
+                                        id="isAdvance"
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                    />
+                                )}
+                            />
+                            <Label htmlFor="isAdvance" className="text-sm font-semibold leading-none cursor-pointer">
+                                Advance Payment
+                                <span className="ml-2 font-normal text-muted-foreground">(paying before a purchase invoice exists)</span>
+                            </Label>
+                        </div>
+
+                        {form.watch("isAdvance") ? (
+                            <div className="rounded-md bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs space-y-1.5">
+                                <p className="font-semibold text-blue-800 dark:text-blue-300">✦ Advance Payment — account heads to use:</p>
+                                <div className="grid grid-cols-2 gap-2 mt-1">
+                                    <div className="bg-white dark:bg-blue-950/40 rounded p-2 border border-blue-100 dark:border-blue-800">
+                                        <p className="font-bold text-blue-700 dark:text-blue-400">Row 1 — Debit</p>
+                                        <p className="text-blue-900 dark:text-blue-200 font-mono">31030004 – ADVANCE TO SUPPLIERS</p>
+                                        <p className="text-muted-foreground mt-0.5">Records the prepayment as an asset</p>
+                                    </div>
+                                    <div className="bg-white dark:bg-blue-950/40 rounded p-2 border border-blue-100 dark:border-blue-800">
+                                        <p className="font-bold text-blue-700 dark:text-blue-400">Row 2 — Credit</p>
+                                        <p className="text-blue-900 dark:text-blue-200 font-mono">Bank / Cash account</p>
+                                        <p className="text-muted-foreground mt-0.5">Money leaving your bank or cash</p>
+                                    </div>
+                                </div>
+                                <p className="text-muted-foreground pt-1">Leave invoices unchecked. When the PI arrives later, create a new PV, select the supplier — this advance will appear in the green table to apply against it.</p>
+                            </div>
+                        ) : (
+                            <div className="rounded-md bg-muted/40 border border-border p-3 text-xs space-y-1.5">
+                                <p className="font-semibold text-foreground">✦ Regular Payment — account heads to use:</p>
+                                <div className="grid grid-cols-2 gap-2 mt-1">
+                                    <div className="bg-background rounded p-2 border border-border">
+                                        <p className="font-bold">Row 1 — Debit</p>
+                                        <p className="font-mono text-muted-foreground">12030001 – A/P PARTIES</p>
+                                        <p className="text-muted-foreground mt-0.5">Clears the supplier payable</p>
+                                    </div>
+                                    <div className="bg-background rounded p-2 border border-border">
+                                        <p className="font-bold">Row 2 — Credit</p>
+                                        <p className="font-mono text-muted-foreground">Bank / Cash account</p>
+                                        <p className="text-muted-foreground mt-0.5">Only the cash portion (can be 0 if fully from advance)</p>
+                                    </div>
+                                </div>
+                                <p className="text-muted-foreground pt-1">If you have an existing advance for this supplier, it will appear in the green table above the invoices — check it to apply it. The system posts the reversal journal automatically.</p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -573,7 +615,14 @@ export function PaymentVoucherForm({ accounts }: {
 
                     <div className="space-y-4 pt-4">
                         <div className="flex items-center justify-between border-b pb-2">
-                            <h2 className="text-xl font-bold text-gray-800 dark:text-foreground">{voucherType === "bank" ? "Bank" : "Cash"} Payment Voucher Detail</h2>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-foreground">{voucherType === "bank" ? "Bank" : "Cash"} Payment Voucher Detail</h2>
+                                {form.watch("isAdvance") ? (
+                                    <p className="text-xs text-muted-foreground mt-0.5">Debit: <span className="font-mono font-semibold">31030004 – ADVANCE TO SUPPLIERS</span> &nbsp;|&nbsp; Credit: <span className="font-mono font-semibold">Bank / Cash account</span></p>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground mt-0.5">Debit: <span className="font-mono font-semibold">12030001 – A/P PARTIES</span> &nbsp;|&nbsp; Credit: <span className="font-mono font-semibold">Bank / Cash account</span> (cash portion only)</p>
+                                )}
+                            </div>
                             <div className="flex items-center gap-2">
                                 <Button
                                     type="button"
