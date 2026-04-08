@@ -409,6 +409,33 @@ export function PaymentVoucherForm({ accounts }: {
                                 )}
                             />
                             {suppliersError && <p className="text-xs text-amber-600">{suppliersError}</p>}
+
+                            {/* Supplier balance summary — shown immediately on selection */}
+                            {selectedSupplierId && supplierSummary && (
+                                <div className="flex items-center gap-3 mt-2 flex-wrap">
+                                    <div className="flex items-center gap-1.5 rounded-md bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 px-3 py-1.5">
+                                        <span className="text-xs text-muted-foreground">Outstanding AP:</span>
+                                        <span className="text-sm font-bold tabular-nums text-red-600">
+                                            {supplierSummary.apBalance.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 border ${supplierSummary.advanceBalance > 0 ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800" : "bg-muted border-border"}`}>
+                                        <span className="text-xs text-muted-foreground">Advance Available:</span>
+                                        <span className={`text-sm font-bold tabular-nums ${supplierSummary.advanceBalance > 0 ? "text-green-600" : "text-muted-foreground"}`}>
+                                            {supplierSummary.advanceBalance.toLocaleString()}
+                                        </span>
+                                        {supplierSummary.advanceBalance > 0 && (
+                                            <span className="text-[10px] text-green-600 font-medium">← can apply</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                            {selectedSupplierId && !supplierSummary && (
+                                <div className="flex items-center gap-2 mt-2">
+                                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">Loading supplier balance...</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Invoice checklist — shown once a supplier is selected */}
