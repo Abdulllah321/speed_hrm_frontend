@@ -246,3 +246,16 @@ export async function getAdvancesBySupplier(supplierId: string) {
         return { status: false, data: [] };
     }
 }
+
+// Get AP balance + advance balance summary for a supplier
+export async function getSupplierSummary(supplierId: string) {
+    try {
+        const response = await authFetch(`/finance/payment-vouchers/supplier-summary/${supplierId}`, {
+            cache: 'no-store',
+        });
+        if (!response.ok) return { status: false, data: null };
+        return { status: true, data: response.data };
+    } catch {
+        return { status: false, data: null };
+    }
+}

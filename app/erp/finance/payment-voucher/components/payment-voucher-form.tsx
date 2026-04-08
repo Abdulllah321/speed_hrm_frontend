@@ -13,7 +13,7 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Plus, Trash2, Loader2, CreditCard, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createPaymentVoucher, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts, getAdvancesBySupplier } from "@/lib/actions/payment-voucher";
+import { createPaymentVoucher, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts, getAdvancesBySupplier, getSupplierSummary } from "@/lib/actions/payment-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -49,6 +49,7 @@ export function PaymentVoucherForm({ accounts }: {
     const [selectedInvoices, setSelectedInvoices] = useState<InvoicePaymentEntry[]>([]);
     const [availableAdvances, setAvailableAdvances] = useState<any[]>([]);
     const [selectedAdvances, setSelectedAdvances] = useState<AdvanceEntry[]>([]);
+    const [supplierSummary, setSupplierSummary] = useState<{ apBalance: number; advanceBalance: number } | null>(null);
     const [loadingSuppliers, setLoadingSuppliers] = useState(true);
     const [suppliersError, setSuppliersError] = useState<string>("");
 
@@ -118,11 +119,15 @@ export function PaymentVoucherForm({ accounts }: {
             getAdvancesBySupplier(selectedSupplierId).then(result => {
                 setAvailableAdvances(result.status ? result.data : []);
             });
+            getSupplierSummary(selectedSupplierId).then(result => {
+                setSupplierSummary(result.status ? result.data : null);
+            });
         } else {
             setPendingInvoices([]);
             setSelectedInvoices([]);
             setAvailableAdvances([]);
             setSelectedAdvances([]);
+            setSupplierSummary(null);
             form.setValue("creditAmount", 0);
         }
     }, [selectedSupplierId, form]);
