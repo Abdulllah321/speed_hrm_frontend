@@ -827,6 +827,7 @@ export interface StockLedgerEntry {
   // Optional expanded relations if backend includes them
   item?: { itemId: string; sku: string; description: string | null; name?: string };
   warehouse?: { name: string };
+  location?: { name: string; code: string } | null;
 }
 
 export interface StockLevel {

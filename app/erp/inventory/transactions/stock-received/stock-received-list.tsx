@@ -26,8 +26,12 @@ function getReferenceHref(referenceType: string, referenceId: string): string | 
             return `/erp/procurement/grn/${referenceId}`;
         case "PURCHASE_RETURN_LC":
         case "PURCHASE_RETURN":
+        case "PURCHASE_RETURN_GRN":
             return `/erp/procurement/purchase-returns/${referenceId}`;
         case "TRANSFER_REQUEST":
+        case "RETURN_REQUEST":
+        case "OUTLET_TRANSFER_IN":
+        case "OUTLET_TRANSFER_OUT":
             return `/erp/inventory/transactions/stock-transfer/slip/${referenceId}`;
         case "LANDED_COST":
             return `/erp/procurement/landed-cost`;
@@ -116,13 +120,21 @@ const columns: ColumnDef<StockLedgerEntry>[] = [
             const qty = Number(row.original.qty);
             const isTransfer = row.original.referenceType === "TRANSFER_REQUEST";
             const isInbound = qty >= 0;
+            const locationName = row.original.location?.name;
 
             return (
                 <div className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium">
                         {row.original.warehouse?.name || row.original.warehouseId}
                     </span>
-                    {isTransfer && (
+                    {/* Show outlet/location name if present */}
+                    {locationName && (
+                        <span className="text-xs text-blue-500 dark:text-blue-400 font-medium flex items-center gap-1">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            {locationName}
+                        </span>
+                    )}
+                    {isTransfer && !locationName && (
                         <span className={cn(
                             "text-xs font-medium flex items-center gap-1",
                             isInbound ? "text-emerald-600" : "text-red-600"
@@ -130,6 +142,17 @@ const columns: ColumnDef<StockLedgerEntry>[] = [
                             {isInbound
                                 ? <><TrendingDown className="h-3 w-3" /> Receiving</>
                                 : <><TrendingUp className="h-3 w-3" /> Dispatching</>
+                            }
+                        </span>
+                    )}
+                    {isTransfer && locationName && (
+                        <span className={cn(
+                            "text-xs font-medium flex items-center gap-1",
+                            isInbound ? "text-emerald-600" : "text-red-600"
+                        )}>
+                            {isInbound
+                                ? <><TrendingDown className="h-3 w-3" /> Receiving at outlet</>
+                                : <><TrendingUp className="h-3 w-3" /> Dispatching from outlet</>
                             }
                         </span>
                     )}
@@ -160,7 +183,7 @@ const columns: ColumnDef<StockLedgerEntry>[] = [
                         {meta.label}
                     </Badge>
                     {/* For transfers, show explicit IN / OUT pill */}
-                    {row.original.referenceType === "TRANSFER_REQUEST" && (
+                    {["TRANSFER_REQUEST", "RETURN_REQUEST", "OUTLET_TRANSFER_IN", "OUTLET_TRANSFER_OUT"].includes(row.original.referenceType) && (
                         <span className={cn(
                             "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
                             isOut
@@ -244,11 +267,17 @@ const columns: ColumnDef<StockLedgerEntry>[] = [
                 POS_RETURN: "POS Return",
                 POS_VOID: "POS Void",
                 TRANSFER_REQUEST: "Transfer",
+                RETURN_REQUEST: "Return Transfer",
+                OUTLET_TRANSFER_IN: "Outlet Transfer In",
+                OUTLET_TRANSFER_OUT: "Outlet Transfer Out",
+                STOCK_MOVEMENT: "Stock Movement",
+                RETURN_MOVEMENT: "Return Movement",
                 ADJUSTMENT: "Adjustment",
                 LANDED_COST: "Landed Cost",
                 OPENING_BALANCE: "Opening Bal.",
                 DELIVERY_CHALLAN: "Delivery Challan",
                 PURCHASE_RETURN_LC: "Purchase Return",
+                PURCHASE_RETURN_GRN: "Purchase Return",
                 PURCHASE_RETURN: "Purchase Return",
             };
             return (
@@ -376,8 +405,8 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
             isLoading={isPending}
             rowClassName={(row) => {
                 const qty = Number(row.qty);
-                const isTransfer = row.referenceType === "TRANSFER_REQUEST";
-                if (isTransfer) {
+                const isTransferType = ["TRANSFER_REQUEST", "RETURN_REQUEST", "OUTLET_TRANSFER_IN", "OUTLET_TRANSFER_OUT"].includes(row.referenceType);
+                if (isTransferType) {
                     return qty >= 0
                         ? "border-l-4 border-l-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20"
                         : "border-l-4 border-l-red-400 bg-red-50/40 dark:bg-red-950/20";
