@@ -366,119 +366,25 @@ export function PaymentVoucherForm({ accounts }: {
 
                         {/* Invoice checklist — shown once a supplier is selected */}
                         {selectedSupplierId && (
-                            <div className="space-y-2">
-                                <Label className="text-xs text-muted-foreground uppercase font-semibold">
-                                    Purchase Invoices
-                                    <span className="ml-2 font-normal normal-case text-muted-foreground">
-                                        (check to include — leave all unchecked for advance payment)
-                                    </span>
-                                </Label>
+                            <div className="space-y-4">
 
-                                {pendingInvoices.length === 0 ? (
-                                    <p className="text-xs text-amber-500 py-2">
-                                        No pending invoices — payment will be recorded as advance
-                                    </p>
-                                ) : (
-                                    <div className="rounded-lg border border-border overflow-hidden">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-muted text-muted-foreground">
-                                                <tr>
-                                                    <th className="px-3 py-2 text-left w-8"></th>
-                                                    <th className="px-3 py-2 text-left">Invoice No</th>
-                                                    <th className="px-3 py-2 text-right">Total</th>
-                                                    <th className="px-3 py-2 text-right">Already Paid</th>
-                                                    <th className="px-3 py-2 text-right">Outstanding</th>
-                                                    <th className="px-3 py-2 text-right w-36">Paying Now</th>
-                                                    <th className="px-3 py-2 text-center w-20">Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-border">
-                                                {pendingInvoices.map(invoice => {
-                                                    const entry = selectedInvoices.find(i => i.purchaseInvoiceId === invoice.id);
-                                                    const isChecked = !!entry;
-                                                    const payingNow = entry?.payingNow ?? 0;
-                                                    const willBeFullyPaid = isChecked && Math.abs(payingNow - Number(invoice.remainingAmount)) < 0.01;
-                                                    return (
-                                                        <tr key={invoice.id} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
-                                                            <td className="px-3 py-2">
-                                                                <Checkbox
-                                                                    checked={isChecked}
-                                                                    onCheckedChange={() => toggleInvoice(invoice)}
-                                                                />
-                                                            </td>
-                                                            <td className="px-3 py-2 font-medium">{invoice.invoiceNumber}</td>
-                                                            <td className="px-3 py-2 text-right tabular-nums">{Number(invoice.totalAmount).toLocaleString()}</td>
-                                                            <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{Number(invoice.paidAmount).toLocaleString()}</td>
-                                                            <td className="px-3 py-2 text-right tabular-nums font-semibold text-red-500">{Number(invoice.remainingAmount).toLocaleString()}</td>
-                                                            <td className="px-3 py-2">
-                                                                <Input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    min={0.01}
-                                                                    max={Number(invoice.remainingAmount)}
-                                                                    value={isChecked ? payingNow : ""}
-                                                                    disabled={!isChecked}
-                                                                    onChange={e => updatePayingNow(invoice.id, Number(e.target.value))}
-                                                                    className="h-8 text-right font-mono text-sm"
-                                                                />
-                                                            </td>
-                                                            <td className="px-3 py-2 text-center">
-                                                                {isChecked && (
-                                                                    <Badge variant={willBeFullyPaid ? "default" : "secondary"} className="text-[10px]">
-                                                                        {willBeFullyPaid ? "Full" : "Partial"}
-                                                                    </Badge>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                            {selectedInvoices.length > 0 && (
-                                                <tfoot className="border-t border-border bg-muted/50 font-semibold text-sm">
-                                                    <tr>
-                                                        <td colSpan={5} className="px-3 py-2 text-right text-muted-foreground">
-                                                            Total invoice payments:
-                                                        </td>
-                                                        <td className={`px-3 py-2 text-right tabular-nums font-mono ${totalInvoicePayments > totalDebit + 0.01 ? "text-red-500" : "text-green-600"}`}>
-                                                            {totalInvoicePayments.toLocaleString()}
-                                                        </td>
-                                                        <td />
-                                                    </tr>
-                                                </tfoot>
-                                            )}
-                                        </table>
-                                    </div>
-                                )}
-
-                                {selectedInvoices.length === 0 && pendingInvoices.length > 0 && (
-                                    <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                                        <p className="text-sm text-amber-700 dark:text-amber-300">
-                                            ⚡ No invoices selected — payment will be recorded as advance against this supplier.
-                                        </p>
-                                    </div>
-                                )}
-
-                                {totalInvoicePayments > totalDebit + 0.01 && (
-                                    <p className="text-xs text-red-500 font-medium">
-                                        ⚠ Invoice payments ({totalInvoicePayments.toLocaleString()}) exceed cash paid ({totalDebit.toLocaleString()}) + advance applied ({totalAdvanceApplied.toLocaleString()}). Adjust amounts.
-                                    </p>
-                                )}
-
-                                {/* ── Apply Advances section ── shown when invoices are selected and advances exist */}
-                                {selectedInvoices.length > 0 && availableAdvances.length > 0 && (
-                                    <div className="mt-4 space-y-2">
-                                        <Label className="text-xs text-muted-foreground uppercase font-semibold">
-                                            Apply Advance Payments
-                                            <span className="ml-2 font-normal normal-case text-muted-foreground">
-                                                (check to apply existing advances toward selected invoices)
+                                {/* ── Available Advances — always visible when supplier has advances ── */}
+                                {availableAdvances.length > 0 && (
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-muted-foreground uppercase font-semibold flex items-center gap-2">
+                                            <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+                                            Available Advance Payments
+                                            <span className="font-normal normal-case text-muted-foreground">
+                                                — check to apply toward this payment
                                             </span>
                                         </Label>
-                                        <div className="rounded-lg border border-border overflow-hidden">
+                                        <div className="rounded-lg border border-green-200 dark:border-green-900 overflow-hidden">
                                             <table className="w-full text-sm">
-                                                <thead className="bg-muted text-muted-foreground">
+                                                <thead className="bg-green-50 dark:bg-green-950/30 text-muted-foreground">
                                                     <tr>
                                                         <th className="px-3 py-2 text-left w-8"></th>
                                                         <th className="px-3 py-2 text-left">Advance PV</th>
+                                                        <th className="px-3 py-2 text-left">Date</th>
                                                         <th className="px-3 py-2 text-right">Total Advance</th>
                                                         <th className="px-3 py-2 text-right">Available</th>
                                                         <th className="px-3 py-2 text-right w-36">Applying Now</th>
@@ -489,27 +395,17 @@ export function PaymentVoucherForm({ accounts }: {
                                                         const entry = selectedAdvances.find(a => a.pvId === adv.pvId);
                                                         const isChecked = !!entry;
                                                         return (
-                                                            <tr key={adv.pvId} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
+                                                            <tr key={adv.pvId} className={isChecked ? "bg-green-50/50 dark:bg-green-950/20" : "hover:bg-muted/30"}>
                                                                 <td className="px-3 py-2">
-                                                                    <Checkbox
-                                                                        checked={isChecked}
-                                                                        onCheckedChange={() => toggleAdvance(adv)}
-                                                                    />
+                                                                    <Checkbox checked={isChecked} onCheckedChange={() => toggleAdvance(adv)} />
                                                                 </td>
-                                                                <td className="px-3 py-2 font-medium">
-                                                                    {adv.pvNo}
-                                                                    <span className="ml-2 text-xs text-muted-foreground">
-                                                                        {new Date(adv.pvDate).toLocaleDateString()}
-                                                                    </span>
-                                                                </td>
+                                                                <td className="px-3 py-2 font-medium">{adv.pvNo}</td>
+                                                                <td className="px-3 py-2 text-muted-foreground text-xs">{new Date(adv.pvDate).toLocaleDateString()}</td>
                                                                 <td className="px-3 py-2 text-right tabular-nums">{Number(adv.totalAmount).toLocaleString()}</td>
                                                                 <td className="px-3 py-2 text-right tabular-nums font-semibold text-green-600">{Number(adv.availableAmount).toLocaleString()}</td>
                                                                 <td className="px-3 py-2">
                                                                     <Input
-                                                                        type="number"
-                                                                        step="0.01"
-                                                                        min={0.01}
-                                                                        max={adv.availableAmount}
+                                                                        type="number" step="0.01" min={0.01} max={adv.availableAmount}
                                                                         value={isChecked ? entry!.applyingNow : ""}
                                                                         disabled={!isChecked}
                                                                         onChange={e => updateApplyingNow(adv.pvId, Number(e.target.value))}
@@ -521,23 +417,130 @@ export function PaymentVoucherForm({ accounts }: {
                                                     })}
                                                 </tbody>
                                                 {selectedAdvances.length > 0 && (
-                                                    <tfoot className="border-t border-border bg-muted/50 font-semibold text-sm">
+                                                    <tfoot className="border-t border-border bg-green-50/50 dark:bg-green-950/20 font-semibold text-sm">
                                                         <tr>
-                                                            <td colSpan={4} className="px-3 py-2 text-right text-muted-foreground">Total advance applied:</td>
-                                                            <td className="px-3 py-2 text-right tabular-nums font-mono text-green-600">
-                                                                {totalAdvanceApplied.toLocaleString()}
-                                                            </td>
-                                                        </tr>
-                                                        <tr>
-                                                            <td colSpan={4} className="px-3 py-2 text-right text-muted-foreground">Total settled (cash + advance):</td>
-                                                            <td className="px-3 py-2 text-right tabular-nums font-mono font-bold">
-                                                                {(totalDebit + totalAdvanceApplied).toLocaleString()}
-                                                            </td>
+                                                            <td colSpan={5} className="px-3 py-2 text-right text-muted-foreground">Total advance being applied:</td>
+                                                            <td className="px-3 py-2 text-right tabular-nums font-mono text-green-600">{totalAdvanceApplied.toLocaleString()}</td>
                                                         </tr>
                                                     </tfoot>
                                                 )}
                                             </table>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* ── Purchase Invoices ── */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-muted-foreground uppercase font-semibold">
+                                        Purchase Invoices
+                                        <span className="ml-2 font-normal normal-case text-muted-foreground">
+                                            (check to include — leave all unchecked for advance payment)
+                                        </span>
+                                    </Label>
+
+                                    {pendingInvoices.length === 0 ? (
+                                        <p className="text-xs text-amber-500 py-2">
+                                            No pending invoices — payment will be recorded as advance
+                                        </p>
+                                    ) : (
+                                        <div className="rounded-lg border border-border overflow-hidden">
+                                            <table className="w-full text-sm">
+                                                <thead className="bg-muted text-muted-foreground">
+                                                    <tr>
+                                                        <th className="px-3 py-2 text-left w-8"></th>
+                                                        <th className="px-3 py-2 text-left">Invoice No</th>
+                                                        <th className="px-3 py-2 text-right">Total</th>
+                                                        <th className="px-3 py-2 text-right">Already Paid</th>
+                                                        <th className="px-3 py-2 text-right">Outstanding</th>
+                                                        <th className="px-3 py-2 text-right w-36">Paying Now</th>
+                                                        <th className="px-3 py-2 text-center w-20">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-border">
+                                                    {pendingInvoices.map(invoice => {
+                                                        const entry = selectedInvoices.find(i => i.purchaseInvoiceId === invoice.id);
+                                                        const isChecked = !!entry;
+                                                        const payingNow = entry?.payingNow ?? 0;
+                                                        const totalSettled = totalDebit + totalAdvanceApplied;
+                                                        const willBeFullyPaid = isChecked && Math.abs(payingNow - Number(invoice.remainingAmount)) < 0.01;
+                                                        return (
+                                                            <tr key={invoice.id} className={isChecked ? "bg-primary/5" : "hover:bg-muted/30"}>
+                                                                <td className="px-3 py-2">
+                                                                    <Checkbox checked={isChecked} onCheckedChange={() => toggleInvoice(invoice)} />
+                                                                </td>
+                                                                <td className="px-3 py-2 font-medium">{invoice.invoiceNumber}</td>
+                                                                <td className="px-3 py-2 text-right tabular-nums">{Number(invoice.totalAmount).toLocaleString()}</td>
+                                                                <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{Number(invoice.paidAmount).toLocaleString()}</td>
+                                                                <td className="px-3 py-2 text-right tabular-nums font-semibold text-red-500">{Number(invoice.remainingAmount).toLocaleString()}</td>
+                                                                <td className="px-3 py-2">
+                                                                    <Input
+                                                                        type="number" step="0.01" min={0.01} max={Number(invoice.remainingAmount)}
+                                                                        value={isChecked ? payingNow : ""}
+                                                                        disabled={!isChecked}
+                                                                        onChange={e => updatePayingNow(invoice.id, Number(e.target.value))}
+                                                                        className="h-8 text-right font-mono text-sm"
+                                                                    />
+                                                                </td>
+                                                                <td className="px-3 py-2 text-center">
+                                                                    {isChecked && (
+                                                                        <Badge variant={willBeFullyPaid ? "default" : "secondary"} className="text-[10px]">
+                                                                            {willBeFullyPaid ? "Full" : "Partial"}
+                                                                        </Badge>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                                {selectedInvoices.length > 0 && (
+                                                    <tfoot className="border-t border-border bg-muted/50 font-semibold text-sm">
+                                                        <tr>
+                                                            <td colSpan={5} className="px-3 py-2 text-right text-muted-foreground">Total invoice payments:</td>
+                                                            <td className={`px-3 py-2 text-right tabular-nums font-mono ${totalInvoicePayments > totalDebit + totalAdvanceApplied + 0.01 ? "text-red-500" : "text-green-600"}`}>
+                                                                {totalInvoicePayments.toLocaleString()}
+                                                            </td>
+                                                            <td />
+                                                        </tr>
+                                                    </tfoot>
+                                                )}
+                                            </table>
+                                        </div>
+                                    )}
+
+                                    {selectedInvoices.length === 0 && pendingInvoices.length > 0 && (
+                                        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                                            <p className="text-sm text-amber-700 dark:text-amber-300">
+                                                ⚡ No invoices selected — payment will be recorded as advance against this supplier.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── Payment breakdown summary ── */}
+                                {(selectedInvoices.length > 0 || selectedAdvances.length > 0) && (
+                                    <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-1.5 text-sm">
+                                        <p className="font-semibold text-xs uppercase text-muted-foreground mb-2">Payment Breakdown</p>
+                                        {selectedAdvances.length > 0 && (
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">From advance(s):</span>
+                                                <span className="font-mono font-semibold text-green-600">{totalAdvanceApplied.toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">From {voucherType} ({voucherType === "bank" ? "cheque/transfer" : "cash"}):</span>
+                                            <span className="font-mono font-semibold">{totalDebit.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between border-t border-border pt-1.5 font-bold">
+                                            <span>Total settled:</span>
+                                            <span className={`font-mono ${totalInvoicePayments > totalDebit + totalAdvanceApplied + 0.01 ? "text-red-500" : "text-primary"}`}>
+                                                {(totalDebit + totalAdvanceApplied).toLocaleString()}
+                                            </span>
+                                        </div>
+                                        {selectedInvoices.length > 0 && totalInvoicePayments > totalDebit + totalAdvanceApplied + 0.01 && (
+                                            <p className="text-xs text-red-500 font-medium pt-1">
+                                                ⚠ Still short by {(totalInvoicePayments - totalDebit - totalAdvanceApplied).toLocaleString()} — increase the {voucherType} payment or apply more advance.
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>
