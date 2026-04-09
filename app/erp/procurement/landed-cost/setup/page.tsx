@@ -715,7 +715,7 @@ console.log(res)
       </div>
 
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-0">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Header Info Section */}
             <div className="space-y-3">

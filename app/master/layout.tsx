@@ -3,6 +3,7 @@ export const revalidate = 0;
 
 import { MasterTitleUpdater } from "./title-updater";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import { PageTransition } from "@/components/layouts/page-transition";
 
 export default function MasterLayout({
     children,
@@ -12,7 +13,9 @@ export default function MasterLayout({
     return (
         <DashboardLayout>
             <MasterTitleUpdater />
-            {children}
+            <PageTransition>
+                {children}
+            </PageTransition>
         </DashboardLayout>
     );
 }

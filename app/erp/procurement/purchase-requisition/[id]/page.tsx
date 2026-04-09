@@ -62,8 +62,8 @@ export default function PurchaseRequisitionDetail() {
         }
     };
 
-    if (loading) return <div className="p-6">Loading...</div>;
-    if (!pr) return <div className="p-6">Not found</div>;
+    if (loading) return <div className="p-0">Loading...</div>;
+    if (!pr) return <div className="p-0">Not found</div>;
 
     return (
         <div className="p-6 space-y-6 max-w-4xl mx-auto">

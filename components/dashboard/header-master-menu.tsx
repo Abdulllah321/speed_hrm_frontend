@@ -1,7 +1,8 @@
 "use client";
 
+import { useState, useMemo, startTransition } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
+import { addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -25,7 +26,6 @@ import {
 } from "@/components/ui/tabs";
 import { Database, ChevronRight, Search, LayoutGrid, Users, Package, Monitor } from "lucide-react";
 import { masterMenuData, MenuItem, filterMenuByPermissions } from "./sidebar-menu-data";
-import { createNavigationHandler } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 
@@ -126,9 +126,6 @@ export function HeaderMasterMenu() {
   const [activeTab, setActiveTab] = useState<string>("POS");
   const { hasAnyPermission, hasAllPermissions, isAdmin } = useAuth();
 
-  // Create navigation handler with router
-  const navigate = createNavigationHandler(router);
-
   const filteredMasterMenu = useMemo(
     () =>
       filterMenuByPermissions(masterMenuData, {
@@ -163,8 +160,11 @@ export function HeaderMasterMenu() {
 
   const handleClick = (href: string, e: React.MouseEvent) => {
     e.preventDefault();
-    navigate(href);
     setOpen(false);
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push(href);
+    });
   };
 
   if (filteredMasterMenu.length === 0) {

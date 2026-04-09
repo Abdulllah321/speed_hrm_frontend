@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import { PageTransition } from "@/components/layouts/page-transition";
 
 export default function FinanceLayout({
     children,
@@ -10,7 +11,9 @@ export default function FinanceLayout({
 }) {
     return (
         <DashboardLayout>
-            {children}
+            <PageTransition>
+                {children}
+            </PageTransition>
         </DashboardLayout>
     );
 }

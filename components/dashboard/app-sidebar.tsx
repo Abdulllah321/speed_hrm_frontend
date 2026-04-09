@@ -106,7 +106,7 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
         isActive && "bg-sidebar-accent/80 font-medium shadow-sm",
       )}
     >
-      <Link href={item.href || "#"}>
+      <Link href={item.href || "#"} transitionTypes={["nav-forward"]}>
         <span>{item.title}</span>
       </Link>
     </SidebarMenuSubButton>
@@ -236,7 +236,7 @@ function MenuItemComponent({
           "data-[active=true]:bg-sidebar-accent data-[active=true]:shadow-md",
         )}
       >
-        <Link href={item.href || "#"}>
+        <Link href={item.href || "#"} transitionTypes={["nav-forward"]}>
           {Icon && (
             <Icon
               className={cn(
@@ -342,6 +342,7 @@ function SubMenuItemInPopover({
   return (
     <Link
       href={item.href || "#"}
+      transitionTypes={["nav-forward"]}
       className={`
         block w-full rounded-sm px-2 py-1.5 text-sm
         hover:bg-accent hover:text-accent-foreground

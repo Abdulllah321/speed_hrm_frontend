@@ -97,7 +97,8 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
       <AppSidebar />
       <SidebarInset>
         <header className="flex shrink-0 h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm" style={{
-          top: "var(--banner-height)"
+          top: "var(--banner-height)",
+          viewTransitionName: "site-header",
         }}>
           <div className="flex items-center gap-3 flex-1 min-w-0">
             <SidebarTrigger className="shrink-0" />

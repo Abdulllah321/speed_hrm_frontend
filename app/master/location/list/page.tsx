@@ -26,7 +26,7 @@ export default async function LocationListPage({ searchParams }: PageProps) {
     const locations = locationsRes.data || [];
 
     return (
-      <div className="p-6">
+      <div className="p-0">
         <LocationList initialLocations={locations} newItemId={params.newItemId} />
       </div>
     );

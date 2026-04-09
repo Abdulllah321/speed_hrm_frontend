@@ -75,8 +75,8 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
         }
     };
 
-    if (loading && !quotation) return <div className="p-6">Loading...</div>;
-    if (!quotation) return <div className="p-6">Not found</div>;
+    if (loading && !quotation) return <div className="p-0">Loading...</div>;
+    if (!quotation) return <div className="p-0">Not found</div>;
 
     return (
         <div className="p-6 space-y-6 max-w-6xl mx-auto">

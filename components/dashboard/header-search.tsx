@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
+import { addTransitionType } from "react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -140,10 +141,13 @@ export function HeaderSearch({ onNavigate }: HeaderSearchProps) {
   }, [dbResults]);
 
   const handleSelect = (href: string) => {
-    router.push(href);
     setOpen(false);
     setSearch("");
     onNavigate?.();
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push(href);
+    });
   };
 
   const getResultIcon = (type: string) => {

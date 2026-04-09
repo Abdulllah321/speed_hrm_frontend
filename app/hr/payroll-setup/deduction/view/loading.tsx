@@ -46,7 +46,7 @@ export default function Loading() {
 
       {/* Table Skeleton */}
       <Card>
-        <CardContent className="p-6">
+        <CardContent className="p-0">
           <div className="space-y-4">
             {/* Search Bar Skeleton */}
             <Skeleton className="h-10 w-full max-w-md" />

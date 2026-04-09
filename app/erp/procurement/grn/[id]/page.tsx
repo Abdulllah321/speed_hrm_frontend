@@ -32,8 +32,8 @@ export default function GrnDetailPage() {
     if (id) load();
   }, [id]);
 
-  if (loading) return <div className="p-6">Loading...</div>;
-  if (!grn) return <div className="p-6">Not found</div>;
+  if (loading) return <div className="p-0">Loading...</div>;
+  if (!grn) return <div className="p-0">Not found</div>;
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
