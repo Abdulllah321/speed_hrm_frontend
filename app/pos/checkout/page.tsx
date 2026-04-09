@@ -21,11 +21,13 @@ import {
     ArrowLeft, Loader2, Tag, TicketPercent, Handshake, CheckCircle2,
     XCircle, Search, ShoppingCart, Printer, Trash2, Plus, Percent,
     BadgeDollarSign, CreditCard, Banknote, Building2, Ticket,
-    ChevronDown, ChevronUp,
+    ChevronDown, ChevronUp, PauseCircle,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import { cn, getCookie } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { HoldOrderModal } from "@/components/pos/hold-order-modal";
+import { PrintReceipt } from "@/components/pos/print-receipt";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface PromoConfig {
@@ -66,122 +68,6 @@ const TENDER_OPTIONS = [
     { value: "bank_transfer", label: "Bank Transfer", icon: Building2 },
     { value: "voucher", label: "Voucher", icon: Ticket },
 ];
-
-// ─── Print Receipt ───────────────────────────────────────────────────────
-function PrintReceipt({ order, cartItems, tenders, discountMode, selectedPromo, appliedCoupon, selectedAlliance, onClose }: any) {
-    const orderDiscount = order?.discountAmount ?? 0;
-    const grandTotal = order?.grandTotal ?? 0;
-    const changeAmount = order?.changeAmount ?? 0;
-    const totalPaid = tenders.reduce((a: number, t: Tender) => a + t.amount, 0);
-
-    return (
-        <Dialog open onOpenChange={onClose}>
-            <DialogContent className="max-w-md print:shadow-none print:border-none">
-                <DialogHeader className="print:hidden">
-                    <DialogTitle>Receipt Preview</DialogTitle>
-                    <p className="text-sm text-muted-foreground">Review the receipt before printing.</p>
-                </DialogHeader>
-
-                {/* Receipt content */}
-                <div id="receipt-content" className="font-mono text-sm space-y-2">
-                    <div className="text-center space-y-0.5">
-                        <p className="font-bold text-base">{getCookie("companyName") || "Store"}</p>
-                        <p className="text-xs text-muted-foreground">{new Date().toLocaleString("en-PK")}</p>
-                        <p className="text-xs font-semibold">Receipt #: {order?.orderNumber}</p>
-                    </div>
-
-                    <Separator />
-
-                    {/* Items */}
-                    <div className="space-y-1">
-                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 text-xs font-bold text-muted-foreground">
-                            <span>Item</span><span>Qty</span><span>Price</span><span className="text-right">Total</span>
-                        </div>
-                        {cartItems.map((item: CartItem) => (
-                            <div key={item.id} className="grid grid-cols-[1fr_auto_auto_auto] gap-x-2 text-xs">
-                                <div>
-                                    <p className="font-medium truncate">{item.name}</p>
-                                    {item.discountPercent > 0 && (
-                                        <p className="text-destructive">-{item.discountPercent}% off</p>
-                                    )}
-                                </div>
-                                <span>{item.quantity}</span>
-                                <span className="font-mono">{fmtCurrency(item.price)}</span>
-                                <span className="font-mono text-right">{fmtCurrency(item.total)}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <Separator />
-
-                    {/* Totals */}
-                    <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Subtotal</span>
-                            <span className="font-mono">{fmtCurrency(cartItems.reduce((a: number, i: CartItem) => a + i.price * i.quantity, 0))}</span>
-                        </div>
-                        {cartItems.reduce((a: number, i: CartItem) => a + i.discountAmount, 0) > 0 && (
-                            <div className="flex justify-between text-destructive">
-                                <span>Item Discounts</span>
-                                <span className="font-mono">-{fmtCurrency(cartItems.reduce((a: number, i: CartItem) => a + i.discountAmount, 0))}</span>
-                            </div>
-                        )}
-                        {orderDiscount > 0 && (
-                            <div className="flex justify-between text-primary">
-                                <span>
-                                    {discountMode === "promo" && `Promo: ${selectedPromo?.code}`}
-                                    {discountMode === "coupon" && `Coupon: ${appliedCoupon?.code}`}
-                                    {discountMode === "alliance" && `Alliance: ${selectedAlliance?.code}`}
-                                    {discountMode === "manual" && "Manual Discount"}
-                                </span>
-                                <span className="font-mono">-{fmtCurrency(orderDiscount)}</span>
-                            </div>
-                        )}
-                        {cartItems.reduce((a: number, i: CartItem) => a + i.taxAmount, 0) > 0 && (
-                            <div className="flex justify-between text-muted-foreground">
-                                <span>Tax</span>
-                                <span className="font-mono">{fmtCurrency(cartItems.reduce((a: number, i: CartItem) => a + i.taxAmount, 0))}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between font-bold text-base pt-1 border-t">
-                            <span>Total</span>
-                            <span className="font-mono">{fmtCurrency(grandTotal)}</span>
-                        </div>
-                    </div>
-
-                    <Separator />
-
-                    {/* Payment */}
-                    <div className="space-y-1 text-xs">
-                        {tenders.map((t: Tender, i: number) => (
-                            <div key={i} className="flex justify-between">
-                                <span className="text-muted-foreground capitalize">{t.method.replace("_", " ")}{t.cardLast4 ? ` ••••${t.cardLast4}` : ""}</span>
-                                <span className="font-mono font-medium">{fmtCurrency(t.amount)}</span>
-                            </div>
-                        ))}
-                        {changeAmount > 0 && (
-                            <div className="flex justify-between font-semibold text-primary">
-                                <span>Change</span>
-                                <span className="font-mono">{fmtCurrency(changeAmount)}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    <Separator />
-                    <p className="text-center text-xs text-muted-foreground">*** THANK YOU FOR SHOPPING ***</p>
-                    <p className="text-center text-xs text-muted-foreground font-mono tracking-widest">{order?.orderNumber}</p>
-                </div>
-
-                <DialogFooter className="print:hidden gap-2">
-                    <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
-                    <Button onClick={() => window.print()} className="flex-1 gap-2">
-                        <Printer className="h-4 w-4" /> Print Receipt
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-}
 
 // ─── Customer Selection ──────────────────────────────────────────────────
 function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, onOpenChange: (open: boolean) => void, onSuccess: (customer: Customer) => void }) {
@@ -267,6 +153,11 @@ export default function CheckoutPage() {
     const [allianceSearch, setAllianceSearch] = useState("");
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
+    // ── Hold state ──────────────────────────────────────────────────────
+    const [showHoldModal, setShowHoldModal] = useState(false);
+    const [isHolding, setIsHolding] = useState(false);
+    const [holdOrderId, setHoldOrderId] = useState<string | null>(null);
+
     // ── Customer state ──────────────────────────────────────────────────
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -311,6 +202,9 @@ export default function CheckoutPage() {
         const items: CartItem[] = JSON.parse(raw);
         setCartItems(items);
         setPromoScopedItems(new Set(items.map((i) => i.id)));
+        // Restore hold order ID if resuming from hold
+        const holdId = sessionStorage.getItem("pos_hold_order_id");
+        if (holdId) setHoldOrderId(holdId);
     }, [router]);
 
     // ── Load config ────────────────────────────────────────────────────
@@ -414,6 +308,35 @@ export default function CheckoutPage() {
     };
 
     // ── Submit order ───────────────────────────────────────────────────
+    const handleHold = useCallback(async (holdUntilTime?: string) => {
+        if (!holdUntilTime) { setShowHoldModal(true); return; }
+        setIsHolding(true);
+        try {
+            const payload = {
+                items: cartItems.map(item => ({
+                    itemId: item.id,
+                    quantity: item.quantity,
+                    unitPrice: item.price,
+                    discountPercent: item.discountPercent,
+                    taxPercent: item.taxPercent,
+                    isStockInTransit: item.isStockInTransit || false,
+                })),
+            };
+            const res = await authFetch("/pos-sales/orders/hold", { method: "POST", body: payload });
+            if (res.ok && res.data?.status) {
+                toast.success(res.data.message || "Order placed on hold");
+                setShowHoldModal(false);
+                router.push("/pos/new-sale");
+            } else {
+                toast.error(res.data?.message || "Failed to hold order");
+            }
+        } catch {
+            toast.error("Failed to hold order. Check connection.");
+        } finally {
+            setIsHolding(false);
+        }
+    }, [cartItems, router]);
+
     const handleConfirm = useCallback(async () => {
         if (balanceDue > 0) { toast.error("Balance due must be 0 before completing."); return; }
         setIsSubmitting(true);
@@ -434,6 +357,9 @@ export default function CheckoutPage() {
                 tenders: tenders.length > 0 ? tenders : [{ method: "cash", amount: grandTotal }],
                 customerId: selectedCustomer?.id || null,
             };
+
+            // If resuming from a hold order, pass holdOrderId to skip double stock deduction
+            if (holdOrderId) body.holdOrderId = holdOrderId;
 
             if (discountMode === "promo" && selectedPromo) {
                 body.promoId = selectedPromo.id;
@@ -460,6 +386,7 @@ export default function CheckoutPage() {
             if (res.ok && res.data?.status) {
                 setCompletedOrder(res.data.data);
                 sessionStorage.removeItem("pos_cart");
+                sessionStorage.removeItem("pos_hold_order_id");
             } else {
                 toast.error(res.data?.message || "Checkout failed");
             }
@@ -514,20 +441,6 @@ export default function CheckoutPage() {
         <>
             {/* Print-only styles */}
             <style>{`@media print { body > * { display: none; } #receipt-content, #receipt-content * { display: block !important; } }`}</style>
-
-            {/* Receipt modal */}
-            {completedOrder && (
-                <PrintReceipt
-                    order={completedOrder}
-                    cartItems={cartItems}
-                    tenders={completedOrder.tenders ?? tenders}
-                    discountMode={discountMode}
-                    selectedPromo={selectedPromo}
-                    appliedCoupon={appliedCoupon}
-                    selectedAlliance={selectedAlliance}
-                    onClose={() => router.push("/pos/new-sale")}
-                />
-            )}
 
             <div className="flex flex-col h-full gap-4">
                 {/* Header */}
@@ -715,7 +628,7 @@ export default function CheckoutPage() {
                                         <p className="text-xs text-muted-foreground italic py-2">No active promos for this location.</p>
                                     ) : (
                                         <div className="space-y-2">
-                                            <ScrollArea className="max-h-[200px]">
+                                            <div className="max-h-[200px] overflow-y-auto">
                                                 <div className="space-y-2 pr-1">
                                                     {promos.map((promo) => {
                                                         const discount = calcPromoDiscount(promo, subtotalAfterItems);
@@ -799,7 +712,7 @@ export default function CheckoutPage() {
                                                         );
                                                     })}
                                                 </div>
-                                            </ScrollArea>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -855,7 +768,7 @@ export default function CheckoutPage() {
                                             <Loader2 className="h-4 w-4 animate-spin" /> Loading...
                                         </div>
                                     ) : (
-                                        <ScrollArea className="max-h-[200px]">
+                                        <div className="max-h-[200px] overflow-y-auto">
                                             <div className="space-y-1.5 pr-1">
                                                 {filteredAlliances.length === 0 && (
                                                     <p className="text-xs text-muted-foreground italic py-1">No matching alliances.</p>
@@ -931,7 +844,7 @@ export default function CheckoutPage() {
                                                     );
                                                 })}
                                             </div>
-                                        </ScrollArea>
+                                        </div>
                                     )}
                                 </div>
                             </details>
@@ -1135,19 +1048,33 @@ export default function CheckoutPage() {
                         </div>
 
                         {/* ── Complete Sale ─────────────────────────────────────── */}
-                        <Button
-                            size="lg"
-                            className="h-14 text-base font-bold gap-2 rounded-xl"
-                            onClick={handleConfirm}
-                            disabled={isSubmitting || cartItems.length === 0 || balanceDue > 0}
-                        >
-                            {isSubmitting
-                                ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
-                                : balanceDue > 0
-                                    ? `Balance Due: Rs. ${fmtCurrency(balanceDue)}`
-                                    : <><Printer className="h-5 w-5" /> Complete Sale & Print Receipt</>
-                            }
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="h-14 font-bold gap-2 rounded-xl border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                onClick={() => handleHold()}
+                                disabled={isSubmitting || isHolding || cartItems.length === 0}
+                            >
+                                {isHolding
+                                    ? <><Loader2 className="h-5 w-5 animate-spin" /> Holding...</>
+                                    : <><PauseCircle className="h-5 w-5" /> Hold</>
+                                }
+                            </Button>
+                            <Button
+                                size="lg"
+                                className="h-14 flex-1 text-base font-bold gap-2 rounded-xl"
+                                onClick={handleConfirm}
+                                disabled={isSubmitting || cartItems.length === 0 || balanceDue > 0}
+                            >
+                                {isSubmitting
+                                    ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
+                                    : balanceDue > 0
+                                        ? `Balance Due: Rs. ${fmtCurrency(balanceDue)}`
+                                        : <><Printer className="h-5 w-5" /> Complete Sale & Print Receipt</>
+                                }
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1168,6 +1095,15 @@ export default function CheckoutPage() {
                     }}
                 />
             )}
+
+            {/* Hold Order Modal */}
+            <HoldOrderModal
+                open={showHoldModal}
+                onOpenChange={setShowHoldModal}
+                onConfirm={handleHold}
+                isHolding={isHolding}
+                itemCount={cartItems.length}
+            />
         </>
     );
 }

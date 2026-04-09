@@ -94,7 +94,7 @@ export default function LandedCostReportPage() {
                         <CardTitle className="text-xl font-bold text-gray-800">Landed Cost Detailed Report</CardTitle>
                         <div className="text-right">
                             <p className="text-sm font-semibold text-blue-700">{data.landedCostNumber}</p>
-                            <p className="text-[10px] text-gray-500">{format(new Date(data.date), 'dd MMM yyyy HH:mm')}</p>
+                            <p className="text-[10px] text-gray-500">{data.date ? format(new Date(data.date), 'dd MMM yyyy HH:mm') : '-'}</p>
                         </div>
                     </div>
                 </CardHeader>
