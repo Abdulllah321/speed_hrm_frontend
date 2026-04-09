@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Search, Eye, FileText, Truck, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,7 @@ import { toast } from "sonner";
 const sampleChallans: any[] = []; // Empty array instead of dummy data
 
 export default function DeliveryChallansPage() {
+  const router = useRouter();
   const [challans, setChallans] = useState(sampleChallans);
   const [salesOrders, setSalesOrders] = useState<any[]>([]); // Add state for sales orders
   const [selectedOrder, setSelectedOrder] = useState<any>(null); // Add state for selected order
@@ -235,125 +237,10 @@ export default function DeliveryChallansPage() {
             Manage goods dispatch and delivery records
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Delivery Challan
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Delivery Challan</DialogTitle>
-              <DialogDescription>
-                Create a delivery challan from a sales order
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Sales Order</Label>
-                <Select onValueChange={handleOrderSelection}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select sales order" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {salesOrders.map((order) => (
-                      <SelectItem key={order.id} value={order.id}>
-                        {order.orderNo} - {order.customer?.name || order.customer}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Driver Name</Label>
-                <Input
-                  className="col-span-3"
-                  placeholder="Enter driver name"
-                  value={formData.driverName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, driverName: e.target.value }))}
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Vehicle No</Label>
-                <Input
-                  className="col-span-3"
-                  placeholder="ABC-123"
-                  value={formData.vehicleNo}
-                  onChange={(e) => setFormData(prev => ({ ...prev, vehicleNo: e.target.value }))}
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Transport Mode</Label>
-                <Select onValueChange={(value) => setFormData(prev => ({ ...prev, transportMode: value }))}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select transport mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SELF">Self Transport</SelectItem>
-                    <SelectItem value="COURIER">Courier</SelectItem>
-                    <SelectItem value="TRANSPORT">Transport Company</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-4 p-4 border rounded-lg">
-                <h4 className="font-medium mb-4">Delivery Items</h4>
-                
-                {deliveryItems.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <div className="mb-2">📦</div>
-                    <p>Select a sales order to view items</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {deliveryItems.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                        <div className="flex-1">
-                          <div className="font-medium text-sm">
-                            {item.item?.sku || item.itemId}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {item.item?.description || 'No description'}
-                          </div>
-                          <div className="text-xs text-blue-600 mt-1">
-                            Unit Price: Rs. {(item.salePrice || 0).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-medium">Qty: {item.deliveredQty}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Total: Rs. {((item.deliveredQty || 0) * (item.salePrice || 0)).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                {deliveryItems.length > 0 && (
-                  <div className="mt-4 pt-4 border-t space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="font-medium">Total Quantity:</span>
-                      <span className="font-medium">{totalQuantity} items</span>
-                    </div>
-                    <div className="flex justify-between text-lg font-bold">
-                      <span>Total Amount:</span>
-                      <span className="text-green-600">Rs. {totalAmount.toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateChallan} disabled={createLoading}>
-                {createLoading ? "Creating..." : "Create Challan"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => router.push("/erp/sales/delivery-challans/create")}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Delivery Challan
+        </Button>
       </div>
 
       <div className="flex items-center gap-4">
@@ -443,7 +330,12 @@ export default function DeliveryChallansPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm" title="View">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        title="View"
+                        onClick={() => router.push(`/erp/sales/delivery-challans/${challan.id}`)}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                       {challan.status === "PENDING" && (
