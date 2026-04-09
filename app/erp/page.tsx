@@ -41,60 +41,17 @@ import { authFetch } from "@/lib/auth";
 import { stockLedgerApi } from "@/lib/api";
 import { toast } from "sonner";
 
-// --- Advanced Mock Data for Analytics ---
-
-const funnelData = [
-  { stage: 'Prospects', value: 1200, fill: "var(--primary)" },
-  { stage: 'Leads', value: 800, fill: "oklch(0.6721 0.1944 294.4928)" },
-  { stage: 'Quotes', value: 450, fill: "oklch(0.8003 0.1821 151.7110)" },
-  { stage: 'Orders', value: 280, fill: "oklch(0.7106 0.1661 22.2162)" },
-  { stage: 'Fulfilled', value: 240, fill: "#10b981" },
-];
-
-const performanceRadarData = [
-  { subject: 'Growth', A: 120, B: 110, fullMark: 150 },
-  { subject: 'Retention', A: 98, B: 130, fullMark: 150 },
-  { subject: 'Efficiency', A: 86, B: 130, fullMark: 150 },
-  { subject: 'Margins', A: 99, B: 100, fullMark: 150 },
-  { subject: 'Volume', A: 85, B: 90, fullMark: 150 },
-  { subject: 'Support', A: 65, B: 85, fullMark: 150 },
-];
-
-const activityData = [
-  { hourIdx: 0, dayIdx: 0, intensity: 20, hour: '08:00', day: 'Mon' },
-  { hourIdx: 1, dayIdx: 0, intensity: 45, hour: '10:00', day: 'Mon' },
-  { hourIdx: 2, dayIdx: 0, intensity: 80, hour: '12:00', day: 'Mon' },
-  { hourIdx: 3, dayIdx: 0, intensity: 65, hour: '14:00', day: 'Mon' },
-  { hourIdx: 4, dayIdx: 0, intensity: 40, hour: '16:00', day: 'Mon' },
-  { hourIdx: 0, dayIdx: 2, intensity: 30, hour: '08:00', day: 'Wed' },
-  { hourIdx: 1, dayIdx: 2, intensity: 55, hour: '10:00', day: 'Wed' },
-  { hourIdx: 2, dayIdx: 2, intensity: 95, hour: '12:00', day: 'Wed' },
-  { hourIdx: 3, dayIdx: 2, intensity: 75, hour: '14:00', day: 'Wed' },
-  { hourIdx: 4, dayIdx: 2, intensity: 50, hour: '16:00', day: 'Wed' },
-  { hourIdx: 0, dayIdx: 4, intensity: 25, hour: '08:00', day: 'Fri' },
-  { hourIdx: 1, dayIdx: 4, intensity: 40, hour: '10:00', day: 'Fri' },
-  { hourIdx: 2, dayIdx: 4, intensity: 70, hour: '12:00', day: 'Fri' },
-  { hourIdx: 3, dayIdx: 4, intensity: 60, hour: '14:00', day: 'Fri' },
-  { hourIdx: 4, dayIdx: 4, intensity: 35, hour: '16:00', day: 'Fri' },
-];
+// --- Advanced Mock Data for Analytics --- (replaced by dynamic derivation in component)
 
 const dayMap = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const hourMap = ['08:00', '10:00', '12:00', '14:00', '16:00'];
 
-const dummyInventoryData = [
-  { id: "SKU-001", name: "Premium Wireless Headset", category: "Electronics", qty: 45, status: "In Stock" },
-  { id: "SKU-002", name: "Ergonomic Office Chair", category: "Furniture", qty: 12, status: "Low Stock" },
-  { id: "SKU-003", name: "USB-C Fast Charger", category: "Electronics", qty: 150, status: "In Stock" },
-  { id: "SKU-004", name: "Minimalist Desk Lamp", category: "Appliance", qty: 0, status: "Out of Stock" },
-  { id: "SKU-005", name: "Smart Watch Series 5", category: "Electronics", qty: 28, status: "In Stock" },
-];
-
 const dummyOverviewTransactions = [
-  { id: "ORD-9921", name: "Sale - ORD-9921", cat: "Electronics", val: "$1,240.00" },
-  { id: "ORD-9920", name: "Sale - ORD-9920", cat: "Furniture", val: "$450.00" },
-  { id: "ORD-9919", name: "Sale - ORD-9919", cat: "Electronics", val: "$89.99" },
-  { id: "ORD-9918", name: "Sale - ORD-9918", cat: "Groceries", val: "$210.50" },
-  { id: "ORD-9917", name: "Sale - ORD-9917", cat: "Apparel", val: "$345.00" },
+  { id: "ORD-9921", name: "Sale - ORD-9921", cat: "Electronics", val: "PKR 1,240.00" },
+  { id: "ORD-9920", name: "Sale - ORD-9920", cat: "Furniture",   val: "PKR 450.00" },
+  { id: "ORD-9919", name: "Sale - ORD-9919", cat: "Electronics", val: "PKR 89.99" },
+  { id: "ORD-9918", name: "Sale - ORD-9918", cat: "Groceries",   val: "PKR 210.50" },
+  { id: "ORD-9917", name: "Sale - ORD-9917", cat: "Apparel",     val: "PKR 345.00" },
 ];
 
 // --- Internal Components ---
@@ -218,9 +175,9 @@ const ERPDashboard = () => {
       : 245000; // Dummy fallback
 
     return {
-      totalRevenue: totalRevenue.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }),
+      totalRevenue: `PKR ${totalRevenue.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`,
       activeUsers: activeUsers.toLocaleString(),
-      inventoryValue: `$${inventoryValue.toLocaleString()}`,
+      inventoryValue: `PKR ${inventoryValue.toLocaleString('en-PK')}`,
       totalOrders: totalOrders.toLocaleString(),
       inventoryCount: hasStock ? stockLevels.length : 156
     };
@@ -305,9 +262,191 @@ const ERPDashboard = () => {
       id: order.orderNumber,
       name: `Sale - ${order.orderNumber}`,
       cat: order.items?.[0]?.item?.category?.name || "POS Sale",
-      val: Number(order.grandTotal).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+      val: `PKR ${Number(order.grandTotal).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     }));
   }, [orders, loading]);
+
+  // ── Analytics Tab: derived from real orders ──────────────────────────────
+
+  const funnelData = useMemo(() => {
+    const total = orders.length || 1200;
+    const completed = orders.filter(o => o.status === 'completed').length || Math.round(total * 0.2);
+    const held = orders.filter(o => o.status === 'hold').length;
+    const withCustomer = orders.filter(o => o.customerId).length || Math.round(total * 0.37);
+    const multiItem = orders.filter(o => (o.items?.length || 0) > 1).length || Math.round(total * 0.23);
+
+    return [
+      { stage: 'Total Orders',     value: total,                                          fill: "var(--primary)" },
+      { stage: 'With Customer',    value: withCustomer || Math.round(total * 0.37),       fill: "oklch(0.6721 0.1944 294.4928)" },
+      { stage: 'Multi-Item',       value: multiItem || Math.round(total * 0.23),          fill: "oklch(0.8003 0.1821 151.7110)" },
+      { stage: 'Completed',        value: completed,                                      fill: "oklch(0.7106 0.1661 22.2162)" },
+      { stage: 'Held / Pending',   value: held || Math.round(total * 0.03),               fill: "#10b981" },
+    ];
+  }, [orders]);
+
+  const activityData = useMemo(() => {
+    // Build a 7-day × 5-hour intensity matrix from real order timestamps
+    const matrix: Record<string, number> = {};
+    const hourBuckets = [8, 10, 12, 14, 16];
+    const hourLabels = ['08:00', '10:00', '12:00', '14:00', '16:00'];
+
+    orders.forEach(order => {
+      const d = new Date(order.createdAt);
+      const dayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1; // Mon=0..Sun=6
+      const h = d.getHours();
+      const hourIdx = hourBuckets.reduce((best, bh, i) => Math.abs(h - bh) < Math.abs(h - hourBuckets[best]) ? i : best, 0);
+      const key = `${dayIdx}-${hourIdx}`;
+      matrix[key] = (matrix[key] || 0) + 1;
+    });
+
+    // If no real data, use illustrative fallback
+    if (orders.length === 0) {
+      return [
+        { hourIdx: 0, dayIdx: 0, intensity: 20, hour: '08:00', day: 'Mon' },
+        { hourIdx: 2, dayIdx: 0, intensity: 80, hour: '12:00', day: 'Mon' },
+        { hourIdx: 2, dayIdx: 2, intensity: 95, hour: '12:00', day: 'Wed' },
+        { hourIdx: 1, dayIdx: 2, intensity: 55, hour: '10:00', day: 'Wed' },
+        { hourIdx: 2, dayIdx: 4, intensity: 70, hour: '12:00', day: 'Fri' },
+        { hourIdx: 3, dayIdx: 4, intensity: 60, hour: '14:00', day: 'Fri' },
+      ];
+    }
+
+    const maxCount = Math.max(...Object.values(matrix), 1);
+    return Object.entries(matrix).map(([key, count]) => {
+      const [dayIdx, hourIdx] = key.split('-').map(Number);
+      return {
+        dayIdx,
+        hourIdx,
+        intensity: Math.round((count / maxCount) * 100),
+        day: dayMap[dayIdx],
+        hour: hourLabels[hourIdx],
+      };
+    });
+  }, [orders]);
+
+  const performanceRadarData = useMemo(() => {
+    if (orders.length === 0) {
+      return [
+        { subject: 'Growth',     A: 120, B: 110, fullMark: 150 },
+        { subject: 'Retention',  A: 98,  B: 130, fullMark: 150 },
+        { subject: 'Efficiency', A: 86,  B: 130, fullMark: 150 },
+        { subject: 'Margins',    A: 99,  B: 100, fullMark: 150 },
+        { subject: 'Volume',     A: 85,  B: 90,  fullMark: 150 },
+        { subject: 'Support',    A: 65,  B: 85,  fullMark: 150 },
+      ];
+    }
+
+    const completed = orders.filter(o => o.status === 'completed').length;
+    const completionRate = Math.round((completed / orders.length) * 150);
+
+    const withCustomer = orders.filter(o => o.customerId).length;
+    const retentionScore = Math.round((withCustomer / orders.length) * 150);
+
+    const avgItems = orders.reduce((s, o) => s + (o.items?.length || 1), 0) / orders.length;
+    const volumeScore = Math.min(Math.round(avgItems * 30), 150);
+
+    const cashOrders = orders.filter(o => o.tenderType === 'cash' || o.cashAmount > 0).length;
+    const efficiencyScore = Math.round((cashOrders / orders.length) * 150);
+
+    const totalRevenue = orders.reduce((s, o) => s + Number(o.grandTotal || 0), 0);
+    const avgOrder = totalRevenue / orders.length;
+    const marginsScore = Math.min(Math.round((avgOrder / 5000) * 150), 150);
+
+    const heldOrders = orders.filter(o => o.status === 'hold').length;
+    const supportScore = Math.max(150 - Math.round((heldOrders / orders.length) * 300), 30);
+
+    return [
+      { subject: 'Completion',  A: completionRate,  B: 110, fullMark: 150 },
+      { subject: 'Retention',   A: retentionScore,  B: 130, fullMark: 150 },
+      { subject: 'Efficiency',  A: efficiencyScore, B: 130, fullMark: 150 },
+      { subject: 'Avg Order',   A: marginsScore,    B: 100, fullMark: 150 },
+      { subject: 'Volume',      A: volumeScore,     B: 90,  fullMark: 150 },
+      { subject: 'Hold Rate',   A: supportScore,    B: 85,  fullMark: 150 },
+    ];
+  }, [orders]);
+
+  const analyticsKpis = useMemo(() => {
+    if (orders.length === 0) return {
+      forecastedRevenue: 'Rs. 1.42M', churnPct: '2.4%',
+      logisticsEff: '94.8%', topCategory: 'N/A',
+      forecastTrend: '+15.2%', topCategoryShare: '0%',
+    };
+
+    const totalRevenue = orders.reduce((s, o) => s + Number(o.grandTotal || 0), 0);
+    // Simple linear projection: last 30 days × 1.1
+    const now = new Date();
+    const last30 = orders.filter(o => (now.getTime() - new Date(o.createdAt).getTime()) < 30 * 86400000);
+    const last30Rev = last30.reduce((s, o) => s + Number(o.grandTotal || 0), 0);
+    const projected = last30Rev * 1.1;
+
+    const completed = orders.filter(o => o.status === 'completed').length;
+    const efficiencyPct = orders.length > 0 ? Math.round((completed / orders.length) * 100) : 0;
+
+    const withCustomer = orders.filter(o => o.customerId).length;
+    const churnPct = orders.length > 0 ? (100 - Math.round((withCustomer / orders.length) * 100)) : 0;
+
+    // Top category
+    const catCounts: Record<string, number> = {};
+    orders.forEach(o => o.items?.forEach((li: any) => {
+      const cat = li.item?.category?.name || 'Uncategorized';
+      catCounts[cat] = (catCounts[cat] || 0) + Number(li.lineTotal || 0);
+    }));
+    const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0];
+    const totalCatRev = Object.values(catCounts).reduce((a, b) => a + b, 0);
+    const topCatShare = topCat ? Math.round((topCat[1] / (totalCatRev || 1)) * 100) : 0;
+
+    const fmt = (n: number) => n >= 1_000_000
+      ? `Rs. ${(n / 1_000_000).toFixed(2)}M`
+      : n >= 1_000 ? `Rs. ${(n / 1_000).toFixed(1)}K` : `Rs. ${Math.round(n)}`;
+
+    return {
+      forecastedRevenue: fmt(projected),
+      churnPct: `${churnPct}%`,
+      logisticsEff: `${efficiencyPct}%`,
+      topCategory: topCat?.[0] || 'N/A',
+      forecastTrend: last30Rev > 0 ? `+${((projected - last30Rev) / last30Rev * 100).toFixed(1)}%` : '+10%',
+      topCategoryShare: `${topCatShare}% share`,
+    };
+  }, [orders]);
+
+  // ── Inventory Tab: derived from real stockLevels ─────────────────────────
+
+  const inventoryStats = useMemo(() => {
+    const LOW_THRESHOLD = 10;
+    let lowStock = 0, outOfStock = 0;
+    stockLevels.forEach((s: any) => {
+      const qty = Number(s.totalQty || 0);
+      if (qty === 0) outOfStock++;
+      else if (qty <= LOW_THRESHOLD) lowStock++;
+    });
+    return {
+      totalSkus: stockLevels.length || 156,
+      lowStockCount: stockLevels.length > 0 ? lowStock : 12,
+      outOfStockCount: stockLevels.length > 0 ? outOfStock : 3,
+      inTransitCount: stockLevels.filter((s: any) => s.location?.type === 'transit').length || (stockLevels.length === 0 ? 450 : 0),
+    };
+  }, [stockLevels]);
+
+  const inventoryRows = useMemo(() => {
+    const LOW_THRESHOLD = 10;
+    if (stockLevels.length === 0 && !loading) return [
+      { id: "SKU-001", name: "Premium Wireless Headset", category: "Electronics", qty: 45,  status: "In Stock" },
+      { id: "SKU-002", name: "Ergonomic Office Chair",   category: "Furniture",   qty: 12,  status: "Low Stock" },
+      { id: "SKU-003", name: "USB-C Fast Charger",       category: "Electronics", qty: 150, status: "In Stock" },
+      { id: "SKU-004", name: "Minimalist Desk Lamp",     category: "Appliance",   qty: 0,   status: "Out of Stock" },
+      { id: "SKU-005", name: "Smart Watch Series 5",     category: "Electronics", qty: 28,  status: "In Stock" },
+    ];
+    return stockLevels.slice(0, 50).map((s: any) => {
+      const qty = Number(s.totalQty || 0);
+      return {
+        id: s.item?.sku || s.itemId,
+        name: s.item?.description || s.itemId,
+        category: s.warehouse?.name || s.location?.name || "—",
+        qty,
+        status: qty === 0 ? "Out of Stock" : qty <= LOW_THRESHOLD ? "Low Stock" : "In Stock",
+      };
+    });
+  }, [stockLevels, loading]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -437,7 +576,7 @@ const ERPDashboard = () => {
                         <ReLineChart data={revenueTrendData}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                           <XAxis dataKey="label" axisLine={false} tickLine={false} fontSize={10} fontWeight={500} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} fontSize={10} fontWeight={500} tickFormatter={(v) => `$${v}`} />
+                          <YAxis axisLine={false} tickLine={false} fontSize={10} fontWeight={500} tickFormatter={(v) => `PKR ${(v/1000).toFixed(0)}K`} />
                           <Tooltip content={<ChartTooltipContent />} />
                           <Line type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 6, strokeWidth: 0 }} />
                           <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 6, strokeWidth: 0 }} />
@@ -565,8 +704,8 @@ const ERPDashboard = () => {
                   <CardContent className="space-y-4">
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Based on {orders.length} transactions, your average order value is <span className="text-primary font-bold">
-                        ${orders.length > 0 ? (orders.reduce((s, o) => s + Number(o.grandTotal), 0) / orders.length).toFixed(2) : "0.00"}
-                      </span>. 
+                        PKR {orders.length > 0 ? (orders.reduce((s, o) => s + Number(o.grandTotal), 0) / orders.length).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                      </span>.
                       Most sales occur in the <span className="text-primary font-bold">{categoryAggregation[0]?.name || "N/A"}</span> category.
                     </p>
                     <Button size="sm" className="w-full text-xs font-bold" onClick={fetchData}>Refresh Insights</Button>
@@ -580,38 +719,42 @@ const ERPDashboard = () => {
             {/* Advanced KPIs */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatsCard
-                title="Forecasted Revenue"
-                value="$1.42M"
+                title="Projected Revenue"
+                value={analyticsKpis.forecastedRevenue}
                 icon={BrainCircuit}
-                description="AI-driven projection for next month"
-                trend="+15.2%"
+                description="Linear projection from last 30 days"
+                trend={analyticsKpis.forecastTrend}
                 trendType="up"
-                subValue="98.2% Confidence"
+                subValue="Based on recent trend"
                 highlight
+                loading={loading}
               />
               <StatsCard
-                title="Churn Probability"
-                value="2.4%"
+                title="Walk-in Rate"
+                value={analyticsKpis.churnPct}
                 icon={Target}
-                description="Likelihood of customer attrition"
-                trend="-0.5%"
-                trendType="down"
-              />
-              <StatsCard
-                title="Logistics Efficiency"
-                value="94.8%"
-                icon={Zap}
-                description="Optimal warehouse pathing"
-                trend="Strong"
+                description="Orders without a linked customer"
+                trend="Anonymous sales"
                 trendType="neutral"
+                loading={loading}
               />
               <StatsCard
-                title="Market Sentiment"
-                value="Positive"
-                icon={PieChartIcon}
-                description="Social & Brand index"
-                trend="Rising"
+                title="Completion Rate"
+                value={analyticsKpis.logisticsEff}
+                icon={Zap}
+                description="Orders marked as completed"
+                trend="Fulfilment"
                 trendType="up"
+                loading={loading}
+              />
+              <StatsCard
+                title="Top Category"
+                value={analyticsKpis.topCategory}
+                icon={PieChartIcon}
+                description="Highest revenue category"
+                trend={analyticsKpis.topCategoryShare}
+                trendType="up"
+                loading={loading}
               />
             </div>
 
@@ -622,44 +765,63 @@ const ERPDashboard = () => {
                   <CardHeader>
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
                        <Filter className="h-4 w-4 text-primary" />
-                       Conversion Funnel
+                       Order Pipeline Funnel
                     </CardTitle>
-                    <CardDescription>Sales pipeline progression from lead to fulfillment</CardDescription>
+                    <CardDescription>Breakdown of orders by status and engagement</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
-                    <div className="h-[350px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
+                    {loading ? (
+                      <div className="h-[350px] flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <ChartContainer
+                        config={{
+                          value: { label: "Orders" },
+                        }}
+                        className="h-[350px] w-full"
+                      >
                         <BarChart
                           layout="vertical"
                           data={funnelData}
-                          margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                          margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                           <XAxis type="number" hide />
-                          <YAxis 
-                            dataKey="stage" 
-                            type="category" 
-                            axisLine={false} 
-                            tickLine={false} 
-                            fontSize={12} 
+                          <YAxis
+                            dataKey="stage"
+                            type="category"
+                            axisLine={false}
+                            tickLine={false}
+                            fontSize={12}
                             fontWeight={600}
                           />
-                          <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                            cursor={{ fill: 'rgba(var(--primary-rgb), 0.05)' }}
+                          <ChartTooltip
+                            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                            content={
+                              <ChartTooltipContent
+                                indicator="line"
+                                labelKey="stage"
+                                nameKey="stage"
+                                formatter={(value, name, item) => (
+                                  <div className="flex items-center justify-between gap-4 w-full">
+                                    <span className="text-muted-foreground">{item.payload.stage}</span>
+                                    <span className="font-mono font-semibold tabular-nums text-foreground">
+                                      {Number(value).toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              />
+                            }
                           />
-                          <Bar 
-                            dataKey="value" 
-                            radius={[0, 4, 4, 0]}
-                            barSize={32}
-                          >
+                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
                             {funnelData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.fill} />
                             ))}
                           </Bar>
                         </BarChart>
-                      </ResponsiveContainer>
-                    </div>
+                      </ChartContainer>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -669,61 +831,65 @@ const ERPDashboard = () => {
                        <Activity className="h-4 w-4 text-primary" />
                        Order Intensity Matrix
                     </CardTitle>
-                    <CardDescription>Peak activity hours across business week</CardDescription>
+                    <CardDescription>Peak activity hours across the business week</CardDescription>
                   </CardHeader>
                   <CardContent className="pt-6">
-                    <div className="h-[300px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <ScatterChart
-                          margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis 
-                            dataKey="hourIdx" 
-                            name="Hour" 
-                            type="number"
-                            ticks={[0, 1, 2, 3, 4]}
-                            tickFormatter={(v) => hourMap[v] || ''}
-                            axisLine={false} 
-                            tickLine={false} 
-                            fontSize={10} 
-                            fontWeight={600} 
-                          />
-                          <YAxis 
-                            dataKey="dayIdx" 
-                            name="Day" 
-                            type="number"
-                            ticks={[0, 1, 2, 3, 4, 5, 6]}
-                            tickFormatter={(v) => dayMap[v] || ''}
-                            axisLine={false} 
-                            tickLine={false} 
-                            fontSize={10} 
-                            fontWeight={600} 
-                          />
-                          <ZAxis dataKey="intensity" range={[50, 800]} name="Intensity" />
-                          <Tooltip 
-                            cursor={{ strokeDasharray: '3 3' }} 
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                const data = payload[0].payload;
-                                return (
-                                  <div className="bg-background border border-border p-2 rounded-lg shadow-sm text-xs">
-                                    <div className="font-bold">{data.day} @ {data.hour}</div>
-                                    <div className="text-primary font-bold">Intensity: {data.intensity}%</div>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          <Scatter name="Activity" data={activityData} fill="var(--primary)" fillOpacity={0.6}>
-                            {activityData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fillOpacity={entry.intensity / 100} />
-                            ))}
-                          </Scatter>
-                        </ScatterChart>
-                      </ResponsiveContainer>
-                    </div>
+                    {loading ? (
+                      <div className="h-[300px] flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : (
+                      <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis
+                              dataKey="hourIdx"
+                              name="Hour"
+                              type="number"
+                              ticks={[0, 1, 2, 3, 4]}
+                              tickFormatter={(v) => hourMap[v] || ''}
+                              axisLine={false}
+                              tickLine={false}
+                              fontSize={10}
+                              fontWeight={600}
+                            />
+                            <YAxis
+                              dataKey="dayIdx"
+                              name="Day"
+                              type="number"
+                              ticks={[0, 1, 2, 3, 4, 5, 6]}
+                              tickFormatter={(v) => dayMap[v] || ''}
+                              axisLine={false}
+                              tickLine={false}
+                              fontSize={10}
+                              fontWeight={600}
+                            />
+                            <ZAxis dataKey="intensity" range={[50, 800]} name="Intensity" />
+                            <Tooltip
+                              cursor={{ strokeDasharray: '3 3' }}
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const d = payload[0].payload;
+                                  return (
+                                    <div className="bg-background border border-border p-2 rounded-lg shadow-sm text-xs">
+                                      <div className="font-bold">{d.day} @ {d.hour}</div>
+                                      <div className="text-primary font-bold">Intensity: {d.intensity}%</div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Scatter name="Activity" data={activityData} fill="var(--primary)" fillOpacity={0.6}>
+                              {activityData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fillOpacity={entry.intensity / 100} />
+                              ))}
+                            </Scatter>
+                          </ScatterChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -733,43 +899,50 @@ const ERPDashboard = () => {
                  <Card className="border-border/50 shadow-sm overflow-hidden">
                     <CardHeader>
                        <CardTitle className="text-lg font-bold">Operational Radar</CardTitle>
-                       <CardDescription>Strategic KPI balance comparison</CardDescription>
+                       <CardDescription>KPI balance vs benchmark</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-2">
-                       <div className="h-[280px] w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={performanceRadarData}>
-                                <PolarGrid stroke="#e2e8f0" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 700 }} />
-                                <PolarRadiusAxis angle={30} domain={[0, 150]} hide />
-                                <Radar
-                                   name="Current Year"
-                                   dataKey="A"
-                                   stroke="var(--primary)"
-                                   fill="var(--primary)"
-                                   fillOpacity={0.5}
-                                />
-                                <Radar
-                                   name="Market Average"
-                                   dataKey="B"
-                                   stroke="#10b981"
-                                   fill="#10b981"
-                                   fillOpacity={0.3}
-                                />
-                                <Tooltip />
-                             </RadarChart>
-                          </ResponsiveContainer>
-                       </div>
-                       <div className="flex justify-center gap-4 mt-2">
-                          <div className="flex items-center gap-1.5">
-                             <div className="w-3 h-3 rounded-full bg-primary" />
-                             <span className="text-[10px] font-bold">Business</span>
+                      {loading ? (
+                        <div className="h-[280px] flex items-center justify-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : (
+                        <>
+                          <ChartContainer
+                            config={{
+                              A: { label: "Your Business", color: "var(--primary)" },
+                              B: { label: "Benchmark",     color: "#10b981" },
+                            }}
+                            className="h-[280px] w-full"
+                          >
+                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={performanceRadarData}>
+                              <PolarGrid stroke="#e2e8f0" />
+                              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 700 }} />
+                              <PolarRadiusAxis angle={30} domain={[0, 150]} hide />
+                              <Radar name="Your Business" dataKey="A" stroke="var(--primary)" fill="var(--primary)" fillOpacity={0.5} />
+                              <Radar name="Benchmark" dataKey="B" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
+                              <ChartTooltip
+                                content={
+                                  <ChartTooltipContent
+                                    indicator="line"
+                                    labelKey="subject"
+                                  />
+                                }
+                              />
+                            </RadarChart>
+                          </ChartContainer>
+                          <div className="flex justify-center gap-4 mt-2">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-primary" />
+                              <span className="text-[10px] font-bold">Your Business</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-3 h-3 rounded-full bg-[#10b981]" />
+                              <span className="text-[10px] font-bold">Benchmark</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                             <div className="w-3 h-3 rounded-full bg-[#10b981]" />
-                             <span className="text-[10px] font-bold">Market Avg</span>
-                          </div>
-                       </div>
+                        </>
+                      )}
                     </CardContent>
                  </Card>
 
@@ -781,13 +954,30 @@ const ERPDashboard = () => {
                        </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                       <p className="text-xs font-medium leading-relaxed">
-                          Your current trajectory suggests a <span className="font-bold underline">12.5% increase</span> in regional demand for <span className="font-bold">Electronics</span> over the next quarter. 
-                       </p>
-                       <div className="p-3 rounded-lg bg-background/50 border border-primary/10">
-                          <div className="text-[10px] uppercase tracking-wider font-extrabold text-muted-foreground mb-1">Recommended Action</div>
-                          <p className="text-xs font-bold leading-snug">Increase SKU procurement for Wireless peripherals by Oct 15th.</p>
-                       </div>
+                       {loading ? (
+                         <div className="space-y-2">
+                           <div className="h-4 bg-muted animate-pulse rounded w-full" />
+                           <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                         </div>
+                       ) : (
+                         <>
+                           <p className="text-xs font-medium leading-relaxed">
+                             Based on <span className="font-bold">{orders.length}</span> orders, your top category is{" "}
+                             <span className="font-bold underline">{analyticsKpis.topCategory}</span> with{" "}
+                             <span className="font-bold">{analyticsKpis.topCategoryShare}</span> of revenue.
+                             Projected next-period revenue is{" "}
+                             <span className="font-bold">{analyticsKpis.forecastedRevenue}</span>.
+                           </p>
+                           <div className="p-3 rounded-lg bg-background/50 border border-primary/10">
+                             <div className="text-[10px] uppercase tracking-wider font-extrabold text-muted-foreground mb-1">Recommended Action</div>
+                             <p className="text-xs font-bold leading-snug">
+                               {analyticsKpis.logisticsEff !== '0%'
+                                 ? `Maintain ${analyticsKpis.logisticsEff} completion rate. Focus on converting walk-in customers (${analyticsKpis.churnPct}) to registered accounts.`
+                                 : 'Start processing orders to unlock actionable insights.'}
+                             </p>
+                           </div>
+                         </>
+                       )}
                     </CardContent>
                  </Card>
               </div>
@@ -797,67 +987,93 @@ const ERPDashboard = () => {
           <TabsContent value="inventory" className="m-0 space-y-6">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatsCard
-                title="Total Value"
-                value="$245,000"
-                icon={DollarSign}
-                description="Estimated inventory valuation"
+                title="Total SKUs"
+                value={inventoryStats.totalSkus}
+                icon={Package}
+                description="Unique items tracked in stock"
                 highlight
+                loading={loading}
               />
               <StatsCard
                 title="Low Stock"
-                value="12 SKUs"
+                value={`${inventoryStats.lowStockCount} SKUs`}
                 icon={Filter}
-                description="Items below threshold"
+                description="Items at or below 10 units"
                 trendType="down"
-                trend="Caution"
+                trend={inventoryStats.lowStockCount > 0 ? "Caution" : "OK"}
+                loading={loading}
+              />
+              <StatsCard
+                title="Out of Stock"
+                value={`${inventoryStats.outOfStockCount} SKUs`}
+                icon={Activity}
+                description="Items with zero quantity"
+                trendType={inventoryStats.outOfStockCount > 0 ? "down" : "up"}
+                trend={inventoryStats.outOfStockCount > 0 ? "Action needed" : "Clear"}
+                loading={loading}
               />
               <StatsCard
                 title="In Transit"
-                value="450 Units"
-                icon={Package}
-                description="Confirmed logistics orders"
-              />
-              <StatsCard
-                title="Return Rate"
-                value="0.8%"
-                icon={Activity}
-                description="Rolling 30-day average"
+                value={`${inventoryStats.inTransitCount} Units`}
+                icon={Zap}
+                description="Stock at transit locations"
+                trendType="neutral"
+                trend="Tracked"
+                loading={loading}
               />
             </div>
 
-            <Card className="border-border/50 shadow-sm overflow-hidden">
-              <CardHeader className="bg-muted/5 border-b py-4">
-                <CardTitle className="text-lg font-bold">Inventory Reconciliation</CardTitle>
-                <CardDescription>Current stock levels across major categories</CardDescription>
+            <Card className="border-border/50 shadow-sm overflow-hidden gap-0">
+              <CardHeader className="bg-muted/5 border-b py-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-bold">Inventory Reconciliation</CardTitle>
+                    <CardDescription>Current stock levels — showing top {inventoryRows.length} SKUs</CardDescription>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={fetchData} disabled={loading} className="gap-2 text-xs">
+                    <RefreshCcw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                    Refresh
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="p-0 mt-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead className="bg-muted/30 text-[10px] uppercase tracking-wider font-bold text-muted-foreground border-b">
                       <tr>
-                        <th className="px-6 py-4">Item ID</th>
+                        <th className="px-6 py-4">SKU</th>
                         <th className="px-6 py-4">Name</th>
-                        <th className="px-6 py-4">Category</th>
-                        <th className="px-6 py-4">Quantity</th>
+                        <th className="px-6 py-4">Warehouse / Location</th>
+                        <th className="px-6 py-4 text-right">Quantity</th>
                         <th className="px-6 py-4 text-right">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/30">
-                      {dummyInventoryData.map((item) => (
+                      {loading ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                          <tr key={i}>
+                            {Array.from({ length: 5 }).map((_, j) => (
+                              <td key={j} className="px-6 py-4">
+                                <div className="h-4 bg-muted animate-pulse rounded" />
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      ) : inventoryRows.map((item) => (
                         <tr key={item.id} className="hover:bg-muted/20 transition-colors">
                           <td className="px-6 py-4 font-mono text-xs font-black text-primary">{item.id}</td>
-                          <td className="px-6 py-4 text-sm font-bold">{item.name}</td>
+                          <td className="px-6 py-4 text-sm font-bold max-w-[240px] truncate">{item.name}</td>
                           <td className="px-6 py-4">
-                             <Badge variant="outline" className="text-[10px] font-bold uppercase">{item.category}</Badge>
+                            <Badge variant="outline" className="text-[10px] font-bold uppercase">{item.category}</Badge>
                           </td>
-                          <td className="px-6 py-4 text-sm font-black">{item.qty}</td>
+                          <td className="px-6 py-4 text-sm font-black text-right">{item.qty.toLocaleString('en-PK')}</td>
                           <td className="px-6 py-4 text-right">
-                            <Badge className={cn(
+                            <Badge variant="outline" className={cn(
                               "text-[10px] font-bold",
-                              item.status === "In Stock" ? "bg-green-500/10 text-green-600 border-green-500/20" :
-                              item.status === "Low Stock" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
-                              "bg-red-500/10 text-red-600 border-red-500/20"
-                            )} variant="outline">
+                              item.status === "In Stock"     ? "bg-green-500/10 text-green-600 border-green-500/20" :
+                              item.status === "Low Stock"    ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                                                               "bg-red-500/10 text-red-600 border-red-500/20"
+                            )}>
                               {item.status}
                             </Badge>
                           </td>

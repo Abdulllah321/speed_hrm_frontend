@@ -21,13 +21,14 @@ import {
     ArrowLeft, Loader2, Tag, TicketPercent, Handshake, CheckCircle2,
     XCircle, Search, ShoppingCart, Printer, Trash2, Plus, Percent,
     BadgeDollarSign, CreditCard, Banknote, Building2, Ticket,
-    ChevronDown, ChevronUp, PauseCircle,
+    ChevronDown, ChevronUp, BookOpen,PauseCircle,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import { cn, getCookie } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 import { PrintReceipt } from "@/components/pos/print-receipt";
+import { usePosSettings } from "@/hooks/use-pos-settings";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface PromoConfig {
@@ -67,7 +68,11 @@ const TENDER_OPTIONS = [
     { value: "card", label: "Card", icon: CreditCard },
     { value: "bank_transfer", label: "Bank Transfer", icon: Building2 },
     { value: "voucher", label: "Voucher", icon: Ticket },
+    { value: "credit_account", label: "Credit Account", icon: BookOpen },
 ];
+
+// ─── Print Receipt ───────────────────────────────────────────────────────
+// Imported from shared component — inline version removed, use PrintReceipt from @/components/pos/print-receipt
 
 // ─── Customer Selection ──────────────────────────────────────────────────
 function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, onOpenChange: (open: boolean) => void, onSuccess: (customer: Customer) => void }) {
@@ -147,6 +152,7 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
 }
 export default function CheckoutPage() {
     const router = useRouter();
+    const { settings } = usePosSettings();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [promos, setPromos] = useState<PromoConfig[]>([]);
     const [alliances, setAlliances] = useState<AllianceConfig[]>([]);
@@ -183,6 +189,13 @@ export default function CheckoutPage() {
     // ── Payment state ──────────────────────────────────────────────────
     const [tenders, setTenders] = useState<Tender[]>([]);
     const [tenderMethod, setTenderMethod] = useState("cash");
+
+    // Apply default payment method from settings once loaded
+    useEffect(() => {
+        if (settings.defaultPaymentMethod) {
+            setTenderMethod(settings.defaultPaymentMethod);
+        }
+    }, [settings.defaultPaymentMethod]);
     const [tenderAmount, setTenderAmount] = useState<number>(0);
     const [tenderCardLast4, setTenderCardLast4] = useState("");
     const [tenderSlip, setTenderSlip] = useState("");
@@ -339,6 +352,10 @@ export default function CheckoutPage() {
 
     const handleConfirm = useCallback(async () => {
         if (balanceDue > 0) { toast.error("Balance due must be 0 before completing."); return; }
+        if (settings.requireCustomer && !selectedCustomer) {
+            toast.error("A customer must be selected to complete this sale.");
+            return;
+        }
         setIsSubmitting(true);
         try {
             const orderItems = cartItems.map((item) => ({
@@ -489,7 +506,9 @@ export default function CheckoutPage() {
 
                         {/* Customer Section */}
                         <div className="px-4 py-4 border-b space-y-3">
-                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer</Label>
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                            Customer{settings.requireCustomer && <span className="text-destructive ml-1">*</span>}
+                        </Label>
                             <div className="flex gap-2">
                                 <div className="flex-1 relative">
                                     <Select
@@ -565,7 +584,7 @@ export default function CheckoutPage() {
                         <ScrollArea className="flex-1">
                             <div className="divide-y">
                                 {cartItems.map((item) => (
-                                    <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                                    <div key={item.id} className="flex items-start gap-3 px-4 py-3">
                                         <div className="flex-1 min-w-0">
                                             <p className="font-medium text-sm truncate">{item.name}</p>
                                             <p className="text-xs text-muted-foreground">{item.sku} · {item.brand}</p>
@@ -576,7 +595,12 @@ export default function CheckoutPage() {
                                             </p>
                                             {item.discountPercent > 0 && (
                                                 <p className="text-xs text-destructive font-mono">
-                                                    -{fmtCurrency(item.discountAmount)} ({item.discountPercent}%)
+                                                    Disc {item.discountPercent}% −{fmtCurrency(item.discountAmount)}
+                                                </p>
+                                            )}
+                                            {item.taxPercent > 0 && (
+                                                <p className="text-xs text-amber-600 dark:text-amber-400 font-mono">
+                                                    Tax {item.taxPercent}% +{fmtCurrency(item.taxAmount)}
                                                 </p>
                                             )}
                                             <p className="font-semibold font-mono">{fmtCurrency(item.total)}</p>
@@ -724,7 +748,7 @@ export default function CheckoutPage() {
                             <details>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors border-b">
                                     <TicketPercent className="h-4 w-4 text-muted-foreground" />
-                                    <span className="font-semibold text-sm flex-1">Coupon Code</span>
+                                    <span className="font-semibold text-sm flex-1">Coupon / Voucher Code</span>
                                     {appliedCoupon && <Badge variant="secondary" className="text-xs">{appliedCoupon.code}</Badge>}
                                 </summary>
                                 <div className="p-3 space-y-2">
@@ -732,7 +756,7 @@ export default function CheckoutPage() {
                                         <Input
                                             ref={couponInputRef}
                                             className="uppercase font-mono flex-1"
-                                            placeholder="Coupon code... (F2)"
+                                            placeholder="Coupon or voucher code... (F2)"
                                             value={couponInput}
                                             onChange={(e) => { setCouponInput(e.target.value); setCouponError(""); }}
                                             onKeyDown={(e) => e.key === "Enter" && handleValidateCoupon()}
@@ -911,27 +935,32 @@ export default function CheckoutPage() {
                     <div className="flex flex-col gap-3 h-full overflow-y-auto pr-0.5">
 
                         {/* ── Totals ────────────────────────────────────────────── */}
-                        <div className="rounded-xl border bg-card px-4 py-3 space-y-2">
-                            <div className="flex justify-between text-sm text-muted-foreground">
-                                <span>Subtotal</span>
+                        <div className="rounded-xl border bg-card px-4 py-3 space-y-2 text-sm">
+                            <div className="flex justify-between text-muted-foreground">
+                                <span>Subtotal ({cartItems.length} item{cartItems.length !== 1 ? "s" : ""})</span>
                                 <span className="font-mono">{fmtCurrency(subtotal)}</span>
                             </div>
                             {itemDiscounts > 0 && (
-                                <div className="flex justify-between text-sm text-destructive">
+                                <div className="flex justify-between text-destructive">
                                     <span>Item Discounts</span>
                                     <span className="font-mono">−{fmtCurrency(itemDiscounts)}</span>
                                 </div>
                             )}
                             {orderDiscount > 0 && (
-                                <div className="flex justify-between text-sm text-primary">
-                                    <span>Order Discount</span>
+                                <div className="flex justify-between text-primary">
+                                    <span>
+                                        {discountMode === "promo" && selectedPromo && `Promo: ${selectedPromo.code}`}
+                                        {discountMode === "coupon" && appliedCoupon && `Coupon: ${appliedCoupon.code}`}
+                                        {discountMode === "alliance" && selectedAlliance && `Alliance: ${selectedAlliance.code}`}
+                                        {discountMode === "manual" && "Manual Discount"}
+                                    </span>
                                     <span className="font-mono">−{fmtCurrency(orderDiscount)}</span>
                                 </div>
                             )}
                             {itemTax > 0 && (
-                                <div className="flex justify-between text-sm text-muted-foreground">
-                                    <span>Tax</span>
-                                    <span className="font-mono">{fmtCurrency(itemTax)}</span>
+                                <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                                    <span>Total Tax</span>
+                                    <span className="font-mono">+{fmtCurrency(itemTax)}</span>
                                 </div>
                             )}
                             <Separator />
@@ -979,17 +1008,33 @@ export default function CheckoutPage() {
                                             onKeyDown={(e) => e.key === "Enter" && addTender()}
                                         />
                                     </div>
-                                    {(tenderMethod === "card" || tenderMethod === "bank_transfer") && (
+                                    {tenderMethod === "credit_account" && !selectedCustomer && (
+                                        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-700">
+                                            <BookOpen className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                            <span>Select a customer above to post this sale to their Credit Account (Accounts Receivable).</span>
+                                        </div>
+                                    )}
+                                    {tenderMethod === "credit_account" && selectedCustomer && (
+                                        <div className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-700">
+                                            <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                                            <span>Will be posted to <strong>{selectedCustomer.name}</strong>'s Credit Account as an outstanding receivable.</span>
+                                        </div>
+                                    )}
+                                    {(tenderMethod === "card" || tenderMethod === "bank_transfer" || tenderMethod === "voucher") && (
                                         <div className="grid grid-cols-2 gap-2">
-                                            <div>
-                                                <Label className="text-xs text-muted-foreground">Card # (last 4)</Label>
-                                                <Input className="mt-1 h-8 text-xs font-mono" maxLength={4} placeholder="••••"
-                                                    value={tenderCardLast4}
-                                                    onChange={(e) => setTenderCardLast4(e.target.value.replace(/\D/, ""))} />
-                                            </div>
-                                            <div>
-                                                <Label className="text-xs text-muted-foreground">Slip / Ref #</Label>
-                                                <Input className="mt-1 h-8 text-xs" placeholder="Ref"
+                                            {tenderMethod !== "voucher" && (
+                                                <div>
+                                                    <Label className="text-xs text-muted-foreground">Card # (last 4)</Label>
+                                                    <Input className="mt-1 h-8 text-xs font-mono" maxLength={4} placeholder="••••"
+                                                        value={tenderCardLast4}
+                                                        onChange={(e) => setTenderCardLast4(e.target.value.replace(/\D/, ""))} />
+                                                </div>
+                                            )}
+                                            <div className={tenderMethod === "voucher" ? "col-span-2" : ""}>
+                                                <Label className="text-xs text-muted-foreground">
+                                                    {tenderMethod === "voucher" ? "Voucher #" : "Slip / Ref #"}
+                                                </Label>
+                                                <Input className="mt-1 h-8 text-xs" placeholder={tenderMethod === "voucher" ? "Voucher number" : "Ref"}
                                                     value={tenderSlip} onChange={(e) => setTenderSlip(e.target.value)} />
                                             </div>
                                         </div>
@@ -1022,6 +1067,7 @@ export default function CheckoutPage() {
                                                         <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                                                         {t.method.replace("_", " ")}
                                                         {t.cardLast4 && <span className="text-xs text-muted-foreground font-mono">••{t.cardLast4}</span>}
+                                                        {t.slipNo && <span className="text-xs text-muted-foreground font-mono">#{t.slipNo}</span>}
                                                     </span>
                                                     <span className="font-mono font-semibold">{fmtCurrency(t.amount)}</span>
                                                     <button onClick={() => setTenders(prev => prev.filter((_, j) => j !== i))}
@@ -1089,6 +1135,7 @@ export default function CheckoutPage() {
                     selectedPromo={selectedPromo}
                     appliedCoupon={appliedCoupon}
                     selectedAlliance={selectedAlliance}
+                    settings={settings}
                     onClose={() => {
                         setCompletedOrder(null);
                         router.push("/pos/new-sale");

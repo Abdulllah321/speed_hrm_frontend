@@ -223,22 +223,39 @@ export async function getPendingInvoicesBySupplier(supplierId: string) {
 
         if (!response.ok) {
             console.error("Failed to fetch pending invoices", response.status);
-            return {
-                status: false,
-                data: []
-            };
+            return { status: false, data: [] };
         }
 
-        const data = response.data;
-        return {
-            status: true,
-            data: data
-        };
+        return { status: true, data: response.data };
     } catch (error) {
         console.error("Error fetching pending invoices:", error);
-        return {
-            status: false,
-            data: []
-        };
+        return { status: false, data: [] };
+    }
+}
+
+// Get unapplied advance payment vouchers for a supplier
+export async function getAdvancesBySupplier(supplierId: string) {
+    try {
+        const response = await authFetch(`/finance/payment-vouchers/advances/${supplierId}`, {
+            cache: 'no-store',
+            next: { revalidate: 0 }
+        });
+        if (!response.ok) return { status: false, data: [] };
+        return { status: true, data: response.data };
+    } catch (error) {
+        return { status: false, data: [] };
+    }
+}
+
+// Get AP balance + advance balance summary for a supplier
+export async function getSupplierSummary(supplierId: string) {
+    try {
+        const response = await authFetch(`/finance/payment-vouchers/supplier-summary/${supplierId}`, {
+            cache: 'no-store',
+        });
+        if (!response.ok) return { status: false, data: null };
+        return { status: true, data: response.data };
+    } catch {
+        return { status: false, data: null };
     }
 }

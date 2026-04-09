@@ -7,100 +7,95 @@ export interface ReceiptVoucher {
     id: string;
     type: "bank" | "cash";
     rvNo: string;
-    rvDate: string; // ISO string
+    rvDate: string;
     refBillNo?: string;
-    billDate?: string; // ISO string
+    billDate?: string;
     debitAccountId: string;
-    debitAccount?: any; // populated from backend
-    debitAccountName?: string; // helper for UI
+    debitAccount?: any;
+    debitAccountName?: string;
     debitAmount: number;
+    customerId?: string;
     status: "pending" | "approved" | "rejected";
     description: string;
     chequeNo?: string;
-    chequeDate?: string; // ISO string
-    details: {
-        accountId: string;
-        accountName?: string;
-        credit: number;
-    }[];
+    chequeDate?: string;
+    details: { accountId: string; accountName?: string; credit: number }[];
+    invoices?: { salesInvoiceId: string; receivedAmount: number }[];
     createdAt: string;
     createdBy: string;
 }
 
 export async function getReceiptVouchers(type?: "bank" | "cash") {
     try {
-        const queryParams = new URLSearchParams();
-        if (type) {
-            queryParams.append("type", type);
-        }
-
-        const response = await authFetch(`/finance/receipt-vouchers?${queryParams.toString()}`, {
-            cache: 'no-store',
-            next: { revalidate: 0 }
-        });
-
-        if (!response.ok) {
-            console.error("Failed to fetch receipt vouchers", response.status);
-            return {
-                status: false,
-                data: []
-            };
-        }
-
+        const q = type ? `?type=${type}` : "";
+        const response = await authFetch(`/finance/receipt-vouchers${q}`, { cache: 'no-store' });
+        if (!response.ok) return { status: false, data: [] };
         const data = response.data;
-
-        // Map backend data to frontend interface if needed
-        const mappedData = data.map((rv: any) => ({
-            ...rv,
-            debitAccountName: rv.debitAccount?.name || "Unknown Account",
-            details: rv.details.map((d: any) => ({
-                ...d,
-                accountName: d.account?.name || "Unknown Account"
-            }))
-        }));
-
         return {
             status: true,
-            data: mappedData
+            data: data.map((rv: any) => ({
+                ...rv,
+                debitAccountName: rv.debitAccount?.name || "Unknown Account",
+                details: rv.details?.map((d: any) => ({ ...d, accountName: d.account?.name || "Unknown" })) || [],
+            })),
         };
-    } catch (error) {
-        console.error("Error fetching receipt vouchers:", error);
-        return {
-            status: false,
-            data: []
-        };
+    } catch {
+        return { status: false, data: [] };
     }
 }
 
 export async function createReceiptVoucher(data: any) {
     try {
-        // Ensure dates are stringified
         const payload = {
             ...data,
             rvDate: new Date(data.rvDate).toISOString(),
             billDate: data.billDate ? new Date(data.billDate).toISOString() : undefined,
             chequeDate: data.chequeDate ? new Date(data.chequeDate).toISOString() : undefined,
         };
-
         const response = await authFetch("/finance/receipt-vouchers", {
             method: "POST",
             body: JSON.stringify(payload),
         });
-
         if (!response.ok) {
-            const errorData = response.data || {};
-            return {
-                status: false,
-                message: errorData.message || `Failed to create Receipt Voucher: ${response.statusText || response.status}`
-            };
+            const err = response.data || {};
+            return { status: false, message: err.message || `Failed: ${response.status}` };
         }
-
-        revalidatePath("/finance/receipt-voucher/list");
         revalidatePath("/erp/finance/receipt-voucher/list");
-
         return { status: true, message: "Receipt Voucher created successfully" };
-    } catch (error: any) {
-        console.error("Error creating receipt voucher:", error);
-        return { status: false, message: error.message || "An unexpected error occurred" };
+    } catch (e: any) {
+        return { status: false, message: e.message || "An unexpected error occurred" };
+    }
+}
+
+export async function getAllCustomers() {
+    try {
+        const response = await authFetch("/finance/receipt-vouchers/customers", { cache: 'no-store' });
+        if (!response.ok) return { status: false, data: [] };
+        return { status: true, data: response.data };
+    } catch {
+        return { status: false, data: [] };
+    }
+}
+
+export async function getPendingInvoicesByCustomer(customerId: string) {
+    try {
+        const response = await authFetch(`/finance/receipt-vouchers/pending-invoices/${customerId}`, { cache: 'no-store' });
+        if (!response.ok) return { status: false, data: [] };
+        return { status: true, data: response.data };
+    } catch {
+        return { status: false, data: [] };
+    }
+}
+
+export async function getSalesInvoices(search?: string, status?: string) {
+    try {
+        const q = new URLSearchParams();
+        if (search) q.set("search", search);
+        if (status && status !== "all") q.set("status", status);
+        const response = await authFetch(`/sales/invoices?${q.toString()}`, { cache: 'no-store' });
+        if (!response.ok) return { status: false, data: [] };
+        return { status: true, data: response.data };
+    } catch {
+        return { status: false, data: [] };
     }
 }

@@ -181,6 +181,8 @@ type DataTableProps<TData extends DataTableRow> = {
   onSearchChange?: (search: string) => void;
   /** Show loading skeleton */
   isLoading?: boolean;
+  /** Optional function to add custom class names per row */
+  rowClassName?: (row: TData) => string;
 };
 
 export default function DataTable<TData extends DataTableRow>({
@@ -213,6 +215,7 @@ export default function DataTable<TData extends DataTableRow>({
   manualFiltering = false,
   onSearchChange,
   isLoading = false,
+  rowClassName,
 }: DataTableProps<TData>) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -723,6 +726,7 @@ export default function DataTable<TData extends DataTableRow>({
                           "border-b border-border/30",
                           index % 2 === 0 ? "bg-transparent" : "bg-muted/20",
                           "hover:bg-accent/50",
+                          rowClassName ? rowClassName(row.original) : "",
                           isNew &&
                           "bg-primary/10 animate-pulse ring-1 ring-primary/30"
                         )}

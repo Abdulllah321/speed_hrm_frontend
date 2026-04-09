@@ -28,7 +28,6 @@ export const paymentVoucherSchema = z.object({
     creditAmount: z.coerce.number().optional(),
     // Supplier and invoice linking
     supplierId: z.string().optional(),
-    selectedInvoiceId: z.string().optional(),
     invoices: z.array(paymentVoucherInvoiceSchema).optional(),
 
     isTaxApplicable: z.boolean().default(false),

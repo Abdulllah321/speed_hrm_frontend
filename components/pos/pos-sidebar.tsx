@@ -29,6 +29,7 @@ import {
     RefreshCw,
     Wallet,
     PauseCircle,
+    BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -41,7 +42,8 @@ const posMenuGroups = [
             { title: "Quick Sale", icon: Zap, href: "/pos/quick" },
             { title: "Current Orders", icon: Receipt, href: "/pos/orders" },
             { title: "Hold Orders", icon: PauseCircle, href: "/pos/holds" },
-            { title: "Returns", icon: RefreshCw, href: "/pos/returns" },
+            { title: "Returns & Exchanges", icon: RefreshCw, href: "/pos/sales/returns" },
+            { title: "Customer Ladger", icon: BookOpen, href: "/pos/customer-ledger" },
             { title: "Cash Drawer", icon: Wallet, href: "/pos/terminal/drawer" },
         ],
     },
