@@ -140,7 +140,10 @@ export default function SalesOrderViewPage() {
           )}
           
           {order.status === "CONFIRMED" && (
-            <Button size="sm">
+            <Button 
+              size="sm"
+              onClick={() => router.push(`/erp/sales/delivery-challans/create?salesOrderId=${order.id}`)}
+            >
               <Truck className="h-4 w-4 mr-2" />
               Create Delivery Challan
             </Button>

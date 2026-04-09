@@ -2,17 +2,19 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Eye, CreditCard, RefreshCcw, Loader2 } from "lucide-react";
+import { Search, Eye, CreditCard, RefreshCcw, Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSalesInvoices } from "@/lib/actions/receipt-voucher";
+import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
     PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
-    PARTIAL: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    POSTED: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+    PARTIAL: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
     PAID: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
     CANCELLED: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 };
@@ -33,7 +35,7 @@ export default function SalesInvoicesPage() {
 
     useEffect(() => { load(); }, [load]);
 
-    const totals = invoices.reduce(
+    const totals = loading ? { total: 0, paid: 0, outstanding: 0 } : (invoices || []).reduce(
         (acc, inv) => ({
             total: acc.total + Number(inv.grandTotal || 0),
             paid: acc.paid + Number(inv.paidAmount || 0),
@@ -49,10 +51,17 @@ export default function SalesInvoicesPage() {
                     <h1 className="text-2xl font-bold tracking-tight">Sales Invoices</h1>
                     <p className="text-muted-foreground">Manage customer invoices and collections</p>
                 </div>
-                <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-                    <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                    Refresh
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button onClick={() => router.push('/erp/sales/invoices/create')}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Invoice
+                    </Button>
+                    
+                    <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+                        <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                        Refresh
+                    </Button>
+                </div>
             </div>
 
             {/* Summary cards */}
@@ -88,6 +97,7 @@ export default function SalesInvoicesPage() {
                     <SelectContent>
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="posted">Posted</SelectItem>
                         <SelectItem value="partial">Partial</SelectItem>
                         <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="cancelled">Cancelled</SelectItem>

@@ -169,7 +169,10 @@ export default function DeliveryChallanViewPage() {
           )}
           
           {challan.status === "DELIVERED" && (
-            <Button size="sm">
+            <Button 
+              size="sm"
+              onClick={() => router.push(`/erp/sales/invoices/create?challanId=${challan.id}`)}
+            >
               <FileText className="h-4 w-4 mr-2" />
               Create Invoice
             </Button>

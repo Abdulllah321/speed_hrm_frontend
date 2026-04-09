@@ -37,15 +37,12 @@ export default function CreateDeliveryChallanPage() {
   const loadSalesOrders = async () => {
     try {
       setLoading(true);
-      const response = await salesOrderApi.getAll();
+      const response = await salesOrderApi.getAvailableForDelivery();
       
-      // Filter only confirmed sales orders that can be delivered
-      const confirmedOrders = response.data?.filter((order: any) => 
-        order.status === 'CONFIRMED' || order.status === 'PARTIALLY_DELIVERED'
-      ) || [];
-      setSalesOrders(confirmedOrders);
+      // These are already filtered to only show orders without delivery challans
+      setSalesOrders(response.data || []);
     } catch (error) {
-      toast.error("Failed to load sales orders");
+      toast.error("Failed to load available sales orders");
       console.error('Load sales orders error:', error);
     } finally {
       setLoading(false);
@@ -79,7 +76,13 @@ export default function CreateDeliveryChallanPage() {
 
   // Calculate totals
   const totalQuantity = deliveryItems.reduce((sum, item) => sum + (item.deliveredQty || 0), 0);
-  const totalAmount = deliveryItems.reduce((sum, item) => sum + ((item.deliveredQty || 0) * (item.salePrice || 0)), 0);
+  const subtotal = deliveryItems.reduce((sum, item) => sum + ((item.deliveredQty || 0) * (item.salePrice || 0)), 0);
+  
+  // Calculate tax and total amount like sales order
+  const taxRate = selectedOrder?.taxRate || 0;
+  const taxAmount = subtotal * (taxRate / 100);
+  const orderDiscount = selectedOrder?.discount || 0;
+  const totalAmount = subtotal + taxAmount - orderDiscount;
 
   const handleCreateChallan = async () => {
     try {
@@ -312,15 +315,31 @@ export default function CreateDeliveryChallanPage() {
                 
                 {/* Summary */}
                 <div className="border-t pt-4">
-                  <div className="flex justify-between items-center">
-                    <div className="space-y-1">
-                      <div className="text-sm text-muted-foreground">Total Items</div>
-                      <div className="font-bold text-lg">{totalQuantity}</div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal:</span>
+                      <span>Rs. {subtotal.toLocaleString()}</span>
                     </div>
-                    <div className="space-y-1 text-right">
-                      <div className="text-sm text-muted-foreground">Total Amount</div>
-                      <div className="font-bold text-lg text-green-600">
-                        Rs. {totalAmount.toLocaleString()}
+                    <div className="flex justify-between text-sm">
+                      <span>Tax ({taxRate}%):</span>
+                      <span>Rs. {taxAmount.toLocaleString()}</span>
+                    </div>
+                    {orderDiscount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Discount:</span>
+                        <span>Rs. {orderDiscount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <div className="space-y-1">
+                        <div className="text-sm text-muted-foreground">Total Items</div>
+                        <div className="font-bold text-lg">{totalQuantity}</div>
+                      </div>
+                      <div className="space-y-1 text-right">
+                        <div className="text-sm text-muted-foreground">Total Amount</div>
+                        <div className="font-bold text-lg text-green-600">
+                          Rs. {totalAmount.toLocaleString()}
+                        </div>
                       </div>
                     </div>
                   </div>

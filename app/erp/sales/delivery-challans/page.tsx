@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Eye, FileText, Truck, CheckCircle } from "lucide-react";
+import { Plus, Search, Eye, FileText, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -123,7 +123,13 @@ export default function DeliveryChallansPage() {
 
   // Calculate totals
   const totalQuantity = deliveryItems.reduce((sum, item) => sum + (item.deliveredQty || 0), 0);
-  const totalAmount = deliveryItems.reduce((sum, item) => sum + ((item.deliveredQty || 0) * (item.salePrice || 0)), 0);
+  const subtotal = deliveryItems.reduce((sum, item) => sum + ((item.deliveredQty || 0) * (item.salePrice || 0)), 0);
+  
+  // Calculate tax and total amount like sales order
+  const taxRate = selectedOrder?.taxRate || 0;
+  const taxAmount = subtotal * (taxRate / 100);
+  const orderDiscount = selectedOrder?.discount || 0;
+  const totalAmount = subtotal + taxAmount - orderDiscount;
 
   const handleCreateChallan = async () => {
     try {
@@ -339,20 +345,15 @@ export default function DeliveryChallansPage() {
                         <Eye className="h-4 w-4" />
                       </Button>
                       {challan.status === "PENDING" && (
-                        <>
-                          <Button variant="ghost" size="sm" title="Mark Delivered">
-                            <CheckCircle className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            title="Cancel Challan"
-                            onClick={() => handleCancelChallan(challan.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <span className="text-xs">✕</span>
-                          </Button>
-                        </>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          title="Cancel Challan"
+                          onClick={() => handleCancelChallan(challan.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <span className="text-xs">✕</span>
+                        </Button>
                       )}
                       {challan.status === "DELIVERED" && (
                         <Button variant="ghost" size="sm" title="Create Invoice">

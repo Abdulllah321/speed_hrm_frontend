@@ -49,25 +49,24 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
             chequeNo: "",
             chequeDate: undefined,
             description: "",
-            debitAccountId: "",
-            debitAmount: 0,
             customerId: "",
             invoices: [],
-            details: [{ accountId: "", credit: 0 }],
+            details: [
+                { accountId: "", debit: 0, credit: 0 },
+                { accountId: "", debit: 0, credit: 0 },
+            ],
         },
     });
 
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "details" });
     const voucherType = form.watch("type");
 
-    // Auto-generate RV No
     useEffect(() => {
         const prefix = voucherType === "bank" ? "BRV" : "CRV";
         const datePart = `${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}`;
         form.setValue("rvNo", `${prefix}${datePart}${Math.floor(1000 + Math.random() * 9000)}`);
     }, [voucherType, form]);
 
-    // Load all customers on mount
     useEffect(() => {
         getAllCustomers().then(r => {
             setCustomers(r.status ? r.data : []);
@@ -75,12 +74,12 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
         });
     }, []);
 
-    // Load pending invoices when customer changes
     const selectedCustomerId = form.watch("customerId");
     useEffect(() => {
         if (selectedCustomerId) {
             getPendingInvoicesByCustomer(selectedCustomerId).then(r => {
-                setPendingInvoices(r.status ? r.data : []);
+                const invoicesWithBalance = (r.status ? r.data : []).filter((inv: any) => Number(inv.balanceAmount) > 0);
+                setPendingInvoices(invoicesWithBalance);
             });
         } else {
             setPendingInvoices([]);
@@ -110,34 +109,58 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
     const totalInvoiceReceipts = selectedInvoices.reduce((s, i) => s + (i.receivingNow || 0), 0);
 
     const watchDetails = form.watch("details") || [];
-    const totalCredit = watchDetails.reduce((s, d: any) => s + (Number(d.credit) || 0), 0);
-    const debitAmount = Number(form.watch("debitAmount") || 0);
-    const isBalanced = Math.abs(totalCredit - debitAmount) < 0.01 && debitAmount > 0;
+    const totalDebit = watchDetails.reduce((sum, detail) => sum + (Number(detail.debit) || 0), 0);
+    const totalCredit = watchDetails.reduce((sum, detail) => sum + (Number(detail.credit) || 0), 0);
+    const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 
     const onSubmit: SubmitHandler<ReceiptVoucherFormValues> = async (values) => {
         try {
             setIsPending(true);
+            
+            console.log('Form submission started');
+            console.log('Form values:', values);
 
-            if (selectedInvoices.length > 0 && totalInvoiceReceipts > debitAmount + 0.01) {
-                toast.error(`Invoice receipts (${totalInvoiceReceipts.toLocaleString()}) exceed voucher debit (${debitAmount.toLocaleString()})`);
+            if (selectedInvoices.length > 0 && totalInvoiceReceipts > totalDebit + 0.01) {
+                toast.error(`Invoice receipts (${totalInvoiceReceipts.toLocaleString()}) exceed voucher debit (${totalDebit.toLocaleString()})`);
+                return;
+            }
+
+            // Find debit account and amount from details
+            const debitEntry = watchDetails.find(detail => Number(detail.debit) > 0);
+            if (!debitEntry || !debitEntry.accountId) {
+                toast.error('Please select a debit account (Bank/Cash account) and enter amount');
                 return;
             }
 
             const finalData = {
                 ...values,
+                debitAccountId: debitEntry.accountId,
+                debitAmount: totalDebit,
+                details: watchDetails
+                    .filter(detail => Number(detail.credit) > 0)
+                    .map(detail => ({
+                        accountId: detail.accountId,
+                        credit: Number(detail.credit)
+                    })),
                 invoices: selectedInvoices.length > 0
                     ? selectedInvoices.map(i => ({ salesInvoiceId: i.salesInvoiceId, receivedAmount: i.receivingNow }))
                     : undefined,
             };
 
+            console.log('Final data being sent:', finalData);
+
             const result = await createReceiptVoucher(finalData);
+            
+            console.log('API result:', result);
+
             if (result.status) {
                 toast.success(result.message);
                 router.push("/erp/finance/receipt-voucher/list");
             } else {
                 toast.error(result.message);
             }
-        } catch {
+        } catch (error) {
+            console.error('Form submission error:', error);
             toast.error("An unexpected error occurred");
         } finally {
             setIsPending(false);
@@ -157,8 +180,6 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
             </CardHeader>
             <CardContent className="pt-6">
                 <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
-
-                    {/* Header fields */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">RV No</Label>
@@ -182,7 +203,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         </div>
                     </div>
 
-                    {/* Bank-specific fields */}
+
                     {voucherType === "bank" && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-lg border border-dashed border-primary/20">
                             <div className="space-y-1">
@@ -198,7 +219,6 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                         </div>
                     )}
 
-                    {/* Customer + Invoice selection */}
                     <div className="space-y-4 p-4 rounded-lg border border-dashed border-primary/20">
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">Customer <span className="font-normal normal-case">(optional)</span></Label>
@@ -253,9 +273,9 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                             <td className="px-3 py-2 text-right tabular-nums font-semibold text-red-500">{Number(inv.balanceAmount).toLocaleString()}</td>
                                                             <td className="px-3 py-2">
                                                                 <Input
-                                                                    type="number" step="0.01" min={0.01} max={Number(inv.balanceAmount)}
+                                                                    type="number" step="0.01" min={0} max={Number(inv.balanceAmount)}
                                                                     value={isChecked ? receivingNow : ""}
-                                                                    disabled={!isChecked}
+                                                                    disabled={!isChecked || Number(inv.balanceAmount) <= 0}
                                                                     onChange={e => updateReceivingNow(inv.id, Number(e.target.value))}
                                                                     className="h-8 text-right font-mono text-sm"
                                                                 />
@@ -275,7 +295,7 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                 <tfoot className="border-t border-border bg-muted/50 font-semibold text-sm">
                                                     <tr>
                                                         <td colSpan={5} className="px-3 py-2 text-right text-muted-foreground">Total invoice receipts:</td>
-                                                        <td className={`px-3 py-2 text-right tabular-nums font-mono ${totalInvoiceReceipts > debitAmount + 0.01 ? "text-red-500" : "text-green-600"}`}>
+                                                        <td className={`px-3 py-2 text-right tabular-nums font-mono ${totalInvoiceReceipts > totalDebit + 0.01 ? "text-red-500" : "text-green-600"}`}>
                                                             {totalInvoiceReceipts.toLocaleString()}
                                                         </td>
                                                         <td />
@@ -286,109 +306,154 @@ export function ReceiptVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                     </div>
                                 )}
 
-                                {totalInvoiceReceipts > debitAmount + 0.01 && (
+                                {totalInvoiceReceipts > totalDebit + 0.01 && (
                                     <p className="text-xs text-red-500 font-medium">
-                                        ⚠ Invoice receipts ({totalInvoiceReceipts.toLocaleString()}) exceed voucher debit ({debitAmount.toLocaleString()}).
+                                        ⚠ Invoice receipts ({totalInvoiceReceipts.toLocaleString()}) exceed voucher debit ({totalDebit.toLocaleString()}).
                                     </p>
                                 )}
                             </div>
                         )}
                     </div>
 
-                    {/* Debit account + amount */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 rounded-lg border border-dashed border-primary/20">
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Debit To (Bank / Cash Account)</Label>
-                            <Controller control={form.control} name="debitAccountId" render={({ field }) => (
-                                <Autocomplete
-                                    options={accounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    placeholder="Select Bank/Cash Account"
-                                />
-                            )} />
-                            {form.formState.errors.debitAccountId && (
-                                <p className="text-xs text-destructive">{(form.formState.errors.debitAccountId as any).message}</p>
-                            )}
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground uppercase font-semibold">Total Amount Received</Label>
-                            <Input type="number" step="0.01" {...form.register("debitAmount", { valueAsNumber: true })} className="text-lg font-bold" />
-                            {form.formState.errors.debitAmount && (
-                                <p className="text-xs text-destructive">{(form.formState.errors.debitAmount as any).message}</p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* RV Detail rows (credit accounts) */}
                     <div className="space-y-4 pt-4">
                         <div className="flex items-center justify-between border-b pb-2">
-                            <h2 className="text-xl font-bold">{voucherType === "bank" ? "Bank" : "Cash"} Receipt Voucher Detail</h2>
-                            <Button type="button" variant="secondary" size="sm" onClick={() => append({ accountId: "", credit: 0 } as any)}>
-                                <Plus className="h-4 w-4 mr-2" />Add More RV Rows
-                            </Button>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800 dark:text-foreground">{voucherType === "bank" ? "Bank" : "Cash"} Receipt Voucher Detail</h2>
+                                <p className="text-xs text-muted-foreground mt-0.5">Debit: <span className="font-mono font-semibold">Bank / Cash account</span> &nbsp;|&nbsp; Credit: <span className="font-mono font-semibold">A/R PARTIES</span></p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => append({ accountId: "", debit: 0, credit: 0 })}
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add More RV Rows
+                                </Button>
+                            </div>
                         </div>
 
-                        <div className="border rounded-lg overflow-hidden border-border">
+                        <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-border">
                             <table className="w-full text-sm">
                                 <thead className="dark:bg-muted text-foreground border-b font-bold">
                                     <tr>
-                                        <th className="px-4 py-3 text-left">Account Head (Credit)</th>
-                                        <th className="px-4 py-3 text-left w-44">Credit</th>
-                                        <th className="px-4 py-3 text-center w-20">Action</th>
+                                        <th className="px-4 py-3 text-left">Account Head</th>
+                                        <th className="px-4 py-3 text-left w-[180px]">Debit</th>
+                                        <th className="px-4 py-3 text-left w-[180px]">Credit</th>
+                                        <th className="px-4 py-3 text-center w-[80px]">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-border">
+                                <tbody className="divide-y divide-gray-200">
                                     {fields.map((field, index) => (
-                                        <tr key={field.id} className="hover:bg-muted/30">
+                                        <tr key={field.id} className="hover:bg-gray-50/50 dark:hover:bg-muted/50">
                                             <td className="px-4 py-3">
-                                                <Controller control={form.control} name={`details.${index}.accountId`} render={({ field }) => (
-                                                    <Autocomplete
-                                                        options={accounts.map(a => ({ value: a.id, label: `${a.code} - ${a.name}` }))}
-                                                        value={field.value}
-                                                        onValueChange={field.onChange}
-                                                        placeholder="Select Account"
-                                                        disabled={isPending}
-                                                    />
-                                                )} />
+                                                <Controller
+                                                    control={form.control}
+                                                    name={`details.${index}.accountId`}
+                                                    render={({ field }) => (
+                                                        <Autocomplete
+                                                            options={accounts.map((acc) => ({
+                                                                value: acc.id,
+                                                                label: `${acc.code} - ${acc.name}`,
+                                                            }))}
+                                                            value={field.value}
+                                                            onValueChange={field.onChange}
+                                                            placeholder="Select Account"
+                                                            disabled={isPending}
+                                                            className="h-10 border-gray-300 dark:border-input"
+                                                        />
+                                                    )}
+                                                />
+                                                {form.formState.errors.details?.[index]?.accountId && (
+                                                    <p className="text-[10px] text-destructive mt-1">
+                                                        {form.formState.errors.details[index].accountId?.message}
+                                                    </p>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <Input
-                                                    type="number" step="0.01" placeholder="0"
-                                                    {...form.register(`details.${index}.credit`, { valueAsNumber: true })}
+                                                    type="number"
+                                                    step="0.01"
+                                                    placeholder="0"
+                                                    {...form.register(`details.${index}.debit`, {
+                                                        valueAsNumber: true,
+                                                        onChange: (e) => {
+                                                            if (Number(e.target.value) > 0) {
+                                                                form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                                                            }
+                                                        }
+                                                    })}
                                                     disabled={isPending}
-                                                    className="h-10 font-medium text-right"
+                                                    className="h-10 border-gray-300 dark:border-input font-medium"
+                                                />
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    placeholder="0"
+                                                    {...form.register(`details.${index}.credit`, {
+                                                        valueAsNumber: true,
+                                                        onChange: (e) => {
+                                                            if (Number(e.target.value) > 0) {
+                                                                form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                                            }
+                                                        }
+                                                    })}
+                                                    disabled={isPending}
+                                                    className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-3 text-center">
-                                                {fields.length > 1 ? (
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                                {fields.length > 2 ? (
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => remove(index)}
+                                                        disabled={isPending}
+                                                        className="rounded-full"
+                                                    >
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
-                                                ) : <span className="text-muted-foreground">---</span>}
+                                                ) : (
+                                                    <span className="text-gray-300">---</span>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
-                                <tfoot className="font-bold border-t border-border">
+                                <tfoot className="font-bold border-t border-gray-200 dark:border-border">
                                     <tr>
-                                        <td className="px-4 py-4 text-right text-muted-foreground">Totals:</td>
-                                        <td className="px-4 py-4 text-right text-lg">{totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        <td className="px-4 py-4 text-right pr-8 text-gray-600 dark:text-muted-foreground">Totals:</td>
+                                        <td className="px-4 py-4 text-right text-lg">
+                                            {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td className="px-4 py-4 text-right text-lg">
+                                            {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </td>
                                         <td className="px-4 py-4 text-center">
-                                            {debitAmount > 0 && (
-                                                <div className={cn("mx-auto w-2.5 h-2.5 rounded-full", isBalanced ? "bg-green-500" : "bg-red-500 animate-pulse")} />
+                                            {!isBalanced && totalDebit > 0 && (
+                                                <div className="mx-auto w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="Out of Balance" />
+                                            )}
+                                            {isBalanced && totalDebit > 0 && (
+                                                <div className="mx-auto w-2.5 h-2.5 rounded-full bg-green-500" title="Balanced" />
                                             )}
                                         </td>
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
+                        {form.formState.errors.details?.root && (
+                            <p className="text-sm text-destructive font-medium">{form.formState.errors.details.root.message}</p>
+                        )}
                     </div>
 
                     {/* Description */}
                     <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground uppercase font-semibold">Description</Label>
-                        <Textarea {...form.register("description")} placeholder="Enter payment description..." disabled={isPending} className="min-h-[100px]" />
+                        <Textarea {...form.register("description")} placeholder="Enter description for this receipt voucher" />
                         {form.formState.errors.description && (
                             <p className="text-xs text-destructive">{form.formState.errors.description.message}</p>
                         )}
