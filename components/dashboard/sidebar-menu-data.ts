@@ -20,6 +20,7 @@ import {
   ShoppingCart,
   TrendingUp,
   Monitor,
+  CheckSquare,
 } from "lucide-react";
 
 export type MenuItem = {
@@ -1463,6 +1464,52 @@ export const menuData: MenuItem[] = [
       },
     ],
   },
+  // {
+  //   title: "KPI Tracking",
+  //   icon: TrendingUp,
+  //   environment: "HR",
+  //   permissions: ["hr.kpi.read"],
+  //   children: [
+  //     {
+  //       title: "Dashboard",
+  //       href: "/hr/kpi/dashboard",
+  //       permissions: ["hr.kpi.read"],
+  //     },
+  //     {
+  //       title: "KPI Templates",
+  //       href: "/hr/kpi/templates",
+  //       permissions: ["hr.kpi.read"],
+  //     },
+  //     {
+  //       title: "KPI Reviews",
+  //       href: "/hr/kpi/reviews",
+  //       permissions: ["hr.kpi.read"],
+  //     },
+  //     {
+  //       title: "Approvals",
+  //       href: "/hr/kpi/approvals",
+  //       permissions: ["hr.kpi.approve"],
+  //     },
+  //   ],
+  // },
+  // {
+  //   title: "Task Management",
+  //   icon: CheckSquare,
+  //   environment: "HR",
+  //   permissions: ["task.project.read", "task.read"],
+  //   children: [
+  //     {
+  //       title: "Projects",
+  //       href: "/hr/tasks/projects",
+  //       permissions: ["task.project.read"],
+  //     },
+  //     {
+  //       title: "My Tasks",
+  //       href: "/hr/tasks/my-tasks",
+  //       permissions: ["task.read"],
+  //     },
+  //   ],
+  // },
   {
     title: "Admin",
     icon: Shield,

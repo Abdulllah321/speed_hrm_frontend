@@ -129,6 +129,18 @@ export const routePermissions: Record<string, string[]> = {
   "/master/tax-rate/add": ["master.tax-rate.create"],
   "/master/tax-rate/list": ["master.tax-rate.read"],
 
+  // KPI Tracking
+  "/hr/kpi/dashboard": ["hr.kpi.read"],
+  "/hr/kpi/templates": ["hr.kpi.read"],
+  "/hr/kpi/reviews": ["hr.kpi.read"],
+  "/hr/kpi/employee": ["hr.kpi.read"],
+  "/hr/kpi/approvals": ["hr.kpi.approve"],
+
+  // Task Assessment
+  "/hr/tasks/projects": ["task.project.read"],
+  "/hr/tasks/projects/create": ["task.project.create"],
+  "/hr/tasks/my-tasks": ["task.read"],
+
   // Settings - public (all authenticated users)
   "/hr/settings/password": [],
   "/hr/settings/profile": [],

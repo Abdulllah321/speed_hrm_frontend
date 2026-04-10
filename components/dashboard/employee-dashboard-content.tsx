@@ -15,7 +15,8 @@ import {
     GraduationCap,
     History,
     ScrollText,
-    Briefcase
+    Briefcase,
+    TrendingUp,
 } from "lucide-react";
 import {
     Card,
@@ -38,6 +39,7 @@ import { PoliciesContent } from "./profile/policies-content";
 import { HistoryContent } from "./profile/history-content";
 import { LeavesContent } from "./profile/leaves-content";
 import { WorkExperienceContent } from "./profile/work-experience-content";
+import { PerformanceContent } from "./profile/performance-content";
 import { authFetch } from "@/lib/auth";
 
 export function EmployeeDashboardContent() {
@@ -150,6 +152,10 @@ export function EmployeeDashboardContent() {
                         <TabsTrigger value="policies" variant="underline" className="data-[state=active]:text-primary data-[state=active]:border-primary pb-3 rounded-none">
                             <ScrollText className="h-4 w-4 mr-2" />
                             Policies
+                        </TabsTrigger>
+                        <TabsTrigger value="performance" variant="underline" className="data-[state=active]:text-primary data-[state=active]:border-primary pb-3 rounded-none">
+                            <TrendingUp className="h-4 w-4 mr-2" />
+                            Performance
                         </TabsTrigger>
                     </TabsList>
                 </div>
@@ -325,6 +331,10 @@ export function EmployeeDashboardContent() {
 
                 <TabsContent value="policies">
                     <PoliciesContent employee={employeeProfile} />
+                </TabsContent>
+
+                <TabsContent value="performance" className="mt-6">
+                    <PerformanceContent employeeId={user?.employee?.id} />
                 </TabsContent>
             </Tabs>
         </div>
