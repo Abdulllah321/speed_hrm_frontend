@@ -1368,6 +1368,7 @@ export const salesOrderApi = {
     const query = params.toString() ? `?${params.toString()}` : '';
     return fetchApi<{ status: boolean; data: SalesOrder[] }>(`/sales/orders${query}`);
   },
+  getAvailableForDelivery: () => fetchApi<{ status: boolean; data: SalesOrder[] }>('/sales/orders/available-for-delivery'),
   getById: (id: string) => fetchApi<{ status: boolean; data: SalesOrder }>(`/sales/orders/${id}`),
   create: (data: any) => fetchApi<{ status: boolean; data: SalesOrder }>('/sales/orders', {
     method: 'POST',
@@ -1403,7 +1404,7 @@ export const deliveryChallanApi = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  markDelivered: (id: string) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/delivery-challans/${id}/delivered`, {
+  markDelivered: (id: string) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/delivery-challans/${id}/deliver`, {
     method: 'POST',
   }),
   cancel: (id: string) => fetchApi<{ status: boolean; data: DeliveryChallan }>(`/sales/delivery-challans/${id}/cancel`, {
@@ -1428,6 +1429,12 @@ export const salesInvoiceApi = {
   create: (data: any) => fetchApi<{ status: boolean; data: SalesInvoice }>('/sales/invoices', {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+  post: (id: string) => fetchApi<{ status: boolean; data: SalesInvoice }>(`/sales/invoices/${id}/post`, {
+    method: 'POST',
+  }),
+  cancel: (id: string) => fetchApi<{ status: boolean; data: SalesInvoice }>(`/sales/invoices/${id}/cancel`, {
+    method: 'POST',
   }),
   downloadPdf: (id: string) => fetchApi<Blob>(`/sales/invoices/${id}/pdf`, {
     method: 'GET',

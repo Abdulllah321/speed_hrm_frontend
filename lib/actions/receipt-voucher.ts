@@ -49,9 +49,19 @@ export async function createReceiptVoucher(data: any) {
         const payload = {
             ...data,
             rvDate: new Date(data.rvDate).toISOString(),
-            billDate: data.billDate ? new Date(data.billDate).toISOString() : undefined,
-            chequeDate: data.chequeDate ? new Date(data.chequeDate).toISOString() : undefined,
+            billDate: data.billDate ? new Date(data.billDate).toISOString() : null,
+            chequeDate: data.chequeDate ? new Date(data.chequeDate).toISOString() : null,
         };
+        
+        // Remove null/undefined values
+        Object.keys(payload).forEach(key => {
+            if (payload[key] === null || payload[key] === undefined || payload[key] === '') {
+                delete payload[key];
+            }
+        });
+
+        console.log('Sending payload:', payload);
+
         const response = await authFetch("/finance/receipt-vouchers", {
             method: "POST",
             body: JSON.stringify(payload),
@@ -93,9 +103,13 @@ export async function getSalesInvoices(search?: string, status?: string) {
         if (search) q.set("search", search);
         if (status && status !== "all") q.set("status", status);
         const response = await authFetch(`/sales/invoices?${q.toString()}`, { cache: 'no-store' });
-        if (!response.ok) return { status: false, data: [] };
-        return { status: true, data: response.data };
-    } catch {
+        if (!response.ok) {
+            console.error('Sales invoices API error:', response);
+            return { status: false, data: [] };
+        }
+        return response.data || { status: true, data: [] };
+    } catch (error) {
+        console.error('Sales invoices fetch error:', error);
         return { status: false, data: [] };
     }
 }

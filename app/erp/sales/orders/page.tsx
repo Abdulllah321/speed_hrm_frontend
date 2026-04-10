@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, Search, Eye, FileText, Truck, Filter, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ interface SelectedItem {
 }
 
 export default function SalesOrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
@@ -333,268 +335,10 @@ export default function SalesOrdersPage() {
             Create and manage sales orders
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Sales Order
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Sales Order</DialogTitle>
-              <DialogDescription>
-                Create a new sales order for a customer
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="grid gap-6 py-4">
-              {/* Customer & Warehouse Selection */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Customer *</Label>
-                  <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.name} ({customer.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Warehouse *</Label>
-                  <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select warehouse" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {warehouses.map((warehouse) => (
-                        <SelectItem key={warehouse.id} value={warehouse.id}>
-                          {warehouse.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Item Selection */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Add Items</Label>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsFilterOpen(true)}
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filters
-                    {(appliedFilters.brandIds.length + appliedFilters.categoryIds.length) > 0 && (
-                      <Badge variant="secondary" className="ml-2">
-                        {appliedFilters.brandIds.length + appliedFilters.categoryIds.length}
-                      </Badge>
-                    )}
-                  </Button>
-                </div>
-
-                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        placeholder="Search items by SKU or description..."
-                        value={itemSearchQuery}
-                        onChange={(e) => setItemSearchQuery(e.target.value)}
-                        className="pl-10"
-                        disabled={!selectedWarehouseId}
-                      />
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[400px] p-0" align="start">
-                    <Command>
-                      <CommandList>
-                        <CommandGroup>
-                          {searchLoading ? (
-                            <div className="p-4 text-center">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                              <p className="mt-2 text-sm text-muted-foreground">Searching...</p>
-                            </div>
-                          ) : itemOptions.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-muted-foreground">
-                              {itemSearchQuery.length < 2 ? "Type at least 2 characters to search" : "No items found"}
-                            </div>
-                          ) : (
-                            itemOptions.map((option) => (
-                              <CommandItem
-                                key={option.value}
-                                onSelect={() => addItem(option.item)}
-                                className="cursor-pointer"
-                              >
-                                <div className="flex flex-col w-full">
-                                  <span className="font-medium">{option.label}</span>
-                                  <span className="text-sm text-muted-foreground">{option.description}</span>
-                                </div>
-                              </CommandItem>
-                            ))
-                          )}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              {/* Selected Items */}
-              {selectedItems.length > 0 && (
-                <div className="space-y-4">
-                  <Label>Selected Items ({selectedItems.length})</Label>
-                  <div className="border rounded-lg">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead>Unit Cost</TableHead>
-                          <TableHead>Sale Price</TableHead>
-                          <TableHead>Qty</TableHead>
-                          <TableHead>Discount</TableHead>
-                          <TableHead>Total</TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {selectedItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{item.sku}</div>
-                                <div className="text-sm text-muted-foreground">{item.description}</div>
-                                <div className="text-xs text-muted-foreground">Stock: {item.availableStock}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell>Rs. {item.costPrice.toLocaleString()}</TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                value={item.salePrice}
-                                onChange={(e) => updateItem(item.id, 'salePrice', Number(e.target.value))}
-                                className="w-24"
-                                min="0"
-                                step="0.01"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => updateItem(item.id, 'quantity', Number(e.target.value))}
-                                className="w-20"
-                                min="1"
-                                max={item.availableStock}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                value={item.discount}
-                                onChange={(e) => updateItem(item.id, 'discount', Number(e.target.value))}
-                                className="w-24"
-                                min="0"
-                                step="0.01"
-                              />
-                            </TableCell>
-                            <TableCell>Rs. {item.total.toLocaleString()}</TableCell>
-                            <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeItem(item.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-
-              {/* Order Totals */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tax Rate (%)</Label>
-                  <Input
-                    type="number"
-                    value={taxRate}
-                    onChange={(e) => setTaxRate(Number(e.target.value))}
-                    min="0"
-                    max="100"
-                    step="0.01"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Order Discount</Label>
-                  <Input
-                    type="number"
-                    value={orderDiscount}
-                    onChange={(e) => setOrderDiscount(Number(e.target.value))}
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-
-              {/* Order Summary */}
-              {selectedItems.length > 0 && (
-                <div className="p-4 bg-muted rounded-lg space-y-2">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>Rs. {subtotal.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tax ({taxRate}%):</span>
-                    <span>Rs. {taxAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Discount:</span>
-                    <span>Rs. {orderDiscount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-lg border-t pt-2">
-                    <span>Grand Total:</span>
-                    <span>Rs. {grandTotal.toLocaleString()}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  placeholder="Order notes..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreateOrder} disabled={selectedItems.length === 0}>
-                Create Order
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => router.push("/erp/sales/orders/create")}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Sales Order
+        </Button>
       </div>
 
       {/* Filter Sheet */}
@@ -737,7 +481,12 @@ export default function SalesOrdersPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm" title="View">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        title="View"
+                        onClick={() => router.push(`/erp/sales/orders/${order.id}`)}
+                      >
                         <Eye className="h-4 w-4" />
                       </Button>
                       {order.status === "DRAFT" && (

@@ -241,7 +241,7 @@ export default function LandedCostSetupPage() {
         const unitFob = poItem ? parseFloat(String(poItem.unitPrice)) : 0;
 
         return {
-          itemId: gi.item?.itemId || gi.itemId, // business itemId (e.g. NK-AIR-001), fallback to DB id
+          itemId: gi.item?.id || gi.itemId, // Prioritize UUID
           itemName: gi.item?.sku || gi.item?.itemId || gi.itemId,
           sku: '',
           description: gi.description || '',
@@ -587,6 +587,11 @@ export default function LandedCostSetupPage() {
     });
   }, [items]);
 
+  const sanitizeDate = (dateStr: string) => {
+    if (!dateStr || dateStr === 'undefined' || dateStr.includes('$undefined')) return undefined;
+    return dateStr;
+  };
+
   const handleSubmit = async () => {
     if (!grnId || !supplierId) {
       toast.error('GRN and Supplier are required');
@@ -602,7 +607,7 @@ export default function LandedCostSetupPage() {
         supplierId,
         lcNo,
         blNo,
-        blDate: blDate || undefined,
+        blDate: sanitizeDate(blDate),
         gdNo,
         countryOfOrigin,
         season,
@@ -614,10 +619,10 @@ export default function LandedCostSetupPage() {
         freightUSD,
         freightPKR,
         freightInvNo,
-        freightDate,
+        freightDate: sanitizeDate(freightDate),
         doThcCharges,
         doThcPoNo,
-        doThcDate,
+        doThcDate: sanitizeDate(doThcDate),
         bankCharges,
         insuranceChargesH: mInsuranceCharges,
         insurancePolicyNo: mInsurancePolicyNo,
@@ -659,9 +664,9 @@ export default function LandedCostSetupPage() {
             misInsurancePKR: i.misInsurancePKR,
             misClgFwdPKR: i.misClgFwdPKR,
             misFreightInvNo: i.misFreightInvNo || freightInvNo,
-            misFreightDate: i.misFreightDate || freightDate,
+            misFreightDate: sanitizeDate(i.misFreightDate) || sanitizeDate(freightDate),
             misDoThcPoNo: i.misDoThcPoNo || doThcPoNo,
-            misDoThcDate: i.misDoThcDate || doThcDate,
+            misDoThcDate: sanitizeDate(i.misDoThcDate) || sanitizeDate(doThcDate),
             misInsurancePolicyNo: i.misInsurancePolicyNo || mInsurancePolicyNo,
             misClgFwdBillNo: i.misClgFwdBillNo || clgFwdBillNo,
           };

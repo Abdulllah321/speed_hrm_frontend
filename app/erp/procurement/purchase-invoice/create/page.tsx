@@ -1,19 +1,30 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, ArrowLeft } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { supplierApi } from '@/lib/api';
-import { getValuedGrns, getAvailableLandedCosts, getNextInvoiceNumber, createPurchaseInvoice } from '@/lib/actions/purchase-invoice';
-import { Switch } from '@/components/ui/switch';
-import { DatePicker } from '@/components/ui/date-picker';
+import { useState, useEffect, addTransitionType, startTransition } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supplierApi } from "@/lib/api";
+import {
+  getValuedGrns,
+  getAvailableLandedCosts,
+  getNextInvoiceNumber,
+  createPurchaseInvoice,
+} from "@/lib/actions/purchase-invoice";
+import { Switch } from "@/components/ui/switch";
+import { DatePicker } from "@/components/ui/date-picker";
 
 interface Supplier {
   id: string;
@@ -80,20 +91,21 @@ export default function CreatePurchaseInvoicePage() {
   const [landedCosts, setLandedCosts] = useState<LandedCost[]>([]);
 
   const [formData, setFormData] = useState({
-    invoiceNumber: '', // Will be auto-generated
-    invoiceDate: new Date().toISOString().split('T')[0],
-    dueDate: '',
-    supplierId: '',
-    grnId: '',
-    landedCostId: '',
+    invoiceNumber: "", // Will be auto-generated
+    invoiceDate: new Date().toISOString().split("T")[0],
+    dueDate: "",
+    supplierId: "",
+    grnId: "",
+    landedCostId: "",
     discountAmount: 0,
-    notes: '',
+    notes: "",
     isApproved: false,
   });
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [selectedGRN, setSelectedGRN] = useState<GRN | null>(null);
-  const [selectedLandedCost, setSelectedLandedCost] = useState<LandedCost | null>(null);
+  const [selectedLandedCost, setSelectedLandedCost] =
+    useState<LandedCost | null>(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -102,7 +114,7 @@ export default function CreatePurchaseInvoicePage() {
 
   const fetchInitialData = async () => {
     try {
-      console.log('Fetching initial data...');
+      console.log("Fetching initial data...");
 
       const [suppliersData, grnsData, landedCostsData] = await Promise.all([
         supplierApi.getAll(),
@@ -110,36 +122,36 @@ export default function CreatePurchaseInvoicePage() {
         getAvailableLandedCosts(),
       ]);
 
-      console.log('API Responses:', {
+      console.log("API Responses:", {
         suppliers: suppliersData,
         grns: grnsData,
-        landedCosts: landedCostsData
+        landedCosts: landedCostsData,
       });
 
       // Debug GRN structure
       if (grnsData && grnsData.length > 0) {
-        console.log('First GRN structure:', grnsData[0]);
-        console.log('Total GRNs:', grnsData.length);
+        console.log("First GRN structure:", grnsData[0]);
+        console.log("Total GRNs:", grnsData.length);
       } else {
-        console.log('No GRNs found or GRNs array is empty');
+        console.log("No GRNs found or GRNs array is empty");
       }
 
-      // Debug Landed Cost structure  
+      // Debug Landed Cost structure
       if (landedCostsData && landedCostsData.length > 0) {
-        console.log('First Landed Cost structure:', landedCostsData[0]);
-        console.log('Total Landed Costs:', landedCostsData.length);
+        console.log("First Landed Cost structure:", landedCostsData[0]);
+        console.log("Total Landed Costs:", landedCostsData.length);
       } else {
-        console.log('No Landed Costs found or Landed Costs array is empty');
-        console.log('Landed Costs response type:', typeof landedCostsData);
-        console.log('Landed Costs response:', landedCostsData);
+        console.log("No Landed Costs found or Landed Costs array is empty");
+        console.log("Landed Costs response type:", typeof landedCostsData);
+        console.log("Landed Costs response:", landedCostsData);
       }
 
       setSuppliers(suppliersData.data || suppliersData || []);
       setGrns(grnsData || []);
       setLandedCosts(landedCostsData?.data || landedCostsData || []);
     } catch (error) {
-      console.error('Error fetching data:', error);
-      console.error('Error details:', error.message);
+      console.error("Error fetching data:", error);
+      console.error("Error details:", (error as any).message);
       // Set empty arrays to prevent undefined errors
       setSuppliers([]);
       setGrns([]);
@@ -150,35 +162,35 @@ export default function CreatePurchaseInvoicePage() {
   const fetchNextInvoiceNumber = async () => {
     try {
       const response = await getNextInvoiceNumber();
-      console.log('Next Invoice Number:', response);
-      setFormData(prev => ({
+      console.log("Next Invoice Number:", response);
+      setFormData((prev) => ({
         ...prev,
-        invoiceNumber: response.nextInvoiceNumber
+        invoiceNumber: response.nextInvoiceNumber,
       }));
     } catch (error) {
-      console.error('Error fetching next invoice number:', error);
+      console.error("Error fetching next invoice number:", error);
       // Fallback to manual entry if auto-generation fails
     }
   };
 
   const handleGRNSelection = (grnId: string) => {
-    const grn = grns.find(g => g.id === grnId);
-    console.log('Selected GRN:', grn);
+    const grn = grns.find((g) => g.id === grnId);
+    console.log("Selected GRN:", grn);
 
     if (grn) {
       setSelectedGRN(grn);
       const supplierId = grn.purchaseOrder?.vendor?.id || grn.supplier?.id;
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         grnId,
-        supplierId: supplierId || '',
-        landedCostId: ''
+        supplierId: supplierId || "",
+        landedCostId: "",
       }));
       setSelectedLandedCost(null);
 
       // Auto-populate items from GRN
-      console.log('GRN Items:', grn.items);
-      const grnItems: InvoiceItem[] = grn.items.map(item => ({
+      console.log("GRN Items:", grn.items);
+      const grnItems: InvoiceItem[] = grn.items.map((item) => ({
         itemId: item.itemId,
         grnItemId: item.id,
         description: item.description,
@@ -187,28 +199,31 @@ export default function CreatePurchaseInvoicePage() {
         taxRate: 0,
         discountRate: 0,
       }));
-      console.log('Mapped GRN Items:', grnItems);
+      console.log("Mapped GRN Items:", grnItems);
       setItems(grnItems);
     }
   };
 
   const handleLandedCostSelection = (landedCostId: string) => {
-    const landedCost = landedCosts.find(lc => lc.id === landedCostId);
-    console.log('Selected Landed Cost:', landedCost);
+    const landedCost = landedCosts.find((lc) => lc.id === landedCostId);
+    console.log("Selected Landed Cost:", landedCost);
 
     if (landedCost) {
       setSelectedLandedCost(landedCost);
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         landedCostId,
-        supplierId: landedCost.supplier?.id || landedCost.grn?.purchaseOrder?.vendor?.id || '',
-        grnId: ''
+        supplierId:
+          landedCost.supplier?.id ||
+          landedCost.grn?.purchaseOrder?.vendor?.id ||
+          "",
+        grnId: "",
       }));
       setSelectedGRN(null);
 
       // Auto-populate items from Landed Cost
-      console.log('Landed Cost Items:', landedCost.items);
-      const lcItems: InvoiceItem[] = landedCost.items.map(item => ({
+      console.log("Landed Cost Items:", landedCost.items);
+      const lcItems: InvoiceItem[] = landedCost.items.map((item) => ({
         itemId: item.itemId,
         landedCostItemId: item.id,
         description: item.description,
@@ -217,30 +232,33 @@ export default function CreatePurchaseInvoicePage() {
         taxRate: 0,
         discountRate: 0,
       }));
-      console.log('Mapped Landed Cost Items:', lcItems);
+      console.log("Mapped Landed Cost Items:", lcItems);
       setItems(lcItems);
     }
   };
 
   const addItem = () => {
-    setItems(prev => [...prev, {
-      itemId: '',
-      description: '',
-      quantity: 0,
-      unitPrice: 0,
-      taxRate: 0,
-      discountRate: 0,
-    }]);
+    setItems((prev) => [
+      ...prev,
+      {
+        itemId: "",
+        description: "",
+        quantity: 0,
+        unitPrice: 0,
+        taxRate: 0,
+        discountRate: 0,
+      },
+    ]);
   };
 
   const removeItem = (index: number) => {
-    setItems(prev => prev.filter((_, i) => i !== index));
+    setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   const updateItem = (index: number, field: keyof InvoiceItem, value: any) => {
-    setItems(prev => prev.map((item, i) =>
-      i === index ? { ...item, [field]: value } : item
-    ));
+    setItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, [field]: value } : item)),
+    );
   };
 
   const calculateTotals = () => {
@@ -254,7 +272,7 @@ export default function CreatePurchaseInvoicePage() {
       const lineTotal = item.quantity * item.unitPrice;
       const discountAmount = lineTotal * (item.discountRate / 100);
       const discountedAmount = lineTotal - discountAmount;
-      return sum + (discountedAmount * (item.taxRate / 100));
+      return sum + discountedAmount * (item.taxRate / 100);
     }, 0);
 
     const totalAmount = subtotal + taxAmount - formData.discountAmount;
@@ -268,15 +286,17 @@ export default function CreatePurchaseInvoicePage() {
 
     try {
       // Debug: Log the data being sent
-      console.log('Form Data:', formData);
-      console.log('Items:', items);
+      console.log("Form Data:", formData);
+      console.log("Items:", items);
 
       // Validate items before sending
-      const validItems = items.filter(item => item.itemId && item.quantity > 0);
-      console.log('Valid Items:', validItems);
+      const validItems = items.filter(
+        (item) => item.itemId && item.quantity > 0,
+      );
+      console.log("Valid Items:", validItems);
 
       if (validItems.length === 0) {
-        alert('Please add at least one item with valid data');
+        alert("Please add at least one item with valid data");
         setLoading(false);
         return;
       }
@@ -294,19 +314,22 @@ export default function CreatePurchaseInvoicePage() {
       const payload = {
         ...cleanedFormData,
         items: validItems,
-        status: formData.isApproved ? 'APPROVED' : undefined,
+        status: formData.isApproved ? "APPROVED" : undefined,
       };
 
-      console.log('Final Payload:', payload);
+      console.log("Final Payload:", payload);
 
       const invoice = await createPurchaseInvoice(payload);
 
       if (invoice) {
-        router.push('/erp/procurement/purchase-invoice');
+        startTransition(() => {
+          addTransitionType("nav-forward");
+          router.push("/erp/procurement/purchase-invoice");
+        });
       }
     } catch (error: any) {
-      console.error('Error creating invoice:', error);
-      alert(error.message || 'Error creating invoice');
+      console.error("Error creating invoice:", error);
+      alert(error.message || "Error creating invoice");
     } finally {
       setLoading(false);
     }
@@ -337,15 +360,18 @@ export default function CreatePurchaseInvoicePage() {
                   id="invoiceNumber"
                   value={formData.invoiceNumber}
                   disabled
-                  className="bg-gray-50 font-medium"
+                  className="font-medium"
                   placeholder="Auto-generating..."
+                  readOnly
                 />
               </div>
               <div>
                 <Label htmlFor="invoiceDate">Invoice Date *</Label>
                 <DatePicker
                   value={formData.invoiceDate}
-                  onChange={(date) => setFormData(prev => ({ ...prev, invoiceDate: date }))}
+                  onChange={(date) =>
+                    setFormData((prev) => ({ ...prev, invoiceDate: date }))
+                  }
                   placeholder="Select Invoice Date"
                 />
               </div>
@@ -353,7 +379,9 @@ export default function CreatePurchaseInvoicePage() {
                 <Label htmlFor="dueDate">Due Date</Label>
                 <DatePicker
                   value={formData.dueDate}
-                  onChange={(date) => setFormData(prev => ({ ...prev, dueDate: date }))}
+                  onChange={(date) =>
+                    setFormData((prev) => ({ ...prev, dueDate: date }))
+                  }
                   placeholder="Select Due Date"
                 />
               </div>
@@ -362,14 +390,21 @@ export default function CreatePurchaseInvoicePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="grn">Select GRN</Label>
-                <Select value={formData.grnId} onValueChange={handleGRNSelection} disabled={!!formData.landedCostId}>
+                <Select
+                  value={formData.grnId}
+                  onValueChange={handleGRNSelection}
+                  disabled={!!formData.landedCostId}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select GRN" />
                   </SelectTrigger>
                   <SelectContent>
                     {grns.map((grn) => (
                       <SelectItem key={grn.id} value={grn.id}>
-                        {grn.grnNumber} - {grn.purchaseOrder?.vendor?.name || grn.supplier?.name || 'Unknown Supplier'}
+                        {grn.grnNumber} -{" "}
+                        {grn.purchaseOrder?.vendor?.name ||
+                          grn.supplier?.name ||
+                          "Unknown Supplier"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -377,14 +412,21 @@ export default function CreatePurchaseInvoicePage() {
               </div>
               <div>
                 <Label htmlFor="landedCost">Select Landed Cost</Label>
-                <Select value={formData.landedCostId} onValueChange={handleLandedCostSelection} disabled={!!formData.grnId}>
+                <Select
+                  value={formData.landedCostId}
+                  onValueChange={handleLandedCostSelection}
+                  disabled={!!formData.grnId}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Landed Cost" />
                   </SelectTrigger>
                   <SelectContent>
                     {landedCosts.map((lc) => (
                       <SelectItem key={lc.id} value={lc.id}>
-                        {lc.landedCostNumber} - {lc.supplier?.name || lc.grn?.purchaseOrder?.vendor?.name || 'Unknown Supplier'}
+                        {lc.landedCostNumber} -{" "}
+                        {lc.supplier?.name ||
+                          lc.grn?.purchaseOrder?.vendor?.name ||
+                          "Unknown Supplier"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -396,7 +438,9 @@ export default function CreatePurchaseInvoicePage() {
               <Label htmlFor="supplier">Supplier *</Label>
               <Select
                 value={formData.supplierId}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, supplierId: value }))}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, supplierId: value }))
+                }
                 disabled={true}
               >
                 <SelectTrigger>
@@ -428,7 +472,9 @@ export default function CreatePurchaseInvoicePage() {
                       <Label>Description</Label>
                       <Input
                         value={item.description}
-                        onChange={(e) => updateItem(index, 'description', e.target.value)}
+                        onChange={(e) =>
+                          updateItem(index, "description", e.target.value)
+                        }
                         placeholder="Item description"
                         disabled={true}
                       />
@@ -439,7 +485,13 @@ export default function CreatePurchaseInvoicePage() {
                         type="number"
                         step="0.01"
                         value={item.quantity}
-                        onChange={(e) => updateItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "quantity",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
                         disabled={true}
                       />
                     </div>
@@ -449,7 +501,13 @@ export default function CreatePurchaseInvoicePage() {
                         type="number"
                         step="0.01"
                         value={item.unitPrice}
-                        onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "unitPrice",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
                         disabled={true}
                       />
                     </div>
@@ -459,7 +517,13 @@ export default function CreatePurchaseInvoicePage() {
                         type="number"
                         step="0.01"
                         value={item.taxRate}
-                        onChange={(e) => updateItem(index, 'taxRate', parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "taxRate",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
                       />
                     </div>
                     <div>
@@ -468,7 +532,13 @@ export default function CreatePurchaseInvoicePage() {
                         type="number"
                         step="0.01"
                         value={item.discountRate}
-                        onChange={(e) => updateItem(index, 'discountRate', parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          updateItem(
+                            index,
+                            "discountRate",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
                       />
                     </div>
                   </div>
@@ -510,13 +580,16 @@ export default function CreatePurchaseInvoicePage() {
 
         {/* Submit Buttons */}
         <div className="flex gap-4 justify-end">
-          <Link href="/erp/procurement/purchase-invoice">
+          <Link
+            href="/erp/procurement/purchase-invoice"
+            transitionTypes={["nav-forward"]}
+          >
             <Button type="button" variant="outline">
               Cancel
             </Button>
           </Link>
           <Button type="submit" disabled={loading}>
-            {loading ? 'Creating...' : 'Create Invoice'}
+            {loading ? "Creating..." : "Create Invoice"}
           </Button>
         </div>
       </form>
