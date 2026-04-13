@@ -2,6 +2,7 @@
 
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { PageTransition } from "@/components/layouts/page-transition";
 import { usePathname } from "next/navigation";
 import { getRoutePermissions } from "@/lib/route-permissions";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -31,30 +32,27 @@ export default function HRLayoutClient({
         }
     }, [user, loading]);
 
-    // Super admin bypasses all permission checks
     if (isAdmin()) {
         return (
             <DashboardLayout>
-                {children}
+                <PageTransition>{children}</PageTransition>
             </DashboardLayout>
         );
     }
 
-    // If route requires permissions, wrap with PermissionGuard
     if (requiredPermissions.length > 0) {
         return (
             <DashboardLayout>
                 <PermissionGuard permissions={requiredPermissions}>
-                    {children}
+                    <PageTransition>{children}</PageTransition>
                 </PermissionGuard>
             </DashboardLayout>
         );
     }
 
-    // Public routes (no permissions required)
     return (
         <DashboardLayout>
-            {children}
+            <PageTransition>{children}</PageTransition>
         </DashboardLayout>
     );
 }

@@ -38,6 +38,8 @@ export async function createPurchaseInvoice(data: {
     supplierId: string;
     grnId?: string;
     landedCostId?: string;
+    warehouseId?: string;
+    invoiceType?: 'GRN_BASED' | 'LANDED_COST_BASED' | 'DIRECT';
     discountAmount?: number;
     notes?: string;
     items: {
@@ -122,6 +124,77 @@ export async function getAvailableLandedCosts() {
         return response.data ?? [];
     } catch (error) {
         console.error("Get available landed costs error:", error);
+        return [];
+    }
+}
+
+export async function updatePurchaseInvoice(id: string, data: {
+    invoiceNumber?: string;
+    invoiceDate?: string;
+    dueDate?: string;
+    supplierId?: string;
+    grnId?: string;
+    landedCostId?: string;
+    discountAmount?: number;
+    notes?: string;
+    status?: string;
+    items?: {
+        itemId: string;
+        grnItemId?: string;
+        landedCostItemId?: string;
+        description?: string;
+        quantity: number;
+        unitPrice: number;
+        taxRate?: number;
+        discountRate?: number;
+    }[];
+}) {
+    try {
+        const response = await authFetch(`/purchase/purchase-invoices/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify(data),
+        });
+        const result = response.data;
+        revalidatePath("/erp/procurement/purchase-invoice");
+        revalidatePath(`/erp/procurement/purchase-invoice/${id}`);
+        return result;
+    } catch (error) {
+        console.error("Update purchase invoice error:", error);
+        throw error;
+    }
+}
+
+export async function deletePurchaseInvoice(id: string) {
+    try {
+        const response = await authFetch(`/purchase/purchase-invoices/${id}`, {
+            method: "DELETE",
+        });
+        revalidatePath("/erp/procurement/purchase-invoice");
+        return response.data;
+    } catch (error) {
+        console.error("Delete purchase invoice error:", error);
+        throw error;
+    }
+}
+
+export async function searchItemsForDirectPI(query: string, filters?: {
+    brandIds?: string[];
+    categoryIds?: string[];
+    silhouetteIds?: string[];
+    genderIds?: string[];
+}) {
+    try {
+        const params = new URLSearchParams();
+        if (query) params.append('search', query);
+        params.append('limit', '50');
+        if (filters?.brandIds?.length) params.append('brandIds', filters.brandIds.join(','));
+        if (filters?.categoryIds?.length) params.append('categoryIds', filters.categoryIds.join(','));
+        if (filters?.silhouetteIds?.length) params.append('silhouetteIds', filters.silhouetteIds.join(','));
+        if (filters?.genderIds?.length) params.append('genderIds', filters.genderIds.join(','));
+        const response = await authFetch(`/finance/items?${params.toString()}`);
+        return response.data?.data ?? response.data ?? [];
+    } catch (error) {
+        console.error("Search items error:", error);
         return [];
     }
 }

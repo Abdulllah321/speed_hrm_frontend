@@ -71,7 +71,7 @@ export default function AddSubclassPage() {
 
     return (
         <PermissionGuard permissions="erp.item-subclass.create">
-            <div className="p-6">
+            <div className="p-0">
                 <form onSubmit={onSubmit}>
                     <Card className="max-w-4xl mx-auto">
                         <CardHeader>

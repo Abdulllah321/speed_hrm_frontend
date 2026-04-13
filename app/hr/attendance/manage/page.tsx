@@ -48,6 +48,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
+import { DirectionalTransition } from "@/components/layouts/directional-transition";
 
 export default function AttendanceManagePage() {
   const [isPending, setIsPending] = useState(false);
@@ -596,9 +597,10 @@ export default function AttendanceManagePage() {
 
 
   return (
+    <DirectionalTransition>
     <div className="max-w-4xl mx-auto pb-10">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/hr/attendance">
+        <Link href="/hr/attendance" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
@@ -1013,6 +1015,7 @@ export default function AttendanceManagePage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </DirectionalTransition>
   );
 }
 

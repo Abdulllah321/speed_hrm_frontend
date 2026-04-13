@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { ViewTransition } from "react";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,6 +19,17 @@ export default function PosLayoutClient({
     const router = useRouter();
     const requiredPermissions = getRoutePermissions(pathname);
     const { isAdmin, posNeedsUserAuth } = useAuth();
+
+    const vt = (content: React.ReactNode) => (
+        <ViewTransition
+            key={pathname}
+            enter={{ "nav-forward": "nav-forward", "nav-back": "nav-back", default: "none" }}
+            exit={{ "nav-forward": "nav-forward", "nav-back": "nav-back", default: "none" }}
+            default="none"
+        >
+            {content}
+        </ViewTransition>
+    );
 
     // Global keyboard shortcut: Ctrl + N → New Sale
     useEffect(() => {
@@ -41,7 +53,7 @@ export default function PosLayoutClient({
         return (
             <DashboardLayout>
                 <LocationGuard>
-                    {children}
+                    {vt(children)}
                 </LocationGuard>
             </DashboardLayout>
         );
@@ -53,7 +65,7 @@ export default function PosLayoutClient({
             <DashboardLayout>
                 <PermissionGuard permissions={requiredPermissions}>
                     <LocationGuard>
-                        {children}
+                        {vt(children)}
                     </LocationGuard>
                 </PermissionGuard>
             </DashboardLayout>
@@ -64,7 +76,7 @@ export default function PosLayoutClient({
     return (
         <DashboardLayout>
             <LocationGuard>
-                {children}
+                {vt(children)}
             </LocationGuard>
         </DashboardLayout>
     );

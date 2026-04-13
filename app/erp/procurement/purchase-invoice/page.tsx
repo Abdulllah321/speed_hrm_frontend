@@ -1,14 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Filter, Eye, Edit, Trash2 } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { getPurchaseInvoices } from '@/lib/actions/purchase-invoice';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, Filter, Eye, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getPurchaseInvoices, deletePurchaseInvoice } from "@/lib/actions/purchase-invoice";
+import { toast } from "sonner";
 
 interface PurchaseInvoice {
   id: string;
@@ -29,9 +30,9 @@ export default function PurchaseInvoiceListPage() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
 
   useEffect(() => {
     fetchInvoices();
@@ -48,7 +49,7 @@ export default function PurchaseInvoiceListPage() {
       const response = await getPurchaseInvoices(params);
       setInvoices(response.data || []);
     } catch (error) {
-      console.error('Error fetching invoices:', error);
+      console.error("Error fetching invoices:", error);
     } finally {
       setLoading(false);
     }
@@ -56,27 +57,34 @@ export default function PurchaseInvoiceListPage() {
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
-      DRAFT: 'bg-gray-100 text-gray-800',
-      SUBMITTED: 'bg-blue-100 text-blue-800',
-      APPROVED: 'bg-green-100 text-green-800',
-      CANCELLED: 'bg-red-100 text-red-800',
+      DRAFT: "bg-gray-100 text-gray-800",
+      SUBMITTED: "bg-blue-100 text-blue-800",
+      APPROVED: "bg-green-100 text-green-800",
+      CANCELLED: "bg-red-100 text-red-800",
     };
-    return statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800';
+    return (
+      statusColors[status as keyof typeof statusColors] ||
+      "bg-gray-100 text-gray-800"
+    );
   };
 
   const getPaymentStatusBadge = (status: string) => {
     const statusColors = {
-      UNPAID: 'bg-red-100 text-red-800',
-      PARTIALLY_PAID: 'bg-yellow-100 text-yellow-800',
-      FULLY_PAID: 'bg-green-100 text-green-800',
-      OVERDUE: 'bg-red-100 text-red-800',
+      UNPAID: "bg-red-100 text-red-800",
+      PARTIALLY_PAID: "bg-yellow-100 text-yellow-800",
+      FULLY_PAID: "bg-green-100 text-green-800",
+      OVERDUE: "bg-red-100 text-red-800",
     };
-    return statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800';
+    return (
+      statusColors[status as keyof typeof statusColors] ||
+      "bg-gray-100 text-gray-800"
+    );
   };
 
-  const filteredInvoices = invoices.filter(invoice =>
-    invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    invoice.supplier.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredInvoices = invoices.filter(
+    (invoice) =>
+      invoice.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      invoice.supplier.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -86,12 +94,26 @@ export default function PurchaseInvoiceListPage() {
           <h1 className="text-3xl font-bold">Purchase Invoices</h1>
           <p className="text-gray-600">Manage supplier invoices and payments</p>
         </div>
-        <Link href="/erp/procurement/purchase-invoice/create">
-          <Button>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Invoice
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/erp/procurement/purchase-invoice/create-direct"
+            transitionTypes={["nav-forward"]}
+          >
+            <Button variant="outline">
+              <Plus className="w-4 h-4 mr-2" />
+              Direct PI
+            </Button>
+          </Link>
+          <Link
+            href="/erp/procurement/purchase-invoice/create"
+            transitionTypes={["nav-forward"]}
+          >
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Invoice
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
@@ -161,15 +183,21 @@ export default function PurchaseInvoiceListPage() {
                 </thead>
                 <tbody>
                   {filteredInvoices.map((invoice) => (
-                    <tr key={invoice.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3 font-medium">{invoice.invoiceNumber}</td>
+                    <tr key={invoice.id} className="border-b hover:bg-background/80">
+                      <td className="p-3 font-medium">
+                        {invoice.invoiceNumber}
+                      </td>
                       <td className="p-3">
                         {new Date(invoice.invoiceDate).toLocaleDateString()}
                       </td>
                       <td className="p-3">
                         <div>
-                          <div className="font-medium">{invoice.supplier.name}</div>
-                          <div className="text-sm text-gray-500">{invoice.supplier.code}</div>
+                          <div className="font-medium">
+                            {invoice.supplier.name}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {invoice.supplier.code}
+                          </div>
                         </div>
                       </td>
                       <td className="p-3 text-right">
@@ -187,8 +215,12 @@ export default function PurchaseInvoiceListPage() {
                         </Badge>
                       </td>
                       <td className="p-3 text-center">
-                        <Badge className={getPaymentStatusBadge(invoice.paymentStatus)}>
-                          {invoice.paymentStatus.replace('_', ' ')}
+                        <Badge
+                          className={getPaymentStatusBadge(
+                            invoice.paymentStatus,
+                          )}
+                        >
+                          {invoice.paymentStatus.replace("_", " ")}
                         </Badge>
                       </td>
                       <td className="p-3">
@@ -196,14 +228,22 @@ export default function PurchaseInvoiceListPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push(`/erp/procurement/purchase-invoice/${invoice.id}`)}
+                            onClick={() =>
+                              router.push(
+                                `/erp/procurement/purchase-invoice/${invoice.id}`,
+                              )
+                            }
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push(`/erp/procurement/purchase-invoice/${invoice.id}/edit`)}
+                            onClick={() =>
+                              router.push(
+                                `/erp/procurement/purchase-invoice/${invoice.id}/edit`,
+                              )
+                            }
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -211,6 +251,16 @@ export default function PurchaseInvoiceListPage() {
                             variant="ghost"
                             size="sm"
                             className="text-red-600 hover:text-red-800"
+                            onClick={async () => {
+                              if (!window.confirm("Delete this invoice?")) return;
+                              try {
+                                await deletePurchaseInvoice(invoice.id);
+                                toast.success("Invoice deleted");
+                                fetchInvoices();
+                              } catch (error: any) {
+                                toast.error(error.message || "Failed to delete invoice");
+                              }
+                            }}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>

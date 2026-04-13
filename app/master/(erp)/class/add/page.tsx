@@ -56,7 +56,7 @@ export default function AddClassPage() {
 
     return (
         <PermissionGuard permissions="erp.item-class.create">
-            <div className="p-6">
+            <div className="p-0">
                 <form onSubmit={onSubmit}>
                     <Card className="max-w-4xl mx-auto">
                         <CardHeader>

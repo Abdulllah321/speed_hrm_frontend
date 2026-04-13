@@ -164,7 +164,7 @@ export default function PosPage() {
             {/* Stats Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {stats.map((stat) => (
-                    <Card key={stat.title} className="p-6">
+                    <Card key={stat.title} className="p-0">
                         <div className="flex items-start justify-between">
                             <div className="space-y-2">
                                 <p className="text-sm font-medium text-muted-foreground">

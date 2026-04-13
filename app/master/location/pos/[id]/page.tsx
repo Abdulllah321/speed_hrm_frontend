@@ -45,7 +45,7 @@ export default async function LocationPosPage({ params, searchParams }: PageProp
         const companies = companiesRes.status ? (companiesRes.data || []) : [];
 
         return (
-            <div className="p-6">
+            <div className="p-0">
                 <PosList
                     initialPos={posTerminals}
                     location={location}

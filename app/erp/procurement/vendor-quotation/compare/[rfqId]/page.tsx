@@ -84,8 +84,8 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
         }
     };
 
-    if (loading) return <div className="p-6">Loading...</div>;
-    if (quotations.length === 0) return <div className="p-6">No quotations to compare.</div>;
+    if (loading) return <div className="p-0">Loading...</div>;
+    if (quotations.length === 0) return <div className="p-0">No quotations to compare.</div>;
 
     // Get all unique items from all quotations
     const allItems = quotations[0]?.rfq?.purchaseRequisition?.items || [];
