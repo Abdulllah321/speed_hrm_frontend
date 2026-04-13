@@ -81,7 +81,7 @@ export default function ChooseAccountPage() {
             </div>
         );
     }
-
+    if(profiles.length === 0) router.push("/auth/login?forceLogin=true");
     return (
         <Card className="shadow-2xl backdrop-blur-sm bg-card/95">
 
