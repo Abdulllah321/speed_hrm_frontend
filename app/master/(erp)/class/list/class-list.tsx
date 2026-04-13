@@ -18,8 +18,8 @@ export function ClassList({ initialData }: ClassListProps) {
     const { hasPermission, isAdmin } = useAuth();
     const tableId = useId();
 
-    const canEdit = isAdmin() || hasPermission("erp.item-class.update");
-    const canDelete = isAdmin() || hasPermission("erp.item-class.delete");
+    const canEdit = isAdmin() || hasPermission("master.item-class.update");
+    const canDelete = isAdmin() || hasPermission("master.item-class.delete");
 
     const onBulkEdit = async (rows: ClassRow[]) => {
         if (!canEdit) {

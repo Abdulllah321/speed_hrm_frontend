@@ -115,7 +115,7 @@ export default function AddSubCategoryPage() {
   }
 
   return (
-    <PermissionGuard permissions="erp.sub-category.create">
+    <PermissionGuard permissions="master.sub-category.create">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <Link href="/master/sub-category/list">

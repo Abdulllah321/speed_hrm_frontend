@@ -13,7 +13,7 @@ export default async function SubclassListPage() {
     const classes = classesRes.status ? classesRes.data : [];
 
     return (
-        <PermissionGuard permissions="erp.item-subclass.read">
+        <PermissionGuard permissions="master.item-subclass.read">
             <div className="flex flex-col gap-4 p-4">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-2xl font-bold tracking-tight">Item Subclasses</h1>

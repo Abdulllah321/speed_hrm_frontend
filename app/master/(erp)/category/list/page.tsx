@@ -24,7 +24,7 @@ export default async function CategoryListPage({
     }
 
     return (
-      <PermissionGuard permissions="erp.category.read">
+      <PermissionGuard permissions="master.category.read">
         <CategoryList
           initialCategories={result.data || []}
           newItemId={newItemId}

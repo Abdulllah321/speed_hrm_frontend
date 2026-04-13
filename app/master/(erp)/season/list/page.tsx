@@ -7,7 +7,7 @@ export default async function SeasonListPage() {
     const seasons = response.status ? response.data : [];
 
     return (
-        <PermissionGuard permissions="erp.season.read">
+        <PermissionGuard permissions="master.season.read">
             <div className="flex flex-col gap-4 p-4">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-2xl font-bold tracking-tight">Seasons</h1>

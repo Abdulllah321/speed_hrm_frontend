@@ -32,8 +32,11 @@ interface Session {
     ipAddress: string | null;
     userAgent: string | null;
     deviceInfo: string | null;
-    lastActivityAt: string;
-    isCurrent: boolean;
+    deviceType: string | null;
+    createdAt: string;
+    updatedAt: string;
+    expiresAt: string;
+    isCurrent?: boolean;
 }
 
 export default function SessionsPage() {
@@ -155,7 +158,7 @@ export default function SessionsPage() {
                                                 <span>•</span>
                                                 <span className="flex items-center gap-1">
                                                     <Clock className="h-3 w-3" />
-                                                    Last active {formatDistanceToNow(new Date(session.lastActivityAt), { addSuffix: true })}
+                                                    Last active {session.updatedAt ? formatDistanceToNow(new Date(session.updatedAt), { addSuffix: true }) : "Unknown"}
                                                 </span>
                                             </CardDescription>
                                         </div>

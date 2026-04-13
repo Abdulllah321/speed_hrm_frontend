@@ -63,6 +63,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { getLoanTypes, type LoanType } from "@/lib/actions/loan-type";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export interface LoanRequestRow {
   id: string;
@@ -79,6 +80,7 @@ export interface LoanRequestRow {
   status: string;
   paidAmount?: number;
   remainingAmount?: number;
+  createdById?: string;
 }
 
 // Edit form schema
@@ -138,7 +140,11 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loanTypes, setLoanTypes] = useState<LoanType[]>([]);
   const [loadingLoanTypes, setLoadingLoanTypes] = useState(false);
+  const { user } = useAuth();
   const record = row.original;
+
+  // Check if current user created this request
+  const isCreatedByCurrentUser = record.createdById === user?.id;
 
   const form = useForm<EditLoanRequestFormData>({
     resolver: zodResolver(editLoanRequestSchema) as any,
@@ -567,7 +573,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
             <>
               <DropdownMenuItem
                 onClick={handleApprove}
-                disabled={isPending}
+                disabled={isPending || isCreatedByCurrentUser}
                 className="text-green-600 focus:text-green-600"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -575,7 +581,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setRejectDialog(true)}
-                disabled={isPending}
+                disabled={isPending || isCreatedByCurrentUser}
                 className="text-destructive focus:text-destructive"
               >
                 <XCircle className="h-4 w-4 mr-2" />
@@ -1088,7 +1094,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Reject Loan Request?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription asChild>
               <div className="space-y-4">
                 <p>
                   Are you sure you want to reject the loan request for{" "}

@@ -20,8 +20,8 @@ export function SubclassList({ initialData, classes }: SubclassListProps) {
     const { hasPermission, isAdmin } = useAuth();
     const tableId = useId();
 
-    const canEdit = isAdmin() || hasPermission("erp.item-subclass.update");
-    const canDelete = isAdmin() || hasPermission("erp.item-subclass.delete");
+    const canEdit = isAdmin() || hasPermission("master.item-subclass.update");
+    const canDelete = isAdmin() || hasPermission("master.item-subclass.delete");
 
     const columns = useMemo(() => getColumns(classes), [classes]);
 

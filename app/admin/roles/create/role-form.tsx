@@ -54,23 +54,38 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
     },
   });
 
+  const erpMasterModules = [
+    "master.brand", "master.division", "master.channel-class", "master.color", 
+    "master.gender", "master.size", "master.silhouette", "master.tax-rate",
+    "master.item-class", "master.item-subclass", "master.old-season", "master.season", 
+    "master.segment", "master.hs-code", "master.category", "master.sub-category", "master.uom"
+  ];
+
+  const posMasterModules = [
+    "master.promo", "master.coupon", "master.alliance"
+  ];
+
   // Define module categorization
   const getCategory = (module: string): "HR" | "Master" | "ERP" => {
-    if (module.startsWith("master.") || 
+    if (erpMasterModules.includes(module) || posMasterModules.includes(module) || module.startsWith("master.") || 
         ["country", "state", "city", "location", "bank", "equipment", 
          "allowance-head", "deduction-head", "salary-breakup", "tax-slab", 
          "bonus-type", "loan-type", "leave-type", "leaves-policy", "eobi", "provident-fund",
-         "approval-setting", "rebate-nature"].includes(module)) {
+         "approval-setting", "rebate-nature", "role"].includes(module)) {
       return "Master";
     }
-    // As per user request, ERP permissions are not created yet, so specific ERP modules will go here later.
-    // For now, if we had any, we'd list them.
+    
     if (module.startsWith("erp.")) {
         return "ERP";
     }
     
-    // Default everything else to HR (including Payroll Setup as typically requested if not ERP yet)
     return "HR";
+  };
+
+  const getMasterSubCategory = (module: string): "HR" | "ERP" | "POS" => {
+    if (posMasterModules.includes(module) || module === 'master.pos') return 'POS';
+    if (erpMasterModules.includes(module)) return 'ERP';
+    return 'HR';
   };
 
   // Group permissions by module
@@ -147,7 +162,12 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
   };
 
   const handleSelectAllInCategory = (category: "HR" | "Master" | "ERP", select: boolean) => {
-     const categoryModules = modulesByCategory[category];
+     let categoryModules = modulesByCategory[category];
+     
+     if (category === "Master" && masterFilter !== "All") {
+         categoryModules = categoryModules.filter(m => getMasterSubCategory(m) === masterFilter);
+     }
+     
      let idsToToggle: string[] = [];
      
      categoryModules.forEach(module => {
@@ -229,6 +249,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
   );
 
   const [activeTab, setActiveTab] = useState<"HR" | "Master" | "ERP">("HR");
+  const [masterFilter, setMasterFilter] = useState<"All" | "HR" | "ERP" | "POS">("All");
 
   const pageTitle = initialData ? `Edit Role: ${initialData.name}` : "Create New Role";
 
@@ -316,7 +337,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
             <div className="lg:col-span-8">
                 <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
                     <Card>
-                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-4">
+                        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
                             <TabsList className="grid w-[300px] grid-cols-3">
                                 <TabsTrigger value="HR">HR</TabsTrigger>
                                 <TabsTrigger value="Master">Master</TabsTrigger>
@@ -341,13 +362,32 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
                                 </Button>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-0">
                             <ScrollArea className="h-[490px] pr-4">
                                 <TabsContent value="HR" className="mt-0 space-y-4">
                                     {renderModuleList(modulesByCategory["HR"])}
                                 </TabsContent>
-                                <TabsContent value="Master" className="mt-0 space-y-4">
-                                    {renderModuleList(modulesByCategory["Master"])}
+                                 <TabsContent value="Master" className="mt-0 space-y-0">
+                                    <Tabs 
+                                        value={masterFilter} 
+                                        onValueChange={(val) => setMasterFilter(val as any)}
+                                        className="w-full"
+                                    >
+                                        <TabsList className="bg-muted/20 w-full grid grid-cols-4 mb-2">
+                                            <TabsTrigger value="All" className="text-xs">All Master</TabsTrigger>
+                                            <TabsTrigger value="HR" className="text-xs">HR Master</TabsTrigger>
+                                            <TabsTrigger value="ERP" className="text-xs">ERP Master</TabsTrigger>
+                                            <TabsTrigger value="POS" className="text-xs">POS Master</TabsTrigger>
+                                        </TabsList>
+
+                                        <TabsContent value={masterFilter} className="mt-0 space-y-4">
+                                            {renderModuleList(
+                                                modulesByCategory["Master"].filter(m => 
+                                                    masterFilter === "All" || getMasterSubCategory(m) === masterFilter
+                                                )
+                                            )}
+                                        </TabsContent>
+                                    </Tabs>
                                 </TabsContent>
                                 <TabsContent value="ERP" className="mt-0 space-y-4">
                                     {renderModuleList(modulesByCategory["ERP"])}
