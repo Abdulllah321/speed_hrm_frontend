@@ -482,15 +482,6 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-    title: "Machine",
-    environment: "ERP",
-    permissions: ["master.machine.read", "master.machine.create"],
-    children: [
-      { title: "Add", href: "/master/machine/add" },
-      { title: "View", href: "/master/machine/list" },
-    ],
-  },
-  {
     title: "Operator",
     environment: "ERP",
     permissions: ["master.operator.read", "master.operator.create"],

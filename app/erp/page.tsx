@@ -41,18 +41,12 @@ import { authFetch } from "@/lib/auth";
 import { stockLedgerApi } from "@/lib/api";
 import { toast } from "sonner";
 
-// --- Advanced Mock Data for Analytics --- (replaced by dynamic derivation in component)
+
 
 const dayMap = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const hourMap = ['08:00', '10:00', '12:00', '14:00', '16:00'];
 
-const dummyOverviewTransactions = [
-  { id: "ORD-9921", name: "Sale - ORD-9921", cat: "Electronics", val: "PKR 1,240.00" },
-  { id: "ORD-9920", name: "Sale - ORD-9920", cat: "Furniture",   val: "PKR 450.00" },
-  { id: "ORD-9919", name: "Sale - ORD-9919", cat: "Electronics", val: "PKR 89.99" },
-  { id: "ORD-9918", name: "Sale - ORD-9918", cat: "Groceries",   val: "PKR 210.50" },
-  { id: "ORD-9917", name: "Sale - ORD-9917", cat: "Apparel",     val: "PKR 345.00" },
-];
+
 
 // --- Internal Components ---
 
@@ -162,24 +156,24 @@ const ERPDashboard = () => {
 
     const totalRevenue = hasOrders 
       ? orders.reduce((sum, order) => sum + Number(order.grandTotal || 0), 0)
-      : 125430; // Dummy fallback
+      : 0;
 
     const activeUsers = hasOrders 
       ? new Set(orders.map(o => o.customerId).filter(Boolean)).size
-      : 842; // Dummy fallback
+      : 0;
 
-    const totalOrders = hasOrders ? orders.length : 1240;
+    const totalOrders = hasOrders ? orders.length : 0;
 
     const inventoryValue = hasStock 
       ? stockLevels.reduce((sum, level) => sum + (Number(level.totalQty || 0) * 0), 0)
-      : 245000; // Dummy fallback
+      : 0;
 
     return {
       totalRevenue: `PKR ${totalRevenue.toLocaleString('en-PK', { maximumFractionDigits: 0 })}`,
       activeUsers: activeUsers.toLocaleString(),
       inventoryValue: `PKR ${inventoryValue.toLocaleString('en-PK')}`,
       totalOrders: totalOrders.toLocaleString(),
-      inventoryCount: hasStock ? stockLevels.length : 156
+      inventoryCount: hasStock ? stockLevels.length : 0
     };
   }, [orders, stockLevels]);
 
@@ -188,16 +182,9 @@ const ERPDashboard = () => {
     const now = new Date();
     const result: { label: string, revenue: number, profit: number }[] = [];
 
-    // If no orders, return dummy trend
+    // If no orders, return empty trend
     if (orders.length === 0 && !loading) {
-       return [
-          { label: "Apr", revenue: 45000, profit: 12000 },
-          { label: "May", revenue: 52000, profit: 15000 },
-          { label: "Jun", revenue: 48000, profit: 11000 },
-          { label: "Jul", revenue: 61000, profit: 19000 },
-          { label: "Aug", revenue: 55000, profit: 14000 },
-          { label: "Sep", revenue: 72000, profit: 22000 },
-       ];
+       return [];
     }
 
     const monthlyData: Record<string, { label: string, revenue: number, profit: number }> = {};
@@ -229,13 +216,7 @@ const ERPDashboard = () => {
     ];
 
     if (orders.length === 0 && !loading) {
-      return [
-        { name: "Electronics", value: 45, color: colors[0] },
-        { name: "Furniture", value: 25, color: colors[1] },
-        { name: "Appliance", value: 15, color: colors[2] },
-        { name: "Groceries", value: 10, color: colors[3] },
-        { name: "Others", value: 5, color: colors[4] },
-      ];
+      return [];
     }
 
     const counts: Record<string, number> = {};
@@ -257,7 +238,7 @@ const ERPDashboard = () => {
   }, [orders, loading]);
 
   const recentTransactions = useMemo(() => {
-    if (orders.length === 0 && !loading) return dummyOverviewTransactions;
+    if (orders.length === 0 && !loading) return [];
     return orders.slice(0, 5).map(order => ({
       id: order.orderNumber,
       name: `Sale - ${order.orderNumber}`,
@@ -269,18 +250,18 @@ const ERPDashboard = () => {
   // ── Analytics Tab: derived from real orders ──────────────────────────────
 
   const funnelData = useMemo(() => {
-    const total = orders.length || 1200;
-    const completed = orders.filter(o => o.status === 'completed').length || Math.round(total * 0.2);
+    const total = orders.length;
+    const completed = orders.filter(o => o.status === 'completed').length;
     const held = orders.filter(o => o.status === 'hold').length;
-    const withCustomer = orders.filter(o => o.customerId).length || Math.round(total * 0.37);
-    const multiItem = orders.filter(o => (o.items?.length || 0) > 1).length || Math.round(total * 0.23);
+    const withCustomer = orders.filter(o => o.customerId).length;
+    const multiItem = orders.filter(o => (o.items?.length || 0) > 1).length;
 
     return [
       { stage: 'Total Orders',     value: total,                                          fill: "var(--primary)" },
-      { stage: 'With Customer',    value: withCustomer || Math.round(total * 0.37),       fill: "oklch(0.6721 0.1944 294.4928)" },
-      { stage: 'Multi-Item',       value: multiItem || Math.round(total * 0.23),          fill: "oklch(0.8003 0.1821 151.7110)" },
+      { stage: 'With Customer',    value: withCustomer,                                   fill: "oklch(0.6721 0.1944 294.4928)" },
+      { stage: 'Multi-Item',       value: multiItem,                                      fill: "oklch(0.8003 0.1821 151.7110)" },
       { stage: 'Completed',        value: completed,                                      fill: "oklch(0.7106 0.1661 22.2162)" },
-      { stage: 'Held / Pending',   value: held || Math.round(total * 0.03),               fill: "#10b981" },
+      { stage: 'Held / Pending',   value: held,                                           fill: "#10b981" },
     ];
   }, [orders]);
 
@@ -299,16 +280,8 @@ const ERPDashboard = () => {
       matrix[key] = (matrix[key] || 0) + 1;
     });
 
-    // If no real data, use illustrative fallback
     if (orders.length === 0) {
-      return [
-        { hourIdx: 0, dayIdx: 0, intensity: 20, hour: '08:00', day: 'Mon' },
-        { hourIdx: 2, dayIdx: 0, intensity: 80, hour: '12:00', day: 'Mon' },
-        { hourIdx: 2, dayIdx: 2, intensity: 95, hour: '12:00', day: 'Wed' },
-        { hourIdx: 1, dayIdx: 2, intensity: 55, hour: '10:00', day: 'Wed' },
-        { hourIdx: 2, dayIdx: 4, intensity: 70, hour: '12:00', day: 'Fri' },
-        { hourIdx: 3, dayIdx: 4, intensity: 60, hour: '14:00', day: 'Fri' },
-      ];
+      return [];
     }
 
     const maxCount = Math.max(...Object.values(matrix), 1);
@@ -326,14 +299,7 @@ const ERPDashboard = () => {
 
   const performanceRadarData = useMemo(() => {
     if (orders.length === 0) {
-      return [
-        { subject: 'Growth',     A: 120, B: 110, fullMark: 150 },
-        { subject: 'Retention',  A: 98,  B: 130, fullMark: 150 },
-        { subject: 'Efficiency', A: 86,  B: 130, fullMark: 150 },
-        { subject: 'Margins',    A: 99,  B: 100, fullMark: 150 },
-        { subject: 'Volume',     A: 85,  B: 90,  fullMark: 150 },
-        { subject: 'Support',    A: 65,  B: 85,  fullMark: 150 },
-      ];
+      return [];
     }
 
     const completed = orders.filter(o => o.status === 'completed').length;
@@ -367,9 +333,9 @@ const ERPDashboard = () => {
 
   const analyticsKpis = useMemo(() => {
     if (orders.length === 0) return {
-      forecastedRevenue: 'Rs. 1.42M', churnPct: '2.4%',
-      logisticsEff: '94.8%', topCategory: 'N/A',
-      forecastTrend: '+15.2%', topCategoryShare: '0%',
+      forecastedRevenue: 'Rs. 0', churnPct: '0%',
+      logisticsEff: '0%', topCategory: 'N/A',
+      forecastTrend: '0%', topCategoryShare: '0%',
     };
 
     const totalRevenue = orders.reduce((s, o) => s + Number(o.grandTotal || 0), 0);
@@ -404,7 +370,7 @@ const ERPDashboard = () => {
       churnPct: `${churnPct}%`,
       logisticsEff: `${efficiencyPct}%`,
       topCategory: topCat?.[0] || 'N/A',
-      forecastTrend: last30Rev > 0 ? `+${((projected - last30Rev) / last30Rev * 100).toFixed(1)}%` : '+10%',
+      forecastTrend: last30Rev > 0 ? `+${((projected - last30Rev) / last30Rev * 100).toFixed(1)}%` : '0%',
       topCategoryShare: `${topCatShare}% share`,
     };
   }, [orders]);
@@ -420,22 +386,16 @@ const ERPDashboard = () => {
       else if (qty <= LOW_THRESHOLD) lowStock++;
     });
     return {
-      totalSkus: stockLevels.length || 156,
-      lowStockCount: stockLevels.length > 0 ? lowStock : 12,
-      outOfStockCount: stockLevels.length > 0 ? outOfStock : 3,
-      inTransitCount: stockLevels.filter((s: any) => s.location?.type === 'transit').length || (stockLevels.length === 0 ? 450 : 0),
+      totalSkus: stockLevels.length,
+      lowStockCount: stockLevels.length > 0 ? lowStock : 0,
+      outOfStockCount: stockLevels.length > 0 ? outOfStock : 0,
+      inTransitCount: stockLevels.filter((s: any) => s.location?.type === 'transit').length,
     };
   }, [stockLevels]);
 
   const inventoryRows = useMemo(() => {
     const LOW_THRESHOLD = 10;
-    if (stockLevels.length === 0 && !loading) return [
-      { id: "SKU-001", name: "Premium Wireless Headset", category: "Electronics", qty: 45,  status: "In Stock" },
-      { id: "SKU-002", name: "Ergonomic Office Chair",   category: "Furniture",   qty: 12,  status: "Low Stock" },
-      { id: "SKU-003", name: "USB-C Fast Charger",       category: "Electronics", qty: 150, status: "In Stock" },
-      { id: "SKU-004", name: "Minimalist Desk Lamp",     category: "Appliance",   qty: 0,   status: "Out of Stock" },
-      { id: "SKU-005", name: "Smart Watch Series 5",     category: "Electronics", qty: 28,  status: "In Stock" },
-    ];
+    if (stockLevels.length === 0 && !loading) return [];
     return stockLevels.slice(0, 50).map((s: any) => {
       const qty = Number(s.totalQty || 0);
       return {
