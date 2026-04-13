@@ -127,8 +127,8 @@ function RowActions({ row }: { row: Row<HsCodeRow> }) {
     const [isPending, startTransition] = useTransition();
     const [deleteDialog, setDeleteDialog] = useState(false);
 
-    const canEdit = hasPermission("hs-code.update");
-    const canDelete = hasPermission("hs-code.delete");
+    const canEdit = hasPermission("master.hs-code.update");
+    const canDelete = hasPermission("master.hs-code.delete");
 
     if (!canEdit && !canDelete) return null;
 

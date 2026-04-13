@@ -70,7 +70,7 @@ export default function AddHsCodePage() {
     }
 
     return (
-        <PermissionGuard permissions="hs-code.create">
+        <PermissionGuard permissions="master.hs-code.create">
             <div className="max-w-4xl mx-auto space-y-6">
                 <div className="mb-6">
                     <Link href="/master/hs-code/list">

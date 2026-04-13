@@ -117,8 +117,8 @@ function RowActions({ row }: RowActionsProps) {
     const [deleteDialog, setDeleteDialog] = useState(false);
     const { hasPermission, isAdmin } = useAuth();
 
-    const canEdit = isAdmin() || hasPermission("erp.season.update");
-    const canDelete = isAdmin() || hasPermission("erp.season.delete");
+    const canEdit = isAdmin() || hasPermission("master.season.update");
+    const canDelete = isAdmin() || hasPermission("master.season.delete");
 
     if (!canEdit && !canDelete) {
         return null;

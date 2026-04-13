@@ -45,6 +45,7 @@ import { getQualifications, type Qualification } from "@/lib/actions/qualificati
 import { getInstitutes, type Institute } from "@/lib/actions/institute";
 import { getAllocations, type Allocation } from "@/lib/actions/allocation";
 import { getSocialSecurityInstitutions } from "@/lib/actions/social-security";
+import { getBanks } from "@/lib/actions/bank";
 import type { Employee } from "@/lib/actions/employee";
 
 export default function EditEmployeePage() {
@@ -71,6 +72,7 @@ export default function EditEmployeePage() {
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
   const [institutes, setInstitutes] = useState<Institute[]>([]);
   const [socialSecurityInstitutions, setSocialSecurityInstitutions] = useState<any[]>([]);
+  const [banks, setBanks] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   // Load employee data
   useEffect(() => {
@@ -118,6 +120,7 @@ export default function EditEmployeePage() {
           institutesRes,
           allocationsRes,
           socialSecurityRes,
+          banksRes,
         ] = await Promise.all([
           getDepartments(),
           getEmployeeGrades(),
@@ -133,6 +136,7 @@ export default function EditEmployeePage() {
           getInstitutes(),
           getAllocations(),
           getSocialSecurityInstitutions(),
+          getBanks(),
         ]);
 
         if (deptsRes.status) setDepartments(deptsRes.data || []);
@@ -149,6 +153,7 @@ export default function EditEmployeePage() {
         if (institutesRes.status) setInstitutes(institutesRes.data || []);
         if (allocationsRes.status) setAllocations(allocationsRes.data || []);
         if (socialSecurityRes.status) setSocialSecurityInstitutions(socialSecurityRes.data || []);
+        if (banksRes.status) setBanks(banksRes.data || []);
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to load form data");
@@ -230,6 +235,7 @@ export default function EditEmployeePage() {
       qualifications={qualifications}
       institutes={institutes}
       socialSecurityInstitutions={socialSecurityInstitutions}
+      banks={banks}
       loadingData={loadingData}
     />
   );

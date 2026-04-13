@@ -73,6 +73,7 @@ export interface AdvanceSalaryRow {
   deductionMonthYear: string;
   approval1: string;
   status: string;
+  createdById?: string;
 }
 
 // Edit form schema
@@ -111,7 +112,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
   const [viewDialog, setViewDialog] = useState(false);
   const [editDialog, setEditDialog] = useState(false);
   const [advanceSalaryDetails, setAdvanceSalaryDetails] = useState<AdvanceSalary | null>(null);
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const canApprove = hasPermission("hr.advance-salary.approve");
   const canEdit = hasPermission("hr.advance-salary.update");
   const canDelete = hasPermission("hr.advance-salary.delete");
@@ -119,6 +120,9 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
 
   const [loadingDetails, setLoadingDetails] = useState(false);
   const record = row.original;
+
+  // Check if current user created this request
+  const isCreatedByCurrentUser = record.createdById === user?.id;
 
   const form = useForm<EditAdvanceSalaryFormData>({
     resolver: zodResolver(editAdvanceSalarySchema) as any,
@@ -479,7 +483,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
             <>
               <DropdownMenuItem
                 onClick={handleApprove}
-                disabled={isPending || !canApprove}
+                disabled={isPending || !canApprove || isCreatedByCurrentUser}
                 className="text-green-600 focus:text-green-600"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -487,7 +491,7 @@ function RowActions({ row }: { row: { original: AdvanceSalaryRow } }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setRejectDialog(true)}
-                disabled={isPending || !canApprove}
+                disabled={isPending || !canApprove || isCreatedByCurrentUser}
                 className="text-destructive focus:text-destructive"
               >
                 <XCircle className="h-4 w-4 mr-2" />

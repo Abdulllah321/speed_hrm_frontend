@@ -18,8 +18,8 @@ export function OldSeasonList({ initialData }: OldSeasonListProps) {
   const { hasPermission, isAdmin } = useAuth();
   const tableId = useId();
 
-  const canEdit = isAdmin() || hasPermission("erp.old-season.update");
-  const canDelete = isAdmin() || hasPermission("erp.old-season.delete");
+  const canEdit = isAdmin() || hasPermission("master.old-season.update");
+  const canDelete = isAdmin() || hasPermission("master.old-season.delete");
 
   const onBulkEdit = async (rows: { id: string; name: string; status?: string }[]) => {
     startTransition(async () => {

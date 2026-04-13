@@ -42,10 +42,10 @@ export function CategoryList({
     router.push(isSubCategory ? "/master/sub-category/add" : "/master/category/add");
   };
 
-  const readPermission = isSubCategory ? "erp.sub-category.read" : "erp.category.read";
-  const createPermission = isSubCategory ? "erp.sub-category.create" : "erp.category.create";
-  const updatePermission = isSubCategory ? "erp.sub-category.update" : "erp.category.update";
-  const deletePermission = isSubCategory ? "erp.sub-category.delete" : "erp.category.delete";
+  const readPermission = isSubCategory ? "master.sub-category.read" : "master.category.read";
+  const createPermission = isSubCategory ? "master.sub-category.create" : "master.category.create";
+  const updatePermission = isSubCategory ? "master.sub-category.update" : "master.category.update";
+  const deletePermission = isSubCategory ? "master.sub-category.delete" : "master.category.delete";
 
   const showAddAction = hasPermission(createPermission);
   const canBulkEdit = false; // Disable bulk edit for categories for now

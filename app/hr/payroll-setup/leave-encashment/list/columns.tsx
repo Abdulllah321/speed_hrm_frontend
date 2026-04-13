@@ -30,6 +30,7 @@ import { format } from "date-fns";
 import { deleteLeaveEncashment, approveLeaveEncashment, rejectLeaveEncashment } from "@/lib/actions/leave-encashment";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export type LeaveEncashmentRow = {
   id: string;
@@ -43,6 +44,7 @@ export type LeaveEncashmentRow = {
   approvalStatus: string;
   status: string;
   createdAt: string;
+  createdById?: string;
 };
 
 const approvalStatusVariant = (status: string) => {
@@ -149,11 +151,15 @@ type RowActionsProps = {
 function RowActions({ row }: RowActionsProps) {
   const record = row.original;
   const router = useRouter();
+  const { user } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [approveDialog, setApproveDialog] = useState(false);
   const [rejectDialog, setRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+
+  // Check if current user created this request
+  const isCreatedByCurrentUser = record.createdById === user?.id;
 
   const handleDeleteConfirm = async () => {
     startTransition(async () => {
@@ -226,6 +232,7 @@ function RowActions({ row }: RowActionsProps) {
             <>
               <DropdownMenuItem
                 onClick={() => setApproveDialog(true)}
+                disabled={isCreatedByCurrentUser}
                 className="text-green-600 focus:text-green-600"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -233,6 +240,7 @@ function RowActions({ row }: RowActionsProps) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setRejectDialog(true)}
+                disabled={isCreatedByCurrentUser}
                 className="text-destructive focus:text-destructive"
               >
                 <XCircle className="h-4 w-4 mr-2" />

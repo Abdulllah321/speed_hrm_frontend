@@ -18,8 +18,8 @@ export function SeasonList({ initialData }: SeasonListProps) {
     const { hasPermission, isAdmin } = useAuth();
     const tableId = useId();
 
-    const canEdit = isAdmin() || hasPermission("erp.season.update");
-    const canDelete = isAdmin() || hasPermission("erp.season.delete");
+    const canEdit = isAdmin() || hasPermission("master.season.update");
+    const canDelete = isAdmin() || hasPermission("master.season.delete");
 
     const onBulkEdit = async (rows: SeasonRow[]) => {
         if (!canEdit) {

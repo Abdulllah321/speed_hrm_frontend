@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ import {
     Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 import {
     PromoCampaign,
     CouponCode,
@@ -186,7 +188,21 @@ function LocationMultiSelect({
 
 export function PosConfigPage({ promos, coupons, alliances, locations, defaultTab }: Props) {
     const router = useRouter();
+    const { hasPermission } = useAuth();
     const [isPending, startTransition] = useTransition();
+
+    // ─── Permissions ────────────────────────────────────────
+    const canCreatePromo = hasPermission("master.promo.create");
+    const canUpdatePromo = hasPermission("master.promo.update");
+    const canDeletePromo = hasPermission("master.promo.delete");
+
+    const canCreateCoupon = hasPermission("master.coupon.create");
+    const canUpdateCoupon = hasPermission("master.coupon.update");
+    const canDeleteCoupon = hasPermission("master.coupon.delete");
+
+    const canCreateAlliance = hasPermission("master.alliance.create");
+    const canUpdateAlliance = hasPermission("master.alliance.update");
+    const canDeleteAlliance = hasPermission("master.alliance.delete");
 
     // ─── Promo Dialog ────────────────────────────────────────
     const [promoDialog, setPromoDialog] = useState(false);
@@ -478,100 +494,112 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
                 onValueChange={(val) => router.push(`/master/pos-config?tab=${val}`)}
             >
                 <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="promos" className="flex items-center gap-2">
-                        <Megaphone className="h-4 w-4" />
-                        Promos ({promos.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="coupons" className="flex items-center gap-2">
-                        <Ticket className="h-4 w-4" />
-                        Coupons ({coupons.length})
-                    </TabsTrigger>
-                    <TabsTrigger value="alliances" className="flex items-center gap-2">
-                        <Handshake className="h-4 w-4" />
-                        Alliances ({alliances.length})
-                    </TabsTrigger>
+                    <PermissionGuard permissions="master.promo.read" fallback={null}>
+                        <TabsTrigger value="promos" className="flex items-center gap-2">
+                            <Megaphone className="h-4 w-4" />
+                            Promos ({promos.length})
+                        </TabsTrigger>
+                    </PermissionGuard>
+                    <PermissionGuard permissions="master.coupon.read" fallback={null}>
+                        <TabsTrigger value="coupons" className="flex items-center gap-2">
+                            <Megaphone className="h-4 w-4" />
+                            Coupons ({coupons.length})
+                        </TabsTrigger>
+                    </PermissionGuard>
+                    <PermissionGuard permissions="master.alliance.read" fallback={null}>
+                        <TabsTrigger value="alliances" className="flex items-center gap-2">
+                            <Handshake className="h-4 w-4" />
+                            Alliances ({alliances.length})
+                        </TabsTrigger>
+                    </PermissionGuard>
                 </TabsList>
 
                 {/* ═══════ PROMOS TAB ═══════ */}
-                <TabsContent value="promos" className="space-y-4">
-                    <Alert className="bg-muted/50 text-muted-foreground border-none">
-                        <Info className="h-4 w-4" />
-                        <AlertTitle>When to use Promos?</AlertTitle>
-                        <AlertDescription>
-                            Promos are store-wide or location-wide sales events (e.g., "Summer Sale"). They apply automatically to eligible orders during their active dates without requiring a code.
-                        </AlertDescription>
-                    </Alert>
-                    <DataTable
-                        columns={promoColumns}
-                        data={promos}
-                        title="Promos"
-                        tableId="pos-promos-table"
-                        searchFields={[
-                            { key: "name", label: "Name" },
-                            { key: "code", label: "Code" }
-                        ]}
-                        toggleAction={openAddPromo}
-                        actionText="Add Promo Campaign"
-                        onRowEdit={openEditPromo}
-                        onRowDelete={(p) => setDeletePromoId(p.id)}
-                        canBulkDelete={false}
-                        canBulkEdit={false}
-                    />
-                </TabsContent>
+                <PermissionGuard permissions="master.promo.read" fallback={null}>
+                    <TabsContent value="promos" className="space-y-4">
+                        <Alert className="bg-muted/50 text-muted-foreground border-none">
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>When to use Promos?</AlertTitle>
+                            <AlertDescription>
+                                Promos are store-wide or location-wide sales events (e.g., "Summer Sale"). They apply automatically to eligible orders during their active dates without requiring a code.
+                            </AlertDescription>
+                        </Alert>
+                        <DataTable
+                            columns={promoColumns}
+                            data={promos}
+                            title="Promos"
+                            tableId="pos-promos-table"
+                            searchFields={[
+                                { key: "name", label: "Name" },
+                                { key: "code", label: "Code" }
+                            ]}
+                            toggleAction={canCreatePromo ? openAddPromo : undefined}
+                            actionText="Add Promo Campaign"
+                            onRowEdit={canUpdatePromo ? openEditPromo : undefined}
+                            onRowDelete={canDeletePromo ? (p) => setDeletePromoId(p.id) : undefined}
+                            canBulkDelete={false}
+                            canBulkEdit={false}
+                        />
+                    </TabsContent>
+                </PermissionGuard>
 
                 {/* ═══════ COUPONS TAB ═══════ */}
-                <TabsContent value="coupons" className="space-y-4">
-                    <Alert className="bg-muted/50 text-muted-foreground border-none">
-                        <Info className="h-4 w-4" />
-                        <AlertTitle>When to use Coupons?</AlertTitle>
-                        <AlertDescription>
-                            Coupons are hidden discounts that require the customer or cashier to enter a specific alphanumeric code at checkout (e.g., "WELCOME10"). They often have usage limits.
-                        </AlertDescription>
-                    </Alert>
-                    <DataTable
-                        columns={couponColumns}
-                        data={coupons}
-                        title="Coupons"
-                        tableId="pos-coupons-table"
-                        searchFields={[
-                            { key: "code", label: "Code" },
-                            { key: "description", label: "Description" }
-                        ]}
-                        toggleAction={openAddCoupon}
-                        actionText="Add Coupon Code"
-                        onRowEdit={openEditCoupon}
-                        onRowDelete={(c) => setDeleteCouponId(c.id)}
-                        canBulkDelete={false}
-                        canBulkEdit={false}
-                    />
-                </TabsContent>
+                <PermissionGuard permissions="master.coupon.read" fallback={null}>
+                    <TabsContent value="coupons" className="space-y-4">
+                        <Alert className="bg-muted/50 text-muted-foreground border-none">
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>When to use Coupons?</AlertTitle>
+                            <AlertDescription>
+                                Coupons are hidden discounts that require the customer or cashier to enter a specific alphanumeric code at checkout (e.g., "WELCOME10"). They often have usage limits.
+                            </AlertDescription>
+                        </Alert>
+                        <DataTable
+                            columns={couponColumns}
+                            data={coupons}
+                            title="Coupons"
+                            tableId="pos-coupons-table"
+                            searchFields={[
+                                { key: "code", label: "Code" },
+                                { key: "description", label: "Description" }
+                            ]}
+                            toggleAction={canCreateCoupon ? openAddCoupon : undefined}
+                            actionText="Add Coupon Code"
+                            onRowEdit={canUpdateCoupon ? openEditCoupon : undefined}
+                            onRowDelete={canDeleteCoupon ? (c) => setDeleteCouponId(c.id) : undefined}
+                            canBulkDelete={false}
+                            canBulkEdit={false}
+                        />
+                    </TabsContent>
+                </PermissionGuard>
 
                 {/* ═══════ ALLIANCES TAB ═══════ */}
-                <TabsContent value="alliances" className="space-y-4">
-                    <Alert className="bg-muted/50 text-muted-foreground border-none">
-                        <Info className="h-4 w-4" />
-                        <AlertTitle>When to use Alliances?</AlertTitle>
-                        <AlertDescription>
-                            Alliances are standing agreements with partner organizations or banks (e.g., "Meezan Bank 25% Classic Card", "Student ID 15%"). Cashiers apply these after verifying eligibility.
-                        </AlertDescription>
-                    </Alert>
-                    <DataTable
-                        columns={allianceColumns}
-                        data={alliances}
-                        title="Alliances"
-                        tableId="pos-alliances-table"
-                        searchFields={[
-                            { key: "partnerName", label: "Partner Name" },
-                            { key: "code", label: "Code" }
-                        ]}
-                        toggleAction={openAddAlliance}
-                        actionText="Add Alliance Discount"
-                        onRowEdit={openEditAlliance}
-                        onRowDelete={(a) => setDeleteAllianceId(a.id)}
-                        canBulkDelete={false}
-                        canBulkEdit={false}
-                    />
-                </TabsContent>
+                <PermissionGuard permissions="master.alliance.read" fallback={null}>
+                    <TabsContent value="alliances" className="space-y-4">
+                        <Alert className="bg-muted/50 text-muted-foreground border-none">
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>When to use Alliances?</AlertTitle>
+                            <AlertDescription>
+                                Alliances are standing agreements with partner organizations or banks (e.g., "Meezan Bank 25% Classic Card", "Student ID 15%"). Cashiers apply these after verifying eligibility.
+                            </AlertDescription>
+                        </Alert>
+                        <DataTable
+                            columns={allianceColumns}
+                            data={alliances}
+                            title="Alliances"
+                            tableId="pos-alliances-table"
+                            searchFields={[
+                                { key: "partnerName", label: "Partner Name" },
+                                { key: "code", label: "Code" }
+                            ]}
+                            toggleAction={canCreateAlliance ? openAddAlliance : undefined}
+                            actionText="Add Alliance Discount"
+                            onRowEdit={canUpdateAlliance ? openEditAlliance : undefined}
+                            onRowDelete={canDeleteAlliance ? (a) => setDeleteAllianceId(a.id) : undefined}
+                            canBulkDelete={false}
+                            canBulkEdit={false}
+                        />
+                    </TabsContent>
+                </PermissionGuard>
             </Tabs>
 
             {/* ═══════ PROMO ADD/EDIT DIALOG ═══════ */}

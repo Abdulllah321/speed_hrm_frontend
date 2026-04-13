@@ -24,7 +24,7 @@ export default async function HsCodeListPage({
         }
 
         return (
-            <PermissionGuard permissions="hs-code.read">
+            <PermissionGuard permissions="master.hs-code.read">
                 <HsCodeList
                     initialHsCodes={result.data || []}
                     newItemId={newItemId}

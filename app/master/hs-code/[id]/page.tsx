@@ -104,7 +104,7 @@ export default function EditHsCodePage() {
     }
 
     return (
-        <PermissionGuard permissions="hs-code.update">
+        <PermissionGuard permissions="master.hs-code.update">
             <div className="max-w-4xl mx-auto space-y-6">
                 <div className="mb-6">
                     <Link href="/master/hs-code/list">

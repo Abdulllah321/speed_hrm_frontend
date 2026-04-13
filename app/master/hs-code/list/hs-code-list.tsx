@@ -27,9 +27,9 @@ export function HsCodeList({ initialHsCodes, newItemId }: HsCodeListProps) {
         router.push("/master/hs-code/add");
     };
 
-    const showAddAction = hasPermission("hs-code.create");
-    const canBulkDelete = hasPermission("hs-code.delete");
-    const canBulkUpload = hasPermission("hs-code.create"); // Assuming same permission for bulk upload
+    const showAddAction = hasPermission("master.hs-code.create");
+    const canBulkDelete = hasPermission("master.hs-code.delete");
+    const canBulkUpload = hasPermission("master.hs-code.create"); // Assuming same permission for bulk upload
 
     const handleMultiDelete = (ids: string[]) => {
         // Implementing simple delete for each since I don't have bulk delete for HS Code yet
