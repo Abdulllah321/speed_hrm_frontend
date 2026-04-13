@@ -1,5 +1,7 @@
 "use client"
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 import {
   Users,
   DollarSign,
@@ -121,16 +123,25 @@ const ERPDashboard = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [stockLevels, setStockLevels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { hasPermission } = useAuth();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      const fetches: Promise<any>[] = [];
+      const canViewOverview = hasPermission("erp.dashboard.overview.view");
+      const canViewInventory = hasPermission("erp.dashboard.inventory.view");
+
       const [ordersRes, stockRes] = await Promise.all([
-        authFetch("/pos-sales/orders", { params: { limit: 1000 } }),
-        stockLedgerApi.getLevels()
+        canViewOverview
+          ? authFetch("/pos-sales/orders", { params: { limit: 1000 } })
+          : Promise.resolve(null),
+        canViewInventory
+          ? stockLedgerApi.getLevels()
+          : Promise.resolve(null),
       ]);
 
-      if (ordersRes.ok && ordersRes.data?.status) {
+      if (ordersRes?.ok && ordersRes.data?.status) {
         setOrders(ordersRes.data.data || []);
       }
       if (stockRes) {
@@ -142,7 +153,7 @@ const ERPDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [hasPermission]);
 
   useEffect(() => {
     fetchData();
@@ -429,10 +440,12 @@ const ERPDashboard = () => {
             <Calendar className="h-4 w-4" />
             Last 30 Days
           </Button>
-          <Button variant="outline" size="sm" className="gap-2 font-semibold">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+          {hasPermission("erp.dashboard.overview.export") && (
+            <Button variant="outline" size="sm" className="gap-2 font-semibold">
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          )}
         </div>
       </div>
 
@@ -467,6 +480,7 @@ const ERPDashboard = () => {
 
         <div className="animate-in fade-in duration-500">
           <TabsContent value="overview" className="m-0 space-y-6">
+            <PermissionGuard permissions="erp.dashboard.overview.view">
             {/* KPI Grid */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatsCard
@@ -673,9 +687,11 @@ const ERPDashboard = () => {
                 </Card>
               </div>
             </div>
+            </PermissionGuard>
           </TabsContent>
 
           <TabsContent value="analytics" className="m-0 space-y-6">
+            <PermissionGuard permissions="erp.dashboard.analytics.view">
             {/* Advanced KPIs */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatsCard
@@ -942,9 +958,11 @@ const ERPDashboard = () => {
                  </Card>
               </div>
             </div>
+            </PermissionGuard>
           </TabsContent>
 
           <TabsContent value="inventory" className="m-0 space-y-6">
+            <PermissionGuard permissions="erp.dashboard.inventory.view">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <StatsCard
                 title="Total SKUs"
@@ -990,10 +1008,12 @@ const ERPDashboard = () => {
                     <CardTitle className="text-lg font-bold">Inventory Reconciliation</CardTitle>
                     <CardDescription>Current stock levels — showing top {inventoryRows.length} SKUs</CardDescription>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={fetchData} disabled={loading} className="gap-2 text-xs">
-                    <RefreshCcw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-                    Refresh
-                  </Button>
+                  {hasPermission("erp.dashboard.inventory.refresh") && (
+                    <Button variant="ghost" size="sm" onClick={fetchData} disabled={loading} className="gap-2 text-xs">
+                      <RefreshCcw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                      Refresh
+                    </Button>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="p-0 mt-0">
@@ -1044,6 +1064,7 @@ const ERPDashboard = () => {
                 </div>
               </CardContent>
             </Card>
+            </PermissionGuard>
           </TabsContent>
         </div>
       </Tabs>
@@ -1053,8 +1074,10 @@ const ERPDashboard = () => {
 
 export default function ERPPage() {
   return (
-    <div className="animate-in fade-in duration-700">
-      <ERPDashboard />
-    </div>
+    <PermissionGuard permissions="erp.dashboard.view">
+      <div className="animate-in fade-in duration-700">
+        <ERPDashboard />
+      </div>
+    </PermissionGuard>
   );
 }

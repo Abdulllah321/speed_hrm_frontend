@@ -19,56 +19,82 @@ import {
     RotateCcw,
     RefreshCw,
     Loader2,
+    CreditCard,
+    Banknote,
+    FileWarning,
 } from "lucide-react";
 import Link from "next/link";
 import { authFetch } from "@/lib/auth";
+import { formatCurrency } from "@/lib/utils";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-
-interface SalesOrder {
-    id: string;
-    orderNumber: string;
-    grandTotal: string | number;
-    cashAmount: string | number;
-    cardAmount: string | number;
-    status: string;
-    createdAt: string;
-    customerId?: string | null;
-    items: { id: string }[];
-}
-
-interface SessionMetrics {
-    openingFloat: number;
-    cashSales: number;
-    expectedCash: number;
-}
-
-interface SessionData {
-    session: {
-        id: string;
-        openedAt: string;
-        status: string;
-    };
-    metrics: SessionMetrics;
-    isDrawerOpen: boolean;
-}
 
 interface DashboardStats {
     todaySales: number;
     transactions: number;
     customersServed: number;
     avgTransaction: number;
+    cashSales: number;
+    cardSales: number;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatCurrency(value: number) {
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-    }).format(value);
+interface RecentOrder {
+    id: string;
+    orderNumber: string;
+    grandTotal: string | number;
+    status: string;
+    createdAt: string;
+    customerId?: string | null;
+    items: { id: string }[];
 }
+
+interface TopItem {
+    itemId: string;
+    name: string;
+    sku: string;
+    qtySold: number;
+    revenue: number;
+}
+
+interface HourlyBucket {
+    hour: number;
+    label: string;
+    sales: number;
+    orders: number;
+}
+
+interface ClaimSummary {
+    submitted: number;
+    underReview: number;
+    approved: number;
+    rejected: number;
+    total: number;
+}
+
+interface CashierStats {
+    sales: number;
+    transactions: number;
+    cashSales: number;
+    cardSales: number;
+    avgTransaction: number;
+    recentOrders: RecentOrder[];
+}
+
+interface PosDashboardData {
+    stats: DashboardStats;
+    cashier: CashierStats | null;
+    recentOrders: RecentOrder[];
+    topItems: TopItem[];
+    hourlySales: HourlyBucket[];
+    claims: ClaimSummary;
+}
+
+interface SessionData {
+    session: { id: string; openedAt: string; status: string } | null;
+    metrics: { openingFloat: number; cashSales: number; expectedCash: number };
+    isDrawerOpen: boolean;
+}
+
 
 function timeAgo(dateStr: string) {
     const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -154,12 +180,51 @@ const quickActions = [
     },
 ];
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function StatCard({
+    title,
+    value,
+    icon: Icon,
+    color,
+    sub,
+}: {
+    title: string;
+    value: string;
+    icon: React.ElementType;
+    color: string;
+    sub?: string;
+}) {
+    return (
+        <Card className="p-6">
+            <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                    <p className="text-2xl font-bold">{value}</p>
+                    {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+                </div>
+                <div className={`p-3 rounded-lg bg-linear-to-br ${color}`}>
+                    <Icon className="h-5 w-5 text-white" />
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function SkeletonCard() {
+    return (
+        <Card className="p-6 animate-pulse">
+            <div className="h-4 bg-muted rounded w-1/2 mb-3" />
+            <div className="h-7 bg-muted rounded w-3/4" />
+        </Card>
+    );
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function PosPage() {
-    const [orders, setOrders] = useState<SalesOrder[]>([]);
+    const [dashboard, setDashboard] = useState<PosDashboardData | null>(null);
     const [session, setSession] = useState<SessionData | null>(null);
-    const [stats, setStats] = useState<DashboardStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -167,41 +232,18 @@ export default function PosPage() {
         setLoading(true);
         setError(null);
         try {
-            const today = new Date().toISOString().split("T")[0];
-
-            const [ordersRes, sessionRes] = await Promise.allSettled([
-                authFetch(`/api/pos-sales/orders?limit=10&startDate=${today}&endDate=${today}`),
-                authFetch(`/api/pos-session/current`),
+            const [dashRes, sessionRes] = await Promise.allSettled([
+                authFetch("/pos-dashboard/stats"),
+                authFetch("/pos-session/current"),
             ]);
 
-            // Orders
-            if (ordersRes.status === "fulfilled" && ordersRes.value?.data) {
-                const data: SalesOrder[] = ordersRes.value.data;
-                setOrders(data);
-
-                // Derive stats from today's completed orders
-                const completed = data.filter((o) => o.status === "completed");
-                const todaySales = completed.reduce(
-                    (sum, o) => sum + Number(o.grandTotal ?? 0),
-                    0
-                );
-                const uniqueCustomers = new Set(
-                    completed.filter((o) => o.customerId).map((o) => o.customerId)
-                ).size;
-
-                setStats({
-                    todaySales,
-                    transactions: completed.length,
-                    customersServed: uniqueCustomers,
-                    avgTransaction: completed.length > 0 ? todaySales / completed.length : 0,
-                });
+            if (dashRes.status === "fulfilled" && dashRes.value) {
+                setDashboard(dashRes.value as PosDashboardData);
             }
-
-            // Session
             if (sessionRes.status === "fulfilled" && sessionRes.value) {
-                setSession(sessionRes.value);
+                setSession(sessionRes.value as SessionData);
             }
-        } catch (e) {
+        } catch {
             setError("Failed to load dashboard data.");
         } finally {
             setLoading(false);
@@ -211,6 +253,12 @@ export default function PosPage() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const stats = dashboard?.stats;
+    const cashier = dashboard?.cashier;
+    const recentOrders = (dashboard?.recentOrders ?? []).slice(0, 5);
+    const topItems = dashboard?.topItems ?? [];
+    const claims = dashboard?.claims;
 
     const statCards = stats
         ? [
@@ -238,10 +286,20 @@ export default function PosPage() {
                   icon: TrendingUp,
                   color: "from-orange-500 to-red-600",
               },
+              {
+                  title: "Cash Sales",
+                  value: formatCurrency(stats.cashSales),
+                  icon: Banknote,
+                  color: "from-teal-500 to-green-600",
+              },
+              {
+                  title: "Card Sales",
+                  value: formatCurrency(stats.cardSales),
+                  icon: CreditCard,
+                  color: "from-violet-500 to-purple-600",
+              },
           ]
         : [];
-
-    const recentOrders = orders.slice(0, 5);
 
     return (
         <div className="space-y-6">
@@ -253,12 +311,7 @@ export default function PosPage() {
                         Welcome to your POS dashboard. Ready to serve your customers.
                     </p>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchData}
-                    disabled={loading}
-                >
+                <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
                     {loading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
@@ -275,31 +328,127 @@ export default function PosPage() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                 {loading
-                    ? Array.from({ length: 4 }).map((_, i) => (
-                          <Card key={i} className="p-6 animate-pulse">
-                              <div className="h-4 bg-muted rounded w-1/2 mb-3" />
-                              <div className="h-7 bg-muted rounded w-3/4" />
-                          </Card>
-                      ))
-                    : statCards.map((stat) => (
-                          <Card key={stat.title} className="p-6">
-                              <div className="flex items-start justify-between">
-                                  <div className="space-y-2">
-                                      <p className="text-sm font-medium text-muted-foreground">
-                                          {stat.title}
-                                      </p>
-                                      <p className="text-2xl font-bold">{stat.value}</p>
-                                  </div>
-                                  <div
-                                      className={`p-3 rounded-lg bg-linear-to-br ${stat.color}`}
-                                  >
-                                      <stat.icon className="h-5 w-5 text-white" />
-                                  </div>
-                              </div>
-                          </Card>
-                      ))}
+                    ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+                    : statCards.map((s) => <StatCard key={s.title} {...s} />)}
+            </div>
+
+            {/* Cashier Stats */}
+            {(loading || cashier) && (
+                <Card className="p-6 border-2 border-dashed">
+                    <h2 className="text-lg font-semibold mb-4">My Sales Today</h2>
+                    {loading ? (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="h-16 bg-muted rounded" />
+                            ))}
+                        </div>
+                    ) : cashier ? (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {[
+                                    { label: "My Sales", value: formatCurrency(cashier.sales ?? 0), icon: DollarSign, color: "text-green-600" },
+                                    { label: "My Transactions", value: String(cashier.transactions ?? 0), icon: Receipt, color: "text-blue-600" },
+                                    { label: "Avg. Sale", value: formatCurrency(cashier.avgTransaction ?? 0), icon: TrendingUp, color: "text-purple-600" },
+                                    { label: "Cash / Card", value: `${formatCurrency(cashier.cashSales ?? 0)} / ${formatCurrency(cashier.cardSales ?? 0)}`, icon: CreditCard, color: "text-orange-600" },
+                                ].map((s) => (
+                                    <div key={s.label} className="flex flex-col gap-1 p-4 rounded-lg bg-muted/40">
+                                        <div className="flex items-center gap-2">
+                                            <s.icon className={`h-4 w-4 ${s.color}`} />
+                                            <span className="text-xs text-muted-foreground">{s.label}</span>
+                                        </div>
+                                        <span className="text-lg font-bold">{s.value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            {cashier.recentOrders.length > 0 && (
+                                <div>
+                                    <p className="text-sm font-medium text-muted-foreground mb-2">My recent orders</p>
+                                    <div className="divide-y rounded-lg border">
+                                        {cashier.recentOrders.map((order) => (
+                                            <div key={order.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                                                <span className="font-medium">{order.orderNumber}</span>
+                                                <span className="text-muted-foreground">{order.items?.length ?? 0} items</span>
+                                                <span className="font-semibold">{formatCurrency(Number(order.grandTotal))}</span>
+                                                <span className="text-xs text-muted-foreground">{timeAgo(order.createdAt)}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
+                </Card>
+            )}
+
+            {/* Claims + Top Items row */}
+            <div className="grid gap-4 lg:grid-cols-2">
+                {/* Claims summary */}
+                <Card className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold">Claims Overview</h2>
+                        <Button variant="ghost" size="sm" asChild>
+                            <Link href="/pos/claims">
+                                View All <ArrowRight className="h-4 w-4 ml-1" />
+                            </Link>
+                        </Button>
+                    </div>
+                    {loading ? (
+                        <div className="space-y-2 animate-pulse">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="h-8 bg-muted rounded" />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                            {[
+                                { label: "Submitted", value: claims?.submitted ?? 0, color: "text-blue-600 bg-blue-50" },
+                                { label: "Under Review", value: claims?.underReview ?? 0, color: "text-yellow-600 bg-yellow-50" },
+                                { label: "Approved", value: claims?.approved ?? 0, color: "text-green-600 bg-green-50" },
+                                { label: "Rejected", value: claims?.rejected ?? 0, color: "text-red-600 bg-red-50" },
+                            ].map((c) => (
+                                <div key={c.label} className={`flex items-center justify-between px-4 py-3 rounded-lg ${c.color}`}>
+                                    <span className="text-sm font-medium">{c.label}</span>
+                                    <span className="text-xl font-bold">{c.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {!loading && claims && claims.total === 0 && (
+                        <p className="text-sm text-muted-foreground text-center mt-4">No claims on record.</p>
+                    )}
+                </Card>
+
+                {/* Top items */}
+                <Card className="p-6">
+                    <h2 className="text-lg font-semibold mb-4">Top Items Today</h2>
+                    {loading ? (
+                        <div className="space-y-3 animate-pulse">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                                <div key={i} className="h-8 bg-muted rounded" />
+                            ))}
+                        </div>
+                    ) : topItems.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-6">No sales yet today.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {topItems.map((item, idx) => (
+                                <div key={item.itemId} className="flex items-center gap-3">
+                                    <span className="text-sm font-bold text-muted-foreground w-5">{idx + 1}</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate">{item.name}</p>
+                                        <p className="text-xs text-muted-foreground">{item.sku}</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className="text-sm font-semibold">{formatCurrency(item.revenue)}</p>
+                                        <p className="text-xs text-muted-foreground">{item.qtySold} sold</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
             </div>
 
             {/* Quick Actions */}
@@ -369,16 +518,11 @@ export default function PosPage() {
                     ) : (
                         <div className="divide-y">
                             {recentOrders.map((order) => (
-                                <div
-                                    key={order.id}
-                                    className="p-4 hover:bg-muted/50 transition-colors"
-                                >
+                                <div key={order.id} className="p-4 hover:bg-muted/50 transition-colors">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <div className="flex flex-col">
-                                                <span className="font-medium">
-                                                    {order.orderNumber}
-                                                </span>
+                                                <span className="font-medium">{order.orderNumber}</span>
                                                 <span className="text-sm text-muted-foreground">
                                                     {order.customerId ? "Customer" : "Walk-in"}
                                                 </span>
@@ -398,7 +542,7 @@ export default function PosPage() {
                                                         <CheckCircle2 className="h-3 w-3" />
                                                         Completed
                                                     </span>
-                                                ) : order.status === "void" ? (
+                                                ) : order.status === "void" || order.status === "voided" ? (
                                                     <span className="flex items-center gap-1 text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">
                                                         <AlertCircle className="h-3 w-3" />
                                                         Void
@@ -441,10 +585,7 @@ export default function PosPage() {
                                 </p>
                             )}
                         </div>
-                        <Button
-                            className="bg-linear-to-r from-blue-600 to-purple-600"
-                            asChild
-                        >
+                        <Button className="bg-linear-to-r from-blue-600 to-purple-600" asChild>
                             <Link href="/pos/close">
                                 Close Register
                                 <ArrowRight className="h-4 w-4 ml-2" />
