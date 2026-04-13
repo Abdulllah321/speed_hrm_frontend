@@ -105,7 +105,7 @@ export default function InventoryViewPage() {
             )}
 
             {/* List */}
-            <div className="flex-1 overflow-auto divide-y divide-border/50">
+            <div className="flex-1 overflow-auto divide-y divide-border/50 mt-4">
                 {isLoading ? (
                     <div className="p-4 space-y-2">
                         {[...Array(8)].map((_, i) => (
