@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { PauseCircle, Clock, Truck, RotateCcw } from "lucide-react";
 import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 import { usePosSettings } from "@/hooks/use-pos-settings";
+import { formatCurrency } from "@/lib/utils";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function computeLineItem(
@@ -470,7 +471,7 @@ export default function NewSalePage() {
                                         </div>
                                     </div>
                                     <div className="text-xs text-muted-foreground">
-                                        {order.items?.length || 0} item(s) · Total: {Number(order.grandTotal).toLocaleString()}
+                                        {order.items?.length || 0} item(s) · Total: {formatCurrency(Number(order.grandTotal))}
                                         {order.items?.some((i: any) => i.isStockInTransit) && (
                                             <Badge variant="outline" className="ml-2 text-amber-600 border-amber-400 text-[10px]">
                                                 <Truck className="h-2.5 w-2.5 mr-1" />

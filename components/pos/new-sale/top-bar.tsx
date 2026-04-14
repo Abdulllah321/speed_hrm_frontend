@@ -1,15 +1,11 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-    Search,
     ScanBarcode,
-    CreditCard,
     ShoppingCart,
-    CircleDot,
 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface TopBarProps {
     itemCount: number;
@@ -78,7 +74,7 @@ export function NewSaleTopBar({
                                                     <span className="text-xs text-muted-foreground">SKU: {product.sku || product.barCode || '-'}</span>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1">
-                                                    <span className="text-sm font-bold">${product.unitPrice?.toFixed(2) || '0.00'}</span>
+                                                    <span className="text-sm font-bold">{formatCurrency(product.unitPrice || 0)}</span>
                                                     <div className="flex items-center gap-2">
                                                         {product.stockQty !== undefined && (
                                                             <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${product.stockQty <= 0 ? 'bg-orange-100 text-orange-700' : 'bg-muted text-muted-foreground'}`}>

@@ -22,7 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Autocomplete } from '@/components/ui/autocomplete';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { PoBulkUploadModal } from '@/components/purchase-order/po-bulk-upload-modal';
 
 interface OrderItem {
@@ -586,7 +586,7 @@ export default function CreateDirectPurchaseOrder() {
                                         </TableRow>
                                     ) : (
                                         orderItems.map((item, index) => (
-                                            <TableRow key={`${item.itemId}-${index}`}>
+                                            <TableRow key={`order-item-${index}-${item.itemId}`}>
                                                 <TableCell>
                                                     <div className="font-medium">{item.itemName}</div>
                                                     <div className="text-sm text-muted-foreground">{item.description}</div>
@@ -619,7 +619,7 @@ export default function CreateDirectPurchaseOrder() {
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">
-                                                    {item.lineTotal?.toFixed(2)}
+                                                    {formatCurrency(item.lineTotal || 0)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.itemId)}>
@@ -636,7 +636,7 @@ export default function CreateDirectPurchaseOrder() {
                         <div className="flex justify-end pt-4">
                             <div className="text-right">
                                 <div className="text-sm text-muted-foreground">Total Amount</div>
-                                <div className="text-2xl font-bold">{calculateTotal().toFixed(2)}</div>
+                                <div className="text-2xl font-bold">{formatCurrency(calculateTotal())}</div>
                             </div>
                         </div>
                     </CardContent>

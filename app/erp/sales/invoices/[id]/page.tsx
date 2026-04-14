@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { salesInvoiceApi } from "@/lib/api";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 
 export default function SalesInvoiceViewPage() {
   const params = useParams();
@@ -269,16 +270,16 @@ export default function SalesInvoiceViewPage() {
                         </TableCell>
                         <TableCell>{item.item?.sku || 'N/A'}</TableCell>
                         <TableCell className="text-right">
-                          Rs. {(item.costPrice || 0).toLocaleString()}
+                          {formatCurrency(item.costPrice || 0)}
                         </TableCell>
                         <TableCell className="text-right">
-                          Rs. {(item.salePrice || 0).toLocaleString()}
+                          {formatCurrency(item.salePrice || 0)}
                         </TableCell>
                         <TableCell className="text-right">
                           {item.quantity || 0}
                         </TableCell>
                         <TableCell className="text-right">
-                          Rs. {(item.total || 0).toLocaleString()}
+                          {formatCurrency(item.total || 0)}
                         </TableCell>
                       </TableRow>
                     ))
@@ -298,19 +299,19 @@ export default function SalesInvoiceViewPage() {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>Rs. {(invoice.subtotal || 0).toLocaleString()}</span>
+                <span>{formatCurrency(invoice.subtotal || 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tax ({invoice.taxRate || 0}%):</span>
-                <span>Rs. {(invoice.taxAmount || 0).toLocaleString()}</span>
+                <span>{formatCurrency(invoice.taxAmount || 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Discount:</span>
-                <span>Rs. {(invoice.discount || 0).toLocaleString()}</span>
+                <span>{formatCurrency(invoice.discount || 0)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Grand Total:</span>
-                <span>Rs. {(invoice.grandTotal || 0).toLocaleString()}</span>
+                <span>{formatCurrency(invoice.grandTotal || 0)}</span>
               </div>
             </div>
           </CardContent>
