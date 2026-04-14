@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { deliveryChallanApi } from "@/lib/api";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 
 export default function DeliveryChallanViewPage() {
   const params = useParams();
@@ -201,7 +202,7 @@ export default function DeliveryChallanViewPage() {
                 }
               </div>
               <div>
-                <span className="font-medium">Order Total:</span> Rs. {challan.salesOrder?.grandTotal?.toLocaleString() || '0'}
+                <span className="font-medium">Order Total:</span> {formatCurrency(challan.salesOrder?.grandTotal || 0)}
               </div>
             </CardContent>
           </Card>
@@ -278,13 +279,13 @@ export default function DeliveryChallanViewPage() {
                         </TableCell>
                         <TableCell>{item.item?.sku || item.sku || 'N/A'}</TableCell>
                         <TableCell className="text-right">
-                          Rs. {(item.salePrice || item.unitPrice || 0).toLocaleString()}
+                          {formatCurrency(item.salePrice || item.unitPrice || 0)}
                         </TableCell>
                         <TableCell className="text-right">
                           {item.deliveredQty || item.quantity || 0}
                         </TableCell>
                         <TableCell className="text-right">
-                          Rs. {((item.deliveredQty || item.quantity || 0) * (item.salePrice || item.unitPrice || 0)).toLocaleString()}
+                          {formatCurrency((item.deliveredQty || item.quantity || 0) * (item.salePrice || item.unitPrice || 0))}
                         </TableCell>
                       </TableRow>
                     ))
@@ -308,7 +309,7 @@ export default function DeliveryChallanViewPage() {
               </div>
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Total Amount:</span>
-                <span>Rs. {(challan.totalAmount || challan.items?.reduce((sum: number, item: any) => sum + ((item.deliveredQty || item.quantity || 0) * (item.salePrice || item.unitPrice || 0)), 0) || 0).toLocaleString()}</span>
+                <span>{formatCurrency(challan.totalAmount || challan.items?.reduce((sum: number, item: any) => sum + ((item.deliveredQty || item.quantity || 0) * (item.salePrice || item.unitPrice || 0)), 0) || 0)}</span>
               </div>
             </div>
           </CardContent>

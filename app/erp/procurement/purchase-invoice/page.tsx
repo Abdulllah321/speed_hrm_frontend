@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getPurchaseInvoices, deletePurchaseInvoice } from "@/lib/actions/purchase-invoice";
 import { toast } from "sonner";
+import { Autocomplete } from "@/components/ui/autocomplete";
 
 interface PurchaseInvoice {
   id: string;
@@ -33,6 +34,23 @@ export default function PurchaseInvoiceListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
+
+  // Options for autocomplete dropdowns
+  const statusOptions = [
+    { value: "", label: "All Status" },
+    { value: "DRAFT", label: "Draft" },
+    { value: "SUBMITTED", label: "Submitted" },
+    { value: "APPROVED", label: "Approved" },
+    { value: "CANCELLED", label: "Cancelled" },
+  ];
+
+  const paymentStatusOptions = [
+    { value: "", label: "All Payment Status" },
+    { value: "UNPAID", label: "Unpaid" },
+    { value: "PARTIALLY_PAID", label: "Partially Paid" },
+    { value: "FULLY_PAID", label: "Fully Paid" },
+    { value: "OVERDUE", label: "Overdue" },
+  ];
 
   useEffect(() => {
     fetchInvoices();
@@ -131,28 +149,22 @@ export default function PurchaseInvoiceListPage() {
                 />
               </div>
             </div>
-            <select
+            <Autocomplete
+              options={statusOptions}
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border rounded-md"
-            >
-              <option value="">All Status</option>
-              <option value="DRAFT">Draft</option>
-              <option value="SUBMITTED">Submitted</option>
-              <option value="APPROVED">Approved</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-            <select
+              onValueChange={setStatusFilter}
+              placeholder="All Status"
+              searchPlaceholder="Search status..."
+              className="w-48"
+            />
+            <Autocomplete
+              options={paymentStatusOptions}
               value={paymentStatusFilter}
-              onChange={(e) => setPaymentStatusFilter(e.target.value)}
-              className="px-3 py-2 border rounded-md"
-            >
-              <option value="">All Payment Status</option>
-              <option value="UNPAID">Unpaid</option>
-              <option value="PARTIALLY_PAID">Partially Paid</option>
-              <option value="FULLY_PAID">Fully Paid</option>
-              <option value="OVERDUE">Overdue</option>
-            </select>
+              onValueChange={setPaymentStatusFilter}
+              placeholder="All Payment Status"
+              searchPlaceholder="Search payment status..."
+              className="w-52"
+            />
           </div>
         </CardContent>
       </Card>

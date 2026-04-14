@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { formatCurrency } from "@/lib/utils";
 
-function fmt(v: number) { return v.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
 function paidPerUnit(oi: any) { return Number(oi.lineTotal) / Number(oi.quantity); }
 
 const REASON_CODES = [
@@ -211,7 +211,7 @@ export default function ReturnsPage() {
                         if (r.ok && r.data?.status) { totalRefund += r.data.refundAmount ?? 0; }
                         else { toast.error(`Failed for ${order.orderNumber}: ${r.data?.message}`); allOk = false; }
                     }
-                    if (allOk) toast.success(`Returns processed across ${loadedOrders.length} orders. Total refund: Rs. ${fmt(totalRefund)}`);
+                    if (allOk) toast.success(`Returns processed across ${loadedOrders.length} orders. Total refund: ${formatCurrency(totalRefund)}`);
                     router.push("/pos/sales/history"); return;
                 }
             } else if (mode === "exchange") {
@@ -260,10 +260,10 @@ export default function ReturnsPage() {
             }
 
             if (res?.ok && res.data?.status) {
-                if (mode === "return") toast.success(`Return processed. Refund: Rs. ${fmt(res.data.refundAmount ?? refundTotal)}`);
+                if (mode === "return") toast.success(`Return processed. Refund: ${formatCurrency(res.data.refundAmount ?? refundTotal)}`);
                 else if (mode === "exchange") {
                     const d = res.data.data?.difference ?? diff;
-                    toast.success(d > 0 ? `Exchange done. Customer pays Rs. ${fmt(d)} extra` : d < 0 ? `Exchange done. Refund Rs. ${fmt(Math.abs(d))}` : "Exchange done. No balance");
+                    toast.success(d > 0 ? `Exchange done. Customer pays ${formatCurrency(d)} extra` : d < 0 ? `Exchange done. Refund ${formatCurrency(Math.abs(d))}` : "Exchange done. No balance");
                 } else toast.success(res.data.message || "Claim submitted");
                 router.push("/pos/sales/history");
             } else { toast.error(res?.data?.message || "Operation failed"); }
@@ -321,7 +321,7 @@ export default function ReturnsPage() {
                             <div key={o.id} className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 px-3 py-1.5">
                                 <Receipt className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                                 <span className="font-mono font-bold text-emerald-700 text-sm">{o.orderNumber}</span>
-                                <span className="text-muted-foreground text-xs">Rs. {fmt(o.grandTotal)}</span>
+                                <span className="text-muted-foreground text-xs">{formatCurrency(o.grandTotal)}</span>
                                 <button onClick={() => removeOrder(o.id)} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
                                     <X className="h-3.5 w-3.5" />
                                 </button>
@@ -385,16 +385,16 @@ export default function ReturnsPage() {
                                                     <p className="text-xs text-muted-foreground font-mono">{line.sku}</p>
                                                 </TableCell>
                                                 <TableCell className="text-right text-sm">{line.orderedQty}</TableCell>
-                                                <TableCell className="text-right text-sm font-mono">Rs. {fmt(line.originalUnitPrice)}</TableCell>
+                                                <TableCell className="text-right text-sm font-mono">{formatCurrency(line.originalUnitPrice)}</TableCell>
                                                 <TableCell className="text-right text-sm">
                                                     {line.discountPercent > 0
                                                         ? <span className="text-destructive font-medium">{line.discountPercent}%</span>
                                                         : <span className="text-muted-foreground">—</span>}
                                                 </TableCell>
                                                 <TableCell className="text-right font-bold text-sm font-mono text-emerald-700">
-                                                    Rs. {fmt(line.paidPerUnit)}
+                                                    {formatCurrency(line.paidPerUnit)}
                                                     {line.discountPercent > 0 && (
-                                                        <div className="text-[10px] text-muted-foreground font-normal">(was Rs. {fmt(line.originalUnitPrice)})</div>
+                                                        <div className="text-[10px] text-muted-foreground font-normal">(was {formatCurrency(line.originalUnitPrice)})</div>
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
@@ -409,7 +409,7 @@ export default function ReturnsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right font-bold text-sm font-mono text-destructive">
-                                                    {line.returnQty > 0 ? `Rs. ${fmt(line.paidPerUnit * line.returnQty)}` : "—"}
+                                                    {line.returnQty > 0 ? `${formatCurrency(line.paidPerUnit * line.returnQty)}` : "—"}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -440,7 +440,7 @@ export default function ReturnsPage() {
                                                                 <p className="font-medium">{p.description}</p>
                                                                 <p className="text-xs text-muted-foreground font-mono">{p.sku}</p>
                                                             </div>
-                                                            <span className="font-bold font-mono">Rs. {fmt(p.unitPrice)}</span>
+                                                            <span className="font-bold font-mono">{formatCurrency(p.unitPrice)}</span>
                                                         </button>
                                                     ))}
                                                 </div>
@@ -464,7 +464,7 @@ export default function ReturnsPage() {
                                                                 <p className="font-medium text-sm">{line.name}</p>
                                                                 <p className="text-xs text-muted-foreground font-mono">{line.sku}</p>
                                                             </TableCell>
-                                                            <TableCell className="text-right font-mono text-sm">Rs. {fmt(line.unitPrice)}</TableCell>
+                                                            <TableCell className="text-right font-mono text-sm">{formatCurrency(line.unitPrice)}</TableCell>
                                                             <TableCell>
                                                                 <div className="flex items-center justify-center gap-1.5">
                                                                     <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setNewQty(line.itemId, line.quantity - 1)}><Minus className="h-3 w-3" /></Button>
@@ -484,13 +484,13 @@ export default function ReturnsPage() {
                                                                     <span className="text-xs text-muted-foreground">%</span>
                                                                 </div>
                                                                 {line.discAmt > 0 && (
-                                                                    <div className="text-[10px] text-destructive text-center mt-0.5">−Rs. {fmt(line.discAmt)}</div>
+                                                                    <div className="text-[10px] text-destructive text-center mt-0.5">−{formatCurrency(line.discAmt)}</div>
                                                                 )}
                                                             </TableCell>
                                                             <TableCell className="text-right font-bold font-mono text-sm">
-                                                                Rs. {fmt(line.net)}
+                                                                {formatCurrency(line.net)}
                                                                 {line.discAmt > 0 && (
-                                                                    <div className="text-[10px] text-muted-foreground font-normal line-through">Rs. {fmt(line.gross)}</div>
+                                                                    <div className="text-[10px] text-muted-foreground font-normal line-through">{formatCurrency(line.gross)}</div>
                                                                 )}
                                                             </TableCell>
                                                         </TableRow>
@@ -523,7 +523,7 @@ export default function ReturnsPage() {
                                                 onChange={e => setMemoDiscValue(parseFloat(e.target.value) || 0)}
                                             />
                                             {memoDiscAmt > 0 && (
-                                                <span className="text-sm text-primary font-semibold">−Rs. {fmt(memoDiscAmt)}</span>
+                                                <span className="text-sm text-primary font-semibold">−{formatCurrency(memoDiscAmt)}</span>
                                             )}
                                             {memoDiscValue > 0 && (
                                                 <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground"
@@ -554,7 +554,7 @@ export default function ReturnsPage() {
                                         {isMultiOrder && (
                                             <div className="flex justify-between text-muted-foreground">
                                                 <span>Receipts</span>
-                                                <span>{loadedOrders.length} orders (Rs. {fmt(loadedOrders.reduce((s, o) => s + o.grandTotal, 0))} total)</span>
+                                                <span>{loadedOrders.length} orders ({formatCurrency(loadedOrders.reduce((s, o) => s + o.grandTotal, 0))} total)</span>
                                             </div>
                                         )}
                                         <div className="flex justify-between">
@@ -563,35 +563,35 @@ export default function ReturnsPage() {
                                         </div>
                                         <div className="flex justify-between text-destructive font-medium">
                                             <span>{mode === "claim" ? "Claimed amount" : "Return value (at paid price)"}</span>
-                                            <span>Rs. {fmt(refundTotal)}</span>
+                                            <span>{formatCurrency(refundTotal)}</span>
                                         </div>
                                         {mode === "exchange" && newLines.length > 0 && (
                                             <>
                                                 <div className="flex justify-between text-muted-foreground">
                                                     <span>New items subtotal</span>
-                                                    <span className="font-mono">Rs. {fmt(newSubtotal)}</span>
+                                                    <span className="font-mono">{formatCurrency(newSubtotal)}</span>
                                                 </div>
                                                 {newItemDiscTotal > 0 && (
                                                     <div className="flex justify-between text-destructive">
                                                         <span>Item discounts</span>
-                                                        <span className="font-mono">−Rs. {fmt(newItemDiscTotal)}</span>
+                                                        <span className="font-mono">−{formatCurrency(newItemDiscTotal)}</span>
                                                     </div>
                                                 )}
                                                 {memoDiscAmt > 0 && (
                                                     <div className="flex justify-between text-primary">
-                                                        <span>Memo discount ({memoDiscType === "pct" ? `${memoDiscValue}%` : `flat Rs. ${fmt(memoDiscValue)}`})</span>
-                                                        <span className="font-mono">−Rs. {fmt(memoDiscAmt)}</span>
+                                                        <span>Memo discount ({memoDiscType === "pct" ? `${memoDiscValue}%` : `flat ${formatCurrency(memoDiscValue)}`})</span>
+                                                        <span className="font-mono">−{formatCurrency(memoDiscAmt)}</span>
                                                     </div>
                                                 )}
                                                 <div className="flex justify-between text-blue-600 font-medium">
                                                     <span>New items net total</span>
-                                                    <span className="font-mono">Rs. {fmt(newTotal)}</span>
+                                                    <span className="font-mono">{formatCurrency(newTotal)}</span>
                                                 </div>
                                                 <Separator />
                                                 <div className={cn("flex justify-between font-bold text-base",
                                                     diff > 0 ? "text-destructive" : diff < 0 ? "text-emerald-600" : "text-muted-foreground")}>
                                                     <span>{diff > 0 ? "Customer pays extra" : diff < 0 ? "Refund to customer" : "No balance"}</span>
-                                                    <span>Rs. {fmt(Math.abs(diff))}</span>
+                                                    <span>{formatCurrency(Math.abs(diff))}</span>
                                                 </div>
                                             </>
                                         )}
@@ -600,7 +600,7 @@ export default function ReturnsPage() {
                                                 <Separator />
                                                 <div className="flex justify-between font-bold text-base text-emerald-600">
                                                     <span>Total refund</span>
-                                                    <span>Rs. {fmt(refundTotal)}</span>
+                                                    <span>{formatCurrency(refundTotal)}</span>
                                                 </div>
                                             </>
                                         )}

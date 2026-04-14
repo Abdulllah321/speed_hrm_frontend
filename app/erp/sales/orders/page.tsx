@@ -45,6 +45,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { salesOrderApi, customerApi, warehouseApi, inventoryApi, brandApi, categoryApi, SalesOrder, Customer } from "@/lib/api";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 
 interface SelectedItem {
   id: string;
@@ -477,7 +478,7 @@ export default function SalesOrdersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    Rs. {order.grandTotal.toLocaleString()}
+                    {formatCurrency(order.grandTotal)}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">

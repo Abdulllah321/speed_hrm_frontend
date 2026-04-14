@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { customerApi, Customer } from "@/lib/api";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 import { CustomerBulkUploadModal } from "@/components/customers/customer-bulk-upload-modal";
 
 export default function CustomersPage() {
@@ -278,7 +279,7 @@ export default function CustomersPage() {
                         customer.balance > 0 ? "text-red-600" : "text-green-600"
                       }
                     >
-                      Rs. {customer.balance.toLocaleString()}
+                      {formatCurrency(customer.balance)}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">

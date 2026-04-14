@@ -39,6 +39,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { salesOrderApi, customerApi, warehouseApi, inventoryApi, brandApi, categoryApi, Customer } from "@/lib/api";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 
 interface SelectedItem {
   id: string;
@@ -440,7 +441,7 @@ export default function CreateSalesOrderPage() {
                                           Stock: <span className={`font-bold ${item.availableStock > 0 ? "text-foreground" : "text-destructive"}`}>{item.availableStock}</span>
                                         </span>
                                         <span className="text-[11px] text-muted-foreground">
-                                          Price: Rs. {item.unitPrice || 0}
+                                          Price: {formatCurrency(item.unitPrice || 0)}
                                         </span>
                                         {isSelected && (
                                           <Badge variant="outline" className="h-4 text-[9px] px-1 bg-primary/5 text-primary border-primary/20">Added</Badge>
@@ -511,7 +512,7 @@ export default function CreateSalesOrderPage() {
                             <div className="text-xs text-muted-foreground">Stock: {item.availableStock}</div>
                           </div>
                         </TableCell>
-                        <TableCell>Rs. {item.costPrice.toLocaleString()}</TableCell>
+                        <TableCell>{formatCurrency(item.costPrice)}</TableCell>
                         <TableCell>
                           <Input
                             type="number"
@@ -542,7 +543,7 @@ export default function CreateSalesOrderPage() {
                             step="0.01"
                           />
                         </TableCell>
-                        <TableCell>Rs. {item.total.toLocaleString()}</TableCell>
+                        <TableCell>{formatCurrency(item.total)}</TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -613,19 +614,19 @@ export default function CreateSalesOrderPage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>Rs. {subtotal.toLocaleString()}</span>
+                  <span>{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Tax ({taxRate}%):</span>
-                  <span>Rs. {taxAmount.toLocaleString()}</span>
+                  <span>{formatCurrency(taxAmount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Discount:</span>
-                  <span>Rs. {orderDiscount.toLocaleString()}</span>
+                  <span>{formatCurrency(orderDiscount)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Grand Total:</span>
-                  <span>Rs. {grandTotal.toLocaleString()}</span>
+                  <span>{formatCurrency(grandTotal)}</span>
                 </div>
               </div>
             </CardContent>

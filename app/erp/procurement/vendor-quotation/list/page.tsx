@@ -116,7 +116,7 @@ export default function AllVendorQuotationList() {
                                                 <TableCell>{quotation.vendor?.name || '-'}</TableCell>
                                                 <TableCell>{new Date(quotation.quotationDate).toLocaleDateString()}</TableCell>
                                                 <TableCell>{quotation.items.length} item(s)</TableCell>
-                                                <TableCell className="font-semibold">Rs. {formatCurrency(quotation.totalAmount)}</TableCell>
+                                                <TableCell className="font-semibold">{formatCurrency(quotation.totalAmount)}</TableCell>
                                                 <TableCell>
                                                     <Badge variant={
                                                         quotation.status === 'SELECTED' ? 'default' :

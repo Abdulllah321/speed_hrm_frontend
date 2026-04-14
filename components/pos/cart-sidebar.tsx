@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Minus, Plus, Trash2, User, CreditCard, Banknote, QrCode } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
+import { formatCurrency } from "@/lib/utils";
 
 const cartItems = [
     { id: 1, name: "Product Item 1", price: 120.00, quantity: 2 },
@@ -34,9 +35,9 @@ export function CartSidebar() {
                      <div className="flex-1 grid gap-1">
                          <div className="flex justify-between items-start">
                              <span className="font-medium text-sm">{item.name}</span>
-                             <span className="font-bold text-sm">${(item.price * item.quantity).toFixed(2)}</span>
+                             <span className="font-bold text-sm">{formatCurrency(item.price * item.quantity)}</span>
                          </div>
-                         <div className="text-xs text-muted-foreground">${item.price.toFixed(2)} / unit</div>
+                         <div className="text-xs text-muted-foreground">{formatCurrency(item.price)} / unit</div>
                          
                          <div className="flex items-center gap-3 mt-1">
                              <div className="flex items-center border rounded-md bg-background">
@@ -62,15 +63,15 @@ export function CartSidebar() {
           <div className="space-y-2">
               <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>$285.50</span>
+                  <span>{formatCurrency(285.50)}</span>
               </div>
               <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Tax (10%)</span>
-                  <span>$28.55</span>
+                  <span>{formatCurrency(28.55)}</span>
               </div>
               <div className="flex justify-between text-base font-bold text-primary pt-2 border-t">
                   <span>Total</span>
-                  <span>$314.05</span>
+                  <span>{formatCurrency(314.05)}</span>
               </div>
           </div>
 

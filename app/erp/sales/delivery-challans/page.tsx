@@ -32,6 +32,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { deliveryChallanApi, salesOrderApi } from "@/lib/api";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 
 // Sample data - Remove this dummy data
 const sampleChallans: any[] = []; // Empty array instead of dummy data
@@ -330,7 +331,7 @@ export default function DeliveryChallansPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="text-sm">
-                      <div>Rs. {(challan.totalAmount || 0).toLocaleString()}</div>
+                      <div>{formatCurrency(challan.totalAmount || 0)}</div>
                       <div className="text-muted-foreground">{challan.totalQty || 0} items</div>
                     </div>
                   </TableCell>

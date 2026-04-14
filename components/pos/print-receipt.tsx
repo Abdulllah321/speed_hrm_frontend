@@ -196,7 +196,7 @@ export function PrintReceipt({
                             )}
 
                             {orderDiscount > 0 && (
-                                <div className="flex justify-between text-primary">
+                                <div className="flex justify-between text-primary font-bold">
                                     <span>{orderDiscountLabel}</span>
                                     <span>−{fmt(orderDiscount)}</span>
                                 </div>
