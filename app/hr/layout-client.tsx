@@ -2,7 +2,6 @@
 
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { PermissionGuard } from "@/components/auth/permission-guard";
-import { PageTransition } from "@/components/layouts/page-transition";
 import { usePathname } from "next/navigation";
 import { getRoutePermissions } from "@/lib/route-permissions";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -35,7 +34,7 @@ export default function HRLayoutClient({
     if (isAdmin()) {
         return (
             <DashboardLayout>
-                <PageTransition>{children}</PageTransition>
+                {children}
             </DashboardLayout>
         );
     }
@@ -44,7 +43,7 @@ export default function HRLayoutClient({
         return (
             <DashboardLayout>
                 <PermissionGuard permissions={requiredPermissions}>
-                    <PageTransition>{children}</PageTransition>
+                    {children}
                 </PermissionGuard>
             </DashboardLayout>
         );
@@ -52,7 +51,7 @@ export default function HRLayoutClient({
 
     return (
         <DashboardLayout>
-            <PageTransition>{children}</PageTransition>
+            {children}
         </DashboardLayout>
     );
 }

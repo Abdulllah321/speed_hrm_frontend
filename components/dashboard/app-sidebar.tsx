@@ -32,7 +32,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ChevronRight, ShieldCheck, Activity, Settings, LogOut } from "lucide-react";
+import { ChevronRight, ShieldCheck, Settings, LogOut, Building2 } from "lucide-react";
 import {
   MenuItem,
   menuData,
@@ -106,7 +106,8 @@ function SubMenuItem({ item, pathname }: { item: MenuItem; pathname: string }) {
         isActive && "bg-sidebar-accent/80 font-medium shadow-sm",
       )}
     >
-      <Link href={item.href || "#"} transitionTypes={["nav-forward"]}>
+      <Link href={item.href || "#"} transitionTypes={["nav-forward"]}
+      >
         <span>{item.title}</span>
       </Link>
     </SidebarMenuSubButton>
@@ -236,7 +237,8 @@ function MenuItemComponent({
           "data-[active=true]:bg-sidebar-accent data-[active=true]:shadow-md",
         )}
       >
-        <Link href={item.href || "#"} transitionTypes={["nav-forward"]}>
+        <Link href={item.href || "#"} transitionTypes={["nav-forward"]}
+        >
           {Icon && (
             <Icon
               className={cn(
@@ -418,21 +420,27 @@ export function AppSidebar({
         <div className="flex flex-col gap-3 group-data-[collapsible=icon]:gap-0">
           <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
-              <Image
-                src={"/image.png"}
-                alt="Logo"
+              <Building2
+                // src={"/image.png"}
+                // alt="Logo"
                 width={30}
                 height={30}
                 className="object-contain"
               />
-            </div>
+              </div>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
               <span className="font-bold text-base leading-tight text-sidebar-foreground">
-                Speed Pvt. Ltd
+                Demo Version
               </span>
               <span className="text-xs text-sidebar-foreground/60 font-medium">
                 {logoLabel}
               </span>
+            </div>
+            <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-2">
+              <div className="size-9 rounded-xl bg-primary/5 border border-primary/20 flex flex-col items-center justify-center shadow-xs">
+                <span className="font-bold text-[8px] text-primary leading-none">DEMO</span>
+                <span className="text-[6px] text-primary/60 font-medium">V1.0</span>
+              </div>
             </div>
           </div>
         </div>
@@ -533,7 +541,8 @@ export function AppSidebar({
                 Powered by
               </span>
               <span className="text-xs font-semibold text-sidebar-foreground truncate">
-                Speed (Pvt.) Limited
+                {/* Speed (Pvt.) Limited */}
+                Innovative Network
               </span>
             </div>
           </div>

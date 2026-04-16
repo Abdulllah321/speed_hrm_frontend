@@ -187,7 +187,8 @@ export function PosSidebar() {
                         </div>
                         <div className="flex flex-col min-w-0">
                             <span className="text-xs font-semibold text-sidebar-foreground truncate">
-                                Speed (Pvt.) Limited
+                                {/* Speed (Pvt.) Limited */}
+                                Innovative Network
                             </span>
                         </div>
                     </div>

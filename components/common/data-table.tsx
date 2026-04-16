@@ -113,11 +113,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
   TableCell,
   TableHead,
-  TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "../ui/separator";
@@ -250,6 +247,31 @@ export default function DataTable<TData extends DataTableRow>({
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const isMobile = useIsMobile();
+
+  // Horizontal scroll indicator
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+
+  const updateScrollIndicators = () => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 0);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+  };
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    updateScrollIndicators();
+    el.addEventListener("scroll", updateScrollIndicators);
+    const ro = new ResizeObserver(updateScrollIndicators);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateScrollIndicators);
+      ro.disconnect();
+    };
+  }, [data]);
 
   // Combine search and filters into a single global filter value to trigger re-filtering
   const globalFilterValue = JSON.stringify({ search, activeFilters });
@@ -624,10 +646,24 @@ export default function DataTable<TData extends DataTableRow>({
           </div>
         </div>
 
-        <div className="bg-card/50 backdrop-blur-sm overflow-hidden rounded-lg border border-border/50 shadow-sm w-full max-w-full">
-          <div className="w-full max-w-full overflow-x-auto">
-            <Table className="w-full table-auto">
-              <TableHeader>
+        <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border/50 shadow-sm w-full max-w-full">
+          <div className="relative w-full">
+            {/* Left scroll fade indicator */}
+            {canScrollLeft && (
+              <div className="pointer-events-none absolute left-0 top-0 z-20 h-full w-12 bg-gradient-to-r from-card/80 to-transparent rounded-l-lg" />
+            )}
+            {/* Right scroll fade + chevron indicator */}
+            {canScrollRight && (
+              <div className="pointer-events-none absolute right-0 top-0 z-20 h-full w-16 bg-gradient-to-l from-card/90 to-transparent rounded-r-lg flex items-center justify-end pr-2">
+                <ChevronRightIcon size={18} className="text-muted-foreground animate-pulse" />
+              </div>
+            )}
+            <div
+              ref={scrollContainerRef}
+              className="w-full overflow-x-auto"
+            >
+            <table className="min-w-full caption-bottom text-sm table-auto">
+              <thead className={cn("sticky top-0 z-10 bg-muted/80 backdrop-blur-sm [&_tr]:border-b")}>
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
                     key={headerGroup.id}
@@ -692,13 +728,13 @@ export default function DataTable<TData extends DataTableRow>({
                     })}
                   </TableRow>
                 ))}
-              </TableHeader>
-              <TableBody>
+              </thead>
+              <tbody className="[&_tr:last-child]:border-0">
                 {isLoading ? (
-                  <TableRow>
-                    <TableCell
+                  <tr>
+                    <td
                       colSpan={tableColumns.length}
-                      className="h-32 text-center"
+                      className="h-32 text-center p-2 align-middle"
                     >
                       <div className="flex flex-col items-center justify-center gap-2">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -706,8 +742,8 @@ export default function DataTable<TData extends DataTableRow>({
                           Loading data...
                         </span>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : table.getRowModel().rows.length ? (
                   table.getRowModel().rows.map((row, index) => {
                     const isNew = row.original.id === highlightedId;
@@ -723,7 +759,7 @@ export default function DataTable<TData extends DataTableRow>({
                         }}
                         data-state={row.getIsSelected() && "selected"}
                         className={cn(
-                          "border-b border-border/30",
+                          "border-b border-border/30 transition-colors",
                           index % 2 === 0 ? "bg-transparent" : "bg-muted/20",
                           "hover:bg-accent/50",
                           rowClassName ? rowClassName(row.original) : "",
@@ -743,10 +779,10 @@ export default function DataTable<TData extends DataTableRow>({
                     );
                   })
                 ) : (
-                  <TableRow>
-                    <TableCell
+                  <tr>
+                    <td
                       colSpan={columns.length}
-                      className="h-32 text-center text-muted-foreground"
+                      className="h-32 text-center text-muted-foreground p-2 align-middle"
                     >
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-lg">No results found</span>
@@ -754,11 +790,12 @@ export default function DataTable<TData extends DataTableRow>({
                           Try adjusting your search or filters
                         </span>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
+            </div>
           </div>
         </div>
 

@@ -2,7 +2,7 @@
 
 import { updateVendor } from "@/lib/actions/procurement";
 import { getChartOfAccounts, ChartOfAccount } from "@/lib/actions/chart-of-account";
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition, addTransitionType } from "react";
 import { useForm, SubmitHandler, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { vendorSchema, type VendorFormValues } from "@/lib/validations/vendor";
@@ -75,7 +75,12 @@ export function VendorEditForm({ vendor, accounts }: VendorEditFormProps) {
 
     return (
         <div className="space-y-4">
-            <Button variant="ghost" onClick={() => router.back()} className="pl-0">
+            <Button variant="ghost" onClick={() => {
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.back();
+                });
+            }} className="pl-0">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to List
             </Button>
