@@ -167,7 +167,10 @@ export default function LandedCostSetupPage() {
         if (!po) return false;
         
         const isDirectPo = !po.purchaseRequisitionId && !po.vendorQuotationId && !po.rfqId;
-        const isPrLinkedFresh = po.purchaseRequisition?.goodsType === 'FRESH';
+        // For RFQ→VQ→PO flow, purchaseRequisitionId is null on PO but goodsType is
+        // copied from PR during PO creation — check po.goodsType first.
+        const resolvedGoodsType = po.goodsType || po.purchaseRequisition?.goodsType;
+        const isPrLinkedFresh = resolvedGoodsType === 'FRESH';
         
         return isDirectPo || isPrLinkedFresh;
       }));

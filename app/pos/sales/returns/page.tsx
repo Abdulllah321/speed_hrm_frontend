@@ -19,8 +19,17 @@ import {
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
+import { PrintReturnReceipt, type ReturnReceiptLine } from "@/components/pos/print-return-receipt";
 
-function paidPerUnit(oi: any) { return Number(oi.lineTotal) / Number(oi.quantity); }
+function paidPerUnit(oi: any, orderGrandTotal: number, orderLineTotalsSum: number) {
+  // Distribute grandTotal proportionally based on each item's lineTotal share
+  // This correctly handles global discounts (coupon/promo applied at order level)
+  const qty = Number(oi.quantity);
+  if (qty <= 0) return 0;
+  const lineTotal = Number(oi.lineTotal);
+  const itemShare = orderLineTotalsSum > 0 ? (lineTotal / orderLineTotalsSum) * orderGrandTotal : lineTotal;
+  return itemShare / qty;
+}
 
 const REASON_CODES = [
     { value: "DEFECTIVE", label: "Defective / Damaged" },
@@ -36,13 +45,14 @@ type Mode = "return" | "exchange" | "claim";
 interface ReturnLine {
     orderId: string; orderNumber: string;
     orderItemId: string; itemId: string;
-    name: string; sku: string;
+    name: string; sku: string; brand?: string;
     orderedQty: number; returnQty: number;
     paidPerUnit: number; originalUnitPrice: number; discountPercent: number;
+    discountAmount?: number; taxAmount?: number; taxPercent?: number;
 }
 
 interface NewLine { itemId: string; name: string; sku: string; quantity: number; unitPrice: number; discountPct: number; }
-interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; createdAt: string; items: any[]; }
+interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; createdAt: string; items: any[]; coupon?: string; promo?: string; alliance?: string; }
 
 export default function ReturnsPage() {
     const router = useRouter();
@@ -72,6 +82,14 @@ export default function ReturnsPage() {
     const [memoDiscType, setMemoDiscType] = useState<"pct" | "flat">("pct");
     const [memoDiscValue, setMemoDiscValue] = useState<number>(0);
 
+    // ── Return receipt dialog ─────────────────────────────────────────
+    const [returnReceipt, setReturnReceipt] = useState<{
+        returnRef: string;
+        refundTotal: number;
+        returnedAt: string;
+        itemRefundDetails?: { orderItemId: string; itemId: string; quantity: number; originalPaidPerUnit: number; refundPerUnit: number; priceAdjusted: boolean }[];
+    } | null>(null);
+
     // ── Add an order ──────────────────────────────────────────────────
     const handleAddOrder = useCallback(async () => {
         if (!orderSearch.trim()) return;
@@ -90,17 +108,29 @@ export default function ReturnsPage() {
                     id: found.id, orderNumber: found.orderNumber,
                     grandTotal: Number(found.grandTotal), createdAt: found.createdAt,
                     items: found.items || [],
+                    coupon: found.coupon?.code || undefined,
+                    promo: found.promo?.code || undefined,
+                    alliance: found.alliance?.code || undefined,
                 }]);
 
                 // Append return lines for this order (qty = 0 by default)
-                const lines: ReturnLine[] = (found.items || []).map((oi: any) => ({
+                const orderItems = found.items || [];
+                const lineTotalsSum = orderItems.reduce((s: number, oi: any) => s + Number(oi.lineTotal), 0);
+                const orderGrandTotal = Number(found.grandTotal);
+
+                const lines: ReturnLine[] = orderItems.map((oi: any) => ({
                     orderId: found.id, orderNumber: found.orderNumber,
                     orderItemId: oi.id, itemId: oi.itemId,
-                    name: oi.item?.description || oi.itemId, sku: oi.item?.sku || "",
+                    name: oi.item?.description || oi.itemId,
+                    sku: oi.item?.sku || "",
+                    brand: oi.item?.brand || oi.item?.brandName || "",
                     orderedQty: Number(oi.quantity), returnQty: 0,
-                    paidPerUnit: paidPerUnit(oi),
+                    paidPerUnit: paidPerUnit(oi, orderGrandTotal, lineTotalsSum),
                     originalUnitPrice: Number(oi.unitPrice),
                     discountPercent: Number(oi.discountPercent ?? 0),
+                    discountAmount: Number(oi.discountAmount ?? 0),
+                    taxAmount: Number(oi.taxAmount ?? 0),
+                    taxPercent: Number(oi.taxPercent ?? 0),
                 }));
                 setReturnLines(prev => [...prev, ...lines]);
                 setOrderSearch("");
@@ -260,18 +290,30 @@ export default function ReturnsPage() {
             }
 
             if (res?.ok && res.data?.status) {
-                if (mode === "return") toast.success(`Return processed. Refund: ${formatCurrency(res.data.refundAmount ?? refundTotal)}`);
-                else if (mode === "exchange") {
+                if (mode === "return") {
+                    toast.success(`Return processed. Refund: ${formatCurrency(res.data.refundAmount ?? refundTotal)}`);
+                    // Show return receipt instead of redirecting
+                    setReturnReceipt({
+                        returnRef: res.data.returnRef || res.data.data?.returnNumber || `RET-${Date.now()}`,
+                        refundTotal: res.data.refundAmount ?? refundTotal,
+                        returnedAt: new Date().toISOString(),
+                        itemRefundDetails: res.data.itemRefundDetails,
+                    });
+                } else if (mode === "exchange") {
                     const d = res.data.data?.difference ?? diff;
                     toast.success(d > 0 ? `Exchange done. Customer pays ${formatCurrency(d)} extra` : d < 0 ? `Exchange done. Refund ${formatCurrency(Math.abs(d))}` : "Exchange done. No balance");
-                } else toast.success(res.data.message || "Claim submitted");
-                router.push("/pos/sales/history");
+                    router.push("/pos/sales/history");
+                } else {
+                    toast.success(res.data.message || "Claim submitted");
+                    router.push("/pos/sales/history");
+                }
             } else { toast.error(res?.data?.message || "Operation failed"); }
         } catch { toast.error("Operation failed. Check connection."); }
         finally { setIsSubmitting(false); }
     }, [loadedOrders, selectedLines, newLines, mode, notes, reasonCode, isMultiOrder, refundTotal, diff, router]);
 
     return (
+        <>
         <div className="flex flex-col gap-5 p-6 px-10 max-w-5xl mx-auto">
 
             {/* Header */}
@@ -647,5 +689,51 @@ export default function ReturnsPage() {
                 </>
             )}
         </div>
+
+            {/* ── Return Receipt Dialog ─────────────────────────────────── */}
+            {returnReceipt && (
+                <PrintReturnReceipt
+                    returnRef={returnReceipt.returnRef}
+                    originalOrders={loadedOrders.map(o => ({ orderNumber: o.orderNumber, grandTotal: o.grandTotal }))}
+                    returnedLines={selectedLines.map(l => {
+                        const detail = returnReceipt.itemRefundDetails?.find(d => d.orderItemId === l.orderItemId);
+                        const refundPerUnit = detail ? detail.refundPerUnit : l.paidPerUnit;
+                        return {
+                            name: l.name,
+                            sku: l.sku,
+                            brand: l.brand,
+                            returnQty: l.returnQty,
+                            paidPerUnit: l.paidPerUnit,
+                            refundPerUnit,
+                            refundAmount: refundPerUnit * l.returnQty,
+                            priceAdjusted: detail?.priceAdjusted ?? false,
+                            originalPaidPerUnit: detail?.originalPaidPerUnit ?? l.paidPerUnit,
+                            orderNumber: l.orderNumber,
+                            unitPrice: l.originalUnitPrice,
+                            discountPercent: l.discountPercent,
+                            discountAmount: l.discountAmount,
+                            taxAmount: l.taxAmount,
+                            taxPercent: l.taxPercent,
+                        };
+                    })}
+                    refundTotal={returnReceipt.refundTotal}
+                    notes={notes || undefined}
+                    returnedAt={returnReceipt.returnedAt}
+                    discountNotes={loadedOrders
+                        .filter(o => o.coupon || o.promo || o.alliance)
+                        .map(o => {
+                            const parts = [];
+                            if (o.coupon) parts.push(`Coupon: ${o.coupon}`);
+                            if (o.promo) parts.push(`Promo: ${o.promo}`);
+                            if (o.alliance) parts.push(`Alliance: ${o.alliance}`);
+                            return `${o.orderNumber} — ${parts.join(', ')}`;
+                        })}
+                    onClose={() => {
+                        setReturnReceipt(null);
+                        router.push("/pos/sales/history");
+                    }}
+                />
+            )}
+        </>
     );
 }
