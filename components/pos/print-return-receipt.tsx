@@ -36,29 +36,26 @@ export interface ReturnReceiptLine {
     discountPercent?: number;
     taxAmount?: number;
     taxPercent?: number;
-    /** Actual refund per unit after price rule (may differ from paidPerUnit if price dropped) */
+    /** Actual refund per unit after price rule */
     refundPerUnit?: number;
-    /** True when current price was lower than original — refund was adjusted down */
+    /** True when current price was lower than original */
     priceAdjusted?: boolean;
-    /** Original paid per unit before adjustment */
+    /** Original paid per unit before price adjustment */
     originalPaidPerUnit?: number;
+    /** Order-level coupon/voucher deduction proportionally allocated to this item */
+    couponDeduction?: number;
 }
 
 export interface PrintReturnReceiptProps {
-    /** Return receipt number / reference returned by the API, or generated client-side */
     returnRef: string;
-    /** Original order number(s) */
     originalOrders: { orderNumber: string; grandTotal: number }[];
-    /** Lines that were returned */
     returnedLines: ReturnReceiptLine[];
-    /** Total refund amount */
     refundTotal: number;
-    /** Reason / notes */
     notes?: string;
-    /** Coupon/promo/alliance notes from original orders — shown as info, not refunded */
     discountNotes?: string[];
-    /** Timestamp of the return */
     returnedAt?: string;
+    /** Payment method used in original order */
+    paymentMethod?: string;
     settings?: Partial<PosSettings>;
     onClose: () => void;
 }
@@ -71,6 +68,7 @@ export function PrintReturnReceipt({
     notes,
     discountNotes,
     returnedAt,
+    paymentMethod,
     settings: settingsOverride,
     onClose,
 }: PrintReturnReceiptProps) {
@@ -134,13 +132,23 @@ export function PrintReturnReceipt({
                         </div>
 
                         {returnedLines.map((line, idx) => {
-                            const effectiveUnitPrice = line.refundPerUnit ?? line.paidPerUnit;
-                            const lineRefund = effectiveUnitPrice * line.returnQty;
-                            const originalUnitPrice = line.originalPaidPerUnit ?? line.paidPerUnit;
+                            const qty = line.returnQty;
+                            const unitPrice = line.unitPrice ?? line.paidPerUnit;
+                            const subtotal = unitPrice * qty;
+                            const discAmt = line.discountAmount ?? 0;
+                            const taxAmt = line.taxAmount ?? 0;
+                            const couponDed = line.couponDeduction ?? 0;
+                            const refundPerUnit = line.refundPerUnit ?? line.paidPerUnit;
+                            const lineRefund = refundPerUnit * qty;
+
+                            // Running total after each step
+                            const afterDiscount = subtotal - discAmt;
+                            const afterTax = afterDiscount + taxAmt;
+                            const afterCoupon = afterTax - couponDed;
 
                             return (
-                                <div key={idx} className="space-y-0.5 pb-1.5 border-b border-dashed last:border-0">
-                                    {/* Name + refund total */}
+                                <div key={idx} className="space-y-0.5 pb-2 border-b border-dashed last:border-0">
+                                    {/* Item name + final refund */}
                                     <div className="grid grid-cols-[1fr_auto] gap-x-2">
                                         <span className="font-semibold truncate">{line.name}</span>
                                         <span className="font-bold text-right">{fmt(lineRefund)}</span>
@@ -153,21 +161,63 @@ export function PrintReturnReceipt({
                                         </p>
                                     )}
 
-                                    {/* Qty × refund unit price */}
+                                    {/* Original unit price × qty = subtotal */}
                                     <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-muted-foreground">
-                                        <span>{line.returnQty} × {fmt(effectiveUnitPrice)}</span>
-                                        <span className="text-right">{fmt(lineRefund)}</span>
+                                        <span>{qty} × {fmt(unitPrice)}</span>
+                                        <span className="text-right">{fmt(subtotal)}</span>
                                     </div>
 
-                                    {/* Price adjusted note — current price was lower */}
-                                    {line.priceAdjusted && (
-                                        <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-amber-600">
-                                            <span>Orig. sale price</span>
-                                            <span className="text-right">{fmt(originalUnitPrice)}</span>
-                                        </div>
+                                    {/* Item-level discount */}
+                                    {discAmt > 0 && (
+                                        <>
+                                            <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-primary">
+                                                <span>Discount{line.discountPercent ? ` (${line.discountPercent}%)` : ""}</span>
+                                                <span className="text-right">−{fmt(discAmt)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-muted-foreground">
+                                                <span className="text-[10px]">After discount</span>
+                                                <span className="text-right">{fmt(afterDiscount)}</span>
+                                            </div>
+                                        </>
                                     )}
+
+                                    {/* Tax */}
+                                    {taxAmt > 0 && (
+                                        <>
+                                            <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-muted-foreground">
+                                                <span>Tax{line.taxPercent ? ` (${line.taxPercent}%)` : ""}</span>
+                                                <span className="text-right">+{fmt(taxAmt)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-muted-foreground">
+                                                <span className="text-[10px]">After tax</span>
+                                                <span className="text-right">{fmt(afterTax)}</span>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Coupon / voucher deduction */}
+                                    {couponDed > 0 && (
+                                        <>
+                                            <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-emerald-600">
+                                                <span>Coupon / Voucher</span>
+                                                <span className="text-right">−{fmt(couponDed)}</span>
+                                            </div>
+                                            <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-muted-foreground">
+                                                <span className="text-[10px]">After coupon</span>
+                                                <span className="text-right">{fmt(afterCoupon)}</span>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Price-drop adjustment */}
                                     {line.priceAdjusted && (
-                                        <p className="pl-1 text-[10px] text-amber-600">* Refund at current lower price</p>
+                                        <>
+                                            <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-amber-600">
+                                                <span>Current price (lower)</span>
+                                                <span className="text-right">{fmt(lineRefund)}</span>
+                                            </div>
+                                            <p className="pl-1 text-[10px] text-amber-600">* Refund at current lower price</p>
+                                        </>
                                     )}
 
                                     {originalOrders.length > 1 && (
@@ -189,19 +239,25 @@ export function PrintReturnReceipt({
                                 <span>TOTAL REFUND</span>
                                 <span>Rs. {fmt(refundTotal)}</span>
                             </div>
+                            {paymentMethod && (
+                                <div className="flex justify-between text-muted-foreground">
+                                    <span>Refund via</span>
+                                    <span className="capitalize">{paymentMethod}</span>
+                                </div>
+                            )}
                         </div>
 
-                        {/* ── Discount info (coupon/promo — returned to customer) ── */}
+                        {/* ── Coupon/promo returned to customer ──────────────── */}
                         {discountNotes && discountNotes.length > 0 && (
                             <>
                                 <Separator />
                                 <div className="space-y-0.5 rounded border border-dashed border-emerald-400 px-2 py-1.5">
-                                    <p className="font-bold">Coupon / Promo Returned:</p>
+                                    <p className="font-bold">Coupon / Voucher Returned to Customer:</p>
                                     {discountNotes.map((note, i) => (
                                         <p key={i} className="pl-2">{note}</p>
                                     ))}
                                     <p className="text-muted-foreground text-[10px] mt-1">
-                                        * Original coupon/promo code has been returned to the customer.
+                                        * Coupon/voucher code restored and can be reused.
                                     </p>
                                 </div>
                             </>

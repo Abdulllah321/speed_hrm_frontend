@@ -25,7 +25,10 @@ function paidPerUnit(oi: any, orderGrandTotal: number, orderLineTotalsSum: numbe
   // Distribute grandTotal proportionally based on each item's lineTotal share
   // This correctly handles global discounts (coupon/promo applied at order level)
   const qty = Number(oi.quantity);
-  if (qty <= 0) return 0;
+  if (qty <= 0) {
+    console.warn(`Invalid quantity for item ${oi.itemId}:`, qty);
+    return 0;
+  }
   const lineTotal = Number(oi.lineTotal);
   const itemShare = orderLineTotalsSum > 0 ? (lineTotal / orderLineTotalsSum) * orderGrandTotal : lineTotal;
   return itemShare / qty;
@@ -118,20 +121,29 @@ export default function ReturnsPage() {
                 const lineTotalsSum = orderItems.reduce((s: number, oi: any) => s + Number(oi.lineTotal), 0);
                 const orderGrandTotal = Number(found.grandTotal);
 
-                const lines: ReturnLine[] = orderItems.map((oi: any) => ({
-                    orderId: found.id, orderNumber: found.orderNumber,
-                    orderItemId: oi.id, itemId: oi.itemId,
-                    name: oi.item?.description || oi.itemId,
-                    sku: oi.item?.sku || "",
-                    brand: oi.item?.brand || oi.item?.brandName || "",
-                    orderedQty: Number(oi.quantity), returnQty: 0,
-                    paidPerUnit: paidPerUnit(oi, orderGrandTotal, lineTotalsSum),
-                    originalUnitPrice: Number(oi.unitPrice),
-                    discountPercent: Number(oi.discountPercent ?? 0),
-                    discountAmount: Number(oi.discountAmount ?? 0),
-                    taxAmount: Number(oi.taxAmount ?? 0),
-                    taxPercent: Number(oi.taxPercent ?? 0),
-                }));
+                const lines: ReturnLine[] = orderItems
+                    .filter((oi: any) => {
+                        const alreadyReturned = Number(oi.returnedQty ?? 0);
+                        return Number(oi.quantity) - alreadyReturned > 0; // skip fully returned items
+                    })
+                    .map((oi: any) => {
+                    const alreadyReturned = Number(oi.returnedQty ?? 0);
+                    const remainingQty = Number(oi.quantity) - alreadyReturned;
+                    return {
+                        orderId: found.id, orderNumber: found.orderNumber,
+                        orderItemId: oi.id, itemId: oi.itemId,
+                        name: oi.item?.description || oi.itemId,
+                        sku: oi.item?.sku || "",
+                        brand: oi.item?.brand || oi.item?.brandName || "",
+                        orderedQty: remainingQty, returnQty: 0,
+                        paidPerUnit: paidPerUnit(oi, orderGrandTotal, lineTotalsSum),
+                        originalUnitPrice: Number(oi.unitPrice),
+                        discountPercent: Number(oi.discountPercent ?? 0),
+                        discountAmount: Number(oi.discountAmount ?? 0),
+                        taxAmount: Number(oi.taxAmount ?? 0),
+                        taxPercent: Number(oi.taxPercent ?? 0),
+                    };
+                });
                 setReturnLines(prev => [...prev, ...lines]);
                 setOrderSearch("");
             } else { toast.error(res.data?.message || "Order not found"); }
@@ -407,11 +419,12 @@ export default function ReturnsPage() {
                                             {isMultiOrder && <TableHead className="text-xs uppercase text-muted-foreground">Receipt</TableHead>}
                                             <TableHead className="text-xs uppercase">Item</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Ordered</TableHead>
-                                            <TableHead className="text-right text-xs uppercase">List Price</TableHead>
+                                            <TableHead className="text-right text-xs uppercase">Unit Price</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Disc %</TableHead>
+                                            <TableHead className="text-right text-xs uppercase">Tax %</TableHead>
                                             <TableHead className="text-right text-xs uppercase text-emerald-700">Paid/Unit</TableHead>
                                             <TableHead className="text-center text-xs uppercase">Return Qty</TableHead>
-                                            <TableHead className="text-right text-xs uppercase text-destructive">Amount</TableHead>
+                                            <TableHead className="text-right text-xs uppercase text-destructive">Refund</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -433,11 +446,16 @@ export default function ReturnsPage() {
                                                         ? <span className="text-destructive font-medium">{line.discountPercent}%</span>
                                                         : <span className="text-muted-foreground">—</span>}
                                                 </TableCell>
+                                                <TableCell className="text-right text-sm">
+                                                    {line.taxPercent && line.taxPercent > 0
+                                                        ? <span className="text-muted-foreground font-medium">{line.taxPercent}%</span>
+                                                        : <span className="text-muted-foreground">—</span>}
+                                                </TableCell>
                                                 <TableCell className="text-right font-bold text-sm font-mono text-emerald-700">
                                                     {formatCurrency(line.paidPerUnit)}
-                                                    {line.discountPercent > 0 && (
-                                                        <div className="text-[10px] text-muted-foreground font-normal">(was {formatCurrency(line.originalUnitPrice)})</div>
-                                                    )}
+                                                    <div className="text-[10px] text-muted-foreground font-normal">
+                                                        (incl. tax & disc)
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center justify-center gap-1.5">
@@ -696,7 +714,7 @@ export default function ReturnsPage() {
                     returnRef={returnReceipt.returnRef}
                     originalOrders={loadedOrders.map(o => ({ orderNumber: o.orderNumber, grandTotal: o.grandTotal }))}
                     returnedLines={selectedLines.map(l => {
-                        const detail = returnReceipt.itemRefundDetails?.find(d => d.orderItemId === l.orderItemId);
+                        const detail = returnReceipt.itemRefundDetails?.find((d: any) => d.orderItemId === l.orderItemId);
                         const refundPerUnit = detail ? detail.refundPerUnit : l.paidPerUnit;
                         return {
                             name: l.name,
@@ -708,12 +726,13 @@ export default function ReturnsPage() {
                             refundAmount: refundPerUnit * l.returnQty,
                             priceAdjusted: detail?.priceAdjusted ?? false,
                             originalPaidPerUnit: detail?.originalPaidPerUnit ?? l.paidPerUnit,
+                            couponDeduction: detail?.couponDeduction ?? 0,
                             orderNumber: l.orderNumber,
-                            unitPrice: l.originalUnitPrice,
-                            discountPercent: l.discountPercent,
-                            discountAmount: l.discountAmount,
-                            taxAmount: l.taxAmount,
-                            taxPercent: l.taxPercent,
+                            unitPrice: detail?.unitPrice ?? l.originalUnitPrice,
+                            discountPercent: detail?.discountPercent ?? l.discountPercent,
+                            discountAmount: detail?.discountAmount ?? l.discountAmount,
+                            taxAmount: detail?.taxAmount ?? l.taxAmount,
+                            taxPercent: detail?.taxPercent ?? l.taxPercent,
                         };
                     })}
                     refundTotal={returnReceipt.refundTotal}

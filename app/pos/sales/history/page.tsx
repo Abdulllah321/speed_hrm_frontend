@@ -719,12 +719,13 @@ export default function SalesHistoryPage() {
                                 refundAmount: refundPerUnit * qty,
                                 priceAdjusted: detail?.priceAdjusted ?? false,
                                 originalPaidPerUnit,
+                                couponDeduction: detail?.couponDeduction ?? 0,
                                 orderNumber: selectedOrder.orderNumber,
-                                unitPrice: Number(i.unitPrice),
-                                discountAmount: Number(i.discountAmount ?? 0),
-                                discountPercent: Number(i.discountPercent ?? 0),
-                                taxAmount: Number(i.taxAmount ?? 0),
-                                taxPercent: Number(i.taxPercent ?? 0),
+                                unitPrice: detail?.unitPrice ?? Number(i.unitPrice),
+                                discountAmount: detail?.discountAmount ?? Number(i.discountAmount ?? 0),
+                                discountPercent: detail?.discountPercent ?? Number(i.discountPercent ?? 0),
+                                taxAmount: detail?.taxAmount ?? Number(i.taxAmount ?? 0),
+                                taxPercent: detail?.taxPercent ?? Number(i.taxPercent ?? 0),
                             };
                         })}
                     refundTotal={returnDetails?.refundTotal ?? Number(selectedOrder.grandTotal)}
