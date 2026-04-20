@@ -271,7 +271,8 @@ export default function SalesHistoryPage() {
         hold: "bg-amber-500/10 text-amber-700 border-amber-300",
         hold_expired: "bg-muted text-muted-foreground border-border",
         voided: "bg-destructive/10 text-destructive border-destructive/30",
-        partially_returned: "bg-blue-500/10 text-blue-700 border-blue-300",
+        returned: "bg-red-500/10 text-red-700 border-red-300",
+        partially_returned: "bg-orange-500/10 text-orange-700 border-orange-300",
         refunded: "bg-purple-500/10 text-purple-700 border-purple-300",
         exchanged: "bg-cyan-500/10 text-cyan-700 border-cyan-300",
     };
@@ -319,6 +320,7 @@ export default function SalesHistoryPage() {
                 return (
                     <Badge variant="outline" className={cn("capitalize text-[10px] px-1.5 py-0 h-5", STATUS_BADGE[status] ?? "")}>
                         {status === "hold" && <PauseCircle className="h-2.5 w-2.5 mr-1" />}
+                        {(status === "returned" || status === "partially_returned") && <RotateCcw className="h-2.5 w-2.5 mr-1" />}
                         {status.replace(/_/g, " ")}
                     </Badge>
                 );
@@ -436,6 +438,9 @@ export default function SalesHistoryPage() {
                         const totalPaid = selectedOrder?.tenders?.reduce((s: number, t: any) => s + Number(t.amount), 0) || 0;
                         const balanceDue = Math.max(0, (selectedOrder?.grandTotal || 0) - totalPaid);
                         const isHold = selectedOrder?.status === "hold";
+                        const isReturned = selectedOrder?.status === "returned" || selectedOrder?.status === "partially_returned";
+                        const isFullyReturned = selectedOrder?.status === "returned";
+                        const isPartiallyReturned = selectedOrder?.status === "partially_returned";
                         const isToday = selectedOrder ? isSameDay(new Date(selectedOrder.createdAt)) : false;
                         const canEditTender = isToday && selectedOrder?.status !== "voided" && !isHold;
 
@@ -455,7 +460,17 @@ export default function SalesHistoryPage() {
                                                     <PauseCircle className="h-2.5 w-2.5 mr-1" /> On Hold
                                                 </Badge>
                                             )}
-                                            {!isHold && (
+                                            {isFullyReturned && (
+                                                <Badge variant="outline" className="uppercase text-[10px] px-2 h-5 border-red-500 text-red-600">
+                                                    <RotateCcw className="h-2.5 w-2.5 mr-1" /> Fully Returned
+                                                </Badge>
+                                            )}
+                                            {isPartiallyReturned && (
+                                                <Badge variant="outline" className="uppercase text-[10px] px-2 h-5 border-orange-500 text-orange-600">
+                                                    <RotateCcw className="h-2.5 w-2.5 mr-1" /> Partially Returned
+                                                </Badge>
+                                            )}
+                                            {!isHold && !isReturned && (
                                                 <Badge variant={balanceDue > 0 ? "outline" : "default"}
                                                     className={cn("uppercase text-[10px] px-2 h-5", balanceDue > 0 ? "border-orange-500 text-orange-500" : "bg-emerald-600")}>
                                                     {balanceDue > 0 ? "Partial" : "Fully Paid"}
@@ -491,6 +506,52 @@ export default function SalesHistoryPage() {
                                                 onClick={() => { setShowDetails(false); handleResumeHold(selectedOrder); }}>
                                                 <RotateCcw className="h-3.5 w-3.5" /> Continue Order
                                             </Button>
+                                        </div>
+                                    )}
+
+                                    {/* Return notice */}
+                                    {isReturned && (
+                                        <div className={cn(
+                                            "flex items-start gap-3 rounded-xl border px-4 py-3",
+                                            isFullyReturned 
+                                                ? "border-red-300 bg-red-50 dark:bg-red-950/20" 
+                                                : "border-orange-300 bg-orange-50 dark:bg-orange-950/20"
+                                        )}>
+                                            <RotateCcw className={cn(
+                                                "h-5 w-5 shrink-0 mt-0.5",
+                                                isFullyReturned ? "text-red-600" : "text-orange-600"
+                                            )} />
+                                            <div className="flex-1 text-sm space-y-2">
+                                                <div>
+                                                    <p className={cn(
+                                                        "font-semibold",
+                                                        isFullyReturned ? "text-red-700" : "text-orange-700"
+                                                    )}>
+                                                        {isFullyReturned ? "Order fully returned" : "Order partially returned"}
+                                                    </p>
+                                                    <p className={cn(
+                                                        "text-xs",
+                                                        isFullyReturned ? "text-red-600" : "text-orange-600"
+                                                    )}>
+                                                        {selectedOrder?.notes?.includes("Return") 
+                                                            ? selectedOrder.notes 
+                                                            : "Items have been returned to inventory"}
+                                                    </p>
+                                                </div>
+                                                {selectedOrder?.isVoucherRestored && selectedOrder?.coupon && (
+                                                    <div className={cn(
+                                                        "flex items-center gap-2 text-xs px-3 py-2 rounded-lg border",
+                                                        isFullyReturned 
+                                                            ? "bg-red-100 border-red-200 text-red-700 dark:bg-red-900/30" 
+                                                            : "bg-orange-100 border-orange-200 text-orange-700 dark:bg-orange-900/30"
+                                                    )}>
+                                                        <Ticket className="h-3.5 w-3.5" />
+                                                        <span className="font-medium">
+                                                            Voucher/Coupon restored: <span className="font-black">{selectedOrder.coupon.code}</span>
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 
