@@ -27,6 +27,7 @@ import {
 import DataTable from "@/components/common/data-table";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { PrintReceipt } from "@/components/pos/print-receipt";
+import { PrintReturnReceipt } from "@/components/pos/print-return-receipt";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 
@@ -205,8 +206,10 @@ export default function SalesHistoryPage() {
     const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 100 });
 
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
+    const [returnDetails, setReturnDetails] = useState<any>(null);
     const [showDetails, setShowDetails] = useState(false);
     const [showPrint, setShowPrint] = useState(false);
+    const [showReturnPrint, setShowReturnPrint] = useState(false);
     const [showUpdateTender, setShowUpdateTender] = useState(false);
 
     const fetchOrders = useCallback(async () => {
@@ -266,6 +269,14 @@ export default function SalesHistoryPage() {
         } catch { toast.error("Failed to resume hold order"); }
     }, [router]);
 
+    const isReturnOrder = (order: any) =>
+        order?.status === "partially_returned" || order?.status === "refunded" || order?.status === "returned";
+
+    const handlePrint = (order: any) => {
+        setSelectedOrder(order);
+        setShowPrint(true);
+    };
+
     const STATUS_BADGE: Record<string, string> = {
         completed: "bg-emerald-500/10 text-emerald-700 border-emerald-300",
         hold: "bg-amber-500/10 text-amber-700 border-amber-300",
@@ -274,6 +285,7 @@ export default function SalesHistoryPage() {
         returned: "bg-red-500/10 text-red-700 border-red-300",
         partially_returned: "bg-orange-500/10 text-orange-700 border-orange-300",
         refunded: "bg-purple-500/10 text-purple-700 border-purple-300",
+        returned: "bg-purple-500/10 text-purple-700 border-purple-300",
         exchanged: "bg-cyan-500/10 text-cyan-700 border-cyan-300",
     };
 
@@ -364,12 +376,28 @@ export default function SalesHistoryPage() {
                         </Button>
                         {/* Print */}
                         {!isHold && (
+                            <>
                             <Button variant="ghost" size="icon"
                                 className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
                                 title="Print receipt"
-                                onClick={() => { setSelectedOrder(order); setShowPrint(true); }}>
+                                onClick={() => handlePrint(order)}>
                                 <Printer className="h-3.5 w-3.5" />
                             </Button>
+                            {isReturnOrder(order) && (
+                                <Button variant="ghost" size="icon"
+                                    className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
+                                    title="Print return slip"
+                                    onClick={async () => {
+                                        setSelectedOrder(order);
+                                        setReturnDetails(null);
+                                        const res = await authFetch(`/pos-sales/orders/${order.id}/return-details`);
+                                        if (res.ok && res.data?.status) setReturnDetails(res.data.data);
+                                        setShowReturnPrint(true);
+                                    }}>
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                            </>
                         )}
                     </div>
                 );
@@ -702,10 +730,19 @@ export default function SalesHistoryPage() {
                                             <RotateCcw className="h-4 w-4" /> Continue Order
                                         </Button>
                                     ) : (
+                                        <>
+                                        {isReturnOrder(selectedOrder) && (
+                                            <Button variant="outline" className="rounded-xl font-black text-[10px] uppercase px-6 h-11 gap-2.5 tracking-widest border-destructive/40 text-destructive hover:bg-destructive/5"
+                                                onClick={() => { setShowDetails(false); setShowReturnPrint(true); }}>
+                                                <Printer className="h-4 w-4" /> Print Return Slip
+                                            </Button>
+                                        )}
                                         <Button className="rounded-xl font-black text-[10px] uppercase px-8 h-11 shadow-lg shadow-primary/30 gap-2.5 tracking-widest"
-                                            onClick={() => { setShowDetails(false); setShowPrint(true); }}>
-                                            <Printer className="h-4 w-4" /> Print Receipt
+                                            onClick={() => { setShowDetails(false); handlePrint(selectedOrder); }}>
+                                            <Printer className="h-4 w-4" />
+                                            {isReturnOrder(selectedOrder) ? "Print Receipt" : "Print Receipt"}
                                         </Button>
+                                        </>
                                     )}
                                 </DialogFooter>
                             </>
@@ -720,6 +757,48 @@ export default function SalesHistoryPage() {
                     order={selectedOrder}
                     tenders={selectedOrder.tenders || []}
                     onClose={() => setShowPrint(false)}
+                />
+            )}
+
+            {/* Print Return Slip */}
+            {showReturnPrint && selectedOrder && (
+                <PrintReturnReceipt
+                    returnRef={selectedOrder.returnRef || selectedOrder.orderNumber}
+                    originalOrders={[{ orderNumber: selectedOrder.orderNumber, grandTotal: Number(selectedOrder.grandTotal) }]}
+                    returnedLines={(selectedOrder.items || []).map((i: any) => {
+                            const detail = returnDetails?.itemRefundDetails?.find((d: any) => d.orderItemId === i.id);
+                            const qty = Number(i.quantity);
+                            const originalPaidPerUnit = detail?.originalPaidPerUnit ?? (Number(i.lineTotal) / qty);
+                            const refundPerUnit = detail?.refundPerUnit ?? originalPaidPerUnit;
+                            return {
+                                name: i.item?.description || i.itemId,
+                                sku: i.item?.sku || "",
+                                brand: i.item?.brand || i.item?.brandName || "",
+                                returnQty: qty,
+                                paidPerUnit: originalPaidPerUnit,
+                                refundPerUnit,
+                                refundAmount: refundPerUnit * qty,
+                                priceAdjusted: detail?.priceAdjusted ?? false,
+                                originalPaidPerUnit,
+                                couponDeduction: detail?.couponDeduction ?? 0,
+                                orderNumber: selectedOrder.orderNumber,
+                                unitPrice: detail?.unitPrice ?? Number(i.unitPrice),
+                                discountAmount: detail?.discountAmount ?? Number(i.discountAmount ?? 0),
+                                discountPercent: detail?.discountPercent ?? Number(i.discountPercent ?? 0),
+                                taxAmount: detail?.taxAmount ?? Number(i.taxAmount ?? 0),
+                                taxPercent: detail?.taxPercent ?? Number(i.taxPercent ?? 0),
+                            };
+                        })}
+                    refundTotal={returnDetails?.refundTotal ?? Number(selectedOrder.grandTotal)}
+                    discountNotes={(() => {
+                        const parts: string[] = [];
+                        if (selectedOrder.coupon?.code) parts.push(`Coupon: ${selectedOrder.coupon.code}`);
+                        if (selectedOrder.promo?.code) parts.push(`Promo: ${selectedOrder.promo.code}`);
+                        if (selectedOrder.alliance?.code) parts.push(`Alliance: ${selectedOrder.alliance.code}`);
+                        return parts.length ? [`${selectedOrder.orderNumber} — ${parts.join(', ')}`] : [];
+                    })()}
+                    returnedAt={selectedOrder.updatedAt || selectedOrder.createdAt}
+                    onClose={() => setShowReturnPrint(false)}
                 />
             )}
 

@@ -42,8 +42,8 @@ export default function PendingPurchaseOrders() {
                 vendorQuotationId: quotationId,
                 notes: 'Generated from Pending POs page'
             });
-            toast.success(`Purchase Order {po.poNumber} created successfully`);
-            router.push(`/erp/procurement/purchase-order/{po.id}`);
+            toast.success(`Purchase Order ${po.poNumber} created successfully`);
+            router.push(`/erp/procurement/purchase-order/${po.id}`);
         } catch (error: any) {
             console.error('Failed to create PO:', error);
             toast.error(error.message || 'Failed to create Purchase Order');
