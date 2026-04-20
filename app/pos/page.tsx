@@ -21,7 +21,6 @@ import {
     Loader2,
     CreditCard,
     Banknote,
-    FileWarning,
 } from "lucide-react";
 import Link from "next/link";
 import { authFetch } from "@/lib/auth";
@@ -237,11 +236,11 @@ export default function PosPage() {
                 authFetch("/pos-session/current"),
             ]);
 
-            if (dashRes.status === "fulfilled" && dashRes.value) {
+            if (dashRes.status === "fulfilled" && dashRes.value?.ok) {
                 setDashboard(dashRes.value.data as PosDashboardData);
             }
-            if (sessionRes.status === "fulfilled" && sessionRes.value) {
-                setSession(sessionRes.value as SessionData);
+            if (sessionRes.status === "fulfilled" && sessionRes.value?.ok) {
+                setSession(sessionRes.value.data as SessionData);
             }
         } catch {
             setError("Failed to load dashboard data.");
