@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Grn } from '@/lib/api';
 import { getGrn } from '@/lib/actions/grn';
 import { ArrowLeft } from 'lucide-react';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function GrnDetailPage() {
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function GrnDetailPage() {
   if (!grn) return <div className="p-0">Not found</div>;
 
   return (
+    <PermissionGuard permissions="erp.procurement.grn.read">
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -114,5 +116,6 @@ export default function GrnDetailPage() {
         </CardContent>
       </Card>
     </div>
+    </PermissionGuard>
   );
 }

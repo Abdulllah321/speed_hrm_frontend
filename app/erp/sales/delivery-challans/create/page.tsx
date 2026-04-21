@@ -16,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { deliveryChallanApi, salesOrderApi } from "@/lib/api";
 import { toast } from "sonner";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export default function CreateDeliveryChallanPage() {
   const router = useRouter();
@@ -127,6 +128,7 @@ export default function CreateDeliveryChallanPage() {
   };
 
   return (
+    <PermissionGuard permissions="erp.sales.dc.create">
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -350,5 +352,6 @@ export default function CreateDeliveryChallanPage() {
         </Card>
       </div>
     </div>
+    </PermissionGuard>
   );
 }

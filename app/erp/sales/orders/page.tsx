@@ -45,6 +45,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { salesOrderApi, customerApi, warehouseApi, inventoryApi, brandApi, categoryApi, SalesOrder, Customer } from "@/lib/api";
 import { toast } from "sonner";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface SelectedItem {
   id: string;
@@ -327,191 +328,204 @@ export default function SalesOrdersPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Sales Orders</h1>
-          <p className="text-muted-foreground">
-            Create and manage sales orders
-          </p>
-        </div>
-        <Button onClick={() => router.push("/erp/sales/orders/create")}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Sales Order
-        </Button>
-      </div>
-
-      {/* Filter Sheet */}
-      <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Filter Items</SheetTitle>
-          </SheetHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <Label>Brands</Label>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {brands.map((brand) => (
-                  <label key={brand.id} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={appliedFilters.brandIds.includes(brand.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setAppliedFilters(prev => ({
-                            ...prev,
-                            brandIds: [...prev.brandIds, brand.id]
-                          }));
-                        } else {
-                          setAppliedFilters(prev => ({
-                            ...prev,
-                            brandIds: prev.brandIds.filter(id => id !== brand.id)
-                          }));
-                        }
-                      }}
-                    />
-                    <span className="text-sm">{brand.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Categories</Label>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {categories.map((category) => (
-                  <label key={category.id} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={appliedFilters.categoryIds.includes(category.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setAppliedFilters(prev => ({
-                            ...prev,
-                            categoryIds: [...prev.categoryIds, category.id]
-                          }));
-                        } else {
-                          setAppliedFilters(prev => ({
-                            ...prev,
-                            categoryIds: prev.categoryIds.filter(id => id !== category.id)
-                          }));
-                        }
-                      }}
-                    />
-                    <span className="text-sm">{category.name}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+    <PermissionGuard permissions="erp.sales.order.read">
+      <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Sales Orders</h1>
+            <p className="text-muted-foreground">
+              Create and manage sales orders
+            </p>
           </div>
-          <SheetFooter>
-            <Button
-              variant="outline"
-              onClick={() => setAppliedFilters({ brandIds: [], categoryIds: [] })}
-            >
-              Clear All
+          <PermissionGuard permissions="erp.sales.order.create" fallback={null}>
+            <Button onClick={() => router.push("/erp/sales/orders/create")}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Sales Order
             </Button>
-            <Button onClick={() => setIsFilterOpen(false)}>
-              Apply Filters
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-
-      {/* Orders List */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search orders..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+          </PermissionGuard>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="confirmed">Confirmed</SelectItem>
-            <SelectItem value="cancelled">Cancelled</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Order No</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Items</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {(orders || []).length === 0 ? (
+        {/* Filter Sheet */}
+        <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+          <SheetContent>
+            <SheetHeader>
+              <SheetTitle>Filter Items</SheetTitle>
+            </SheetHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label>Brands</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {brands.map((brand) => (
+                    <label key={brand.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={appliedFilters.brandIds.includes(brand.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setAppliedFilters(prev => ({
+                              ...prev,
+                              brandIds: [...prev.brandIds, brand.id]
+                            }));
+                          } else {
+                            setAppliedFilters(prev => ({
+                              ...prev,
+                              brandIds: prev.brandIds.filter(id => id !== brand.id)
+                            }));
+                          }
+                        }}
+                      />
+                      <span className="text-sm">{brand.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Categories</Label>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {categories.map((category) => (
+                    <label key={category.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={appliedFilters.categoryIds.includes(category.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setAppliedFilters(prev => ({
+                              ...prev,
+                              categoryIds: [...prev.categoryIds, category.id]
+                            }));
+                          } else {
+                            setAppliedFilters(prev => ({
+                              ...prev,
+                              categoryIds: prev.categoryIds.filter(id => id !== category.id)
+                            }));
+                          }
+                        }}
+                      />
+                      <span className="text-sm">{category.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <SheetFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAppliedFilters({ brandIds: [], categoryIds: [] })}
+              >
+                Clear All
+              </Button>
+              <Button onClick={() => setIsFilterOpen(false)}>
+                Apply Filters
+              </Button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
+
+        {/* Orders List */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search orders..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <div className="text-muted-foreground">
-                    {searchTerm ? "No orders found matching your search." : "No sales orders found. Create your first order."}
-                  </div>
-                </TableCell>
+                <TableHead>Order No</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Total</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              (orders || []).map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.orderNo}</TableCell>
-                  <TableCell>{order.customer.name}</TableCell>
-                  <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{order.items.length} items</TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(order.status)}>
-                      {order.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    Rs. {order.grandTotal.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        title="View"
-                        onClick={() => router.push(`/erp/sales/orders/${order.id}`)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {order.status === "DRAFT" && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          title="Confirm Order"
-                          onClick={() => handleConfirm(order.id)}
-                        >
-                          <FileText className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {order.status === "CONFIRMED" && (
-                        <Button variant="ghost" size="sm" title="Create Delivery Challan">
-                          <Truck className="h-4 w-4" />
-                        </Button>
-                      )}
+            </TableHeader>
+            <TableBody>
+              {(orders || []).length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    <div className="text-muted-foreground">
+                      {searchTerm ? "No orders found matching your search." : "No sales orders found. Create your first order."}
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                (orders || []).map((order) => (
+                  <TableRow key={order.id}>
+                    <TableCell className="font-medium">{order.orderNo}</TableCell>
+                    <TableCell>{order.customer.name}</TableCell>
+                    <TableCell>{new Date(order.orderDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{order.items.length} items</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(order.status)}>
+                        {order.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      Rs. {order.grandTotal.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="View"
+                          onClick={() => router.push(`/erp/sales/orders/${order.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {order.status === "DRAFT" && (
+                          <PermissionGuard permissions="erp.sales.order.approve" fallback={null}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Confirm Order"
+                              onClick={() => handleConfirm(order.id)}
+                            >
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </PermissionGuard>
+                        )}
+                        {order.status === "CONFIRMED" && (
+                          <PermissionGuard permissions="erp.sales.dc.create" fallback={null}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              title="Create Delivery Challan"
+                              onClick={() => router.push(`/erp/sales/delivery-challans/create?orderId=${order.id}`)}
+                            >
+                              <Truck className="h-4 w-4" />
+                            </Button>
+                          </PermissionGuard>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-    </div>
+    </PermissionGuard>
   );
 }

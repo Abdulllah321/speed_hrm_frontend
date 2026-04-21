@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 function fmt(val: number) {
     return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -200,181 +201,187 @@ export default function ClaimsPage() {
     ], [openDetail]);
 
     return (
-        <div className="flex flex-col gap-6 p-6 px-10">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Return Claims</h1>
-                    <p className="text-muted-foreground text-sm">Review and approve POS store return claims</p>
+        <PermissionGuard permissions="erp.claims.read">
+            <div className="flex flex-col gap-6 p-6 px-10">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Return Claims</h1>
+                        <p className="text-muted-foreground text-sm">Review and approve POS store return claims</p>
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">All Statuses</SelectItem>
+                            {Object.entries(STATUS_META).map(([v, m]) => <SelectItem key={v} value={v}>{m.label}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="ALL">All Statuses</SelectItem>
-                        {Object.entries(STATUS_META).map(([v, m]) => <SelectItem key={v} value={v}>{m.label}</SelectItem>)}
-                    </SelectContent>
-                </Select>
-            </div>
 
-            <DataTable columns={columns} data={claims} isLoading={isLoading} tableId="erp-claims"
-                searchFields={[{ key: "claimNumber", label: "Claim #" }]} />
+                <DataTable columns={columns} data={claims} isLoading={isLoading} tableId="erp-claims"
+                    searchFields={[{ key: "claimNumber", label: "Claim #" }]} />
 
-            {/* Detail / Review Sheet */}
-            <Sheet open={showDetail} onOpenChange={setShowDetail}>
-                <SheetContent side="bottom" className="flex flex-col h-[90vh] p-0 gap-0 rounded-t-2xl">
-                    {selectedClaim && (
-                        <>
-                            <SheetHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
-                                <SheetTitle className="flex items-center gap-2">
-                                    <FileText className="h-5 w-5" />
-                                    Claim {selectedClaim.claimNumber}
-                                    <Badge variant="outline" className={cn("text-[10px] px-2 h-5 ml-2", STATUS_META[selectedClaim.status]?.cls)}>
-                                        {STATUS_META[selectedClaim.status]?.label}
-                                    </Badge>
-                                </SheetTitle>
-                            </SheetHeader>
+                {/* Detail / Review Sheet */}
+                <Sheet open={showDetail} onOpenChange={setShowDetail}>
+                    <SheetContent side="bottom" className="flex flex-col h-[90vh] p-0 gap-0 rounded-t-2xl">
+                        {selectedClaim && (
+                            <>
+                                <SheetHeader className="shrink-0 px-6 pt-6 pb-4 border-b">
+                                    <SheetTitle className="flex items-center gap-2">
+                                        <FileText className="h-5 w-5" />
+                                        Claim {selectedClaim.claimNumber}
+                                        <Badge variant="outline" className={cn("text-[10px] px-2 h-5 ml-2", STATUS_META[selectedClaim.status]?.cls)}>
+                                            {STATUS_META[selectedClaim.status]?.label}
+                                        </Badge>
+                                    </SheetTitle>
+                                </SheetHeader>
 
-                            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
+                                <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-4">
 
-                            {/* Header info */}
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                                <div className="bg-muted/40 rounded-lg px-3 py-2">
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Order</p>
-                                    <p className="font-mono font-bold">{selectedClaim.salesOrder?.orderNumber}</p>
+                                {/* Header info */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                                    <div className="bg-muted/40 rounded-lg px-3 py-2">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Order</p>
+                                        <p className="font-mono font-bold">{selectedClaim.salesOrder?.orderNumber}</p>
+                                    </div>
+                                    <div className="bg-muted/40 rounded-lg px-3 py-2">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Reason</p>
+                                        <p className="capitalize">{selectedClaim.reasonCode?.replace(/_/g, " ").toLowerCase()}</p>
+                                    </div>
+                                    <div className="bg-destructive/5 rounded-lg px-3 py-2">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Claimed</p>
+                                        <p className="font-bold font-mono">Rs. {fmt(selectedClaim.claimedAmount)}</p>
+                                    </div>
+                                    <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Approved</p>
+                                        <p className="font-bold font-mono text-emerald-700">Rs. {fmt(selectedClaim.approvedAmount)}</p>
+                                    </div>
                                 </div>
-                                <div className="bg-muted/40 rounded-lg px-3 py-2">
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Reason</p>
-                                    <p className="capitalize">{selectedClaim.reasonCode?.replace(/_/g, " ").toLowerCase()}</p>
-                                </div>
-                                <div className="bg-destructive/5 rounded-lg px-3 py-2">
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Claimed</p>
-                                    <p className="font-bold font-mono">Rs. {fmt(selectedClaim.claimedAmount)}</p>
-                                </div>
-                                <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2">
-                                    <p className="text-[10px] text-muted-foreground uppercase font-bold mb-1">Approved</p>
-                                    <p className="font-bold font-mono text-emerald-700">Rs. {fmt(selectedClaim.approvedAmount)}</p>
-                                </div>
-                            </div>
 
-                            {selectedClaim.reasonNotes && (
-                                <div className="text-sm bg-muted/30 rounded-lg px-3 py-2 italic text-muted-foreground">
-                                    "{selectedClaim.reasonNotes}"
-                                </div>
-                            )}
-
-                            <Separator />
-
-                            {/* Items */}
-                            <div className="space-y-2">
-                                <h3 className="text-sm font-semibold">Claimed Items</h3>
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="hover:bg-transparent bg-muted/20">
-                                            <TableHead className="text-xs uppercase">Item</TableHead>
-                                            <TableHead className="text-right text-xs uppercase">Claimed Qty</TableHead>
-                                            <TableHead className="text-right text-xs uppercase">Paid/Unit</TableHead>
-                                            <TableHead className="text-right text-xs uppercase">Claimed Amt</TableHead>
-                                            {canReview && <TableHead className="text-center text-xs uppercase text-emerald-700">Approve Qty</TableHead>}
-                                            {canReview && <TableHead className="text-right text-xs uppercase text-emerald-700">Approved Amt</TableHead>}
-                                            {!canReview && <TableHead className="text-center text-xs uppercase">Status</TableHead>}
-                                            {!canReview && <TableHead className="text-right text-xs uppercase">Approved</TableHead>}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {selectedClaim.items?.map((item: any) => {
-                                            const approval = itemApprovals[item.id] ?? { approvedQty: item.approvedQty, notes: "" };
-                                            const approvedAmt = Number(item.unitPaidPrice) * approval.approvedQty;
-                                            const isMeta = ITEM_STATUS_META[item.itemStatus] ?? { label: item.itemStatus, cls: "" };
-                                            return (
-                                                <TableRow key={item.id}>
-                                                    <TableCell>
-                                                        <p className="font-medium text-sm">{item.item?.description}</p>
-                                                        <p className="text-xs text-muted-foreground font-mono">{item.item?.sku}</p>
-                                                    </TableCell>
-                                                    <TableCell className="text-right text-sm">{item.claimedQty}</TableCell>
-                                                    <TableCell className="text-right font-mono text-sm">Rs. {fmt(item.unitPaidPrice)}</TableCell>
-                                                    <TableCell className="text-right font-mono text-sm text-destructive">Rs. {fmt(item.claimedAmount)}</TableCell>
-                                                    {canReview ? (
-                                                        <>
-                                                            <TableCell>
-                                                                <div className="flex items-center justify-center gap-1">
-                                                                    <Button variant="outline" size="icon" className="h-6 w-6"
-                                                                        onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.max(0, (p[item.id]?.approvedQty ?? item.claimedQty) - 1) } }))}>
-                                                                        <ChevronDown className="h-3 w-3" />
-                                                                    </Button>
-                                                                    <Input type="number" min={0} max={item.claimedQty} className="w-14 h-7 text-center text-xs"
-                                                                        value={approval.approvedQty}
-                                                                        onChange={e => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, Math.max(0, parseInt(e.target.value) || 0)) } }))} />
-                                                                    <Button variant="outline" size="icon" className="h-6 w-6"
-                                                                        onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, (p[item.id]?.approvedQty ?? 0) + 1) } }))}>
-                                                                        <ChevronUp className="h-3 w-3" />
-                                                                    </Button>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-mono text-sm text-emerald-700 font-bold">
-                                                                Rs. {fmt(approvedAmt)}
-                                                            </TableCell>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <TableCell className="text-center">
-                                                                <Badge className={cn("text-[10px] px-1.5", isMeta.cls)}>{isMeta.label}</Badge>
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-mono text-sm text-emerald-700 font-bold">
-                                                                {Number(item.approvedAmount) > 0 ? `Rs. ${fmt(item.approvedAmount)}` : "—"}
-                                                            </TableCell>
-                                                        </>
-                                                    )}
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </div>
-
-                            {/* Review totals */}
-                            {canReview && (
-                                <div className="flex justify-between items-center rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 px-4 py-2 text-sm font-semibold">
-                                    <span className="text-emerald-700">Total to Approve</span>
-                                    <span className="font-mono text-emerald-700 text-base">Rs. {fmt(totalApprovedInReview)}</span>
-                                </div>
-                            )}
-
-                            {/* Review notes */}
-                            {canReview && (
-                                <div className="space-y-1.5">
-                                    <Label className="text-xs text-muted-foreground">Review Notes</Label>
-                                    <Textarea placeholder="Notes for the store..." value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} rows={2} className="resize-none text-sm" />
-                                </div>
-                            )}
-
-                            {selectedClaim.reviewNotes && !canReview && (
-                                <div className="text-sm bg-muted/30 rounded-lg px-3 py-2">
-                                    <p className="text-xs text-muted-foreground font-bold mb-1">ERP Review Notes</p>
-                                    <p className="italic">{selectedClaim.reviewNotes}</p>
-                                </div>
-                            )}
-
-                            </div>{/* end scrollable */}
-
-                            <SheetFooter className="shrink-0 border-t px-6 py-4 gap-2 flex-row justify-end">
-                                <Button variant="ghost" onClick={() => setShowDetail(false)}>Close</Button>
-                                {selectedClaim.status === "SUBMITTED" && (
-                                    <Button variant="outline" onClick={handleStartReview} disabled={isStartingReview} className="gap-2">
-                                        {isStartingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
-                                        Start Review
-                                    </Button>
+                                {selectedClaim.reasonNotes && (
+                                    <div className="text-sm bg-muted/30 rounded-lg px-3 py-2 italic text-muted-foreground">
+                                        "{selectedClaim.reasonNotes}"
+                                    </div>
                                 )}
+
+                                <Separator />
+
+                                {/* Items */}
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-semibold">Claimed Items</h3>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="hover:bg-transparent bg-muted/20">
+                                                <TableHead className="text-xs uppercase">Item</TableHead>
+                                                <TableHead className="text-right text-xs uppercase">Claimed Qty</TableHead>
+                                                <TableHead className="text-right text-xs uppercase">Paid/Unit</TableHead>
+                                                <TableHead className="text-right text-xs uppercase">Claimed Amt</TableHead>
+                                                {canReview && <TableHead className="text-center text-xs uppercase text-emerald-700">Approve Qty</TableHead>}
+                                                {canReview && <TableHead className="text-right text-xs uppercase text-emerald-700">Approved Amt</TableHead>}
+                                                {!canReview && <TableHead className="text-center text-xs uppercase">Status</TableHead>}
+                                                {!canReview && <TableHead className="text-right text-xs uppercase">Approved</TableHead>}
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {selectedClaim.items?.map((item: any) => {
+                                                const approval = itemApprovals[item.id] ?? { approvedQty: item.approvedQty, notes: "" };
+                                                const approvedAmt = Number(item.unitPaidPrice) * approval.approvedQty;
+                                                const isMeta = ITEM_STATUS_META[item.itemStatus] ?? { label: item.itemStatus, cls: "" };
+                                                return (
+                                                    <TableRow key={item.id}>
+                                                        <TableCell>
+                                                            <p className="font-medium text-sm">{item.item?.description}</p>
+                                                            <p className="text-xs text-muted-foreground font-mono">{item.item?.sku}</p>
+                                                        </TableCell>
+                                                        <TableCell className="text-right text-sm">{item.claimedQty}</TableCell>
+                                                        <TableCell className="text-right font-mono text-sm">Rs. {fmt(item.unitPaidPrice)}</TableCell>
+                                                        <TableCell className="text-right font-mono text-sm text-destructive">Rs. {fmt(item.claimedAmount)}</TableCell>
+                                                        {canReview ? (
+                                                            <>
+                                                                <TableCell>
+                                                                    <div className="flex items-center justify-center gap-1">
+                                                                        <Button variant="outline" size="icon" className="h-6 w-6"
+                                                                            onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.max(0, (p[item.id]?.approvedQty ?? item.claimedQty) - 1) } }))}>
+                                                                            <ChevronDown className="h-3 w-3" />
+                                                                        </Button>
+                                                                        <Input type="number" min={0} max={item.claimedQty} className="w-14 h-7 text-center text-xs"
+                                                                            value={approval.approvedQty}
+                                                                            onChange={e => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, Math.max(0, parseInt(e.target.value) || 0)) } }))} />
+                                                                        <Button variant="outline" size="icon" className="h-6 w-6"
+                                                                            onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, (p[item.id]?.approvedQty ?? 0) + 1) } }))}>
+                                                                            <ChevronUp className="h-3 w-3" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-right font-mono text-sm text-emerald-700 font-bold">
+                                                                    Rs. {fmt(approvedAmt)}
+                                                                </TableCell>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <TableCell className="text-center">
+                                                                    <Badge className={cn("text-[10px] px-1.5", isMeta.cls)}>{isMeta.label}</Badge>
+                                                                </TableCell>
+                                                                <TableCell className="text-right font-mono text-sm text-emerald-700 font-bold">
+                                                                    {Number(item.approvedAmount) > 0 ? `Rs. ${fmt(item.approvedAmount)}` : "—"}
+                                                                </TableCell>
+                                                            </>
+                                                        )}
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+
+                                {/* Review totals */}
                                 {canReview && (
-                                    <Button onClick={handleSubmitReview} disabled={isSubmittingReview} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-                                        {isSubmittingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                                        Submit Decision
-                                    </Button>
+                                    <div className="flex justify-between items-center rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 px-4 py-2 text-sm font-semibold">
+                                        <span className="text-emerald-700">Total to Approve</span>
+                                        <span className="font-mono text-emerald-700 text-base">Rs. {fmt(totalApprovedInReview)}</span>
+                                    </div>
                                 )}
-                            </SheetFooter>
-                        </>
-                    )}
-                </SheetContent>
-            </Sheet>
-        </div>
+
+                                {/* Review notes */}
+                                {canReview && (
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs text-muted-foreground">Review Notes</Label>
+                                        <Textarea placeholder="Notes for the store..." value={reviewNotes} onChange={e => setReviewNotes(e.target.value)} rows={2} className="resize-none text-sm" />
+                                    </div>
+                                )}
+
+                                {selectedClaim.reviewNotes && !canReview && (
+                                    <div className="text-sm bg-muted/30 rounded-lg px-3 py-2">
+                                        <p className="text-xs text-muted-foreground font-bold mb-1">ERP Review Notes</p>
+                                        <p className="italic">{selectedClaim.reviewNotes}</p>
+                                    </div>
+                                )}
+
+                                </div>{/* end scrollable */}
+
+                                <SheetFooter className="shrink-0 border-t px-6 py-4 gap-2 flex-row justify-end">
+                                    <Button variant="ghost" onClick={() => setShowDetail(false)}>Close</Button>
+                                    {selectedClaim.status === "SUBMITTED" && (
+                                        <PermissionGuard permissions="erp.claims.approve" fallback={null}>
+                                            <Button variant="outline" onClick={handleStartReview} disabled={isStartingReview} className="gap-2">
+                                                {isStartingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+                                                Start Review
+                                            </Button>
+                                        </PermissionGuard>
+                                    )}
+                                    {canReview && (
+                                        <PermissionGuard permissions="erp.claims.approve" fallback={null}>
+                                            <Button onClick={handleSubmitReview} disabled={isSubmittingReview} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+                                                {isSubmittingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                                Submit Decision
+                                            </Button>
+                                        </PermissionGuard>
+                                    )}
+                                </SheetFooter>
+                            </>
+                        )}
+                    </SheetContent>
+                </Sheet>
+            </div>
+        </PermissionGuard>
     );
 }

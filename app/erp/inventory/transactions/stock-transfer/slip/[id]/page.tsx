@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function TransferSlipPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -46,7 +47,8 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 print:bg-white text-black">
+        <PermissionGuard permissions="erp.inventory.stock-transfer.read">
+            <div className="min-h-screen bg-gray-100 print:bg-white text-black">
             {/* Non-Printable Action Bar */}
             <div className="print:hidden bg-white border-b p-4 flex justify-between items-center shadow-sm max-w-4xl mx-auto mt-4 rounded-t-md">
                 <Button variant="outline" onClick={() => router.back()}>
@@ -215,6 +217,6 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                 </div>
 
             </div>
-        </div>
+        </PermissionGuard>
     );
 }

@@ -13,6 +13,7 @@ import { getGrns } from '@/lib/actions/grn';
 import { createLocalLandedCost } from '@/lib/actions/landed-cost';
 import { Label } from '@/components/ui/label';
 import { Save, ArrowLeft } from 'lucide-react';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 interface LocalLandedCostItem {
   itemId: string;
@@ -148,6 +149,7 @@ export default function LocalLandedCostPage() {
   };
 
   return (
+    <PermissionGuard permissions="erp.procurement.landed-cost.create">
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -263,5 +265,6 @@ export default function LocalLandedCostPage() {
         </Card>
       </div>
     </div>
+    </PermissionGuard>
   );
 }

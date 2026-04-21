@@ -17,6 +17,7 @@ import { createLandedCost, createLocalLandedCost, getLandedCostChargeTypes } fro
 import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calculator, Save } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 interface LocalItem {
   itemId: string;
@@ -693,6 +694,7 @@ console.log(res)
   };
 
   return (
+    <PermissionGuard permissions="erp.procurement.landed-cost.create">
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
         <div>
@@ -1101,5 +1103,6 @@ console.log(res)
         </CardContent>
       </Card>
     </div>
+    </PermissionGuard>
   );
 }

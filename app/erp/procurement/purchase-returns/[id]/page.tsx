@@ -9,6 +9,7 @@ import { ArrowLeft, Edit, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import { purchaseReturnApi, PurchaseReturn } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 const statusColors = {
   DRAFT: 'bg-gray-100 text-gray-800',
@@ -76,52 +77,57 @@ export default function PurchaseReturnDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-        
-          <div>
-            <h1 className="text-2xl font-bold">Purchase Return {purchaseReturn.returnNumber}</h1>
-            <p className="text-gray-600">Return details and status</p>
+    <PermissionGuard permissions="erp.procurement.pret.read">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+          
+            <div>
+              <h1 className="text-2xl font-bold">Purchase Return {purchaseReturn.returnNumber}</h1>
+              <p className="text-gray-600">Return details and status</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-2">
+            {purchaseReturn.status === 'DRAFT' && (
+              <PermissionGuard permissions="erp.procurement.pret.update" fallback={null}>
+                <>
+                  <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}/edit`}>
+                    <Button variant="outline">
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  </Link>
+                  <Button onClick={handleSubmit}>
+                    Submit for Approval
+                  </Button>
+                </>
+              </PermissionGuard>
+            )}
+            {purchaseReturn.status === 'SUBMITTED' && (
+              <PermissionGuard permissions="erp.procurement.pret.update" fallback={null}>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="text-green-600"
+                    onClick={() => handleStatusUpdate('APPROVED')}
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Approve
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="text-red-600"
+                    onClick={() => handleStatusUpdate('REJECTED')}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Reject
+                  </Button>
+                </div>
+              </PermissionGuard>
+            )}
           </div>
         </div>
-        
-        <div className="flex gap-2">
-          {purchaseReturn.status === 'DRAFT' && (
-            <>
-              <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}/edit`}>
-                <Button variant="outline">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-              </Link>
-              <Button onClick={handleSubmit}>
-                Submit for Approval
-              </Button>
-            </>
-          )}
-          {purchaseReturn.status === 'SUBMITTED' && (
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="text-green-600"
-                onClick={() => handleStatusUpdate('APPROVED')}
-              >
-                <Check className="w-4 h-4 mr-2" />
-                Approve
-              </Button>
-              <Button 
-                variant="outline" 
-                className="text-red-600"
-                onClick={() => handleStatusUpdate('REJECTED')}
-              >
-                <X className="w-4 h-4 mr-2" />
-                Reject
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Return Header */}
       <Card>
@@ -302,5 +308,6 @@ export default function PurchaseReturnDetailPage() {
         </Card>
       )}
     </div>
+    </PermissionGuard>
   );
 }

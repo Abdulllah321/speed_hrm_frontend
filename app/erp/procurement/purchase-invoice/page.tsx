@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getPurchaseInvoices, deletePurchaseInvoice } from "@/lib/actions/purchase-invoice";
 import { toast } from "sonner";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface PurchaseInvoice {
   id: string;
@@ -88,197 +89,207 @@ export default function PurchaseInvoiceListPage() {
   );
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Purchase Invoices</h1>
-          <p className="text-gray-600">Manage supplier invoices and payments</p>
-        </div>
-        <div className="flex gap-2">
-          <Link
-            href="/erp/procurement/purchase-invoice/create-direct"
-            transitionTypes={["nav-forward"]}
-          >
-            <Button variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Direct PI
-            </Button>
-          </Link>
-          <Link
-            href="/erp/procurement/purchase-invoice/create"
-            transitionTypes={["nav-forward"]}
-          >
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Invoice
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="p-4">
-          <div className="flex gap-4 items-center">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search by invoice number or supplier..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border rounded-md"
-            >
-              <option value="">All Status</option>
-              <option value="DRAFT">Draft</option>
-              <option value="SUBMITTED">Submitted</option>
-              <option value="APPROVED">Approved</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-            <select
-              value={paymentStatusFilter}
-              onChange={(e) => setPaymentStatusFilter(e.target.value)}
-              className="px-3 py-2 border rounded-md"
-            >
-              <option value="">All Payment Status</option>
-              <option value="UNPAID">Unpaid</option>
-              <option value="PARTIALLY_PAID">Partially Paid</option>
-              <option value="FULLY_PAID">Fully Paid</option>
-              <option value="OVERDUE">Overdue</option>
-            </select>
+    <PermissionGuard permissions="erp.procurement.pi.read">
+      <div className="container mx-auto p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Purchase Invoices</h1>
+            <p className="text-gray-600">Manage supplier invoices and payments</p>
           </div>
-        </CardContent>
-      </Card>
+          <div className="flex gap-2">
+            <PermissionGuard permissions="erp.procurement.pi.create" fallback={null}>
+              <Link
+                href="/erp/procurement/purchase-invoice/create-direct"
+                transitionTypes={["nav-forward"]}
+              >
+                <Button variant="outline">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Direct PI
+                </Button>
+              </Link>
+            </PermissionGuard>
+            <PermissionGuard permissions="erp.procurement.pi.create" fallback={null}>
+              <Link
+                href="/erp/procurement/purchase-invoice/create"
+                transitionTypes={["nav-forward"]}
+              >
+                <Button>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Invoice
+                </Button>
+              </Link>
+            </PermissionGuard>
+          </div>
+        </div>
 
-      {/* Invoice List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoice List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading...</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3">Invoice #</th>
-                    <th className="text-left p-3">Date</th>
-                    <th className="text-left p-3">Supplier</th>
-                    <th className="text-right p-3">Total Amount</th>
-                    <th className="text-right p-3">Paid Amount</th>
-                    <th className="text-right p-3">Remaining</th>
-                    <th className="text-center p-3">Status</th>
-                    <th className="text-center p-3">Payment Status</th>
-                    <th className="text-center p-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredInvoices.map((invoice) => (
-                    <tr key={invoice.id} className="border-b hover:bg-background/80">
-                      <td className="p-3 font-medium">
-                        {invoice.invoiceNumber}
-                      </td>
-                      <td className="p-3">
-                        {new Date(invoice.invoiceDate).toLocaleDateString()}
-                      </td>
-                      <td className="p-3">
-                        <div>
-                          <div className="font-medium">
-                            {invoice.supplier.name}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {invoice.supplier.code}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3 text-right">
-                        {invoice.totalAmount.toLocaleString()}
-                      </td>
-                      <td className="p-3 text-right">
-                        {invoice.paidAmount.toLocaleString()}
-                      </td>
-                      <td className="p-3 text-right">
-                        {invoice.remainingAmount.toLocaleString()}
-                      </td>
-                      <td className="p-3 text-center">
-                        <Badge className={getStatusBadge(invoice.status)}>
-                          {invoice.status}
-                        </Badge>
-                      </td>
-                      <td className="p-3 text-center">
-                        <Badge
-                          className={getPaymentStatusBadge(
-                            invoice.paymentStatus,
-                          )}
-                        >
-                          {invoice.paymentStatus.replace("_", " ")}
-                        </Badge>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex gap-2 justify-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              router.push(
-                                `/erp/procurement/purchase-invoice/${invoice.id}`,
-                              )
-                            }
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              router.push(
-                                `/erp/procurement/purchase-invoice/${invoice.id}/edit`,
-                              )
-                            }
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-800"
-                            onClick={async () => {
-                              if (!window.confirm("Delete this invoice?")) return;
-                              try {
-                                await deletePurchaseInvoice(invoice.id);
-                                toast.success("Invoice deleted");
-                                fetchInvoices();
-                              } catch (error: any) {
-                                toast.error(error.message || "Failed to delete invoice");
-                              }
-                            }}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredInvoices.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No invoices found
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex gap-4 items-center">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search by invoice number or supplier..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-              )}
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md"
+              >
+                <option value="">All Status</option>
+                <option value="DRAFT">Draft</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="APPROVED">Approved</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+              <select
+                value={paymentStatusFilter}
+                onChange={(e) => setPaymentStatusFilter(e.target.value)}
+                className="px-3 py-2 border rounded-md"
+              >
+                <option value="">All Payment Status</option>
+                <option value="UNPAID">Unpaid</option>
+                <option value="PARTIALLY_PAID">Partially Paid</option>
+                <option value="FULLY_PAID">Fully Paid</option>
+                <option value="OVERDUE">Overdue</option>
+              </select>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </CardContent>
+        </Card>
+
+        {/* Invoice List */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Invoice List</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-8">Loading...</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-3">Invoice #</th>
+                      <th className="text-left p-3">Date</th>
+                      <th className="text-left p-3">Supplier</th>
+                      <th className="text-right p-3">Total Amount</th>
+                      <th className="text-right p-3">Paid Amount</th>
+                      <th className="text-right p-3">Remaining</th>
+                      <th className="text-center p-3">Status</th>
+                      <th className="text-center p-3">Payment Status</th>
+                      <th className="text-center p-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInvoices.map((invoice) => (
+                      <tr key={invoice.id} className="border-b hover:bg-background/80">
+                        <td className="p-3 font-medium">
+                          {invoice.invoiceNumber}
+                        </td>
+                        <td className="p-3">
+                          {new Date(invoice.invoiceDate).toLocaleDateString()}
+                        </td>
+                        <td className="p-3">
+                          <div>
+                            <div className="font-medium">
+                              {invoice.supplier.name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {invoice.supplier.code}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 text-right">
+                          {invoice.totalAmount.toLocaleString()}
+                        </td>
+                        <td className="p-3 text-right">
+                          {invoice.paidAmount.toLocaleString()}
+                        </td>
+                        <td className="p-3 text-right">
+                          {invoice.remainingAmount.toLocaleString()}
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge className={getStatusBadge(invoice.status)}>
+                            {invoice.status}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge
+                            className={getPaymentStatusBadge(
+                              invoice.paymentStatus,
+                            )}
+                          >
+                            {invoice.paymentStatus.replace("_", " ")}
+                          </Badge>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex gap-2 justify-center">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() =>
+                                router.push(
+                                  `/erp/procurement/purchase-invoice/${invoice.id}`,
+                                )
+                              }
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <PermissionGuard permissions="erp.procurement.pi.update" fallback={null}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  router.push(
+                                    `/erp/procurement/purchase-invoice/${invoice.id}/edit`,
+                                  )
+                                }
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            </PermissionGuard>
+                            <PermissionGuard permissions="erp.procurement.pi.delete" fallback={null}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-800"
+                                onClick={async () => {
+                                  if (!window.confirm("Delete this invoice?")) return;
+                                  try {
+                                    await deletePurchaseInvoice(invoice.id);
+                                    toast.success("Invoice deleted");
+                                    fetchInvoices();
+                                  } catch (error: any) {
+                                    toast.error(error.message || "Failed to delete invoice");
+                                  }
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </PermissionGuard>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredInvoices.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    No invoices found
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </PermissionGuard>
   );
 }

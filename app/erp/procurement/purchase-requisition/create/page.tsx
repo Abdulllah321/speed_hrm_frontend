@@ -23,6 +23,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 interface FormValues {
     department: string;
@@ -195,6 +196,7 @@ export default function CreatePurchaseRequisition() {
     };
 
     return (
+        <PermissionGuard permissions="erp.procurement.pr.create">
         <div className="p-6 space-y-6 max-w-4xl mx-auto">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Create Requisition</h1>
@@ -464,5 +466,6 @@ export default function CreatePurchaseRequisition() {
                 </div>
             </form>
         </div>
+        </PermissionGuard>
     );
 }

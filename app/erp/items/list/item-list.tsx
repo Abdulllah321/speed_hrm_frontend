@@ -22,6 +22,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ interface Item {
 
 // ─── Column Definitions ───────────────────────────────────────────────────────
 
-function useItemColumns(onDelete: (id: string) => void): ColumnDef<Item>[] {
+function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canDelete: boolean): ColumnDef<Item>[] {
     return [
         {
             accessorKey: "itemId",
@@ -112,18 +113,24 @@ function useItemColumns(onDelete: (id: string) => void): ColumnDef<Item>[] {
                                     <Eye className="mr-2 h-4 w-4" /> View Details
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/erp/items/edit/${item.id}`}>
-                                    <Edit className="mr-2 h-4 w-4" /> Edit
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => onDelete(item.id)}
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
+                            {canUpdate && (
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/erp/items/edit/${item.id}`}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </Link>
+                                </DropdownMenuItem>
+                            )}
+                            {canDelete && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => onDelete(item.id)}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 );
@@ -151,6 +158,12 @@ interface ItemListProps {
 
 export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     const queryClient = useQueryClient();
+    const { hasPermission } = useAuth();
+
+    const canCreate = hasPermission("erp.item.create");
+    const canUpdate = hasPermission("erp.item.update");
+    const canDelete = hasPermission("erp.item.delete");
+    const canBulkUpload = hasPermission("erp.item.bulk-upload");
 
     // ── State ──────────────────────────────────────────────────────────────
     const [pagination, setPagination] = useState<PaginationState>({
@@ -250,7 +263,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         [queryClient],
     );
 
-    const columns = useItemColumns(handleDelete);
+    const columns = useItemColumns(handleDelete, canUpdate, canDelete);
 
     return (
         <Card className="w-full">
@@ -300,14 +313,18 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                             </div>
                         </Button>
                     )}
-                    <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
-                        <Upload className="mr-2 h-4 w-4" /> Bulk Upload
-                    </Button>
-                    <Link href="/erp/items/create">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" /> Add Item
+                    {canBulkUpload && (
+                        <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+                            <Upload className="mr-2 h-4 w-4" /> Bulk Upload
                         </Button>
-                    </Link>
+                    )}
+                    {canCreate && (
+                        <Link href="/erp/items/create">
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" /> Add Item
+                            </Button>
+                        </Link>
+                    )}
                 </div>
             </CardHeader>
 

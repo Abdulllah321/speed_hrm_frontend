@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { customerApi, Customer } from "@/lib/api";
 import { toast } from "sonner";
 import { CustomerBulkUploadModal } from "@/components/customers/customer-bulk-upload-modal";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -114,197 +115,210 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-          <p className="text-muted-foreground">
-            Manage customer information and accounts
-          </p>
+    <PermissionGuard permissions="erp.sales.customer.read">
+      <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Customers</h1>
+            <p className="text-muted-foreground">
+              Manage customer information and accounts
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <PermissionGuard permissions="erp.sales.customer.create" fallback={null}>
+              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Customer
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <form onSubmit={handleSubmit}>
+                    <DialogHeader>
+                      <DialogTitle>Add New Customer</DialogTitle>
+                      <DialogDescription>
+                        Create a new customer account
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="code" className="text-right">
+                          Code
+                        </Label>
+                        <Input
+                          id="code"
+                          value={formData.code}
+                          onChange={(e) =>
+                            setFormData({ ...formData, code: e.target.value })
+                          }
+                          className="col-span-3"
+                          placeholder="Auto-generated if empty"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="name" className="text-right">
+                          Name
+                        </Label>
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) =>
+                            setFormData({ ...formData, name: e.target.value })
+                          }
+                          className="col-span-3"
+                          placeholder="Customer Name"
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="contactNo" className="text-right">
+                          Contact
+                        </Label>
+                        <Input
+                          id="contactNo"
+                          value={formData.contactNo}
+                          onChange={(e) =>
+                            setFormData({ ...formData, contactNo: e.target.value })
+                          }
+                          className="col-span-3"
+                          placeholder="03001234567"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="email" className="text-right">
+                          Email
+                        </Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData({ ...formData, email: e.target.value })
+                          }
+                          className="col-span-3"
+                          placeholder="customer@example.com"
+                        />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <Label htmlFor="address" className="text-right">
+                          Address
+                        </Label>
+                        <Textarea
+                          id="address"
+                          value={formData.address}
+                          onChange={(e) =>
+                            setFormData({ ...formData, address: e.target.value })
+                          }
+                          className="col-span-3"
+                          placeholder="Customer address"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button type="submit">Create Customer</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </PermissionGuard>
+
+            <PermissionGuard permissions="erp.sales.customer.create" fallback={null}>
+              <Button onClick={() => setBulkOpen(true)} variant={"outline"} >
+                <Upload className="mr-2" />
+                Bulk Import
+              </Button>
+              <CustomerBulkUploadModal
+                open={bulkOpen}
+                onOpenChange={setBulkOpen}
+                onSuccess={loadCustomers}
+              />
+            </PermissionGuard>
+          </div>
         </div>
-              <div className="flex items-center gap-2">
 
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Customer
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <form onSubmit={handleSubmit}>
-              <DialogHeader>
-                <DialogTitle>Add New Customer</DialogTitle>
-                <DialogDescription>
-                  Create a new customer account
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="code" className="text-right">
-                    Code
-                  </Label>
-                  <Input
-                    id="code"
-                    value={formData.code}
-                    onChange={(e) =>
-                      setFormData({ ...formData, code: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="Auto-generated if empty"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="name" className="text-right">
-                    Name
-                  </Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="Customer Name"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="contactNo" className="text-right">
-                    Contact
-                  </Label>
-                  <Input
-                    id="contactNo"
-                    value={formData.contactNo}
-                    onChange={(e) =>
-                      setFormData({ ...formData, contactNo: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="03001234567"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="email" className="text-right">
-                    Email
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="customer@example.com"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="address" className="text-right">
-                    Address
-                  </Label>
-                  <Textarea
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    className="col-span-3"
-                    placeholder="Customer address"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit">Create Customer</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-        <Button onClick={() => setBulkOpen(true)} variant={"outline"} ><Upload className="mr-2"/>Bulk Import</Button>
-        <CustomerBulkUploadModal
-          open={bulkOpen}
-          onOpenChange={setBulkOpen}
-          onSuccess={loadCustomers}
-        />
-      </div>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search customers..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Search customers..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Address</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {customers.length === 0 ? (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
-                  <div className="text-muted-foreground">
-                    {searchTerm
-                      ? "No customers found matching your search."
-                      : "No customers found. Create your first customer."}
-                  </div>
-                </TableCell>
+                <TableHead>Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Address</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              customers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell className="font-medium">{customer.code}</TableCell>
-                  <TableCell>{customer.name}</TableCell>
-                  <TableCell>{customer.contactNo || "-"}</TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {customer.address || "-"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span
-                      className={
-                        customer.balance > 0 ? "text-red-600" : "text-green-600"
-                      }
-                    >
-                      Rs. {customer.balance.toLocaleString()}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-600"
-                        onClick={() => handleDelete(customer.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+            </TableHeader>
+            <TableBody>
+              {customers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <div className="text-muted-foreground">
+                      {searchTerm
+                        ? "No customers found matching your search."
+                        : "No customers found. Create your first customer."}
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                customers.map((customer) => (
+                  <TableRow key={customer.id}>
+                    <TableCell className="font-medium">{customer.code}</TableCell>
+                    <TableCell>{customer.name}</TableCell>
+                    <TableCell>{customer.contactNo || "-"}</TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {customer.address || "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <span
+                        className={
+                          customer.balance > 0 ? "text-red-600" : "text-green-600"
+                        }
+                      >
+                        Rs. {customer.balance.toLocaleString()}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <PermissionGuard permissions="erp.sales.customer.update" fallback={null}>
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </PermissionGuard>
+                        <PermissionGuard permissions="erp.sales.customer.delete" fallback={null}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600"
+                            onClick={() => handleDelete(customer.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </PermissionGuard>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-    </div>
+    </PermissionGuard>
   );
 }

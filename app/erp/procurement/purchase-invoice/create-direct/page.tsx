@@ -29,6 +29,7 @@ import {
     searchItemsForDirectPI,
 } from '@/lib/actions/purchase-invoice';
 import Link from 'next/link';
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface Supplier { id: string; name: string; code: string; }
 
@@ -234,23 +235,24 @@ export default function CreateDirectPurchaseInvoicePage() {
     const supplierOptions = suppliers.map(s => ({ value: s.id, label: `${s.name} (${s.code})` }));
 
     return (
-        <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Direct Purchase Invoice</h1>
-                    <p className="text-muted-foreground">Create a supplier invoice without GRN or PO</p>
+        <PermissionGuard permissions="erp.procurement.pi.create">
+            <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+                {/* Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold tracking-tight">Direct Purchase Invoice</h1>
+                        <p className="text-muted-foreground">Create a supplier invoice without GRN or PO</p>
+                    </div>
+                    <div className="flex gap-2">
+                        <Link href="/erp/procurement/purchase-invoice" transitionTypes={['nav-forward']}>
+                            <Button variant="outline">Cancel</Button>
+                        </Link>
+                        <Button onClick={handleSubmit} disabled={submitting}>
+                            <Save className="h-4 w-4 mr-2" />
+                            {submitting ? 'Saving...' : 'Save Invoice'}
+                        </Button>
+                    </div>
                 </div>
-                <div className="flex gap-2">
-                    <Link href="/erp/procurement/purchase-invoice" transitionTypes={['nav-forward']}>
-                        <Button variant="outline">Cancel</Button>
-                    </Link>
-                    <Button onClick={handleSubmit} disabled={submitting}>
-                        <Save className="h-4 w-4 mr-2" />
-                        {submitting ? 'Saving...' : 'Save Invoice'}
-                    </Button>
-                </div>
-            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Left panel — invoice details */}
@@ -772,5 +774,6 @@ export default function CreateDirectPurchaseInvoicePage() {
                 </Card>
             </div>
         </div>
+        </PermissionGuard>
     );
 }
