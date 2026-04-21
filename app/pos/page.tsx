@@ -21,6 +21,7 @@ import {
     Loader2,
     CreditCard,
     Banknote,
+    FileWarning,
 } from "lucide-react";
 import Link from "next/link";
 import { authFetch } from "@/lib/auth";
@@ -236,11 +237,11 @@ export default function PosPage() {
                 authFetch("/pos-session/current"),
             ]);
 
-            if (dashRes.status === "fulfilled" && dashRes.value?.ok) {
-                setDashboard(dashRes.value.data as PosDashboardData);
+            if (dashRes.status === "fulfilled" && dashRes.value) {
+                setDashboard(dashRes.value as PosDashboardData);
             }
-            if (sessionRes.status === "fulfilled" && sessionRes.value?.ok) {
-                setSession(sessionRes.value.data as SessionData);
+            if (sessionRes.status === "fulfilled" && sessionRes.value) {
+                setSession(sessionRes.value as SessionData);
             }
         } catch {
             setError("Failed to load dashboard data.");
@@ -259,46 +260,46 @@ export default function PosPage() {
     const topItems = dashboard?.topItems ?? [];
     const claims = dashboard?.claims;
 
-    console.log(dashboard)
-
-    const statCards = [
+    const statCards = stats
+        ? [
               {
                   title: "Today's Sales",
-                  value: formatCurrency(stats?.todaySales || 0),
+                  value: formatCurrency(stats.todaySales),
                   icon: DollarSign,
                   color: "from-green-500 to-emerald-600",
               },
               {
                   title: "Transactions",
-                  value: String(stats?.transactions || 0),
+                  value: String(stats.transactions),
                   icon: Receipt,
                   color: "from-blue-500 to-cyan-600",
               },
               {
                   title: "Customers Served",
-                  value: String(stats?.customersServed || 0),
+                  value: String(stats.customersServed),
                   icon: Users,
                   color: "from-purple-500 to-pink-600",
               },
               {
                   title: "Avg. Transaction",
-                  value: formatCurrency(stats?.avgTransaction || 0),
+                  value: formatCurrency(stats.avgTransaction),
                   icon: TrendingUp,
                   color: "from-orange-500 to-red-600",
               },
               {
                   title: "Cash Sales",
-                  value: formatCurrency(stats?.cashSales || 0),
+                  value: formatCurrency(stats.cashSales),
                   icon: Banknote,
                   color: "from-teal-500 to-green-600",
               },
               {
                   title: "Card Sales",
-                  value: formatCurrency(stats?.cardSales || 0),
+                  value: formatCurrency(stats.cardSales),
                   icon: CreditCard,
                   color: "from-violet-500 to-purple-600",
               },
           ]
+        : [];
 
     return (
         <div className="space-y-6">

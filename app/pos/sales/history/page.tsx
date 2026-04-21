@@ -7,6 +7,7 @@ import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -269,23 +270,13 @@ export default function SalesHistoryPage() {
         } catch { toast.error("Failed to resume hold order"); }
     }, [router]);
 
-    const isReturnOrder = (order: any) =>
-        order?.status === "partially_returned" || order?.status === "refunded" || order?.status === "returned";
-
-    const handlePrint = (order: any) => {
-        setSelectedOrder(order);
-        setShowPrint(true);
-    };
-
     const STATUS_BADGE: Record<string, string> = {
         completed: "bg-emerald-500/10 text-emerald-700 border-emerald-300",
         hold: "bg-amber-500/10 text-amber-700 border-amber-300",
         hold_expired: "bg-muted text-muted-foreground border-border",
         voided: "bg-destructive/10 text-destructive border-destructive/30",
-        returned: "bg-red-500/10 text-red-700 border-red-300",
-        partially_returned: "bg-orange-500/10 text-orange-700 border-orange-300",
+        partially_returned: "bg-blue-500/10 text-blue-700 border-blue-300",
         refunded: "bg-purple-500/10 text-purple-700 border-purple-300",
-        returned: "bg-purple-500/10 text-purple-700 border-purple-300",
         exchanged: "bg-cyan-500/10 text-cyan-700 border-cyan-300",
     };
 
@@ -332,7 +323,6 @@ export default function SalesHistoryPage() {
                 return (
                     <Badge variant="outline" className={cn("capitalize text-[10px] px-1.5 py-0 h-5", STATUS_BADGE[status] ?? "")}>
                         {status === "hold" && <PauseCircle className="h-2.5 w-2.5 mr-1" />}
-                        {(status === "returned" || status === "partially_returned") && <RotateCcw className="h-2.5 w-2.5 mr-1" />}
                         {status.replace(/_/g, " ")}
                     </Badge>
                 );
@@ -371,7 +361,7 @@ export default function SalesHistoryPage() {
                         <Button variant="ghost" size="icon"
                             className="h-8 w-8 rounded-full text-blue-600 hover:bg-blue-50"
                             title="View details"
-                            onClick={() => { setSelectedOrder(order); setShowDetails(true); }}>
+                            onClick={() => router.push(`/pos/sales/order-details/${order.id}`)}>
                             <Eye className="h-3.5 w-3.5" />
                         </Button>
                         {/* Print */}
@@ -380,10 +370,10 @@ export default function SalesHistoryPage() {
                             <Button variant="ghost" size="icon"
                                 className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
                                 title="Print receipt"
-                                onClick={() => handlePrint(order)}>
+                                onClick={() => { setSelectedOrder(order); setShowPrint(true); }}>
                                 <Printer className="h-3.5 w-3.5" />
                             </Button>
-                            {isReturnOrder(order) && (
+                            {(order.status === 'returned' || order.status === 'partially_returned') && (
                                 <Button variant="ghost" size="icon"
                                     className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
                                     title="Print return slip"
@@ -461,20 +451,17 @@ export default function SalesHistoryPage() {
 
             {/* Order Details Modal */}
             <Dialog open={showDetails} onOpenChange={setShowDetails}>
-                <DialogContent showCloseButton={false}>
+                <DialogContent showCloseButton={false} className="max-w-[1400px] max-h-[90vh] flex flex-col p-0 w-[98vw]">
                     {(() => {
                         const totalPaid = selectedOrder?.tenders?.reduce((s: number, t: any) => s + Number(t.amount), 0) || 0;
                         const balanceDue = Math.max(0, (selectedOrder?.grandTotal || 0) - totalPaid);
                         const isHold = selectedOrder?.status === "hold";
-                        const isReturned = selectedOrder?.status === "returned" || selectedOrder?.status === "partially_returned";
-                        const isFullyReturned = selectedOrder?.status === "returned";
-                        const isPartiallyReturned = selectedOrder?.status === "partially_returned";
                         const isToday = selectedOrder ? isSameDay(new Date(selectedOrder.createdAt)) : false;
                         const canEditTender = isToday && selectedOrder?.status !== "voided" && !isHold;
 
                         return (
                             <>
-                                <DialogHeader className="p-6 pb-2">
+                                <DialogHeader className="p-6 pb-2 shrink-0">
                                     <div className="flex items-center justify-between">
                                         <DialogTitle className="flex items-center gap-2 text-xl font-black uppercase tracking-tight">
                                             Order Details
@@ -488,17 +475,7 @@ export default function SalesHistoryPage() {
                                                     <PauseCircle className="h-2.5 w-2.5 mr-1" /> On Hold
                                                 </Badge>
                                             )}
-                                            {isFullyReturned && (
-                                                <Badge variant="outline" className="uppercase text-[10px] px-2 h-5 border-red-500 text-red-600">
-                                                    <RotateCcw className="h-2.5 w-2.5 mr-1" /> Fully Returned
-                                                </Badge>
-                                            )}
-                                            {isPartiallyReturned && (
-                                                <Badge variant="outline" className="uppercase text-[10px] px-2 h-5 border-orange-500 text-orange-600">
-                                                    <RotateCcw className="h-2.5 w-2.5 mr-1" /> Partially Returned
-                                                </Badge>
-                                            )}
-                                            {!isHold && !isReturned && (
+                                            {!isHold && (
                                                 <Badge variant={balanceDue > 0 ? "outline" : "default"}
                                                     className={cn("uppercase text-[10px] px-2 h-5", balanceDue > 0 ? "border-orange-500 text-orange-500" : "bg-emerald-600")}>
                                                     {balanceDue > 0 ? "Partial" : "Fully Paid"}
@@ -515,10 +492,10 @@ export default function SalesHistoryPage() {
                                     </p>
                                 </DialogHeader>
 
-                                <Separator className="opacity-50" />
+                                <Separator className="opacity-50 shrink-0" />
 
-                                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                                    {/* Hold notice */}
+                                <ScrollArea className="flex-1 max-h-[calc(90vh-200px)]">
+                                    <div className="px-6 py-6 space-y-6">{/* Hold notice */}
                                     {isHold && (
                                         <div className="flex items-center gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 px-4 py-3">
                                             <Clock className="h-5 w-5 text-amber-600 shrink-0" />
@@ -534,52 +511,6 @@ export default function SalesHistoryPage() {
                                                 onClick={() => { setShowDetails(false); handleResumeHold(selectedOrder); }}>
                                                 <RotateCcw className="h-3.5 w-3.5" /> Continue Order
                                             </Button>
-                                        </div>
-                                    )}
-
-                                    {/* Return notice */}
-                                    {isReturned && (
-                                        <div className={cn(
-                                            "flex items-start gap-3 rounded-xl border px-4 py-3",
-                                            isFullyReturned 
-                                                ? "border-red-300 bg-red-50 dark:bg-red-950/20" 
-                                                : "border-orange-300 bg-orange-50 dark:bg-orange-950/20"
-                                        )}>
-                                            <RotateCcw className={cn(
-                                                "h-5 w-5 shrink-0 mt-0.5",
-                                                isFullyReturned ? "text-red-600" : "text-orange-600"
-                                            )} />
-                                            <div className="flex-1 text-sm space-y-2">
-                                                <div>
-                                                    <p className={cn(
-                                                        "font-semibold",
-                                                        isFullyReturned ? "text-red-700" : "text-orange-700"
-                                                    )}>
-                                                        {isFullyReturned ? "Order fully returned" : "Order partially returned"}
-                                                    </p>
-                                                    <p className={cn(
-                                                        "text-xs",
-                                                        isFullyReturned ? "text-red-600" : "text-orange-600"
-                                                    )}>
-                                                        {selectedOrder?.notes?.includes("Return") 
-                                                            ? selectedOrder.notes 
-                                                            : "Items have been returned to inventory"}
-                                                    </p>
-                                                </div>
-                                                {selectedOrder?.isVoucherRestored && selectedOrder?.coupon && (
-                                                    <div className={cn(
-                                                        "flex items-center gap-2 text-xs px-3 py-2 rounded-lg border",
-                                                        isFullyReturned 
-                                                            ? "bg-red-100 border-red-200 text-red-700 dark:bg-red-900/30" 
-                                                            : "bg-orange-100 border-orange-200 text-orange-700 dark:bg-orange-900/30"
-                                                    )}>
-                                                        <Ticket className="h-3.5 w-3.5" />
-                                                        <span className="font-medium">
-                                                            Voucher/Coupon restored: <span className="font-black">{selectedOrder.coupon.code}</span>
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
                                         </div>
                                     )}
 
@@ -642,32 +573,91 @@ export default function SalesHistoryPage() {
                                         <h3 className="text-[11px] font-black uppercase tracking-widest flex items-center gap-2 text-foreground/70">
                                             <ShoppingCart className="h-4 w-4 text-muted-foreground" /> Items Breakdown
                                         </h3>
-                                        <div className="rounded-2xl border border-border/60 overflow-hidden shadow-sm bg-background">
-                                            <Table>
+                                        <div className="rounded-2xl border border-border/60 overflow-x-auto shadow-sm bg-background">
+                                            <Table className="min-w-full">
                                                 <TableHeader className="bg-muted/40 hover:bg-muted/40 border-b border-border/40">
                                                     <TableRow className="h-10 hover:bg-transparent">
-                                                        <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4">Item</TableHead>
-                                                        <TableHead className="text-right text-[10px] font-bold uppercase text-muted-foreground">Qty</TableHead>
-                                                        <TableHead className="text-right text-[10px] font-bold uppercase text-muted-foreground">Price</TableHead>
-                                                        <TableHead className="text-right text-[10px] font-bold uppercase text-muted-foreground">Disc</TableHead>
-                                                        <TableHead className="text-right text-[10px] font-bold uppercase text-muted-foreground pr-4">Net</TableHead>
+                                                        <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 min-w-[250px]">Item</TableHead>
+                                                        <TableHead className="text-center text-[10px] font-bold uppercase text-muted-foreground w-20">Qty</TableHead>
+                                                        {(selectedOrder?.status === 'returned' || selectedOrder?.status === 'partially_returned') && (
+                                                            <>
+                                                                <TableHead className="text-center text-[10px] font-bold uppercase text-destructive w-20">Ret</TableHead>
+                                                                <TableHead className="text-center text-[10px] font-bold uppercase text-emerald-600 w-20">Rem</TableHead>
+                                                            </>
+                                                        )}
+                                                        <TableHead className="text-right text-[10px] font-bold uppercase text-muted-foreground w-32">Price</TableHead>
+                                                        <TableHead className="text-right text-[10px] font-bold uppercase text-muted-foreground w-28">Disc</TableHead>
+                                                        <TableHead className="text-right text-[10px] font-bold uppercase text-muted-foreground pr-4 w-32">Total</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
-                                                    {selectedOrder?.items?.map((item: any, i: number) => (
-                                                        <TableRow key={i} className="hover:bg-muted/10 border-border/30 group">
-                                                            <TableCell className="px-4 py-3">
-                                                                <p className="font-black text-[13px] leading-tight group-hover:text-primary transition-colors">{item.item?.description}</p>
-                                                                <p className="text-[9px] text-muted-foreground font-mono mt-1 uppercase tracking-tighter">{item.item?.sku}</p>
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-bold text-xs text-muted-foreground">{item.quantity}</TableCell>
-                                                            <TableCell className="text-right font-bold text-xs font-mono text-muted-foreground/80">Rs. {fmtCurrency(item.unitPrice)}</TableCell>
-                                                            <TableCell className="text-right text-xs font-mono text-destructive">
-                                                                {Number(item.discountAmount) > 0 ? `-Rs. ${fmtCurrency(item.discountAmount)}` : "—"}
-                                                            </TableCell>
-                                                            <TableCell className="text-right font-black text-xs font-mono pr-4">Rs. {fmtCurrency(item.lineTotal ?? (item.unitPrice - (item.discountAmount || 0)) * item.quantity)}</TableCell>
-                                                        </TableRow>
-                                                    ))}
+                                                    {selectedOrder?.items?.map((item: any, i: number) => {
+                                                        const orderedQty = Number(item.quantity);
+                                                        const returnedQty = Number(item.returnedQty || 0);
+                                                        const remainingQty = orderedQty - returnedQty;
+                                                        const isFullyReturned = remainingQty === 0;
+                                                        const isPartiallyReturned = returnedQty > 0 && remainingQty > 0;
+
+                                                        return (
+                                                            <TableRow key={i} className={cn(
+                                                                "hover:bg-muted/10 border-border/30 group",
+                                                                isFullyReturned && "bg-destructive/5"
+                                                            )}>
+                                                                <TableCell className="px-4 py-3">
+                                                                    <div className="flex items-start gap-2">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="font-black text-xs leading-tight group-hover:text-primary transition-colors">
+                                                                                {item.item?.description}
+                                                                            </p>
+                                                                            <p className="text-[9px] text-muted-foreground font-mono mt-0.5">
+                                                                                {item.item?.sku}
+                                                                            </p>
+                                                                        </div>
+                                                                        {isPartiallyReturned && (
+                                                                            <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 bg-amber-500/10 text-amber-600 border-amber-500/30 shrink-0">
+                                                                                Partial
+                                                                            </Badge>
+                                                                        )}
+                                                                        {isFullyReturned && (
+                                                                            <Badge variant="outline" className="text-[8px] px-1 py-0 h-4 bg-destructive/10 text-destructive border-destructive/30 shrink-0">
+                                                                                Returned
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-center">
+                                                                    <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-muted/50">{orderedQty}</span>
+                                                                </TableCell>
+                                                                {(selectedOrder?.status === 'returned' || selectedOrder?.status === 'partially_returned') && (
+                                                                    <>
+                                                                        <TableCell className="text-center">
+                                                                            {returnedQty > 0 ? (
+                                                                                <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-destructive/10 text-destructive">{returnedQty}</span>
+                                                                            ) : (
+                                                                                <span className="text-muted-foreground text-xs">—</span>
+                                                                            )}
+                                                                        </TableCell>
+                                                                        <TableCell className="text-center">
+                                                                            {remainingQty > 0 ? (
+                                                                                <span className="inline-block px-2 py-0.5 rounded text-xs font-bold bg-emerald-500/10 text-emerald-600">{remainingQty}</span>
+                                                                            ) : (
+                                                                                <span className="text-muted-foreground text-xs">—</span>
+                                                                            )}
+                                                                        </TableCell>
+                                                                    </>
+                                                                )}
+                                                                <TableCell className="text-right text-xs font-mono text-muted-foreground/80">
+                                                                    {fmtCurrency(item.unitPrice)}
+                                                                </TableCell>
+                                                                <TableCell className="text-right text-xs font-mono text-destructive">
+                                                                    {Number(item.discountAmount) > 0 ? `-${fmtCurrency(item.discountAmount)}` : "—"}
+                                                                </TableCell>
+                                                                <TableCell className="text-right font-bold text-xs font-mono pr-4">
+                                                                    {fmtCurrency(item.lineTotal ?? (item.unitPrice - (item.discountAmount || 0)) * item.quantity)}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        );
+                                                    })}
                                                 </TableBody>
                                             </Table>
                                         </div>
@@ -716,10 +706,11 @@ export default function SalesHistoryPage() {
                                         </div>
                                     )}
                                 </div>
+                                </ScrollArea>
 
-                                <Separator className="opacity-50" />
+                                <Separator className="opacity-50 shrink-0" />
 
-                                <DialogFooter className="p-4 bg-muted/20">
+                                <DialogFooter className="p-4 bg-muted/20 shrink-0">
                                     <Button variant="ghost" onClick={() => setShowDetails(false)}
                                         className="rounded-xl font-black text-[10px] uppercase hover:bg-muted/80 tracking-widest px-6 h-11">
                                         Close
@@ -730,19 +721,10 @@ export default function SalesHistoryPage() {
                                             <RotateCcw className="h-4 w-4" /> Continue Order
                                         </Button>
                                     ) : (
-                                        <>
-                                        {isReturnOrder(selectedOrder) && (
-                                            <Button variant="outline" className="rounded-xl font-black text-[10px] uppercase px-6 h-11 gap-2.5 tracking-widest border-destructive/40 text-destructive hover:bg-destructive/5"
-                                                onClick={() => { setShowDetails(false); setShowReturnPrint(true); }}>
-                                                <Printer className="h-4 w-4" /> Print Return Slip
-                                            </Button>
-                                        )}
                                         <Button className="rounded-xl font-black text-[10px] uppercase px-8 h-11 shadow-lg shadow-primary/30 gap-2.5 tracking-widest"
-                                            onClick={() => { setShowDetails(false); handlePrint(selectedOrder); }}>
-                                            <Printer className="h-4 w-4" />
-                                            {isReturnOrder(selectedOrder) ? "Print Receipt" : "Print Receipt"}
+                                            onClick={() => { setShowDetails(false); setShowPrint(true); }}>
+                                            <Printer className="h-4 w-4" /> Print Receipt
                                         </Button>
-                                        </>
                                     )}
                                 </DialogFooter>
                             </>
@@ -760,48 +742,6 @@ export default function SalesHistoryPage() {
                 />
             )}
 
-            {/* Print Return Slip */}
-            {showReturnPrint && selectedOrder && (
-                <PrintReturnReceipt
-                    returnRef={selectedOrder.returnRef || selectedOrder.orderNumber}
-                    originalOrders={[{ orderNumber: selectedOrder.orderNumber, grandTotal: Number(selectedOrder.grandTotal) }]}
-                    returnedLines={(selectedOrder.items || []).map((i: any) => {
-                            const detail = returnDetails?.itemRefundDetails?.find((d: any) => d.orderItemId === i.id);
-                            const qty = Number(i.quantity);
-                            const originalPaidPerUnit = detail?.originalPaidPerUnit ?? (Number(i.lineTotal) / qty);
-                            const refundPerUnit = detail?.refundPerUnit ?? originalPaidPerUnit;
-                            return {
-                                name: i.item?.description || i.itemId,
-                                sku: i.item?.sku || "",
-                                brand: i.item?.brand || i.item?.brandName || "",
-                                returnQty: qty,
-                                paidPerUnit: originalPaidPerUnit,
-                                refundPerUnit,
-                                refundAmount: refundPerUnit * qty,
-                                priceAdjusted: detail?.priceAdjusted ?? false,
-                                originalPaidPerUnit,
-                                couponDeduction: detail?.couponDeduction ?? 0,
-                                orderNumber: selectedOrder.orderNumber,
-                                unitPrice: detail?.unitPrice ?? Number(i.unitPrice),
-                                discountAmount: detail?.discountAmount ?? Number(i.discountAmount ?? 0),
-                                discountPercent: detail?.discountPercent ?? Number(i.discountPercent ?? 0),
-                                taxAmount: detail?.taxAmount ?? Number(i.taxAmount ?? 0),
-                                taxPercent: detail?.taxPercent ?? Number(i.taxPercent ?? 0),
-                            };
-                        })}
-                    refundTotal={returnDetails?.refundTotal ?? Number(selectedOrder.grandTotal)}
-                    discountNotes={(() => {
-                        const parts: string[] = [];
-                        if (selectedOrder.coupon?.code) parts.push(`Coupon: ${selectedOrder.coupon.code}`);
-                        if (selectedOrder.promo?.code) parts.push(`Promo: ${selectedOrder.promo.code}`);
-                        if (selectedOrder.alliance?.code) parts.push(`Alliance: ${selectedOrder.alliance.code}`);
-                        return parts.length ? [`${selectedOrder.orderNumber} — ${parts.join(', ')}`] : [];
-                    })()}
-                    returnedAt={selectedOrder.updatedAt || selectedOrder.createdAt}
-                    onClose={() => setShowReturnPrint(false)}
-                />
-            )}
-
             {/* Update Tender Modal */}
             {showUpdateTender && selectedOrder && (
                 <UpdateTenderModal
@@ -809,6 +749,38 @@ export default function SalesHistoryPage() {
                     open={showUpdateTender}
                     onOpenChange={setShowUpdateTender}
                     onSuccess={fetchOrders}
+                />
+            )}
+
+            {/* Print Return Receipt */}
+            {showReturnPrint && selectedOrder && returnDetails && (
+                <PrintReturnReceipt
+                    returnRef={selectedOrder.orderNumber}
+                    originalOrders={[{ orderNumber: selectedOrder.orderNumber, grandTotal: Number(selectedOrder.grandTotal) }]}
+                    returnedLines={returnDetails.items.map((item: any) => ({
+                        name: item.item?.description || "Unknown Item",
+                        sku: item.item?.sku || "-",
+                        brand: item.item?.brand?.name,
+                        returnQty: item.returnableQty || item.quantity,
+                        paidPerUnit: Number(item.originalPaidPerUnit || item.unitPrice),
+                        refundAmount: Number(item.refundAmount || 0),
+                        orderNumber: selectedOrder.orderNumber,
+                        unitPrice: Number(item.unitPrice || 0),
+                        discountAmount: Number(item.discountAmount || 0),
+                        discountPercent: Number(item.discountPercent || 0),
+                        taxAmount: Number(item.taxAmount || 0),
+                        taxPercent: Number(item.taxPercent || 0),
+                        refundPerUnit: Number(item.refundPerUnit || item.unitPrice),
+                        priceAdjusted: item.priceAdjusted || false,
+                        originalPaidPerUnit: Number(item.originalPaidPerUnit || item.unitPrice),
+                        couponDeduction: Number(item.couponDeduction || 0),
+                    }))}
+                    refundTotal={returnDetails.items.reduce((sum: number, item: any) => sum + Number(item.refundAmount || 0), 0)}
+                    notes={returnDetails.reason}
+                    discountNotes={returnDetails.discountNotes}
+                    returnedAt={returnDetails.returnedAt}
+                    paymentMethod={selectedOrder.paymentMethod}
+                    onClose={() => setShowReturnPrint(false)}
                 />
             )}
         </div>
