@@ -217,6 +217,7 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                 </div>
 
             </div>
+            </div>
         </PermissionGuard>
     );
 }

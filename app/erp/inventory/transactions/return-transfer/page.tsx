@@ -360,6 +360,7 @@ export default function ReturnTransferPage() {
                     </CardContent>
                 </Card>
             </div>
+            </div>
         </PermissionGuard>
     );
 }
