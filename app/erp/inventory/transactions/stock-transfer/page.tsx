@@ -914,6 +914,7 @@ export default function StockTransferPage() {
                     </CardContent>
                 </Card>
             </div>
+            </div>
         </PermissionGuard>
     );
 }
