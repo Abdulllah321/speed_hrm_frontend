@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, CircleDot, Truck } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 export interface CartItem {
     id: string;
@@ -243,7 +244,7 @@ export function CartTable({
 
                                 {/* Price */}
                                 <TableCell className="text-right font-medium tabular-nums">
-                                    {item.price.toLocaleString()}
+                                    {formatCurrency(item.price)}
                                 </TableCell>
 
                                 {/* Discount % */}
@@ -278,8 +279,8 @@ export function CartTable({
                                             }`}
                                     >
                                         {item.discountAmount > 0
-                                            ? `-${item.discountAmount.toLocaleString()}`
-                                            : "-0"}
+                                            ? `-${formatCurrency(item.discountAmount)}`
+                                            : formatCurrency(0)}
                                     </span>
                                 </TableCell>
 
@@ -290,14 +291,14 @@ export function CartTable({
                                             {item.taxPercent}%
                                         </span>
                                         <span className="text-sm tabular-nums font-medium">
-                                            {item.taxAmount.toLocaleString()}
+                                            {formatCurrency(item.taxAmount)}
                                         </span>
                                     </div>
                                 </TableCell>
 
                                 {/* Total */}
                                 <TableCell className="text-right font-bold text-base tabular-nums">
-                                    {item.total.toLocaleString()}
+                                    {formatCurrency(item.total)}
                                 </TableCell>
 
                                 {/* Remove */}

@@ -178,7 +178,7 @@ export default function CreateSalesInvoicePage() {
                         <div className="flex flex-col">
                           <span className="font-medium">{challan.challanNo}</span>
                           <span className="text-sm text-muted-foreground">
-                            {challan.customer?.name} - Rs. {challan.totalAmount?.toLocaleString()}
+                            {challan.customer?.name} - {formatCurrency(challan.totalAmount || 0)}
                           </span>
                         </div>
                       </SelectItem>
@@ -269,7 +269,7 @@ export default function CreateSalesInvoicePage() {
                       </div>
                       <div>
                         <Label>Sale Price</Label>
-                        <div className="text-sm font-medium">Rs. {item.salePrice?.toLocaleString()}</div>
+                        <div className="text-sm font-medium">{formatCurrency(item.salePrice || 0)}</div>
                       </div>
                     </div>
                   </div>
@@ -292,20 +292,20 @@ export default function CreateSalesInvoicePage() {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>Rs. {subtotal.toLocaleString()}</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tax ({formData.taxRate}%):</span>
-                <span>Rs. {taxAmount.toLocaleString()}</span>
+                <span>{formatCurrency(taxAmount)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Discount:</span>
-                <span>-Rs. {formData.discount.toLocaleString()}</span>
+                <span>-{formatCurrency(formData.discount)}</span>
               </div>
               <hr />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total Amount:</span>
-                <span>Rs. {totalAmount.toLocaleString()}</span>
+                <span>{formatCurrency(totalAmount)}</span>
               </div>
             </div>
           </CardContent>

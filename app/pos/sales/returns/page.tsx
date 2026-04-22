@@ -19,9 +19,21 @@ import {
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
+import { formatCurrency } from "@/lib/utils";
+import { PrintReturnReceipt, type ReturnReceiptLine } from "@/components/pos/print-return-receipt";
 
-function fmt(v: number) { return v.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
-function paidPerUnit(oi: any) { return Number(oi.lineTotal) / Number(oi.quantity); }
+function paidPerUnit(oi: any, orderGrandTotal: number, orderLineTotalsSum: number) {
+  // Distribute grandTotal proportionally based on each item's lineTotal share
+  // This correctly handles global discounts (coupon/promo applied at order level)
+  const qty = Number(oi.quantity);
+  if (qty <= 0) {
+    console.warn(`Invalid quantity for item ${oi.itemId}:`, qty);
+    return 0;
+  }
+  const lineTotal = Number(oi.lineTotal);
+  const itemShare = orderLineTotalsSum > 0 ? (lineTotal / orderLineTotalsSum) * orderGrandTotal : lineTotal;
+  return itemShare / qty;
+}
 
 const REASON_CODES = [
     { value: "DEFECTIVE", label: "Defective / Damaged" },
@@ -37,13 +49,14 @@ type Mode = "return" | "exchange" | "claim";
 interface ReturnLine {
     orderId: string; orderNumber: string;
     orderItemId: string; itemId: string;
-    name: string; sku: string;
+    name: string; sku: string; brand?: string;
     orderedQty: number; returnQty: number;
     paidPerUnit: number; originalUnitPrice: number; discountPercent: number;
+    discountAmount?: number; taxAmount?: number; taxPercent?: number;
 }
 
 interface NewLine { itemId: string; name: string; sku: string; quantity: number; unitPrice: number; discountPct: number; }
-interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; createdAt: string; items: any[]; }
+interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; createdAt: string; items: any[]; coupon?: string; promo?: string; alliance?: string; }
 
 export default function ReturnsPage() {
     const router = useRouter();
@@ -77,6 +90,14 @@ export default function ReturnsPage() {
     const [memoDiscType, setMemoDiscType] = useState<"pct" | "flat">("pct");
     const [memoDiscValue, setMemoDiscValue] = useState<number>(0);
 
+    // ── Return receipt dialog ─────────────────────────────────────────
+    const [returnReceipt, setReturnReceipt] = useState<{
+        returnRef: string;
+        refundTotal: number;
+        returnedAt: string;
+        itemRefundDetails?: { orderItemId: string; itemId: string; quantity: number; originalPaidPerUnit: number; refundPerUnit: number; priceAdjusted: boolean }[];
+    } | null>(null);
+
     // ── Add an order ──────────────────────────────────────────────────
     const handleAddOrder = useCallback(async () => {
         if (!orderSearch.trim()) return;
@@ -95,18 +116,39 @@ export default function ReturnsPage() {
                     id: found.id, orderNumber: found.orderNumber,
                     grandTotal: Number(found.grandTotal), createdAt: found.createdAt,
                     items: found.items || [],
+                    coupon: found.coupon?.code || undefined,
+                    promo: found.promo?.code || undefined,
+                    alliance: found.alliance?.code || undefined,
                 }]);
 
                 // Append return lines for this order (qty = 0 by default)
-                const lines: ReturnLine[] = (found.items || []).map((oi: any) => ({
-                    orderId: found.id, orderNumber: found.orderNumber,
-                    orderItemId: oi.id, itemId: oi.itemId,
-                    name: oi.item?.description || oi.itemId, sku: oi.item?.sku || "",
-                    orderedQty: Number(oi.quantity), returnQty: 0,
-                    paidPerUnit: paidPerUnit(oi),
-                    originalUnitPrice: Number(oi.unitPrice),
-                    discountPercent: Number(oi.discountPercent ?? 0),
-                }));
+                const orderItems = found.items || [];
+                const lineTotalsSum = orderItems.reduce((s: number, oi: any) => s + Number(oi.lineTotal), 0);
+                const orderGrandTotal = Number(found.grandTotal);
+
+                const lines: ReturnLine[] = orderItems
+                    .filter((oi: any) => {
+                        const alreadyReturned = Number(oi.returnedQty ?? 0);
+                        return Number(oi.quantity) - alreadyReturned > 0; // skip fully returned items
+                    })
+                    .map((oi: any) => {
+                    const alreadyReturned = Number(oi.returnedQty ?? 0);
+                    const remainingQty = Number(oi.quantity) - alreadyReturned;
+                    return {
+                        orderId: found.id, orderNumber: found.orderNumber,
+                        orderItemId: oi.id, itemId: oi.itemId,
+                        name: oi.item?.description || oi.itemId,
+                        sku: oi.item?.sku || "",
+                        brand: oi.item?.brand || oi.item?.brandName || "",
+                        orderedQty: remainingQty, returnQty: 0,
+                        paidPerUnit: paidPerUnit(oi, orderGrandTotal, lineTotalsSum),
+                        originalUnitPrice: Number(oi.unitPrice),
+                        discountPercent: Number(oi.discountPercent ?? 0),
+                        discountAmount: Number(oi.discountAmount ?? 0),
+                        taxAmount: Number(oi.taxAmount ?? 0),
+                        taxPercent: Number(oi.taxPercent ?? 0),
+                    };
+                });
                 setReturnLines(prev => [...prev, ...lines]);
                 setOrderSearch("");
             } else { toast.error(res.data?.message || "Order not found"); }
@@ -216,7 +258,7 @@ export default function ReturnsPage() {
                         if (r.ok && r.data?.status) { totalRefund += r.data.refundAmount ?? 0; }
                         else { toast.error(`Failed for ${order.orderNumber}: ${r.data?.message}`); allOk = false; }
                     }
-                    if (allOk) toast.success(`Returns processed across ${loadedOrders.length} orders. Total refund: Rs. ${fmt(totalRefund)}`);
+                    if (allOk) toast.success(`Returns processed across ${loadedOrders.length} orders. Total refund: ${formatCurrency(totalRefund)}`);
                     router.push("/pos/sales/history"); return;
                 }
             } else if (mode === "exchange") {
@@ -265,18 +307,30 @@ export default function ReturnsPage() {
             }
 
             if (res?.ok && res.data?.status) {
-                if (mode === "return") toast.success(`Return processed. Refund: Rs. ${fmt(res.data.refundAmount ?? refundTotal)}`);
-                else if (mode === "exchange") {
+                if (mode === "return") {
+                    toast.success(`Return processed. Refund: ${formatCurrency(res.data.refundAmount ?? refundTotal)}`);
+                    // Show return receipt instead of redirecting
+                    setReturnReceipt({
+                        returnRef: res.data.returnRef || res.data.data?.returnNumber || `RET-${Date.now()}`,
+                        refundTotal: res.data.refundAmount ?? refundTotal,
+                        returnedAt: new Date().toISOString(),
+                        itemRefundDetails: res.data.itemRefundDetails,
+                    });
+                } else if (mode === "exchange") {
                     const d = res.data.data?.difference ?? diff;
-                    toast.success(d > 0 ? `Exchange done. Customer pays Rs. ${fmt(d)} extra` : d < 0 ? `Exchange done. Refund Rs. ${fmt(Math.abs(d))}` : "Exchange done. No balance");
-                } else toast.success(res.data.message || "Claim submitted");
-                router.push("/pos/sales/history");
+                    toast.success(d > 0 ? `Exchange done. Customer pays ${formatCurrency(d)} extra` : d < 0 ? `Exchange done. Refund ${formatCurrency(Math.abs(d))}` : "Exchange done. No balance");
+                    router.push("/pos/sales/history");
+                } else {
+                    toast.success(res.data.message || "Claim submitted");
+                    router.push("/pos/sales/history");
+                }
             } else { toast.error(res?.data?.message || "Operation failed"); }
         } catch { toast.error("Operation failed. Check connection."); }
         finally { setIsSubmitting(false); }
     }, [loadedOrders, selectedLines, newLines, mode, notes, reasonCode, isMultiOrder, refundTotal, diff, router]);
 
     return (
+        <>
         <div className="flex flex-col gap-5 p-6 px-10 max-w-5xl mx-auto">
 
             {/* Header */}
@@ -326,7 +380,7 @@ export default function ReturnsPage() {
                             <div key={o.id} className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 px-3 py-1.5">
                                 <Receipt className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
                                 <span className="font-mono font-bold text-emerald-700 text-sm">{o.orderNumber}</span>
-                                <span className="text-muted-foreground text-xs">Rs. {fmt(o.grandTotal)}</span>
+                                <span className="text-muted-foreground text-xs">{formatCurrency(o.grandTotal)}</span>
                                 <button onClick={() => removeOrder(o.id)} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
                                     <X className="h-3.5 w-3.5" />
                                 </button>
@@ -370,11 +424,12 @@ export default function ReturnsPage() {
                                             {isMultiOrder && <TableHead className="text-xs uppercase text-muted-foreground">Receipt</TableHead>}
                                             <TableHead className="text-xs uppercase">Item</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Ordered</TableHead>
-                                            <TableHead className="text-right text-xs uppercase">List Price</TableHead>
+                                            <TableHead className="text-right text-xs uppercase">Unit Price</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Disc %</TableHead>
+                                            <TableHead className="text-right text-xs uppercase">Tax %</TableHead>
                                             <TableHead className="text-right text-xs uppercase text-emerald-700">Paid/Unit</TableHead>
                                             <TableHead className="text-center text-xs uppercase">Return Qty</TableHead>
-                                            <TableHead className="text-right text-xs uppercase text-destructive">Amount</TableHead>
+                                            <TableHead className="text-right text-xs uppercase text-destructive">Refund</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -390,17 +445,22 @@ export default function ReturnsPage() {
                                                     <p className="text-xs text-muted-foreground font-mono">{line.sku}</p>
                                                 </TableCell>
                                                 <TableCell className="text-right text-sm">{line.orderedQty}</TableCell>
-                                                <TableCell className="text-right text-sm font-mono">Rs. {fmt(line.originalUnitPrice)}</TableCell>
+                                                <TableCell className="text-right text-sm font-mono">{formatCurrency(line.originalUnitPrice)}</TableCell>
                                                 <TableCell className="text-right text-sm">
                                                     {line.discountPercent > 0
                                                         ? <span className="text-destructive font-medium">{line.discountPercent}%</span>
                                                         : <span className="text-muted-foreground">—</span>}
                                                 </TableCell>
+                                                <TableCell className="text-right text-sm">
+                                                    {line.taxPercent && line.taxPercent > 0
+                                                        ? <span className="text-muted-foreground font-medium">{line.taxPercent}%</span>
+                                                        : <span className="text-muted-foreground">—</span>}
+                                                </TableCell>
                                                 <TableCell className="text-right font-bold text-sm font-mono text-emerald-700">
-                                                    Rs. {fmt(line.paidPerUnit)}
-                                                    {line.discountPercent > 0 && (
-                                                        <div className="text-[10px] text-muted-foreground font-normal">(was Rs. {fmt(line.originalUnitPrice)})</div>
-                                                    )}
+                                                    {formatCurrency(line.paidPerUnit)}
+                                                    <div className="text-[10px] text-muted-foreground font-normal">
+                                                        (incl. tax & disc)
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center justify-center gap-1.5">
@@ -414,7 +474,7 @@ export default function ReturnsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right font-bold text-sm font-mono text-destructive">
-                                                    {line.returnQty > 0 ? `Rs. ${fmt(line.paidPerUnit * line.returnQty)}` : "—"}
+                                                    {line.returnQty > 0 ? `${formatCurrency(line.paidPerUnit * line.returnQty)}` : "—"}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -445,7 +505,7 @@ export default function ReturnsPage() {
                                                                 <p className="font-medium">{p.description}</p>
                                                                 <p className="text-xs text-muted-foreground font-mono">{p.sku}</p>
                                                             </div>
-                                                            <span className="font-bold font-mono">Rs. {fmt(p.unitPrice)}</span>
+                                                            <span className="font-bold font-mono">{formatCurrency(p.unitPrice)}</span>
                                                         </button>
                                                     ))}
                                                 </div>
@@ -469,7 +529,7 @@ export default function ReturnsPage() {
                                                                 <p className="font-medium text-sm">{line.name}</p>
                                                                 <p className="text-xs text-muted-foreground font-mono">{line.sku}</p>
                                                             </TableCell>
-                                                            <TableCell className="text-right font-mono text-sm">Rs. {fmt(line.unitPrice)}</TableCell>
+                                                            <TableCell className="text-right font-mono text-sm">{formatCurrency(line.unitPrice)}</TableCell>
                                                             <TableCell>
                                                                 <div className="flex items-center justify-center gap-1.5">
                                                                     <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setNewQty(line.itemId, line.quantity - 1)}><Minus className="h-3 w-3" /></Button>
@@ -489,13 +549,13 @@ export default function ReturnsPage() {
                                                                     <span className="text-xs text-muted-foreground">%</span>
                                                                 </div>
                                                                 {line.discAmt > 0 && (
-                                                                    <div className="text-[10px] text-destructive text-center mt-0.5">−Rs. {fmt(line.discAmt)}</div>
+                                                                    <div className="text-[10px] text-destructive text-center mt-0.5">−{formatCurrency(line.discAmt)}</div>
                                                                 )}
                                                             </TableCell>
                                                             <TableCell className="text-right font-bold font-mono text-sm">
-                                                                Rs. {fmt(line.net)}
+                                                                {formatCurrency(line.net)}
                                                                 {line.discAmt > 0 && (
-                                                                    <div className="text-[10px] text-muted-foreground font-normal line-through">Rs. {fmt(line.gross)}</div>
+                                                                    <div className="text-[10px] text-muted-foreground font-normal line-through">{formatCurrency(line.gross)}</div>
                                                                 )}
                                                             </TableCell>
                                                         </TableRow>
@@ -528,7 +588,7 @@ export default function ReturnsPage() {
                                                 onChange={e => setMemoDiscValue(parseFloat(e.target.value) || 0)}
                                             />
                                             {memoDiscAmt > 0 && (
-                                                <span className="text-sm text-primary font-semibold">−Rs. {fmt(memoDiscAmt)}</span>
+                                                <span className="text-sm text-primary font-semibold">−{formatCurrency(memoDiscAmt)}</span>
                                             )}
                                             {memoDiscValue > 0 && (
                                                 <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground"
@@ -559,7 +619,7 @@ export default function ReturnsPage() {
                                         {isMultiOrder && (
                                             <div className="flex justify-between text-muted-foreground">
                                                 <span>Receipts</span>
-                                                <span>{loadedOrders.length} orders (Rs. {fmt(loadedOrders.reduce((s, o) => s + o.grandTotal, 0))} total)</span>
+                                                <span>{loadedOrders.length} orders ({formatCurrency(loadedOrders.reduce((s, o) => s + o.grandTotal, 0))} total)</span>
                                             </div>
                                         )}
                                         <div className="flex justify-between">
@@ -568,35 +628,35 @@ export default function ReturnsPage() {
                                         </div>
                                         <div className="flex justify-between text-destructive font-medium">
                                             <span>{mode === "claim" ? "Claimed amount" : "Return value (at paid price)"}</span>
-                                            <span>Rs. {fmt(refundTotal)}</span>
+                                            <span>{formatCurrency(refundTotal)}</span>
                                         </div>
                                         {mode === "exchange" && newLines.length > 0 && (
                                             <>
                                                 <div className="flex justify-between text-muted-foreground">
                                                     <span>New items subtotal</span>
-                                                    <span className="font-mono">Rs. {fmt(newSubtotal)}</span>
+                                                    <span className="font-mono">{formatCurrency(newSubtotal)}</span>
                                                 </div>
                                                 {newItemDiscTotal > 0 && (
                                                     <div className="flex justify-between text-destructive">
                                                         <span>Item discounts</span>
-                                                        <span className="font-mono">−Rs. {fmt(newItemDiscTotal)}</span>
+                                                        <span className="font-mono">−{formatCurrency(newItemDiscTotal)}</span>
                                                     </div>
                                                 )}
                                                 {memoDiscAmt > 0 && (
                                                     <div className="flex justify-between text-primary">
-                                                        <span>Memo discount ({memoDiscType === "pct" ? `${memoDiscValue}%` : `flat Rs. ${fmt(memoDiscValue)}`})</span>
-                                                        <span className="font-mono">−Rs. {fmt(memoDiscAmt)}</span>
+                                                        <span>Memo discount ({memoDiscType === "pct" ? `${memoDiscValue}%` : `flat ${formatCurrency(memoDiscValue)}`})</span>
+                                                        <span className="font-mono">−{formatCurrency(memoDiscAmt)}</span>
                                                     </div>
                                                 )}
                                                 <div className="flex justify-between text-blue-600 font-medium">
                                                     <span>New items net total</span>
-                                                    <span className="font-mono">Rs. {fmt(newTotal)}</span>
+                                                    <span className="font-mono">{formatCurrency(newTotal)}</span>
                                                 </div>
                                                 <Separator />
                                                 <div className={cn("flex justify-between font-bold text-base",
                                                     diff > 0 ? "text-destructive" : diff < 0 ? "text-emerald-600" : "text-muted-foreground")}>
                                                     <span>{diff > 0 ? "Customer pays extra" : diff < 0 ? "Refund to customer" : "No balance"}</span>
-                                                    <span>Rs. {fmt(Math.abs(diff))}</span>
+                                                    <span>{formatCurrency(Math.abs(diff))}</span>
                                                 </div>
                                             </>
                                         )}
@@ -605,7 +665,7 @@ export default function ReturnsPage() {
                                                 <Separator />
                                                 <div className="flex justify-between font-bold text-base text-emerald-600">
                                                     <span>Total refund</span>
-                                                    <span>Rs. {fmt(refundTotal)}</span>
+                                                    <span>{formatCurrency(refundTotal)}</span>
                                                 </div>
                                             </>
                                         )}
@@ -659,5 +719,52 @@ export default function ReturnsPage() {
                 </>
             )}
         </div>
+
+            {/* ── Return Receipt Dialog ─────────────────────────────────── */}
+            {returnReceipt && (
+                <PrintReturnReceipt
+                    returnRef={returnReceipt.returnRef}
+                    originalOrders={loadedOrders.map(o => ({ orderNumber: o.orderNumber, grandTotal: o.grandTotal }))}
+                    returnedLines={selectedLines.map(l => {
+                        const detail = returnReceipt.itemRefundDetails?.find((d: any) => d.orderItemId === l.orderItemId);
+                        const refundPerUnit = detail ? detail.refundPerUnit : l.paidPerUnit;
+                        return {
+                            name: l.name,
+                            sku: l.sku,
+                            brand: l.brand,
+                            returnQty: l.returnQty,
+                            paidPerUnit: l.paidPerUnit,
+                            refundPerUnit,
+                            refundAmount: refundPerUnit * l.returnQty,
+                            priceAdjusted: detail?.priceAdjusted ?? false,
+                            originalPaidPerUnit: detail?.originalPaidPerUnit ?? l.paidPerUnit,
+                            couponDeduction: detail?.couponDeduction ?? 0,
+                            orderNumber: l.orderNumber,
+                            unitPrice: detail?.unitPrice ?? l.originalUnitPrice,
+                            discountPercent: detail?.discountPercent ?? l.discountPercent,
+                            discountAmount: detail?.discountAmount ?? l.discountAmount,
+                            taxAmount: detail?.taxAmount ?? l.taxAmount,
+                            taxPercent: detail?.taxPercent ?? l.taxPercent,
+                        };
+                    })}
+                    refundTotal={returnReceipt.refundTotal}
+                    notes={notes || undefined}
+                    returnedAt={returnReceipt.returnedAt}
+                    discountNotes={loadedOrders
+                        .filter(o => o.coupon || o.promo || o.alliance)
+                        .map(o => {
+                            const parts = [];
+                            if (o.coupon) parts.push(`Coupon: ${o.coupon}`);
+                            if (o.promo) parts.push(`Promo: ${o.promo}`);
+                            if (o.alliance) parts.push(`Alliance: ${o.alliance}`);
+                            return `${o.orderNumber} — ${parts.join(', ')}`;
+                        })}
+                    onClose={() => {
+                        setReturnReceipt(null);
+                        router.push("/pos/sales/history");
+                    }}
+                />
+            )}
+        </>
     );
 }

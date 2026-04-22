@@ -623,14 +623,14 @@ export const menuData: MenuItem[] = [
         permissions: ["erp.finance.chart-of-account.read"],
         children: [
           {
-            title: "List",
-            href: "/erp/finance/chart-of-accounts",
-            permissions: ["erp.finance.chart-of-account.read"],
-          },
-          {
             title: "Create",
             href: "/erp/finance/chart-of-accounts/create",
             permissions: ["erp.finance.chart-of-account.create"],
+          },
+          {
+            title: "List",
+            href: "/erp/finance/chart-of-accounts",
+            permissions: ["erp.finance.chart-of-account.read"],
           },
         ],
       },
@@ -655,14 +655,14 @@ export const menuData: MenuItem[] = [
         permissions: ["erp.finance.payment-voucher.read"],
         children: [
           {
-            title: "List",
-            href: "/erp/finance/payment-voucher/list",
-            permissions: ["erp.finance.payment-voucher.read"],
-          },
-          {
             title: "Create",
             href: "/erp/finance/payment-voucher/create",
             permissions: ["erp.finance.payment-voucher.create"],
+          },
+          {
+            title: "List",
+            href: "/erp/finance/payment-voucher/list",
+            permissions: ["erp.finance.payment-voucher.read"],
           },
         ],
       },
@@ -671,14 +671,14 @@ export const menuData: MenuItem[] = [
         permissions: ["erp.finance.receipt-voucher.read"],
         children: [
           {
-            title: "List",
-            href: "/erp/finance/receipt-voucher/list",
-            permissions: ["erp.finance.receipt-voucher.read"],
-          },
-          {
             title: "Create",
             href: "/erp/finance/receipt-voucher/create",
             permissions: ["erp.finance.receipt-voucher.create"],
+          },
+          {
+            title: "List",
+            href: "/erp/finance/receipt-voucher/list",
+            permissions: ["erp.finance.receipt-voucher.read"],
           },
         ],
       },

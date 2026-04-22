@@ -38,7 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { stockLedgerApi } from "@/lib/api";
 import { toast } from "sonner";
@@ -373,8 +373,8 @@ const ERPDashboard = () => {
     const topCatShare = topCat ? Math.round((topCat[1] / (totalCatRev || 1)) * 100) : 0;
 
     const fmt = (n: number) => n >= 1_000_000
-      ? `Rs. ${(n / 1_000_000).toFixed(2)}M`
-      : n >= 1_000 ? `Rs. ${(n / 1_000).toFixed(1)}K` : `Rs. ${Math.round(n)}`;
+      ? `${formatCurrency(n / 1_000_000).replace('PKR ', '')}M`
+      : n >= 1_000 ? `${formatCurrency(n / 1_000).replace('PKR ', '')}K` : formatCurrency(Math.round(n));
 
     return {
       forecastedRevenue: fmt(projected),

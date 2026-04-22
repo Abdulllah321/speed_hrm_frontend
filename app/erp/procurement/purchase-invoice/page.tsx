@@ -8,9 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, Eye, Edit, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getPurchaseInvoices, deletePurchaseInvoice } from "@/lib/actions/purchase-invoice";
+import {
+  getPurchaseInvoices,
+  deletePurchaseInvoice,
+} from "@/lib/actions/purchase-invoice";
 import { toast } from "sonner";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { Autocomplete } from "@/components/ui/autocomplete";
 
 interface PurchaseInvoice {
   id: string;
@@ -34,6 +38,23 @@ export default function PurchaseInvoiceListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
+
+  // Options for autocomplete dropdowns
+  const statusOptions = [
+    { value: "", label: "All Status" },
+    { value: "DRAFT", label: "Draft" },
+    { value: "SUBMITTED", label: "Submitted" },
+    { value: "APPROVED", label: "Approved" },
+    { value: "CANCELLED", label: "Cancelled" },
+  ];
+
+  const paymentStatusOptions = [
+    { value: "", label: "All Payment Status" },
+    { value: "UNPAID", label: "Unpaid" },
+    { value: "PARTIALLY_PAID", label: "Partially Paid" },
+    { value: "FULLY_PAID", label: "Fully Paid" },
+    { value: "OVERDUE", label: "Overdue" },
+  ];
 
   useEffect(() => {
     fetchInvoices();
@@ -94,33 +115,96 @@ export default function PurchaseInvoiceListPage() {
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Purchase Invoices</h1>
-            <p className="text-gray-600">Manage supplier invoices and payments</p>
+            <p className="text-gray-600">
+              Manage supplier invoices and payments
+            </p>
           </div>
           <div className="flex gap-2">
-            <PermissionGuard permissions="erp.procurement.pi.create" fallback={null}>
-              <Link
-                href="/erp/procurement/purchase-invoice/create-direct"
-                transitionTypes={["nav-forward"]}
-              >
-                <Button variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Direct PI
-                </Button>
-              </Link>
-            </PermissionGuard>
-            <PermissionGuard permissions="erp.procurement.pi.create" fallback={null}>
-              <Link
-                href="/erp/procurement/purchase-invoice/create"
-                transitionTypes={["nav-forward"]}
-              >
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Invoice
-                </Button>
-              </Link>
-            </PermissionGuard>
+            <Link
+              href="/erp/procurement/purchase-invoice/create-direct"
+              transitionTypes={["nav-forward"]}
+            >
+              <Button variant="outline">
+                <Plus className="w-4 h-4 mr-2" />
+                Direct PI
+              </Button>
+            </Link>
+            <Link
+              href="/erp/procurement/purchase-invoice/create"
+              transitionTypes={["nav-forward"]}
+            >
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Invoice
+              </Button>
+            </Link>
           </div>
         </div>
+
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardContent className="p-4">
+            <div className="flex gap-4 items-center">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Input
+                    placeholder="Search by invoice number or supplier..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              <Autocomplete
+                options={statusOptions}
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+                placeholder="All Status"
+                searchPlaceholder="Search status..."
+                className="w-48"
+              />
+              <Autocomplete
+                options={paymentStatusOptions}
+                value={paymentStatusFilter}
+                onValueChange={setPaymentStatusFilter}
+                placeholder="All Payment Status"
+                searchPlaceholder="Search payment status..."
+                className="w-52"
+              />
+            </div>
+            <div className="flex gap-2">
+              <PermissionGuard
+                permissions="erp.procurement.pi.create"
+                fallback={null}
+              >
+                <Link
+                  href="/erp/procurement/purchase-invoice/create-direct"
+                  transitionTypes={["nav-forward"]}
+                >
+                  <Button variant="outline">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Direct PI
+                  </Button>
+                </Link>
+              </PermissionGuard>
+              <PermissionGuard
+                permissions="erp.procurement.pi.create"
+                fallback={null}
+              >
+                <Link
+                  href="/erp/procurement/purchase-invoice/create"
+                  transitionTypes={["nav-forward"]}
+                >
+                  <Button>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Invoice
+                  </Button>
+                </Link>
+              </PermissionGuard>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Filters */}
         <Card className="mb-6">
@@ -189,7 +273,10 @@ export default function PurchaseInvoiceListPage() {
                   </thead>
                   <tbody>
                     {filteredInvoices.map((invoice) => (
-                      <tr key={invoice.id} className="border-b hover:bg-background/80">
+                      <tr
+                        key={invoice.id}
+                        className="border-b hover:bg-background/80"
+                      >
                         <td className="p-3 font-medium">
                           {invoice.invoiceNumber}
                         </td>
@@ -242,7 +329,10 @@ export default function PurchaseInvoiceListPage() {
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <PermissionGuard permissions="erp.procurement.pi.update" fallback={null}>
+                            <PermissionGuard
+                              permissions="erp.procurement.pi.update"
+                              fallback={null}
+                            >
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -255,19 +345,26 @@ export default function PurchaseInvoiceListPage() {
                                 <Edit className="w-4 h-4" />
                               </Button>
                             </PermissionGuard>
-                            <PermissionGuard permissions="erp.procurement.pi.delete" fallback={null}>
+                            <PermissionGuard
+                              permissions="erp.procurement.pi.delete"
+                              fallback={null}
+                            >
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="text-red-600 hover:text-red-800"
                                 onClick={async () => {
-                                  if (!window.confirm("Delete this invoice?")) return;
+                                  if (!window.confirm("Delete this invoice?"))
+                                    return;
                                   try {
                                     await deletePurchaseInvoice(invoice.id);
                                     toast.success("Invoice deleted");
                                     fetchInvoices();
                                   } catch (error: any) {
-                                    toast.error(error.message || "Failed to delete invoice");
+                                    toast.error(
+                                      error.message ||
+                                        "Failed to delete invoice",
+                                    );
                                   }
                                 }}
                               >

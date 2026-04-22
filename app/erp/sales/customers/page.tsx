@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { customerApi, Customer } from "@/lib/api";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 import { CustomerBulkUploadModal } from "@/components/customers/customer-bulk-upload-modal";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 
@@ -275,44 +276,40 @@ export default function CustomersPage() {
               ) : (
                 customers.map((customer) => (
                   <TableRow key={customer.id}>
-                    <TableCell className="font-medium">{customer.code}</TableCell>
-                    <TableCell>{customer.name}</TableCell>
-                    <TableCell>{customer.contactNo || "-"}</TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {customer.address || "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span
-                        className={
-                          customer.balance > 0 ? "text-red-600" : "text-green-600"
-                        }
+                  <TableCell className="font-medium">{customer.code}</TableCell>
+                  <TableCell>{customer.name}</TableCell>
+                  <TableCell>{customer.contactNo || "-"}</TableCell>
+                  <TableCell className="max-w-xs truncate">
+                    {customer.address || "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span
+                      className={
+                        customer.balance > 0 ? "text-red-600" : "text-green-600"
+                      }
+                    >
+                      {formatCurrency(customer.balance)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button variant="ghost" size="sm">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600"
+                        onClick={() => handleDelete(customer.id)}
                       >
-                        Rs. {customer.balance.toLocaleString()}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <PermissionGuard permissions="erp.sales.customer.update" fallback={null}>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </PermissionGuard>
-                        <PermissionGuard permissions="erp.sales.customer.delete" fallback={null}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600"
-                            onClick={() => handleDelete(customer.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </PermissionGuard>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
                 ))
               )}
             </TableBody>

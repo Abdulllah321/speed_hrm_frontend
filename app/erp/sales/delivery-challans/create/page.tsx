@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { deliveryChallanApi, salesOrderApi } from "@/lib/api";
 import { toast } from "sonner";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { formatCurrency } from "@/lib/utils";
 
 export default function CreateDeliveryChallanPage() {
   const router = useRouter();
@@ -179,7 +180,7 @@ export default function CreateDeliveryChallanPage() {
                         <div className="flex flex-col">
                           <span className="font-medium">{order.orderNo}</span>
                           <span className="text-sm text-muted-foreground">
-                            {order.customer?.name} - Rs. {order.grandTotal?.toLocaleString()}
+                            {order.customer?.name} - {formatCurrency(order.grandTotal || 0)}
                           </span>
                         </div>
                       </SelectItem>
@@ -202,7 +203,7 @@ export default function CreateDeliveryChallanPage() {
                       <span className="text-muted-foreground">Status:</span> {selectedOrder.status}
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Total:</span> Rs. {selectedOrder.grandTotal?.toLocaleString()}
+                      <span className="text-muted-foreground">Total:</span> {formatCurrency(selectedOrder.grandTotal || 0)}
                     </div>
                   </div>
                 </div>
@@ -283,7 +284,7 @@ export default function CreateDeliveryChallanPage() {
                         {item.item?.description || 'No description'}
                       </div>
                       <div className="text-sm text-blue-600 mt-1">
-                        Unit Price: Rs. {(item.salePrice || 0).toLocaleString()}
+                        Unit Price: {formatCurrency(item.salePrice || 0)}
                       </div>
                     </div>
                     
@@ -308,7 +309,7 @@ export default function CreateDeliveryChallanPage() {
                       <div className="text-right">
                         <div className="text-sm text-muted-foreground">Total</div>
                         <div className="font-medium">
-                          Rs. {((item.deliveredQty || 0) * (item.salePrice || 0)).toLocaleString()}
+                          {formatCurrency((item.deliveredQty || 0) * (item.salePrice || 0))}
                         </div>
                       </div>
                     </div>
@@ -320,16 +321,16 @@ export default function CreateDeliveryChallanPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Subtotal:</span>
-                      <span>Rs. {subtotal.toLocaleString()}</span>
+                      <span>{formatCurrency(subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Tax ({taxRate}%):</span>
-                      <span>Rs. {taxAmount.toLocaleString()}</span>
+                      <span>{formatCurrency(taxAmount)}</span>
                     </div>
                     {orderDiscount > 0 && (
                       <div className="flex justify-between text-sm">
                         <span>Discount:</span>
-                        <span>Rs. {orderDiscount.toLocaleString()}</span>
+                        <span>{formatCurrency(orderDiscount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between items-center border-t pt-2">
@@ -340,7 +341,7 @@ export default function CreateDeliveryChallanPage() {
                       <div className="space-y-1 text-right">
                         <div className="text-sm text-muted-foreground">Total Amount</div>
                         <div className="font-bold text-lg text-green-600">
-                          Rs. {totalAmount.toLocaleString()}
+                          {formatCurrency(totalAmount)}
                         </div>
                       </div>
                     </div>

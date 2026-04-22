@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { salesOrderApi, SalesOrder } from "@/lib/api";
 import { toast } from "sonner";
+import { formatCurrency } from "@/lib/utils";
 
 export default function SalesOrderViewPage() {
   const params = useParams();
@@ -231,19 +232,19 @@ export default function SalesOrderViewPage() {
                       </TableCell>
                       <TableCell>{item.item?.sku || 'N/A'}</TableCell>
                       <TableCell className="text-right">
-                        Rs. {item.costPrice?.toLocaleString() || '0'}
+                        {formatCurrency(item.costPrice || 0)}
                       </TableCell>
                       <TableCell className="text-right">
-                        Rs. {item.salePrice.toLocaleString()}
+                        {formatCurrency(item.salePrice)}
                       </TableCell>
                       <TableCell className="text-right">
                         {item.quantity}
                       </TableCell>
                       <TableCell className="text-right">
-                        Rs. {item.discount?.toLocaleString() || '0'}
+                        {formatCurrency(item.discount || 0)}
                       </TableCell>
                       <TableCell className="text-right">
-                        Rs. {item.total.toLocaleString()}
+                        {formatCurrency(item.total)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -262,19 +263,19 @@ export default function SalesOrderViewPage() {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Subtotal:</span>
-                <span>Rs. {order.subtotal.toLocaleString()}</span>
+                <span>{formatCurrency(order.subtotal)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Tax ({order.taxRate}%):</span>
-                <span>Rs. {order.taxAmount.toLocaleString()}</span>
+                <span>{formatCurrency(order.taxAmount)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Discount:</span>
-                <span>Rs. {order.discount?.toLocaleString() || '0'}</span>
+                <span>{formatCurrency(order.discount || 0)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg border-t pt-2">
                 <span>Grand Total:</span>
-                <span>Rs. {order.grandTotal.toLocaleString()}</span>
+                <span>{formatCurrency(order.grandTotal)}</span>
               </div>
             </div>
           </CardContent>

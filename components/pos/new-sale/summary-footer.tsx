@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { ArrowRight, PauseCircle } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface SummaryFooterProps {
     subtotal: number;
@@ -33,7 +34,7 @@ export function SummaryFooter({
                             Subtotal
                         </span>
                         <span className="text-xl font-bold tabular-nums">
-                            {subtotal.toLocaleString()}
+                            {formatCurrency(subtotal)}
                         </span>
                     </div>
 
@@ -43,7 +44,7 @@ export function SummaryFooter({
                             Discount
                         </span>
                         <span className="text-xl font-bold tabular-nums text-primary">
-                            {discount.toLocaleString()}
+                            {formatCurrency(discount)}
                         </span>
                     </div>
 
@@ -53,7 +54,7 @@ export function SummaryFooter({
                             Tax
                         </span>
                         <span className="text-xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
-                            {tax.toLocaleString()}
+                            {formatCurrency(tax)}
                         </span>
                     </div>
 
@@ -63,7 +64,7 @@ export function SummaryFooter({
                             Grand Total
                         </span>
                         <span className="text-3xl font-extrabold tabular-nums">
-                            {grandTotal.toLocaleString()}
+                            {formatCurrency(grandTotal)}
                         </span>
                     </div>
                 </div>

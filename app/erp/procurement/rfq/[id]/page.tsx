@@ -44,11 +44,6 @@ export default async function RfqDetail({ params }: { params: Promise<{ id: stri
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    {rfq.status !== 'DRAFT' && (
-                        <Link href={`/erp/procurement/vendor-quotation/compare/${rfq.id}`}>
-                            <Button variant="secondary">Compare Quotations</Button>
-                        </Link>
-                    )}
                     <Link href="/erp/procurement/rfq">
                         <Button variant="outline">Back</Button>
                     </Link>

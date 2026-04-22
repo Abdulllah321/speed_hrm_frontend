@@ -81,11 +81,10 @@ function ViewEmployeeAttendanceDetailPage() {
         setFilters(prev => ({
             ...prev,
             employeeId: user.employeeId || "",
-            department: "all", // Hide department filter
-            subDepartment: "all" // Hide sub-department filter
+            department: "all",
+            subDepartment: "all"
         }));
-        // Auto-trigger search for the user
-        setHasSearched(true);
+        // Do NOT auto-set hasSearched — user must click "View Attendance" button
     }
   }, [user, isAdmin]);
 
@@ -107,7 +106,7 @@ function ViewEmployeeAttendanceDetailPage() {
     const now = new Date();
     return {
       from: fromDate ? new Date(fromDate) : new Date(now.getFullYear(), now.getMonth(), 1),
-      to: toDate ? new Date(toDate) : now,
+      to: toDate ? new Date(toDate) : new Date(now.getFullYear(), now.getMonth() + 1, 0), // last day of current month
     };
   };
 
@@ -782,6 +781,8 @@ function ViewEmployeeAttendanceDetailPage() {
                   onUpdate={(values) => {
                     if (values.range) {
                       setDateRange(values.range);
+                      setHasSearched(false);
+                      setAttendanceRecords([]);
                     }
                   }}
                 />
@@ -801,6 +802,8 @@ function ViewEmployeeAttendanceDetailPage() {
                   onUpdate={(values) => {
                     if (values.range) {
                       setDateRange(values.range);
+                      setHasSearched(false);
+                      setAttendanceRecords([]);
                     }
                   }}
                 />
@@ -832,7 +835,7 @@ function ViewEmployeeAttendanceDetailPage() {
                 setFilters({ department: "all", subDepartment: "all", employeeId: "" });
                 setDateRange({
                   from: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                  to: new Date(),
+                  to: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
                 });
                 setAttendanceRecords([]);
                 setHasSearched(false);

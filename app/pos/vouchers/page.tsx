@@ -27,9 +27,7 @@ import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
 
-function fmt(val: number) {
-    return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+import { formatCurrency } from "@/lib/utils";
 
 function fmtDate(d: string) {
     return new Date(d).toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
@@ -208,7 +206,7 @@ export default function PosVouchersPage() {
                                                     {v.description || "—"}
                                                 </TableCell>
                                                 <TableCell className="text-right font-semibold">
-                                                    Rs. {fmt(Number(v.discountValue))}
+                                                    {formatCurrency(Number(v.discountValue))}
                                                 </TableCell>
                                                 <TableCell className="text-center text-sm">
                                                     {v.usedCount}/{v.maxUses}
@@ -309,7 +307,7 @@ export default function PosVouchersPage() {
                                     {issuedVoucher.code}
                                 </p>
                                 <p className="text-sm text-muted-foreground mt-2">
-                                    Rs. {fmt(Number(issuedVoucher.discountValue))} · Single use · Any terminal
+                                    {formatCurrency(Number(issuedVoucher.discountValue))} · Single use · Any terminal
                                 </p>
                             </div>
                             <div className="flex gap-2">

@@ -9,8 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getSalesInvoices } from "@/lib/actions/receipt-voucher";
-import { toast } from "sonner";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { formatCurrency } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = {
     PENDING: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
@@ -60,7 +60,6 @@ export default function SalesInvoicesPage() {
                                 Create Invoice
                             </Button>
                         </PermissionGuard>
-
                         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
                             <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                             Refresh
@@ -72,9 +71,9 @@ export default function SalesInvoicesPage() {
                 <div className="grid gap-4 md:grid-cols-4">
                     {[
                         { label: "Total Invoices", value: invoices.length, className: "" },
-                        { label: "Total Billed", value: `Rs. ${totals.total.toLocaleString()}`, className: "" },
-                        { label: "Outstanding", value: `Rs. ${totals.outstanding.toLocaleString()}`, className: "text-red-600" },
-                        { label: "Collected", value: `Rs. ${totals.paid.toLocaleString()}`, className: "text-green-600" },
+                        { label: "Total Billed", value: formatCurrency(totals.total), className: "" },
+                        { label: "Outstanding", value: formatCurrency(totals.outstanding), className: "text-red-600" },
+                        { label: "Collected", value: formatCurrency(totals.paid), className: "text-green-600" },
                     ].map(card => (
                         <div key={card.label} className="rounded-lg border p-4">
                             <div className="text-sm font-medium text-muted-foreground">{card.label}</div>
@@ -150,14 +149,14 @@ export default function SalesInvoicesPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right tabular-nums">
-                                        Rs. {Number(inv.grandTotal).toLocaleString()}
+                                        {formatCurrency(Number(inv.grandTotal))}
                                     </TableCell>
                                     <TableCell className="text-right tabular-nums text-muted-foreground">
-                                        Rs. {Number(inv.paidAmount).toLocaleString()}
+                                        {formatCurrency(Number(inv.paidAmount))}
                                     </TableCell>
                                     <TableCell className="text-right tabular-nums">
                                         <span className={Number(inv.balanceAmount) > 0 ? "text-red-600 font-medium" : "text-green-600"}>
-                                            Rs. {Number(inv.balanceAmount).toLocaleString()}
+                                            {formatCurrency(Number(inv.balanceAmount))}
                                         </span>
                                     </TableCell>
                                     <TableCell className="text-right">

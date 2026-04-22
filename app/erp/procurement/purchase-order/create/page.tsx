@@ -22,7 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Autocomplete } from '@/components/ui/autocomplete';
-import { cn } from '@/lib/utils';
+import { cn, formatCurrency } from '@/lib/utils';
 import { PoBulkUploadModal } from '@/components/purchase-order/po-bulk-upload-modal';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 
@@ -36,6 +36,13 @@ interface OrderItem {
     itemName?: string;
     lineTotal?: number;
 }
+
+const resolveItemAvgCost = (item: any): number => {
+    const avg = Number(item?.unitCost ?? 0);
+    if (!Number.isNaN(avg) && avg > 0) return avg;
+    const fallback = Number(item?.unitPrice ?? 0);
+    return Number.isNaN(fallback) ? 0 : fallback;
+};
 
 export default function CreateDirectPurchaseOrder() {
     const router = useRouter();
@@ -53,8 +60,8 @@ export default function CreateDirectPurchaseOrder() {
     const [multiVendorMode, setMultiVendorMode] = useState<boolean>(false);
     const [vendorTypeFilter, setVendorTypeFilter] = useState<'all' | 'local' | 'import'>('all');
     const [multiVendorTypeFilter, setMultiVendorTypeFilter] = useState<'all' | 'local' | 'import'>('all');
-    const [orderType, setOrderType] = useState<string>('');
-    const [goodsType, setGoodsType] = useState<string>('');
+    const [orderType, setOrderType] = useState<string>('LOCAL');
+    const [goodsType, setGoodsType] = useState<string>('CONSUMABLE');
     const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
     // Search — Popover multi-select (same as stock-transfer)
@@ -125,7 +132,7 @@ export default function CreateDirectPurchaseOrder() {
             setOrderItems(updated);
             toast.info(`Updated quantity for ${item.description}`);
         } else {
-            const unitPrice = price || item.unitPrice || 0;
+            const unitPrice = price || resolveItemAvgCost(item);
             setOrderItems(prev => [...prev, {
                 itemId: item.itemId || item.id,
                 itemName: item.sku,
@@ -178,7 +185,7 @@ export default function CreateDirectPurchaseOrder() {
         const newItems = pr.items.map(prItem => {
             const masterItem = items.find(i => i.id === prItem.itemId || i.itemId === prItem.itemId);
             const qty = parseFloat(prItem.requiredQty);
-            const price = masterItem?.unitPrice || 0;
+            const price = resolveItemAvgCost(masterItem);
             const lineTotal = qty * price;
 
             return {
@@ -230,6 +237,14 @@ export default function CreateDirectPurchaseOrder() {
     const handleSubmit = async () => {
         if (orderItems.length === 0) {
             toast.error('Please add at least one item');
+            return;
+        }
+        if (!orderType || !['LOCAL', 'IMPORT'].includes(orderType)) {
+            toast.error('Please select Order Type (LOCAL/IMPORT)');
+            return;
+        }
+        if (!goodsType || !['CONSUMABLE', 'FRESH'].includes(goodsType)) {
+            toast.error('Please select Goods Type (CONSUMABLE/FRESH)');
             return;
         }
 
@@ -573,7 +588,7 @@ export default function CreateDirectPurchaseOrder() {
                                         </TableRow>
                                     ) : (
                                         orderItems.map((item, index) => (
-                                            <TableRow key={`${item.itemId}-${index}`}>
+                                            <TableRow key={`order-item-${index}-${item.itemId}`}>
                                                 <TableCell>
                                                     <div className="font-medium">{item.itemName}</div>
                                                     <div className="text-sm text-muted-foreground">{item.description}</div>
@@ -606,7 +621,7 @@ export default function CreateDirectPurchaseOrder() {
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">
-                                                    {item.lineTotal?.toFixed(2)}
+                                                    {formatCurrency(item.lineTotal || 0)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(item.itemId)}>
@@ -623,7 +638,7 @@ export default function CreateDirectPurchaseOrder() {
                         <div className="flex justify-end pt-4">
                             <div className="text-right">
                                 <div className="text-sm text-muted-foreground">Total Amount</div>
-                                <div className="text-2xl font-bold">{calculateTotal().toFixed(2)}</div>
+                                <div className="text-2xl font-bold">{formatCurrency(calculateTotal())}</div>
                             </div>
                         </div>
                     </CardContent>

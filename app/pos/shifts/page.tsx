@@ -26,6 +26,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 function fmt(val: number) {
     return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
+import { formatCurrency } from "@/lib/utils";
 
 function fmtTime(dateStr: string) {
     return new Date(dateStr).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -78,12 +79,12 @@ function ShiftDetailModal({ shift, open, onOpenChange }: {
                         <div className="bg-muted/50 rounded-2xl p-4 border border-border text-center">
                             <Banknote className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
                             <p className="text-xs text-muted-foreground">Cash</p>
-                            <p className="text-xl font-bold">Rs. {fmt(shift.metrics.cashSales)}</p>
+                            <p className="text-xl font-bold">{formatCurrency(shift.metrics.cashSales)}</p>
                         </div>
                         <div className="bg-muted/50 rounded-2xl p-4 border border-border text-center">
                             <CreditCard className="w-4 h-4 text-muted-foreground mx-auto mb-1" />
                             <p className="text-xs text-muted-foreground">Card</p>
-                            <p className="text-xl font-bold">Rs. {fmt(shift.metrics.cardSales)}</p>
+                            <p className="text-xl font-bold">{formatCurrency(shift.metrics.cardSales)}</p>
                         </div>
                     </div>
 
@@ -91,26 +92,26 @@ function ShiftDetailModal({ shift, open, onOpenChange }: {
                     <div className="bg-muted/30 rounded-2xl p-4 border border-border space-y-2 text-sm">
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Opening Float</span>
-                            <span className="font-medium">Rs. {fmt(shift.openingFloat)}</span>
+                            <span className="font-medium">{formatCurrency(shift.openingFloat)}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Cash Sales</span>
-                            <span className="font-medium">Rs. {fmt(shift.metrics.cashSales)}</span>
+                            <span className="font-medium">{formatCurrency(shift.metrics.cashSales)}</span>
                         </div>
                         <div className="flex justify-between border-t border-border pt-2">
                             <span className="font-semibold">Expected Cash</span>
-                            <span className="font-bold">Rs. {fmt(shift.expectedCash)}</span>
+                            <span className="font-bold">{formatCurrency(shift.expectedCash)}</span>
                         </div>
                         {!isOpen && shift.actualCash !== null && (
                             <>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Actual Cash</span>
-                                    <span className="font-medium">Rs. {fmt(shift.actualCash)}</span>
+                                    <span className="font-medium">{formatCurrency(shift.actualCash)}</span>
                                 </div>
                                 <div className="flex justify-between border-t border-border pt-2">
                                     <span className="font-semibold">Variance</span>
                                     <span className={cn("font-bold", variance < 0 ? "text-destructive" : variance > 0 ? "text-emerald-600" : "text-muted-foreground")}>
-                                        {variance > 0 ? "+" : ""}Rs. {fmt(variance ?? 0)}
+                                        {variance > 0 ? "+" : ""}{formatCurrency(variance ?? 0)}
                                     </span>
                                 </div>
                             </>
@@ -321,15 +322,15 @@ export default function ShiftsPage() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                                 <div className="bg-muted/50 rounded-2xl p-5 border border-border">
                                     <p className="text-xs text-muted-foreground mb-1">Opening Float</p>
-                                    <p className="text-2xl font-bold">Rs. {fmt(metrics.openingFloat || 0)}</p>
+                                    <p className="text-2xl font-bold">{formatCurrency(metrics.openingFloat || 0)}</p>
                                 </div>
                                 <div className="bg-muted/50 rounded-2xl p-5 border border-border">
                                     <p className="text-xs text-muted-foreground mb-1">Cash Sales</p>
-                                    <p className="text-2xl font-bold">Rs. {fmt(metrics.cashSales || 0)}</p>
+                                    <p className="text-2xl font-bold">{formatCurrency(metrics.cashSales || 0)}</p>
                                 </div>
                                 <div className="bg-primary/10 rounded-2xl p-5 border border-primary/20 md:col-span-2">
                                     <p className="text-xs text-primary mb-1">Expected Cash in Drawer</p>
-                                    <p className="text-2xl font-black text-primary">Rs. {fmt(metrics.expectedCash || 0)}</p>
+                                    <p className="text-2xl font-black text-primary">{formatCurrency(metrics.expectedCash || 0)}</p>
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3 pt-4 border-t border-border">
@@ -394,7 +395,7 @@ export default function ShiftsPage() {
                                                     </TableCell>
                                                     <TableCell className="text-right">{shift.metrics.orderCount}</TableCell>
                                                     <TableCell className="text-right font-semibold">
-                                                        Rs. {fmt(shift.metrics.totalSales)}
+                                                        {formatCurrency(shift.metrics.totalSales)}
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         {isOpen ? (
@@ -406,7 +407,7 @@ export default function ShiftsPage() {
                                                                 variance < 0 ? "text-destructive" : variance > 0 ? "text-emerald-600" : "text-muted-foreground"
                                                             )}>
                                                                 {variance !== 0 && <AlertTriangle className="w-3 h-3" />}
-                                                                {variance > 0 ? "+" : ""}Rs. {fmt(variance)}
+                                                                {variance > 0 ? "+" : ""}{formatCurrency(variance)}
                                                             </span>
                                                         )}
                                                     </TableCell>
@@ -489,7 +490,7 @@ export default function ShiftsPage() {
                     <div className="grid gap-4 py-4">
                         <div className="bg-muted/50 p-4 rounded-xl border border-border flex justify-between items-center">
                             <span className="text-sm text-muted-foreground">Expected Cash</span>
-                            <span className="font-bold">Rs. {fmt(metrics.expectedCash || 0)}</span>
+                            <span className="font-bold">{formatCurrency(metrics.expectedCash || 0)}</span>
                         </div>
                         <div className="space-y-2">
                             <Label>Actual Counted Cash (Rs.)</Label>
@@ -525,11 +526,11 @@ export default function ShiftsPage() {
                         <div className="bg-muted/50 rounded-2xl p-4 text-left space-y-3 mb-5 border border-border">
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Expected Cash</span>
-                                <span className="font-medium">Rs. {fmt(closeSummary?.expected || 0)}</span>
+                                <span className="font-medium">{formatCurrency(closeSummary?.expected || 0)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Actual Cash</span>
-                                <span className="font-medium">Rs. {fmt(closeSummary?.actual || 0)}</span>
+                                <span className="font-medium">{formatCurrency(closeSummary?.actual || 0)}</span>
                             </div>
                             <div className="flex justify-between border-t border-border pt-3">
                                 <span className="font-semibold">Variance</span>
@@ -537,7 +538,7 @@ export default function ShiftsPage() {
                                     (closeSummary?.variance ?? 0) < 0 ? "text-destructive" :
                                         (closeSummary?.variance ?? 0) > 0 ? "text-emerald-600" : "text-muted-foreground"
                                 )}>
-                                    {(closeSummary?.variance ?? 0) > 0 ? "+" : ""}Rs. {fmt(closeSummary?.variance || 0)}
+                                    {(closeSummary?.variance ?? 0) > 0 ? "+" : ""}{formatCurrency(closeSummary?.variance || 0)}
                                 </span>
                             </div>
                         </div>
