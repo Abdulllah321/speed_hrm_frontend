@@ -20,6 +20,7 @@ import {
 import { authFetch } from "@/lib/auth";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface Customer {
     id: string;
@@ -33,6 +34,9 @@ interface Customer {
 const EMPTY_FORM = { code: "", name: "", contactNo: "", address: "" };
 
 export default function PosCustomersPage() {
+    const { hasPermission } = useAuth();
+    const canCreate = hasPermission('pos.customer.create');
+    const canUpdate = hasPermission('pos.customer.update');
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -120,7 +124,7 @@ export default function PosCustomersPage() {
                         <Button variant="outline" size="icon" onClick={() => fetchCustomers()} disabled={isLoading}>
                             <RefreshCcw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                         </Button>
-                        <Button className="gap-2 font-semibold" onClick={openCreate}>
+                        <Button className="gap-2 font-semibold" onClick={openCreate} disabled={!canCreate}>
                             <UserPlus className="h-4 w-4" /> Add Customer
                         </Button>
                     </div>
@@ -169,7 +173,7 @@ export default function PosCustomersPage() {
                             {search ? `No customers matching "${search}"` : "No customers yet"}
                         </p>
                         <p className="text-sm text-muted-foreground/60 mt-1">Add your first customer to get started</p>
-                        <Button className="mt-4 gap-2" onClick={openCreate}>
+                        <Button className="mt-4 gap-2" onClick={openCreate} disabled={!canCreate}>
                             <UserPlus className="h-4 w-4" /> Add Customer
                         </Button>
                     </div>
@@ -217,7 +221,7 @@ export default function PosCustomersPage() {
                                         <p className="text-lg font-bold">{selected.name}</p>
                                         <Badge variant="outline" className="font-mono text-xs mt-1">{selected.code}</Badge>
                                     </div>
-                                    <Button variant="outline" size="sm" className="gap-1.5 flex-none" onClick={() => openEdit(selected)}>
+                                    <Button variant="outline" size="sm" className="gap-1.5 flex-none" disabled={!canUpdate} onClick={() => openEdit(selected)}>
                                         <Pencil className="h-3.5 w-3.5" /> Edit
                                     </Button>
                                 </div>

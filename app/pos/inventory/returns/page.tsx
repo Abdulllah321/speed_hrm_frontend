@@ -24,7 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
 export default function ReturnRequestsPage() {
-    const { user } = useAuth();
+    const { user, hasPermission } = useAuth();
     const router = useRouter();
     const [requests, setRequests] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -175,7 +175,7 @@ export default function ReturnRequestsPage() {
                                             <div className="w-full md:w-auto flex flex-col gap-2">
                                                 <Button
                                                     className="w-full md:w-40 h-14 text-lg font-bold gap-2 shadow-lg shadow-orange-200 bg-orange-600 hover:bg-orange-700"
-                                                    disabled={isAccepting === request.id}
+                                                    disabled={isAccepting === request.id || !hasPermission('pos.inventory.returns.approve')}
                                                     onClick={() => handleAccept(request.id)}
                                                 >
                                                     {isAccepting === request.id ? (

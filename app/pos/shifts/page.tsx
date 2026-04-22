@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 function fmt(val: number) {
     return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -146,6 +147,9 @@ function ShiftDetailModal({ shift, open, onOpenChange }: {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ShiftsPage() {
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canOpen = hasPermission('pos.shift.open');
+    const canClose = hasPermission('pos.shift.close');
 
     // Current session state
     const [sessionData, setSessionData] = useState<any>(null);
@@ -308,7 +312,7 @@ export default function ShiftsPage() {
                                 <p className="text-sm text-muted-foreground">Open the shift to start accepting cash sales</p>
                             </div>
                             <Button onClick={() => { setFloatAmount(""); setFloatNote(""); setShowOpenModal(true); }}
-                                className="rounded-full px-8">
+                                className="rounded-full px-8" disabled={!canOpen}>
                                 Open Shift
                             </Button>
                         </div>
@@ -333,7 +337,7 @@ export default function ShiftsPage() {
                                     Continue Selling
                                 </Button>
                                 <Button onClick={() => { setActualCash(""); setCloseNote(""); setShowCloseModal(true); }}
-                                    className="rounded-full px-8 bg-slate-800 hover:bg-slate-900 text-white">
+                                    className="rounded-full px-8 bg-slate-800 hover:bg-slate-900 text-white" disabled={!canClose}>
                                     Close Shift
                                 </Button>
                             </div>

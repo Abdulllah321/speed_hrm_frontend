@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Terminal, AlertTriangle, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/utils";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 async function deregisterTerminal(): Promise<boolean> {
     try {
@@ -40,6 +41,7 @@ export default function LogoutTerminalPage() {
     };
 
     return (
+        <PermissionGuard permissions="pos.terminal.logout">
         <div className="min-h-screen font-inter">
             <div className="max-w-lg mx-auto pt-6 px-4">
                 {/* Header */}
@@ -99,5 +101,6 @@ export default function LogoutTerminalPage() {
                 </div>
             </div>
         </div>
+        </PermissionGuard>
     );
 }

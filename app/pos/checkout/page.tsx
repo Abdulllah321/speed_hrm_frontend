@@ -29,6 +29,7 @@ import { authFetch } from "@/lib/auth";
 import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 import { PrintReceipt } from "@/components/pos/print-receipt";
 import { usePosSettings } from "@/hooks/use-pos-settings";
+import { useAuth } from "@/components/providers/auth-provider";
 
 // ─── Types ──────────────────────────────────────────────────────────────
 interface PromoConfig {
@@ -153,6 +154,13 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
 export default function CheckoutPage() {
     const router = useRouter();
     const { settings } = usePosSettings();
+    const { hasPermission } = useAuth();
+    const canPromo = hasPermission('pos.checkout.promo');
+    const canCoupon = hasPermission('pos.checkout.coupon');
+    const canAlliance = hasPermission('pos.checkout.alliance');
+    const canManualDiscount = hasPermission('pos.checkout.manual-discount');
+    const canAddCustomer = hasPermission('pos.checkout.add-customer');
+    const canHold = hasPermission('pos.hold.create');
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [promos, setPromos] = useState<PromoConfig[]>([]);
     const [alliances, setAlliances] = useState<AllianceConfig[]>([]);
@@ -558,6 +566,7 @@ export default function CheckoutPage() {
                                     variant="outline"
                                     size="icon"
                                     className="h-10 w-10 shrink-0 bg-muted/20 border-none hover:bg-muted/40"
+                                    disabled={!canAddCustomer}
                                     onClick={() => setShowAddCustomer(true)}
                                 >
                                     <Plus className="h-4 w-4" />
@@ -637,6 +646,7 @@ export default function CheckoutPage() {
                         <div className="rounded-xl border bg-card overflow-hidden">
 
                             {/* ── Promos ── */}
+                            {canPromo && (
                             <details className="group" open>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors border-b">
                                     <Tag className="h-4 w-4 text-muted-foreground" />
@@ -741,10 +751,12 @@ export default function CheckoutPage() {
                                     )}
                                 </div>
                             </details>
+                            )}
 
-                            <Separator />
+                            {canPromo && canCoupon && <Separator />}
 
                             {/* ── Coupon Code ── */}
+                            {canCoupon && (
                             <details>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors border-b">
                                     <TicketPercent className="h-4 w-4 text-muted-foreground" />
@@ -771,10 +783,12 @@ export default function CheckoutPage() {
                                     {appliedCoupon?.description && <p className="text-xs text-muted-foreground">{appliedCoupon.description}</p>}
                                 </div>
                             </details>
+                            )}
 
-                            <Separator />
+                            {canCoupon && canAlliance && <Separator />}
 
                             {/* ── Alliances ── */}
+                            {canAlliance && (
                             <details ref={allianceDetailsRef} open>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors">
                                     <Handshake className="h-4 w-4 text-muted-foreground" />
@@ -872,10 +886,12 @@ export default function CheckoutPage() {
                                     )}
                                 </div>
                             </details>
+                            )}
 
-                            <Separator />
+                            {canAlliance && canManualDiscount && <Separator />}
 
                             {/* ── Manual Global Discount ── */}
+                            {canManualDiscount && (
                             <details>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors">
                                     <BadgeDollarSign className="h-4 w-4 text-muted-foreground" />
@@ -928,6 +944,7 @@ export default function CheckoutPage() {
                                     )}
                                 </div>
                             </details>
+                            )}
                         </div>
                     </div>
 

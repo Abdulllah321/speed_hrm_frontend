@@ -6,6 +6,7 @@ import DataTable from "@/components/common/data-table";
 import { columns, RoleRow } from "./columns";
 import { Role, deleteRole } from "@/lib/actions/roles";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface RoleListProps {
   initialRoles: Role[];
@@ -15,10 +16,13 @@ interface RoleListProps {
 export function RoleList({ initialRoles, userPermissions }: RoleListProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const { isAdmin } = useAuth();
 
-  const canCreate = userPermissions.includes('role.create');
-  const canUpdate = true; // userPermissions.includes('role.update'); // FORCE TRUE TO UNBLOCK
-  const canDelete = userPermissions.includes('role.delete');
+  // Super-admin gets full access; otherwise fall back to permission flags
+  const superAdmin = isAdmin();
+  const canCreate = superAdmin || userPermissions.includes('role.create');
+  const canUpdate = superAdmin || userPermissions.includes('role.update');
+  const canDelete = superAdmin || userPermissions.includes('role.delete');
 
   const handleToggle = () => {
     router.push("/admin/roles/create");
@@ -26,7 +30,6 @@ export function RoleList({ initialRoles, userPermissions }: RoleListProps) {
 
   const handleMultiDelete = (ids: string[]) => {
     startTransition(async () => {
-      // Delete one by one since we don't have bulk delete yet
       let success = true;
       for (const id of ids) {
         const result = await deleteRole(id);
@@ -35,7 +38,6 @@ export function RoleList({ initialRoles, userPermissions }: RoleListProps) {
           toast.error(result.message || `Failed to delete role ${id}`);
         }
       }
-
       if (success) {
         toast.success("Roles deleted successfully");
       }
@@ -45,7 +47,7 @@ export function RoleList({ initialRoles, userPermissions }: RoleListProps) {
 
   const handleEdit = (id: string) => {
     router.push(`/admin/roles/edit/${id}`);
-  }
+  };
 
   const data: RoleRow[] = initialRoles.map((role) => ({
     id: role.id,

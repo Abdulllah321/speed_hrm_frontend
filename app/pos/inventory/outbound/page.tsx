@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 
 export default function OutboundRequestsPage() {
-    const { user } = useAuth();
+    const { user, hasPermission } = useAuth();
     const router = useRouter();
     const [requests, setRequests] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -174,7 +174,7 @@ export default function OutboundRequestsPage() {
                                             <div className="w-full md:w-auto flex flex-col gap-2">
                                                 <Button
                                                     className="w-full md:w-40 h-14 text-lg font-bold gap-2 shadow-lg shadow-blue-200 bg-blue-600 hover:bg-blue-700"
-                                                    disabled={isApproving === request.id}
+                                                    disabled={isApproving === request.id || !hasPermission('pos.inventory.outbound.approve')}
                                                     onClick={() => handleApprove(request.id)}
                                                 >
                                                     {isApproving === request.id ? (

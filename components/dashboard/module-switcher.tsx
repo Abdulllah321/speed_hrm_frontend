@@ -18,16 +18,26 @@ import { useAuth } from "@/components/providers/auth-provider";
 export function ModuleSwitcher() {
     const { environment, setEnvironment } = useEnvironment();
     const router = useRouter();
-    const { isAdmin } = useAuth();
+    const { isAdmin, hasAnyPermission } = useAuth();
 
-    const modules = [
+    const superAdmin = isAdmin();
+
+    const allModules = [
         {
             id: "HR" as EnvironmentType,
             label: "HR Module",
             icon: Users,
             color: "text-blue-600",
             bg: "bg-blue-500/10",
-            href: "/hr"
+            href: "/hr",
+            // Any hr.* or master.* permission grants HR access
+            accessCheck: () => superAdmin || hasAnyPermission([
+                'hr.dashboard.view',
+                'hr.employee.read',
+                'hr.attendance.view',
+                'hr.leave.read',
+                'hr.payroll.read',
+            ]),
         },
         {
             id: "ERP" as EnvironmentType,
@@ -35,7 +45,17 @@ export function ModuleSwitcher() {
             icon: Package,
             color: "text-emerald-600",
             bg: "bg-emerald-500/10",
-            href: "/erp"
+            href: "/erp",
+            // Any erp.* permission grants ERP access
+            accessCheck: () => superAdmin || hasAnyPermission([
+                'erp.dashboard.view',
+                'erp.inventory.view',
+                'erp.item.read',
+                'erp.procurement.pr.read',
+                'erp.procurement.po.read',
+                'erp.finance.journal-voucher.read',
+                'erp.claims.read',
+            ]),
         },
         {
             id: "POS" as EnvironmentType,
@@ -43,19 +63,26 @@ export function ModuleSwitcher() {
             icon: ShoppingCart,
             color: "text-indigo-600",
             bg: "bg-indigo-500/10",
-            href: "/pos"
-        }
+            href: "/pos",
+            // Any pos.* permission grants POS access
+            accessCheck: () => superAdmin || hasAnyPermission([
+                'pos.dashboard.view',
+                'pos.sale.create',
+                'pos.sales.history.view',
+                'pos.inventory.view',
+            ]),
+        },
     ];
 
-    // When inside POS, only show ERP and HR (not POS itself)
-    
+    // Only show modules the current user has access to
+    const visibleModules = allModules.filter((m) => m.accessCheck());
 
-    const handleSwitch = (mod: typeof modules[0]) => {
+    const handleSwitch = (mod: typeof allModules[0]) => {
         setEnvironment(mod.id);
         router.push(mod.href);
     };
 
-    const currentMod = modules.find(m => m.id === environment);
+    const currentMod = allModules.find(m => m.id === environment);
 
     return (
         <DropdownMenu>
@@ -82,7 +109,7 @@ export function ModuleSwitcher() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="opacity-50" />
                 <div className="space-y-1">
-                    {modules.map((mod) => (
+                    {visibleModules.map((mod) => (
                         <DropdownMenuItem
                             key={mod.id}
                             onClick={() => handleSwitch(mod)}
@@ -105,7 +132,7 @@ export function ModuleSwitcher() {
                     ))}
                 </div>
 
-                {isAdmin() && (
+                {superAdmin && (
                     <>
                         <DropdownMenuSeparator className="opacity-50" />
                         <DropdownMenuItem

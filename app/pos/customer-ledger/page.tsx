@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 function fmt(v: number) { return v.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
 
@@ -33,6 +35,9 @@ const TX_META: Record<string, { label: string; icon: any; cls: string }> = {
 };
 
 export default function CustomerLedgerPage() {
+    const { hasPermission } = useAuth();
+    const canPayment = hasPermission('pos.ledger.payment');
+    const canCreditLimit = hasPermission('pos.ledger.credit-limit');
     const [accounts, setAccounts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -198,7 +203,7 @@ export default function CustomerLedgerPage() {
                                         {overLimit && <Badge variant="destructive" className="ml-2 text-[10px] h-4">Over Limit</Badge>}
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        {bal > 0 && (
+                                        {bal > 0 && canPayment && (
                                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
                                                 onClick={e => { e.stopPropagation(); setSelected(k); setPayAmount(bal); setShowPayment(true); }}>
                                                 <CheckCircle2 className="h-3 w-3" /> Receive Payment
@@ -237,10 +242,12 @@ export default function CustomerLedgerPage() {
                                 <div className="rounded-lg px-4 py-3 border bg-muted/30">
                                     <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Credit Limit</p>
                                     <p className="text-xl font-black">{Number(selected.creditLimit) > 0 ? `Rs. ${fmt(Number(selected.creditLimit))}` : "None"}</p>
+                                    {canCreditLimit && (
                                     <button className="text-[10px] text-primary underline mt-0.5"
                                         onClick={() => { setNewLimit(Number(selected.creditLimit)); setShowCreditLimit(true); }}>
                                         Change limit
                                     </button>
+                                    )}
                                 </div>
                                 <div className="rounded-lg px-4 py-3 border bg-muted/30">
                                     <p className="text-[10px] font-bold uppercase text-muted-foreground mb-1">Contact</p>
@@ -311,7 +318,7 @@ export default function CustomerLedgerPage() {
 
                             <DialogFooter className="gap-2">
                                 <Button variant="ghost" onClick={() => setSelected(null)}>Close</Button>
-                                {Number(selected.balance) > 0 && (
+                                {Number(selected.balance) > 0 && canPayment && (
                                     <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700"
                                         onClick={() => { setPayAmount(Number(selected.balance)); setShowPayment(true); }}>
                                         <CheckCircle2 className="h-4 w-4" /> Record Payment

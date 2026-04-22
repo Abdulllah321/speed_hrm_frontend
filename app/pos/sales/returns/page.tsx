@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 function fmt(v: number) { return v.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
 function paidPerUnit(oi: any) { return Number(oi.lineTotal) / Number(oi.quantity); }
@@ -46,6 +47,10 @@ interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; cre
 
 export default function ReturnsPage() {
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canReturn = hasPermission('pos.return.create');
+    const canExchange = hasPermission('pos.exchange.create');
+    const canClaim = hasPermission('pos.claim.create');
 
     // ── Order search ──────────────────────────────────────────────────
     const [orderSearch, setOrderSearch] = useState("");
@@ -336,9 +341,9 @@ export default function ReturnsPage() {
                     {/* Mode tabs — hide Claim for multi-order */}
                     <Tabs value={mode} onValueChange={(v: any) => setMode(v)}>
                         <TabsList className={`grid w-full max-w-md ${isMultiOrder ? "grid-cols-2" : "grid-cols-3"}`}>
-                            <TabsTrigger value="return" className="gap-1.5"><RotateCcw className="h-3.5 w-3.5" />Return</TabsTrigger>
-                            <TabsTrigger value="exchange" className="gap-1.5"><ArrowLeftRight className="h-3.5 w-3.5" />Exchange</TabsTrigger>
-                            {!isMultiOrder && <TabsTrigger value="claim" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Claim</TabsTrigger>}
+                            {canReturn && <TabsTrigger value="return" className="gap-1.5"><RotateCcw className="h-3.5 w-3.5" />Return</TabsTrigger>}
+                            {canExchange && <TabsTrigger value="exchange" className="gap-1.5"><ArrowLeftRight className="h-3.5 w-3.5" />Exchange</TabsTrigger>}
+                            {!isMultiOrder && canClaim && <TabsTrigger value="claim" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Claim</TabsTrigger>}
                         </TabsList>
 
                         {isMultiOrder && mode === "claim" && setMode("return") as any}
@@ -629,7 +634,14 @@ export default function ReturnsPage() {
                                                     : mode === "claim" ? "bg-amber-600 hover:bg-amber-700"
                                                         : "bg-destructive hover:bg-destructive/90")}
                                             onClick={handleSubmit}
-                                            disabled={isSubmitting || selectedLines.length === 0 || (mode === "exchange" && newLines.length === 0)}>
+                                            disabled={
+                                                isSubmitting ||
+                                                selectedLines.length === 0 ||
+                                                (mode === "exchange" && newLines.length === 0) ||
+                                                (mode === "return" && !canReturn) ||
+                                                (mode === "exchange" && !canExchange) ||
+                                                (mode === "claim" && !canClaim)
+                                            }>
                                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" />
                                                 : mode === "return" ? <RotateCcw className="h-4 w-4" />
                                                     : mode === "exchange" ? <ArrowLeftRight className="h-4 w-4" />

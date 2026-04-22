@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PauseCircle, Clock, RotateCcw, Truck, RefreshCw } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 function timeLeft(expiresAt: string) {
     const diff = new Date(expiresAt).getTime() - Date.now();
@@ -19,6 +21,8 @@ function timeLeft(expiresAt: string) {
 
 export default function HoldOrdersPage() {
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canResume = hasPermission('pos.hold.resume');
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [tick, setTick] = useState(0);
@@ -76,6 +80,7 @@ export default function HoldOrdersPage() {
     };
 
     return (
+        <PermissionGuard permissions="pos.hold.view">
         <div className="space-y-6 mt-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -138,7 +143,7 @@ export default function HoldOrdersPage() {
 
                             <div className="flex items-center justify-between pt-1 border-t">
                                 <span className="font-bold">{Number(order.grandTotal).toLocaleString()}</span>
-                                <Button size="sm" className="h-8 text-xs" onClick={() => handleResume(order.id)}>
+                                <Button size="sm" className="h-8 text-xs" disabled={!canResume} onClick={() => handleResume(order.id)}>
                                     <RotateCcw className="h-3 w-3 mr-1" />
                                     Resume
                                 </Button>
@@ -148,5 +153,6 @@ export default function HoldOrdersPage() {
                 </div>
             )}
         </div>
+        </PermissionGuard>
     );
 }
