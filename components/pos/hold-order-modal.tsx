@@ -20,6 +20,7 @@ interface HoldOrderModalProps {
 }
 
 const QUICK_DURATIONS = [
+    { label: '1 min', minutes: 1 },
     { label: '30 min', minutes: 30 },
     { label: '1 hr', minutes: 60 },
     { label: '2 hrs', minutes: 120 },
@@ -122,7 +123,7 @@ export function HoldOrderModal({ open, onOpenChange, onConfirm, isHolding, itemC
                     {/* Quick durations */}
                     <div className="space-y-2">
                         <Label className="text-xs text-muted-foreground uppercase tracking-wider">Quick Duration</Label>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-5 gap-2">
                             {QUICK_DURATIONS.map(({ label, minutes }) => (
                                 <Button
                                     key={minutes}

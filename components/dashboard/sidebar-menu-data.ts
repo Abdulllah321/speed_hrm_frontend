@@ -1420,8 +1420,13 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Customer Ledgers",
-        href: "/pos/customer-ledgers",
+        href: "/pos/customer-ledger",
         permissions: ["pos.ledger.view"],
+      },
+      {
+        title: "Cash Drawer",
+        href: "/pos/shifts",
+        permissions: ["pos.terminal.drawer"],
       },
       {
         title: "Vouchers",

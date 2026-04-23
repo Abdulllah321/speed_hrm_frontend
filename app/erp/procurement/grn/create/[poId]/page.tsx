@@ -198,7 +198,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                             <div className="space-y-2">
                                 <label className="text-sm font-medium">Goods Type</label>
                                 <div className="p-2 bg-muted rounded text-sm">
-                                    {order.goodsType === 'FRESH' ? 'Fresh Goods' : 'Consumable'}
+                                    {order.goodsType === 'FRESH' ? 'FINISH GOODS' : 'Consumable'}
                                 </div>
                             </div>
                         )}

@@ -88,7 +88,7 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
             // Generate a code if backend requires one and doesn't auto-gen
             const code = `CUST-${Date.now()}`;
             const res = await authFetch(
-                "/api/sales/customers",
+                "/sales/customers",
                 { method: "POST", body: { ...formData, code } }
             );
             if (res.ok && res.data?.status) {
@@ -209,6 +209,7 @@ export default function CheckoutPage() {
     const [tenderSlip, setTenderSlip] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [completedOrder, setCompletedOrder] = useState<any>(null);
+    const [isGiftReceipt, setIsGiftReceipt] = useState(false);
 
     // ── Refs for keyboard shortcuts ────────────────────────────────────
     const couponInputRef = useRef<HTMLInputElement>(null);
@@ -242,7 +243,8 @@ export default function CheckoutPage() {
     // ── Fetch customers ────────────────────────────────────────────────
     useEffect(() => {
         setIsLoadingCustomers(true);
-        authFetch(`/api/sales/customers`, { params: { search: customerSearch } })
+        const searchParam = customerSearch ? `?search=${encodeURIComponent(customerSearch)}` : '';
+        authFetch(`/sales/customers${searchParam}`)
             .then(res => {
                 if (res.ok && res.data?.status) setCustomers(res.data.data || []);
             })
@@ -258,18 +260,42 @@ export default function CheckoutPage() {
     const subtotalAfterItems = subtotal - itemDiscounts;
 
     let orderDiscount = 0;
-    if (discountMode === "promo" && selectedPromo) {
-        // Compute only on scoped items
+    let allianceDiscount = 0;
+    
+    // Calculate alliance discount if selected
+    if (discountMode === "alliance" && selectedAlliance) {
+        allianceDiscount = Math.round(subtotal * (Number(selectedAlliance.discountPercent) / 100));
+    }
+    
+    // Determine which discount to apply based on priority
+    let finalItemDiscounts = itemDiscounts;
+    
+    if (itemDiscounts > 0 && allianceDiscount > 0) {
+        // Both discounts exist - apply the greater one
+        if (allianceDiscount >= itemDiscounts) {
+            // Alliance is greater or equal - use alliance, remove item discounts
+            orderDiscount = allianceDiscount;
+            finalItemDiscounts = 0;
+        } else {
+            // Item discounts are greater - keep item discounts, no alliance
+            orderDiscount = 0;
+            allianceDiscount = 0;
+        }
+    } else if (allianceDiscount > 0) {
+        // Only alliance discount
+        orderDiscount = allianceDiscount;
+    } else if (discountMode === "promo" && selectedPromo) {
+        // Promo discount
         const scopedSubtotal = promoScopeAll
             ? subtotalAfterItems
             : cartItems.filter(i => promoScopedItems.has(i.id))
                 .reduce((acc, i) => acc + (i.total), 0);
         orderDiscount = calcPromoDiscount(selectedPromo, scopedSubtotal);
     } else if (discountMode === "coupon" && appliedCoupon) {
+        // Coupon discount
         orderDiscount = appliedCoupon.discountAmount;
-    } else if (discountMode === "alliance" && selectedAlliance) {
-        orderDiscount = Math.round(subtotalAfterItems * (Number(selectedAlliance.discountPercent) / 100));
     } else if (discountMode === "manual") {
+        // Manual discount
         if (manualDiscountType === "percent") {
             orderDiscount = Math.round(subtotalAfterItems * (manualDiscountValue / 100));
         } else {
@@ -277,7 +303,8 @@ export default function CheckoutPage() {
         }
     }
 
-    const grandTotal = Math.max(0, subtotalAfterItems - orderDiscount + itemTax);
+    const totalDiscount = finalItemDiscounts + orderDiscount;
+    const grandTotal = Math.max(0, subtotal - totalDiscount + itemTax);
     const totalPaid = tenders.reduce((a, t) => a + t.amount, 0);
     const balanceDue = Math.max(0, grandTotal - totalPaid);
     const changeAmount = Math.max(0, totalPaid - grandTotal);
@@ -381,6 +408,7 @@ export default function CheckoutPage() {
                 items: orderItems,
                 tenders: tenders.length > 0 ? tenders : [{ method: "cash", amount: grandTotal }],
                 customerId: selectedCustomer?.id || null,
+                isGiftReceipt,
             };
 
             // If resuming from a hold order, pass holdOrderId to skip double stock deduction
@@ -420,6 +448,77 @@ export default function CheckoutPage() {
     }, [cartItems, tenders, discountMode, selectedPromo, promoScopeAll, promoScopedItems,
         appliedCoupon, selectedAlliance, allianceMeta, manualDiscountType, manualDiscountValue,
         orderDiscount, grandTotal, balanceDue]);
+
+    // ─── Credit Sale Handler ───────────────────────────────────────────
+    const handleCreditSale = useCallback(async () => {
+        if (!selectedCustomer) {
+            toast.error("Please select a customer for credit sale.");
+            return;
+        }
+        
+        if (!confirm(`Confirm credit sale of Rs. ${fmtCurrency(grandTotal)} to ${selectedCustomer.name}?\n\nBalance will be added to customer ledger.`)) {
+            return;
+        }
+
+        setIsSubmitting(true);
+        try {
+            const orderItems = cartItems.map((item) => ({
+                itemId: item.id,
+                quantity: item.quantity,
+                unitPrice: item.price,
+                discountPercent: item.discountPercent,
+                taxPercent: item.taxPercent,
+                promoDiscountAmount: (discountMode === "promo" && selectedPromo && !promoScopeAll && promoScopedItems.has(item.id))
+                    ? Math.round(calcPromoDiscount(selectedPromo, item.total) / (promoScopedItems.size || 1))
+                    : 0,
+            }));
+
+            const body: any = {
+                items: orderItems,
+                tenders: tenders.length > 0 ? tenders : [], // No payment for credit sale
+                customerId: selectedCustomer.id,
+                isCreditSale: true, // Flag for backend
+                creditAmount: balanceDue, // Unpaid amount
+                isGiftReceipt,
+            };
+
+            if (holdOrderId) body.holdOrderId = holdOrderId;
+
+            if (discountMode === "promo" && selectedPromo) {
+                body.promoId = selectedPromo.id;
+                body.promoScope = promoScopeAll
+                    ? { type: "order" }
+                    : { type: "items", itemIds: [...promoScopedItems] };
+            }
+            if (discountMode === "coupon" && appliedCoupon) body.couponId = appliedCoupon.id;
+            if (discountMode === "alliance" && selectedAlliance) {
+                body.allianceId = selectedAlliance.id;
+                if (allianceMeta.cardholderName || allianceMeta.cardLast4 || allianceMeta.merchantSlip) {
+                    body.allianceMeta = allianceMeta;
+                }
+            }
+            if (discountMode === "manual" && orderDiscount > 0) {
+                if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
+                else body.globalDiscountAmount = orderDiscount;
+            }
+
+            const res = await authFetch(
+                "/pos-sales/orders", { method: "POST", body }
+            );
+
+            if (res.ok && res.data?.status) {
+                toast.success(`Credit sale completed! Balance added to ${selectedCustomer.name}'s ledger.`);
+                setCompletedOrder(res.data.data);
+                sessionStorage.removeItem("pos_cart");
+                sessionStorage.removeItem("pos_hold_order_id");
+            } else {
+                toast.error(res.data?.message || "Credit sale failed");
+            }
+        } catch { toast.error("Credit sale failed. Check connection."); }
+        finally { setIsSubmitting(false); }
+    }, [cartItems, tenders, discountMode, selectedPromo, promoScopeAll, promoScopedItems,
+        appliedCoupon, selectedAlliance, allianceMeta, manualDiscountType, manualDiscountValue,
+        orderDiscount, grandTotal, balanceDue, selectedCustomer, holdOrderId]);
 
     const filteredAlliances = alliances.filter(
         (a) => a.partnerName.toLowerCase().includes(allianceSearch.toLowerCase()) ||
@@ -647,11 +746,14 @@ export default function CheckoutPage() {
 
                             {/* ── Promos ── */}
                             {canPromo && (
-                            <details className="group" open>
+                            <details className={cn("group", discountMode !== "none" && discountMode !== "promo" && "opacity-50 pointer-events-none")} open>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors border-b">
                                     <Tag className="h-4 w-4 text-muted-foreground" />
                                     <span className="font-semibold text-sm flex-1">Promo Campaigns</span>
                                     {selectedPromo && <Badge variant="secondary" className="text-xs">{selectedPromo.code}</Badge>}
+                                    {discountMode !== "none" && discountMode !== "promo" && (
+                                        <Badge variant="outline" className="text-[10px]">Disabled</Badge>
+                                    )}
                                 </summary>
                                 <div className="p-3">
                                     {isLoadingConfig ? (
@@ -753,15 +855,18 @@ export default function CheckoutPage() {
                             </details>
                             )}
 
-                            {canPromo && canCoupon && <Separator />}
+                            {canCoupon && <Separator />}
 
                             {/* ── Coupon Code ── */}
                             {canCoupon && (
-                            <details>
+                            <details className={cn(discountMode !== "none" && discountMode !== "coupon" && "opacity-50 pointer-events-none")}>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors border-b">
                                     <TicketPercent className="h-4 w-4 text-muted-foreground" />
                                     <span className="font-semibold text-sm flex-1">Coupon / Voucher Code</span>
                                     {appliedCoupon && <Badge variant="secondary" className="text-xs">{appliedCoupon.code}</Badge>}
+                                    {discountMode !== "none" && discountMode !== "coupon" && (
+                                        <Badge variant="outline" className="text-[10px]">Disabled</Badge>
+                                    )}
                                 </summary>
                                 <div className="p-3 space-y-2">
                                     <div className="flex gap-2">
@@ -785,15 +890,18 @@ export default function CheckoutPage() {
                             </details>
                             )}
 
-                            {canCoupon && canAlliance && <Separator />}
+                            {canAlliance && <Separator />}
 
                             {/* ── Alliances ── */}
                             {canAlliance && (
-                            <details ref={allianceDetailsRef} open>
+                            <details ref={allianceDetailsRef} className={cn(discountMode !== "none" && discountMode !== "alliance" && "opacity-50 pointer-events-none")} open>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors">
                                     <Handshake className="h-4 w-4 text-muted-foreground" />
                                     <span className="font-semibold text-sm flex-1">Alliance / Bank Card</span>
                                     {selectedAlliance && <Badge variant="secondary" className="text-xs">{selectedAlliance.code}</Badge>}
+                                    {discountMode !== "none" && discountMode !== "alliance" && (
+                                        <Badge variant="outline" className="text-[10px]">Disabled</Badge>
+                                    )}
                                 </summary>
                                 <div className="p-3 space-y-2">
                                     <div className="relative">
@@ -888,16 +996,19 @@ export default function CheckoutPage() {
                             </details>
                             )}
 
-                            {canAlliance && canManualDiscount && <Separator />}
+                            {canManualDiscount && <Separator />}
 
                             {/* ── Manual Global Discount ── */}
                             {canManualDiscount && (
-                            <details>
+                            <details className={cn(discountMode !== "none" && discountMode !== "manual" && "opacity-50 pointer-events-none")}>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors">
                                     <BadgeDollarSign className="h-4 w-4 text-muted-foreground" />
                                     <span className="font-semibold text-sm flex-1">Manual Discount</span>
                                     {discountMode === "manual" && orderDiscount > 0 &&
                                         <Badge variant="secondary" className="text-xs">−{fmtCurrency(orderDiscount)}</Badge>}
+                                    {discountMode !== "none" && discountMode !== "manual" && (
+                                        <Badge variant="outline" className="text-[10px]">Disabled</Badge>
+                                    )}
                                 </summary>
                                 <div className="p-3 space-y-3">
                                     <RadioGroup
@@ -957,10 +1068,10 @@ export default function CheckoutPage() {
                                 <span>Subtotal ({cartItems.length} item{cartItems.length !== 1 ? "s" : ""})</span>
                                 <span className="font-mono">{fmtCurrency(subtotal)}</span>
                             </div>
-                            {itemDiscounts > 0 && (
+                            {finalItemDiscounts > 0 && (
                                 <div className="flex justify-between text-destructive">
                                     <span>Item Discounts</span>
-                                    <span className="font-mono">−{fmtCurrency(itemDiscounts)}</span>
+                                    <span className="font-mono">−{fmtCurrency(finalItemDiscounts)}</span>
                                 </div>
                             )}
                             {orderDiscount > 0 && (
@@ -1110,6 +1221,25 @@ export default function CheckoutPage() {
                             </div>
                         </div>
 
+                        {/* ── Gift Receipt Option ───────────────────────────────── */}
+                        <div className="rounded-xl border bg-card px-4 py-3">
+                            <div className="flex items-center gap-3">
+                                <Checkbox 
+                                    id="gift-receipt" 
+                                    checked={isGiftReceipt}
+                                    onCheckedChange={(checked) => setIsGiftReceipt(checked as boolean)}
+                                />
+                                <div className="flex-1">
+                                    <Label htmlFor="gift-receipt" className="text-sm font-semibold cursor-pointer">
+                                        Gift Receipt
+                                    </Label>
+                                    <p className="text-xs text-muted-foreground">
+                                        Print receipt without price information
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* ── Complete Sale ─────────────────────────────────────── */}
                         <div className="flex gap-2">
                             <Button
@@ -1124,6 +1254,23 @@ export default function CheckoutPage() {
                                     : <><PauseCircle className="h-5 w-5" /> Hold</>
                                 }
                             </Button>
+                            
+                            {/* Credit Sale Button - Only show if customer selected and balance due */}
+                            {selectedCustomer && balanceDue > 0 && (
+                                <Button
+                                    variant="outline"
+                                    size="lg"
+                                    className="h-14 font-bold gap-2 rounded-xl border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                    onClick={handleCreditSale}
+                                    disabled={isSubmitting || cartItems.length === 0}
+                                >
+                                    {isSubmitting
+                                        ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
+                                        : <><BookOpen className="h-5 w-5" /> Credit Sale</>
+                                    }
+                                </Button>
+                            )}
+                            
                             <Button
                                 size="lg"
                                 className="h-14 flex-1 text-base font-bold gap-2 rounded-xl"

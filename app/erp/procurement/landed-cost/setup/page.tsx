@@ -160,7 +160,7 @@ export default function LandedCostSetupPage() {
       const grnData = Array.isArray(grnsRes) ? grnsRes : (grnsRes as any)?.data || [];
       // Filter for GRNs that need landed cost:
       // 1. Direct PO (no PR/RFQ) - always needs landed cost  
-      // 2. PR-linked FRESH goods - needs landed cost
+      // 2. PR-linked FINISH GOODS - needs landed cost
       setGrns(grnData.filter((g: any) => {
         if (g.status !== 'RECEIVED_UNVALUED') return false;
         

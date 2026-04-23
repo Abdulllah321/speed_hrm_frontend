@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PauseCircle, Clock, RotateCcw, Truck, RefreshCw } from "lucide-react";
+import { PauseCircle, Clock, RotateCcw, Truck, RefreshCw, X } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 
@@ -25,6 +25,7 @@ export default function HoldOrdersPage() {
     const canResume = hasPermission('pos.hold.resume');
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [cancellingId, setCancellingId] = useState<string | null>(null);
     const [tick, setTick] = useState(0);
 
     useEffect(() => {
@@ -76,6 +77,27 @@ export default function HoldOrdersPage() {
             }
         } catch {
             toast.error("Failed to resume order");
+        }
+    };
+
+    const handleCancel = async (orderId: string, orderNumber: string) => {
+        if (!confirm(`Are you sure you want to cancel hold order ${orderNumber}? Stock will be restored.`)) {
+            return;
+        }
+
+        setCancellingId(orderId);
+        try {
+            const res = await authFetch(`/pos-sales/orders/${orderId}/cancel-hold`, { method: "POST" });
+            if (res.ok && res.data?.status) {
+                toast.success(res.data.message || "Hold order cancelled");
+                load(); // Reload the list
+            } else {
+                toast.error(res.data?.message || "Failed to cancel hold order");
+            }
+        } catch {
+            toast.error("Failed to cancel hold order");
+        } finally {
+            setCancellingId(null);
         }
     };
 
@@ -143,10 +165,27 @@ export default function HoldOrdersPage() {
 
                             <div className="flex items-center justify-between pt-1 border-t">
                                 <span className="font-bold">{Number(order.grandTotal).toLocaleString()}</span>
-                                <Button size="sm" className="h-8 text-xs" disabled={!canResume} onClick={() => handleResume(order.id)}>
-                                    <RotateCcw className="h-3 w-3 mr-1" />
-                                    Resume
-                                </Button>
+                                <div className="flex gap-2">
+                                    <Button 
+                                        size="sm" 
+                                        variant="outline" 
+                                        className="h-8 text-xs" 
+                                        onClick={() => handleCancel(order.id, order.orderNumber)}
+                                        disabled={cancellingId === order.id || !canResume}
+                                    >
+                                        <X className="h-3 w-3 mr-1" />
+                                        Cancel
+                                    </Button>
+                                    <Button 
+                                        size="sm" 
+                                        className="h-8 text-xs" 
+                                        onClick={() => handleResume(order.id)}
+                                        disabled={cancellingId === order.id || !canResume}
+                                    >
+                                        <RotateCcw className="h-3 w-3 mr-1" />
+                                        Resume
+                                    </Button>
+                                </div>
                             </div>
                         </Card>
                     ))}
