@@ -37,7 +37,7 @@ export interface CartItem {
 interface CartTableProps {
     items: CartItem[];
     onQuantityChange: (id: string, quantity: number) => void;
-    onDiscountChange: (id: string, discountPercent: number) => void;
+    onDiscountChange?: (id: string, discountPercent: number) => void;
     onRemoveItem: (id: string) => void;
     onToggleTransit?: (id: string) => void;
 }
@@ -255,13 +255,14 @@ export function CartTable({
                                             min={0}
                                             max={100}
                                             value={item.discountPercent}
+                                            disabled={!onDiscountChange}
                                             onChange={(e) =>
-                                                onDiscountChange(
+                                                onDiscountChange?.(
                                                     item.id,
                                                     Number(e.target.value)
                                                 )
                                             }
-                                            className="w-14 h-7 text-center text-sm p-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                            className="w-14 h-7 text-center text-sm p-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:opacity-40 disabled:cursor-not-allowed"
                                         />
                                         <span className="text-xs text-muted-foreground">
                                             %

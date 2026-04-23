@@ -12,6 +12,7 @@ import { getPurchaseOrder } from '@/lib/actions/purchase-order';
 import { createGrn } from '@/lib/actions/grn';
 import { toast } from 'sonner';
 import { ArrowLeft, Save, Warehouse as WarehouseIcon } from 'lucide-react';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function CreateGrnPage({ params }: { params: Promise<{ poId: string }> }) {
     const { poId } = use(params);
@@ -101,6 +102,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
     if (!order) return <div className="p-6 text-center text-red-500">Purchase Order not found</div>;
 
     return (
+        <PermissionGuard permissions="erp.procurement.grn.create">
         <div className="p-6 space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center gap-4">
                 {/* <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -211,5 +213,6 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                 </Card>
             </div>
         </div>
+        </PermissionGuard>
     );
 }

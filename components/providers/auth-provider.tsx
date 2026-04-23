@@ -512,7 +512,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // This allows admins to see and access everything
     if (typeof roleName === 'string') {
       const normalized = roleName.toLowerCase().trim();
-      return normalized === "super_admin" || normalized === "admin" || normalized === "super admin";
+      return (
+        normalized === "super_admin" ||
+        normalized === "admin" ||
+        normalized === "super admin" ||
+        normalized === "super-admin"
+      );
     }
 
     return false;

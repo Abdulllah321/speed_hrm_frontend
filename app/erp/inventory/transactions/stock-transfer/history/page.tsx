@@ -34,7 +34,7 @@ export default async function StockTransferHistoryPage() {
         const data = result.data || [];
 
         return (
-            <PermissionGuard permissions={["inventory.read"]}>
+            <PermissionGuard permissions="erp.inventory.stock-transfer.read">
                 <div className="flex-1 space-y-6 p-8 pt-6">
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">

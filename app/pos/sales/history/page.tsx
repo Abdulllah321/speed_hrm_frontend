@@ -31,6 +31,8 @@ import { PrintReceipt } from "@/components/pos/print-receipt";
 import { PrintReturnReceipt } from "@/components/pos/print-return-receipt";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 function fmtCurrency(val: number) {
     return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -197,6 +199,10 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
 
 export default function SalesHistoryPage() {
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canPrint = hasPermission('pos.sales.history.print');
+    const canUpdateTender = hasPermission('pos.sales.history.update-tender');
+    const canResumeHold = hasPermission('pos.hold.resume');
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [rowCount, setRowCount] = useState(0);
@@ -341,7 +347,7 @@ export default function SalesHistoryPage() {
                 return (
                     <div className="flex items-center justify-end gap-1">
                         {/* Resume hold */}
-                        {isHold && (
+                        {isHold && canResumeHold && (
                             <Button variant="ghost" size="icon"
                                 className="h-8 w-8 rounded-full text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                                 title="Continue hold order"
@@ -350,7 +356,7 @@ export default function SalesHistoryPage() {
                             </Button>
                         )}
                         {/* Update tender */}
-                        {canEditTender && (
+                        {canEditTender && canUpdateTender && (
                             <Button variant="ghost" size="icon"
                                 className="h-8 w-8 rounded-full text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30"
                                 title="Update tender / payment"
@@ -366,8 +372,7 @@ export default function SalesHistoryPage() {
                             <Eye className="h-3.5 w-3.5" />
                         </Button>
                         {/* Print */}
-                        {!isHold && (
-                            <>
+                        {!isHold && canPrint && (<>
                             <Button variant="ghost" size="icon"
                                 className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
                                 title="Print receipt"
@@ -518,7 +523,8 @@ export default function SalesHistoryPage() {
                                                 </p>
                                             </div>
                                             <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
-                                                onClick={() => { setShowDetails(false); handleResumeHold(selectedOrder); }}>
+                                                onClick={() => { setShowDetails(false); handleResumeHold(selectedOrder); }}
+                                                disabled={!canResumeHold}>
                                                 <RotateCcw className="h-3.5 w-3.5" /> Continue Order
                                             </Button>
                                         </div>

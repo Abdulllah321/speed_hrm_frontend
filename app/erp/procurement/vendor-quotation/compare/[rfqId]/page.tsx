@@ -11,6 +11,8 @@ import { awardFromRfq } from '@/lib/actions/purchase-order';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function CompareQuotations({ params }: { params: Promise<{ rfqId: string }> }) {
     const { rfqId } = use(params);
@@ -19,6 +21,9 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
     const [awards, setAwards] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canSelect = hasPermission('erp.procurement.vq.select');
+    const canCreatePo = hasPermission('erp.procurement.po.create');
 
     useEffect(() => {
         fetchComparison();
@@ -91,6 +96,7 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
     const allItems = quotations[0]?.rfq?.purchaseRequisition?.items || [];
 
     return (
+        <PermissionGuard permissions="erp.procurement.vq.compare">
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
@@ -221,7 +227,7 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                                 <TableCell className="font-bold">Action</TableCell>
                                 {quotations.map((quotation) => (
                                     <TableCell key={quotation.id} className="text-center">
-                                        {quotation.status === 'SUBMITTED' && (
+                                        {quotation.status === 'SUBMITTED' && canSelect && (
                                             <Button onClick={() => handleSelect(quotation.id)} size="sm">
                                                 Select This Vendor
                                             </Button>
@@ -238,9 +244,11 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                             <TableRow>
                                 <TableCell colSpan={quotations.length + 1}>
                                     <div className="flex justify-end">
-                                        <Button onClick={handleAwardSubmit} disabled={submitting} variant="secondary">
-                                            {submitting ? 'Processing...' : 'Award Selected Items & Create POs'}
-                                        </Button>
+                                        {canCreatePo && (
+                                            <Button onClick={handleAwardSubmit} disabled={submitting} variant="secondary">
+                                                {submitting ? 'Processing...' : 'Award Selected Items & Create POs'}
+                                            </Button>
+                                        )}
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -249,5 +257,6 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                 </CardContent>
             </Card>
         </div>
+        </PermissionGuard>
     );
 }

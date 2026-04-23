@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { PurchaseRequisition } from '@/lib/api';
 import { getPurchaseRequisition, updatePurchaseRequisition } from '@/lib/actions/purchase-requisition';
 import { getItems } from '@/lib/actions/items';
+import { useAuth } from '@/components/providers/auth-provider';
 
 export default function PurchaseRequisitionDetail() {
     const params = useParams();
@@ -17,6 +18,11 @@ export default function PurchaseRequisitionDetail() {
     const [pr, setPr] = useState<PurchaseRequisition | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const { hasPermission } = useAuth();
+
+    const canUpdate = hasPermission('erp.procurement.pr.update');
+    const canSubmit = hasPermission('erp.procurement.pr.submit');
+    const canApprove = hasPermission('erp.procurement.pr.approve');
 
     useEffect(() => {
         if (!id) return;
@@ -74,16 +80,15 @@ export default function PurchaseRequisitionDetail() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => router.back()}>Back</Button>
-                    {pr.status === 'DRAFT' && (
+                    {pr.status === 'DRAFT' && canSubmit && (
                         <Button onClick={() => handleStatusChange('SUBMITTED')}>Submit for Approval</Button>
                     )}
-                    {pr.status === 'SUBMITTED' && (
+                    {pr.status === 'SUBMITTED' && canApprove && (
                         <>
                             <Button variant="destructive" onClick={() => handleStatusChange('REJECTED')}>Reject</Button>
                             <Button onClick={() => handleStatusChange('APPROVED')}>Approve</Button>
                         </>
                     )}
-                    {/* Only show Convert button if APPROVED */}
                     {pr.status === 'APPROVED' && (
                         <Button variant="secondary" disabled>Convert to RFQ (Coming Soon)</Button>
                     )}

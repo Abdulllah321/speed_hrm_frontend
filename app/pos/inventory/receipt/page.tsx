@@ -47,7 +47,7 @@ function getCookie(name: string): string {
 }
 
 export default function StockReceiptPage() {
-    const { user } = useAuth();
+    const { user, hasPermission } = useAuth();
     const router = useRouter();
     const printRef = useRef<HTMLDivElement>(null);
 
@@ -231,7 +231,7 @@ export default function StockReceiptPage() {
                                                 size="sm"
                                                 className="gap-1.5 font-semibold"
                                                 onClick={() => handlePrint(transfer)}
-                                                disabled={printingId === transfer.id}
+                                                disabled={printingId === transfer.id || !hasPermission('pos.inventory.receipt.view')}
                                             >
                                                 <Printer className="h-3.5 w-3.5" />
                                                 Print

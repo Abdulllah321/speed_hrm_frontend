@@ -8,12 +8,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WarehouseLocationManager } from '@/components/inventory/warehouse-location-manager';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function EditWarehousePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
 
     return (
+        <PermissionGuard permissions="erp.inventory.warehouse.update">
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
@@ -54,5 +56,6 @@ export default function EditWarehousePage({ params }: { params: Promise<{ id: st
                 </TabsContent>
             </Tabs>
         </div>
+        </PermissionGuard>
     );
 }

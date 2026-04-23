@@ -13,6 +13,7 @@ import { PurchaseRequisition } from '@/lib/api';
 import { getPurchaseRequisitions } from '@/lib/actions/purchase-requisition';
 import { createRfq } from '@/lib/actions/rfq';
 import { toast } from 'sonner';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 interface FormValues {
     purchaseRequisitionId: string;
@@ -65,6 +66,7 @@ export default function CreateRfq() {
     };
 
     return (
+        <PermissionGuard permissions="erp.procurement.rfq.create">
         <div className="p-6 space-y-6 max-w-4xl mx-auto">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Create RFQ</h1>
@@ -133,5 +135,6 @@ export default function CreateRfq() {
                 </div>
             </form>
         </div>
+        </PermissionGuard>
     );
 }

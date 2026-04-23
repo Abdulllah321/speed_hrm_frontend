@@ -10,10 +10,14 @@ import { Plus, Eye } from 'lucide-react';
 import { PurchaseOrder } from '@/lib/api';
 import { getPurchaseOrders } from '@/lib/actions/purchase-order';
 import { formatCurrency } from '@/lib/utils';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function PurchaseOrderList() {
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
+    const { hasPermission } = useAuth();
+    const canCreate = hasPermission('erp.procurement.po.create');
 
     useEffect(() => {
         fetchOrders();
@@ -32,21 +36,24 @@ export default function PurchaseOrderList() {
     };
 
     return (
+        <PermissionGuard permissions="erp.procurement.po.read">
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Purchase Orders</h1>
-                <div className="flex gap-2">
-                    <Link href="/erp/procurement/purchase-order/create">
-                        <Button variant="secondary">
-                            <Plus className="mr-2 h-4 w-4" /> Create Direct PO
-                        </Button>
-                    </Link>
-                    <Link href="/erp/procurement/purchase-order/pending">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" /> From Quotations
-                        </Button>
-                    </Link>
-                </div>
+                {canCreate && (
+                    <div className="flex gap-2">
+                        <Link href="/erp/procurement/purchase-order/create">
+                            <Button variant="secondary">
+                                <Plus className="mr-2 h-4 w-4" /> Create Direct PO
+                            </Button>
+                        </Link>
+                        <Link href="/erp/procurement/purchase-order/pending">
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" /> From Quotations
+                            </Button>
+                        </Link>
+                    </div>
+                )}
             </div>
 
             <Card>
@@ -104,5 +111,6 @@ export default function PurchaseOrderList() {
                 </CardContent>
             </Card>
         </div>
+        </PermissionGuard>
     );
 }

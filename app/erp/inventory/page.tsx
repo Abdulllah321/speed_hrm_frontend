@@ -7,6 +7,8 @@ import { stockLedgerApi, StockLevel } from "@/lib/api";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export default function InventoryDashboard() {
     const [stats, setStats] = useState({
@@ -17,6 +19,7 @@ export default function InventoryDashboard() {
         valuation: 0
     });
     const [loading, setLoading] = useState(true);
+    const { hasPermission } = useAuth();
 
     useEffect(() => {
         loadDashboardData();
@@ -52,6 +55,7 @@ export default function InventoryDashboard() {
     };
 
     return (
+        <PermissionGuard permissions="erp.inventory.view">
         <div className="flex-1 space-y-4 p-8 pt-6">
             <div className="flex items-center justify-between space-y-2">
                 <div>
@@ -59,18 +63,22 @@ export default function InventoryDashboard() {
                     <p className="text-muted-foreground text-sm">Real-time distribution across Bulk and Shops.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" asChild>
-                        <Link href="/erp/inventory/explorer">
-                            <LayoutGrid className="h-4 w-4 mr-2" />
-                            Explorer
-                        </Link>
-                    </Button>
-                    <Button asChild>
-                        <Link href="/erp/inventory/transactions/stock-transfer">
-                            <ArrowRightLeft className="h-4 w-4 mr-2" />
-                            Transfer Stock
-                        </Link>
-                    </Button>
+                    {hasPermission("erp.inventory.explorer.view") && (
+                        <Button variant="outline" asChild>
+                            <Link href="/erp/inventory/explorer">
+                                <LayoutGrid className="h-4 w-4 mr-2" />
+                                Explorer
+                            </Link>
+                        </Button>
+                    )}
+                    {hasPermission("erp.inventory.transfer.create") && (
+                        <Button asChild>
+                            <Link href="/erp/inventory/transactions/stock-transfer">
+                                <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                Transfer Stock
+                            </Link>
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -166,15 +174,18 @@ export default function InventoryDashboard() {
                             <p className="text-sm text-muted-foreground">
                                 Real-time monitoring of shop locations to prevent OOS (Out of Stock) situations.
                             </p>
-                            <Button className="w-full" variant="outline" asChild>
-                                <Link href="/erp/inventory/explorer">
-                                    View Detailed Matrix
-                                </Link>
-                            </Button>
+                            {hasPermission("erp.inventory.explorer.view") && (
+                                <Button className="w-full" variant="outline" asChild>
+                                    <Link href="/erp/inventory/explorer">
+                                        View Detailed Matrix
+                                    </Link>
+                                </Button>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
             </div>
         </div>
+        </PermissionGuard>
     );
 }

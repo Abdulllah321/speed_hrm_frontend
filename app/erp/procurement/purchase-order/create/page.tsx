@@ -24,6 +24,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Autocomplete } from '@/components/ui/autocomplete';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PoBulkUploadModal } from '@/components/purchase-order/po-bulk-upload-modal';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 interface OrderItem {
     itemId: string;
@@ -314,6 +315,7 @@ export default function CreateDirectPurchaseOrder() {
     };
 
     return (
+        <PermissionGuard permissions="erp.procurement.po.create">
         <div className="p-6 space-y-6 max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
@@ -649,5 +651,6 @@ export default function CreateDirectPurchaseOrder() {
                 onSuccess={() => router.push('/erp/procurement/purchase-order')}
             />
         </div>
+        </PermissionGuard>
     );
 }

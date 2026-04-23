@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface PosSettings {
@@ -165,6 +166,7 @@ export default function TerminalSettingsPage() {
     }
 
     return (
+        <PermissionGuard permissions="pos.terminal.settings">
         <div className="min-h-screen font-inter">
             {/* HEADER */}
             <div className="max-w-3xl mx-auto pt-6 px-4 mb-6">
@@ -330,5 +332,6 @@ export default function TerminalSettingsPage() {
 
             </div>
         </div>
+        </PermissionGuard>
     );
 }

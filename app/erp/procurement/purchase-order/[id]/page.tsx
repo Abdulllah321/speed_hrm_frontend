@@ -11,12 +11,16 @@ import { PurchaseOrder } from '@/lib/api';
 import { getPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
 import { Printer, ArrowLeft, Building2 } from 'lucide-react';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const [order, setOrder] = useState<PurchaseOrder | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canCreateGrn = hasPermission('erp.procurement.grn.create');
 
     useEffect(() => {
         fetchOrder();
@@ -46,8 +50,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
 
     return (
         <>
-            <style jsx global>{`
-                @media print {
+            <style jsx global>{`                @media print {
                     /* Hide everything in the body by default */
                     body {
                         visibility: hidden;
@@ -94,7 +97,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={() => router.back()}>Back</Button>
-                        {(order.status === 'OPEN' || order.status === 'PARTIALLY_RECEIVED') && (
+                        {(order.status === 'OPEN' || order.status === 'PARTIALLY_RECEIVED') && canCreateGrn && (
                             <Button variant="default" className="bg-blue-600 hover:bg-blue-700" asChild>
                                 <Link href={`/erp/procurement/grn/create/${order.id}`}>
                                     Create GRN

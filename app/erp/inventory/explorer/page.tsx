@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import jsPDF from 'jspdf';
 import * as htmlToImage from 'html-to-image';
 import { InventoryReportTemplate } from './inventory-report-template';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function InventoryExplorerPage() {
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -21,6 +23,7 @@ export default function InventoryExplorerPage() {
     const [loading, setLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const downloadRef = useRef<HTMLDivElement>(null);
+    const { hasPermission } = useAuth();
 
     useEffect(() => {
         loadWarehouses();
@@ -132,6 +135,7 @@ export default function InventoryExplorerPage() {
     };
 
     return (
+        <PermissionGuard permissions="erp.inventory.explorer.view">
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
@@ -155,14 +159,16 @@ export default function InventoryExplorerPage() {
                     <Button variant="outline" size="icon" onClick={() => loadData(selectedWh)}>
                         <RefreshCcw className="h-4 w-4" />
                     </Button>
-                    <Button 
-                        variant="outline" 
-                        onClick={handleExportPDF} 
-                        disabled={isExporting || loading || matrixData.length === 0}
-                    >
-                        {isExporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-                        Export PDF
-                    </Button>
+                    {hasPermission("erp.inventory.explorer.export") && (
+                        <Button
+                            variant="outline"
+                            onClick={handleExportPDF}
+                            disabled={isExporting || loading || matrixData.length === 0}
+                        >
+                            {isExporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                            Export PDF
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -260,5 +266,6 @@ export default function InventoryExplorerPage() {
                 </div>
             </div>
         </div>
+        </PermissionGuard>
     );
 }

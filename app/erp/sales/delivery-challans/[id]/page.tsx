@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/table";
 import { deliveryChallanApi } from "@/lib/api";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 import { formatCurrency } from "@/lib/utils";
 
 export default function DeliveryChallanViewPage() {
@@ -23,6 +25,10 @@ export default function DeliveryChallanViewPage() {
   const router = useRouter();
   const [challan, setChallan] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const { hasPermission } = useAuth();
+  const canDeliver = hasPermission('erp.sales.dc.deliver');
+  const canCancel = hasPermission('erp.sales.dc.cancel');
+  const canCreateInvoice = hasPermission('erp.sales.invoice.create');
 
   useEffect(() => {
     if (params.id) {
@@ -119,6 +125,7 @@ export default function DeliveryChallanViewPage() {
   }
 
   return (
+    <PermissionGuard permissions="erp.sales.dc.read">
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -153,23 +160,27 @@ export default function DeliveryChallanViewPage() {
           
           {challan.status === "PENDING" && (
             <>
-              <Button size="sm" onClick={handleMarkDelivered}>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Mark Delivered
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleCancel}
-                className="text-red-600 hover:text-red-700"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
+              {canDeliver && (
+                <Button size="sm" onClick={handleMarkDelivered}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Mark Delivered
+                </Button>
+              )}
+              {canCancel && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleCancel}
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Cancel
+                </Button>
+              )}
             </>
           )}
           
-          {challan.status === "DELIVERED" && (
+          {challan.status === "DELIVERED" && canCreateInvoice && (
             <Button 
               size="sm"
               onClick={() => router.push(`/erp/sales/invoices/create?challanId=${challan.id}`)}
@@ -328,5 +339,6 @@ export default function DeliveryChallanViewPage() {
         )}
       </div>
     </div>
+    </PermissionGuard>
   );
 }

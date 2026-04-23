@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth-provider";
+
 import { formatCurrency } from "@/lib/utils";
 
 function fmtDate(d: string) {
@@ -45,6 +47,10 @@ interface Voucher {
 
 export default function PosVouchersPage() {
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canCreate = hasPermission('pos.voucher.create');
+    const canVoid = hasPermission('pos.voucher.void');
+    const canDelete = hasPermission('pos.voucher.delete');
     const [vouchers, setVouchers] = useState<Voucher[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -140,7 +146,7 @@ export default function PosVouchersPage() {
                         <Button variant="ghost" size="icon" onClick={fetchVouchers} className="rounded-full text-muted-foreground">
                             <RefreshCw className="w-4 h-4" />
                         </Button>
-                        <Button onClick={() => setShowIssueModal(true)} className="rounded-full px-6 gap-2">
+                        <Button onClick={() => setShowIssueModal(true)} className="rounded-full px-6 gap-2" disabled={!canCreate}>
                             <Plus className="w-4 h-4" /> Issue Voucher
                         </Button>
                     </div>
@@ -156,7 +162,7 @@ export default function PosVouchersPage() {
                         <div className="text-center py-12">
                             <Ticket className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
                             <p className="text-muted-foreground">No vouchers issued yet.</p>
-                            <Button onClick={() => setShowIssueModal(true)} className="rounded-full px-8 mt-4">
+                            <Button onClick={() => setShowIssueModal(true)} className="rounded-full px-8 mt-4" disabled={!canCreate}>
                                 Issue First Voucher
                             </Button>
                         </div>
@@ -218,7 +224,7 @@ export default function PosVouchersPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center justify-end gap-1">
-                                                        {v.isActive && !isRedeemed && (
+                                                        {v.isActive && !isRedeemed && canVoid && (
                                                             <Button variant="ghost" size="icon"
                                                                 className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive"
                                                                 title="Void voucher"
@@ -226,7 +232,7 @@ export default function PosVouchersPage() {
                                                                 <XCircle className="w-3.5 h-3.5" />
                                                             </Button>
                                                         )}
-                                                        {!isRedeemed && (
+                                                        {!isRedeemed && canDelete && (
                                                             <Button variant="ghost" size="icon"
                                                                 className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive"
                                                                 title="Delete voucher"

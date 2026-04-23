@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { vendorQuotationApi, VendorQuotation } from '@/lib/api';
 import { createPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 import { formatCurrency } from '@/lib/utils';
 
 export default function VendorQuotationDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +19,10 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
     const [loading, setLoading] = useState(true);
     const [creatingPo, setCreatingPo] = useState(false);
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canSubmit = hasPermission('erp.procurement.vq.submit');
+    const canSelect = hasPermission('erp.procurement.vq.select');
+    const canCreatePo = hasPermission('erp.procurement.po.create');
 
     useEffect(() => {
         fetchQuotation();
@@ -80,6 +86,7 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
     if (!quotation) return <div className="p-0">Not found</div>;
 
     return (
+        <PermissionGuard permissions="erp.procurement.vq.read">
         <div className="p-6 space-y-6 max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
                 <div>
@@ -90,13 +97,13 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => router.back()}>Back</Button>
-                    {quotation.status === 'DRAFT' && (
+                    {quotation.status === 'DRAFT' && canSubmit && (
                         <Button onClick={handleSubmit} disabled={loading}>Submit Quotation</Button>
                     )}
-                    {quotation.status === 'SUBMITTED' && (
+                    {quotation.status === 'SUBMITTED' && canSelect && (
                         <Button onClick={handleSelect} disabled={loading}>Select This Quotation</Button>
                     )}
-                    {quotation.status === 'SELECTED' && (
+                    {quotation.status === 'SELECTED' && canCreatePo && (
                         <Button onClick={handleGeneratePo} disabled={creatingPo}>
                             {creatingPo ? 'Generating...' : 'Generate Purchase Order'}
                         </Button>
@@ -200,5 +207,6 @@ export default function VendorQuotationDetail({ params }: { params: Promise<{ id
                 </Card>
             )}
         </div>
+        </PermissionGuard>
     );
 }

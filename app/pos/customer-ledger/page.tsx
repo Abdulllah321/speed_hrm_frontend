@@ -17,6 +17,8 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Search, BookOpen, RefreshCw, Eye, Phone, Mail } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface CustomerLedger {
     id: string;
@@ -47,9 +49,6 @@ export default function CustomerLedgerPage() {
     const [customers, setCustomers] = useState<CustomerLedger[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [selectedCustomer, setSelectedCustomer] = useState<CustomerLedger | null>(null);
-    const [detailedTransactions, setDetailedTransactions] = useState<any>(null);
-    const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
     const loadCustomers = async () => {
         setIsLoading(true);

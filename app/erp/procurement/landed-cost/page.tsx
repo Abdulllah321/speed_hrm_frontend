@@ -12,10 +12,12 @@ import { landedCostChargeTypeApi, LandedCostChargeType } from '@/lib/api';
 import { getGrns } from '@/lib/actions/grn';
 import { postLandedCost } from '@/lib/actions/landed-cost';
 import { Eye, Check, Plus } from 'lucide-react';
- import { toast } from 'sonner';
+import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
  
  export default function LandedCostPage() {
    const router = useRouter();
@@ -27,6 +29,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
   const [chargeTypes, setChargeTypes] = useState<LandedCostChargeType[]>([]);
   const [openForGrn, setOpenForGrn] = useState<string | null>(null);
   const [charges, setCharges] = useState<{ accountId: string; amount: number }[]>([]);
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission('erp.procurement.landed-cost.create');
  
    useEffect(() => {
      loadGrns();
@@ -111,6 +115,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
   };
  
    return (
+     <PermissionGuard permissions="erp.procurement.landed-cost.read">
      <div className="p-6 space-y-6">
        <div className="flex justify-between items-center">
          <div>
@@ -130,8 +135,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
            </Select>
            <Button variant="outline" asChild>
              <Link href="/erp/procurement/landed-cost/setup">Setup</Link>
-           </Button>
-         </div>
+           </Button>         </div>
        </div>
  
        <Card>
@@ -200,9 +204,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
                          <Button
                            size="sm"
                            onClick={() => {
-                             // Always go to setup page now - no more local redirect
                              router.push(`/erp/procurement/landed-cost/setup?grnId=${grn.id}`);
                            }}
+                           disabled={!canCreate}
                          >
                            <Check className="h-4 w-4 mr-2" />
                            Post Landed Cost
@@ -216,9 +220,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
            )}
          </CardContent>
        </Card>
-      
-     
      </div>
+     </PermissionGuard>
    );
  }
- 

@@ -32,6 +32,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { deliveryChallanApi, salesOrderApi } from "@/lib/api";
 import { toast } from "sonner";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 import { formatCurrency } from "@/lib/utils";
 
 // Sample data - Remove this dummy data
@@ -51,7 +53,10 @@ export default function DeliveryChallansPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [createLoading, setCreateLoading] = useState(false); // Add loading state for create button
+  const [createLoading, setCreateLoading] = useState(false);
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission('erp.sales.dc.create');
+  const canCancel = hasPermission('erp.sales.dc.cancel');
 
   // Load data on component mount
   useEffect(() => {
@@ -236,6 +241,7 @@ export default function DeliveryChallansPage() {
   };
 
   return (
+    <PermissionGuard permissions="erp.sales.dc.read">
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <div>
@@ -244,10 +250,12 @@ export default function DeliveryChallansPage() {
             Manage goods dispatch and delivery records
           </p>
         </div>
-        <Button onClick={() => router.push("/erp/sales/delivery-challans/create")}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Delivery Challan
-        </Button>
+        {canCreate && (
+          <Button onClick={() => router.push("/erp/sales/delivery-challans/create")}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Delivery Challan
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
@@ -345,7 +353,7 @@ export default function DeliveryChallansPage() {
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
-                      {challan.status === "PENDING" && (
+                      {challan.status === "PENDING" && canCancel && (
                         <Button 
                           variant="ghost" 
                           size="sm" 
@@ -370,5 +378,6 @@ export default function DeliveryChallansPage() {
         </Table>
       </div>
     </div>
+    </PermissionGuard>
   );
 }

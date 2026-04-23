@@ -21,11 +21,11 @@ import {
     Loader2,
     CreditCard,
     Banknote,
-    FileWarning,
 } from "lucide-react";
 import Link from "next/link";
 import { authFetch } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -95,6 +95,7 @@ interface SessionData {
     isDrawerOpen: boolean;
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 function timeAgo(dateStr: string) {
     const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -220,6 +221,47 @@ function SkeletonCard() {
     );
 }
 
+/** CSS-only bar chart — no external deps */
+function HourlySalesChart({ data }: { data: HourlyBucket[] }) {
+    const maxSales = Math.max(...data.map((d) => d.sales), 1);
+    // Show every 3rd label to avoid crowding
+    const currentHour = new Date().getHours();
+
+    return (
+        <div className="flex items-end gap-0.5 h-28 w-full">
+            {data.map((bucket) => {
+                const heightPct = (bucket.sales / maxSales) * 100;
+                const isCurrent = bucket.hour === currentHour;
+                return (
+                    <div
+                        key={bucket.hour}
+                        className="flex-1 flex flex-col items-center gap-1 group relative"
+                        title={`${bucket.label}: ${formatCurrency(bucket.sales)} (${bucket.orders} orders)`}
+                    >
+                        <div className="w-full flex items-end" style={{ height: "88px" }}>
+                            <div
+                                className={`w-full rounded-t transition-all ${
+                                    isCurrent
+                                        ? "bg-blue-500"
+                                        : bucket.sales > 0
+                                        ? "bg-blue-300 dark:bg-blue-700"
+                                        : "bg-muted"
+                                }`}
+                                style={{ height: `${Math.max(heightPct, 4)}%` }}
+                            />
+                        </div>
+                        {bucket.hour % 4 === 0 && (
+                            <span className="text-[9px] text-muted-foreground leading-none">
+                                {bucket.label}
+                            </span>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function PosPage() {
@@ -258,50 +300,50 @@ export default function PosPage() {
     const cashier = dashboard?.cashier;
     const recentOrders = (dashboard?.recentOrders ?? []).slice(0, 5);
     const topItems = dashboard?.topItems ?? [];
+    const hourlySales = dashboard?.hourlySales ?? [];
     const claims = dashboard?.claims;
 
-    const statCards = stats
-        ? [
-              {
-                  title: "Today's Sales",
-                  value: formatCurrency(stats.todaySales),
-                  icon: DollarSign,
-                  color: "from-green-500 to-emerald-600",
-              },
-              {
-                  title: "Transactions",
-                  value: String(stats.transactions),
-                  icon: Receipt,
-                  color: "from-blue-500 to-cyan-600",
-              },
-              {
-                  title: "Customers Served",
-                  value: String(stats.customersServed),
-                  icon: Users,
-                  color: "from-purple-500 to-pink-600",
-              },
-              {
-                  title: "Avg. Transaction",
-                  value: formatCurrency(stats.avgTransaction),
-                  icon: TrendingUp,
-                  color: "from-orange-500 to-red-600",
-              },
-              {
-                  title: "Cash Sales",
-                  value: formatCurrency(stats.cashSales),
-                  icon: Banknote,
-                  color: "from-teal-500 to-green-600",
-              },
-              {
-                  title: "Card Sales",
-                  value: formatCurrency(stats.cardSales),
-                  icon: CreditCard,
-                  color: "from-violet-500 to-purple-600",
-              },
-          ]
-        : [];
+    const statCards = [
+        {
+            title: "Today's Sales",
+            value: formatCurrency(stats?.todaySales ?? 0),
+            icon: DollarSign,
+            color: "from-green-500 to-emerald-600",
+        },
+        // {
+        //     title: "Transactions",
+        //     value: String(stats?.transactions ?? 0),
+        //     icon: Receipt,
+        //     color: "from-blue-500 to-cyan-600",
+        // },
+        {
+            title: "Customers Served",
+            value: String(stats?.customersServed ?? 0),
+            icon: Users,
+            color: "from-purple-500 to-pink-600",
+        },
+        {
+            title: "Avg. Transaction",
+            value: formatCurrency(stats?.avgTransaction ?? 0),
+            icon: TrendingUp,
+            color: "from-orange-500 to-red-600",
+        },
+        {
+            title: "Cash Sales",
+            value: formatCurrency(stats?.cashSales ?? 0),
+            icon: Banknote,
+            color: "from-teal-500 to-green-600",
+        },
+        {
+            title: "Card Sales",
+            value: formatCurrency(stats?.cardSales ?? 0),
+            icon: CreditCard,
+            color: "from-violet-500 to-purple-600",
+        },
+    ];
 
     return (
+        <PermissionGuard permissions="pos.dashboard.view">
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -328,59 +370,77 @@ export default function PosPage() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                 {loading
-                    ? Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)
+                    ? Array.from({ length: statCards.length }).map((_, i) => <SkeletonCard key={i} />)
                     : statCards.map((s) => <StatCard key={s.title} {...s} />)}
             </div>
 
+            {/* Hourly Sales Chart */}
+            <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 className="text-lg font-semibold">Hourly Sales</h2>
+                        <p className="text-xs text-muted-foreground">Sales activity throughout today</p>
+                    </div>
+                    <BarChart3 className="h-5 w-5 text-muted-foreground" />
+                </div>
+                {loading ? (
+                    <div className="h-28 bg-muted rounded animate-pulse" />
+                ) : hourlySales.length > 0 ? (
+                    <HourlySalesChart data={hourlySales} />
+                ) : (
+                    <div className="h-28 flex items-center justify-center text-sm text-muted-foreground">
+                        No hourly data available.
+                    </div>
+                )}
+            </Card>
+
             {/* Cashier Stats */}
-            {(loading || cashier) && (
-                <Card className="p-6 border-2 border-dashed">
-                    <h2 className="text-lg font-semibold mb-4">My Sales Today</h2>
-                    {loading ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-16 bg-muted rounded" />
+            <Card className="p-6 border-2 border-dashed">
+                <h2 className="text-lg font-semibold mb-4">My Sales Today</h2>
+                {loading ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
+                        {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="h-16 bg-muted rounded" />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {[
+                                { label: "My Sales", value: formatCurrency(cashier?.sales ?? 0), icon: DollarSign, color: "text-green-600" },
+                                { label: "My Transactions", value: String(cashier?.transactions ?? 0), icon: Receipt, color: "text-blue-600" },
+                                { label: "Avg. Sale", value: formatCurrency(cashier?.avgTransaction ?? 0), icon: TrendingUp, color: "text-purple-600" },
+                                { label: "Cash / Card", value: `${formatCurrency(cashier?.cashSales ?? 0)} / ${formatCurrency(cashier?.cardSales ?? 0)}`, icon: CreditCard, color: "text-orange-600" },
+                            ].map((s) => (
+                                <div key={s.label} className="flex flex-col gap-1 p-4 rounded-lg bg-muted/40">
+                                    <div className="flex items-center gap-2">
+                                        <s.icon className={`h-4 w-4 ${s.color}`} />
+                                        <span className="text-xs text-muted-foreground">{s.label}</span>
+                                    </div>
+                                    <span className="text-lg font-bold">{s.value}</span>
+                                </div>
                             ))}
                         </div>
-                    ) : cashier ? (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {[
-                                    { label: "My Sales", value: formatCurrency(cashier.sales ?? 0), icon: DollarSign, color: "text-green-600" },
-                                    { label: "My Transactions", value: String(cashier.transactions ?? 0), icon: Receipt, color: "text-blue-600" },
-                                    { label: "Avg. Sale", value: formatCurrency(cashier.avgTransaction ?? 0), icon: TrendingUp, color: "text-purple-600" },
-                                    { label: "Cash / Card", value: `${formatCurrency(cashier.cashSales ?? 0)} / ${formatCurrency(cashier.cardSales ?? 0)}`, icon: CreditCard, color: "text-orange-600" },
-                                ].map((s) => (
-                                    <div key={s.label} className="flex flex-col gap-1 p-4 rounded-lg bg-muted/40">
-                                        <div className="flex items-center gap-2">
-                                            <s.icon className={`h-4 w-4 ${s.color}`} />
-                                            <span className="text-xs text-muted-foreground">{s.label}</span>
+                        {cashier && cashier.recentOrders.length > 0 && (
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground mb-2">My recent orders</p>
+                                <div className="divide-y rounded-lg border">
+                                    {cashier.recentOrders.map((order) => (
+                                        <div key={order.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                                            <span className="font-medium">{order.orderNumber}</span>
+                                            <span className="text-muted-foreground">{order.items?.length ?? 0} items</span>
+                                            <span className="font-semibold">{formatCurrency(Number(order.grandTotal))}</span>
+                                            <span className="text-xs text-muted-foreground">{timeAgo(order.createdAt)}</span>
                                         </div>
-                                        <span className="text-lg font-bold">{s.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            {cashier.recentOrders.length > 0 && (
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground mb-2">My recent orders</p>
-                                    <div className="divide-y rounded-lg border">
-                                        {cashier.recentOrders.map((order) => (
-                                            <div key={order.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                                                <span className="font-medium">{order.orderNumber}</span>
-                                                <span className="text-muted-foreground">{order.items?.length ?? 0} items</span>
-                                                <span className="font-semibold">{formatCurrency(Number(order.grandTotal))}</span>
-                                                <span className="text-xs text-muted-foreground">{timeAgo(order.createdAt)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                                    ))}
                                 </div>
-                            )}
-                        </div>
-                    ) : null}
-                </Card>
-            )}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Card>
 
             {/* Claims + Top Items row */}
             <div className="grid gap-4 lg:grid-cols-2">
@@ -401,22 +461,24 @@ export default function PosPage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 gap-3">
-                            {[
-                                { label: "Submitted", value: claims?.submitted ?? 0, color: "text-blue-600 bg-blue-50" },
-                                { label: "Under Review", value: claims?.underReview ?? 0, color: "text-yellow-600 bg-yellow-50" },
-                                { label: "Approved", value: claims?.approved ?? 0, color: "text-green-600 bg-green-50" },
-                                { label: "Rejected", value: claims?.rejected ?? 0, color: "text-red-600 bg-red-50" },
-                            ].map((c) => (
-                                <div key={c.label} className={`flex items-center justify-between px-4 py-3 rounded-lg ${c.color}`}>
-                                    <span className="text-sm font-medium">{c.label}</span>
-                                    <span className="text-xl font-bold">{c.value}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {!loading && claims && claims.total === 0 && (
-                        <p className="text-sm text-muted-foreground text-center mt-4">No claims on record.</p>
+                        <>
+                            <div className="grid grid-cols-2 gap-3">
+                                {[
+                                    { label: "Submitted", value: claims?.submitted ?? 0, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/30" },
+                                    { label: "Under Review", value: claims?.underReview ?? 0, color: "text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30" },
+                                    { label: "Approved", value: claims?.approved ?? 0, color: "text-green-600 bg-green-50 dark:bg-green-950/30" },
+                                    { label: "Rejected", value: claims?.rejected ?? 0, color: "text-red-600 bg-red-50 dark:bg-red-950/30" },
+                                ].map((c) => (
+                                    <div key={c.label} className={`flex items-center justify-between px-4 py-3 rounded-lg ${c.color}`}>
+                                        <span className="text-sm font-medium">{c.label}</span>
+                                        <span className="text-xl font-bold">{c.value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            {claims?.total === 0 && (
+                                <p className="text-xs text-muted-foreground text-center mt-3">No claims submitted yet today.</p>
+                            )}
+                        </>
                     )}
                 </Card>
 
@@ -430,7 +492,11 @@ export default function PosPage() {
                             ))}
                         </div>
                     ) : topItems.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-6">No sales yet today.</p>
+                        <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                            <Package className="h-8 w-8 opacity-30" />
+                            <p className="text-sm">No items sold yet today.</p>
+                            <p className="text-xs">Top sellers will appear here once sales begin.</p>
+                        </div>
                     ) : (
                         <div className="space-y-3">
                             {topItems.map((item, idx) => (
@@ -512,8 +578,9 @@ export default function PosPage() {
                             ))}
                         </div>
                     ) : recentOrders.length === 0 ? (
-                        <div className="p-8 text-center text-muted-foreground text-sm">
-                            No orders today yet.
+                        <div className="p-8 text-center space-y-2">
+                            <Receipt className="h-8 w-8 mx-auto text-muted-foreground opacity-30" />
+                            <p className="text-sm text-muted-foreground">No orders today yet.</p>
                         </div>
                     ) : (
                         <div className="divide-y">
@@ -595,5 +662,6 @@ export default function PosPage() {
                 </Card>
             )}
         </div>
+        </PermissionGuard>
     );
 }

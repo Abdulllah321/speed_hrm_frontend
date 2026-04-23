@@ -13,6 +13,8 @@ import { Plus, Eye, Receipt, Search, Check } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function GrnListPage() {
     const [grns, setGrns] = useState<Grn[]>([]);
@@ -20,6 +22,8 @@ export default function GrnListPage() {
     const [loading, setLoading] = useState(true);
     const [poModalOpen, setPoModalOpen] = useState(false);
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canCreate = hasPermission('erp.procurement.grn.create');
 
     useEffect(() => {
         loadGrns();
@@ -46,12 +50,14 @@ export default function GrnListPage() {
     };
 
     return (
+        <PermissionGuard permissions="erp.procurement.grn.read">
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Goods Receipt Notes</h1>
                     <p className="text-muted-foreground">Manage and track received goods and stock entry.</p>
                 </div>
+                {canCreate && (
                 <Dialog open={poModalOpen} onOpenChange={setPoModalOpen}>
                     <DialogTrigger asChild>
                         <Button>
@@ -95,6 +101,7 @@ export default function GrnListPage() {
                         </div>
                     </DialogContent>
                 </Dialog>
+                )}
             </div>
 
             <Card>
@@ -172,5 +179,6 @@ export default function GrnListPage() {
                 </CardContent>
             </Card>
         </div>
+        </PermissionGuard>
     );
 }

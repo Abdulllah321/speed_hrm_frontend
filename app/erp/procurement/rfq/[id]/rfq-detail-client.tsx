@@ -22,9 +22,11 @@ interface Supplier {
 interface RfqDetailClientProps {
     rfq: RequestForQuotation;
     suppliers: Supplier[];
+    canAddVendors: boolean;
+    canSend: boolean;
 }
 
-export function RfqDetailClient({ rfq, suppliers }: RfqDetailClientProps) {
+export function RfqDetailClient({ rfq, suppliers, canAddVendors, canSend }: RfqDetailClientProps) {
     const [loading, setLoading] = useState(false);
     const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,6 +87,7 @@ export function RfqDetailClient({ rfq, suppliers }: RfqDetailClientProps) {
 
     return (
         <div className="flex gap-2">
+            {canAddVendors && (
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
                     <Button variant="secondary">Add Vendors</Button>
@@ -146,9 +149,12 @@ export function RfqDetailClient({ rfq, suppliers }: RfqDetailClientProps) {
                     </div>
                 </DialogContent>
             </Dialog>
-            <Button onClick={handleMarkAsSent} disabled={loading || rfq.vendors.length === 0}>
-                {loading ? 'Sending...' : 'Mark as Sent'}
-            </Button>
+            )}
+            {canSend && (
+                <Button onClick={handleMarkAsSent} disabled={loading || rfq.vendors.length === 0}>
+                    {loading ? 'Sending...' : 'Mark as Sent'}
+                </Button>
+            )}
         </div>
     );
 }

@@ -8,6 +8,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PauseCircle, Clock, RotateCcw, Truck, RefreshCw, X } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 function timeLeft(expiresAt: string) {
     const diff = new Date(expiresAt).getTime() - Date.now();
@@ -19,6 +21,8 @@ function timeLeft(expiresAt: string) {
 
 export default function HoldOrdersPage() {
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canResume = hasPermission('pos.hold.resume');
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [cancellingId, setCancellingId] = useState<string | null>(null);
@@ -98,6 +102,7 @@ export default function HoldOrdersPage() {
     };
 
     return (
+        <PermissionGuard permissions="pos.hold.view">
         <div className="space-y-6 mt-4">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -166,7 +171,7 @@ export default function HoldOrdersPage() {
                                         variant="outline" 
                                         className="h-8 text-xs" 
                                         onClick={() => handleCancel(order.id, order.orderNumber)}
-                                        disabled={cancellingId === order.id}
+                                        disabled={cancellingId === order.id || !canResume}
                                     >
                                         <X className="h-3 w-3 mr-1" />
                                         Cancel
@@ -175,7 +180,7 @@ export default function HoldOrdersPage() {
                                         size="sm" 
                                         className="h-8 text-xs" 
                                         onClick={() => handleResume(order.id)}
-                                        disabled={cancellingId === order.id}
+                                        disabled={cancellingId === order.id || !canResume}
                                     >
                                         <RotateCcw className="h-3 w-3 mr-1" />
                                         Resume
@@ -187,5 +192,6 @@ export default function HoldOrdersPage() {
                 </div>
             )}
         </div>
+        </PermissionGuard>
     );
 }

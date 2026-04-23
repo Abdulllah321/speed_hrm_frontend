@@ -398,10 +398,10 @@ export function AppSidebar({
     // Auto-switch environment if current one is not accessible
     if (environment === "HR" && !hasHRAccess && hasERPAccess) {
       setEnvironment("ERP");
-      router.push("/erp");
+      window.location.href = "/erp";
     } else if (environment === "ERP" && !hasERPAccess && hasHRAccess) {
       setEnvironment("HR");
-      router.push("/hr");
+      window.location.href = "/hr";
     }
   }, [hasHRAccess, hasERPAccess, environment, setEnvironment, router]);
 

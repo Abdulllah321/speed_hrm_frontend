@@ -21,6 +21,7 @@ import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function StockTransferPage() {
     const router = useRouter();
@@ -298,7 +299,8 @@ export default function StockTransferPage() {
     }));
 
     return (
-        <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
+        <PermissionGuard permissions="erp.inventory.transfer.create">
+            <div className="p-6 space-y-6 max-w-[1400px] mx-auto">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div>
@@ -912,6 +914,7 @@ export default function StockTransferPage() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+            </div>
+        </PermissionGuard>
     );
 }

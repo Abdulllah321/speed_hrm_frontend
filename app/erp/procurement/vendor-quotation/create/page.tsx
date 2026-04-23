@@ -16,6 +16,7 @@ import { createVendorQuotation } from '@/lib/actions/vendor-quotations';
 import { getVendors } from '@/lib/actions/procurement';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 interface Supplier {
     id: string;
@@ -150,6 +151,7 @@ export default function CreateVendorQuotation() {
     const availableVendors = selectedRfq?.vendors.map(v => v.vendor) || [];
 
     return (
+        <PermissionGuard permissions="erp.procurement.vq.create">
         <div className="p-6 space-y-6 max-w-6xl mx-auto">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Create Vendor Quotation</h1>
@@ -271,6 +273,7 @@ export default function CreateVendorQuotation() {
                 </div>
             </form>
         </div>
+        </PermissionGuard>
     );
 }
 

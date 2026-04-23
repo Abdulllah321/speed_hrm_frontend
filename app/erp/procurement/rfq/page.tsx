@@ -9,11 +9,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
 import { rfqApi, RequestForQuotation } from '@/lib/api';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function RfqList() {
     const [rfqs, setRfqs] = useState<RequestForQuotation[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canCreate = hasPermission('erp.procurement.rfq.create');
 
     useEffect(() => {
         fetchRfqs();
@@ -32,14 +36,17 @@ export default function RfqList() {
     };
 
     return (
+        <PermissionGuard permissions="erp.procurement.rfq.read">
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Request For Quotations (RFQ)</h1>
-                <Link href="/erp/procurement/rfq/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Create RFQ
-                    </Button>
-                </Link>
+                {canCreate && (
+                    <Link href="/erp/procurement/rfq/create">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> Create RFQ
+                        </Button>
+                    </Link>
+                )}
             </div>
 
             <Card>
@@ -95,5 +102,6 @@ export default function RfqList() {
                 </CardContent>
             </Card>
         </div>
+        </PermissionGuard>
     );
 }

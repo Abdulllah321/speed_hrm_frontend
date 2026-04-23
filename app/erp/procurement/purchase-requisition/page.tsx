@@ -6,19 +6,28 @@ import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
 import { getPurchaseRequisitions } from '@/lib/actions/purchase-requisition';
 import { PurchaseRequisition } from '@/lib/api';
+import { hasPermission } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { AccessDenied } from '@/components/auth/access-denied';
 
 export default async function PurchaseRequisitionList() {
+    const canRead = await hasPermission('erp.procurement.pr.read');
+    if (!canRead) <AccessDenied/>
+
+    const canCreate = await hasPermission('erp.procurement.pr.create');
     const prs = await getPurchaseRequisitions();
 
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Purchase Requisitions</h1>
-                <Link href="/erp/procurement/purchase-requisition/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Create PR
-                    </Button>
-                </Link>
+                {canCreate && (
+                    <Link href="/erp/procurement/purchase-requisition/create">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> Create PR
+                        </Button>
+                    </Link>
+                )}
             </div>
 
             <Card>
