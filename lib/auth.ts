@@ -86,7 +86,7 @@ export async function getCurrentUser(): Promise<User | null> {
       const allCookies = cookieStore.getAll();
       const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-      const res = await fetch(`${API_BASE}/auth/permissions`, {
+      const res = await fetch(`${API_BASE}/auth/permissions/lightweight`, {
         headers: {
           Cookie: cookieHeader,
         },
