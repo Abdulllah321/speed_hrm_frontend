@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { CheckIcon, ChevronDownIcon, Loader2 } from "lucide-react"
-import { useInView } from "react-intersection-observer"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -114,10 +113,7 @@ export function InfiniteAutocomplete({
   const [isLoading, setIsLoading] = React.useState(false)
   const [isFetchingMore, setIsFetchingMore] = React.useState(false)
 
-  const { ref: loadMoreRef, inView } = useInView({
-    threshold: 0,
-    rootMargin: "100px",
-  })
+  const loadMoreRef = React.useRef<HTMLDivElement>(null)
 
   // Initial load or search change
   React.useEffect(() => {
@@ -144,32 +140,49 @@ export function InfiniteAutocomplete({
 
   // Load more when scrolling
   React.useEffect(() => {
-    if (inView && hasMore && !isLoading && !isFetchingMore && open) {
-      const loadMore = async () => {
-        setIsFetchingMore(true)
-        try {
-          const nextPage = page + 1
-          const result = await fetchData({ page: nextPage, limit: 50, search: debouncedSearch })
-          if (result.status && result.data) {
-            const newOptions = result.data.map(mapOption)
-            // Filter out duplicates just in case
-            setItems(prev => {
-              const existingValues = new Set(prev.map(i => i.value))
-              const uniqueNew = newOptions.filter(i => !existingValues.has(i.value))
-              return [...prev, ...uniqueNew]
-            })
-            setPage(nextPage)
-            setHasMore(nextPage < (result.meta?.totalPages ?? 1))
+    if (!open || !hasMore || isLoading || isFetchingMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          const loadMore = async () => {
+            setIsFetchingMore(true)
+            try {
+              const nextPage = page + 1
+              const result = await fetchData({ page: nextPage, limit: 50, search: debouncedSearch })
+              if (result.status && result.data) {
+                const newOptions = result.data.map(mapOption)
+                setItems(prev => {
+                  const existingValues = new Set(prev.map(i => i.value))
+                  const uniqueNew = newOptions.filter(i => !existingValues.has(i.value))
+                  return [...prev, ...uniqueNew]
+                })
+                setPage(nextPage)
+                setHasMore(nextPage < (result.meta?.totalPages ?? 1))
+              }
+            } catch (error) {
+              console.error("Failed to fetch more items:", error)
+            } finally {
+              setIsFetchingMore(false)
+            }
           }
-        } catch (error) {
-          console.error("Failed to fetch more items:", error)
-        } finally {
-          setIsFetchingMore(false)
+          loadMore()
         }
-      }
-      loadMore()
+      },
+      { threshold: 0, rootMargin: "100px" }
+    )
+
+    const currentRef = loadMoreRef.current
+    if (currentRef) {
+      observer.observe(currentRef)
     }
-  }, [inView, hasMore, isLoading, isFetchingMore, page, open, debouncedSearch, fetchData, mapOption])
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef)
+      }
+    }
+  }, [open, hasMore, isLoading, isFetchingMore, page, debouncedSearch, fetchData, mapOption])
 
   const selectedOption = items.find((option) => option.value === value)
   const displayLabel = selectedOption?.label || initialLabel || value || placeholder

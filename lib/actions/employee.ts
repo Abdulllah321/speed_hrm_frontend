@@ -308,20 +308,36 @@ export interface EmployeeForAttendance {
   } | null;
 }
 // Get employees for attendance management (lightweight, only required fields)
-export async function getEmployeesForAttendance(filters?: { departmentId?: string; subDepartmentId?: string }): Promise<{ status: boolean; data?: EmployeeForAttendance[]; message?: string }> {
+export async function getEmployeesForAttendance(filters?: {
+  departmentId?: string;
+  subDepartmentId?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<{
+  status: boolean;
+  data?: EmployeeForAttendance[];
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  message?: string;
+}> {
   try {
     const params = new URLSearchParams();
-    if (filters?.departmentId) {
-      params.append('departmentId', filters.departmentId);
-    }
-    if (filters?.subDepartmentId) {
-      params.append('subDepartmentId', filters.subDepartmentId);
-    }
+    if (filters?.departmentId) params.append('departmentId', filters.departmentId);
+    if (filters?.subDepartmentId) params.append('subDepartmentId', filters.subDepartmentId);
+    if (filters?.page) params.append('page', filters.page.toString());
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.search) params.append('search', filters.search);
+
     const url = `/employees/for-attendance${params.toString() ? `?${params.toString()}` : ''}`;
-    const res = await authFetch(url, {
-    });
+    const res = await authFetch(url, {});
+
     if (!res.ok) {
-      const errorData = res.data;;
+      const errorData = res.data;
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
     return res.data;

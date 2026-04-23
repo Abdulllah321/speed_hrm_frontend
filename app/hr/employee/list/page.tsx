@@ -60,6 +60,11 @@ export default function EmployeeListPage() {
   const [bulkUploadId, setBulkUploadId] = useState<string | null>(null);
   const [impersonatePendingId, setImpersonatePendingId] = useState<string | null>(null);
 
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 });
+  const [search, setSearch] = useState("");
+  const [totalRows, setTotalRows] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
     null
@@ -240,11 +245,21 @@ export default function EmployeeListPage() {
     },
   ];
 
-  const refreshEmployees = async () => {
+  const refreshEmployees = async (params?: { page?: number; limit?: number; search?: string }) => {
     try {
-      const employeesRes = await getEmployees();
+      setLoading(true);
+      const employeesRes = await getEmployees({
+        page: params?.page ?? pagination.pageIndex + 1,
+        limit: params?.limit ?? pagination.pageSize,
+        search: params?.search ?? search,
+      });
+
       if (employeesRes.status && employeesRes.data) {
         setEmployees(employeesRes.data);
+        if (employeesRes.meta) {
+          setTotalRows(employeesRes.meta.total);
+          setTotalPages(employeesRes.meta.totalPages);
+        }
   
         // Fetch cities only for unique provinces found in employee data
         const uniqueProvinces = [...new Set(employeesRes.data.map(e => e.province).filter(Boolean))];
@@ -269,8 +284,14 @@ export default function EmployeeListPage() {
       }
     } catch (error) {
       console.error("Error refreshing employees:", error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    refreshEmployees();
+  }, [pagination.pageIndex, pagination.pageSize, search]);
 
   useEffect(() => {
     if (hasFetchedRef.current) return;
@@ -278,9 +299,6 @@ export default function EmployeeListPage() {
 
     const fetchAllData = async () => {
       try {
-        setLoading(true);
-        await refreshEmployees();
-
         getDepartments().then(res => {
           if (res.status) setDepartments(res.data || []);
         });
@@ -291,8 +309,6 @@ export default function EmployeeListPage() {
       } catch (error) {
         console.error("Error fetching data:", error);
         toast.error("Failed to fetch records");
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -426,6 +442,12 @@ export default function EmployeeListPage() {
               { key: "employeeId", label: "Employee ID" },
               { key: "contactNumber", label: "Contact Number" },
             ]}
+            manualPagination={true}
+            rowCount={totalRows}
+            pageCount={totalPages}
+            onPaginationChange={setPagination}
+            onSearchChange={setSearch}
+            isLoading={loading}
           />
         )}
 
