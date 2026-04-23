@@ -65,15 +65,72 @@ function isTokenExpiringSoon(token: string | null | undefined): boolean {
 
 export async function getCurrentUser(): Promise<User | null> {
   if (typeof window === 'undefined') {
+    // Server-side: call the lightweight /auth/permissions endpoint instead of
+    // relying on the user cookie (which may have stale/missing permissions).
     const { cookies } = await import("next/headers");
     const cookieStore = await cookies();
-    const userCookie = cookieStore.get("user")?.value;
 
-    if (userCookie) {
-      try {
-        return JSON.parse(userCookie);
-      } catch { }
+    // We still need the user cookie for basic identity (id, name, email, role)
+    const userCookie = cookieStore.get("user")?.value;
+    if (!userCookie) return null;
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(userCookie);
+    } catch {
+      return null;
     }
+
+    // Fetch fresh permissions from the lightweight endpoint
+    try {
+      const allCookies = cookieStore.getAll();
+      const cookieHeader = allCookies.map(c => `${c.name}=${c.value}`).join('; ');
+
+      const res = await fetch(`${API_BASE}/auth/permissions`, {
+        headers: {
+          Cookie: cookieHeader,
+        },
+        cache: "no-store",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.status && data.data) {
+          return {
+            id: parsed.id,
+            email: parsed.email,
+            firstName: parsed.firstName,
+            lastName: parsed.lastName,
+            role: data.data.role ?? parsed.role?.name ?? parsed.role ?? null,
+            permissions: data.data.permissions ?? [],
+          };
+        }
+      }
+    } catch {
+      // Fall through to cookie-based fallback below
+    }
+
+    // Fallback: derive permissions from cookie if the API call failed
+    let permissions: string[] = parsed.permissions ?? [];
+    if (
+      !permissions.length &&
+      parsed.role?.permissions &&
+      Array.isArray(parsed.role.permissions) &&
+      parsed.role.permissions.length > 0
+    ) {
+      permissions = parsed.role.permissions
+        .map((p: any) => p.permission?.name || p.name || (typeof p === 'string' ? p : null))
+        .filter(Boolean);
+    }
+
+    return {
+      id: parsed.id,
+      email: parsed.email,
+      firstName: parsed.firstName,
+      lastName: parsed.lastName,
+      role: parsed.role?.name ?? parsed.role ?? null,
+      permissions,
+    };
   }
 
   const accessToken = await getAccessToken();
