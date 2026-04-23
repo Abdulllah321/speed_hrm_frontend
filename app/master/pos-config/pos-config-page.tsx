@@ -365,6 +365,7 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
             partnerName: fd.get("partnerName") as string,
             code: fd.get("code") as string,
             discountPercent: Number(fd.get("discountPercent")),
+            maxDiscount: fd.get("maxDiscount") ? Number(fd.get("maxDiscount")) : undefined,
             description: (fd.get("description") as string) || undefined,
             isActive: true,
             locationIds: allianceLocationIds,
@@ -458,6 +459,7 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
         { accessorKey: "partnerName", header: "Partner Name", cell: ({ row }) => <span className="font-medium">{row.original.partnerName}</span> },
         { accessorKey: "code", header: "Code", cell: ({ row }) => <Badge variant="outline">{row.original.code}</Badge> },
         { accessorKey: "discountPercent", header: "Discount %", cell: ({ row }) => <div className="text-right">{row.original.discountPercent}%</div> },
+        { accessorKey: "maxDiscount", header: "Max Cap", cell: ({ row }) => <div className="text-right">{row.original.maxDiscount ? row.original.maxDiscount.toLocaleString() : "—"}</div> },
         { accessorKey: "description", header: "Description", cell: ({ row }) => <span className="text-sm">{row.original.description || "—"}</span> },
         {
             id: "locations", header: "Locations", cell: ({ row }) => {
@@ -773,10 +775,14 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
                                     <Input id="alliance-code" name="code" defaultValue={editingAlliance?.code} required disabled={isPending} className="uppercase" />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="alliance-pct">Discount %</Label>
                                     <Input id="alliance-pct" name="discountPercent" type="number" step="0.01" min="0" max="100" defaultValue={editingAlliance?.discountPercent} required disabled={isPending} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="alliance-cap">Max Discount Cap</Label>
+                                    <Input id="alliance-cap" name="maxDiscount" type="number" step="0.01" min="0" defaultValue={editingAlliance?.maxDiscount ?? ""} disabled={isPending} placeholder="No cap" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="alliance-desc">Description</Label>

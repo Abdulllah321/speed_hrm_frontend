@@ -7,11 +7,19 @@ import { getRfq } from '@/lib/actions/rfq';
 import { getVendors } from '@/lib/actions/procurement';
 import { RfqDetailClient } from './rfq-detail-client';
 import { RfqVendorTable } from './rfq-vendor-table';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { RequestForQuotation, PurchaseRequisitionItem } from '@/lib/api';
+import { hasPermission } from '@/lib/auth';
+import { AccessDenied } from '@/components/auth/access-denied';
 
 export default async function RfqDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
+
+    const canRead = await hasPermission('erp.procurement.rfq.read');
+    if (!canRead) <AccessDenied/>;
+
+    const canAddVendors = await hasPermission('erp.procurement.rfq.add-vendors');
+    const canSend = await hasPermission('erp.procurement.rfq.send');
 
     // Fetch data in parallel
     const [rfqResult, suppliersResult] = await Promise.all([
@@ -36,15 +44,10 @@ export default async function RfqDetail({ params }: { params: Promise<{ id: stri
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    {rfq.status !== 'DRAFT' && (
-                        <Link href={`/erp/procurement/vendor-quotation/compare/${rfq.id}`}>
-                            <Button variant="secondary">Compare Quotations</Button>
-                        </Link>
-                    )}
                     <Link href="/erp/procurement/rfq">
                         <Button variant="outline">Back</Button>
                     </Link>
-                    <RfqDetailClient rfq={rfq} suppliers={suppliers} />
+                    <RfqDetailClient rfq={rfq} suppliers={suppliers} canAddVendors={canAddVendors} canSend={canSend} />
                 </div>
             </div>
 

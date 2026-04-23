@@ -14,6 +14,7 @@
  import type { Grn } from '@/lib/api';
  import { getGrn } from '@/lib/actions/grn';
  import { postLandedCost } from '@/lib/actions/landed-cost';
+ import { PermissionGuard } from '@/components/auth/permission-guard';
  
  export default function LandedCostPostPage() {
    const params = useParams();
@@ -87,6 +88,7 @@
    };
  
    return (
+     <PermissionGuard permissions="erp.procurement.landed-cost.create">
      <div className="p-6 space-y-6">
        <div className="flex justify-between items-center">
          <div>
@@ -240,5 +242,6 @@
          </>
        )}
      </div>
+     </PermissionGuard>
    );
  }

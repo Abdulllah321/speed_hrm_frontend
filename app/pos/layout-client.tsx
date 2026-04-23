@@ -9,6 +9,7 @@ import { getRoutePermissions } from "@/lib/route-permissions";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PosSwitchUser } from "@/components/pos/pos-switch-user";
 import { LocationGuard } from "@/components/pos/location-guard";
+import { PageTransition } from "@/components/layouts/page-transition";
 
 export default function PosLayoutClient({
     children,
@@ -21,14 +22,9 @@ export default function PosLayoutClient({
     const { isAdmin, posNeedsUserAuth } = useAuth();
 
     const vt = (content: React.ReactNode) => (
-        <ViewTransition
-            key={pathname}
-            enter={{ "nav-forward": "nav-forward", "nav-back": "nav-back", default: "none" }}
-            exit={{ "nav-forward": "nav-forward", "nav-back": "nav-back", default: "none" }}
-            default="none"
-        >
+        <PageTransition>
             {content}
-        </ViewTransition>
+        </PageTransition>
     );
 
     // Global keyboard shortcut: Ctrl + N → New Sale

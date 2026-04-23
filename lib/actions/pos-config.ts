@@ -45,6 +45,7 @@ export interface AllianceDiscount {
     partnerName: string;
     code: string;
     discountPercent: number;
+    maxDiscount?: number;
     description?: string;
     isActive: boolean;
     createdAt: string;
@@ -195,6 +196,7 @@ export async function createAlliance(data: {
     partnerName: string;
     code: string;
     discountPercent: number;
+    maxDiscount?: number;
     description?: string;
     isActive?: boolean;
     locationIds: string[];

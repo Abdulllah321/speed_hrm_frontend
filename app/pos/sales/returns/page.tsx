@@ -18,9 +18,22 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
+import { useAuth } from "@/components/providers/auth-provider";
 import { formatCurrency } from "@/lib/utils";
+import { PrintReturnReceipt, type ReturnReceiptLine } from "@/components/pos/print-return-receipt";
 
-function paidPerUnit(oi: any) { return Number(oi.lineTotal) / Number(oi.quantity); }
+function paidPerUnit(oi: any, orderGrandTotal: number, orderLineTotalsSum: number) {
+  // Distribute grandTotal proportionally based on each item's lineTotal share
+  // This correctly handles global discounts (coupon/promo applied at order level)
+  const qty = Number(oi.quantity);
+  if (qty <= 0) {
+    console.warn(`Invalid quantity for item ${oi.itemId}:`, qty);
+    return 0;
+  }
+  const lineTotal = Number(oi.lineTotal);
+  const itemShare = orderLineTotalsSum > 0 ? (lineTotal / orderLineTotalsSum) * orderGrandTotal : lineTotal;
+  return itemShare / qty;
+}
 
 const REASON_CODES = [
     { value: "DEFECTIVE", label: "Defective / Damaged" },
@@ -36,16 +49,21 @@ type Mode = "return" | "exchange" | "claim";
 interface ReturnLine {
     orderId: string; orderNumber: string;
     orderItemId: string; itemId: string;
-    name: string; sku: string;
+    name: string; sku: string; brand?: string;
     orderedQty: number; returnQty: number;
     paidPerUnit: number; originalUnitPrice: number; discountPercent: number;
+    discountAmount?: number; taxAmount?: number; taxPercent?: number;
 }
 
 interface NewLine { itemId: string; name: string; sku: string; quantity: number; unitPrice: number; discountPct: number; }
-interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; createdAt: string; items: any[]; }
+interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; createdAt: string; items: any[]; coupon?: string; promo?: string; alliance?: string; }
 
 export default function ReturnsPage() {
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canReturn = hasPermission('pos.return.create');
+    const canExchange = hasPermission('pos.exchange.create');
+    const canClaim = hasPermission('pos.claim.create');
 
     // ── Order search ──────────────────────────────────────────────────
     const [orderSearch, setOrderSearch] = useState("");
@@ -72,6 +90,14 @@ export default function ReturnsPage() {
     const [memoDiscType, setMemoDiscType] = useState<"pct" | "flat">("pct");
     const [memoDiscValue, setMemoDiscValue] = useState<number>(0);
 
+    // ── Return receipt dialog ─────────────────────────────────────────
+    const [returnReceipt, setReturnReceipt] = useState<{
+        returnRef: string;
+        refundTotal: number;
+        returnedAt: string;
+        itemRefundDetails?: { orderItemId: string; itemId: string; quantity: number; originalPaidPerUnit: number; refundPerUnit: number; priceAdjusted: boolean }[];
+    } | null>(null);
+
     // ── Add an order ──────────────────────────────────────────────────
     const handleAddOrder = useCallback(async () => {
         if (!orderSearch.trim()) return;
@@ -90,18 +116,39 @@ export default function ReturnsPage() {
                     id: found.id, orderNumber: found.orderNumber,
                     grandTotal: Number(found.grandTotal), createdAt: found.createdAt,
                     items: found.items || [],
+                    coupon: found.coupon?.code || undefined,
+                    promo: found.promo?.code || undefined,
+                    alliance: found.alliance?.code || undefined,
                 }]);
 
                 // Append return lines for this order (qty = 0 by default)
-                const lines: ReturnLine[] = (found.items || []).map((oi: any) => ({
-                    orderId: found.id, orderNumber: found.orderNumber,
-                    orderItemId: oi.id, itemId: oi.itemId,
-                    name: oi.item?.description || oi.itemId, sku: oi.item?.sku || "",
-                    orderedQty: Number(oi.quantity), returnQty: 0,
-                    paidPerUnit: paidPerUnit(oi),
-                    originalUnitPrice: Number(oi.unitPrice),
-                    discountPercent: Number(oi.discountPercent ?? 0),
-                }));
+                const orderItems = found.items || [];
+                const lineTotalsSum = orderItems.reduce((s: number, oi: any) => s + Number(oi.lineTotal), 0);
+                const orderGrandTotal = Number(found.grandTotal);
+
+                const lines: ReturnLine[] = orderItems
+                    .filter((oi: any) => {
+                        const alreadyReturned = Number(oi.returnedQty ?? 0);
+                        return Number(oi.quantity) - alreadyReturned > 0; // skip fully returned items
+                    })
+                    .map((oi: any) => {
+                    const alreadyReturned = Number(oi.returnedQty ?? 0);
+                    const remainingQty = Number(oi.quantity) - alreadyReturned;
+                    return {
+                        orderId: found.id, orderNumber: found.orderNumber,
+                        orderItemId: oi.id, itemId: oi.itemId,
+                        name: oi.item?.description || oi.itemId,
+                        sku: oi.item?.sku || "",
+                        brand: oi.item?.brand || oi.item?.brandName || "",
+                        orderedQty: remainingQty, returnQty: 0,
+                        paidPerUnit: paidPerUnit(oi, orderGrandTotal, lineTotalsSum),
+                        originalUnitPrice: Number(oi.unitPrice),
+                        discountPercent: Number(oi.discountPercent ?? 0),
+                        discountAmount: Number(oi.discountAmount ?? 0),
+                        taxAmount: Number(oi.taxAmount ?? 0),
+                        taxPercent: Number(oi.taxPercent ?? 0),
+                    };
+                });
                 setReturnLines(prev => [...prev, ...lines]);
                 setOrderSearch("");
             } else { toast.error(res.data?.message || "Order not found"); }
@@ -260,18 +307,30 @@ export default function ReturnsPage() {
             }
 
             if (res?.ok && res.data?.status) {
-                if (mode === "return") toast.success(`Return processed. Refund: ${formatCurrency(res.data.refundAmount ?? refundTotal)}`);
-                else if (mode === "exchange") {
+                if (mode === "return") {
+                    toast.success(`Return processed. Refund: ${formatCurrency(res.data.refundAmount ?? refundTotal)}`);
+                    // Show return receipt instead of redirecting
+                    setReturnReceipt({
+                        returnRef: res.data.returnRef || res.data.data?.returnNumber || `RET-${Date.now()}`,
+                        refundTotal: res.data.refundAmount ?? refundTotal,
+                        returnedAt: new Date().toISOString(),
+                        itemRefundDetails: res.data.itemRefundDetails,
+                    });
+                } else if (mode === "exchange") {
                     const d = res.data.data?.difference ?? diff;
                     toast.success(d > 0 ? `Exchange done. Customer pays ${formatCurrency(d)} extra` : d < 0 ? `Exchange done. Refund ${formatCurrency(Math.abs(d))}` : "Exchange done. No balance");
-                } else toast.success(res.data.message || "Claim submitted");
-                router.push("/pos/sales/history");
+                    router.push("/pos/sales/history");
+                } else {
+                    toast.success(res.data.message || "Claim submitted");
+                    router.push("/pos/sales/history");
+                }
             } else { toast.error(res?.data?.message || "Operation failed"); }
         } catch { toast.error("Operation failed. Check connection."); }
         finally { setIsSubmitting(false); }
     }, [loadedOrders, selectedLines, newLines, mode, notes, reasonCode, isMultiOrder, refundTotal, diff, router]);
 
     return (
+        <>
         <div className="flex flex-col gap-5 p-6 px-10 max-w-5xl mx-auto">
 
             {/* Header */}
@@ -336,9 +395,9 @@ export default function ReturnsPage() {
                     {/* Mode tabs — hide Claim for multi-order */}
                     <Tabs value={mode} onValueChange={(v: any) => setMode(v)}>
                         <TabsList className={`grid w-full max-w-md ${isMultiOrder ? "grid-cols-2" : "grid-cols-3"}`}>
-                            <TabsTrigger value="return" className="gap-1.5"><RotateCcw className="h-3.5 w-3.5" />Return</TabsTrigger>
-                            <TabsTrigger value="exchange" className="gap-1.5"><ArrowLeftRight className="h-3.5 w-3.5" />Exchange</TabsTrigger>
-                            {!isMultiOrder && <TabsTrigger value="claim" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Claim</TabsTrigger>}
+                            {canReturn && <TabsTrigger value="return" className="gap-1.5"><RotateCcw className="h-3.5 w-3.5" />Return</TabsTrigger>}
+                            {canExchange && <TabsTrigger value="exchange" className="gap-1.5"><ArrowLeftRight className="h-3.5 w-3.5" />Exchange</TabsTrigger>}
+                            {!isMultiOrder && canClaim && <TabsTrigger value="claim" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Claim</TabsTrigger>}
                         </TabsList>
 
                         {isMultiOrder && mode === "claim" && setMode("return") as any}
@@ -365,11 +424,12 @@ export default function ReturnsPage() {
                                             {isMultiOrder && <TableHead className="text-xs uppercase text-muted-foreground">Receipt</TableHead>}
                                             <TableHead className="text-xs uppercase">Item</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Ordered</TableHead>
-                                            <TableHead className="text-right text-xs uppercase">List Price</TableHead>
+                                            <TableHead className="text-right text-xs uppercase">Unit Price</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Disc %</TableHead>
+                                            <TableHead className="text-right text-xs uppercase">Tax %</TableHead>
                                             <TableHead className="text-right text-xs uppercase text-emerald-700">Paid/Unit</TableHead>
                                             <TableHead className="text-center text-xs uppercase">Return Qty</TableHead>
-                                            <TableHead className="text-right text-xs uppercase text-destructive">Amount</TableHead>
+                                            <TableHead className="text-right text-xs uppercase text-destructive">Refund</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -391,11 +451,16 @@ export default function ReturnsPage() {
                                                         ? <span className="text-destructive font-medium">{line.discountPercent}%</span>
                                                         : <span className="text-muted-foreground">—</span>}
                                                 </TableCell>
+                                                <TableCell className="text-right text-sm">
+                                                    {line.taxPercent && line.taxPercent > 0
+                                                        ? <span className="text-muted-foreground font-medium">{line.taxPercent}%</span>
+                                                        : <span className="text-muted-foreground">—</span>}
+                                                </TableCell>
                                                 <TableCell className="text-right font-bold text-sm font-mono text-emerald-700">
                                                     {formatCurrency(line.paidPerUnit)}
-                                                    {line.discountPercent > 0 && (
-                                                        <div className="text-[10px] text-muted-foreground font-normal">(was {formatCurrency(line.originalUnitPrice)})</div>
-                                                    )}
+                                                    <div className="text-[10px] text-muted-foreground font-normal">
+                                                        (incl. tax & disc)
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center justify-center gap-1.5">
@@ -629,7 +694,14 @@ export default function ReturnsPage() {
                                                     : mode === "claim" ? "bg-amber-600 hover:bg-amber-700"
                                                         : "bg-destructive hover:bg-destructive/90")}
                                             onClick={handleSubmit}
-                                            disabled={isSubmitting || selectedLines.length === 0 || (mode === "exchange" && newLines.length === 0)}>
+                                            disabled={
+                                                isSubmitting ||
+                                                selectedLines.length === 0 ||
+                                                (mode === "exchange" && newLines.length === 0) ||
+                                                (mode === "return" && !canReturn) ||
+                                                (mode === "exchange" && !canExchange) ||
+                                                (mode === "claim" && !canClaim)
+                                            }>
                                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" />
                                                 : mode === "return" ? <RotateCcw className="h-4 w-4" />
                                                     : mode === "exchange" ? <ArrowLeftRight className="h-4 w-4" />
@@ -647,5 +719,52 @@ export default function ReturnsPage() {
                 </>
             )}
         </div>
+
+            {/* ── Return Receipt Dialog ─────────────────────────────────── */}
+            {returnReceipt && (
+                <PrintReturnReceipt
+                    returnRef={returnReceipt.returnRef}
+                    originalOrders={loadedOrders.map(o => ({ orderNumber: o.orderNumber, grandTotal: o.grandTotal }))}
+                    returnedLines={selectedLines.map(l => {
+                        const detail = returnReceipt.itemRefundDetails?.find((d: any) => d.orderItemId === l.orderItemId);
+                        const refundPerUnit = detail ? detail.refundPerUnit : l.paidPerUnit;
+                        return {
+                            name: l.name,
+                            sku: l.sku,
+                            brand: l.brand,
+                            returnQty: l.returnQty,
+                            paidPerUnit: l.paidPerUnit,
+                            refundPerUnit,
+                            refundAmount: refundPerUnit * l.returnQty,
+                            priceAdjusted: detail?.priceAdjusted ?? false,
+                            originalPaidPerUnit: detail?.originalPaidPerUnit ?? l.paidPerUnit,
+                            couponDeduction: detail?.couponDeduction ?? 0,
+                            orderNumber: l.orderNumber,
+                            unitPrice: detail?.unitPrice ?? l.originalUnitPrice,
+                            discountPercent: detail?.discountPercent ?? l.discountPercent,
+                            discountAmount: detail?.discountAmount ?? l.discountAmount,
+                            taxAmount: detail?.taxAmount ?? l.taxAmount,
+                            taxPercent: detail?.taxPercent ?? l.taxPercent,
+                        };
+                    })}
+                    refundTotal={returnReceipt.refundTotal}
+                    notes={notes || undefined}
+                    returnedAt={returnReceipt.returnedAt}
+                    discountNotes={loadedOrders
+                        .filter(o => o.coupon || o.promo || o.alliance)
+                        .map(o => {
+                            const parts = [];
+                            if (o.coupon) parts.push(`Coupon: ${o.coupon}`);
+                            if (o.promo) parts.push(`Promo: ${o.promo}`);
+                            if (o.alliance) parts.push(`Alliance: ${o.alliance}`);
+                            return `${o.orderNumber} — ${parts.join(', ')}`;
+                        })}
+                    onClose={() => {
+                        setReturnReceipt(null);
+                        router.push("/pos/sales/history");
+                    }}
+                />
+            )}
+        </>
     );
 }

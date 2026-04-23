@@ -17,6 +17,7 @@ import { AdminVerificationDialog } from "@/components/auth/admin-verification-di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Key, Loader2, Monitor, Plus, Power, PowerOff, ShieldAlert, X } from "lucide-react";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface ManagePosModalProps {
     open: boolean;
@@ -46,6 +47,10 @@ export function ManagePosModal({
     const [newPin, setNewPin] = useState("");
     const [newName, setNewName] = useState("");
     const [newTerminalCode, setNewTerminalCode] = useState("");
+
+    const { hasPermission } = useAuth();
+    const canCreate = hasPermission("master.pos.create");
+    const canUpdate = hasPermission("master.pos.update");
 
     const fetchPos = async () => {
         setIsLoading(true);
@@ -136,15 +141,17 @@ export function ManagePosModal({
                                 <Monitor className="h-5 w-5" />
                                 Manage POS: {locationName}
                             </div>
-                            <Button
-                                size="sm"
-                                variant={showAddForm ? "ghost" : "default"}
-                                className="h-8 gap-1 transition-all"
-                                onClick={() => setShowAddForm(!showAddForm)}
-                            >
-                                {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                {showAddForm ? "Cancel" : "Add Terminal"}
-                            </Button>
+                            {canCreate && (
+                                <Button
+                                    size="sm"
+                                    variant={showAddForm ? "ghost" : "default"}
+                                    className="h-8 gap-1 transition-all"
+                                    onClick={() => setShowAddForm(!showAddForm)}
+                                >
+                                    {showAddForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                                    {showAddForm ? "Cancel" : "Add Terminal"}
+                                </Button>
+                            )}
                         </DialogTitle>
                         <DialogDescription>
                             Oversee POS terminals for this location. Restricted actions require admin verification.
@@ -224,6 +231,8 @@ export function ManagePosModal({
                                         </div>
 
                                         <div className="flex items-center gap-2">
+                                            {canUpdate && (
+                                            <>
                                             <div className="flex flex-col gap-2">
                                                 {pendingAction?.type === 'pin' && pendingAction.id === pos.id ? (
                                                     <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2">
@@ -278,6 +287,8 @@ export function ManagePosModal({
                                                     </>
                                                 )}
                                             </Button>
+                                            </>
+                                            )}
                                         </div>
                                     </div>
                                 ))}

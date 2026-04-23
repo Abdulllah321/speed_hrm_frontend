@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface GroupedItem {
     itemId: string;
@@ -254,6 +255,7 @@ export default function InventoryPage() {
     );
 
     return (
+        <PermissionGuard permissions="erp.inventory.warehouse.inventory.view">
         <div className="flex-1 space-y-4 p-8 pt-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-3xl font-bold tracking-tight">Inventory List</h2>
@@ -409,5 +411,6 @@ export default function InventoryPage() {
 
             <StockBreakdownSheet item={selectedItem} onClose={() => setSelectedItem(null)} />
         </div>
+        </PermissionGuard>
     );
 }

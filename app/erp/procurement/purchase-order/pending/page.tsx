@@ -11,6 +11,7 @@ import { FileText, ArrowLeft, Loader2 } from 'lucide-react';
 import { VendorQuotation } from '@/lib/api';
 import { getPendingQuotations, createPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function PendingPurchaseOrders() {
     const router = useRouter();
@@ -42,8 +43,8 @@ export default function PendingPurchaseOrders() {
                 vendorQuotationId: quotationId,
                 notes: 'Generated from Pending POs page'
             });
-            toast.success(`Purchase Order {po.poNumber} created successfully`);
-            router.push(`/erp/procurement/purchase-order/{po.id}`);
+            toast.success(`Purchase Order ${po.poNumber} created successfully`);
+            router.push(`/erp/procurement/purchase-order/${po.id}`);
         } catch (error: any) {
             console.error('Failed to create PO:', error);
             toast.error(error.message || 'Failed to create Purchase Order');
@@ -53,6 +54,7 @@ export default function PendingPurchaseOrders() {
     };
 
     return (
+        <PermissionGuard permissions="erp.procurement.po.create">
         <div className="p-6 space-y-6">
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -141,5 +143,6 @@ export default function PendingPurchaseOrders() {
                 </CardContent>
             </Card>
         </div>
+        </PermissionGuard>
     );
 }

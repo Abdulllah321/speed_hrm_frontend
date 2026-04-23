@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -12,6 +13,8 @@ import { ArrowLeft, Edit, Package } from "lucide-react";
 import Link from "next/link";
 import { getItemById } from "@/lib/actions/items";
 import { format } from "date-fns";
+import { hasPermission } from "@/lib/auth";
+import { AccessDenied } from "@/components/auth/access-denied";
 
 interface PageProps {
     params: Promise<{ id: string }>;
@@ -19,6 +22,10 @@ interface PageProps {
 
 export default async function ViewItemPage({ params }: PageProps) {
     const { id: itemId } = await params;
+
+    const canRead = await hasPermission("erp.item.read");
+    if (!canRead) <AccessDenied/>;
+
     const result = await getItemById(itemId);
 
     if (!result || !result.status || !result.data) {
@@ -65,8 +72,7 @@ export default async function ViewItemPage({ params }: PageProps) {
                     <Button>
                         <Edit className="mr-2 h-4 w-4" /> Edit Item
                     </Button>
-                </Link>
-            </div>
+                </Link>            </div>
 
             <Card className="border-none shadow-none">
                 <CardHeader>

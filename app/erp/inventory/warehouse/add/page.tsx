@@ -23,12 +23,19 @@ import {
   SheetDescription,
   SheetFooter,
 } from "@/components/ui/sheet";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 export default function AddWarehousePage() {
   const router = useRouter();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const { hasPermission } = useAuth();
+
+  const canCreate = hasPermission("erp.inventory.warehouse.create");
+  const canUpdate = hasPermission("erp.inventory.warehouse.update");
+  const canDelete = hasPermission("erp.inventory.warehouse.delete");
 
   useEffect(() => {
     loadWarehouses();
@@ -122,6 +129,7 @@ export default function AddWarehousePage() {
   );
 
   return (
+    <PermissionGuard permissions="erp.inventory.warehouse.view">
     <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -133,36 +141,40 @@ export default function AddWarehousePage() {
           </p>
         </div>
 
-        <Button
-          onClick={() => setShowForm(true)}
-          className="font-bold shadow-md"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Warehouse
-        </Button>
+        {canCreate && (
+          <Button
+            onClick={() => setShowForm(true)}
+            className="font-bold shadow-md"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Warehouse
+          </Button>
+        )}
       </div>
 
-      <Sheet open={showForm} onOpenChange={setShowForm}>
-        <SheetContent
-          side="bottom"
-          className="sm:max-w-full lg:max-w-3xl mx-auto rounded-t-xl overflow-y-auto max-h-[90vh]"
-        >
-          <SheetHeader className="mb-6">
-            <SheetTitle className="text-2xl flex items-center gap-2">
-              <Building2 className="h-6 w-6 text-primary" />
-              Register New Warehouse
-            </SheetTitle>
-            <SheetDescription>
-              Enter the details for the new storage location.
-            </SheetDescription>
-          </SheetHeader>
+      {canCreate && (
+        <Sheet open={showForm} onOpenChange={setShowForm}>
+          <SheetContent
+            side="bottom"
+            className="sm:max-w-full lg:max-w-3xl mx-auto rounded-t-xl overflow-y-auto max-h-[90vh]"
+          >
+            <SheetHeader className="mb-6">
+              <SheetTitle className="text-2xl flex items-center gap-2">
+                <Building2 className="h-6 w-6 text-primary" />
+                Register New Warehouse
+              </SheetTitle>
+              <SheetDescription>
+                Enter the details for the new storage location.
+              </SheetDescription>
+            </SheetHeader>
 
-          <WarehouseForm
-            onSuccess={handleSuccess}
-            onCancel={() => setShowForm(false)}
-          />
-        </SheetContent>
-      </Sheet>
+            <WarehouseForm
+              onSuccess={handleSuccess}
+              onCancel={() => setShowForm(false)}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
 
       <div className="grid grid-cols-1 gap-6">
         <DataTable
@@ -177,10 +189,13 @@ export default function AddWarehousePage() {
           onRowEdit={(w) =>
             router.push(`/erp/inventory/warehouse/edit/${w.id}`)
           }
-          onRowDelete={handleDelete}
+          onRowDelete={canDelete ? handleDelete : undefined}
+          canBulkEdit={canUpdate}
+          canBulkDelete={canDelete}
           tableId="warehouse-list"
         />
       </div>
     </div>
+    </PermissionGuard>
   );
 }

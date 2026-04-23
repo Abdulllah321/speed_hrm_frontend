@@ -11,12 +11,16 @@ import { PurchaseOrder } from '@/lib/api';
 import { getPurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
 import { Printer, ArrowLeft, Building2 } from 'lucide-react';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const [order, setOrder] = useState<PurchaseOrder | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canCreateGrn = hasPermission('erp.procurement.grn.create');
 
     useEffect(() => {
         fetchOrder();
@@ -26,9 +30,15 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
         try {
             setLoading(true);
             const data = await getPurchaseOrder(id);
+            console.log('Fetched purchase order data:', data); // Debug log
+            
+            if (data && !data.items) {
+                console.warn('Purchase order data missing items array:', data);
+            }
+            
             setOrder(data);
         } catch (error) {
-            console.error(error);
+            console.error('Error fetching purchase order:', error);
             toast.error('Failed to load purchase order');
         } finally {
             setLoading(false);
@@ -40,8 +50,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
 
     return (
         <>
-            <style jsx global>{`
-                @media print {
+            <style jsx global>{`                @media print {
                     /* Hide everything in the body by default */
                     body {
                         visibility: hidden;
@@ -88,7 +97,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={() => router.back()}>Back</Button>
-                        {(order.status === 'OPEN' || order.status === 'PARTIALLY_RECEIVED') && (
+                        {(order.status === 'OPEN' || order.status === 'PARTIALLY_RECEIVED') && canCreateGrn && (
                             <Button variant="default" className="bg-blue-600 hover:bg-blue-700" asChild>
                                 <Link href={`/erp/procurement/grn/create/${order.id}`}>
                                     Create GRN
@@ -127,19 +136,19 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                         <CardContent className="space-y-2">
                             <div className="flex justify-between">
                                 <span>Subtotal</span>
-                                <span className="font-medium">{parseFloat(order.subtotal).toFixed(2)}</span>
+                                <span className="font-medium">{parseFloat(order.subtotal || '0').toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Tax</span>
-                                <span className="font-medium text-red-500">+{parseFloat(order.taxAmount).toFixed(2)}</span>
+                                <span className="font-medium text-red-500">+{parseFloat(order.taxAmount || '0').toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Discount</span>
-                                <span className="font-medium text-green-600">-{parseFloat(order.discountAmount).toFixed(2)}</span>
+                                <span className="font-medium text-green-600">-{parseFloat(order.discountAmount || '0').toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between border-t pt-2 text-lg font-bold">
                                 <span>Total</span>
-                                <span>{parseFloat(order.totalAmount).toFixed(2)}</span>
+                                <span>{parseFloat(order.totalAmount || '0').toFixed(2)}</span>
                             </div>
                         </CardContent>
                     </Card>
@@ -163,17 +172,25 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {order.items.map((item) => (
-                                    <TableRow key={item.id}>
-                                        <TableCell className="font-medium">{item.item?.itemId || item.itemId}</TableCell>
-                                        <TableCell>{item.description || 'No description'}</TableCell>
-                                        <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
-                                        <TableCell className="text-right font-mono text-blue-600">{parseFloat(item.receivedQty || '0').toFixed(2)}</TableCell>
-                                        <TableCell className="text-right">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
-                                        <TableCell className="text-right">{item.taxPercent}%</TableCell>
-                                        <TableCell className="text-right font-semibold">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                                {order.items && order.items.length > 0 ? (
+                                    order.items.map((item) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell className="font-medium">{item.item?.itemId || item.itemId}</TableCell>
+                                            <TableCell>{item.description || 'No description'}</TableCell>
+                                            <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right font-mono text-blue-600">{parseFloat(item.receivedQty || '0').toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right">{item.taxPercent}%</TableCell>
+                                            <TableCell className="text-right font-semibold">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                            No items found for this purchase order
+                                        </TableCell>
                                     </TableRow>
-                                ))}
+                                )}
                             </TableBody>
                         </Table>
                     </CardContent>
@@ -258,18 +275,26 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {order.items.map((item) => (
-                                    <TableRow key={item.id} className="hover:bg-transparent">
-                                        <TableCell>
-                                            <div className="font-medium text-gray-900">{item.item?.itemId || item.itemId}</div>
-                                            <div className="text-sm text-muted-foreground">{item.description || '-'}</div>
+                                {order.items && order.items.length > 0 ? (
+                                    order.items.map((item) => (
+                                        <TableRow key={item.id} className="hover:bg-transparent">
+                                            <TableCell>
+                                                <div className="font-medium text-gray-900">{item.item?.itemId || item.itemId}</div>
+                                                <div className="text-sm text-muted-foreground">{item.description || '-'}</div>
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right font-mono">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
+                                            <TableCell className="text-right font-mono">{item.taxPercent}%</TableCell>
+                                            <TableCell className="text-right font-mono font-medium">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                            No items found for this purchase order
                                         </TableCell>
-                                        <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
-                                        <TableCell className="text-right font-mono">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
-                                        <TableCell className="text-right font-mono">{item.taxPercent}%</TableCell>
-                                        <TableCell className="text-right font-mono font-medium">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
                                     </TableRow>
-                                ))}
+                                )}
                             </TableBody>
                         </Table>
                     </div>
@@ -280,19 +305,19 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                             <div className="w-64 space-y-3">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Subtotal:</span>
-                                    <span className="font-mono font-medium">{parseFloat(order.subtotal).toFixed(2)}</span>
+                                    <span className="font-mono font-medium">{parseFloat(order.subtotal || '0').toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Tax Total:</span>
-                                    <span className="font-mono font-medium">{parseFloat(order.taxAmount).toFixed(2)}</span>
+                                    <span className="font-mono font-medium">{parseFloat(order.taxAmount || '0').toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-muted-foreground">Discount:</span>
-                                    <span className="font-mono font-medium text-green-600">-{parseFloat(order.discountAmount).toFixed(2)}</span>
+                                    <span className="font-mono font-medium text-green-600">-{parseFloat(order.discountAmount || '0').toFixed(2)}</span>
                                 </div>
                                 <div className="flex justify-between border-t border-gray-300 pt-3 mt-3">
                                     <span className="font-bold text-lg">Total:</span>
-                                    <span className="font-bold text-lg font-mono">{parseFloat(order.totalAmount).toFixed(2)}</span>
+                                    <span className="font-bold text-lg font-mono">{parseFloat(order.totalAmount || '0').toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>

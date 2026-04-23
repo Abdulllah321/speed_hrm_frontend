@@ -25,6 +25,7 @@ import {
 } from "@/lib/actions/purchase-invoice";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface Supplier {
   id: string;
@@ -338,13 +339,14 @@ export default function CreatePurchaseInvoicePage() {
   const { subtotal, taxAmount, totalAmount } = calculateTotals();
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Create Purchase Invoice</h1>
-          <p className="text-gray-600">Create a new supplier invoice</p>
+    <PermissionGuard permissions="erp.procurement.pi.create">
+      <div className="container mx-auto p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Create Purchase Invoice</h1>
+            <p className="text-gray-600">Create a new supplier invoice</p>
+          </div>
         </div>
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
@@ -594,5 +596,6 @@ export default function CreatePurchaseInvoicePage() {
         </div>
       </form>
     </div>
+    </PermissionGuard>
   );
 }

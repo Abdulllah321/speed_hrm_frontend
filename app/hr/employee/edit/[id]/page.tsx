@@ -156,7 +156,7 @@ export default function EditEmployeePage() {
         if (banksRes.status) setBanks(banksRes.data || []);
       } catch (error) {
         console.error("Error fetching data:", error);
-        toast.error("Failed to load form data");
+        // toast.error("Failed to load form data");
       } finally {
         setLoadingData(false);
       }

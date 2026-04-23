@@ -47,6 +47,7 @@ import { uploadFile } from "@/lib/upload";
 import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 // --- Validation Schemas ---
 
@@ -331,6 +332,7 @@ export default function ItemCreatePage() {
     };
 
     return (
+        <PermissionGuard permissions="erp.item.create">
         <div className="container mx-auto py-10 max-w-5xl">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold tracking-tight">Create New Item</h1>
@@ -993,5 +995,6 @@ export default function ItemCreatePage() {
             {/* Dev helper to visualize state */}
             {/* <pre className="mt-10 p-4 bg-gray-100 rounded text-xs">{JSON.stringify(form.watch(), null, 2)}</pre> */}
         </div>
+        </PermissionGuard>
     );
 }

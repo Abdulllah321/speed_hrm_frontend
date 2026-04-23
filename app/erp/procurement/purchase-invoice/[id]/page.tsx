@@ -10,6 +10,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { getPurchaseInvoice, approvePurchaseInvoice, cancelPurchaseInvoice } from '@/lib/actions/purchase-invoice';
 import { PurchaseInvoice as ApiPurchaseInvoice } from '@/lib/api';
 import { toast } from 'sonner';
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface PaymentVoucherInvoice {
   id: string;
@@ -135,265 +136,207 @@ export default function PurchaseInvoiceDetailPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Invoice {invoice.invoiceNumber}</h1>
-            <p className="text-gray-600">Purchase Invoice Details</p>
+    <PermissionGuard permissions="erp.procurement.pi.read">
+      <div className="container mx-auto p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Invoice {invoice.invoiceNumber}</h1>
+              <p className="text-gray-600">Purchase Invoice Details</p>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => router.push(`/erp/procurement/purchase-invoice/${invoice.id}/edit`)}
-          >
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
-          </Button>
-          {invoice.status === 'DRAFT' && (
-            <>
+          <div className="flex gap-2">
+            <PermissionGuard permissions="erp.procurement.pi.update" fallback={null}>
               <Button
                 variant="outline"
-                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-                onClick={handleCancel}
-                disabled={actionLoading}
+                onClick={() => router.push(`/erp/procurement/purchase-invoice/${invoice.id}/edit`)}
               >
-                <XCircle className="w-4 h-4 mr-2" />
-                Cancel
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
               </Button>
-              <Button
-                variant="default"
-                className="bg-green-600 hover:bg-green-700"
-                onClick={handleApprove}
-                disabled={actionLoading}
-              >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Approve
-              </Button>
-            </>
-          )}
-          {invoice.status === 'APPROVED' && (
-            <Button
-              onClick={() => router.push(`/erp/finance/payment-voucher/create?invoiceId=${invoice.id}`)}
-            >
-              <DollarSign className="w-4 h-4 mr-2" />
-              Create Payment
-            </Button>
-          )}
+            </PermissionGuard>
+            {invoice.status === 'DRAFT' && (
+              <>
+                <PermissionGuard permissions="erp.procurement.pi.update" fallback={null}>
+                  <Button
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                    onClick={handleCancel}
+                    disabled={actionLoading}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Cancel
+                  </Button>
+                </PermissionGuard>
+                <PermissionGuard permissions="erp.procurement.pi.post" fallback={null}>
+                  <Button
+                    variant="default"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={handleApprove}
+                    disabled={actionLoading}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve
+                  </Button>
+                </PermissionGuard>
+              </>
+            )}
+            {invoice.status === 'APPROVED' && (
+              <PermissionGuard permissions="erp.finance.payment-voucher.create" fallback={null}>
+                <Button
+                  onClick={() => router.push(`/erp/finance/payment-voucher/create?invoiceId=${invoice.id}`)}
+                >
+                  <DollarSign className="w-4 h-4 mr-2" />
+                  Create Payment
+                </Button>
+              </PermissionGuard>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Invoice Information */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Invoice Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Invoice Number</label>
-                  <p className="font-medium">{invoice.invoiceNumber}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Invoice Date</label>
-                  <p>{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
-                </div>
-                {invoice.dueDate && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Due Date</label>
-                    <p>{new Date(invoice.dueDate).toLocaleDateString()}</p>
-                  </div>
-                )}
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <div className="mt-1">
-                    <Badge className={getStatusBadge(invoice.status)}>
-                      {invoice.status}
-                    </Badge>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Payment Status</label>
-                  <div className="mt-1">
-                    <Badge className={getPaymentStatusBadge(invoice.paymentStatus)}>
-                      {invoice.paymentStatus.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Supplier Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Supplier Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Supplier Name</label>
-                  <p className="font-medium">{invoice.supplier?.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Supplier Code</label>
-                  <p>{invoice.supplier?.code || 'N/A'}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Reference Documents */}
-          {(invoice.grn || invoice.landedCost) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Invoice Information */}
+          <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Reference Documents</CardTitle>
+                <CardTitle>Invoice Information</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {invoice.grn && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Invoice Number</label>
+                    <p className="font-medium">{invoice.invoiceNumber}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Invoice Date</label>
+                    <p className="font-medium">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Supplier</label>
+                    <p className="font-medium">{invoice.supplier?.name} ({invoice.supplier?.code})</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Status</label>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">GRN Reference</label>
-                      <p className="font-medium">{invoice.grn.grnNumber}</p>
+                      <Badge className={getStatusBadge(invoice.status)}>
+                        {invoice.status}
+                      </Badge>
                     </div>
-                  )}
-                  {invoice.landedCost && (
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Payment Status</label>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Landed Cost Reference</label>
-                      <p className="font-medium">{invoice.landedCost.landedCostNumber}</p>
+                      <Badge className={getPaymentStatusBadge(invoice.paymentStatus)}>
+                        {invoice.paymentStatus.replace('_', ' ')}
+                      </Badge>
                     </div>
-                  )}
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Total Amount</label>
+                    <p className="font-medium">{invoice.totalAmount.toLocaleString()}</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Invoice Items */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Invoice Items</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3">Item Code</th>
-                      <th className="text-left p-3">Description</th>
-                      <th className="text-right p-3">Qty</th>
-                      <th className="text-right p-3">Unit Price</th>
-                      <th className="text-right p-3">Tax %</th>
-                      <th className="text-right p-3">Discount %</th>
-                      <th className="text-right p-3">Line Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.items.map((item) => (
-                      <tr key={item.id} className="border-b">
-                        <td className="p-3 font-medium">{item.item?.itemId || item.itemId}</td>
-                        <td className="p-3">{item.description}</td>
-                        <td className="p-3 text-right">{item.quantity}</td>
-                        <td className="p-3 text-right">{item.unitPrice.toLocaleString()}</td>
-                        <td className="p-3 text-right">{item.taxRate}%</td>
-                        <td className="p-3 text-right">{item.discountRate}%</td>
-                        <td className="p-3 text-right font-medium">{item.lineTotal.toLocaleString()}</td>
+            <Card>
+              <CardHeader>
+                <CardTitle>Items</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3">Item</th>
+                        <th className="text-right p-3">Quantity</th>
+                        <th className="text-right p-3">Price</th>
+                        <th className="text-right p-3">Line Total</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notes */}
-          {invoice.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-700">{invoice.notes}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Financial Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Financial Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span>{invoice.subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Tax Amount:</span>
-                  <span>{invoice.taxAmount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Discount:</span>
-                  <span>-{invoice.discountAmount.toLocaleString()}</span>
-                </div>
-                <hr />
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total Amount:</span>
-                  <span>{invoice.totalAmount.toLocaleString()}</span>
-                </div>
-                <hr />
-                <div className="flex justify-between text-green-600">
-                  <span>Paid Amount:</span>
-                  <span>{invoice.paidAmount.toLocaleString()}</span>
-                </div>
-                 <div className="flex justify-between text-amber-600">
-                   <span>Returns / Adjustments:</span>
-                   <span>-{invoice.returnAmount.toLocaleString()}</span>
-                 </div>
-                 <hr />
-                 <div className="flex justify-between text-red-600 font-bold">
-                   <span>Net Outstanding:</span>
-                   <span>{invoice.remainingAmount.toLocaleString()}</span>
-                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment History */}
-          {invoice.paymentVouchers && invoice.paymentVouchers.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {invoice.paymentVouchers.map((payment) => (
-                    <div key={payment.id} className="border-b pb-2">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <p className="font-medium">{payment.paymentVoucher.pvNo}</p>
-                          <p className="text-sm text-gray-500">
-                            {new Date(payment.paymentVoucher.pvDate).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <span className="font-medium text-green-600">
-                          {payment.paidAmount.toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    </thead>
+                    <tbody>
+                      {invoice.items?.map((item: any) => (
+                        <tr key={item.id} className="border-b">
+                          <td className="p-3">
+                            <div className="font-medium">{item.item?.description || item.description}</div>
+                            <div className="text-sm text-gray-500">{item.item?.itemId || item.itemId}</div>
+                          </td>
+                          <td className="p-3 text-right">{item.quantity}</td>
+                          <td className="p-3 text-right">{item.unitPrice.toLocaleString()}</td>
+                          <td className="p-3 text-right">{item.lineTotal.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </CardContent>
             </Card>
-          )}
+
+            {invoice.paymentVouchers && invoice.paymentVouchers.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-3">PV Number</th>
+                          <th className="text-left p-3">Date</th>
+                          <th className="text-right p-3">Amount Paid</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoice.paymentVouchers.map((pv) => (
+                          <tr key={pv.id} className="border-b">
+                            <td className="p-3 font-medium">
+                              <Link
+                                href={`/erp/finance/payment-voucher/${pv.paymentVoucher.id}`}
+                                className="text-blue-600 hover:underline"
+                              >
+                                {pv.paymentVoucher.pvNo}
+                              </Link>
+                            </td>
+                            <td className="p-3">
+                              {new Date(pv.paymentVoucher.pvDate).toLocaleDateString()}
+                            </td>
+                            <td className="p-3 text-right">
+                              {pv.paidAmount.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Total Amount</span>
+                  <span className="font-medium">{invoice.totalAmount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Paid Amount</span>
+                  <span className="font-medium text-green-600">{invoice.paidAmount.toLocaleString()}</span>
+                </div>
+                <div className="border-t pt-4 flex justify-between">
+                  <span className="text-lg font-bold">Remaining</span>
+                  <span className="text-lg font-bold text-red-600">{invoice.remainingAmount.toLocaleString()}</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </PermissionGuard>
   );
 }

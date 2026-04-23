@@ -598,12 +598,14 @@ export const menuData: MenuItem[] = [
     icon: LayoutDashboard,
     href: "/erp",
     environment: "ERP",
+    permissions: ["erp.item.read", "erp.finance.chart-of-account.read", "erp.finance.journal-voucher.read", "inventory.read", "procurement.read"],
   },
   {
     title: "POS Dashboard",
     icon: LayoutDashboard,
     href: "/pos",
     environment: "POS",
+    permissions: ["pos.dashboard.view"],
   },
   {
     title: "Finance & Accounts",
@@ -621,14 +623,14 @@ export const menuData: MenuItem[] = [
         permissions: ["erp.finance.chart-of-account.read"],
         children: [
           {
-            title: "List",
-            href: "/erp/finance/chart-of-accounts",
-            permissions: ["erp.finance.chart-of-account.read"],
-          },
-          {
             title: "Create",
             href: "/erp/finance/chart-of-accounts/create",
             permissions: ["erp.finance.chart-of-account.create"],
+          },
+          {
+            title: "List",
+            href: "/erp/finance/chart-of-accounts",
+            permissions: ["erp.finance.chart-of-account.read"],
           },
         ],
       },
@@ -653,14 +655,14 @@ export const menuData: MenuItem[] = [
         permissions: ["erp.finance.payment-voucher.read"],
         children: [
           {
-            title: "List",
-            href: "/erp/finance/payment-voucher/list",
-            permissions: ["erp.finance.payment-voucher.read"],
-          },
-          {
             title: "Create",
             href: "/erp/finance/payment-voucher/create",
             permissions: ["erp.finance.payment-voucher.create"],
+          },
+          {
+            title: "List",
+            href: "/erp/finance/payment-voucher/list",
+            permissions: ["erp.finance.payment-voucher.read"],
           },
         ],
       },
@@ -669,14 +671,14 @@ export const menuData: MenuItem[] = [
         permissions: ["erp.finance.receipt-voucher.read"],
         children: [
           {
-            title: "List",
-            href: "/erp/finance/receipt-voucher/list",
-            permissions: ["erp.finance.receipt-voucher.read"],
-          },
-          {
             title: "Create",
             href: "/erp/finance/receipt-voucher/create",
             permissions: ["erp.finance.receipt-voucher.create"],
+          },
+          {
+            title: "List",
+            href: "/erp/finance/receipt-voucher/list",
+            permissions: ["erp.finance.receipt-voucher.read"],
           },
         ],
       },
@@ -704,7 +706,7 @@ export const menuData: MenuItem[] = [
     title: "Inventory",
     icon: Package,
     environment: "ERP",
-    permissions: ["inventory.read"],
+    permissions: ["inventory.read", "erp.item.read", "erp.item.create"],
     children: [
       { title: "Dashboard", href: "/erp/inventory" },
       {
@@ -721,9 +723,10 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Item Setup",
+        permissions: ["erp.item.read", "erp.item.create"],
         children: [
-          { title: "Create", href: "/erp/items/create" },
-          { title: "List", href: "/erp/items/list" },
+          { title: "Create", href: "/erp/items/create", permissions: ["erp.item.create"] },
+          { title: "List", href: "/erp/items/list", permissions: ["erp.item.read"] },
           // { title: "Categories", href: "/erp/inventory/categories" },
         ],
       },
@@ -1368,21 +1371,27 @@ export const menuData: MenuItem[] = [
       { title: "Edit Profile", href: "/hr/settings/profile" },
     ],
   },
+  // ── POS: Sales Operations ────────────────────────────────────────────────────
   {
     title: "Sales Operations",
     icon: ShoppingCart,
     environment: "POS",
     permissions: [
-      "pos.sales.read",
-      "pos.sales.create",
-      "master.pos.read",
+      "pos.sale.create",
       "pos.sales.history.view",
+      "pos.hold.view",
+      "pos.return.create",
+      "pos.exchange.create",
+      "pos.claim.create",
+      "pos.customer.view",
+      "pos.ledger.view",
+      "pos.voucher.view",
     ],
     children: [
       {
         title: "New Sale",
         href: "/pos/new-sale",
-        permissions: ["pos.sales.create"],
+        permissions: ["pos.sale.create"],
       },
       {
         title: "Sale History",
@@ -1392,22 +1401,27 @@ export const menuData: MenuItem[] = [
       {
         title: "Hold Orders",
         href: "/pos/holds",
-        permissions: ["pos.holds.view"],
+        permissions: ["pos.hold.view"],
       },
       {
         title: "Returns & Exchanges",
         href: "/pos/sales/returns",
-        permissions: ["pos.sales.history.view"],
+        permissions: ["pos.return.create", "pos.exchange.create"],
+      },
+      {
+        title: "Claims",
+        href: "/pos/claims",
+        permissions: ["pos.claim.create"],
       },
       {
         title: "Customers",
         href: "/pos/customers",
-        permissions: ["pos.sales.read"],
+        permissions: ["pos.customer.view"],
       },
       {
         title: "Customer Ledgers",
-        href: "/pos/customer-ledgers",
-        permissions: ["pos.customer.ledger.view"],
+        href: "/pos/customer-ledger",
+        permissions: ["pos.ledger.view"],
       },
       {
         title: "Cash Drawer",
@@ -1417,64 +1431,112 @@ export const menuData: MenuItem[] = [
       {
         title: "Vouchers",
         href: "/pos/vouchers",
-        permissions: ["pos.vouchers.manage"],
+        permissions: ["pos.voucher.view"],
       },
     ],
   },
+
+  // ── POS: Inventory ───────────────────────────────────────────────────────────
   {
     title: "Inventory",
     icon: Package,
     environment: "POS",
-    permissions: ["pos.inventory.read", "pos.inventory.create"],
+    permissions: [
+      "pos.inventory.view",
+      "pos.inventory.receiving.view",
+      "pos.inventory.returns.view",
+      "pos.inventory.inbound.view",
+      "pos.inventory.outbound.view",
+      "pos.inventory.receipt.view",
+      "pos.inventory.transfer.create",
+    ],
     children: [
       {
         title: "Stock View",
         href: "/pos/inventory/view",
-        permissions: ["pos.inventory.read"],
+        permissions: ["pos.inventory.view"],
       },
       {
-        title: "Stock Receipt",
+        title: "Stock Receipts",
         href: "/pos/inventory/receipt",
-        permissions: ["pos.inventory.create"],
+        permissions: ["pos.inventory.receipt.view"],
       },
       {
         title: "Receiving",
         href: "/pos/inventory/receiving",
-        permissions: ["pos.inventory.create"],
+        permissions: ["pos.inventory.receiving.view"],
       },
       {
-        title: "Inbound",
+        title: "Inbound Transfers",
         href: "/pos/inventory/inbound",
-        permissions: ["pos.inventory.create"],
+        permissions: ["pos.inventory.inbound.view"],
       },
       {
-        title: "Outbound",
+        title: "Outbound Transfers",
         href: "/pos/inventory/outbound",
-        permissions: ["pos.inventory.create"],
+        permissions: ["pos.inventory.outbound.view"],
       },
       {
-        title: "Returns",
+        title: "Return Requests",
         href: "/pos/inventory/returns",
-        permissions: ["pos.inventory.create"],
+        permissions: ["pos.inventory.returns.view"],
       },
     ],
   },
+
+  // ── POS: Reports ─────────────────────────────────────────────────────────────
+  {
+    title: "Reports",
+    icon: TrendingUp,
+    environment: "POS",
+    permissions: ["pos.dashboard.view"],
+    children: [
+      {
+        title: "Sales Reports",
+        href: "/pos/reports",
+        permissions: ["pos.dashboard.view"],
+      },
+      {
+        title: "Session Summary",
+        href: "/pos/session",
+        permissions: ["pos.shift.view"],
+      },
+    ],
+  },
+
+  // ── POS: Terminal ────────────────────────────────────────────────────────────
   {
     title: "Terminal",
     icon: Monitor,
     environment: "POS",
+    permissions: [
+      "pos.shift.view",
+      "pos.shift.open",
+      "pos.shift.close",
+      "pos.terminal.settings",
+      "pos.terminal.logout",
+    ],
     children: [
       {
-        title: "Shifts",
+        title: "Cash Drawer / Shifts",
         href: "/pos/shifts",
-        permissions: ["pos.terminal.shifts"],
+        permissions: ["pos.shift.view", "pos.shift.open", "pos.shift.close"],
+      },
+      {
+        title: "Close Register",
+        href: "/pos/close",
+        permissions: ["pos.shift.close"],
       },
       {
         title: "Settings",
         href: "/pos/terminal/settings",
         permissions: ["pos.terminal.settings"],
       },
-      { title: "Logout Terminal", href: "/pos/terminal/logout" },
+      {
+        title: "Logout Terminal",
+        href: "/pos/terminal/logout",
+        permissions: ["pos.terminal.logout"],
+      },
     ],
   },
 ];

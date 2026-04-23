@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { PauseCircle, Clock, Truck, RotateCcw } from "lucide-react";
 import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 import { usePosSettings } from "@/hooks/use-pos-settings";
+import { useAuth } from "@/components/providers/auth-provider";
 import { formatCurrency } from "@/lib/utils";
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -28,10 +29,10 @@ function computeLineItem(
 ): CartItem {
     const price = Number(product.unitPrice) || 0;
     const subtotal = price * quantity;
-    const discountAmount = Math.round(subtotal * (discountPercent / 100));
+    const discountAmount = Math.round(subtotal * (discountPercent / 100) * 100) / 100;
     const afterDiscount = subtotal - discountAmount;
     const taxPercent = Number(product.taxRate1) || defaultTaxPercent;
-    const taxAmount = Math.round(afterDiscount * (taxPercent / 100));
+    const taxAmount = Math.round(afterDiscount * (taxPercent / 100) * 100) / 100;
     const total = afterDiscount + taxAmount;
 
     return {
@@ -67,6 +68,12 @@ export default function NewSalePage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { settings } = usePosSettings();
+    const { hasPermission } = useAuth();
+    const canDiscount = hasPermission('pos.sale.item-discount');
+    const canTransit = hasPermission('pos.sale.transit-override');
+    const canHold = hasPermission('pos.hold.create');
+    const canViewHolds = hasPermission('pos.hold.view');
+    const canResumeHold = hasPermission('pos.hold.resume');
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -223,9 +230,9 @@ export default function NewSalePage() {
             // F8 → Hold order (if cart has items), else show hold orders
             if (e.key === "F8") {
                 e.preventDefault();
-                if (cartItems.length > 0) {
+                if (cartItems.length > 0 && canHold) {
                     handleHold();
-                } else {
+                } else if (canViewHolds) {
                     loadHoldOrders();
                     setShowHoldOrders(true);
                 }
@@ -326,9 +333,9 @@ export default function NewSalePage() {
                     return item;
                 }
                 const subtotal = item.price * quantity;
-                const discountAmount = Math.round(subtotal * (item.discountPercent / 100));
+                const discountAmount = Math.round(subtotal * (item.discountPercent / 100) * 100) / 100;
                 const afterDiscount = subtotal - discountAmount;
-                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
+                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100) * 100) / 100;
                 const total = afterDiscount + taxAmount;
                 return { ...item, quantity, discountAmount, taxAmount, total };
             })
@@ -341,9 +348,9 @@ export default function NewSalePage() {
             prev.map((item) => {
                 if (item.id !== id) return item;
                 const subtotal = item.price * item.quantity;
-                const discountAmount = Math.round(subtotal * (clamped / 100));
+                const discountAmount = Math.round(subtotal * (clamped / 100) * 100) / 100;
                 const afterDiscount = subtotal - discountAmount;
-                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
+                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100) * 100) / 100;
                 const total = afterDiscount + taxAmount;
                 return { ...item, discountPercent: clamped, discountAmount, taxAmount, total };
             })
@@ -429,9 +436,9 @@ export default function NewSalePage() {
             <CartTable
                 items={cartItems}
                 onQuantityChange={handleQuantityChange}
-                onDiscountChange={handleDiscountChange}
+                onDiscountChange={canDiscount ? handleDiscountChange : undefined}
                 onRemoveItem={handleRemoveItem}
-                onToggleTransit={handleToggleTransit}
+                onToggleTransit={canTransit ? handleToggleTransit : undefined}
             />
 
             {/* Footer totals */}
@@ -441,7 +448,7 @@ export default function NewSalePage() {
                 tax={totalTax}
                 grandTotal={grandTotal}
                 onCheckout={handleCheckout}
-                onHold={handleHold}
+                onHold={canHold ? handleHold : undefined}
                 disabled={cartItems.length === 0 || isProcessing || isHolding}
             />
 
@@ -483,6 +490,7 @@ export default function NewSalePage() {
                                         <Button
                                             size="sm"
                                             className="flex-1 h-8 text-xs"
+                                            disabled={!canResumeHold}
                                             onClick={() => handleResumeHold(order.id)}
                                         >
                                             <RotateCcw className="h-3 w-3 mr-1" />

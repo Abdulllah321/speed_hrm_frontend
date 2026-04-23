@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Package, RotateCcw, Search, Save } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function ReturnTransferPage() {
     const router = useRouter();
@@ -170,7 +171,8 @@ export default function ReturnTransferPage() {
     };
 
     return (
-        <div className="p-6 space-y-6 max-w-5xl mx-auto">
+        <PermissionGuard permissions="erp.inventory.return-transfer.create">
+            <div className="p-6 space-y-6 max-w-5xl mx-auto">
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon" onClick={() => router.back()}>
                     <ArrowLeft className="h-5 w-5" />
@@ -358,6 +360,7 @@ export default function ReturnTransferPage() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+            </div>
+        </PermissionGuard>
     );
 }

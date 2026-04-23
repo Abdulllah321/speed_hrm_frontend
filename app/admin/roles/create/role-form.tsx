@@ -66,7 +66,9 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
   ];
 
   // Define module categorization
-  const getCategory = (module: string): "HR" | "Master" | "ERP" => {
+  const getCategory = (module: string): "HR" | "Master" | "ERP" | "POS" => {
+    if (module.startsWith("pos.")) return "POS";
+
     if (erpMasterModules.includes(module) || posMasterModules.includes(module) || module.startsWith("master.") || 
         ["country", "state", "city", "location", "bank", "equipment", 
          "allowance-head", "deduction-head", "salary-breakup", "tax-slab", 
@@ -75,9 +77,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
       return "Master";
     }
     
-    if (module.startsWith("erp.")) {
-        return "ERP";
-    }
+    if (module.startsWith("erp.")) return "ERP";
     
     return "HR";
   };
@@ -101,15 +101,16 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
   
   // Group modules by category
   const modulesByCategory = {
-    HR: modules.filter(m => getCategory(m) === "HR"),
+    HR:     modules.filter(m => getCategory(m) === "HR"),
     Master: modules.filter(m => getCategory(m) === "Master"),
-    ERP: modules.filter(m => getCategory(m) === "ERP"),
+    ERP:    modules.filter(m => getCategory(m) === "ERP"),
+    POS:    modules.filter(m => getCategory(m) === "POS"),
   };
 
   const selectedPermissionIds = form.watch("permissionIds");
 
   // Helper to get selected count per category
-  const getSelectedCount = (category: "HR" | "Master" | "ERP") => {
+  const getSelectedCount = (category: "HR" | "Master" | "ERP" | "POS") => {
     return modulesByCategory[category].reduce((count, module) => {
       const perms = groupedPermissions[module];
       return count + perms.filter(p => selectedPermissionIds.includes(p.id)).length;
@@ -117,7 +118,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
   };
 
   // Helper to get total count per category
-  const getTotalCount = (category: "HR" | "Master" | "ERP") => {
+  const getTotalCount = (category: "HR" | "Master" | "ERP" | "POS") => {
      return modulesByCategory[category].reduce((count, module) => {
       return count + groupedPermissions[module].length;
     }, 0);
@@ -161,7 +162,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
     form.setValue("permissionIds", newPermissions, { shouldDirty: true });
   };
 
-  const handleSelectAllInCategory = (category: "HR" | "Master" | "ERP", select: boolean) => {
+  const handleSelectAllInCategory = (category: "HR" | "Master" | "ERP" | "POS", select: boolean) => {
      let categoryModules = modulesByCategory[category];
      
      if (category === "Master" && masterFilter !== "All") {
@@ -206,7 +207,15 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
                               onCheckedChange={(checked) => handleModuleSelect(module, !!checked)}
                           />
                           <label htmlFor={`module-${module}`} className="text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 capitalize">
-                              {module.replace('hr.', '').replace('master.', '').replace('erp.finance.', '').replace(/-/g, ' ')}
+                              {module
+                                .replace(/^hr\./, '')
+                                .replace(/^master\./, '')
+                                .replace(/^erp\.finance\./, '')
+                                .replace(/^erp\.procurement\./, '')
+                                .replace(/^erp\.inventory\./, '')
+                                .replace(/^erp\./, '')
+                                .replace(/^pos\./, '')
+                                .replace(/-/g, ' ')}
                           </label>
                       </div>
                       <div className="ml-7 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -248,7 +257,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
       </div>
   );
 
-  const [activeTab, setActiveTab] = useState<"HR" | "Master" | "ERP">("HR");
+  const [activeTab, setActiveTab] = useState<"HR" | "Master" | "ERP" | "POS">("HR");
   const [masterFilter, setMasterFilter] = useState<"All" | "HR" | "ERP" | "POS">("All");
 
   const pageTitle = initialData ? `Edit Role: ${initialData.name}` : "Create New Role";
@@ -308,7 +317,7 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
                         <CardDescription>Overview of assigned permissions</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-8">
-                        {(["HR", "Master", "ERP"] as const).map((cat) => {
+                        {(["HR", "Master", "ERP", "POS"] as const).map((cat) => {
                             const count = getSelectedCount(cat);
                             const total = getTotalCount(cat);
                             return (
@@ -323,9 +332,6 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
                                             style={{ width: `${total > 0 ? (count / total) * 100 : 0}%` }}
                                         />
                                     </div>
-                                    
-                                    
-                                    
                                 </div>
                             );
                         })}
@@ -338,10 +344,11 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
                 <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as any)} className="w-full">
                     <Card>
                         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-2">
-                            <TabsList className="grid w-[300px] grid-cols-3">
+                            <TabsList className="grid w-[400px] grid-cols-4">
                                 <TabsTrigger value="HR">HR</TabsTrigger>
                                 <TabsTrigger value="Master">Master</TabsTrigger>
                                 <TabsTrigger value="ERP">ERP</TabsTrigger>
+                                <TabsTrigger value="POS">POS</TabsTrigger>
                             </TabsList>
                             <div className="flex gap-2">
                                 <Button
@@ -391,6 +398,9 @@ export function RoleForm({ initialData, permissions }: RoleFormProps) {
                                 </TabsContent>
                                 <TabsContent value="ERP" className="mt-0 space-y-4">
                                     {renderModuleList(modulesByCategory["ERP"])}
+                                </TabsContent>
+                                <TabsContent value="POS" className="mt-0 space-y-4">
+                                    {renderModuleList(modulesByCategory["POS"])}
                                 </TabsContent>
                             </ScrollArea>
                         </CardContent>

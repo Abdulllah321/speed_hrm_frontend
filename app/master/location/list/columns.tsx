@@ -165,7 +165,7 @@ import { Separator } from "@/components/ui/separator";
 function RowActions({ row }: RowActionsProps) {
   const location = row.original;
   const router = useRouter();
-  const { hasPermission, isAdmin } = useAuth();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editDialog, setEditDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -178,8 +178,9 @@ function RowActions({ row }: RowActionsProps) {
 
   const canEdit = hasPermission("master.location.update");
   const canDelete = hasPermission("master.location.delete");
+  const canManagePos = hasPermission("master.pos.read");
 
-  if (!canEdit && !canDelete) {
+  if (!canEdit && !canDelete && !canManagePos) {
     return null;
   }
 
@@ -253,13 +254,12 @@ function RowActions({ row }: RowActionsProps) {
               Edit
             </DropdownMenuItem>
           )}
-          {isAdmin() && (
+          {canManagePos && (
             <DropdownMenuItem onClick={() => setPosModal(true)}>
               <Monitor className="h-4 w-4 mr-2" />
               Manage POS
             </DropdownMenuItem>
-          )}
-          {canDelete && (
+          )}          {canDelete && (
             <DropdownMenuItem
               onClick={() => setDeleteDialog(true)}
               className="text-destructive focus:text-destructive"

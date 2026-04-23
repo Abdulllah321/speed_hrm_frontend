@@ -41,6 +41,7 @@ import { getSegments } from "@/lib/actions/segment";
 import { updateItem, getItemById } from "@/lib/actions/items";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 // --- Validation Schemas ---
 
@@ -331,6 +332,7 @@ export default function ItemEditPage() {
     }
 
     return (
+        <PermissionGuard permissions="erp.item.update">
         <div className="container mx-auto py-10 max-w-5xl">
             <div className="mb-8">
                 <h1 className="text-3xl font-bold tracking-tight">Edit Item</h1>
@@ -896,5 +898,6 @@ export default function ItemEditPage() {
                 </Form>
             </div>
         </div>
+        </PermissionGuard>
     );
 }

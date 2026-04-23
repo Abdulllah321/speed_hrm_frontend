@@ -11,11 +11,17 @@ import { Plus } from 'lucide-react';
 import { vendorQuotationApi, VendorQuotation } from '@/lib/api';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/utils';
+import { useAuth } from '@/components/providers/auth-provider';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function AllVendorQuotationList() {
     const [quotations, setQuotations] = useState<VendorQuotation[]>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const { hasPermission } = useAuth();
+    const canCreate = hasPermission('erp.procurement.vq.create');
+    const canSubmit = hasPermission('erp.procurement.vq.submit');
+    const canCompare = hasPermission('erp.procurement.vq.compare');
 
     useEffect(() => {
         fetchQuotations();
@@ -47,14 +53,17 @@ export default function AllVendorQuotationList() {
     }, {} as Record<string, { rfq?: any, items: VendorQuotation[] }>);
 
     return (
+        <PermissionGuard permissions="erp.procurement.vq.read">
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Vendor Quotations</h1>
-                <Link href="/erp/procurement/vendor-quotation/create">
-                    <Button>
-                        <Plus className="mr-2 h-4 w-4" /> Create Quotation
-                    </Button>
-                </Link>
+                {canCreate && (
+                    <Link href="/erp/procurement/vendor-quotation/create">
+                        <Button>
+                            <Plus className="mr-2 h-4 w-4" /> Create Quotation
+                        </Button>
+                    </Link>
+                )}
             </div>
 
             <Card>
@@ -99,7 +108,7 @@ export default function AllVendorQuotationList() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {group.rfq && group.items.length > 1 && (
+                                                {group.rfq && group.items.length > 1 && canCompare && (
                                                     <Link href={`/erp/procurement/vendor-quotation/compare/${rfqId}`}>
                                                         <Button variant="outline" size="sm">Compare All</Button>
                                                     </Link>
@@ -131,7 +140,7 @@ export default function AllVendorQuotationList() {
                                                         <Link href={`/erp/procurement/vendor-quotation/${quotation.id}`}>
                                                             <Button variant="ghost" size="sm">View</Button>
                                                         </Link>
-                                                        {quotation.status === 'DRAFT' && (
+                                                        {quotation.status === 'DRAFT' && canSubmit && (
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
@@ -160,5 +169,6 @@ export default function AllVendorQuotationList() {
                 </CardContent>
             </Card>
         </div>
+        </PermissionGuard>
     );
 }

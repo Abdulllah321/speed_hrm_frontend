@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, Plus, Loader2, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function LandedCostListPage() {
     const router = useRouter();
@@ -46,6 +47,7 @@ export default function LandedCostListPage() {
     }
 
     return (
+        <PermissionGuard permissions="erp.procurement.landed-cost.read">
         <div className="p-4 space-y-4 max-w-7xl mx-auto">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800">Landed Cost Reports</h1>
@@ -113,5 +115,6 @@ export default function LandedCostListPage() {
                 </CardContent>
             </Card>
         </div>
+        </PermissionGuard>
     );
 }

@@ -17,6 +17,7 @@ import { createLandedCost, createLocalLandedCost, getLandedCostChargeTypes } fro
 import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calculator, Save } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 interface LocalItem {
   itemId: string;
@@ -159,7 +160,7 @@ export default function LandedCostSetupPage() {
       const grnData = Array.isArray(grnsRes) ? grnsRes : (grnsRes as any)?.data || [];
       // Filter for GRNs that need landed cost:
       // 1. Direct PO (no PR/RFQ) - always needs landed cost  
-      // 2. PR-linked FRESH goods - needs landed cost
+      // 2. PR-linked FINISH GOODS - needs landed cost
       setGrns(grnData.filter((g: any) => {
         if (g.status !== 'RECEIVED_UNVALUED') return false;
         
@@ -167,7 +168,10 @@ export default function LandedCostSetupPage() {
         if (!po) return false;
         
         const isDirectPo = !po.purchaseRequisitionId && !po.vendorQuotationId && !po.rfqId;
-        const isPrLinkedFresh = po.purchaseRequisition?.goodsType === 'FRESH';
+        // For RFQ→VQ→PO flow, purchaseRequisitionId is null on PO but goodsType is
+        // copied from PR during PO creation — check po.goodsType first.
+        const resolvedGoodsType = po.goodsType || po.purchaseRequisition?.goodsType;
+        const isPrLinkedFresh = resolvedGoodsType === 'FRESH';
         
         return isDirectPo || isPrLinkedFresh;
       }));
@@ -693,6 +697,7 @@ console.log(res)
   };
 
   return (
+    <PermissionGuard permissions="erp.procurement.landed-cost.create">
     <div className="p-4 space-y-4">
       <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
         <div>
@@ -1101,5 +1106,6 @@ console.log(res)
         </CardContent>
       </Card>
     </div>
+    </PermissionGuard>
   );
 }

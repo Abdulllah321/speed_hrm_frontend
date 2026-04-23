@@ -9,6 +9,8 @@ import { StockLocationDrawer } from "@/components/pos/inventory/stock-location-d
 import { useDebounce } from "@/hooks/use-debounce";
 import { posSalesApi } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/components/providers/auth-provider";
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface InventoryItem {
     id: string;
@@ -44,8 +46,7 @@ export default function InventoryViewPage() {
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-    async function fetchInventory(query = debouncedSearch) {
-        setIsLoading(true);
+    async function fetchInventory(query = debouncedSearch) {        setIsLoading(true);
         try {
             const res = await posSalesApi.lookup(query);
             setItems(res.status && res.data ? res.data : []);
@@ -64,6 +65,7 @@ export default function InventoryViewPage() {
     };
 
     return (
+        <PermissionGuard permissions="pos.inventory.view">
         <div className="flex flex-col h-full -m-4 sm:-m-6 lg:-m-8">
             {/* Header */}
             <div
@@ -166,5 +168,6 @@ export default function InventoryViewPage() {
                 onClose={() => setIsDrawerOpen(false)}
             />
         </div>
+        </PermissionGuard>
     );
 }

@@ -13,6 +13,7 @@ import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { purchaseReturnApi, CreatePurchaseReturnDto } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { PermissionGuard } from "@/components/auth/permission-guard";
 
 interface SourceDocument {
   id: string;
@@ -28,6 +29,7 @@ interface SourceDocument {
     qty?: number;
     unitPrice?: number;
     unitCostPKR?: number;
+    displayCode?: number;
   }>;
 }
 
@@ -155,195 +157,190 @@ export default function CreatePurchaseReturnPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
-     
-        <div>
-          <h1 className="text-2xl font-bold">Create Purchase Return</h1>
-          <p className="text-gray-600">Return items to supplier</p>
+    <PermissionGuard permissions="erp.procurement.pret.create">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center gap-4">
+        
+          <div>
+            <h1 className="text-2xl font-bold">Create Purchase Return</h1>
+            <p className="text-gray-600">Return items to supplier</p>
+          </div>
         </div>
-      </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Source Type Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Return Source</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-4">
-              <Button
-                type="button"
-                variant={sourceType === 'GRN' ? 'default' : 'outline'}
-                onClick={() => handleSourceTypeChange('GRN')}
-              >
-                From GRN (Direct)
-              </Button>
-              <Button
-                type="button"
-                variant={sourceType === 'LANDED_COST' ? 'default' : 'outline'}
-                onClick={() => handleSourceTypeChange('LANDED_COST')}
-              >
-                From Landed Cost (Valued)
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Select {sourceType === 'GRN' ? 'GRN' : 'Landed Cost'}</Label>
-                <Select onValueChange={handleDocumentSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={`Select ${sourceType === 'GRN' ? 'GRN' : 'Landed Cost'}`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eligibleDocs.map((doc) => (
-                      <SelectItem key={doc.id} value={doc.id}>
-                        {sourceType === 'GRN' ? doc.grnNumber : doc.landedCostNumber} - {doc.supplier?.name || 'Unknown Supplier'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Return Type</Label>
-                <Select 
-                  value={formData.returnType} 
-                  onValueChange={(value: any) => setFormData({ ...formData, returnType: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="DEFECTIVE">Defective</SelectItem>
-                    <SelectItem value="EXCESS">Excess</SelectItem>
-                    <SelectItem value="WRONG_ITEM">Wrong Item</SelectItem>
-                    <SelectItem value="DAMAGED">Damaged</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label>Return Reason</Label>
-              <Textarea
-                value={formData.reason}
-                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                placeholder="Explain the reason for return..."
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Items */}
-        {selectedDoc && (
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Source Type Selection */}
           <Card>
             <CardHeader>
-              <CardTitle>Return Items</CardTitle>
+              <CardTitle>Return Source</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3">Item</th>
-                      <th className="text-left p-3">Available Qty</th>
-                      <th className="text-left p-3">Return Qty</th>
-                      <th className="text-left p-3">Unit Price</th>
-                      <th className="text-left p-3">Line Total</th>
-                      <th className="text-left p-3">Reason</th>
-                      <th className="text-left p-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {formData.items.map((item, index) => {
-                      const sourceItem = selectedDoc.items.find(si => si.id === 
-                        (sourceType === 'GRN' ? item.grnItemId : item.landedCostItemId)
-                      );
-                      const availableQty = sourceItem?.receivedQty || sourceItem?.qty || 0;
-
-                      return (
-                        <tr key={index} className="border-b">
-                          <td className="p-3">
-                            <div>
-                              <div className="font-medium">{item.description || 'Item data unavailable'}</div>
-                              <div className="text-sm text-gray-500">{(item as any).displayCode || item.itemId}</div>
-                            </div>
-                          </td>
-                          <td className="p-3">{availableQty}</td>
-                          <td className="p-3">
-                            <Input
-                              type="number"
-                              min="0"
-                              max={availableQty}
-                              step="0.01"
-                              value={item.returnQty}
-                              onChange={(e) => handleItemChange(index, 'returnQty', parseFloat(e.target.value) || 0)}
-                              className="w-24"
-                            />
-                          </td>
-                          <td className="p-3">{formatCurrency(item.unitPrice)}</td>
-                          <td className="p-3">{formatCurrency(item.lineTotal)}</td>
-                          <td className="p-3">
-                            <Input
-                              value={item.reason}
-                              onChange={(e) => handleItemChange(index, 'reason', e.target.value)}
-                              placeholder="Item reason..."
-                              className="w-32"
-                            />
-                          </td>
-                          <td className="p-3">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => removeItem(index)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            <CardContent className="space-y-4">
+              <div className="flex gap-4">
+                <Button
+                  type="button"
+                  variant={sourceType === 'GRN' ? 'default' : 'outline'}
+                  onClick={() => handleSourceTypeChange('GRN')}
+                >
+                  From GRN (Direct)
+                </Button>
+                <Button
+                  type="button"
+                  variant={sourceType === 'LANDED_COST' ? 'default' : 'outline'}
+                  onClick={() => handleSourceTypeChange('LANDED_COST')}
+                >
+                  From Landed Cost (Valued)
+                </Button>
               </div>
 
-              <div className="mt-4 flex justify-end">
-                <div className="text-lg font-semibold">
-                  Total: {formatCurrency(calculateTotal())}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label>Select {sourceType === 'GRN' ? 'GRN' : 'Landed Cost'}</Label>
+                  <Select onValueChange={handleDocumentSelect}>
+                    <SelectTrigger>
+                      <SelectValue placeholder={`Select ${sourceType === 'GRN' ? 'GRN' : 'Landed Cost'}`} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {eligibleDocs.map((doc) => (
+                        <SelectItem key={doc.id} value={doc.id}>
+                          {sourceType === 'GRN' ? doc.grnNumber : doc.landedCostNumber} - {doc.supplier?.name || 'Unknown Supplier'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Notes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Additional Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Additional notes or comments..."
-            />
-          </CardContent>
-        </Card>
+          {selectedDoc && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Return Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Return Type</Label>
+                        <Select
+                          value={formData.returnType}
+                          onValueChange={(val: any) => setFormData({ ...formData, returnType: val })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="DEFECTIVE">Defective</SelectItem>
+                            <SelectItem value="EXCESS">Excess</SelectItem>
+                            <SelectItem value="WRONG_ITEM">Wrong Item</SelectItem>
+                            <SelectItem value="DAMAGED">Damaged</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Supplier</Label>
+                        <Input value={selectedDoc.supplier?.name || 'Unknown Supplier'} disabled />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Reason for Return</Label>
+                      <Textarea
+                        value={formData.reason}
+                        onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                        placeholder="Why are you returning these items?"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-4">
-          <Link href="/erp/procurement/purchase-returns">
-            <Button type="button" variant="outline">
-              Cancel
-            </Button>
-          </Link>
-          <Button type="submit" disabled={loading || !selectedDoc}>
-            {loading ? 'Creating...' : 'Create Return'}
-          </Button>
-        </div>
-      </form>
-    </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Items to Return</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {formData.items.map((item, index) => (
+                        <div key={index} className="p-4 border rounded-md space-y-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-semibold">{item.description}</div>
+                              <div className="text-sm text-gray-500">{item.displayCode}</div>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500"
+                              onClick={() => removeItem(index)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Quantity to Return</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                value={item.returnQty}
+                                onChange={(e) => handleItemChange(index, 'returnQty', Number(e.target.value))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Unit Price</Label>
+                              <div className="h-10 flex items-center px-3 border rounded-md bg-gray-50">
+                                {formatCurrency(item.unitPrice)}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Line Total</Label>
+                              <div className="h-10 flex items-center px-3 border rounded-md bg-gray-50 font-semibold">
+                                {formatCurrency(item.lineTotal)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Item-specific Reason</Label>
+                            <Input
+                              placeholder="e.g., Specific defect description"
+                              value={item.reason}
+                              onChange={(e) => handleItemChange(index, 'reason', e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center text-lg font-bold">
+                      <span>Total Return Amount</span>
+                      <span>{formatCurrency(calculateTotal())}</span>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Internal Notes</Label>
+                      <Textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      />
+                    </div>
+                    <Button type="submit" className="w-full" disabled={loading}>
+                      {loading ? 'Creating...' : 'Create Purchase Return'}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+        </form>
+      </div>
+    </PermissionGuard>
   );
 }

@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 
+import { useAuth } from "@/components/providers/auth-provider";
+
 export type VendorRow = {
   id: string;
   code: string;
@@ -65,6 +67,7 @@ export const columns: ColumnDef<VendorRow>[] = [
     header: "Actions",
     cell: ({ row }) => {
       const vendor = row.original;
+      const { hasPermission } = useAuth();
 
       return (
         <DropdownMenu>
@@ -81,12 +84,14 @@ export const columns: ColumnDef<VendorRow>[] = [
                 View Details
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/erp/procurement/vendors/edit/${vendor.id}`}>
-                <Pencil className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </DropdownMenuItem>
+            {hasPermission("erp.procurement.vendor.update") && (
+              <DropdownMenuItem asChild>
+                <Link href={`/erp/procurement/vendors/edit/${vendor.id}`}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );

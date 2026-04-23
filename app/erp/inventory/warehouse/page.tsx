@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { PermissionGuard } from '@/components/auth/permission-guard';
 
 export default function InventoryDashboardPage() {
     const [stats, setStats] = useState({
@@ -80,6 +81,7 @@ export default function InventoryDashboardPage() {
     };
 
     return (
+        <PermissionGuard permissions="erp.inventory.warehouse.view">
         <div className="flex-1 space-y-6 p-8 pt-6">
             <div className="flex items-center justify-between">
                 <div>
@@ -238,5 +240,6 @@ export default function InventoryDashboardPage() {
                 </Card>
             </div>
         </div>
+        </PermissionGuard>
     );
 }

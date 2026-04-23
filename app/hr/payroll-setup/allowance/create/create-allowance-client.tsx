@@ -98,7 +98,7 @@ export function CreateAllowanceClient({
     allowanceTypeCategory: "specific", // "recurring" | "specific"
     monthYear: "" as string | string[], // Can be single string or array for multiple months
     paymentMethod: "with_salary", // "with_salary" | "separately"
-    isTaxable: true,
+    isTaxable: false,
     taxPercentage: "0",
   });
 
