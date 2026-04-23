@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition, addTransitionType } from "react";
 import { toast } from "sonner";
 import { EmployeeForm } from "@/components/employee-form";
 import type { Department, SubDepartment } from "@/lib/actions/department";
@@ -214,7 +214,7 @@ export default function CreateEmployeePage() {
         className="w-full"
       >
         <div className="flex items-center justify-between">
-          <Link href="/hr/employee/list">
+          <Link href="/hr/employee/list" transitionTypes={["nav-back"]} >
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to List
@@ -374,10 +374,14 @@ export default function CreateEmployeePage() {
                       const result = await rejoinEmployee(data);
                       if (result.status) {
                         toast.success(result.message || "Employee rejoined successfully!");
-                        router.push("/hr/employee/list");
+                        startTransition(() => {
+                          addTransitionType("nav-forward");
+                          router.push("/hr/employee/list");
+                        });
                       } else {
                         toast.error(result.message || "Failed to rejoin employee");
                       }
+
                     } catch (error) {
                       console.error("Error rejoining employee:", error);
                       toast.error("Failed to rejoin employee");

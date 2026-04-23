@@ -320,7 +320,7 @@ export default function AttendanceManagePage() {
 
     setIsPending(true);
     try {
-      const employeesToProcess = allEmployees.filter(e => formData.employeeIds.includes(e.id));
+      const employeesToProcess = displayEmployees.filter(e => formData.employeeIds.includes(e.id));
 
       if (employeesToProcess.length === 0) {
         toast.error("No employees selected to create attendance for");
