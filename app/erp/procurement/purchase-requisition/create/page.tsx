@@ -309,7 +309,7 @@ export default function CreatePurchaseRequisition() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="CONSUMABLE">Consumable</SelectItem>
-                                            <SelectItem value="FRESH">Fresh Goods</SelectItem>
+                                            <SelectItem value="FRESH">FINISH GOODS</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 )}

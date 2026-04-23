@@ -56,7 +56,7 @@ export default function LocalLandedCostPage() {
       const data = await getGrns();
       // Filter for LOCAL GRNs that need landed cost:
       // 1. Direct PO + Local
-      // 2. PR-linked FRESH goods + Local
+      // 2. PR-linked FINISH GOODS + Local
       const localGrns = data.filter((g: any) => {
         if (g.status !== 'RECEIVED_UNVALUED') return false;
         if (g.orderType !== 'LOCAL' && g.orderType) return false; // Only local or unset

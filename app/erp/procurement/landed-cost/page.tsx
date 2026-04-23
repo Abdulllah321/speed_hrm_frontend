@@ -39,11 +39,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
        const data = await getGrns();
        // Filter for GRNs that need landed cost:
        // 1. Direct PO (no PR/RFQ) - always needs landed cost
-       // 2. PR-linked FRESH goods - needs landed cost
+       // 2. PR-linked FINISH GOODS - needs landed cost
        setGrns(data.filter((g) => {
          if (g.status !== 'RECEIVED_UNVALUED') return false;
          
-         // Check if it's a direct PO or PR-linked fresh goods
+         // Check if it's a direct PO or PR-linked FINISH GOODS
          const po = (g as any).purchaseOrder;
          if (!po) return false;
          

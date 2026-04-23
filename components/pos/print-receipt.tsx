@@ -50,6 +50,7 @@ export function PrintReceipt({
     onClose,
 }: PrintReceiptProps) {
     const settings: PosSettings = { ...POS_SETTINGS_DEFAULTS, ...settingsOverride };
+    const isGiftReceipt = order?.isGiftReceipt || false;
 
     // Auto-print if setting is enabled
     useEffect(() => {
@@ -74,12 +75,13 @@ export function PrintReceipt({
             total: Number(oi.lineTotal ?? 0),
         }));
 
-    // ── Lump-sum figures ──────────────────────────────────────────────
-    const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+    // ── Use backend calculated values directly (don't recalculate!) ──
+    const subtotal = Number(order?.subtotal ?? 0) || items.reduce((s, i) => s + i.price * i.quantity, 0);
     const totalItemDiscount = items.reduce((s, i) => s + (i.discountAmount ?? 0), 0);
-    const totalTax = items.reduce((s, i) => s + (i.taxAmount ?? 0), 0);
-    const orderDiscount = Number(order?.discountAmount ?? 0);
-    const grandTotal = Number(order?.grandTotal ?? 0) || Math.max(0, subtotal - totalItemDiscount - orderDiscount + totalTax);
+    const totalTax = Number(order?.taxAmount ?? 0) || items.reduce((s, i) => s + (i.taxAmount ?? 0), 0);
+    // Use globalDiscountAmount for order-level discount (promo/coupon/alliance/manual)
+    const orderDiscount = Number(order?.globalDiscountAmount ?? 0);
+    const grandTotal = Number(order?.grandTotal ?? 0);
     const changeAmount = Number(order?.changeAmount ?? 0);
     const totalPaid = tenders.reduce((s, t) => s + t.amount, 0);
 
@@ -123,11 +125,18 @@ export function PrintReceipt({
                         <Separator />
 
                         {/* ── Item lines ─────────────────────────────────────── */}
-                        {/* Column header */}
-                        <div className="grid grid-cols-[1fr_auto] gap-x-2 font-bold text-muted-foreground border-b pb-1">
-                            <span>Item</span>
-                            <span className="text-right">Net</span>
-                        </div>
+                        {/* Column header - Hide Net column for gift receipts */}
+                        {!isGiftReceipt && (
+                            <div className="grid grid-cols-[1fr_auto] gap-x-2 font-bold text-muted-foreground border-b pb-1">
+                                <span>Item</span>
+                                <span className="text-right">Net</span>
+                            </div>
+                        )}
+                        {isGiftReceipt && (
+                            <div className="font-bold text-muted-foreground border-b pb-1">
+                                <span>Item</span>
+                            </div>
+                        )}
 
                         {items.map((item: any, idx: number) => {
                             const lineSubtotal = item.price * item.quantity;
@@ -137,25 +146,41 @@ export function PrintReceipt({
 
                             return (
                                 <div key={item.id ?? idx} className="space-y-0.5 pb-1.5 border-b border-dashed last:border-0">
-                                    {/* Name + net total */}
-                                    <div className="grid grid-cols-[1fr_auto] gap-x-2">
-                                        <span className="font-semibold truncate">{item.name}</span>
-                                        <span className="font-bold text-right">{fmt(net)}</span>
-                                    </div>
+                                    {/* Name + net total - Hide net for gift receipts */}
+                                    {!isGiftReceipt && (
+                                        <div className="grid grid-cols-[1fr_auto] gap-x-2">
+                                            <span className="font-semibold truncate">{item.name}</span>
+                                            <span className="font-bold text-right">{fmt(net)}</span>
+                                        </div>
+                                    )}
+                                    {isGiftReceipt && (
+                                        <div>
+                                            <span className="font-semibold">{item.name}</span>
+                                        </div>
+                                    )}
 
                                     {/* SKU */}
                                     {item.sku && (
                                         <p className="text-muted-foreground pl-1">SKU: {item.sku}</p>
                                     )}
 
-                                    {/* Qty × Unit Price = Subtotal */}
-                                    <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-muted-foreground">
-                                        <span>{item.quantity} × {fmt(item.price)}</span>
-                                        <span className="text-right">{fmt(lineSubtotal)}</span>
-                                    </div>
+                                    {/* Qty × Unit Price = Subtotal - Hide for gift receipts */}
+                                    {!isGiftReceipt && (
+                                        <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-muted-foreground">
+                                            <span>{item.quantity} × {fmt(item.price)}</span>
+                                            <span className="text-right">{fmt(lineSubtotal)}</span>
+                                        </div>
+                                    )}
 
-                                    {/* Discount line (only if non-zero) */}
-                                    {disc > 0 && (
+                                    {/* For gift receipts, just show quantity */}
+                                    {isGiftReceipt && (
+                                        <div className="pl-1 text-muted-foreground">
+                                            <span>Quantity: {item.quantity}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Discount line (only if non-zero) - Hide for gift receipts */}
+                                    {!isGiftReceipt && disc > 0 && (
                                         <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-destructive">
                                             <span>
                                                 Discount
@@ -165,8 +190,8 @@ export function PrintReceipt({
                                         </div>
                                     )}
 
-                                    {/* Tax line (only if non-zero) */}
-                                    {tax > 0 && (
+                                    {/* Tax line (only if non-zero) - Hide for gift receipts */}
+                                    {!isGiftReceipt && tax > 0 && (
                                         <div className="grid grid-cols-[1fr_auto] gap-x-2 pl-1 text-amber-600 dark:text-amber-400">
                                             <span>
                                                 Tax
@@ -181,67 +206,79 @@ export function PrintReceipt({
 
                         <Separator />
 
-                        {/* ── Lump-sum totals ─────────────────────────────────── */}
-                        <div className="space-y-1">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Subtotal</span>
-                                <span>{fmt(subtotal)}</span>
+                        {/* ── Lump-sum totals - Hide for gift receipts ─────────────────────────────────── */}
+                        {!isGiftReceipt && (
+                            <div className="space-y-1">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Subtotal</span>
+                                    <span>{fmt(subtotal)}</span>
+                                </div>
+
+                                {totalItemDiscount > 0 && (
+                                    <div className="flex justify-between text-destructive">
+                                        <span>Item Discounts</span>
+                                        <span>−{fmt(totalItemDiscount)}</span>
+                                    </div>
+                                )}
+
+                                {orderDiscount > 0 && (
+                                    <div className="flex justify-between text-primary font-bold">
+                                        <span>{orderDiscountLabel}</span>
+                                        <span>−{fmt(orderDiscount)}</span>
+                                    </div>
+                                )}
+
+                                {totalTax > 0 && settings.receiptShowTax && (
+                                    <div className="flex justify-between text-amber-600 dark:text-amber-400">
+                                        <span>Total Tax</span>
+                                        <span>+{fmt(totalTax)}</span>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between font-bold text-sm pt-1 border-t">
+                                    <span>TOTAL</span>
+                                    <span>{fmt(grandTotal)}</span>
+                                </div>
                             </div>
+                        )}
 
-                            {totalItemDiscount > 0 && (
-                                <div className="flex justify-between text-destructive">
-                                    <span>Item Discounts</span>
-                                    <span>−{fmt(totalItemDiscount)}</span>
-                                </div>
-                            )}
-
-                            {orderDiscount > 0 && (
-                                <div className="flex justify-between text-primary font-bold">
-                                    <span>{orderDiscountLabel}</span>
-                                    <span>−{fmt(orderDiscount)}</span>
-                                </div>
-                            )}
-
-                            {totalTax > 0 && settings.receiptShowTax && (
-                                <div className="flex justify-between text-amber-600 dark:text-amber-400">
-                                    <span>Total Tax</span>
-                                    <span>+{fmt(totalTax)}</span>
-                                </div>
-                            )}
-
-                            <div className="flex justify-between font-bold text-sm pt-1 border-t">
-                                <span>TOTAL</span>
-                                <span>{fmt(grandTotal)}</span>
+                        {/* Gift Receipt Message */}
+                        {isGiftReceipt && (
+                            <div className="text-center py-4">
+                                <p className="font-semibold text-lg">GIFT RECEIPT</p>
+                                <p className="text-sm text-muted-foreground mt-1">Price information not included its Just Gift For you</p>
                             </div>
-                        </div>
+                        )}
 
                         <Separator />
 
-                        {/* ── Payment breakdown ───────────────────────────────── */}
-                        <div className="space-y-1">
-                            {tenders.map((t, i) => (
-                                <div key={i} className="flex justify-between">
-                                    <span className="text-muted-foreground capitalize">
-                                        {t.method.replace(/_/g, " ")}
-                                        {t.cardLast4 ? ` ••••${t.cardLast4}` : ""}
-                                        {t.slipNo ? (t.method === "voucher" ? ` #${t.slipNo}` : ` (${t.slipNo})`) : ""}
-                                    </span>
-                                    <span className="font-semibold">{fmt(t.amount)}</span>
-                                </div>
-                            ))}
-                            {totalPaid > 0 && totalPaid !== grandTotal && (
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span>Total Paid</span>
-                                    <span>{fmt(totalPaid)}</span>
-                                </div>
-                            )}
-                            {changeAmount > 0 && (
-                                <div className="flex justify-between font-semibold text-primary">
-                                    <span>Change</span>
-                                    <span>{fmt(changeAmount)}</span>
-                                </div>
-                            )}
-                        </div>
+                        {/* ── Payment breakdown - Hide for gift receipts ───────────────────────────────── */}
+                        {!isGiftReceipt && (
+                            <div className="space-y-1">
+                                {tenders.map((t, i) => (
+                                    <div key={i} className="flex justify-between">
+                                        <span className="text-muted-foreground capitalize">
+                                            {t.method.replace(/_/g, " ")}
+                                            {t.cardLast4 ? ` ••••${t.cardLast4}` : ""}
+                                            {t.slipNo ? (t.method === "voucher" ? ` #${t.slipNo}` : ` (${t.slipNo})`) : ""}
+                                        </span>
+                                        <span className="font-semibold">{fmt(t.amount)}</span>
+                                    </div>
+                                ))}
+                                {totalPaid > 0 && totalPaid !== grandTotal && (
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>Total Paid</span>
+                                        <span>{fmt(totalPaid)}</span>
+                                    </div>
+                                )}
+                                {changeAmount > 0 && (
+                                    <div className="flex justify-between font-semibold text-primary">
+                                        <span>Change</span>
+                                        <span>{fmt(changeAmount)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <Separator />
                         <p className="text-center text-muted-foreground">

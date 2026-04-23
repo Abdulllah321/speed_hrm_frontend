@@ -430,7 +430,7 @@ export default function CreateDirectPurchaseOrder() {
                             <Autocomplete
                                 options={[
                                     { value: 'CONSUMABLE', label: 'Consumable' },
-                                    { value: 'FRESH', label: 'Fresh Goods' }
+                                    { value: 'FRESH', label: 'FINISH GOODS' }
                                 ]}
                                 value={goodsType}
                                 onValueChange={setGoodsType}

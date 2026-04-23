@@ -28,10 +28,10 @@ function computeLineItem(
 ): CartItem {
     const price = Number(product.unitPrice) || 0;
     const subtotal = price * quantity;
-    const discountAmount = Math.round(subtotal * (discountPercent / 100));
+    const discountAmount = Math.round(subtotal * (discountPercent / 100) * 100) / 100;
     const afterDiscount = subtotal - discountAmount;
     const taxPercent = Number(product.taxRate1) || defaultTaxPercent;
-    const taxAmount = Math.round(afterDiscount * (taxPercent / 100));
+    const taxAmount = Math.round(afterDiscount * (taxPercent / 100) * 100) / 100;
     const total = afterDiscount + taxAmount;
 
     return {
@@ -326,9 +326,9 @@ export default function NewSalePage() {
                     return item;
                 }
                 const subtotal = item.price * quantity;
-                const discountAmount = Math.round(subtotal * (item.discountPercent / 100));
+                const discountAmount = Math.round(subtotal * (item.discountPercent / 100) * 100) / 100;
                 const afterDiscount = subtotal - discountAmount;
-                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
+                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100) * 100) / 100;
                 const total = afterDiscount + taxAmount;
                 return { ...item, quantity, discountAmount, taxAmount, total };
             })
@@ -341,9 +341,9 @@ export default function NewSalePage() {
             prev.map((item) => {
                 if (item.id !== id) return item;
                 const subtotal = item.price * item.quantity;
-                const discountAmount = Math.round(subtotal * (clamped / 100));
+                const discountAmount = Math.round(subtotal * (clamped / 100) * 100) / 100;
                 const afterDiscount = subtotal - discountAmount;
-                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
+                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100) * 100) / 100;
                 const total = afterDiscount + taxAmount;
                 return { ...item, discountPercent: clamped, discountAmount, taxAmount, total };
             })

@@ -210,6 +210,7 @@ export default function SalesHistoryPage() {
     const [returnDetails, setReturnDetails] = useState<any>(null);
     const [showDetails, setShowDetails] = useState(false);
     const [showPrint, setShowPrint] = useState(false);
+    const [showGiftPrint, setShowGiftPrint] = useState(false);
     const [showReturnPrint, setShowReturnPrint] = useState(false);
     const [showUpdateTender, setShowUpdateTender] = useState(false);
 
@@ -373,6 +374,15 @@ export default function SalesHistoryPage() {
                                 onClick={() => { setSelectedOrder(order); setShowPrint(true); }}>
                                 <Printer className="h-3.5 w-3.5" />
                             </Button>
+                            {/* Gift receipt button - only show if order was marked as gift receipt */}
+                            {order.isGiftReceipt && (
+                                <Button variant="ghost" size="icon"
+                                    className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
+                                    title="Print gift receipt (no prices)"
+                                    onClick={() => { setSelectedOrder(order); setShowGiftPrint(true); }}>
+                                    <Printer className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
                             {(order.status === 'returned' || order.status === 'partially_returned') && (
                                 <Button variant="ghost" size="icon"
                                     className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
@@ -721,10 +731,19 @@ export default function SalesHistoryPage() {
                                             <RotateCcw className="h-4 w-4" /> Continue Order
                                         </Button>
                                     ) : (
+                                        <>
+                                        {/* Gift receipt button - only show if order was marked as gift receipt */}
+                                        {selectedOrder?.isGiftReceipt && (
+                                            <Button variant="outline" className="rounded-xl font-black text-[10px] uppercase px-8 h-11 gap-2.5 tracking-widest border-pink-300 text-pink-600 hover:bg-pink-50"
+                                                onClick={() => { setShowDetails(false); setShowGiftPrint(true); }}>
+                                                <Printer className="h-4 w-4" /> Gift Receipt
+                                            </Button>
+                                        )}
                                         <Button className="rounded-xl font-black text-[10px] uppercase px-8 h-11 shadow-lg shadow-primary/30 gap-2.5 tracking-widest"
                                             onClick={() => { setShowDetails(false); setShowPrint(true); }}>
                                             <Printer className="h-4 w-4" /> Print Receipt
                                         </Button>
+                                        </>
                                     )}
                                 </DialogFooter>
                             </>
@@ -736,9 +755,18 @@ export default function SalesHistoryPage() {
             {/* Print Receipt */}
             {showPrint && selectedOrder && (
                 <PrintReceipt
-                    order={selectedOrder}
+                    order={{ ...selectedOrder, isGiftReceipt: false }}
                     tenders={selectedOrder.tenders || []}
                     onClose={() => setShowPrint(false)}
+                />
+            )}
+
+            {/* Print Gift Receipt */}
+            {showGiftPrint && selectedOrder && (
+                <PrintReceipt
+                    order={{ ...selectedOrder, isGiftReceipt: true }}
+                    tenders={selectedOrder.tenders || []}
+                    onClose={() => setShowGiftPrint(false)}
                 />
             )}
 

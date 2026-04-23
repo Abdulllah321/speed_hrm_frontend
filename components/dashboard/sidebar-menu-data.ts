@@ -1406,7 +1406,7 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Customer Ledgers",
-        href: "/pos/customer-ledgers",
+        href: "/pos/customer-ledger",
         permissions: ["pos.customer.ledger.view"],
       },
       {
