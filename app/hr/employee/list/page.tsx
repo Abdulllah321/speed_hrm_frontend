@@ -1,7 +1,6 @@
 "use client";
 
 import { PermissionGuard } from "@/components/auth/permission-guard";
-
 import { useState, useEffect, useTransition, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -28,12 +27,10 @@ import {
   updateEmployee,
   type Employee,
 } from "@/lib/actions/employee";
-import { uploadEmployeeCsv } from "@/lib/actions/employee-import";
-import { FileUpload } from "@/components/ui/file-upload";
 import { getDepartments, type Department } from "@/lib/actions/department";
 import { getDesignations, type Designation } from "@/lib/actions/designation";
 import { getCitiesByState, type City } from "@/lib/actions/city";
-import DataTable, { type FilterConfig } from "@/components/common/data-table";
+import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -51,22 +48,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { EmployeeBulkUploadModal } from "@/components/employee/bulk-upload-modal";
 
 export default function EmployeeListPage() {
   const router = useRouter();
@@ -74,9 +56,8 @@ export default function EmployeeListPage() {
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const hasFetchedRef = useRef(false);
-  const [uploadDialog, setUploadDialog] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadPending, setUploadPending] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [bulkUploadId, setBulkUploadId] = useState<string | null>(null);
   const [impersonatePendingId, setImpersonatePendingId] = useState<string | null>(null);
 
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -84,16 +65,25 @@ export default function EmployeeListPage() {
     null
   );
 
-  const [errorDialog, setErrorDialog] = useState(false);
-  const [importErrors, setImportErrors] = useState<Array<{
-    row: Record<string, string>;
-    error: string;
-  }>>([]);
-
   // Dropdown data for mapping IDs to names
   const [departments, setDepartments] = useState<Department[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
   const [citiesMap, setCitiesMap] = useState<Record<string, City[]>>({});
+
+  // Persistence of upload ID for session recovery
+  useEffect(() => {
+    const savedId = sessionStorage.getItem("employee_upload_id");
+    if (savedId) setBulkUploadId(savedId);
+  }, []);
+
+  const handleUploadIdChange = (id: string | null) => {
+    setBulkUploadId(id);
+    if (id) {
+      sessionStorage.setItem("employee_upload_id", id);
+    } else {
+      sessionStorage.removeItem("employee_upload_id");
+    }
+  };
 
   // Define columns for DataTable
   const columns: ColumnDef<Employee>[] = [
@@ -250,63 +240,57 @@ export default function EmployeeListPage() {
     },
   ];
 
-  // Fetch all data in a single useEffect to avoid multiple API calls
+  const refreshEmployees = async () => {
+    try {
+      const employeesRes = await getEmployees();
+      if (employeesRes.status && employeesRes.data) {
+        setEmployees(employeesRes.data);
+  
+        // Fetch cities only for unique provinces found in employee data
+        const uniqueProvinces = [...new Set(employeesRes.data.map(e => e.province).filter(Boolean))];
+  
+        if (uniqueProvinces.length > 0) {
+          const citiesData: Record<string, City[]> = {};
+          await Promise.all(
+            uniqueProvinces.map(async (province) => {
+              if (!province) return;
+              try {
+                const res = await getCitiesByState(province);
+                if (res.status && res.data) {
+                  citiesData[province] = res.data;
+                }
+              } catch (error) {
+                console.error(`Error fetching cities for ${province}:`, error);
+              }
+            })
+          );
+          setCitiesMap(citiesData);
+        }
+      }
+    } catch (error) {
+      console.error("Error refreshing employees:", error);
+    }
+  };
+
   useEffect(() => {
-    // Prevent duplicate calls in React Strict Mode
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
 
     const fetchAllData = async () => {
       try {
         setLoading(true);
+        await refreshEmployees();
 
-        // Fetch employees, departments, and designations separately to prevent one from blocking others
-        // (especially important for designation fetches that might fail for employees)
-        const employeesRes = await getEmployees();
-
-        // Non-blocking fetches for metadata
         getDepartments().then(res => {
           if (res.status) setDepartments(res.data || []);
-        }).catch(err => console.error("Non-blocking department fetch failed:", err));
+        });
 
         getDesignations().then(res => {
           if (res.status) setDesignations(res.data || []);
-        }).catch(err => console.error("Non-blocking designation fetch failed:", err));
-
-        // Set employees
-        if (employeesRes.status && employeesRes.data) {
-          setEmployees(employeesRes.data);
-
-          // Fetch cities only for unique provinces found in employee data
-          const uniqueProvinces = [...new Set(employeesRes.data.map(e => e.province).filter(Boolean))];
-
-          if (uniqueProvinces.length > 0) {
-            const citiesData: Record<string, City[]> = {};
-
-            await Promise.all(
-              uniqueProvinces.map(async (province) => {
-                if (!province) return;
-                try {
-                  const res = await getCitiesByState(province);
-                  if (res.status && res.data) {
-                    citiesData[province] = res.data;
-                  }
-                } catch (error) {
-                  console.error(`Error fetching cities for ${province}:`, error);
-                }
-              })
-            );
-
-            setCitiesMap(citiesData);
-          }
-        } else {
-          toast.error(employeesRes.message || "Failed to fetch employees");
-          setEmployees([]);
-        }
+        });
       } catch (error) {
         console.error("Error fetching data:", error);
-        toast.error("Failed to fetch data");
-        setEmployees([]);
+        toast.error("Failed to fetch records");
       } finally {
         setLoading(false);
       }
@@ -315,7 +299,6 @@ export default function EmployeeListPage() {
     fetchAllData();
   }, []);
 
-  // Helper functions to map IDs to names
   const getDepartmentName = (id: string | null | undefined) => {
     if (!id) return "N/A";
     const dept = departments.find(d => d.id === id);
@@ -361,11 +344,6 @@ export default function EmployeeListPage() {
     });
   };
 
-  const handleDelete = (employee: Employee) => {
-    setDeletingEmployee(employee);
-    setDeleteDialog(true);
-  };
-
   const handleDeleteConfirm = async () => {
     if (!deletingEmployee) return;
     startTransition(async () => {
@@ -388,30 +366,19 @@ export default function EmployeeListPage() {
   const handleDashboardAccess = async (employee: Employee) => {
     try {
       setImpersonatePendingId(employee.id);
-
-      const apiBase =
-        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
-
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api";
       const res = await fetch(`${apiBase}/auth/impersonate-by-employee`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ employeeId: employee.id }),
       });
 
       const payload = await res.json();
-
       if (!res.ok || !payload.status) {
-        toast.error(
-          payload.message ||
-          "Failed to open dashboard. Make sure user account & dashboard access exist."
-        );
+        toast.error(payload.message || "Failed to open dashboard.");
         return;
       }
-
-      // Navigate in the same tab so the impersonation banner is visible
       router.push("/hr/employee/list");
       router.refresh();
     } catch (error) {
@@ -419,176 +386,6 @@ export default function EmployeeListPage() {
       toast.error("Failed to open dashboard");
     } finally {
       setImpersonatePendingId(null);
-    }
-  };
-
-  const handlePrint = () => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <html><head><title>Employee List</title>
-      <style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #ddd;padding:6px;text-align:left}th{background:#f4f4f4}h1{text-align:center}</style>
-      </head><body><h1>Employee List</h1>
-      <table><thead><tr><th>S.No</th><th>Emp ID</th><th>Name</th><th>Department</th><th>Designation</th><th>Contact</th><th>Bank</th><th>Salary</th><th>Status</th></tr></thead>
-      <tbody>${employees
-        .map(
-          (e, i) =>
-            `<tr><td>${i + 1}</td><td>${e.employeeId}</td><td>${e.employeeName
-            }</td><td>${getDepartmentName(e.department)}</td><td>${getDesignationName(e.designation)
-            }</td><td>${e.contactNumber}</td><td>${e.bankName}</td><td>${Number(
-              e.employeeSalary
-            ).toLocaleString()}</td><td>${e.status}</td></tr>`
-        )
-        .join("")}</tbody></table></body></html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-  };
-
-  const handleExportCSV = () => {
-    const headers = [
-      "Employee ID",
-      "Employee Name",
-      "Father / Husband Name",
-      "Department",
-      "Sub Department",
-      "Employee Grade",
-      "Attendance ID",
-      "Designation",
-      "Marital Status",
-      "Employment Status",
-      "Probation Expiry Date",
-      "CNIC Number",
-      "CNIC Expiry Date",
-      "Lifetime CNIC",
-      "Joining Date",
-      "Date of Birth",
-      "Nationality",
-      "Gender",
-      "Contact Number",
-      "Emergency Contact Number",
-      "Emergency Contact Person",
-      "Personal Email",
-      "Official Email",
-      "Country",
-      "State",
-      "City",
-      "Area",
-      "Employee Salary",
-      "EOBI",
-      "EOBI ID",
-      "EOBI Code",
-      "EOBI Number",
-      "Provident Fund",
-      "Overtime Applicable",
-      "Days Off",
-      "Reporting Manager",
-      "Working Hours Policy",
-      "Branch",
-      "Leaves Policy",
-      "Allocation",
-      "Allow Remote Attendance",
-      "Current Address",
-      "Permanent Address",
-      "Bank Name",
-      "Account Number",
-      "Account Title",
-    ];
-
-    const csv = [
-      headers.join(","),
-      ...employees.map((emp: any) => {
-        return [
-          emp.employeeId || "",
-          emp.employeeName || "",
-          emp.fatherHusbandName || "",
-          emp.departmentName || "",
-          emp.subDepartmentName || "",
-          emp.employeeGradeName || "",
-          emp.attendanceId || "",
-          emp.designationName || "",
-          emp.maritalStatusName || "",
-          emp.employmentStatusName || "",
-          emp.probationExpiryDate || "",
-          emp.cnicNumber || "",
-          emp.cnicExpiryDate || "",
-          emp.lifetimeCnic || "",
-          emp.joiningDate || "",
-          emp.dateOfBirth || "",
-          emp.nationality || "",
-          emp.gender || "",
-          emp.contactNumber || "",
-          emp.emergencyContactNumber || "",
-          emp.emergencyContactPerson || "",
-          emp.personalEmail || "",
-          emp.officialEmail || "",
-          emp.countryName || "",
-          emp.provinceName || "",
-          emp.cityName || "",
-          emp.area || "",
-          emp.employeeSalary || "",
-          emp.eobi ? "YES" : "",
-          emp.eobiId || "",
-          emp.eobiCode || "",
-          emp.eobiNumber || "",
-          emp.providentFund || "",
-          emp.overtimeApplicable || "",
-          emp.daysOff || "",
-          emp.reportingManager || "",
-          emp.workingHoursPolicyName || "",
-          emp.locationName || "",
-          emp.leavesPolicyName || "",
-          emp.allocationName || "",
-          emp.allowRemoteAttendance || "",
-          emp.currentAddress || "",
-          emp.permanentAddress || "",
-          emp.bankName || "",
-          emp.accountNumber || "",
-          emp.accountTitle || "",
-        ].map((c) => `"${c}"`).join(",");
-      }),
-    ].join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `employees_${new Date().toISOString().split("T")[0]}.csv`;
-    link.click();
-    toast.success("CSV exported");
-  };
-
-  const handleCsvUpload = async () => {
-    if (!selectedFile) {
-      toast.error("Please choose a CSV file first");
-      return;
-    }
-    setUploadPending(true);
-    try {
-      const res = await uploadEmployeeCsv(selectedFile);
-      if (res.status && res.data) {
-        toast.success(
-          res.data.inserted !== undefined
-            ? `Uploaded. Inserted ${res.data.inserted}/${res.data.total || res.data.inserted}`
-            : "CSV uploaded successfully"
-        );
-        const refreshed = await getEmployees();
-        if (refreshed.status && refreshed.data) {
-          setEmployees(refreshed.data);
-        }
-        setUploadDialog(false);
-      } else {
-        if (res.errors && res.errors.length > 0) {
-          setImportErrors(res.errors);
-          setErrorDialog(true);
-        }
-        toast.error(res.message || "Upload failed");
-      }
-    } catch (error) {
-      console.error("Error uploading CSV:", error);
-      toast.error("Failed to upload CSV");
-    } finally {
-      setUploadPending(false);
-      setSelectedFile(null);
     }
   };
 
@@ -607,9 +404,9 @@ export default function EmployeeListPage() {
                 Add Employee
               </Button>
             </Link>
-            <Button variant="secondary" onClick={() => setUploadDialog(true)}>
+            <Button variant="secondary" onClick={() => setUploadModalOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
-              Upload Employees CSV
+              Bulk Upload
             </Button>
           </div>
         </div>
@@ -622,8 +419,8 @@ export default function EmployeeListPage() {
           <DataTable
             data={employees}
             columns={columns}
-            toggleAction={() => setUploadDialog(true)}
-            actionText="Upload CSV"
+            toggleAction={() => setUploadModalOpen(true)}
+            actionText="Bulk Upload"
             searchFields={[
               { key: "employeeName", label: "Employee Name" },
               { key: "employeeId", label: "Employee ID" },
@@ -656,101 +453,15 @@ export default function EmployeeListPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <Dialog open={uploadDialog} onOpenChange={setUploadDialog}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Upload Employees CSV</DialogTitle>
-              <DialogDescription>
-                Select a CSV file. It will be stored in backend public/csv and parsed here.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              <FileUpload
-                id="employee-csv-upload"
-                accept=".csv,text/csv"
-                onChange={(files) => {
-                  if (files && files.length > 0) {
-                    setSelectedFile(files[0]);
-                  } else {
-                    setSelectedFile(null);
-                  }
-                }}
-              />
-              <div className="border border-primary/20 rounded-lg p-3 bg-primary/5">
-                <p className="text-sm text-primary mb-2">Need a template?</p>
-                <Button asChild variant="outline" size="sm" className="bg-primary! text-white! hover:bg-primary/90!">
-                  <a href="/employee_samples.xlsx" download>
-                    <Download className="h-4 w-4 mr-2" />
-                    Download Sample Template
-                  </a>
-                </Button>
-
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setUploadDialog(false);
-                  setSelectedFile(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleCsvUpload}
-                disabled={uploadPending || !selectedFile}
-              >
-                {uploadPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Upload
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={errorDialog} onOpenChange={setErrorDialog}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-destructive">Import Errors</DialogTitle>
-              <DialogDescription>
-                {importErrors.length} records failed to import. Please review the errors below.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="border rounded-md overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Row</TableHead>
-                      <TableHead>Key Data</TableHead>
-                      <TableHead>Error Reason</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {importErrors.map((err, i) => (
-                      <TableRow key={i} className="bg-destructive/5">
-                        <TableCell>{i + 1}</TableCell>
-                        <TableCell className="font-mono text-xs max-w-[300px] truncate" title={JSON.stringify(err.row, null, 2)}>
-                          {err.row['Employee ID'] || err.row['Employee Name'] || 'Unknown'}
-                        </TableCell>
-                        <TableCell className="text-destructive font-medium">
-                          {err.error}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setErrorDialog(false)}>
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <EmployeeBulkUploadModal
+          open={uploadModalOpen}
+          onOpenChange={setUploadModalOpen}
+          uploadId={bulkUploadId}
+          onUploadIdChange={handleUploadIdChange}
+          onSuccess={() => {
+            refreshEmployees();
+          }}
+        />
       </div>
     </PermissionGuard>
   );

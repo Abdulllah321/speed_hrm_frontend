@@ -85,13 +85,33 @@ export interface Employee {
     documentUrl?: string | null;
   }>;
 }
-// Get all employees
-export async function getEmployees(): Promise<{ status: boolean; data?: Employee[]; message?: string }> {
+// Get all employees (with pagination)
+export async function getEmployees(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<{
+  status: boolean;
+  data?: Employee[];
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  message?: string;
+}> {
   try {
-    const res = await authFetch('/employees', {
-    });
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.search) searchParams.append('search', params.search);
+
+    const url = `/employees${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    const res = await authFetch(url, {});
+
     if (!res.ok) {
-      const errorData = res.data;;
+      const errorData = res.data;
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
     return res.data;
@@ -117,13 +137,33 @@ export interface EmployeeDropdownOption {
   officialEmail?: string | null;
   personalEmail?: string | null;
 }
-// Get employees for dropdown (minimal fields)
-export async function getEmployeesForDropdown(): Promise<{ status: boolean; data?: EmployeeDropdownOption[]; message?: string }> {
+// Get employees for dropdown (with pagination and search)
+export async function getEmployeesForDropdown(params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+}): Promise<{
+  status: boolean;
+  data?: EmployeeDropdownOption[];
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+  message?: string;
+}> {
   try {
-    const res = await authFetch('/employees/dropdown', {
-    });
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.search) searchParams.append('search', params.search);
+
+    const url = `/employees/dropdown${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+    const res = await authFetch(url, {});
+
     if (!res.ok) {
-      const errorData = res.data;;
+      const errorData = res.data;
       return { status: false, message: errorData.message || `HTTP error! status: ${res.status}` };
     }
     return res.data;

@@ -111,11 +111,11 @@ export function Autocomplete({
       normalizedSearch.length === 0
         ? options
         : options.filter((option) => {
-            const haystack = [option.value, option.label, option.description || ""]
-              .join(" ")
-              .toLowerCase()
-            return haystack.includes(normalizedSearch)
-          }),
+          const haystack = [option.value, option.label, option.description || ""]
+            .join(" ")
+            .toLowerCase()
+          return haystack.includes(normalizedSearch)
+        }),
     [options, normalizedSearch]
   )
 

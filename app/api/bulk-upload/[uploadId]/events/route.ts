@@ -19,9 +19,17 @@ export async function GET(
         }
 
         const uploadType = req.nextUrl.searchParams.get("type") || "item";
-        const backendPath = uploadType === "hscode"
-            ? `${API_URL}/master/hs-codes/bulk-upload/${uploadId}/events`
-            : `${API_URL}/items/bulk-upload/${uploadId}/events`;
+        let backendPath: string;
+
+        if (uploadType === "hscode") {
+            backendPath = `${API_URL}/master/hs-codes/bulk-upload/${uploadId}/events`;
+        } else if (uploadType === "employee") {
+            backendPath = `${API_URL}/employees/bulk-upload/${uploadId}/events`;
+        } else if (uploadType === "attendance") {
+            backendPath = `${API_URL}/attendances/bulk-upload/${uploadId}/events`;
+        } else {
+            backendPath = `${API_URL}/items/bulk-upload/${uploadId}/events`;
+        }
 
         let backendRes: Response;
         try {
