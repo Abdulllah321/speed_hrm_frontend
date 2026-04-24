@@ -211,6 +211,19 @@ export default function CheckoutPage() {
     const [completedOrder, setCompletedOrder] = useState<any>(null);
     const [isGiftReceipt, setIsGiftReceipt] = useState(false);
 
+    // ── Voucher tender state ───────────────────────────────────────────
+    const [voucherCode, setVoucherCode] = useState("");
+    const [voucherValidating, setVoucherValidating] = useState(false);
+    const [validatedVoucher, setValidatedVoucher] = useState<{
+        id: string; code: string; voucherType: string;
+        faceValue: number; description?: string;
+        customerId?: string; requireCustomerMatch: boolean;
+    } | null>(null);
+    const [voucherError, setVoucherError] = useState<string | null>(null);
+    // Track vouchers added as tenders: { voucherId, code, amount }
+    const [appliedVouchers, setAppliedVouchers] = useState<{ voucherId: string; code: string; amount: number }[]>([]);
+    const voucherDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     // ── Refs for keyboard shortcuts ────────────────────────────────────
     const couponInputRef = useRef<HTMLInputElement>(null);
     const tenderAmountRef = useRef<HTMLInputElement>(null);
@@ -355,6 +368,78 @@ export default function CheckoutPage() {
         setTenderSlip("");
     };
 
+    // ── Voucher code validation (debounced) ────────────────────────────
+    const validateVoucherCode = useCallback(async (code: string) => {
+        const trimmed = code.trim().toUpperCase();
+        // Format: 3-letter prefix + dash + 6 alphanumeric chars (e.g. GFT-ABC123)
+        const validFormat = /^[A-Z]{3}-[A-Z0-9]{6}$/.test(trimmed);
+        if (!validFormat) {
+            setValidatedVoucher(null);
+            // Only show format error if they've typed enough to be clearly wrong
+            setVoucherError(trimmed.length >= 4 ? "Invalid format — expected: ABC-123456" : null);
+            return;
+        }
+        setVoucherValidating(true);
+        setVoucherError(null);
+        try {
+            const locationId = getCookie("pos_location_id") || "";
+            const res = await authFetch("/pos-config/vouchers/validate", {
+                method: "POST",
+                body: { code: trimmed, locationId, customerId: selectedCustomer?.id },
+            });
+            if (res.ok && res.data?.status) {
+                setValidatedVoucher(res.data.data);
+                setVoucherError(null);
+                // Auto-fill amount = min(faceValue, balanceDue)
+                setTenderAmount(Math.min(res.data.data.faceValue, balanceDue));
+            } else {
+                setValidatedVoucher(null);
+                setVoucherError(res.data?.message || "Invalid voucher");
+            }
+        } catch {
+            setVoucherError("Failed to validate voucher");
+        } finally {
+            setVoucherValidating(false);
+        }
+    }, [selectedCustomer, balanceDue]);
+
+    const handleVoucherCodeChange = (value: string) => {
+        // Strip everything except letters and digits, then uppercase
+        const clean = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+
+        // Auto-format: first 3 chars are the prefix, rest is the suffix
+        // Result shape: "GFT-ABC123" (max 10 visible chars = 3 + dash + 6)
+        let formatted = clean;
+        if (clean.length > 3) {
+            formatted = `${clean.slice(0, 3)}-${clean.slice(3, 9)}`;
+        }
+
+        setVoucherCode(formatted);
+        setValidatedVoucher(null);
+        setVoucherError(null);
+        if (voucherDebounceRef.current) clearTimeout(voucherDebounceRef.current);
+
+        // Fire API only when full 10-char code is present (XXX-XXXXXX)
+        if (formatted.length === 10) {
+            voucherDebounceRef.current = setTimeout(() => validateVoucherCode(formatted), 400);
+        }
+    };
+
+    const addVoucherTender = () => {
+        if (!validatedVoucher || !tenderAmount || tenderAmount <= 0) return;
+        // Check not already applied
+        if (appliedVouchers.some(v => v.voucherId === validatedVoucher.id)) {
+            toast.error("This voucher is already added");
+            return;
+        }
+        const amount = Math.min(tenderAmount, validatedVoucher.faceValue);
+        setAppliedVouchers(prev => [...prev, { voucherId: validatedVoucher.id, code: validatedVoucher.code, amount }]);
+        setTenders(prev => [...prev, { method: "voucher", amount, slipNo: validatedVoucher.code }]);
+        setVoucherCode("");
+        setValidatedVoucher(null);
+        setTenderAmount(0);
+    };
+
     // ── Submit order ───────────────────────────────────────────────────
     const handleHold = useCallback(async (holdUntilTime?: string) => {
         if (!holdUntilTime) { setShowHoldModal(true); return; }
@@ -409,6 +494,7 @@ export default function CheckoutPage() {
                 tenders: tenders.length > 0 ? tenders : [{ method: "cash", amount: grandTotal }],
                 customerId: selectedCustomer?.id || null,
                 isGiftReceipt,
+                voucherRedemptions: appliedVouchers.length > 0 ? appliedVouchers : undefined,
             };
 
             // If resuming from a hold order, pass holdOrderId to skip double stock deduction
@@ -1148,28 +1234,76 @@ export default function CheckoutPage() {
                                             <span>Will be posted to <strong>{selectedCustomer.name}</strong>'s Credit Account as an outstanding receivable.</span>
                                         </div>
                                     )}
-                                    {(tenderMethod === "card" || tenderMethod === "bank_transfer" || tenderMethod === "voucher") && (
+                                    {(tenderMethod === "card" || tenderMethod === "bank_transfer") && (
                                         <div className="grid grid-cols-2 gap-2">
-                                            {tenderMethod !== "voucher" && (
-                                                <div>
-                                                    <Label className="text-xs text-muted-foreground">Card # (last 4)</Label>
-                                                    <Input className="mt-1 h-8 text-xs font-mono" maxLength={4} placeholder="••••"
-                                                        value={tenderCardLast4}
-                                                        onChange={(e) => setTenderCardLast4(e.target.value.replace(/\D/, ""))} />
-                                                </div>
-                                            )}
-                                            <div className={tenderMethod === "voucher" ? "col-span-2" : ""}>
-                                                <Label className="text-xs text-muted-foreground">
-                                                    {tenderMethod === "voucher" ? "Voucher #" : "Slip / Ref #"}
-                                                </Label>
-                                                <Input className="mt-1 h-8 text-xs" placeholder={tenderMethod === "voucher" ? "Voucher number" : "Ref"}
+                                            <div>
+                                                <Label className="text-xs text-muted-foreground">Card # (last 4)</Label>
+                                                <Input className="mt-1 h-8 text-xs font-mono" maxLength={4} placeholder="••••"
+                                                    value={tenderCardLast4}
+                                                    onChange={(e) => setTenderCardLast4(e.target.value.replace(/\D/, ""))} />
+                                            </div>
+                                            <div>
+                                                <Label className="text-xs text-muted-foreground">Slip / Ref #</Label>
+                                                <Input className="mt-1 h-8 text-xs" placeholder="Ref"
                                                     value={tenderSlip} onChange={(e) => setTenderSlip(e.target.value)} />
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Voucher tender — debounced code lookup */}
+                                    {tenderMethod === "voucher" && (
+                                        <div className="space-y-2">
+                                            <div>
+                                                <Label className="text-xs text-muted-foreground uppercase tracking-wide">Voucher Code</Label>
+                                                <div className="relative mt-1">
+                                                    <Input
+                                                        className={cn(
+                                                            "font-mono uppercase pr-8 h-9 text-sm",
+                                                            validatedVoucher && "border-emerald-400 focus-visible:ring-emerald-400",
+                                                            voucherError && "border-destructive focus-visible:ring-destructive",
+                                                        )}
+                                                        placeholder="e.g. GFT-ABC123"
+                                                        value={voucherCode}
+                                                        onChange={(e) => handleVoucherCodeChange(e.target.value)}
+                                                        onKeyDown={(e) => e.key === "Enter" && validateVoucherCode(voucherCode)}
+                                                        maxLength={10}
+                                                    />
+                                                    <div className="absolute right-2 top-2">
+                                                        {voucherValidating && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                                                        {!voucherValidating && validatedVoucher && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                                                        {!voucherValidating && voucherError && <XCircle className="h-4 w-4 text-destructive" />}
+                                                    </div>
+                                                </div>
+                                                {voucherError && <p className="text-xs text-destructive mt-1">{voucherError}</p>}
+                                            </div>
+                                            {validatedVoucher && (
+                                                <div className="rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 space-y-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-semibold text-emerald-700">{validatedVoucher.code}</span>
+                                                        <Badge variant="outline" className="text-[10px] border-emerald-400 text-emerald-700">
+                                                            {validatedVoucher.voucherType.replace("_", " ")}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-xs text-emerald-700">
+                                                        <span>{validatedVoucher.description || "Voucher"}</span>
+                                                        <span className="font-mono font-bold">Rs. {fmtCurrency(validatedVoucher.faceValue)}</span>
+                                                    </div>
+                                                    {validatedVoucher.requireCustomerMatch && (
+                                                        <p className="text-[10px] text-amber-600">Customer-bound — verified ✓</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     <Button
                                         className="w-full gap-2"
+                                        disabled={tenderMethod === "voucher" && !validatedVoucher}
                                         onClick={() => {
+                                            if (tenderMethod === "voucher") {
+                                                addVoucherTender();
+                                                return;
+                                            }
                                             if (!tenderAmount || tenderAmount <= 0) {
                                                 setTenderAmount(balanceDue);
                                                 return;
