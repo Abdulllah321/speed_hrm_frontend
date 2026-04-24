@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +29,10 @@ export default function AddEmployeeGradePage() {
       const result = await createEmployeeGradesBulk([{ grade: grade.trim() }]);
       if (result.status) {
         toast.success(result.message || "Employee Grade created successfully");
-        router.push("/master/employee-grade/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/employee-grade/list");
+        });
       } else {
         toast.error(result.message || "Failed to create employee grade");
       }
@@ -37,14 +40,17 @@ export default function AddEmployeeGradePage() {
   };
 
   const handleCancel = () => {
-    router.push("/master/employee-grade/list");
+    startTransition(() => {
+      addTransitionType("nav-back");
+      router.push("/master/employee-grade/list");
+    });
   };
 
   return (
     <PermissionGuard permissions="employee-grade.create">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <Link href="/master/employee-grade/list">
+          <Link href="/master/employee-grade/list" transitionTypes={["nav-back"]}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to List

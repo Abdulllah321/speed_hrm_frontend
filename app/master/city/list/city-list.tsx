@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable, { FilterConfig } from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, setCountriesStore, CityRow } from "./columns";
@@ -46,7 +46,10 @@ export function CityList({ initialCities, countries, newItemId }: CityListProps)
   const canBulkDelete = hasPermission("city.delete");
 
   const handleToggle = () => {
-    router.push("/master/city/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/city/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

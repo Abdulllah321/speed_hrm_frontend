@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, JobTypeRow } from "./columns";
@@ -35,7 +35,10 @@ export function JobTypeList({ initialJobTypes, newItemId }: JobTypeListProps) {
   const canBulkDelete = hasPermission("master.job-type.delete");
 
   const handleToggle = () => {
-    router.push("/master/job-type/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/job-type/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

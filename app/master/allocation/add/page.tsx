@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +45,10 @@ export default function AddAllocationPage() {
             const result = await createAllocations(names);
             if (result.status) {
                 toast.success(result.message);
-                router.push("/master/allocation/list");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/master/allocation/list");
+                });
             } else {
                 toast.error(result.message);
             }
@@ -59,7 +62,12 @@ export default function AddAllocationPage() {
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => router.back()}
+                        onClick={() => {
+                            startTransition(() => {
+                                addTransitionType("nav-back");
+                                router.back();
+                            });
+                        }}
                         className="rounded-full"
                     >
                         <ArrowLeft className="h-4 w-4" />

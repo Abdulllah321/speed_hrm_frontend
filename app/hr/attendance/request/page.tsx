@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -184,7 +184,10 @@ export default function AttendanceRequestQueryPage() {
         if (result.status) {
           toast.success(result.message || "Attendance request query created successfully");
           // Redirect to request list page
-          router.push("/hr/attendance/request-list");
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/hr/attendance/request-list");
+          });
         } else {
           toast.error(result.message || "Failed to create attendance request query");
         }
@@ -198,7 +201,7 @@ export default function AttendanceRequestQueryPage() {
   return (
     <div className="max-w-4xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/hr/attendance/request-list">
+        <Link href="/hr/attendance/request-list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Back to List</Button>
         </Link>
       </div>
@@ -344,7 +347,12 @@ export default function AttendanceRequestQueryPage() {
     {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
     Submit Request
   </Button>
-  <Button type="button" variant="outline" className="w-32" onClick={() => router.back()}>
+  <Button type="button" variant="outline" className="w-32" onClick={() => {
+    startTransition(() => {
+      addTransitionType("nav-back");
+      router.back();
+    });
+  }}>
     Cancel
   </Button>
 </div>

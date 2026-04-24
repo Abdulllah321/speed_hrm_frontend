@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,7 +58,10 @@ export default function AddTaxRatePage() {
         lastCreatedId = res.data?.id;
       }
       toast.success("Tax Rate(s) created successfully");
-      router.push(`/master/tax-rate/list${lastCreatedId ? `?newItemId=${lastCreatedId}` : ""}`);
+      startTransition(() => {
+        addTransitionType("nav-back");
+        router.push(`/master/tax-rate/list${lastCreatedId ? `?newItemId=${lastCreatedId}` : ""}`);
+      });
     });
   };
 
@@ -66,7 +69,7 @@ export default function AddTaxRatePage() {
     <PermissionGuard permissions="master.tax-rate.create">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <Link href="/master/tax-rate/list">
+          <Link href="/master/tax-rate/list" transitionTypes={["nav-back"]}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to List

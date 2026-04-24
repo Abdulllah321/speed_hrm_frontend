@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { columns, AllocationRow } from "./columns";
 import {
@@ -39,7 +39,10 @@ export function AllocationList({
     const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
 
     const handleToggle = () => {
-        router.push("/master/allocation/add");
+        startTransition(() => {
+            addTransitionType("nav-forward");
+            router.push("/master/allocation/add");
+        });
     };
 
     const showAddAction = hasPermission("master.allocation.create");

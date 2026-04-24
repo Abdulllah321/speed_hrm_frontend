@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense, startTransition, addTransitionType } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, eachDayOfInterval, isWeekend, isSameDay } from "date-fns";
 import { getHolidays } from "@/lib/actions/holiday";
+import { DirectionalTransition } from "@/components/layouts/directional-transition";
 
 interface Holiday {
   id: string;
@@ -346,7 +347,10 @@ function ViewEmployeeAttendanceDetailPage() {
       params.set('employeeId', filters.employeeId);
       params.set('fromDate', dateRange.from.toISOString());
       params.set('toDate', dateRange.to.toISOString());
-      router.push(`/hr/attendance/view?${params.toString()}`);
+      startTransition(() => {
+        addTransitionType("nav-forward");
+        router.push(`/hr/attendance/view?${params.toString()}`);
+      });
     } catch (error) {
       console.error("Error fetching attendance:", error);
       toast.error("Failed to load attendance records");
@@ -606,7 +610,8 @@ function ViewEmployeeAttendanceDetailPage() {
   }, [dailyRecords]);
 
   return (
-    <div className="space-y-6">
+    <DirectionalTransition>
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">View Employee Attendance Detail</h2>
@@ -1103,6 +1108,6 @@ function ViewEmployeeAttendanceDetailPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </DirectionalTransition>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -70,7 +70,10 @@ export default function AddLocationPage() {
       );
       if (result.status) {
         toast.success(result.message || "Locations created successfully");
-        router.push("/master/location/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/location/list");
+        });
       } else {
         toast.error(result.message || "Failed to create locations");
       }
@@ -85,7 +88,7 @@ export default function AddLocationPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/location/list">
+        <Link href="/master/location/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -173,7 +176,12 @@ export default function AddLocationPage() {
                   {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create {locations.length > 1 ? `${locations.length} Locations` : "Location"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => router.back()} disabled={isPending}>
+                <Button type="button" variant="outline" onClick={() => {
+                  startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.back();
+                  });
+                }} disabled={isPending}>
                   Cancel
                 </Button>
               </div>

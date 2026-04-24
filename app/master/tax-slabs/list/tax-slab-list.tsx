@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, TaxSlabRow } from "./columns";
@@ -36,7 +36,10 @@ export function TaxSlabList({ initialTaxSlabs, newItemId }: TaxSlabListProps) {
   const canBulkDelete = hasPermission("master.tax-slab.delete");
 
   const handleToggle = () => {
-    router.push("/master/tax-slabs/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/tax-slabs/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

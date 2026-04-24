@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -480,7 +480,10 @@ export function CreateIncrementClient({
 
           if (result.status) {
             toast.success(result.message || "Increment updated successfully");
-            router.push("/hr/payroll-setup/increment/view");
+            startTransition(() => {
+              addTransitionType("nav-back");
+              router.push("/hr/payroll-setup/increment/view");
+            });
             router.refresh();
           } else {
             toast.error(result.message || "Failed to update increment");
@@ -506,7 +509,10 @@ export function CreateIncrementClient({
 
           if (result.status) {
             toast.success(result.message || "Increments created successfully");
-            router.push("/hr/payroll-setup/increment/view");
+            startTransition(() => {
+              addTransitionType("nav-back");
+              router.push("/hr/payroll-setup/increment/view");
+            });
             router.refresh();
           } else {
             toast.error(result.message || "Failed to create increments");
@@ -522,7 +528,7 @@ export function CreateIncrementClient({
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/hr/payroll-setup/increment/view">
+        <Link href="/hr/payroll-setup/increment/view" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,7 +93,10 @@ export default function AddAllowanceHeadPage() {
       const result = await createAllowanceHeadsBulk(payload);
       if (result.status) {
         toast.success(result.message || "Allowance Head created successfully");
-        router.push("/master/allowance-head/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/allowance-head/list");
+        });
       } else {
         toast.error(result.message || "Failed to create allowance heads");
       }
@@ -101,13 +104,16 @@ export default function AddAllowanceHeadPage() {
   };
 
   const handleCancel = () => {
-    router.push("/master/allowance-head/list");
+    startTransition(() => {
+      addTransitionType("nav-back");
+      router.push("/master/allowance-head/list");
+    });
   };
 
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/allowance-head/list">
+        <Link href="/master/allowance-head/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -248,7 +254,12 @@ export default function AddAllowanceHeadPage() {
                   {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create {items.length > 1 ? `${items.length} Allowance Heads` : "Allowance Head"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => router.back()} size="lg" disabled={isPending}>
+                <Button type="button" variant="outline" onClick={() => {
+                  startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.back();
+                  });
+                }} size="lg" disabled={isPending}>
                   Cancel
                 </Button>
               </div>

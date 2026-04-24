@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, GenderRow } from "./columns";
@@ -42,7 +42,10 @@ export function GenderList({
     const canBulkDelete = hasPermission("master.gender.delete");
 
     const handleToggle = () => {
-        router.push("/master/gender/add");
+        startTransition(() => {
+            addTransitionType("nav-forward");
+            router.push("/master/gender/add");
+        });
     };
 
     const handleMultiDelete = (ids: string[]) => {

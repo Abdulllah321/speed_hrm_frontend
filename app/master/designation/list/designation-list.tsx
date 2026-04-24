@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, DesignationRow } from "./columns";
@@ -39,7 +39,10 @@ export function DesignationList({
   const [editRows, setEditRows] = useState<{ id: string; name: string }[]>([]);
 
   const handleToggle = () => {
-    router.push("/master/designation/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/designation/add");
+    });
   };
 
   const showAddAction = hasPermission("master.designation.create");

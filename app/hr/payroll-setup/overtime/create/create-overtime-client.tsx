@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -46,7 +46,10 @@ export function CreateOvertimeClient({
 
         if (result.status) {
           toast.success(result.message || "Overtime request created successfully");
-          router.push("/hr/payroll-setup/overtime/view");
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/hr/payroll-setup/overtime/view");
+          });
         } else {
           toast.error(result.message || "Failed to create overtime request");
         }
@@ -60,7 +63,7 @@ export function CreateOvertimeClient({
   return (
     <div className="max-w-4xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/hr/payroll-setup/overtime/view">
+        <Link href="/hr/payroll-setup/overtime/view" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back

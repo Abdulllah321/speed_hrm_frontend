@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, BankRow } from "./columns";
@@ -44,7 +44,10 @@ export function BankList({ initialBanks, newItemId }: BankListProps) {
   }[]>([]);
 
   const handleToggle = () => {
-    router.push("/master/banks/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/banks/add");
+    });
   };
 
   const showAddAction = hasPermission("master.bank.create");

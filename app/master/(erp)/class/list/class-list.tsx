@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { addTransitionType, useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DataTable from "@/components/common/data-table";
@@ -18,6 +18,7 @@ export function ClassList({ initialData }: ClassListProps) {
     const { hasPermission, isAdmin } = useAuth();
     const tableId = useId();
 
+    const canCreate = isAdmin() || hasPermission("master.item-class.create");
     const canEdit = isAdmin() || hasPermission("master.item-class.update");
     const canDelete = isAdmin() || hasPermission("master.item-class.delete");
 
@@ -65,6 +66,13 @@ export function ClassList({ initialData }: ClassListProps) {
             columns={columns}
             data={data}
             searchFields={[{ key: "name", label: "Name" }]}
+            actionText={canCreate ? "Add Class" : undefined}
+            toggleAction={canCreate ? () => {
+                startTransition(() => {
+                    addTransitionType("nav-forward");
+                    router.push("/master/class/add");
+                });
+            } : undefined}
             onBulkEdit={canEdit ? onBulkEdit : undefined}
             onMultiDelete={canDelete ? onMultiDelete : undefined}
             tableId={tableId}

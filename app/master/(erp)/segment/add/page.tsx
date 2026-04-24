@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useId, useState, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Save } from "lucide-react";
@@ -47,7 +47,10 @@ export default function AddSegmentPage() {
             const result = await createSegments(validItems);
             if (result.status) {
                 toast.success(result.message);
-                router.push("/master/segment/list");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/master/segment/list");
+                });
             } else {
                 toast.error(result.message);
             }
@@ -125,7 +128,12 @@ export default function AddSegmentPage() {
                             <Button
                                 type="button"
                                 variant="ghost"
-                                onClick={() => router.back()}
+                                onClick={() => {
+                                    startTransition(() => {
+                                        addTransitionType("nav-back");
+                                        router.back();
+                                    });
+                                }}
                                 disabled={isPending}
                             >
                                 Cancel

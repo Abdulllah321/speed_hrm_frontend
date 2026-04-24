@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { categoryColumns, subCategoryColumns, CategoryRow } from "./columns";
@@ -39,7 +39,10 @@ export function CategoryList({
   const [isPending, startTransition] = useTransition();
 
   const handleToggle = () => {
-    router.push(isSubCategory ? "/master/sub-category/add" : "/master/category/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push(isSubCategory ? "/master/sub-category/add" : "/master/category/add");
+    });
   };
 
   const readPermission = isSubCategory ? "master.sub-category.read" : "master.category.read";

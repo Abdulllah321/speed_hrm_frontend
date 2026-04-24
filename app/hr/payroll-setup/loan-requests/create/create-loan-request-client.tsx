@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -196,7 +196,10 @@ export function CreateLoanRequestClient({
 
         if (result.status) {
           toast.success(result.message || "Loan request created successfully");
-          router.push("/hr/payroll-setup/loan-requests/view");
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/hr/payroll-setup/loan-requests/view");
+          });
           router.refresh();
         } else {
           toast.error(result.message || "Failed to create loan request");
@@ -211,7 +214,7 @@ export function CreateLoanRequestClient({
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/hr/payroll-setup/loan-requests/view">
+        <Link href="/hr/payroll-setup/loan-requests/view" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back

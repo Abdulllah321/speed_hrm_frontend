@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -266,7 +266,10 @@ export default function CreateAdvanceSalaryPage() {
 
       if (result.status) {
         toast.success(result.message || "Advance salary request created successfully");
-        router.push("/hr/payroll-setup/advance-salary/view");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/hr/payroll-setup/advance-salary/view");
+        });
       } else {
         toast.error(result.message || "Failed to create advance salary request");
       }
@@ -279,7 +282,7 @@ export default function CreateAdvanceSalaryPage() {
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/hr/payroll-setup/advance-salary/view">
+        <Link href="/hr/payroll-setup/advance-salary/view" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back

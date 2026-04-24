@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition, useEffect } from "react";
+import { useId, useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Save } from "lucide-react";
@@ -62,7 +62,10 @@ export default function AddSubclassPage() {
             const result = await createItemSubclasses(validItems);
             if (result.status) {
                 toast.success(result.message);
-                router.push("/master/subclass/list");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/master/subclass/list");
+                });
             } else {
                 toast.error(result.message);
             }
@@ -159,7 +162,12 @@ export default function AddSubclassPage() {
                             <Button
                                 type="button"
                                 variant="ghost"
-                                onClick={() => router.back()}
+                                onClick={() => {
+                                    startTransition(() => {
+                                        addTransitionType("nav-back");
+                                        router.back();
+                                    });
+                                }}
                                 disabled={isPending}
                             >
                                 Cancel

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, RebateNatureRow } from "./columns";
@@ -28,7 +28,10 @@ export function RebateNatureList({
   const canBulkDelete = hasPermission("rebate-nature.delete");
 
   const handleToggle = () => {
-    router.push("/master/rebate-nature/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/rebate-nature/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

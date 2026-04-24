@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, EOBIRow } from "./columns";
@@ -36,7 +36,10 @@ export function EOBIList({ initialEOBIs, newItemId }: EOBIListProps) {
   const canBulkDelete = hasPermission("master.eobi.delete");
 
   const handleToggle = () => {
-    router.push("/master/eobi/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/eobi/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/data-table";
 import { columns, SilhouetteRow } from "./columns";
@@ -126,7 +126,7 @@ export function SilhouetteList({
                     )}
                 </div>
                 {canCreate && (
-                    <Link href="/master/silhouette/add">
+                    <Link href="/master/silhouette/add" transitionTypes={["nav-forward"]}>
                         <Button size="sm" className="h-8">
                             <Plus className="mr-2 h-4 w-4" />
                             Add Silhouette
@@ -148,7 +148,12 @@ export function SilhouetteList({
                 canBulkEdit={canUpdate}
                 canBulkDelete={canDelete}
                 actionText={canCreate ? "Add Silhouette" : undefined}
-                toggleAction={canCreate ? () => router.push("/master/silhouette/add") : undefined}
+                toggleAction={canCreate ? () => {
+                    startTransition(() => {
+                        addTransitionType("nav-forward");
+                        router.push("/master/silhouette/add");
+                    });
+                } : undefined}
                 tableId="silhouette-list"
             />
 

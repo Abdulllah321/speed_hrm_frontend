@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { addTransitionType, useState, useTransition, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -493,7 +493,12 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
             <Tabs
                 value={defaultTab || "promos"}
                 className="w-full"
-                onValueChange={(val) => router.push(`/master/pos-config?tab=${val}`)}
+                onValueChange={(val) => {
+                    startTransition(() => {
+                        addTransitionType("nav-forward");
+                        router.push(`/master/pos-config?tab=${val}`);
+                    });
+                }}
             >
                 <TabsList className="grid w-full grid-cols-3">
                     <PermissionGuard permissions="master.promo.read" fallback={null}>

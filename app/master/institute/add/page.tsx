@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +46,10 @@ export default function AddInstitutePage() {
       const result = await createInstitutesBulk(items);
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/institute/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/institute/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -56,7 +59,7 @@ export default function AddInstitutePage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/institute/list">
+        <Link href="/master/institute/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -99,7 +102,12 @@ export default function AddInstitutePage() {
                   {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create {institutes.length > 1 ? `${institutes.length} Institutes` : "Institute"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button type="button" variant="outline" onClick={() => {
+                  startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.back();
+                  });
+                }}>
                   Cancel
                 </Button>
               </div>

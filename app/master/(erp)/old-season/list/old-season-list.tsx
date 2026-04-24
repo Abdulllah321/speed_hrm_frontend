@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useTransition } from "react";
+import { addTransitionType, useId, useTransition, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DataTable from "@/components/common/data-table";
@@ -18,6 +18,7 @@ export function OldSeasonList({ initialData }: OldSeasonListProps) {
   const { hasPermission, isAdmin } = useAuth();
   const tableId = useId();
 
+  const canCreate = isAdmin() || hasPermission("master.old-season.create");
   const canEdit = isAdmin() || hasPermission("master.old-season.update");
   const canDelete = isAdmin() || hasPermission("master.old-season.delete");
 
@@ -55,6 +56,13 @@ export function OldSeasonList({ initialData }: OldSeasonListProps) {
       columns={columns}
       data={data}
       searchFields={[{ key: "name", label: "Name" }]}
+      actionText={canCreate ? "Add Old Season" : undefined}
+      toggleAction={canCreate ? () => {
+        startTransition(() => {
+          addTransitionType("nav-forward");
+          router.push("/master/old-season/add");
+        });
+      } : undefined}
       onBulkEdit={canEdit ? onBulkEdit : undefined}
       onMultiDelete={canDelete ? onMultiDelete : undefined}
       tableId={tableId}

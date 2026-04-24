@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useTransition, useCallback } from "react";
+import { useState, useEffect, useTransition, useCallback, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -148,7 +148,10 @@ export function CityAddForm({ countries, defaultCountryId }: CityAddFormProps) {
       );
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/city/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/city/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -158,7 +161,7 @@ export function CityAddForm({ countries, defaultCountryId }: CityAddFormProps) {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/city/list">
+        <Link href="/master/city/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -233,7 +236,12 @@ export function CityAddForm({ countries, defaultCountryId }: CityAddFormProps) {
                   {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create {rows.length > 1 ? `${rows.length} Cities` : "City"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => router.back()}>
+                <Button type="button" variant="outline" onClick={() => {
+                  startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.back();
+                  });
+                }}>
                   Cancel
                 </Button>
               </div>

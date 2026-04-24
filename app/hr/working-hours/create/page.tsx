@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -556,7 +556,10 @@ export default function CreateWorkingHoursPolicyPage() {
         toast.success(
           result.message || "Working Hours Policy created successfully"
         );
-        router.push("/hr/working-hours/view");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/hr/working-hours/view");
+        });
       } else {
         toast.error(result.message || "Failed to create working hours policy");
       }
@@ -661,7 +664,7 @@ export default function CreateWorkingHoursPolicyPage() {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6">
-        <Link href="/hr/working-hours/view">
+        <Link href="/hr/working-hours/view" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List

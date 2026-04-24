@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function OrderDetailsPage() {
     const router = useRouter();
+    const [isPending, startTransition] = useTransition();
     const params = useParams();
     const orderId = params.id as string;
 
@@ -65,11 +66,17 @@ export default function OrderDetailsPage() {
                 setOrder(res.data.data);
             } else {
                 toast.error("Failed to load order");
-                router.push("/pos/sales/history");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/pos/sales/history");
+                });
             }
         } catch {
             toast.error("Failed to load order");
-            router.push("/pos/sales/history");
+            startTransition(() => {
+                addTransitionType("nav-back");
+                router.push("/pos/sales/history");
+            });
         } finally {
             setIsLoading(false);
         }
@@ -109,7 +116,12 @@ export default function OrderDetailsPage() {
             {/* Header */}
             <div className="border-b bg-card px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" size="icon" onClick={() => router.push("/pos/sales/history")}>
+                    <Button variant="ghost" size="icon" onClick={() => {
+                        startTransition(() => {
+                            addTransitionType("nav-back");
+                            router.push("/pos/sales/history");
+                        });
+                    }}>
                         <ArrowLeft className="h-5 w-5" />
                     </Button>
                     <div>

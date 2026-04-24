@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/data-table";
 import { columns, ColorRow } from "./columns";
@@ -107,7 +107,12 @@ export function ColorList({
                 canBulkEdit={canUpdate}
                 canBulkDelete={canDelete}
                 actionText={canCreate ? "Add Color" : undefined}
-                toggleAction={canCreate ? () => router.push("/master/color/add") : undefined}
+                toggleAction={canCreate ? () => {
+                    startTransition(() => {
+                        addTransitionType("nav-forward");
+                        router.push("/master/color/add");
+                    });
+                } : undefined}
                 tableId="color-list"
             />
 

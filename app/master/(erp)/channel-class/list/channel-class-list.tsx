@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import DataTable from "@/components/common/data-table";
 import { columns, ChannelClassRow } from "./columns";
@@ -107,7 +107,12 @@ export function ChannelClassList({
                 canBulkEdit={canUpdate}
                 canBulkDelete={canDelete}
                 actionText={canCreate ? "Add Channel Class" : undefined}
-                toggleAction={canCreate ? () => router.push("/master/channel-class/add") : undefined}
+                toggleAction={canCreate ? () => {
+                    startTransition(() => {
+                        addTransitionType("nav-forward");
+                        router.push("/master/channel-class/add");
+                    });
+                } : undefined}
                 tableId="channel-class-list"
             />
 

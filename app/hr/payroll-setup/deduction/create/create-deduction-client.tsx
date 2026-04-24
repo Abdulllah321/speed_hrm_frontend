@@ -1,7 +1,7 @@
  
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -270,7 +270,10 @@ export function CreateDeductionClient({
         if (allSuccessful) {
           const totalCreated = results.reduce((sum, result) => sum + (result.data?.length || 0), 0);
           toast.success(`Successfully created ${totalCreated} deduction(s) for ${deductionsByMonth.size} month(s)`);
-          router.push("/hr/payroll-setup/deduction/view");
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/hr/payroll-setup/deduction/view");
+          });
         } else {
           const failedResult = results.find((result) => !result.status);
           toast.error(failedResult?.message || "Failed to create some deductions");
@@ -285,7 +288,7 @@ export function CreateDeductionClient({
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/hr/payroll-setup/deduction/view">
+        <Link href="/hr/payroll-setup/deduction/view" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back

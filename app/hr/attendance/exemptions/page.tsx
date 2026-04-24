@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -159,7 +159,10 @@ export default function AttendanceExemptionPage() {
           });
           
           // Redirect to list page
-          router.push("/hr/attendance/exemptions-list");
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/hr/attendance/exemptions-list");
+          });
         } else {
           toast.error(result.message || "Failed to submit attendance exemption request");
         }
@@ -173,7 +176,7 @@ export default function AttendanceExemptionPage() {
   return (
     <div className="max-w-4xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/hr/attendance">
+        <Link href="/hr/attendance" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Attendance

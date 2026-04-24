@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, LeavesPolicyRow } from "./columns";
@@ -44,7 +44,10 @@ export function LeavesPolicyList({
   const canBulkDelete = hasPermission("leaves-policy.delete");
 
   const handleToggle = () => {
-    router.push("/master/leaves-policy/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/leaves-policy/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

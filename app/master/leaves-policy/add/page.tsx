@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -130,7 +130,10 @@ export default function AddLeavesPolicyPage() {
 
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/leaves-policy/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/leaves-policy/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -159,7 +162,7 @@ export default function AddLeavesPolicyPage() {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/leaves-policy/list">
+        <Link href="/master/leaves-policy/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List

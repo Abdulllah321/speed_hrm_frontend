@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, type TaxRateRow } from "./columns";
@@ -19,7 +19,10 @@ export function TaxRateList({ initialItems, newItemId }: TaxRateListProps) {
   const [isPending, startTransition] = useTransition();
 
   const handleToggle = () => {
-    router.push("/master/tax-rate/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/tax-rate/add");
+    });
   };
 
   const showAddAction = hasPermission("master.tax-rate.create");

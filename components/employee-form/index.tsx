@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect, useMemo } from "react";
+import { useState, useTransition, useEffect, useMemo, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1300,7 +1300,10 @@ export function EmployeeForm({
 
           if (result.status) {
             toast.success(result.message || "Employee created successfully");
-            router.push("/hr/employee/list");
+            startTransition(() => {
+              addTransitionType("nav-back");
+              router.push("/hr/employee/list");
+            });
           } else {
             toast.error(result.message || "Failed to create employee");
           }
@@ -1454,7 +1457,10 @@ export function EmployeeForm({
 
           if (result.status) {
             toast.success(result.message || "Employee updated successfully");
-            router.push("/hr/employee/list");
+            startTransition(() => {
+              addTransitionType("nav-back");
+              router.push("/hr/employee/list");
+            });
           } else {
             toast.error(result.message || "Failed to update employee");
           }

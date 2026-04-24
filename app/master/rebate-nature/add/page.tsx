@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, startTransition, addTransitionType } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -97,7 +97,10 @@ export default function AddRebateNaturePage() {
       const result = await createRebateNature(values);
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/rebate-nature/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/rebate-nature/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -107,7 +110,7 @@ export default function AddRebateNaturePage() {
   return (
     <div className="container mx-auto py-6 max-w-4xl">
       <div className="mb-6">
-        <Link href="/master/rebate-nature/list">
+        <Link href="/master/rebate-nature/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm" className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to List
@@ -319,7 +322,12 @@ export default function AddRebateNaturePage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.back()}
+                    onClick={() => {
+                      startTransition(() => {
+                        addTransitionType("nav-back");
+                        router.back();
+                      });
+                    }}
                     disabled={isPending}
                   >
                     Cancel
