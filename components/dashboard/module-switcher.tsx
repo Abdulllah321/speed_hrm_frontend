@@ -1,7 +1,6 @@
 "use client";
 
 import { useEnvironment, EnvironmentType } from "@/components/providers/environment-provider";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -14,13 +13,51 @@ import {
 import { Users, Package, ShoppingCart, ShieldCheck, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
+import { menuData, MenuItem } from "@/components/dashboard/sidebar-menu-data";
+
+/**
+ * Walk menuData depth-first and return the first href whose permissions
+ * the user satisfies for the given environment.
+ * Falls back to the env root path if nothing matches.
+ */
+function findFirstAccessibleRoute(
+    env: EnvironmentType,
+    hasAnyPermission: (perms: string[]) => boolean,
+    fallback: string,
+): string {
+    function walk(items: MenuItem[]): string | null {
+        for (const item of items) {
+            // Skip items that belong to a different environment
+            if (item.environment && item.environment !== env) continue;
+
+            if (item.href) {
+                // No permissions required, or user has at least one
+                if (!item.permissions?.length || hasAnyPermission(item.permissions)) {
+                    return item.href;
+                }
+            }
+
+            if (item.children) {
+                const found = walk(item.children);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    return walk(menuData) ?? fallback;
+}
 
 export function ModuleSwitcher() {
     const { environment, setEnvironment } = useEnvironment();
-    const router = useRouter();
     const { isAdmin, hasAnyPermission } = useAuth();
 
     const superAdmin = isAdmin();
+
+    const getLandingRoute = (env: EnvironmentType, root: string): string => {
+        if (superAdmin) return root;
+        return findFirstAccessibleRoute(env, hasAnyPermission, root);
+    };
 
     const allModules = [
         {
@@ -29,8 +66,7 @@ export function ModuleSwitcher() {
             icon: Users,
             color: "text-blue-600",
             bg: "bg-blue-500/10",
-            href: "/hr",
-            // Any hr.* or master.* permission grants HR access
+            root: "/hr",
             accessCheck: () => superAdmin || hasAnyPermission([
                 'hr.dashboard.view',
                 'hr.employee.read',
@@ -45,15 +81,18 @@ export function ModuleSwitcher() {
             icon: Package,
             color: "text-emerald-600",
             bg: "bg-emerald-500/10",
-            href: "/erp",
-            // Any erp.* permission grants ERP access
+            root: "/erp",
             accessCheck: () => superAdmin || hasAnyPermission([
-                'erp.dashboard.view',
-                'erp.inventory.view',
-                'erp.item.read',
-                'erp.procurement.pr.read',
-                'erp.procurement.po.read',
                 'erp.finance.journal-voucher.read',
+                'erp.finance.chart-of-account.read',
+                'erp.finance.payment-voucher.read',
+                'erp.finance.receipt-voucher.read',
+                'erp.item.read',
+                'procurement.read',
+                'inventory.read',
+                'sales.read',
+                'sales.customer.read',
+                'sales.order.read',
                 'erp.claims.read',
             ]),
         },
@@ -63,8 +102,7 @@ export function ModuleSwitcher() {
             icon: ShoppingCart,
             color: "text-indigo-600",
             bg: "bg-indigo-500/10",
-            href: "/pos",
-            // Any pos.* permission grants POS access
+            root: "/pos",
             accessCheck: () => superAdmin || hasAnyPermission([
                 'pos.dashboard.view',
                 'pos.sale.create',
@@ -74,12 +112,11 @@ export function ModuleSwitcher() {
         },
     ];
 
-    // Only show modules the current user has access to
     const visibleModules = allModules.filter((m) => m.accessCheck());
 
     const handleSwitch = (mod: typeof allModules[0]) => {
-        setEnvironment(mod.id);
-        router.push(mod.href);
+        const targetHref = getLandingRoute(mod.id, mod.root);
+        setEnvironment(mod.id, false, targetHref);
     };
 
     const currentMod = allModules.find(m => m.id === environment);
@@ -137,8 +174,7 @@ export function ModuleSwitcher() {
                         <DropdownMenuSeparator className="opacity-50" />
                         <DropdownMenuItem
                             onClick={() => {
-                                setEnvironment("ADMIN");
-                                router.push("/admin");
+                                setEnvironment("ADMIN", false, "/admin");
                             }}
                             className={cn(
                                 "flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all duration-200",

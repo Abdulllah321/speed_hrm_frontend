@@ -35,7 +35,7 @@ export interface UploadStatusResponse {
     completedAt: string | null;
 }
 
-export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'hscode' = 'item') {
+export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'hscode' | 'employee' | 'attendance' = 'item') {
     const [data, setData] = useState<UploadStatusResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -64,6 +64,12 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
         const baseUrl = getApiBaseUrl();
         if (uploadType === 'hscode') {
             return `${baseUrl}/master/hs-codes/bulk-upload/${endpoint}`;
+        }
+        if (uploadType === 'employee') {
+            return `${baseUrl}/employees/bulk-upload/${endpoint}`;
+        }
+        if (uploadType === 'attendance') {
+            return `${baseUrl}/attendances/bulk-upload/${endpoint}`;
         }
         return `${baseUrl}/items/bulk-upload/${endpoint}`;
     }, [uploadType]);
@@ -114,7 +120,7 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
             // Use the Next.js SSE proxy — EventSource can't send headers and
             // SameSite:Lax blocks cross-origin cookies, so we proxy through Next.js
             // which reads the httpOnly accessToken server-side and forwards the stream.
-            const sseUrl = `/api/bulk-upload/${uploadId}/events${uploadType === 'hscode' ? '?type=hscode' : ''}`;
+            const sseUrl = `/api/bulk-upload/${uploadId}/events?type=${uploadType}`;
             const eventSource = new EventSource(sseUrl);
             eventSourceRef.current = eventSource;
 
@@ -180,8 +186,11 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
                     });
 
                     // Close SSE once terminal — no point keeping the connection open
-                    if (['completed', 'failed', 'validated', 'cancelled'].includes(type) ||
-                        ['completed', 'failed', 'cancelled'].includes(payload?.status)) {
+                    const isTerminal = (['completed', 'failed', 'cancelled'].includes(type) || 
+                                      ['completed', 'failed', 'cancelled'].includes(payload?.status)) &&
+                                      payload?.status !== 'validated';
+
+                    if (isTerminal) {
                         isTerminalRef.current = true;
                         stopStreaming();
                         // Fetch final status from DB to get complete error list

@@ -31,6 +31,14 @@ export interface MultiSelectProps {
   className?: string;
   showSelectAll?: boolean;
   icon?: React.ReactNode;
+  /** Optional server-side search callback */
+  onSearch?: (search: string) => void;
+  /** Optional callback for infinite scrolling */
+  onLoadMore?: () => void;
+  /** Whether there are more items to load (for infinite scroll) */
+  hasMore?: boolean;
+  /** Loading state (for initial or load more) */
+  isLoading?: boolean;
 }
 
 export function MultiSelect({
@@ -45,19 +53,31 @@ export function MultiSelect({
   className,
   showSelectAll = true,
   icon,
+  onSearch,
+  onLoadMore,
+  hasMore,
+  isLoading,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
+  const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
   const filteredOptions = React.useMemo(() => {
-    if (!search) return options;
+    // If server-side search is provided, we don't filter locally
+    if (onSearch || !search) return options;
     const searchLower = search.toLowerCase();
     return options.filter(
       (option) =>
         option.label.toLowerCase().includes(searchLower) ||
         option.description?.toLowerCase().includes(searchLower)
     );
-  }, [options, search]);
+  }, [options, search, onSearch]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setSearch(val);
+    onSearch?.(val);
+  };
 
   const toggleOption = (optionValue: string) => {
     const newValue = value.includes(optionValue)
@@ -79,9 +99,30 @@ export function MultiSelect({
     onValueChange(value.filter((v) => v !== optionValue));
   };
 
-  const selectedLabels = value
-    .map((v) => options.find((o) => o.value === v)?.label)
-    .filter(Boolean);
+  // Intersection Observer for Infinite Scroll
+  React.useEffect(() => {
+    if (!open || !hasMore || !onLoadMore || isLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [open, hasMore, onLoadMore, isLoading]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -119,7 +160,7 @@ export function MultiSelect({
               </Badge>
             )}
           </div>
-          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform duration-200" style={{ transform: open ? 'rotate(180deg)' : 'none' }} />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
@@ -128,11 +169,11 @@ export function MultiSelect({
             type="text"
             placeholder={searchPlaceholder}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={handleSearchChange}
             className="w-full px-3 py-2 text-sm border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
-        {showSelectAll && (
+        {showSelectAll && !onSearch && (
           <div className="flex items-center justify-between p-2 border-b bg-muted/50">
             <span className="text-xs text-muted-foreground">
               {filteredOptions.length} items
@@ -186,10 +227,27 @@ export function MultiSelect({
                 )}
               </div>
             ))}
-            {filteredOptions.length === 0 && (
+
+            {hasMore && (
+              <div ref={loadMoreRef} className="flex justify-center p-3">
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Load More</span>
+                )}
+              </div>
+            )}
+
+            {filteredOptions.length === 0 && !isLoading && (
               <p className="text-sm text-muted-foreground text-center py-4">
                 {emptyMessage}
               </p>
+            )}
+
+            {isLoading && filteredOptions.length === 0 && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
             )}
           </div>
         </ScrollArea>

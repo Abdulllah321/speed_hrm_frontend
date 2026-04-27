@@ -9,8 +9,8 @@ export type EnvironmentType = "HR" | "ERP" | "POS" | "ADMIN";
 
 interface EnvironmentContextType {
   environment: EnvironmentType;
-
-  setEnvironment: (env: EnvironmentType, silent?: boolean) => void;
+  /** @param targetPath Optional path to navigate to instead of the default env root */
+  setEnvironment: (env: EnvironmentType, silent?: boolean, targetPath?: string) => void;
   toggleEnvironment: () => void;
   isLoading: boolean;
 }
@@ -82,7 +82,7 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
     setIsLoading(false);
   }, []);
 
-  const setEnvironment = async (env: EnvironmentType, silent: boolean = false) => {
+  const setEnvironment = async (env: EnvironmentType, silent: boolean = false, targetPath?: string) => {
     try {
       if (env === environment) {
         return;
@@ -109,7 +109,10 @@ export function EnvironmentProvider({ children }: { children: React.ReactNode })
       // Silent calls come from dashboard-layout's route-sync effect on every page load —
       // those must NOT navigate or they cause a second full reload mid-auth-initialization.
       if (!silent && typeof window !== "undefined") {
-        const path = env === "ERP" ? "/erp" : env === "ADMIN" ? "/admin" : env === "POS" ? "/pos" : "/hr";
+        // Use caller-supplied targetPath if provided, otherwise fall back to env root.
+        // This allows module-switcher to land on the first accessible route for partial-permission users.
+        const defaultPath = env === "ERP" ? "/erp" : env === "ADMIN" ? "/admin" : env === "POS" ? "/pos" : "/hr";
+        const path = targetPath ?? defaultPath;
         // Using window.location.href triggers a full page navigation allowing Next middleware
         // (middleware.ts) to correctly physically assign the user to the target subdomain.
         window.location.href = path;

@@ -60,6 +60,13 @@ import {
     Handshake,
     MapPin,
     Search,
+    Gift,
+    RefreshCw as ExchangeIcon,
+    CreditCard,
+    Building2,
+    XCircle,
+    Copy,
+    CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PermissionGuard } from "@/components/auth/permission-guard";
@@ -77,7 +84,9 @@ import {
     updateAlliance,
     deleteAlliance,
 } from "@/lib/actions/pos-config";
+import { issueVoucher, voidVoucher, type Voucher, type VoucherType } from "@/lib/actions/vouchers";
 import { Location } from "@/lib/actions/location";
+import { cn, formatCurrency } from "@/lib/utils";
 import React from "react";
 
 interface Props {
@@ -85,6 +94,7 @@ interface Props {
     coupons: CouponCode[];
     alliances: AllianceDiscount[];
     locations: Location[];
+    vouchers: Voucher[];
     defaultTab?: string;
 }
 
@@ -186,7 +196,7 @@ function LocationMultiSelect({
     );
 }
 
-export function PosConfigPage({ promos, coupons, alliances, locations, defaultTab }: Props) {
+export function PosConfigPage({ promos, coupons, alliances, locations, vouchers, defaultTab }: Props) {
     const router = useRouter();
     const { hasPermission } = useAuth();
     const [isPending, startTransition] = useTransition();
@@ -221,6 +231,62 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
     const [editingAlliance, setEditingAlliance] = useState<AllianceDiscount | null>(null);
     const [allianceLocationIds, setAllianceLocationIds] = useState<string[]>([]);
     const [deleteAllianceId, setDeleteAllianceId] = useState<string | null>(null);
+
+    // ─── Voucher Dialog ──────────────────────────────────────
+    const [voucherDialog, setVoucherDialog] = useState(false);
+    const [voucherType, setVoucherType] = useState<VoucherType>("GIFT");
+    const [voucherFaceValue, setVoucherFaceValue] = useState<number | "">("");
+    const [voucherDescription, setVoucherDescription] = useState("");
+    const [voucherCompany, setVoucherCompany] = useState("");
+    const [voucherExpiresAt, setVoucherExpiresAt] = useState("");
+    const [voucherLocationIds, setVoucherLocationIds] = useState<string[]>([]);
+    const [issuedVoucher, setIssuedVoucher] = useState<Voucher | null>(null);
+    const [voidVoucherId, setVoidVoucherId] = useState<string | null>(null);
+    const canCreateVoucher = hasPermission("pos.voucher.create");
+    const canVoidVoucher = hasPermission("pos.voucher.void");
+
+    const VOUCHER_TYPE_OPTIONS: { value: VoucherType; label: string }[] = [
+        { value: "GIFT", label: "Gift Voucher" },
+        { value: "CREDIT", label: "Credit Voucher" },
+        { value: "CORPORATE", label: "Corporate Gift" },
+        { value: "OUTLET_GIFT", label: "Outlet Gift" },
+    ];
+
+    const handleIssueVoucher = () => {
+        if (!voucherFaceValue || Number(voucherFaceValue) <= 0) { toast.error("Enter a valid amount"); return; }
+        startTransition(async () => {
+            const result = await issueVoucher({
+                voucherType,
+                faceValue: Number(voucherFaceValue),
+                description: voucherDescription || undefined,
+                companyName: voucherCompany || undefined,
+                expiresAt: voucherExpiresAt || undefined,
+                locationIds: voucherLocationIds,
+            });
+            if (result.status) {
+                setIssuedVoucher(result.data!);
+                setVoucherDialog(false);
+                setVoucherFaceValue(""); setVoucherDescription(""); setVoucherCompany(""); setVoucherExpiresAt(""); setVoucherLocationIds([]);
+                router.refresh();
+            } else {
+                toast.error(result.message);
+            }
+        });
+    };
+
+    const handleVoidVoucher = () => {
+        if (!voidVoucherId) return;
+        startTransition(async () => {
+            const result = await voidVoucher(voidVoucherId);
+            if (result.status) {
+                toast.success("Voucher voided");
+                setVoidVoucherId(null);
+                router.refresh();
+            } else {
+                toast.error(result.message);
+            }
+        });
+    };
 
     // ══════════════════════════════════════════════════════════
     //  Promo Handlers
@@ -365,6 +431,7 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
             partnerName: fd.get("partnerName") as string,
             code: fd.get("code") as string,
             discountPercent: Number(fd.get("discountPercent")),
+            maxDiscount: fd.get("maxDiscount") ? Number(fd.get("maxDiscount")) : undefined,
             description: (fd.get("description") as string) || undefined,
             isActive: true,
             locationIds: allianceLocationIds,
@@ -458,6 +525,7 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
         { accessorKey: "partnerName", header: "Partner Name", cell: ({ row }) => <span className="font-medium">{row.original.partnerName}</span> },
         { accessorKey: "code", header: "Code", cell: ({ row }) => <Badge variant="outline">{row.original.code}</Badge> },
         { accessorKey: "discountPercent", header: "Discount %", cell: ({ row }) => <div className="text-right">{row.original.discountPercent}%</div> },
+        { accessorKey: "maxDiscount", header: "Max Cap", cell: ({ row }) => <div className="text-right">{row.original.maxDiscount ? row.original.maxDiscount.toLocaleString() : "—"}</div> },
         { accessorKey: "description", header: "Description", cell: ({ row }) => <span className="text-sm">{row.original.description || "—"}</span> },
         {
             id: "locations", header: "Locations", cell: ({ row }) => {
@@ -493,7 +561,7 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
                 className="w-full"
                 onValueChange={(val) => router.push(`/master/pos-config?tab=${val}`)}
             >
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <PermissionGuard permissions="master.promo.read" fallback={null}>
                         <TabsTrigger value="promos" className="flex items-center gap-2">
                             <Megaphone className="h-4 w-4" />
@@ -502,7 +570,7 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
                     </PermissionGuard>
                     <PermissionGuard permissions="master.coupon.read" fallback={null}>
                         <TabsTrigger value="coupons" className="flex items-center gap-2">
-                            <Megaphone className="h-4 w-4" />
+                            <Ticket className="h-4 w-4" />
                             Coupons ({coupons.length})
                         </TabsTrigger>
                     </PermissionGuard>
@@ -510,6 +578,12 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
                         <TabsTrigger value="alliances" className="flex items-center gap-2">
                             <Handshake className="h-4 w-4" />
                             Alliances ({alliances.length})
+                        </TabsTrigger>
+                    </PermissionGuard>
+                    <PermissionGuard permissions="pos.voucher.view" fallback={null}>
+                        <TabsTrigger value="vouchers" className="flex items-center gap-2">
+                            <Gift className="h-4 w-4" />
+                            Vouchers ({vouchers.length})
                         </TabsTrigger>
                     </PermissionGuard>
                 </TabsList>
@@ -598,6 +672,98 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
                             canBulkDelete={false}
                             canBulkEdit={false}
                         />
+                    </TabsContent>
+                </PermissionGuard>
+
+                {/* ═══════ VOUCHERS TAB ═══════ */}
+                <PermissionGuard permissions="pos.voucher.view" fallback={null}>
+                    <TabsContent value="vouchers" className="space-y-4">
+                        <Alert className="bg-muted/50 text-muted-foreground border-none">
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Vouchers</AlertTitle>
+                            <AlertDescription>
+                                Manage Gift, Credit, Corporate, and Outlet Gift vouchers. Exchange vouchers are auto-issued by the system during returns.
+                            </AlertDescription>
+                        </Alert>
+                        <div className="flex justify-end">
+                            {canCreateVoucher && (
+                                <Button onClick={() => setVoucherDialog(true)} className="gap-2">
+                                    <Plus className="h-4 w-4" /> Issue Voucher
+                                </Button>
+                            )}
+                        </div>
+                        <div className="rounded-lg border overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-muted/30">
+                                        <TableHead>Code</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Description</TableHead>
+                                        <TableHead className="text-right">Value</TableHead>
+                                        <TableHead>Locations</TableHead>
+                                        <TableHead>Expires</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead />
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {vouchers.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                                                No vouchers issued yet
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : vouchers.map((v) => {
+                                        const isExpired = v.expiresAt ? new Date(v.expiresAt) < new Date() : false;
+                                        const statusLabel = !v.isActive ? "Voided" : v.isRedeemed ? "Redeemed" : isExpired ? "Expired" : "Active";
+                                        const statusCls = !v.isActive ? "secondary" : v.isRedeemed ? "default" : isExpired ? "outline" : "default";
+                                        return (
+                                            <TableRow key={v.id}>
+                                                <TableCell>
+                                                    <span className="font-mono font-bold text-primary text-sm">{v.code}</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="text-xs">{v.voucherType.replace("_", " ")}</Badge>
+                                                </TableCell>
+                                                <TableCell className="text-sm text-muted-foreground max-w-[160px] truncate">
+                                                    {v.description || v.companyName || "—"}
+                                                </TableCell>
+                                                <TableCell className="text-right font-semibold font-mono">
+                                                    {formatCurrency(Number(v.faceValue))}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {v.locations.length === 0
+                                                            ? <Badge variant="secondary" className="text-[10px]">All Locations</Badge>
+                                                            : v.locations.slice(0, 2).map((l) => (
+                                                                <Badge key={l.id} variant="secondary" className="text-[10px]">{l.location.name}</Badge>
+                                                            ))}
+                                                        {v.locations.length > 2 && (
+                                                            <Badge variant="secondary" className="text-[10px]">+{v.locations.length - 2}</Badge>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-sm text-muted-foreground">
+                                                    {v.expiresAt ? new Date(v.expiresAt).toLocaleDateString() : "No expiry"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant={statusCls as any}>{statusLabel}</Badge>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {v.isActive && !v.isRedeemed && canVoidVoucher && (
+                                                        <Button variant="ghost" size="icon"
+                                                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                                            onClick={() => setVoidVoucherId(v.id)}>
+                                                            <XCircle className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
                     </TabsContent>
                 </PermissionGuard>
             </Tabs>
@@ -773,10 +939,14 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
                                     <Input id="alliance-code" name="code" defaultValue={editingAlliance?.code} required disabled={isPending} className="uppercase" />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="alliance-pct">Discount %</Label>
                                     <Input id="alliance-pct" name="discountPercent" type="number" step="0.01" min="0" max="100" defaultValue={editingAlliance?.discountPercent} required disabled={isPending} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="alliance-cap">Max Discount Cap</Label>
+                                    <Input id="alliance-cap" name="maxDiscount" type="number" step="0.01" min="0" defaultValue={editingAlliance?.maxDiscount ?? ""} disabled={isPending} placeholder="No cap" />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="alliance-desc">Description</Label>
@@ -840,6 +1010,105 @@ export function PosConfigPage({ promos, coupons, alliances, locations, defaultTa
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleDeleteAlliance} disabled={isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ═══════ ISSUE VOUCHER DIALOG ═══════ */}
+            <Dialog open={voucherDialog} onOpenChange={setVoucherDialog}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Gift className="h-5 w-5" /> Issue Voucher
+                        </DialogTitle>
+                        <DialogDescription>A unique code will be generated automatically.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Voucher Type</Label>
+                                <Select value={voucherType} onValueChange={(v) => setVoucherType(v as VoucherType)}>
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        {VOUCHER_TYPE_OPTIONS.map(({ value, label }) => (
+                                            <SelectItem key={value} value={value}>{label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Amount (Rs.) *</Label>
+                                <Input type="number" min="1" value={voucherFaceValue}
+                                    onChange={e => setVoucherFaceValue(e.target.value ? Number(e.target.value) : "")}
+                                    placeholder="e.g. 1000" />
+                            </div>
+                        </div>
+                        {voucherType === "CORPORATE" && (
+                            <div className="space-y-2">
+                                <Label>Company Name</Label>
+                                <Input value={voucherCompany} onChange={e => setVoucherCompany(e.target.value)} placeholder="e.g. Acme Corp" />
+                            </div>
+                        )}
+                        <div className="space-y-2">
+                            <Label>Description (Optional)</Label>
+                            <Input value={voucherDescription} onChange={e => setVoucherDescription(e.target.value)} placeholder="e.g. Birthday gift" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Expiry Date (Optional)</Label>
+                            <Input type="date" value={voucherExpiresAt} onChange={e => setVoucherExpiresAt(e.target.value)}
+                                min={new Date().toISOString().split("T")[0]} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Allowed Locations (leave empty = all locations)</Label>
+                            <LocationMultiSelect locations={locations} selected={voucherLocationIds} onChange={setVoucherLocationIds} disabled={isPending} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setVoucherDialog(false)}>Cancel</Button>
+                        <Button onClick={handleIssueVoucher} disabled={isPending} className="gap-2">
+                            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                            <Gift className="h-4 w-4" /> Issue Voucher
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Issued Voucher Confirmation */}
+            {issuedVoucher && (
+                <Dialog open onOpenChange={() => setIssuedVoucher(null)}>
+                    <DialogContent className="sm:max-w-[360px]">
+                        <div className="pt-4 pb-2 text-center">
+                            <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                            <h2 className="text-xl font-bold mb-1">Voucher Issued</h2>
+                            <div className="bg-muted/50 rounded-xl p-5 border my-4">
+                                <p className="text-2xl font-black font-mono tracking-widest text-primary">{issuedVoucher.code}</p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    {formatCurrency(Number(issuedVoucher.faceValue))} · {issuedVoucher.voucherType}
+                                </p>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" onClick={() => { navigator.clipboard.writeText(issuedVoucher.code); toast.success("Copied"); }} className="flex-1 gap-2">
+                                    <Copy className="w-4 h-4" /> Copy
+                                </Button>
+                                <Button onClick={() => setIssuedVoucher(null)} className="flex-1">Done</Button>
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Void Voucher Confirm */}
+            <AlertDialog open={!!voidVoucherId} onOpenChange={() => setVoidVoucherId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Void Voucher?</AlertDialogTitle>
+                        <AlertDialogDescription>This will permanently deactivate the voucher. It cannot be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleVoidVoucher} disabled={isPending} className="bg-destructive hover:bg-destructive/90">
+                            {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Void
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

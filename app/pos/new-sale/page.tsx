@@ -132,9 +132,12 @@ export default function NewSalePage() {
     }, []);
 
     // ─── Place current cart on hold ─────────────────────────────────
-    const handleHold = useCallback(async (holdUntilTime?: string) => {
+    const handleHold = useCallback(async (holdUntilTime?: string): Promise<void> => {
         if (cartItems.length === 0) return;
-        if (!holdUntilTime) { setShowHoldModal(true); return; }
+        if (!holdUntilTime) {
+            setShowHoldModal(true);
+            return;
+        }
         setIsHolding(true);
         try {
             const payload = {
@@ -448,7 +451,7 @@ export default function NewSalePage() {
                 tax={totalTax}
                 grandTotal={grandTotal}
                 onCheckout={handleCheckout}
-                onHold={canHold ? handleHold : undefined}
+                onHold={canHold ? () => handleHold() : undefined}
                 disabled={cartItems.length === 0 || isProcessing || isHolding}
             />
 

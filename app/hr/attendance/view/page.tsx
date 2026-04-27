@@ -10,10 +10,11 @@ import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { toast } from "sonner";
 import { Loader2, Download, Printer, CalendarDays, Clock, UserCircle, Edit2, Check, X, Save } from "lucide-react";
 import { TimePicker } from "@/components/ui/time-picker";
-import { getEmployees } from "@/lib/actions/employee";
+import { getEmployees, getEmployeesForDropdown } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
 import { getAttendances, updateAttendance, createAttendance, type Attendance } from "@/lib/actions/attendance";
-import type { Employee } from "@/lib/actions/employee";
+import type { Employee, EmployeeDropdownOption } from "@/lib/actions/employee";
+import { InfiniteAutocomplete } from "@/components/ui/infinite-autocomplete";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format, eachDayOfInterval, isWeekend, isSameDay } from "date-fns";
@@ -117,17 +118,10 @@ function ViewEmployeeAttendanceDetailPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [employeesResult, departmentsResult, holidaysResult] = await Promise.all([
-          getEmployees(),
+        const [departmentsResult, holidaysResult] = await Promise.all([
           getDepartments(),
           getHolidays(),
         ]);
-
-        if (employeesResult.status && employeesResult.data) {
-          setEmployees(employeesResult.data);
-        } else {
-          toast.error(employeesResult.message || "Failed to load employees");
-        }
 
         if (departmentsResult.status && departmentsResult.data) {
           setDepartments(departmentsResult.data);
@@ -757,12 +751,13 @@ function ViewEmployeeAttendanceDetailPage() {
                 {loading ? (
                   <div className="h-10 bg-muted rounded animate-pulse" />
                 ) : (
-                  <Autocomplete
-                    options={filteredEmployees.map((emp) => ({
+                  <InfiniteAutocomplete
+                    fetchData={getEmployeesForDropdown}
+                    mapOption={(emp: EmployeeDropdownOption) => ({
                       value: emp.id,
                       label: `${emp.employeeName} (${emp.employeeId})`,
-                      description: emp.departmentName,
-                    }))}
+                      description: emp.departmentName || undefined,
+                    })}
                     value={filters.employeeId}
                     onValueChange={(value) => updateFilters({ employeeId: value || "" })}
                     placeholder="Select employee"
