@@ -109,13 +109,13 @@ function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canD
                         <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem asChild>
-                                <Link href={`/erp/items/view/${item.id}`}>
+                                <Link href={`/erp/items/view/${item.id}`} transitionTypes={["nav-forward"]}>
                                     <Eye className="mr-2 h-4 w-4" /> View Details
                                 </Link>
                             </DropdownMenuItem>
                             {canUpdate && (
                                 <DropdownMenuItem asChild>
-                                    <Link href={`/erp/items/edit/${item.id}`}>
+                                    <Link href={`/erp/items/edit/${item.id}`} transitionTypes={["nav-forward"]}>
                                         <Edit className="mr-2 h-4 w-4" /> Edit
                                     </Link>
                                 </DropdownMenuItem>
@@ -319,7 +319,7 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                         </Button>
                     )}
                     {canCreate && (
-                        <Link href="/erp/items/create">
+                        <Link href="/erp/items/create" transitionTypes={["nav-forward"]}>
                             <Button>
                                 <Plus className="mr-2 h-4 w-4" /> Add Item
                             </Button>

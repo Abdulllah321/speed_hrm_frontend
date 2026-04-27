@@ -16,7 +16,7 @@ export default function VendorPage() {
                     <h2 className="text-3xl font-bold tracking-tight">Vendors</h2>
                     <PermissionGuard permissions="erp.procurement.vendor.read" fallback={null}>
                         <Button variant="outline" asChild>
-                            <Link href="/erp/procurement/vendors/list">
+                            <Link href="/erp/procurement/vendors/list" transitionTypes={["nav-forward"]}>
                                 <List className="h-4 w-4 mr-2" />
                                 Vendor List
                             </Link>
