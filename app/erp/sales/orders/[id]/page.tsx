@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, FileText, Truck, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -107,10 +108,12 @@ export default function SalesOrderViewPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/erp/sales/orders")}
+            asChild
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Orders
+            <Link href="/erp/sales/orders" transitionTypes={["nav-back"]}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Orders
+            </Link>
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
@@ -143,10 +146,12 @@ export default function SalesOrderViewPage() {
           {order.status === "CONFIRMED" && (
             <Button 
               size="sm"
-              onClick={() => router.push(`/erp/sales/delivery-challans/create?salesOrderId=${order.id}`)}
+              asChild
             >
-              <Truck className="h-4 w-4 mr-2" />
-              Create Delivery Challan
+              <Link href={`/erp/sales/delivery-challans/create?salesOrderId=${order.id}`} transitionTypes={["nav-forward"]}>
+                <Truck className="h-4 w-4 mr-2" />
+                Create Delivery Challan
+              </Link>
             </Button>
           )}
         </div>

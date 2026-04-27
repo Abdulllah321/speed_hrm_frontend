@@ -42,12 +42,12 @@ export default function PurchaseOrderList() {
                 <h1 className="text-3xl font-bold tracking-tight">Purchase Orders</h1>
                 {canCreate && (
                     <div className="flex gap-2">
-                        <Link href="/erp/procurement/purchase-order/create">
+                        <Link href="/erp/procurement/purchase-order/create" transitionTypes={["nav-forward"]}>
                             <Button variant="secondary">
                                 <Plus className="mr-2 h-4 w-4" /> Create Direct PO
                             </Button>
                         </Link>
-                        <Link href="/erp/procurement/purchase-order/pending">
+                        <Link href="/erp/procurement/purchase-order/pending" transitionTypes={["nav-forward"]}>
                             <Button>
                                 <Plus className="mr-2 h-4 w-4" /> From Quotations
                             </Button>
@@ -97,7 +97,7 @@ export default function PurchaseOrderList() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/erp/procurement/purchase-order/${order.id}`}>
+                                            <Link href={`/erp/procurement/purchase-order/${order.id}`} transitionTypes={["nav-forward"]}>
                                                 <Button variant="ghost" size="sm">
                                                     <Eye className="mr-2 h-4 w-4" /> View
                                                 </Button>

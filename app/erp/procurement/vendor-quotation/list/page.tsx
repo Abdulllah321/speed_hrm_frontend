@@ -58,7 +58,7 @@ export default function AllVendorQuotationList() {
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Vendor Quotations</h1>
                 {canCreate && (
-                    <Link href="/erp/procurement/vendor-quotation/create">
+                    <Link href="/erp/procurement/vendor-quotation/create" transitionTypes={["nav-forward"]}>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" /> Create Quotation
                         </Button>
@@ -109,7 +109,7 @@ export default function AllVendorQuotationList() {
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 {group.rfq && group.items.length > 1 && canCompare && (
-                                                    <Link href={`/erp/procurement/vendor-quotation/compare/${rfqId}`}>
+                                                    <Link href={`/erp/procurement/vendor-quotation/compare/${rfqId}`} transitionTypes={["nav-forward"]}>
                                                         <Button variant="outline" size="sm">Compare All</Button>
                                                     </Link>
                                                 )}
@@ -137,7 +137,7 @@ export default function AllVendorQuotationList() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex gap-2 justify-end">
-                                                        <Link href={`/erp/procurement/vendor-quotation/${quotation.id}`}>
+                                                        <Link href={`/erp/procurement/vendor-quotation/${quotation.id}`} transitionTypes={["nav-forward"]}>
                                                             <Button variant="ghost" size="sm">View</Button>
                                                         </Link>
                                                         {quotation.status === 'DRAFT' && canSubmit && (

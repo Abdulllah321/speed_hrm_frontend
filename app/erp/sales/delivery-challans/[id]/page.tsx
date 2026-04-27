@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, Package, Truck, FileText, CheckCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -133,10 +134,12 @@ export default function DeliveryChallanViewPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/erp/sales/delivery-challans")}
+            asChild
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Delivery Challans
+            <Link href="/erp/sales/delivery-challans" transitionTypes={["nav-back"]}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Delivery Challans
+            </Link>
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
@@ -183,10 +186,12 @@ export default function DeliveryChallanViewPage() {
           {challan.status === "DELIVERED" && canCreateInvoice && (
             <Button 
               size="sm"
-              onClick={() => router.push(`/erp/sales/invoices/create?challanId=${challan.id}`)}
+              asChild
             >
-              <FileText className="h-4 w-4 mr-2" />
-              Create Invoice
+              <Link href={`/erp/sales/invoices/create?challanId=${challan.id}`} transitionTypes={["nav-forward"]}>
+                <FileText className="h-4 w-4 mr-2" />
+                Create Invoice
+              </Link>
             </Button>
           )}
         </div>

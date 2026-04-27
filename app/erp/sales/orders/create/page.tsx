@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, Plus, Search, Filter, Trash2, Package, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -259,10 +260,12 @@ export default function CreateSalesOrderPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/erp/sales/orders")}
+            asChild
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Orders
+            <Link href="/erp/sales/orders" transitionTypes={["nav-back"]}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Orders
+            </Link>
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Create Sales Order</h1>
@@ -273,8 +276,10 @@ export default function CreateSalesOrderPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.push("/erp/sales/orders")}>
-            Cancel
+          <Button variant="outline" asChild>
+            <Link href="/erp/sales/orders" transitionTypes={["nav-back"]}>
+              Cancel
+            </Link>
           </Button>
           <Button onClick={handleCreateOrder} disabled={selectedItems.length === 0 || loading}>
             {loading ? "Creating..." : "Create Order"}

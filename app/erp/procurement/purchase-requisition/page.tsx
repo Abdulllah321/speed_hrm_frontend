@@ -22,7 +22,7 @@ export default async function PurchaseRequisitionList() {
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Purchase Requisitions</h1>
                 {canCreate && (
-                    <Link href="/erp/procurement/purchase-requisition/create">
+                    <Link href="/erp/procurement/purchase-requisition/create" transitionTypes={["nav-forward"]}>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" /> Create PR
                         </Button>
@@ -66,7 +66,7 @@ export default async function PurchaseRequisitionList() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/erp/procurement/purchase-requisition/${pr.id}`}>
+                                            <Link href={`/erp/procurement/purchase-requisition/${pr.id}`} transitionTypes={["nav-forward"]}>
                                                 <Button variant="ghost" size="sm">View</Button>
                                             </Link>
                                         </TableCell>

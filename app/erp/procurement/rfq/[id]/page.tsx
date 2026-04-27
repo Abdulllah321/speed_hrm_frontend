@@ -44,7 +44,7 @@ export default async function RfqDetail({ params }: { params: Promise<{ id: stri
                     </p>
                 </div>
                 <div className="flex gap-2">
-                    <Link href="/erp/procurement/rfq">
+                    <Link href="/erp/procurement/rfq" transitionTypes={["nav-back"]}>
                         <Button variant="outline">Back</Button>
                     </Link>
                     <RfqDetailClient rfq={rfq} suppliers={suppliers} canAddVendors={canAddVendors} canSend={canSend} />

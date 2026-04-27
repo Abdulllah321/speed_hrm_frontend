@@ -87,13 +87,13 @@ export default function DebitNotesPage() {
                         <td className="p-3">{formatDate(note.date)}</td>
                         <td className="p-3 underline text-blue-600">
                           {note.purchaseReturn?.returnNumber ? (
-                            <Link href={`/erp/procurement/purchase-returns/${note.purchaseReturnId}`}>
+                            <Link href={`/erp/procurement/purchase-returns/${note.purchaseReturnId}`} transitionTypes={["nav-forward"]}>
                               {note.purchaseReturn.returnNumber}
                             </Link>
                           ) : 'N/A'}
                         </td>
                         <td className="p-3">
-                          <Link href={`/erp/procurement/debit-notes/${note.id}`}>
+                          <Link href={`/erp/procurement/debit-notes/${note.id}`} transitionTypes={["nav-forward"]}>
                             <Button size="sm" variant="outline">
                               <Eye className="w-4 h-4 mr-1" /> View
                             </Button>

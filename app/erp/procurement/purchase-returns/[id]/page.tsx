@@ -92,7 +92,7 @@ export default function PurchaseReturnDetailPage() {
             {purchaseReturn.status === 'DRAFT' && (
               <PermissionGuard permissions="erp.procurement.pret.update" fallback={null}>
                 <>
-                  <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}/edit`}>
+                  <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}/edit`} transitionTypes={["nav-forward"]}>
                     <Button variant="outline">
                       <Edit className="w-4 h-4 mr-2" />
                       Edit
@@ -286,7 +286,7 @@ export default function PurchaseReturnDetailPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Approval & Financial Impact</CardTitle>
             {purchaseReturn.debitNote && (
-              <Link href={`/erp/procurement/debit-notes/${purchaseReturn.debitNote.id}`}>
+              <Link href={`/erp/procurement/debit-notes/${purchaseReturn.debitNote.id}`} transitionTypes={["nav-forward"]}>
                 <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">
                   View Debit Note
                 </Button>

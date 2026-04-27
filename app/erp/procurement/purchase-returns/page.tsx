@@ -85,7 +85,7 @@ export default function PurchaseReturnsPage() {
             <p className="text-gray-600">Manage purchase returns and refunds</p>
           </div>
           <PermissionGuard permissions="erp.procurement.pret.create" fallback={null}>
-            <Link href="/erp/procurement/purchase-returns/create">
+            <Link href="/erp/procurement/purchase-returns/create" transitionTypes={["nav-forward"]}>
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Return
@@ -157,7 +157,7 @@ export default function PurchaseReturnsPage() {
                         <td className="p-3">{formatDate(returnItem.returnDate)}</td>
                         <td className="p-3">
                           <div className="flex gap-2">
-                            <Link href={`/erp/procurement/purchase-returns/${returnItem.id}`}>
+                            <Link href={`/erp/procurement/purchase-returns/${returnItem.id}`} transitionTypes={["nav-forward"]}>
                               <Button size="sm" variant="outline">
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -165,7 +165,7 @@ export default function PurchaseReturnsPage() {
                             {returnItem.status === 'DRAFT' && (
                               <>
                                 <PermissionGuard permissions="erp.procurement.pret.update" fallback={null}>
-                                  <Link href={`/erp/procurement/purchase-returns/${returnItem.id}/edit`}>
+                                  <Link href={`/erp/procurement/purchase-returns/${returnItem.id}/edit`} transitionTypes={["nav-forward"]}>
                                     <Button size="sm" variant="outline">
                                       <Edit className="w-4 h-4" />
                                     </Button>

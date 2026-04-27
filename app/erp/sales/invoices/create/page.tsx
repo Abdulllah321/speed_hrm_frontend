@@ -146,7 +146,7 @@ export default function CreateSalesInvoicePage() {
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center gap-4 mb-6">
-        <Link href="/erp/sales/invoices">
+        <Link href="/erp/sales/invoices" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Invoices
@@ -313,7 +313,7 @@ export default function CreateSalesInvoicePage() {
 
         {/* Submit Buttons */}
         <div className="flex gap-4 justify-end">
-          <Link href="/erp/sales/invoices">
+          <Link href="/erp/sales/invoices" transitionTypes={["nav-back"]}>
             <Button type="button" variant="outline">
               Cancel
             </Button>
