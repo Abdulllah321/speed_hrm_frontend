@@ -173,77 +173,6 @@ export default function PurchaseInvoiceListPage() {
                 className="w-52"
               />
             </div>
-            <div className="flex gap-2">
-              <PermissionGuard
-                permissions="erp.procurement.pi.create"
-                fallback={null}
-              >
-                <Link
-                  href="/erp/procurement/purchase-invoice/create-direct"
-                  transitionTypes={["nav-forward"]}
-                >
-                  <Button variant="outline">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Direct PI
-                  </Button>
-                </Link>
-              </PermissionGuard>
-              <PermissionGuard
-                permissions="erp.procurement.pi.create"
-                fallback={null}
-              >
-                <Link
-                  href="/erp/procurement/purchase-invoice/create"
-                  transitionTypes={["nav-forward"]}
-                >
-                  <Button>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Invoice
-                  </Button>
-                </Link>
-              </PermissionGuard>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <div className="flex gap-4 items-center">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Search by invoice number or supplier..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md"
-              >
-                <option value="">All Status</option>
-                <option value="DRAFT">Draft</option>
-                <option value="SUBMITTED">Submitted</option>
-                <option value="APPROVED">Approved</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-              <select
-                value={paymentStatusFilter}
-                onChange={(e) => setPaymentStatusFilter(e.target.value)}
-                className="px-3 py-2 border rounded-md"
-              >
-                <option value="">All Payment Status</option>
-                <option value="UNPAID">Unpaid</option>
-                <option value="PARTIALLY_PAID">Partially Paid</option>
-                <option value="FULLY_PAID">Fully Paid</option>
-                <option value="OVERDUE">Overdue</option>
-              </select>
-            </div>
           </CardContent>
         </Card>
 
@@ -329,22 +258,6 @@ export default function PurchaseInvoiceListPage() {
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <PermissionGuard
-                              permissions="erp.procurement.pi.update"
-                              fallback={null}
-                            >
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  router.push(
-                                    `/erp/procurement/purchase-invoice/${invoice.id}/edit`,
-                                  )
-                                }
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                            </PermissionGuard>
                             <PermissionGuard
                               permissions="erp.procurement.pi.delete"
                               fallback={null}

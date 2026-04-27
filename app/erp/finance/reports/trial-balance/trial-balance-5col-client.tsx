@@ -15,6 +15,13 @@ import { getTrialBalance, TrialBalanceResult, TrialBalanceRow } from "@/lib/acti
 const fmt = (n: number) =>
   n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// Format with brackets for credit (negative) amounts
+const fmtWithBrackets = (debit: number, credit: number) => {
+  if (debit > 0) return fmt(debit);
+  if (credit > 0) return `(${fmt(credit)})`;
+  return "0.00";
+};
+
 const TYPE_COLORS: Record<string, string> = {
   ASSET:     "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   LIABILITY: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
@@ -23,7 +30,7 @@ const TYPE_COLORS: Record<string, string> = {
   EXPENSE:   "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
 };
 
-export function TrialBalanceClient({ initialData }: { initialData?: TrialBalanceResult }) {
+export function TrialBalance5ColClient({ initialData }: { initialData?: TrialBalanceResult }) {
   const [data, setData] = useState<TrialBalanceResult | undefined>(initialData);
   const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
   const [toDate, setToDate] = useState<Date | undefined>(undefined);
@@ -73,7 +80,7 @@ export function TrialBalanceClient({ initialData }: { initialData?: TrialBalance
       <Card>
         <CardHeader className="border-b flex flex-row items-center justify-between flex-wrap gap-3">
           <div>
-            <CardTitle>Trial Balance</CardTitle>
+            <CardTitle>Trial Balance (5-Column)</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
               {fromDate && toDate
                 ? `Period: ${format(fromDate, "dd MMM yyyy")} – ${format(toDate, "dd MMM yyyy")}`
@@ -174,25 +181,19 @@ export function TrialBalanceClient({ initialData }: { initialData?: TrialBalance
             </div>
           )}
 
-          {/* Table */}
+          {/* Table - 5 Column Format */}
           <div className="overflow-x-auto rounded-lg border dark:border-border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/40 border-b dark:border-border">
-                  <th rowSpan={2} className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">Sr.No</th>
-                  <th rowSpan={2} className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">ACC.CODE</th>
-                  <th rowSpan={2} className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">ACCOUNT</th>
-                  <th colSpan={2} className="text-center px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r border-b">Opening Balance</th>
-                  <th colSpan={2} className="text-center px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r border-b">Transactions</th>
-                  <th colSpan={2} className="text-center px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Closing Balance</th>
-                </tr>
-                <tr className="bg-muted/40 border-b dark:border-border">
-                  <th className="text-right px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider">OPEN.DR</th>
-                  <th className="text-right px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">OPEN.CR</th>
-                  <th className="text-right px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider">TX.DR</th>
-                  <th className="text-right px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">TX.CR</th>
-                  <th className="text-right px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider">CL.DR</th>
-                  <th className="text-right px-4 py-2 font-semibold text-muted-foreground uppercase text-xs tracking-wider">CL.CR</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">Code</th>
+                  <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">Account Name</th>
+                  <th className="text-center px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">Nature of Account</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">Opening Balance</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">Dr During The Period</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">Cr During The Period</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider border-r">End.Dr</th>
+                  <th className="text-right px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">End.Cr</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,32 +214,31 @@ export function TrialBalanceClient({ initialData }: { initialData?: TrialBalance
                   return (
                     <>
                       <tr key={`${type}-header`} className="bg-muted/20 border-t dark:border-border">
-                        <td colSpan={9} className="px-4 py-2 font-bold text-xs uppercase tracking-widest text-muted-foreground">
+                        <td colSpan={8} className="px-4 py-2 font-bold text-xs uppercase tracking-widest text-muted-foreground">
                           {type}
                         </td>
                       </tr>
                       {rows.map((row, i) => {
                         return (
                           <tr key={row.id} className={cn("border-b dark:border-border/50 hover:bg-accent/30", i % 2 === 1 && "bg-muted/10")}>
-                            <td className="px-4 py-2 text-center font-mono text-xs border-r">{serialNo++}</td>
                             <td className="px-4 py-2 font-mono text-xs text-muted-foreground border-r">{row.code}</td>
                             <td className="px-4 py-2 border-r">
                               <div className="font-medium">{row.name}</div>
                               {row.parent && <div className="text-xs text-muted-foreground">{row.parent.name}</div>}
                             </td>
-                            <td className="px-4 py-2 text-right font-mono text-xs">
-                              {row.openingDebit > 0 ? fmt(row.openingDebit) : "0.00"}
+                            <td className="px-4 py-2 text-center border-r">
+                              <Badge className={cn("text-[10px]", TYPE_COLORS[row.type])} variant="secondary">{row.type}</Badge>
                             </td>
                             <td className="px-4 py-2 text-right font-mono text-xs border-r">
-                              {row.openingCredit > 0 ? fmt(row.openingCredit) : "0.00"}
+                              {fmtWithBrackets(row.openingDebit || 0, row.openingCredit || 0)}
                             </td>
-                            <td className="px-4 py-2 text-right font-mono text-xs">
+                            <td className="px-4 py-2 text-right font-mono text-xs border-r">
                               {row.transactionDebit > 0 ? fmt(row.transactionDebit) : "0.00"}
                             </td>
                             <td className="px-4 py-2 text-right font-mono text-xs border-r">
                               {row.transactionCredit > 0 ? fmt(row.transactionCredit) : "0.00"}
                             </td>
-                            <td className="px-4 py-2 text-right font-mono text-xs">
+                            <td className="px-4 py-2 text-right font-mono text-xs border-r">
                               {row.closingDebit > 0 ? fmt(row.closingDebit) : "0.00"}
                             </td>
                             <td className="px-4 py-2 text-right font-mono text-xs">
@@ -249,11 +249,12 @@ export function TrialBalanceClient({ initialData }: { initialData?: TrialBalance
                       })}
                       <tr key={`${type}-subtotal`} className="bg-muted/30 font-semibold border-t dark:border-border">
                         <td colSpan={3} className="px-4 py-2 text-right text-xs uppercase text-muted-foreground border-r">Subtotal {type}</td>
-                        <td className="px-4 py-2 text-right font-mono text-xs">{subtotalOpenDr > 0 ? fmt(subtotalOpenDr) : "0.00"}</td>
-                        <td className="px-4 py-2 text-right font-mono text-xs border-r">{subtotalOpenCr > 0 ? fmt(subtotalOpenCr) : "0.00"}</td>
-                        <td className="px-4 py-2 text-right font-mono text-xs">{subtotalTxDr > 0 ? fmt(subtotalTxDr) : "0.00"}</td>
+                        <td className="px-4 py-2 text-right font-mono text-xs border-r">
+                          {fmtWithBrackets(subtotalOpenDr, subtotalOpenCr)}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-xs border-r">{subtotalTxDr > 0 ? fmt(subtotalTxDr) : "0.00"}</td>
                         <td className="px-4 py-2 text-right font-mono text-xs border-r">{subtotalTxCr > 0 ? fmt(subtotalTxCr) : "0.00"}</td>
-                        <td className="px-4 py-2 text-right font-mono text-xs">{subtotalClosingDr > 0 ? fmt(subtotalClosingDr) : "0.00"}</td>
+                        <td className="px-4 py-2 text-right font-mono text-xs border-r">{subtotalClosingDr > 0 ? fmt(subtotalClosingDr) : "0.00"}</td>
                         <td className="px-4 py-2 text-right font-mono text-xs">{subtotalClosingCr > 0 ? fmt(subtotalClosingCr) : "0.00"}</td>
                       </tr>
                     </>
@@ -263,11 +264,12 @@ export function TrialBalanceClient({ initialData }: { initialData?: TrialBalance
               <tfoot>
                 <tr className="bg-muted/60 border-t-2 dark:border-border font-bold text-sm">
                   <td colSpan={3} className="px-4 py-3 text-right uppercase tracking-wider border-r">Grand Total</td>
-                  <td className="px-4 py-3 text-right font-mono">{fmt(data?.totalOpeningDebit ?? 0)}</td>
-                  <td className="px-4 py-3 text-right font-mono border-r">{fmt(data?.totalOpeningCredit ?? 0)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{fmt(data?.totalTransactionDebit ?? 0)}</td>
+                  <td className="px-4 py-3 text-right font-mono border-r">
+                    {fmtWithBrackets(data?.totalOpeningDebit ?? 0, data?.totalOpeningCredit ?? 0)}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono border-r">{fmt(data?.totalTransactionDebit ?? 0)}</td>
                   <td className="px-4 py-3 text-right font-mono border-r">{fmt(data?.totalTransactionCredit ?? 0)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{fmt(data?.totalClosingDebit ?? data?.totalDebit ?? 0)}</td>
+                  <td className="px-4 py-3 text-right font-mono border-r">{fmt(data?.totalClosingDebit ?? data?.totalDebit ?? 0)}</td>
                   <td className="px-4 py-3 text-right font-mono">{fmt(data?.totalClosingCredit ?? data?.totalCredit ?? 0)}</td>
                 </tr>
               </tfoot>

@@ -635,6 +635,11 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
+        title: "Opening Balance",
+        href: "/erp/finance/opening-balance",
+        permissions: ["erp.finance.chart-of-account.update"],
+      },
+      {
         title: "Journal Voucher",
         permissions: ["erp.finance.journal-voucher.read"],
         children: [
@@ -690,8 +695,12 @@ export const menuData: MenuItem[] = [
             href: "/erp/finance/reports/general-ledger",
           },
           {
-            title: "Trial Balance",
+            title: "Trial Balance (6-Col)",
             href: "/erp/finance/reports/trial-balance",
+          },
+          {
+            title: "Trial Balance (5-Col)",
+            href: "/erp/finance/reports/trial-balance-5col",
           },
           {
             title: "Balance Sheet",

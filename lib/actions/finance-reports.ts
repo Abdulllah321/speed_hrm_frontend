@@ -9,6 +9,12 @@ export interface TrialBalanceRow {
   balance: number;
   debit: number;
   credit: number;
+  openingDebit: number;
+  openingCredit: number;
+  transactionDebit: number;
+  transactionCredit: number;
+  closingDebit: number;
+  closingCredit: number;
   parent?: { code: string; name: string } | null;
 }
 
@@ -16,6 +22,12 @@ export interface TrialBalanceResult {
   rows: TrialBalanceRow[];
   totalDebit: number;
   totalCredit: number;
+  totalOpeningDebit?: number;
+  totalOpeningCredit?: number;
+  totalTransactionDebit?: number;
+  totalTransactionCredit?: number;
+  totalClosingDebit?: number;
+  totalClosingCredit?: number;
   balanced: boolean;
   from?: string;
   to?: string;
