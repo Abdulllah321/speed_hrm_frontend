@@ -430,7 +430,7 @@ export function AppSidebar({
               </div>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
               <span className="font-bold text-base leading-tight text-sidebar-foreground">
-                Demo Version
+                Speed Pvt.Ltd
               </span>
               <span className="text-xs text-sidebar-foreground/60 font-medium">
                 {logoLabel}
