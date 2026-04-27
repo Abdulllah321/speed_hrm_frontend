@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useTransition } from "react";
+import { useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,7 +64,7 @@ export default function AddSalaryBreakupPage() {
   return (
     <div className="w-full px-10">
       <div className="mb-6">
-        <Link href="/master/salary-breakup/list">
+        <Link href="/master/salary-breakup/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List

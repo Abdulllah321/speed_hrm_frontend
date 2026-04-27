@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,11 +56,14 @@ export function QualificationAddForm() {
         if (result.status) {
           toast.success(result.message || "Qualification created successfully");
           const newId = result.data?.id;
-          router.push(
-            `/dashboard/master/qualification/list${
-              newId ? `?newItemId=${newId}` : ""
-            }`
-          );
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push(
+              `/master/qualification/list${
+                newId ? `?newItemId=${newId}` : ""
+              }`
+            );
+          });
         } else {
           toast.error(result.message || "Failed to create qualification");
         }
@@ -71,7 +74,10 @@ export function QualificationAddForm() {
           toast.success(
             result.message || "Qualifications created successfully"
           );
-          router.push("/master/qualification/list");
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/master/qualification/list");
+          });
         } else {
           toast.error(result.message || "Failed to create qualifications");
         }
@@ -82,7 +88,7 @@ export function QualificationAddForm() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/qualification/list">
+        <Link href="/master/qualification/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -133,7 +139,12 @@ export function QualificationAddForm() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    startTransition(() => {
+                      addTransitionType("nav-back");
+                      router.back();
+                    });
+                  }}
                   disabled={isPending}
                 >
                   Cancel

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -208,7 +208,10 @@ export function GeneratePayrollClient({
 
                 if (result.status) {
                     toast.success(result.message);
-                    router.push("/hr/payroll-setup/payroll/report");
+                    startTransition(() => {
+                        addTransitionType("nav-forward");
+                        router.push("/hr/payroll-setup/payroll/report");
+                    });
                 } else {
                     toast.error(result.message);
                 }
@@ -222,7 +225,7 @@ export function GeneratePayrollClient({
     return (
         <div className="max-w-6xl mx-auto pb-10">
             <div className="mb-6">
-                <Link href="/hr/payroll">
+                <Link href="/hr/payroll" transitionTypes={["nav-back"]}>
                     <Button variant="ghost" size="sm">
                         <ArrowLeft className="h-4 w-4 mr-2" />
                         Back to Payroll

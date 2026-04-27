@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, startTransition, addTransitionType } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, Upload } from "lucide-react";
+import { CalendarIcon, Upload, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -42,6 +42,7 @@ import { createItem, getNextItemId } from "@/lib/actions/items";
 import { getTaxRates } from "@/lib/actions/tax-rate";
 import { getHsCodes } from "@/lib/actions/hs-code";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
 import { uploadFile } from "@/lib/upload";
 import Cropper from "react-easy-crop";
@@ -306,7 +307,10 @@ export default function ItemCreatePage() {
             const result = await createItem(data);
             if (result.status) {
                 toast.success("Item created successfully");
-                router.push("/erp/items/list");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/erp/items/list");
+                });
             } else {
                 toast.error(result.message || "Failed to create item");
             }
@@ -334,9 +338,16 @@ export default function ItemCreatePage() {
     return (
         <PermissionGuard permissions="erp.item.create">
         <div className="container mx-auto py-10 max-w-5xl">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold tracking-tight">Create New Item</h1>
-                <p className="text-muted-foreground">Add a new item to your inventory catalog.</p>
+            <div className="mb-8 flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Create New Item</h1>
+                    <p className="text-muted-foreground">Add a new item to your inventory catalog.</p>
+                </div>
+                <Link href="/erp/items/list" transitionTypes={["nav-back"]}>
+                    <Button variant="outline">
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Back to List
+                    </Button>
+                </Link>
             </div>
 
             <Steps steps={STEPS} currentStep={currentStep} />

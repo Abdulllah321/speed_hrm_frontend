@@ -58,7 +58,7 @@ export default async function ViewItemPage({ params }: PageProps) {
         <div className="space-y-6 max-w-[90%] mx-auto pb-10">
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                    <Link href="/erp/items/list">
+                    <Link href="/erp/items/list" transitionTypes={["nav-back"]}>
                         <Button variant="ghost" size="icon">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
@@ -68,7 +68,7 @@ export default async function ViewItemPage({ params }: PageProps) {
                         <p className="text-muted-foreground">View item information</p>
                     </div>
                 </div>
-                <Link href={`/erp/items/edit/${itemId}`}>
+                <Link href={`/erp/items/edit/${itemId}`} transitionTypes={["nav-forward"]}>
                     <Button>
                         <Edit className="mr-2 h-4 w-4" /> Edit Item
                     </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, AllowanceHeadRow } from "./columns";
@@ -45,7 +45,10 @@ export function AllowanceHeadList({ initialAllowanceHeads, newItemId }: Allowanc
   }[]>([]);
 
   const handleToggle = () => {
-    router.push("/master/allowance-head/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/allowance-head/add");
+    });
   };
 
   const showAddAction = hasPermission("allowance-head.create");

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, SalaryBreakupRow } from "./columns";
@@ -101,7 +101,10 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
   const canBulkDelete = hasPermission("salary-breakup.delete");
 
   const handleToggle = () => {
-    router.push("/master/salary-breakup/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/salary-breakup/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

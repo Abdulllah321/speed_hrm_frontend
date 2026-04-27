@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +68,10 @@ export function SubDepartmentAddForm({ departments, defaultDepartmentId }: SubDe
       );
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/sub-department/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/sub-department/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -78,7 +81,7 @@ export function SubDepartmentAddForm({ departments, defaultDepartmentId }: SubDe
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/sub-department/list">
+        <Link href="/master/sub-department/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -158,7 +161,12 @@ export function SubDepartmentAddForm({ departments, defaultDepartmentId }: SubDe
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Create {rows.length > 1 ? `${rows.length} Sub-Departments` : "Sub-Department"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => router.back()}>
+               <Button type="button" variant="outline" onClick={() => {
+                startTransition(() => {
+                  addTransitionType("nav-back");
+                  router.back();
+                });
+              }}>
                 Cancel
               </Button>
             </div>

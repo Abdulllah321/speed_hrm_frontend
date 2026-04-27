@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,7 +93,10 @@ export default function AddBonusTypePage() {
       const result = await createBonusTypes(payload);
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/bonus-types/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/bonus-types/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -103,7 +106,7 @@ export default function AddBonusTypePage() {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/bonus-types/list">
+        <Link href="/master/bonus-types/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -244,7 +247,12 @@ export default function AddBonusTypePage() {
                   {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Create {items.length > 1 ? `${items.length} Bonus Types` : "Bonus Type"}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => router.back()} size="lg" disabled={isPending}>
+                <Button type="button" variant="outline" onClick={() => {
+                  startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.back();
+                  });
+                }} size="lg" disabled={isPending}>
                   Cancel
                 </Button>
               </div>

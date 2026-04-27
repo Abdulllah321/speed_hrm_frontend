@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,7 +69,10 @@ export default function AddTaxSlabPage() {
       const result = await createTaxSlabs(items);
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/tax-slabs/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/tax-slabs/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -79,7 +82,7 @@ export default function AddTaxSlabPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/tax-slabs/list">
+        <Link href="/master/tax-slabs/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -176,7 +179,12 @@ export default function AddTaxSlabPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    startTransition(() => {
+                      addTransitionType("nav-back");
+                      router.back();
+                    });
+                  }}
                 >
                   Cancel
                 </Button>

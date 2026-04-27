@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,7 +77,10 @@ export default function AddDepartmentPage() {
       const result = await createDepartments(items);
       if (result.status) {
         toast.success(result.message || "Departments created successfully");
-        router.push("/master/department/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/department/list");
+        });
       } else {
         toast.error(result.message || "Failed to create departments");
       }
@@ -88,7 +91,7 @@ export default function AddDepartmentPage() {
     <PermissionGuard permissions="master.department.create">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <Link href="/master/department/list">
+          <Link href="/master/department/list" transitionTypes={["nav-back"]}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to List
@@ -176,7 +179,12 @@ export default function AddDepartmentPage() {
                     {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Create {departments.length > 1 ? `${departments.length} Departments` : "Department"}
                   </Button>
-                  <Button type="button" variant="outline" onClick={() => router.back()}>
+                  <Button type="button" variant="outline" onClick={() => {
+                    startTransition(() => {
+                      addTransitionType("nav-back");
+                      router.back();
+                    });
+                  }}>
                     Cancel
                   </Button>
                 </div>

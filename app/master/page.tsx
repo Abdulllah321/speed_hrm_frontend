@@ -146,7 +146,7 @@ export default function MasterPage() {
       <h1 className="text-3xl font-bold mb-6">Master Data Management</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {masterModules.map((module) => (
-          <Link href={module.href} key={module.href} className="block h-full">
+          <Link href={module.href} key={module.href} className="block h-full" transitionTypes={["nav-forward"]}>
             <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer">
               <CardHeader>
                 <CardTitle>{module.title}</CardTitle>

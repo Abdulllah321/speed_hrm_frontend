@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,7 +64,10 @@ export default function AddDivisionPage() {
             const result = await createDivisions(items);
             if (result.status) {
                 toast.success(result.message || "Divisions created successfully");
-                router.push("/master/division/list");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/master/division/list");
+                });
             } else {
                 toast.error(result.message || "Failed to create divisions");
             }
@@ -75,7 +78,7 @@ export default function AddDivisionPage() {
         <PermissionGuard permissions="master.division.create">
             <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
-                    <Link href="/master/division/list">
+                    <Link href="/master/division/list" transitionTypes={["nav-back"]}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to List
@@ -138,7 +141,12 @@ export default function AddDivisionPage() {
                                         {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                         Create {divisions.length > 1 ? `${divisions.length} Divisions` : "Division"}
                                     </Button>
-                                    <Button type="button" variant="outline" onClick={() => router.back()}>
+                                    <Button type="button" variant="outline" onClick={() => {
+                                        startTransition(() => {
+                                            addTransitionType("nav-back");
+                                            router.back();
+                                        });
+                                    }}>
                                         Cancel
                                     </Button>
                                 </div>

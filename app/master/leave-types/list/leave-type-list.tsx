@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, LeaveTypeRow } from "./columns";
@@ -42,7 +42,10 @@ export function LeaveTypeList({
   const canBulkDelete = hasPermission("leave-type.delete");
 
   const handleToggle = () => {
-    router.push("/master/leave-types/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/leave-types/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

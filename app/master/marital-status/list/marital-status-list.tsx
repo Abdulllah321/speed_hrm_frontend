@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, MaritalStatusRow } from "./columns";
@@ -35,7 +35,10 @@ export function MaritalStatusList({ initialMaritalStatuses, newItemId }: Marital
   const canBulkDelete = hasPermission("master.marital-status.delete");
 
   const handleToggle = () => {
-    router.push("/master/marital-status/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/marital-status/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

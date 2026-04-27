@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +44,10 @@ export default function AddChannelClassPage() {
             const result = await createChannelClasses(validItems.map(i => ({ name: i.name, status: i.status })));
             if (result.status) {
                 toast.success(result.message || "Created successfully");
-                router.push("/master/channel-class/list");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/master/channel-class/list");
+                });
             } else {
                 toast.error(result.message || "Failed to create");
             }
@@ -55,7 +58,7 @@ export default function AddChannelClassPage() {
         <PermissionGuard permissions="master.channel-class.create">
             <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
-                    <Link href="/master/channel-class/list">
+                    <Link href="/master/channel-class/list" transitionTypes={["nav-back"]}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to List
@@ -107,7 +110,12 @@ export default function AddChannelClassPage() {
                                         {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                         Create {items.length > 1 ? `${items.length} Items` : "Item"}
                                     </Button>
-                                    <Button type="button" variant="outline" onClick={() => router.back()}>
+                                    <Button type="button" variant="outline" onClick={() => {
+                                        startTransition(() => {
+                                            addTransitionType("nav-back");
+                                            router.back();
+                                        });
+                                    }}>
                                         Cancel
                                     </Button>
                                 </div>

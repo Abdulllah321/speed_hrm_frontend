@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ColumnDef, PaginationState } from "@tanstack/react-table";
@@ -199,6 +199,7 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
 
 export default function SalesHistoryPage() {
     const router = useRouter();
+    const [isPending, startTransition] = useTransition();
     const { hasPermission } = useAuth();
     const canPrint = hasPermission('pos.sales.history.print');
     const canUpdateTender = hasPermission('pos.sales.history.update-tender');
@@ -270,7 +271,10 @@ export default function SalesHistoryPage() {
                 }));
                 sessionStorage.setItem("pos_resume_cart", JSON.stringify(cartItems));
                 toast.success(`Resuming ${resumed.orderNumber}`);
-                router.push("/pos/new-sale?resume=1");
+                startTransition(() => {
+                    addTransitionType("nav-forward");
+                    router.push("/pos/new-sale?resume=1");
+                });
             } else {
                 toast.error(res.data?.message || "Failed to resume hold");
             }
@@ -368,7 +372,12 @@ export default function SalesHistoryPage() {
                         <Button variant="ghost" size="icon"
                             className="h-8 w-8 rounded-full text-blue-600 hover:bg-blue-50"
                             title="View details"
-                            onClick={() => router.push(`/pos/sales/order-details/${order.id}`)}>
+                            onClick={() => {
+                                startTransition(() => {
+                                    addTransitionType("nav-forward");
+                                    router.push(`/pos/sales/order-details/${order.id}`);
+                                });
+                            }}>
                             <Eye className="h-3.5 w-3.5" />
                         </Button>
                         {/* Print */}
@@ -429,7 +438,12 @@ export default function SalesHistoryPage() {
                     </div>
                     <Button
                         variant="outline"
-                        onClick={() => router.push("/pos/new-sale?showHolds=1")}
+                        onClick={() => {
+                            startTransition(() => {
+                                addTransitionType("nav-forward");
+                                router.push("/pos/new-sale?showHolds=1");
+                            });
+                        }}
                         className="gap-2 border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
                     >
                         <PauseCircle className="h-4 w-4" />
@@ -440,7 +454,12 @@ export default function SalesHistoryPage() {
                             </Badge>
                         )}
                     </Button>
-                    <Button onClick={() => router.push("/pos/new-sale")}>
+                    <Button onClick={() => {
+                        startTransition(() => {
+                            addTransitionType("nav-forward");
+                            router.push("/pos/new-sale");
+                        });
+                    }}>
                         <ShoppingCart className="h-4 w-4" /> New Sale
                     </Button>
                 </div>

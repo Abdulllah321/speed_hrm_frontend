@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition, useMemo } from "react";
+import { addTransitionType, useId, useState, useTransition, useMemo, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DataTable from "@/components/common/data-table";
@@ -20,6 +20,7 @@ export function SubclassList({ initialData, classes }: SubclassListProps) {
     const { hasPermission, isAdmin } = useAuth();
     const tableId = useId();
 
+    const canCreate = isAdmin() || hasPermission("master.item-subclass.create");
     const canEdit = isAdmin() || hasPermission("master.item-subclass.update");
     const canDelete = isAdmin() || hasPermission("master.item-subclass.delete");
 
@@ -82,6 +83,13 @@ export function SubclassList({ initialData, classes }: SubclassListProps) {
             columns={columns}
             data={data}
             searchFields={[{ key: "name", label: "Name" }]}
+            actionText={canCreate ? "Add Subclass" : undefined}
+            toggleAction={canCreate ? () => {
+                startTransition(() => {
+                    addTransitionType("nav-forward");
+                    router.push("/master/subclass/add");
+                });
+            } : undefined}
             filters={filters}
             onBulkEdit={canEdit ? onBulkEdit : undefined}
             onMultiDelete={canDelete ? onMultiDelete : undefined}

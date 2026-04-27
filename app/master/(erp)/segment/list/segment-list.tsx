@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { addTransitionType, useId, useState, useTransition, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import DataTable from "@/components/common/data-table";
@@ -18,6 +18,7 @@ export function SegmentList({ initialData }: SegmentListProps) {
     const { hasPermission, isAdmin } = useAuth();
     const tableId = useId();
 
+    const canCreate = isAdmin() || hasPermission("master.segment.create");
     const canEdit = isAdmin() || hasPermission("master.segment.update");
     const canDelete = isAdmin() || hasPermission("master.segment.delete");
 
@@ -65,6 +66,13 @@ export function SegmentList({ initialData }: SegmentListProps) {
             columns={columns}
             data={data}
             searchFields={[{ key: "name", label: "Name" }]}
+            actionText={canCreate ? "Add Segment" : undefined}
+            toggleAction={canCreate ? () => {
+                startTransition(() => {
+                    addTransitionType("nav-forward");
+                    router.push("/master/segment/add");
+                });
+            } : undefined}
             onBulkEdit={canEdit ? onBulkEdit : undefined}
             onMultiDelete={canDelete ? onMultiDelete : undefined}
             tableId={tableId}

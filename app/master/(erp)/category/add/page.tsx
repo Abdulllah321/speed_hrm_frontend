@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,7 +61,10 @@ export default function AddCategoryPage() {
 
       if (successCount > 0) {
         toast.success(`Successfully created ${successCount} categories`);
-        router.push("/master/category/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/category/list");
+        });
       } else {
         toast.error("Failed to create categories");
       }
@@ -72,7 +75,7 @@ export default function AddCategoryPage() {
     <PermissionGuard permissions="master.category.create">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <Link href="/master/category/list">
+          <Link href="/master/category/list" transitionTypes={["nav-back"]}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to List
@@ -125,7 +128,12 @@ export default function AddCategoryPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.back()}
+                    onClick={() => {
+                      startTransition(() => {
+                        addTransitionType("nav-back");
+                        router.back();
+                      });
+                    }}
                   >
                     Cancel
                   </Button>

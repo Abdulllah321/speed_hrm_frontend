@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -99,6 +99,7 @@ export default function AddSubCategoryPage() {
 
       if (successCount > 0) {
         toast.success(`Successfully created ${successCount} sub-categories`);
+        addTransitionType("nav-back");
         router.push("/master/sub-category/list");
       } else {
         toast.error("Failed to create sub-categories");
@@ -118,7 +119,7 @@ export default function AddSubCategoryPage() {
     <PermissionGuard permissions="master.sub-category.create">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
-          <Link href="/master/sub-category/list">
+          <Link href="/master/sub-category/list" transitionTypes={["nav-back"]}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to List
@@ -137,53 +138,53 @@ export default function AddSubCategoryPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-3">
                 <div className="grid grid-cols-3 gap-4 px-2 italic text-sm text-muted-foreground">
-                    <div>Parent Category *</div>
-                    <div>Name *</div>
-                    <div>Account Head</div>
+                  <div>Parent Category *</div>
+                  <div>Name *</div>
+                  <div>Account Head</div>
                 </div>
                 {subCategories.map((item, index) => (
                   <div key={item.id} className="flex gap-2 items-start">
                     <div className="grid grid-cols-3 gap-2 flex-1">
-                        <Select
-                            value={item.parentId}
-                            onValueChange={(v) => updateField(item.id, "parentId", v)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Parent" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {parentCategories.map((cat) => (
-                                    <SelectItem key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                      <Select
+                        value={item.parentId}
+                        onValueChange={(v) => updateField(item.id, "parentId", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Parent" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {parentCategories.map((cat) => (
+                            <SelectItem key={cat.id} value={cat.id}>
+                              {cat.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
 
-                        <Input
-                            placeholder="Sub Category Name"
-                            value={item.name}
-                            onChange={(e) => updateField(item.id, "name", e.target.value)}
-                            disabled={isPending}
-                        />
+                      <Input
+                        placeholder="Sub Category Name"
+                        value={item.name}
+                        onChange={(e) => updateField(item.id, "name", e.target.value)}
+                        disabled={isPending}
+                      />
 
-                        <Select
-                            value={item.accountHeadId}
-                            onValueChange={(v) => updateField(item.id, "accountHeadId", v)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Account" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {accounts.map((acc) => (
-                                    <SelectItem key={acc.id} value={acc.id}>
-                                        {acc.code} - {acc.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                      <Select
+                        value={item.accountHeadId}
+                        onValueChange={(v) => updateField(item.id, "accountHeadId", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select Account" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {accounts.map((acc) => (
+                            <SelectItem key={acc.id} value={acc.id}>
+                              {acc.code} - {acc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    
+
                     <Button
                       type="button"
                       variant="ghost"
@@ -211,7 +212,12 @@ export default function AddSubCategoryPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => router.back()}
+                    onClick={() => {
+                        startTransition(() => {
+                            addTransitionType("nav-back");
+                            router.back();
+                        });
+                    }}
                   >
                     Cancel
                   </Button>

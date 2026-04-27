@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,7 +65,10 @@ export default function AddEOBIPage() {
       const result = await createEOBIs(items);
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/eobi/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/eobi/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -75,7 +78,7 @@ export default function AddEOBIPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/eobi/list">
+        <Link href="/master/eobi/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -152,7 +155,12 @@ export default function AddEOBIPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => router.back()}
+                onClick={() => {
+                  startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.back();
+                  });
+                }}
                 disabled={isPending}
               >
                 Cancel

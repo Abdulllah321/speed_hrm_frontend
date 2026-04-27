@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -150,7 +150,10 @@ export function CreateHrLetterClient({
 
         if (result.status) {
           toast.success(result.message || "HR Letter created successfully");
-          router.push("/hr/payroll-setup/hr-letters/view");
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/hr/payroll-setup/hr-letters/view");
+          });
         } else {
           toast.error(result.message || "Failed to create HR letter");
         }
@@ -164,7 +167,7 @@ export function CreateHrLetterClient({
   return (
     <div className="max-w-6xl mx-auto pb-10">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/hr/payroll-setup/hr-letters/view">
+        <Link href="/hr/payroll-setup/hr-letters/view" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back

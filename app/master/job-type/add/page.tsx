@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +49,10 @@ export default function AddJobTypePage() {
       const result = await createJobTypes(names);
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/job-type/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/job-type/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -59,7 +62,7 @@ export default function AddJobTypePage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/job-type/list">
+        <Link href="/master/job-type/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -112,7 +115,12 @@ export default function AddJobTypePage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    startTransition(() => {
+                      addTransitionType("nav-back");
+                      router.back();
+                    });
+                  }}
                 >
                   Cancel
                 </Button>

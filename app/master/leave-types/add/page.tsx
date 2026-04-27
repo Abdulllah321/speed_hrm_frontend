@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,7 +51,10 @@ export default function AddLeaveTypePage() {
       const result = await createLeaveTypes(items);
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/leave-types/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/leave-types/list");
+        });
       } else {
         toast.error(result.message);
       }
@@ -61,7 +64,7 @@ export default function AddLeaveTypePage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/leave-types/list">
+        <Link href="/master/leave-types/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
@@ -111,10 +114,15 @@ export default function AddLeaveTypePage() {
                     ? `${leaveTypes.length} Leave Types`
                     : "Leave Type"}
                 </Button>
-                <Button
+                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    startTransition(() => {
+                      addTransitionType("nav-back");
+                      router.back();
+                    });
+                  }}
                 >
                   Cancel
                 </Button>

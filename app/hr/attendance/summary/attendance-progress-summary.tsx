@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { columns } from "./columns";
 import type { AttendanceProgressRow } from "./columns";
@@ -33,6 +33,7 @@ import { ChevronDown } from "lucide-react";
 import type { AttendanceProgress } from "@/lib/actions/attendance";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { useAuth } from "@/components/providers/auth-provider";
+import { DirectionalTransition } from "@/components/layouts/directional-transition";
 
 interface AttendanceProgressSummaryProps {
   initialData: AttendanceProgress[];
@@ -158,7 +159,10 @@ export function AttendanceProgressSummary({
       params.set("dateTo", updates.dateTo.toISOString());
     }
 
-    router.push(`/hr/attendance/summary?${params.toString()}`);
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push(`/hr/attendance/summary?${params.toString()}`);
+    });
   };
 
   // Fetch sub-departments when department changes
@@ -292,8 +296,8 @@ export function AttendanceProgressSummary({
     updateFilters({ employeeIds: newIds });
   };
 
-  return (
-    <div className="space-y-6 w-full max-w-full overflow-x-hidden">
+    <DirectionalTransition>
+      <div className="space-y-6 w-full max-w-full overflow-x-hidden">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
@@ -477,6 +481,6 @@ export function AttendanceProgressSummary({
           tableId="attendance-progress-summary"
         />
       </div>
-    </div>
+    </DirectionalTransition>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, EquipmentRow } from "./columns";
@@ -42,7 +42,10 @@ export function EquipmentList({
   const canBulkDelete = hasPermission("equipment.delete");
 
   const handleToggle = () => {
-    router.push("/master/equipment/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/equipment/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { useAuth } from "@/components/providers/auth-provider";
 import { columns, HsCodeRow } from "./columns";
@@ -24,7 +24,10 @@ export function HsCodeList({ initialHsCodes, newItemId }: HsCodeListProps) {
     const [uploadId, setUploadId] = useState<string | null>(null);
 
     const handleToggle = () => {
-        router.push("/master/hs-code/add");
+        startTransition(() => {
+            addTransitionType("nav-forward");
+            router.push("/master/hs-code/add");
+        });
     };
 
     const showAddAction = hasPermission("master.hs-code.create");

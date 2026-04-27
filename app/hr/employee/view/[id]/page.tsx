@@ -366,19 +366,19 @@ export default async function ViewEmployeePage({ params }: PageProps) {
   return (
     <div className="max-w-[90%] mx-auto pb-10">
       <div className="mb-6 flex items-center justify-between">
-        <Link href="/hr/employee/list">
+        <Link href="/hr/employee/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
           </Button>
         </Link>
-        <Link href={`/hr/employee/edit/${employeeId}`} className="absolute left-1/2 -translate-x-1/2">
+        <Link href={`/hr/employee/edit/${employeeId}`} className="absolute left-1/2 -translate-x-1/2" transitionTypes={["nav-forward"]}>
           <Button>
             <Edit className="h-4 w-4 mr-2" />
             Edit Employee
           </Button>
         </Link>
-        <Link href={`/hr/employee/transfer?employeeId=${employeeId}`}>
+        <Link href={`/hr/employee/transfer?employeeId=${employeeId}`} transitionTypes={["nav-forward"]}>
           <Button variant="outline" className="ml-2">
             <MapPin className="h-4 w-4 mr-2" />
             Transfer Employee

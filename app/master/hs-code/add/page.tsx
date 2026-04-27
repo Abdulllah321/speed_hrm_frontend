@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, startTransition, addTransitionType } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -62,7 +62,10 @@ export default function AddHsCodePage() {
             const result = await createHsCode(values);
             if (result.status) {
                 toast.success("HS Code created successfully");
-                router.push("/master/hs-code/list");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/master/hs-code/list");
+                });
             } else {
                 toast.error(result.message || "Failed to create HS code");
             }
@@ -73,7 +76,7 @@ export default function AddHsCodePage() {
         <PermissionGuard permissions="master.hs-code.create">
             <div className="max-w-4xl mx-auto space-y-6">
                 <div className="mb-6">
-                    <Link href="/master/hs-code/list">
+                    <Link href="/master/hs-code/list" transitionTypes={["nav-back"]}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to List
@@ -200,7 +203,12 @@ export default function AddHsCodePage() {
                                     <Button
                                         type="button"
                                         variant="outline"
-                                        onClick={() => router.back()}
+                                        onClick={() => {
+                                            startTransition(() => {
+                                                addTransitionType("nav-back");
+                                                router.back();
+                                            });
+                                        }}
                                         disabled={isPending}
                                     >
                                         Cancel

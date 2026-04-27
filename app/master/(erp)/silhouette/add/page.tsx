@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +49,10 @@ export default function AddSilhouettePage() {
             const result = await createSilhouettes(items);
             if (result.status) {
                 toast.success(result.message || "Silhouettes created successfully");
-                router.push("/master/silhouette/list");
+                startTransition(() => {
+                    addTransitionType("nav-back");
+                    router.push("/master/silhouette/list");
+                });
             } else {
                 toast.error(result.message || "Failed to create silhouettes");
             }
@@ -60,7 +63,7 @@ export default function AddSilhouettePage() {
         <PermissionGuard permissions="master.silhouette.create">
             <div className="max-w-4xl mx-auto">
                 <div className="mb-6">
-                    <Link href="/master/silhouette/list">
+                    <Link href="/master/silhouette/list" transitionTypes={["nav-back"]}>
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="h-4 w-4 mr-2" />
                             Back to List
@@ -112,7 +115,12 @@ export default function AddSilhouettePage() {
                                         {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                                         Create {silhouettes.length > 1 ? `${silhouettes.length} Silhouettes` : "Silhouette"}
                                     </Button>
-                                    <Button type="button" variant="outline" onClick={() => router.back()}>
+                                    <Button type="button" variant="outline" onClick={() => {
+                                        startTransition(() => {
+                                            addTransitionType("nav-back");
+                                            router.back();
+                                        });
+                                    }}>
                                         Cancel
                                     </Button>
                                 </div>

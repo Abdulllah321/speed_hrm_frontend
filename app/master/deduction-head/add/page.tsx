@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,10 @@ export default function AddDeductionHeadPage() {
       const result = await createDeductionHeadsBulk([{ name: name.trim() }]);
       if (result.status) {
         toast.success(result.message || "Deduction Head created successfully");
-        router.push("/master/deduction-head/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/deduction-head/list");
+        });
       } else {
         toast.error(result.message || "Failed to create deduction head");
       }
@@ -36,13 +39,16 @@ export default function AddDeductionHeadPage() {
   };
 
   const handleCancel = () => {
-    router.push("/master/deduction-head/list");
+    startTransition(() => {
+      addTransitionType("nav-back");
+      router.push("/master/deduction-head/list");
+    });
   };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/deduction-head/list">
+        <Link href="/master/deduction-head/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List

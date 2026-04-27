@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import DataTable from "@/components/common/data-table";
 import { columns, SocialSecurityInstitutionRow } from "./columns";
 import { SocialSecurityInstitution, deleteSocialSecurityInstitutions, updateSocialSecurityInstitutions } from "@/lib/actions/social-security";
@@ -35,7 +35,10 @@ export function SocialSecurityList({ initialInstitutions, newItemId }: SocialSec
   const canBulkDelete = hasPermission("master.social-security.delete");
 
   const handleToggle = () => {
-    router.push("/master/social-security/add");
+    startTransition(() => {
+      addTransitionType("nav-forward");
+      router.push("/master/social-security/add");
+    });
   };
 
   const handleMultiDelete = (ids: string[]) => {

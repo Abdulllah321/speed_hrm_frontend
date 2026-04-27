@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useTransition } from "react";
+import { useId, useState, useTransition, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Save } from "lucide-react";
@@ -44,7 +44,10 @@ export default function AddOldSeasonPage() {
       const result = await createOldSeasons(validItems);
       if (result.status) {
         toast.success(result.message);
-        router.push("/master/old-season/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/old-season/list");
+        });
       } else {
         toast.error(result.message);
       }

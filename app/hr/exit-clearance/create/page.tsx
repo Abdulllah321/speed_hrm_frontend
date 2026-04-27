@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, startTransition, addTransitionType } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -164,7 +164,10 @@ export default function CreateExitClearancePage() {
 
         if (result.status) {
           toast.success(result.message || "Exit clearance created successfully");
-          router.push("/hr/exit-clearance/list");
+          startTransition(() => {
+            addTransitionType("nav-back");
+            router.push("/hr/exit-clearance/list");
+          });
         } else {
           toast.error(result.message || "Failed to create exit clearance");
         }
@@ -185,7 +188,7 @@ export default function CreateExitClearancePage() {
   return (
     <div className="max-w-4xl mx-auto pb-10">
       <div className="mb-6">
-        <Link href="/hr/exit-clearance/list">
+        <Link href="/hr/exit-clearance/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-2" />Back to List</Button>
         </Link>
       </div>
@@ -356,7 +359,12 @@ export default function CreateExitClearancePage() {
           <Button
             type="button"
             variant="ghost"
-            onClick={() => router.back()}
+            onClick={() => {
+              startTransition(() => {
+                addTransitionType("nav-back");
+                router.back();
+              });
+            }}
             disabled={isPending}
           >
             Cancel

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +38,10 @@ export default function AddProvidentFundPage() {
       }]);
       if (result.status) {
         toast.success(result.message || "Provident Fund created successfully");
-        router.push("/master/provident-fund/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/provident-fund/list");
+        });
       } else {
         toast.error(result.message || "Failed to create provident fund");
       }
@@ -51,13 +54,16 @@ export default function AddProvidentFundPage() {
   };
 
   const handleCancel = () => {
-    router.push("/master/provident-fund/list");
+    startTransition(() => {
+      addTransitionType("nav-back");
+      router.push("/master/provident-fund/list");
+    });
   };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/provident-fund/list">
+        <Link href="/master/provident-fund/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List

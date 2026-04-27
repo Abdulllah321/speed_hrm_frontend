@@ -175,13 +175,7 @@ export function EmployeeBulkUploadModal({
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    // Auto-confirm if 100% valid
-    React.useEffect(() => {
-        if (isValidated && data?.failedRecords === 0 && !isProcessing && data?.status === 'validated' && !hasAutoConfirmed.current && !isConfirming) {
-            hasAutoConfirmed.current = true;
-            handleConfirm();
-        }
-    }, [isValidated, data?.failedRecords, data?.status, isProcessing, isConfirming]);
+    // Auto-confirm disabled to ensure user reviews validation errors
 
     // Reset confirming state once import is done
     React.useEffect(() => {
@@ -418,14 +412,48 @@ export function EmployeeBulkUploadModal({
                                 )}
 
                                 {data?.status === 'completed' && (
-                                    <div className="p-8 bg-green-500/5 border-2 border-green-500/20 rounded-3xl flex flex-col items-center gap-4 text-center animate-in zoom-in-95 duration-500">
-                                        <CheckCircle2 className="h-12 w-12 text-green-600" />
-                                        <div className="space-y-1">
-                                            <h3 className="text-2xl font-black text-green-700">Import Complete!</h3>
-                                            <p className="text-green-600/80 font-medium">
-                                                {data?.successRecords} employees have been successfully added to the system.
-                                            </p>
+                                    <div className="space-y-4">
+                                        <div className="p-8 bg-green-500/5 border-2 border-green-500/20 rounded-3xl flex flex-col items-center gap-4 text-center animate-in zoom-in-95 duration-500">
+                                            <CheckCircle2 className="h-12 w-12 text-green-600" />
+                                            <div className="space-y-1">
+                                                <h3 className="text-2xl font-black text-green-700">Import Complete!</h3>
+                                                <p className="text-green-600/80 font-medium">
+                                                    {data?.successRecords} employees have been successfully added to the system.
+                                                </p>
+                                            </div>
                                         </div>
+
+                                        {(data?.failedRecords ?? 0) > 0 && (
+                                            <div className="p-4 border rounded-2xl bg-muted/30 space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2 text-amber-600 font-bold text-sm">
+                                                        <AlertCircle className="h-4 w-4" />
+                                                        {data.failedRecords} records were skipped due to errors
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" onClick={() => setShowErrors(!showErrors)} className="text-xs h-7">
+                                                        {showErrors ? 'Hide Issues' : 'View Issues'}
+                                                    </Button>
+                                                </div>
+
+                                                {showErrors && data?.errors && data.errors.length > 0 && (
+                                                    <div className="border rounded-xl overflow-hidden bg-background">
+                                                        <ScrollArea className="h-[200px]">
+                                                            <Table>
+                                                                <TableBody>
+                                                                    {data.errors.slice(0, 50).map((err: any, i) => (
+                                                                        <TableRow key={i}>
+                                                                            <TableCell className="font-mono text-[10px] w-12">{err.row}</TableCell>
+                                                                            <TableCell className="text-[10px] font-semibold">{err.field}</TableCell>
+                                                                            <TableCell className="text-[10px] text-destructive">{err.reason}</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </ScrollArea>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -456,13 +484,15 @@ export function EmployeeBulkUploadModal({
                                             <Button variant="outline" onClick={reset}>
                                                 Discard & Restart
                                             </Button>
-                                            <Button
-                                                onClick={handleConfirm}
-                                                className="px-10 font-black bg-green-600 hover:bg-green-700"
-                                            >
-                                                <Database className="mr-2 h-4 w-4" />
-                                                Confirm Import
-                                            </Button>
+                                            {(data?.successRecords || 0) > 0 && (
+                                                <Button
+                                                    onClick={handleConfirm}
+                                                    className="px-10 font-black bg-green-600 hover:bg-green-700"
+                                                >
+                                                    <Database className="mr-2 h-4 w-4" />
+                                                    Confirm Import
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
                                     {isConfirming && (

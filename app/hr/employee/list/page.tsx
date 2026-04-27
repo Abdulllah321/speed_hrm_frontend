@@ -1,7 +1,7 @@
 "use client";
 
 import { PermissionGuard } from "@/components/auth/permission-guard";
-import { useState, useEffect, useTransition, useRef } from "react";
+import { useState, useEffect, useTransition, useRef, startTransition, addTransitionType } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -203,19 +203,19 @@ export default function EmployeeListPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/hr/employee/view/${employee.id}`}>
+                <Link href={`/hr/employee/view/${employee.id}`} transitionTypes={["nav-forward"]}>
                   <Eye className="h-4 w-4 mr-2" />
                   View Details
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/hr/employee/edit/${employee.id}`}>
+                <Link href={`/hr/employee/edit/${employee.id}`} transitionTypes={["nav-forward"]}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href={`/hr/employee/transfer?employeeId=${employee.id}`}>
+                <Link href={`/hr/employee/transfer?employeeId=${employee.id}`} transitionTypes={["nav-forward"]}>
                   <MapPin className="h-4 w-4 mr-2" />
                   Transfer
                 </Link>
@@ -395,8 +395,11 @@ export default function EmployeeListPage() {
         toast.error(payload.message || "Failed to open dashboard.");
         return;
       }
-      router.push("/hr/employee/list");
-      router.refresh();
+      startTransition(() => {
+        addTransitionType("nav-forward");
+        router.push("/hr/employee/list");
+        router.refresh();
+      });
     } catch (error) {
       console.error("Error impersonating user:", error);
       toast.error("Failed to open dashboard");
@@ -414,7 +417,7 @@ export default function EmployeeListPage() {
             <p className="text-muted-foreground">Manage employee records</p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/hr/employee/create">
+            <Link href="/hr/employee/create" transitionTypes={["nav-forward"]}>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Employee

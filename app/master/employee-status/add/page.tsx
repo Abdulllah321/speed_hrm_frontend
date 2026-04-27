@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, startTransition, addTransitionType } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,10 @@ export default function AddEmployeeStatusPage() {
       const result = await createEmployeeStatusesBulk([{ status: status.trim() }]);
       if (result.status) {
         toast.success(result.message || "Employement Status created successfully");
-        router.push("/master/employee-status/list");
+        startTransition(() => {
+          addTransitionType("nav-back");
+          router.push("/master/employee-status/list");
+        });
       } else {
         toast.error(result.message || "Failed to create employement status");
       }
@@ -36,13 +39,16 @@ export default function AddEmployeeStatusPage() {
   };
 
   const handleCancel = () => {
-    router.push("/master/employee-status/list");
+    startTransition(() => {
+      addTransitionType("nav-back");
+      router.push("/master/employee-status/list");
+    });
   };
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <Link href="/master/employee-status/list">
+        <Link href="/master/employee-status/list" transitionTypes={["nav-back"]}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to List
