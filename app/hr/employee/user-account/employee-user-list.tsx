@@ -4,7 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -44,15 +50,27 @@ interface Props {
   userRole?: string | null;
 }
 
-export function EmployeeUserList({ employees, users, roles, userPermissions, userRole }: Props) {
+export function EmployeeUserList({
+  employees,
+  users,
+  roles,
+  userPermissions,
+  userRole,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [savingForId, setSavingForId] = useState<string | null>(null);
-  const [impersonatePendingId, setImpersonatePendingId] = useState<string | null>(null);
+  const [impersonatePendingId, setImpersonatePendingId] = useState<
+    string | null
+  >(null);
 
   const roleName = (userRole || "").toLowerCase().trim();
-  const isAdminRole = roleName === "admin" || roleName === "super_admin" || roleName === "super admin";
+  const isAdminRole =
+    roleName === "admin" ||
+    roleName === "super_admin" ||
+    roleName === "super admin" ||
+    roleName === "super-admin";
   const canCreate = isAdminRole || userPermissions.includes("user.create");
   const canUpdate = isAdminRole || userPermissions.includes("user.update");
 
@@ -65,23 +83,22 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
     }
   }
 
-  const rows: Row[] = employees
-    .map((e) => {
-      const matchedUser = userByEmployeeId.get(e.id) || null;
-      const email = matchedUser?.email || e.officialEmail || "";
-      return {
-        employeeId: e.id,
-        employeeCode: e.employeeId,
-        userId: matchedUser?.id || null,
-        roleId: matchedUser?.role?.id || null,
-        employeeName: e.employeeName,
-        email,
-        department: e.departmentName || e.department || "N/A",
-        designation: e.designationName || e.designation || "N/A",
-        status: e.status,
-        isDashboardEnabled: matchedUser?.isDashboardEnabled || false,
-      };
-    });
+  const rows: Row[] = employees.map((e) => {
+    const matchedUser = userByEmployeeId.get(e.id) || null;
+    const email = matchedUser?.email || e.officialEmail || "";
+    return {
+      employeeId: e.id,
+      employeeCode: e.employeeId,
+      userId: matchedUser?.id || null,
+      roleId: matchedUser?.role?.id || null,
+      employeeName: e.employeeName,
+      email,
+      department: e.departmentName || e.department || "N/A",
+      designation: e.designationName || e.designation || "N/A",
+      status: e.status,
+      isDashboardEnabled: matchedUser?.isDashboardEnabled || false,
+    };
+  });
 
   // If coming from Employee List with a specific employeeId, show only that employee's user row
   const employeeIdParam = searchParams.get("employeeId");
@@ -116,7 +133,7 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
         });
         if (result.status) {
           toast.success("User account created and role assigned");
-          window.location.reload()
+          window.location.reload();
         } else {
           toast.error(result.message || "Failed to create user");
         }
@@ -158,13 +175,13 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
       if (!res.ok || !payload.status) {
         toast.error(
           payload.message ||
-          "Failed to open dashboard. Make sure user account & dashboard access exist."
+            "Failed to open dashboard. Make sure user account & dashboard access exist.",
         );
         return;
       }
 
       // Navigate in the same tab so the impersonation banner is visible
-      window.location.href = "/hr"
+      window.location.href = "/hr";
     } catch (error) {
       console.error("Error impersonating user:", error);
       toast.error("Failed to open dashboard");
@@ -177,7 +194,9 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
     {
       accessorKey: "employeeCode",
       header: "Employee ID",
-      cell: ({ row }) => <div className="font-medium">{row.getValue("employeeCode")}</div>
+      cell: ({ row }) => (
+        <div className="font-medium">{row.getValue("employeeCode")}</div>
+      ),
     },
     {
       accessorKey: "employeeName",
@@ -192,7 +211,7 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
             </div>
           </div>
         );
-      }
+      },
     },
     { accessorKey: "email", header: "Email / Username" },
     {
@@ -203,7 +222,9 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
         return (
           <Select
             value={r.roleId || "none"}
-            onValueChange={(value) => handleAssign(r, value === "none" ? null : value)}
+            onValueChange={(value) =>
+              handleAssign(r, value === "none" ? null : value)
+            }
             disabled={!canUpdate || isPending || savingForId === r.employeeId}
           >
             <SelectTrigger className="w-[180px]">
@@ -225,7 +246,9 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => (
-        <Badge variant={row.original.status === "active" ? "default" : "destructive"}>
+        <Badge
+          variant={row.original.status === "active" ? "default" : "destructive"}
+        >
           {row.original.status}
         </Badge>
       ),
@@ -252,7 +275,9 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
                   disabled={!!impersonatePendingId}
                 >
                   <LayoutDashboard className="h-4 w-4 mr-2" />
-                  {impersonatePendingId === r.employeeId ? "Opening..." : "Dashboard Access"}
+                  {impersonatePendingId === r.employeeId
+                    ? "Opening..."
+                    : "Dashboard Access"}
                 </button>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -267,17 +292,24 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
       <DataTable
         columns={columns}
         data={visibleRows}
-        searchFields={[{ key: "email", label: "Email" }, { key: "employeeName", label: "Name" }]}
-        toggleAction={canCreate ? () => router.push("/hr/employee/user-account/create") : undefined}
+        searchFields={[
+          { key: "email", label: "Email" },
+          { key: "employeeName", label: "Name" },
+        ]}
+        toggleAction={
+          canCreate
+            ? () => router.push("/hr/employee/user-account/create")
+            : undefined
+        }
         actionText="Create User Account"
         title="User Accounts"
         onMultiDelete={undefined}
       />
 
       <div className="mt-4 text-xs text-muted-foreground">
-        Current Role: {userRole || "None"} | Admin Access: {isAdminRole ? "Yes" : "No"}
+        Current Role: {userRole || "None"} | Admin Access:{" "}
+        {isAdminRole ? "Yes" : "No"}
       </div>
     </div>
   );
 }
-

@@ -4,11 +4,10 @@ export default function Loading() {
   return (
     <ListSkeleton
       title="Employees"
-      subtitle="Manage your organization employees"
+      subtitle="Manage employee records"
       actionText="Add Employee"
-      rowCount={5}
-      columnCount={1}
+      rowCount={8}
+      columnCount={6}
     />
   );
 }
-
