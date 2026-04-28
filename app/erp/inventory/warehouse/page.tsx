@@ -53,8 +53,8 @@ export default function InventoryDashboardPage() {
             // Fetch Transfer Requests
             const transfersResponse = await getTransferRequests();
             const transfers = transfersResponse.data || [];
-            const pending = transfers.filter(t => t.status === 'PENDING').length;
-            const completed = transfers.filter(t => t.status === 'COMPLETED').length;
+            const pending = transfers.filter((t: any) => t.status === 'PENDING').length;
+            const completed = transfers.filter((t: any) => t.status === 'COMPLETED').length;
 
             setStats({
                 lowStockCount: uniqueLowStock.length,

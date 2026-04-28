@@ -836,6 +836,7 @@ export interface StockLevel {
   locationId?: string;
   totalQty: string;
   item: {
+    name: string;
     itemId: string;
     sku: string;
     description: string | null;

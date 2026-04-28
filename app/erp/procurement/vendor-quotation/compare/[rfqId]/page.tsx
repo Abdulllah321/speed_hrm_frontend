@@ -102,7 +102,7 @@ export default function CompareQuotations({ params }: { params: Promise<{ rfqId:
                 <div className="flex items-center gap-4">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">Compare Quotations</h1>
-                        <Link href={`/erp/procurement/rfq/${rfqId}`} className="text-sm text-blue-600 hover:underline">
+                        <Link href={`/erp/procurement/rfq/${rfqId}`} transitionTypes={["nav-back"]} className="text-sm text-blue-600 hover:underline">
                             View RFQ Detail
                         </Link>
                     </div>

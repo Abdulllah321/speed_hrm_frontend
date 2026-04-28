@@ -160,7 +160,7 @@ export const columns: ColumnDef<ChartOfAccount>[] = [
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             {permissions?.canUpdate && (
-              <Link href={`/erp/finance/chart-of-accounts/edit/${account.id}`}>
+              <Link href={`/erp/finance/chart-of-accounts/edit/${account.id}`} transitionTypes={["nav-forward"]}>
                   <DropdownMenuItem>Edit</DropdownMenuItem>
               </Link>
             )}

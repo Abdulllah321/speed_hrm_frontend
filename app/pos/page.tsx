@@ -448,7 +448,7 @@ export default function PosPage() {
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold">Claims Overview</h2>
                             <Button variant="ghost" size="sm" asChild>
-                                <Link href="/pos/claims">
+                                <Link href="/pos/claims" transitionTypes={["nav-forward"]}>
                                     View All <ArrowRight className="h-4 w-4 ml-1" />
                                 </Link>
                             </Button>
@@ -521,7 +521,7 @@ export default function PosPage() {
                     <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                         {quickActions.map((action) => (
-                            <Link key={action.title} href={action.href}>
+                            <Link key={action.title} href={action.href} transitionTypes={["nav-forward"]}>
                                 <Card className="p-6 hover:shadow-lg transition-all duration-200 cursor-pointer group border-2 hover:border-primary">
                                     <div className="flex items-start gap-4">
                                         <div
@@ -555,7 +555,7 @@ export default function PosPage() {
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-semibold">Recent Orders</h2>
                         <Button variant="outline" size="sm" asChild>
-                            <Link href="/pos/orders">
+                            <Link href="/pos/orders" transitionTypes={["nav-forward"]}>
                                 View All
                                 <ArrowRight className="h-4 w-4 ml-2" />
                             </Link>
@@ -652,7 +652,7 @@ export default function PosPage() {
                                 )}
                             </div>
                             <Button className="bg-linear-to-r from-blue-600 to-purple-600" asChild>
-                                <Link href="/pos/close">
+                                <Link href="/pos/close" transitionTypes={["nav-forward"]}>
                                     Close Register
                                     <ArrowRight className="h-4 w-4 ml-2" />
                                 </Link>
