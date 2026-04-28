@@ -91,7 +91,7 @@ export function UserAccountForm({ employees, roles }: UserAccountFormProps) {
           }
 
           // Auto-fill default password
-          form.setValue("password", "Access123");
+          form.setValue("password", "Password@123");
       }
       setEmployeeOpen(false);
   }
@@ -237,7 +237,7 @@ export function UserAccountForm({ employees, roles }: UserAccountFormProps) {
                     <FormItem>
                     <FormLabel>Password (Optional)</FormLabel>
                     <FormControl>
-                        <Input type="text" placeholder="Leave blank for default: Access123" {...field} />
+                        <Input type="text" placeholder="Leave blank for default: Password@123" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>

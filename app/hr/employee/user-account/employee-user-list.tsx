@@ -60,11 +60,12 @@ export function EmployeeUserList({ employees, users, roles, userPermissions, use
   for (const u of users) {
     if (u.employee?.id) {
       userByEmployeeId.set(u.employee.id, u);
+    } else if (u.employeeId) {
+      userByEmployeeId.set(u.employeeId, u);
     }
   }
 
   const rows: Row[] = employees
-    .filter((e) => userByEmployeeId.has(e.id)) // Only include employees who have a user account
     .map((e) => {
       const matchedUser = userByEmployeeId.get(e.id) || null;
       const email = matchedUser?.email || e.officialEmail || "";

@@ -26,7 +26,7 @@ export interface User {
 
 export async function getUsers(): Promise<{ status: boolean; data: User[]; message?: string }> {
   try {
-    const res = await authFetch(`/auth/users`, {});
+    const res = await authFetch(`/auth/users?limit=1000`, {});
     const payload = res.data;
     const users = Array.isArray(payload?.data) ? payload.data : (Array.isArray(payload) ? payload : []);
     return { status: true, data: users };
@@ -47,7 +47,7 @@ export async function createUser(data: {
   try {
     const payload = {
       ...data,
-      password: data.password || "Access123",
+      password: data.password || "Password@123",
       isDashboardEnabled: false
     };
     const res = await authFetch(`/auth/users`, {
