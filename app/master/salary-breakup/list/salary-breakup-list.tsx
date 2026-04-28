@@ -33,7 +33,7 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
-  const [editRows, setEditRows] = useState<{ id: string; salaryType: string; percent: string; isTaxable: boolean }[]>([]);
+  const [editRows, setEditRows] = useState<{ id: string; salaryType: string; percent: string; isTaxable: boolean; isDeductible: boolean }[]>([]);
 
   // Convert salary breakups to rows (one row per salary breakup)
   const data: SalaryBreakupRow[] = initialSalaryBreakups.map((sb) => {
@@ -41,17 +41,24 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
       ? (typeof sb.percentage === 'string' ? parseFloat(sb.percentage) : sb.percentage)
       : 0;
 
-    // Parse isTaxable from details field
+    // Parse isTaxable and isDeductible from details field
     let isTaxable = false;
+    let isDeductible = false;
     if (sb.details) {
       try {
         const details = typeof sb.details === 'string' ? JSON.parse(sb.details) : sb.details;
-        if (typeof details === 'object' && details !== null && 'isTaxable' in details) {
-          isTaxable = Boolean(details.isTaxable);
+        if (typeof details === 'object' && details !== null) {
+          if ('isTaxable' in details) {
+            isTaxable = Boolean(details.isTaxable);
+          }
+          if ('isDeductible' in details) {
+            isDeductible = Boolean(details.isDeductible);
+          }
         }
       } catch (e) {
         // If parsing fails, default to false
         isTaxable = false;
+        isDeductible = false;
       }
     }
 
@@ -60,6 +67,7 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
       salaryType: sb.name,
       percent: percentage,
       isTaxable: isTaxable,
+      isDeductible: isDeductible,
       createdBy: sb.createdBy || "",
       status: sb.status === "active" ? "Active" : "Inactive",
       breakupId: sb.id,
@@ -116,12 +124,13 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
         salaryType: item.salaryType,
         percent: item.percent.toString(),
         isTaxable: item.isTaxable,
+        isDeductible: item.isDeductible,
       }))
     );
     setBulkEditOpen(true);
   };
 
-  const updateEditRow = (id: string, field: "salaryType" | "percent" | "isTaxable", value: string | boolean) => {
+  const updateEditRow = (id: string, field: "salaryType" | "percent" | "isTaxable" | "isDeductible", value: string | boolean) => {
     setEditRows((rows) =>
       rows.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
@@ -268,6 +277,14 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
               { value: "false", label: "No" },
             ],
           },
+          {
+            key: "isDeductible",
+            label: "Deductible",
+            options: [
+              { value: "true", label: "Yes" },
+              { value: "false", label: "No" },
+            ],
+          },
         ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
@@ -340,13 +357,23 @@ export function SalaryBreakupList({ initialSalaryBreakups, newItemId }: SalaryBr
                     className="w-24"
                   />
                 </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={row.isTaxable}
-                    onCheckedChange={(checked) => updateEditRow(row.id, "isTaxable", !!checked)}
-                    disabled={isPending}
-                  />
-                  <Label className="font-normal text-sm">Taxable</Label>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={row.isTaxable}
+                      onCheckedChange={(checked) => updateEditRow(row.id, "isTaxable", !!checked)}
+                      disabled={isPending}
+                    />
+                    <Label className="font-normal text-sm">Taxable</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={row.isDeductible}
+                      onCheckedChange={(checked) => updateEditRow(row.id, "isDeductible", !!checked)}
+                      disabled={isPending}
+                    />
+                    <Label className="font-normal text-sm">Deductible</Label>
+                  </div>
                 </div>
               </div>
             ))}

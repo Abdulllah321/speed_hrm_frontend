@@ -15,7 +15,8 @@ export interface SalaryBreakup {
 export async function createSalaryBreakup(
   name: string,
   percentage: number,
-  isTaxable: boolean = false
+  isTaxable: boolean = false,
+  isDeductible: boolean = false
 ): Promise<{ status: boolean; message: string; data?: SalaryBreakup }> {
   if (!name?.trim()) return { status: false, message: "Name is required" };
   if (percentage === undefined || percentage === null) {
@@ -28,6 +29,7 @@ export async function createSalaryBreakup(
         name,
         percentage,
         isTaxable,
+        isDeductible,
         status: "active"
       }),
     });
@@ -69,7 +71,7 @@ export async function getSalaryBreakups(): Promise<{
 }
 export async function updateSalaryBreakup(
   id: string,
-  data: { name: string; percentage: number; isTaxable?: boolean; status?: string }
+  data: { name: string; percentage: number; isTaxable?: boolean; isDeductible?: boolean; status?: string }
 ): Promise<{ status: boolean; message: string; data?: SalaryBreakup }> {
   if (!id?.trim()) return { status: false, message: "ID is required" };
   if (!data.name?.trim()) return { status: false, message: "Name is required" };

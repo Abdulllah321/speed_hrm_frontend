@@ -406,6 +406,19 @@ export default function AttendanceManagePage() {
       return;
     }
 
+    // Add joining date client guard (Timezone-ignorant)
+    if (selectedEmployee?.joiningDate) {
+      const joiningDateStr = selectedEmployee.joiningDate.split('T')[0];
+      const fromDateStr = format(formData.dateRange.from, 'yyyy-MM-dd');
+      
+      if (fromDateStr < joiningDateStr) {
+        toast.error('Attendance cannot be marked before employee joining date.', {
+          description: `${selectedEmployee.employeeName} joined on ${format(new Date(joiningDateStr), 'dd MMM yyyy')}`,
+        });
+        return;
+      }
+    }
+
     const fromDate = formData.dateRange.from;
     const toDate = formData.dateRange.to;
     const isSingleDate = format(fromDate, 'yyyy-MM-dd') === format(toDate, 'yyyy-MM-dd');
@@ -718,6 +731,15 @@ export default function AttendanceManagePage() {
                     </p>
                   </>
                 )}
+                {selectedEmployee.joiningDate && (
+                  <div className="mt-1 text-xs text-blue-600 font-medium flex items-center gap-1">
+                    📅 Employee joined on{' '}
+                    <span className="font-semibold">
+                      {format(new Date(selectedEmployee.joiningDate.split('T')[0]), 'dd MMM yyyy')}
+                    </span>
+                    {' '}— attendance cannot be marked before this date.
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -738,6 +760,11 @@ export default function AttendanceManagePage() {
                 initialDateFrom={formData.dateRange.from}
                 initialDateTo={formData.dateRange.to}
                 showCompare={false}
+                minDate={
+                  selectedEmployee?.joiningDate
+                    ? new Date(selectedEmployee.joiningDate.split('T')[0])
+                    : undefined
+                }
                 onUpdate={(values) => {
                   if (values.range) {
                     setFormData({

@@ -261,11 +261,34 @@ function ViewEmployeeAttendanceDetailPage() {
       let status: DailyAttendanceRecord["status"] = "absent";
       let isOvertime = false;
 
+      // Check if employee had joined yet (Timezone-ignorant comparison)
+      const joiningDateStr = selectedEmployee?.joiningDate ? selectedEmployee.joiningDate.split('T')[0] : null;
+      const currentDateStr = format(date, 'yyyy-MM-dd');
+      
+      const hasNotJoinedYet = joiningDateStr && currentDateStr < joiningDateStr;
+
+      if (hasNotJoinedYet) {
+        return {
+          date,
+          dayOfWeek,
+          serialNo: index + 1,
+          status: "not-joined" as any, // Adding a custom status for UI
+          isHoliday: holidayInfo.isHoliday,
+          holidayName: holidayInfo.name,
+          isWeeklyOff: isWeeklyOffDay,
+          isOvertime: false,
+        };
+      }
+
       if (attendanceRecord) {
         const recordStatus = attendanceRecord.status?.toLowerCase() || '';
 
-        if (holidayInfo.isHoliday || isWeeklyOffDay) {
-          // Employee worked on a holiday or weekly off
+        if (recordStatus === 'absent') {
+          // If explicitly marked as absent, keep it as absent even on weekends/holidays
+          status = "absent";
+          isOvertime = false;
+        } else if (holidayInfo.isHoliday || isWeeklyOffDay) {
+          // Employee worked on a holiday or weekly off (only if not absent)
           isOvertime = true;
           status = "present";
         } else if (recordStatus === 'present') {
@@ -274,8 +297,6 @@ function ViewEmployeeAttendanceDetailPage() {
           status = "late";
         } else if (recordStatus === 'half-day' || recordStatus === 'halfday') {
           status = "half-day";
-        } else if (recordStatus === 'absent') {
-          status = "absent";
         } else if (recordStatus === 'on-leave' || recordStatus === 'leave') {
           status = "leave";
         } else {
@@ -386,6 +407,8 @@ function ViewEmployeeAttendanceDetailPage() {
         return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white">Late</Badge>;
       case "half-day":
         return <Badge className="bg-orange-500 hover:bg-orange-600 text-white">Half Day</Badge>;
+      case "not-joined" as any:
+        return <Badge variant="outline" className="bg-slate-100 text-slate-400 border-slate-200">Not Joined</Badge>;
       default:
         return <Badge variant="outline">{record.status}</Badge>;
     }

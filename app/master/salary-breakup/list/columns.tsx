@@ -45,6 +45,7 @@ export type SalaryBreakupRow = {
   salaryType: string;
   percent: number;
   isTaxable: boolean;
+  isDeductible: boolean;
   createdBy: string;
   status: "Active" | "Inactive";
   breakupId: string; // Original salary breakup ID
@@ -98,6 +99,17 @@ export const columns: ColumnDef<SalaryBreakupRow>[] = [
     ),
   },
   {
+    header: "Deductible",
+    accessorKey: "isDeductible",
+    size: 100,
+    enableSorting: true,
+    cell: ({ row }) => (
+      <Badge variant={row.original.isDeductible ? "default" : "secondary"}>
+        {row.original.isDeductible ? "Yes" : "No"}
+      </Badge>
+    ),
+  },
+  {
     header: "Status",
     accessorKey: "status",
     size: 120,
@@ -147,6 +159,7 @@ function RowActions({ row, table }: RowActionsProps) {
     salaryType: item.salaryType,
     percent: item.percent.toString(),
     isTaxable: item.isTaxable,
+    isDeductible: item.isDeductible,
   });
 
   // Calculate total percentage with the edited value
@@ -213,6 +226,7 @@ function RowActions({ row, table }: RowActionsProps) {
         name: editForm.salaryType.trim(),
         percentage: percent,
         isTaxable: editForm.isTaxable,
+        isDeductible: editForm.isDeductible,
         status: item.status === "Active" ? "active" : "inactive",
       });
       if (result.status) {
@@ -339,6 +353,20 @@ function RowActions({ row, table }: RowActionsProps) {
                 />
                 <Label htmlFor="edit-taxable" className="font-normal cursor-pointer">
                   This salary component is taxable
+                </Label>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-deductible">Deductible</Label>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-deductible"
+                  checked={editForm.isDeductible}
+                  onCheckedChange={(checked) => setEditForm({ ...editForm, isDeductible: !!checked })}
+                  disabled={isPending}
+                />
+                <Label htmlFor="edit-deductible" className="font-normal cursor-pointer">
+                  This salary component is deductible
                 </Label>
               </div>
             </div>

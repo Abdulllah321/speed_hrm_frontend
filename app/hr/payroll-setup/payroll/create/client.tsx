@@ -62,6 +62,7 @@ export function GeneratePayrollClient({
     const [step, setStep] = useState<"select" | "preview">("select");
     const [previewData, setPreviewData] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [sandwichDeductionEnabled, setSandwichDeductionEnabled] = useState<Record<string, boolean>>({});
 
 
     const [formData, setFormData] = useState({
@@ -98,6 +99,18 @@ export function GeneratePayrollClient({
 
         fetchSubDepartments();
     }, [formData.department]);
+
+    // Initialize sandwich deduction state when preview data loads
+    useEffect(() => {
+        if (previewData.length > 0) {
+            const initialState: Record<string, boolean> = {};
+            previewData.forEach(row => {
+                // Default: enabled (apply sandwich deduction)
+                initialState[row.employeeId] = true;
+            });
+            setSandwichDeductionEnabled(initialState);
+        }
+    }, [previewData]);
 
     // Filter employees
     const filteredEmployees = employees.filter((emp) => {
@@ -195,15 +208,52 @@ export function GeneratePayrollClient({
         setPreviewData(updatedData);
     };
 
+    const handleSandwichToggle = (index: number, enabled: boolean) => {
+        const updatedData = [...previewData];
+        const row = updatedData[index];
+        
+        if (row.attendanceBreakup?.sandwichAbsent) {
+            const sandwichAmount = enabled ? row.attendanceBreakup.sandwichAbsent.amount : 0;
+            const regularAmount = row.attendanceBreakup.absent.amount || 0;
+            const lateAmount = row.attendanceBreakup.late.amount || 0;
+            const halfDayAmount = row.attendanceBreakup.halfDay.amount || 0;
+            const shortDayAmount = row.attendanceBreakup.shortDay.amount || 0;
+            
+            // Update attendance deduction
+            row.attendanceDeduction = regularAmount + sandwichAmount + lateAmount + halfDayAmount + shortDayAmount;
+            
+            // Recalculate net salary
+            const totalDed = 
+                row.attendanceDeduction +
+                row.totalDeductions + 
+                row.taxDeduction + 
+                row.loanDeduction + 
+                row.advanceSalaryDeduction + 
+                row.eobiDeduction + 
+                row.providentFundDeduction;
+            
+            row.netSalary = row.grossSalary - totalDed;
+            
+            setPreviewData(updatedData);
+        }
+    };
+
     const handleConfirm = async () => {
         startTransition(async () => {
             try {
                 const [year, month] = formData.monthYear.split("-");
+                
+                // Add sandwich deduction info to each detail
+                const detailsWithSandwich = previewData.map(row => ({
+                    ...row,
+                    applySandwichDeduction: sandwichDeductionEnabled[row.employeeId] ?? true,
+                }));
+                
                 const result = await confirmPayroll({
                     month,
                     year,
                     generatedBy: currentUserId,
-                    details: previewData
+                    details: detailsWithSandwich
                 });
 
                 if (result.status) {
@@ -552,10 +602,60 @@ export function GeneratePayrollClient({
                                                                     <span className="text-right">{Math.round(Number(d.amount || 0)).toLocaleString()}</span>
                                                                 </div>
                                                             ))}
-                                                            <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">Attendance:</span>
-                                                                <span className="text-right">{Math.round(Number(row.attendanceDeduction || 0)).toLocaleString()}</span>
+                                                            
+                                                            {/* Attendance Deduction with Sandwich Control */}
+                                                            <div className="space-y-1">
+                                                                <div className="flex justify-between items-center gap-2">
+                                                                    <span className="font-bold shrink-0">Attendance:</span>
+                                                                    <span className="text-right">{Math.round(Number(row.attendanceDeduction || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                                
+                                                                {/* Show sandwich breakdown if exists */}
+                                                                {row.attendanceBreakup?.sandwichAbsent?.count > 0 && (
+                                                                    <div className="ml-2 p-2 bg-amber-50 border border-amber-200 rounded">
+                                                                        <div className="flex items-center gap-2 mb-1">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                id={`sandwich-${row.employeeId}`}
+                                                                                checked={sandwichDeductionEnabled[row.employeeId] ?? true}
+                                                                                onChange={(e) => {
+                                                                                    setSandwichDeductionEnabled(prev => ({
+                                                                                        ...prev,
+                                                                                        [row.employeeId]: e.target.checked
+                                                                                    }));
+                                                                                    handleSandwichToggle(index, e.target.checked);
+                                                                                }}
+                                                                                className="w-3 h-3 cursor-pointer"
+                                                                            />
+                                                                            <label 
+                                                                                htmlFor={`sandwich-${row.employeeId}`}
+                                                                                className="text-[9px] font-semibold text-amber-700 cursor-pointer"
+                                                                            >
+                                                                                Apply Sandwich Deduction
+                                                                            </label>
+                                                                        </div>
+                                                                        <div className="text-[9px] text-amber-600 space-y-0.5">
+                                                                            <div className="flex justify-between">
+                                                                                <span>Regular Absent:</span>
+                                                                                <span>{row.attendanceBreakup.absent.count} days</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between">
+                                                                                <span>Sandwich Absent:</span>
+                                                                                <span>{row.attendanceBreakup.sandwichAbsent.count} days</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between font-bold border-t border-amber-300 pt-0.5">
+                                                                                <span>Sandwich Amount:</span>
+                                                                                <span>
+                                                                                    {sandwichDeductionEnabled[row.employeeId] 
+                                                                                        ? Math.round(row.attendanceBreakup.sandwichAbsent.amount).toLocaleString()
+                                                                                        : '0 (Waived)'}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
+                                                            
                                                             <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
                                                                 <span className="shrink-0">Total:</span>
                                                                 <span className="text-right">

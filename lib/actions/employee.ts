@@ -252,6 +252,8 @@ export interface EmployeeForAttendance {
   departmentId: string;
   subDepartmentId?: string | null;
   workingHoursPolicyId: string;
+  joiningDate?: string | null;
+  lastExitDate?: string | null;
   department?: {
     id: string;
     name: string;
