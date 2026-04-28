@@ -279,3 +279,61 @@ export async function switchPosSessionClient(): Promise<{ status: boolean; messa
     return { status: false, message: "Network error" };
   }
 }
+
+// ─── Desktop / Electron Device Auth ──────────────────────────────────────────
+
+/**
+ * Register this Electron device with the cloud after a successful login.
+ * Called from the desktop login page via the Electron IPC bridge.
+ */
+export async function registerDesktopDeviceClient(
+  accessToken: string,
+  deviceInfo: { machineId: string; hostname?: string; platform?: string; appVersion?: string }
+): Promise<{ status: boolean; data?: { deviceId: string; deviceToken: string }; message?: string }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/desktop/register-device`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify(deviceInfo),
+      credentials: "include",
+    });
+    return res.json();
+  } catch {
+    return { status: false, message: "Network error" };
+  }
+}
+
+/**
+ * List all registered desktop devices for the current user.
+ */
+export async function listDesktopDevicesClient(): Promise<{ status: boolean; data?: any[] }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/desktop/devices`, {
+      method: "GET",
+      credentials: "include",
+    });
+    return res.json();
+  } catch {
+    return { status: false, data: [] };
+  }
+}
+
+/**
+ * Revoke a specific desktop device.
+ */
+export async function revokeDesktopDeviceClient(deviceId: string): Promise<{ status: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${getApiBaseUrl()}/auth/desktop/revoke-device`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId }),
+      credentials: "include",
+    });
+    return res.json();
+  } catch {
+    return { status: false, message: "Network error" };
+  }
+}

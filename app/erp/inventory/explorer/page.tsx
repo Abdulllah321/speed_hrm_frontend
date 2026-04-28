@@ -185,7 +185,7 @@ export default function InventoryExplorerPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="min-w-[200px] border-r sticky left-0 bg-background z-10">Item Description</TableHead>
-                                    <TableHead className="text-center min-w-[120px] bg-blue-50">
+                                    <TableHead className="text-center min-w-[120px] bg-blue-50 dark:bg-blue-900/10">
                                         <div className="flex flex-col items-center gap-1 py-2">
                                             <Package className="h-4 w-4 text-blue-500" />
                                             <span>Warehouse</span>
@@ -229,7 +229,7 @@ export default function InventoryExplorerPage() {
                                                     </div>
                                                 </TableCell>
                                                 {/* Warehouse Stock Column */}
-                                                <TableCell className={`text-center bg-blue-50/50 ${row.warehouseStock > 0 ? 'font-semibold text-blue-600' : 'text-muted-foreground opacity-30'}`}>
+                                                <TableCell className={`text-center bg-blue-50/50 dark:bg-blue-950/5 ${row.warehouseStock > 0 ? 'font-semibold text-blue-600' : 'text-muted-foreground opacity-30'}`}>
                                                     {row.warehouseStock.toLocaleString()}
                                                 </TableCell>
                                                 {/* Location Stock Columns */}
