@@ -47,7 +47,7 @@ export async function createUser(data: {
   try {
     const payload = {
       ...data,
-      password: data.password || "Password@123",
+      password: data.password || "Access123",
       isDashboardEnabled: false
     };
     const res = await authFetch(`/auth/users`, {
