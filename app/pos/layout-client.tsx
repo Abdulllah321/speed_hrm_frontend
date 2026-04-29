@@ -10,6 +10,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { PosSwitchUser } from "@/components/pos/pos-switch-user";
 import { LocationGuard } from "@/components/pos/location-guard";
 import { PageTransition } from "@/components/layouts/page-transition";
+import { TitleUpdater } from "@/components/common/title-updater";
 
 export default function PosLayoutClient({
     children,
@@ -48,6 +49,7 @@ export default function PosLayoutClient({
     if (isAdmin()) {
         return (
             <DashboardLayout>
+                <TitleUpdater section="POS" />
                 <LocationGuard>
                     {vt(children)}
                 </LocationGuard>
@@ -59,6 +61,7 @@ export default function PosLayoutClient({
     if (requiredPermissions.length > 0) {
         return (
             <DashboardLayout>
+                <TitleUpdater section="POS" />
                 <PermissionGuard permissions={requiredPermissions}>
                     <LocationGuard>
                         {vt(children)}
@@ -71,6 +74,7 @@ export default function PosLayoutClient({
     // Public routes (no permissions required)
     return (
         <DashboardLayout>
+            <TitleUpdater section="POS" />
             <LocationGuard>
                 {vt(children)}
             </LocationGuard>

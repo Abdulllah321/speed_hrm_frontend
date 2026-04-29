@@ -7,6 +7,7 @@ import { getRoutePermissions } from "@/lib/route-permissions";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useEffect } from "react";
 import { printAccessibleRoutes } from "@/lib/check-user-accessible-routes";
+import { TitleUpdater } from "@/components/common/title-updater";
 
 export default function HRLayoutClient({
     children,
@@ -34,6 +35,7 @@ export default function HRLayoutClient({
     if (isAdmin()) {
         return (
             <DashboardLayout>
+                <TitleUpdater section="HR" />
                 {children}
             </DashboardLayout>
         );
@@ -42,6 +44,7 @@ export default function HRLayoutClient({
     if (requiredPermissions.length > 0) {
         return (
             <DashboardLayout>
+                <TitleUpdater section="HR" />
                 <PermissionGuard permissions={requiredPermissions}>
                     {children}
                 </PermissionGuard>
@@ -51,6 +54,7 @@ export default function HRLayoutClient({
 
     return (
         <DashboardLayout>
+            <TitleUpdater section="HR" />
             {children}
         </DashboardLayout>
     );

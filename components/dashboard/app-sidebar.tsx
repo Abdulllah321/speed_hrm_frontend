@@ -435,13 +435,7 @@ export function AppSidebar({
               <span className="text-xs text-sidebar-foreground/60 font-medium">
                 {logoLabel}
               </span>
-            </div>
-            <div className="hidden group-data-[collapsible=icon]:flex items-center justify-center py-2">
-              <div className="size-9 rounded-xl bg-primary/5 border border-primary/20 flex flex-col items-center justify-center shadow-xs">
-                <span className="font-bold text-[8px] text-primary leading-none">DEMO</span>
-                <span className="text-[6px] text-primary/60 font-medium">V1.0</span>
-              </div>
-            </div>
+            </div> 
           </div>
         </div>
       </SidebarHeader>

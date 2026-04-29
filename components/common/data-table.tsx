@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -39,7 +40,7 @@ export function HighlightText({
 
   const regex = new RegExp(
     `(${search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-    "gi"
+    "gi",
   );
   const parts = text.split(regex);
 
@@ -55,7 +56,7 @@ export function HighlightText({
           </mark>
         ) : (
           part
-        )
+        ),
       )}
     </span>
   );
@@ -112,17 +113,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  TableCell,
-  TableHead,
-  TableRow,
-} from "@/components/ui/table";
+import { TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { Separator } from "../ui/separator";
 import { Skeleton } from "../ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ScrollArea } from "../ui/scroll-area";
-import { motion } from "motion/react";
+import { motion, useScroll, useMotionValueEvent } from "motion/react";
+import { createPortal } from "react-dom";
 import { useAuth } from "@/components/providers/auth-provider";
 
 interface DataTableRow {
@@ -221,7 +219,7 @@ export default function DataTable<TData extends DataTableRow>({
   const [sorting, setSorting] = useState<SortingState>(sortingColumns);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 50,
+    pageSize: 25,
   });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
@@ -236,17 +234,21 @@ export default function DataTable<TData extends DataTableRow>({
   const isInitialMount = useRef(true);
 
   // Initialize column visibility from AuthProvider preferences
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-    if (!storageKey) return {};
-    const saved = getPreference(storageKey);
-    return saved || {};
-  });
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(
+    () => {
+      if (!storageKey) return {};
+      const saved = getPreference(storageKey);
+      return saved || {};
+    },
+  );
   const [highlightedId, setHighlightedId] = useState<string | null>(
-    newItemId || null
+    newItemId || null,
   );
 
   const [search, setSearch] = useState("");
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>(
+    {},
+  );
   const isMobile = useIsMobile();
 
   // Horizontal scroll indicator
@@ -254,11 +256,70 @@ export default function DataTable<TData extends DataTableRow>({
   const [canScrollRight, setCanScrollRight] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
 
+  // Sticky thead
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const stickyTableRef = useRef<HTMLTableElement>(null); // direct DOM ref for scroll sync
+  const [isHeaderSticky, setIsHeaderSticky] = useState(false);
+  const isHeaderStickyRef = useRef(false);
+  const [stickyHeaderWidths, setStickyHeaderWidths] = useState<number[]>([]);
+  const [stickyLeft, setStickyLeft] = useState(0);
+  const [stickyWidth, setStickyWidth] = useState(0);
+  const [stickyTop, setStickyTop] = useState(0);
+  const { scrollY } = useScroll();
+
+  useMotionValueEvent(scrollY, "change", () => {
+    if (!theadRef.current || !tableRef.current) return;
+    const theadRect = theadRef.current.getBoundingClientRect();
+    const tableRect = tableRef.current.getBoundingClientRect();
+
+    const dashHeader = document.querySelector<HTMLElement>(
+      "header[data-slot='sidebar-inset'] > header, .sticky.z-40",
+    );
+    const dashBottom = dashHeader ? dashHeader.getBoundingClientRect().bottom : 64;
+
+    const isAbove = theadRect.bottom <= dashBottom;
+    const tableGone = tableRect.bottom <= dashBottom;
+
+    if (isAbove && !tableGone) {
+      const ths = theadRef.current.querySelectorAll("th");
+      setStickyHeaderWidths(Array.from(ths).map((th) => th.offsetWidth));
+      const containerRect = scrollContainerRef.current?.getBoundingClientRect();
+      setStickyLeft(containerRect?.left ?? 0);
+      setStickyWidth(containerRect?.width ?? 0);
+      setStickyTop(dashBottom);
+      // Sync initial scroll position directly
+      if (stickyTableRef.current && scrollContainerRef.current) {
+        stickyTableRef.current.style.transform = `translateX(-${scrollContainerRef.current.scrollLeft}px)`;
+      }
+      setIsHeaderSticky(true);
+      isHeaderStickyRef.current = true;
+    } else {
+      if (isHeaderSticky) {
+        setIsHeaderSticky(false);
+        isHeaderStickyRef.current = false;
+      }
+    }
+  });
+
+  const rafIdRef = useRef<number | null>(null);
+
   const updateScrollIndicators = () => {
     const el = scrollContainerRef.current;
     if (!el) return;
     setCanScrollLeft(el.scrollLeft > 0);
     setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+    // Use rAF to batch DOM write to next paint — prevents jank on fast scroll
+    if (isHeaderStickyRef.current) {
+      const scrollLeft = el.scrollLeft;
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = requestAnimationFrame(() => {
+        if (stickyTableRef.current) {
+          stickyTableRef.current.style.transform = `translateX(-${scrollLeft}px)`;
+        }
+        rafIdRef.current = null;
+      });
+    }
   };
 
   useEffect(() => {
@@ -271,6 +332,7 @@ export default function DataTable<TData extends DataTableRow>({
     return () => {
       el.removeEventListener("scroll", updateScrollIndicators);
       ro.disconnect();
+      if (rafIdRef.current !== null) cancelAnimationFrame(rafIdRef.current);
     };
   }, [data]);
 
@@ -345,7 +407,12 @@ export default function DataTable<TData extends DataTableRow>({
       if (search && searchFields?.length) {
         const searchLower = search.toLowerCase();
         const matchesSearch = searchFields.some((field) => {
-          const value = row.getValue(field.key);
+          let value: unknown;
+          try {
+            value = row.getValue(field.key);
+          } catch {
+            value = (row.original as Record<string, unknown>)?.[field.key];
+          }
           return String(value ?? "")
             .toLowerCase()
             .includes(searchLower);
@@ -458,7 +525,7 @@ export default function DataTable<TData extends DataTableRow>({
   const handleDeleteRows = () => {
     const selectedRows = table.getSelectedRowModel().rows;
     const updatedData = data.filter(
-      (item) => !selectedRows.some((row) => row.original.id === item.id)
+      (item) => !selectedRows.some((row) => row.original.id === item.id),
     );
     const selectedRowIds = table
       .getSelectedRowModel()
@@ -647,28 +714,36 @@ export default function DataTable<TData extends DataTableRow>({
           </div>
         </div>
 
-        <div className="bg-card/50 backdrop-blur-sm rounded-lg border border-border/50 shadow-sm w-full max-w-full">
-          <div className="relative w-full">
-            {/* Left scroll fade indicator */}
-            {canScrollLeft && (
-              <div className="pointer-events-none absolute left-0 top-0 z-20 h-full w-12 bg-gradient-to-r from-card/80 to-transparent rounded-l-lg" />
-            )}
-            {/* Right scroll fade + chevron indicator */}
-            {canScrollRight && (
-              <div className="pointer-events-none absolute right-0 top-0 z-20 h-full w-16 bg-gradient-to-l from-card/90 to-transparent rounded-r-lg flex items-center justify-end pr-2">
+        <div className="relative w-full">
+          {/* Left scroll fade — outside scroll container so it stays fixed at the edge */}
+          {canScrollLeft && (
+            <div className="pointer-events-none absolute left-0 top-0 bottom-0 z-20 w-12 bg-gradient-to-r from-card/80 to-transparent rounded-l-lg" />
+          )}
+          {/* Right scroll fade + chevron — outside scroll container */}
+          {canScrollRight && (
+            <div className="pointer-events-none absolute right-0 top-0 bottom-0 z-20 w-16 bg-gradient-to-l from-card/90 to-transparent rounded-r-lg">
+              <div className="sticky top-[45vh] flex justify-end pr-2">
                 <ChevronRightIcon size={18} className="text-muted-foreground animate-pulse" />
               </div>
-            )}
-            <div
-              ref={scrollContainerRef}
-              className="w-full overflow-x-auto"
+            </div>
+          )}
+          <div
+            ref={scrollContainerRef}
+            className="bg-card/50 backdrop-blur-sm rounded-lg border border-border/50 shadow-sm w-full max-w-full overflow-x-auto"
+          >
+          <div className="w-full min-w-max">
+            <table
+              ref={tableRef}
+              className="min-w-full caption-bottom text-sm table-auto"
             >
-            <table className="min-w-full caption-bottom text-sm table-auto">
-              <thead className={cn("sticky top-0 z-10 bg-muted/80 backdrop-blur-sm [&_tr]:border-b")}>
+              <thead
+                ref={theadRef}
+                className={cn("bg-muted/80 backdrop-blur-sm [&_tr]:border-b")}
+              >
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
                     key={headerGroup.id}
-                    className="hover:bg-transparent border-b border-border/50 bg-muted/30"
+                    className="hover:bg-transparent border-b border-border/50 bg-muted/30 rounded-lg"
                   >
                     {headerGroup.headers.map((header) => {
                       return (
@@ -681,7 +756,7 @@ export default function DataTable<TData extends DataTableRow>({
                             <div
                               className={cn(
                                 header.column.getCanSort() &&
-                                "flex h-full cursor-pointer items-center justify-between gap-2 select-none hover:text-foreground transition-colors"
+                                  "flex h-full cursor-pointer items-center justify-between gap-2 select-none hover:text-foreground transition-colors",
                               )}
                               onClick={header.column.getToggleSortingHandler()}
                               onKeyDown={(e) => {
@@ -699,7 +774,7 @@ export default function DataTable<TData extends DataTableRow>({
                             >
                               {flexRender(
                                 header.column.columnDef.header,
-                                header.getContext()
+                                header.getContext(),
                               )}
                               {{
                                 asc: (
@@ -721,7 +796,7 @@ export default function DataTable<TData extends DataTableRow>({
                           ) : (
                             flexRender(
                               header.column.columnDef.header,
-                              header.getContext()
+                              header.getContext(),
                             )
                           )}
                         </TableHead>
@@ -739,15 +814,28 @@ export default function DataTable<TData extends DataTableRow>({
                       </td>
                       {tableColumns.slice(1).map((_, colIndex) => {
                         const widths = [80, 60, 70, 90, 65, 75, 85];
-                        const w = widths[(rowIndex * tableColumns.length + colIndex) % widths.length];
+                        const w =
+                          widths[
+                            (rowIndex * tableColumns.length + colIndex) %
+                              widths.length
+                          ];
                         return (
                           <td key={colIndex} className="p-4 align-middle">
                             <div className="space-y-1.5">
-                              <Skeleton className="h-3.5" style={{ width: `${w}%` }} />
+                              <Skeleton
+                                className="h-3.5"
+                                style={{ width: `${w}%` }}
+                              />
                               {colIndex === 1 && (
                                 <>
-                                  <Skeleton className="h-3" style={{ width: `${w - 15}%` }} />
-                                  <Skeleton className="h-3" style={{ width: `${w - 10}%` }} />
+                                  <Skeleton
+                                    className="h-3"
+                                    style={{ width: `${w - 15}%` }}
+                                  />
+                                  <Skeleton
+                                    className="h-3"
+                                    style={{ width: `${w - 10}%` }}
+                                  />
                                 </>
                               )}
                             </div>
@@ -776,14 +864,14 @@ export default function DataTable<TData extends DataTableRow>({
                           "hover:bg-accent/50",
                           rowClassName ? rowClassName(row.original) : "",
                           isNew &&
-                          "bg-primary/10 animate-pulse ring-1 ring-primary/30"
+                            "bg-primary/10 animate-pulse ring-1 ring-primary/30",
                         )}
                       >
                         {row.getVisibleCells().map((cell) => (
                           <TableCell key={cell.id} className="py-3">
                             {flexRender(
                               cell.column.columnDef.cell,
-                              cell.getContext()
+                              cell.getContext(),
                             )}
                           </TableCell>
                         ))}
@@ -807,9 +895,91 @@ export default function DataTable<TData extends DataTableRow>({
                 )}
               </tbody>
             </table>
-            </div>
+          </div>
           </div>
         </div>
+
+        {/* Fixed sticky header portal — rendered when thead scrolls out of view */}
+        {isHeaderSticky &&
+          typeof document !== "undefined" &&
+          createPortal(
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="fixed z-50 overflow-hidden shadow-md border-b border-border/50"
+              style={{
+                top: stickyTop,
+                left: stickyLeft,
+                width: stickyWidth,
+                background: "hsl(var(--muted) / 0.95)",
+                backdropFilter: "blur(12px)",
+              }}
+            >
+              <div style={{ overflow: "hidden", width: stickyWidth }}>
+              <table
+                ref={stickyTableRef}
+                className="caption-bottom text-sm"
+                style={{
+                  tableLayout: "fixed",
+                  width: stickyHeaderWidths.reduce((a, b) => a + b, 0) || stickyWidth,
+                }}
+              >
+                <thead className="[&_tr]:border-b">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="hover:bg-transparent border-b border-border/50 bg-muted/30"
+                    >
+                      {headerGroup.headers.map((header, i) => (
+                        <TableHead
+                          key={header.id}
+                          style={{
+                            width: stickyHeaderWidths[i] ?? header.getSize(),
+                          }}
+                          className="h-12 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                        >
+                          {header.isPlaceholder ? null : header.column.getCanSort() ? (
+                            <div
+                              className="flex h-full cursor-pointer items-center justify-between gap-2 select-none hover:text-foreground transition-colors"
+                              onClick={header.column.getToggleSortingHandler()}
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                              {{
+                                asc: (
+                                  <ChevronUpIcon
+                                    className="shrink-0 text-primary"
+                                    size={16}
+                                  />
+                                ),
+                                desc: (
+                                  <ChevronDownIcon
+                                    className="shrink-0 text-primary"
+                                    size={16}
+                                  />
+                                ),
+                              }[header.column.getIsSorted() as string] ?? null}
+                            </div>
+                          ) : (
+                            flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </thead>
+              </table>
+              </div>
+            </motion.div>,
+            document.body,
+          )}
 
         <div className="flex items-center justify-between gap-8 md:flex-row flex-col">
           {/* Rows per page dropdown */}
@@ -857,7 +1027,7 @@ export default function DataTable<TData extends DataTableRow>({
                 >
                   {page}
                 </Button>
-              )
+              ),
             )}
           </div>
 
@@ -875,9 +1045,9 @@ export default function DataTable<TData extends DataTableRow>({
                   -
                   {Math.min(
                     table.getState().pagination.pageIndex *
-                    table.getState().pagination.pageSize +
-                    table.getState().pagination.pageSize,
-                    table.getRowCount()
+                      table.getState().pagination.pageSize +
+                      table.getState().pagination.pageSize,
+                    table.getRowCount(),
                   )}
                 </span>{" "}
                 of{" "}
@@ -982,7 +1152,7 @@ export function PageJumpDropdown({
   const [search, setSearch] = useState("");
 
   const filtered = Array.from({ length: totalPages }, (_, i) => i + 1).filter(
-    (p) => p.toString().includes(search)
+    (p) => p.toString().includes(search),
   );
 
   return (
