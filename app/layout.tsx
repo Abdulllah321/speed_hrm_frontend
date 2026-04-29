@@ -7,6 +7,7 @@ import { SocketProvider } from "@/components/providers/socket-provider";
 import { EnvironmentProvider } from "@/components/providers/environment-provider";
 import { CompanyProvider } from "@/components/providers/company-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { DesktopProvider } from "@/components/desktop/desktop-provider";
 import { Toaster } from "sonner";
 import { cookies } from "next/headers";
 
@@ -57,8 +58,10 @@ export default async function RootLayout({
               <SocketProvider>
                 <QueryProvider>
                   <CompanyProvider>
-                    <Toaster />
-                    {children}
+                    <DesktopProvider>
+                      <Toaster />
+                      {children}
+                    </DesktopProvider>
                   </CompanyProvider>
                 </QueryProvider>
               </SocketProvider>

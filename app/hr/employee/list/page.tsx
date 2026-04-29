@@ -1,7 +1,7 @@
 "use client";
 
 import { PermissionGuard } from "@/components/auth/permission-guard";
-import { useState, useEffect, useTransition, useRef, startTransition, addTransitionType } from "react";
+import { useState, useEffect, useTransition, useRef, addTransitionType } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -9,15 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Plus,
-  Pencil,
-  Trash2,
-  Loader2,
   Eye,
-  History,
+  Pencil,
   UserX,
   Upload,
   MoreHorizontal,
-  Download,
+  Loader2,
   LayoutDashboard,
   MapPin,
 } from "lucide-react";
@@ -29,7 +26,6 @@ import {
 } from "@/lib/actions/employee";
 import { getDepartments, type Department } from "@/lib/actions/department";
 import { getDesignations, type Designation } from "@/lib/actions/designation";
-import { getCitiesByState, type City } from "@/lib/actions/city";
 import DataTable from "@/components/common/data-table";
 import { ColumnDef } from "@tanstack/react-table";
 import {
@@ -60,22 +56,13 @@ export default function EmployeeListPage() {
   const [bulkUploadId, setBulkUploadId] = useState<string | null>(null);
   const [impersonatePendingId, setImpersonatePendingId] = useState<string | null>(null);
 
-  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 50 });
-  const [search, setSearch] = useState("");
-  const [totalRows, setTotalRows] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-
   const [deleteDialog, setDeleteDialog] = useState(false);
-  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(
-    null
-  );
+  const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
 
-  // Dropdown data for mapping IDs to names
   const [departments, setDepartments] = useState<Department[]>([]);
   const [designations, setDesignations] = useState<Designation[]>([]);
-  const [citiesMap, setCitiesMap] = useState<Record<string, City[]>>({});
 
-  // Persistence of upload ID for session recovery
+  // Restore bulk upload session
   useEffect(() => {
     const savedId = sessionStorage.getItem("employee_upload_id");
     if (savedId) setBulkUploadId(savedId);
@@ -83,14 +70,46 @@ export default function EmployeeListPage() {
 
   const handleUploadIdChange = (id: string | null) => {
     setBulkUploadId(id);
-    if (id) {
-      sessionStorage.setItem("employee_upload_id", id);
-    } else {
-      sessionStorage.removeItem("employee_upload_id");
+    if (id) sessionStorage.setItem("employee_upload_id", id);
+    else sessionStorage.removeItem("employee_upload_id");
+  };
+
+  // Fetch ALL employees once — no pagination limit
+  const fetchAll = async () => {
+    try {
+      setLoading(true);
+      const [empRes, deptRes, desigRes] = await Promise.all([
+        getEmployees({ limit: 10000 }),
+        getDepartments(),
+        getDesignations(),
+      ]);
+      if (empRes.status) setEmployees(empRes.data ?? []);
+      if (deptRes.status) setDepartments(deptRes.data ?? []);
+      if (desigRes.status) setDesignations(desigRes.data ?? []);
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      toast.error("Failed to fetch employee records");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Define columns for DataTable
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    fetchAll();
+  }, []);
+
+  const getDepartmentName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    return departments.find((d) => d.id === id)?.name ?? id;
+  };
+
+  const getDesignationName = (id: string | null | undefined) => {
+    if (!id) return "N/A";
+    return designations.find((d) => d.id === id)?.name ?? id;
+  };
+
   const columns: ColumnDef<Employee>[] = [
     {
       accessorKey: "employeeId",
@@ -103,52 +122,42 @@ export default function EmployeeListPage() {
       accessorKey: "employeeName",
       header: "Employee Details",
       cell: ({ row }) => {
-        const employee = row.original;
+        const e = row.original;
         return (
           <div className="space-y-1">
-            <div className="font-medium">{employee.employeeName}</div>
+            <div className="font-medium">{e.employeeName}</div>
+            <div className="text-xs text-muted-foreground">{e.employeeId}</div>
             <div className="text-xs text-muted-foreground">
-              {employee.employeeId}
+              {getDepartmentName(e.department)} • {getDesignationName(e.designation)}
             </div>
-            <div className="text-xs text-muted-foreground">
-              {getDepartmentName(employee.department)} • {getDesignationName(employee.designation)}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {employee.contactNumber}
-            </div>
+            <div className="text-xs text-muted-foreground">{e.contactNumber}</div>
           </div>
         );
       },
     },
     {
-      accessorKey: "bankDetails",
+      accessorKey: "bankName",
       header: "Bank Details",
       cell: ({ row }) => {
-        const employee = row.original;
+        const e = row.original;
         return (
           <div className="space-y-1">
-            <div className="text-sm">{employee.bankName}</div>
-            <div className="text-xs text-muted-foreground">
-              {employee.accountNumber}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {employee.accountTitle}
-            </div>
+            <div className="text-sm">{e.bankName ?? "—"}</div>
+            <div className="text-xs text-muted-foreground">{e.accountNumber}</div>
+            <div className="text-xs text-muted-foreground">{e.accountTitle}</div>
           </div>
         );
       },
     },
     {
-      accessorKey: "address",
+      accessorKey: "cityName",
       header: "Address",
       cell: ({ row }) => {
-        const employee = row.original;
+        const e = row.original;
         return (
           <div className="space-y-1">
-            <div className="text-sm">{getCityName(employee.city, employee.province)}</div>
-            <div className="text-xs text-muted-foreground">
-              {employee.currentAddress}
-            </div>
+            <div className="text-sm">{e.cityName ?? e.city ?? "—"}</div>
+            <div className="text-xs text-muted-foreground">{e.currentAddress}</div>
           </div>
         );
       },
@@ -245,107 +254,14 @@ export default function EmployeeListPage() {
     },
   ];
 
-  const refreshEmployees = async (params?: { page?: number; limit?: number; search?: string }) => {
-    try {
-      setLoading(true);
-      const employeesRes = await getEmployees({
-        page: params?.page ?? pagination.pageIndex + 1,
-        limit: params?.limit ?? pagination.pageSize,
-        search: params?.search ?? search,
-      });
-
-      if (employeesRes.status && employeesRes.data) {
-        setEmployees(employeesRes.data);
-        if (employeesRes.meta) {
-          setTotalRows(employeesRes.meta.total);
-          setTotalPages(employeesRes.meta.totalPages);
-        }
-  
-        // Fetch cities only for unique provinces found in employee data
-        const uniqueProvinces = [...new Set(employeesRes.data.map(e => e.province).filter(Boolean))];
-  
-        if (uniqueProvinces.length > 0) {
-          const citiesData: Record<string, City[]> = {};
-          await Promise.all(
-            uniqueProvinces.map(async (province) => {
-              if (!province) return;
-              try {
-                const res = await getCitiesByState(province);
-                if (res.status && res.data) {
-                  citiesData[province] = res.data;
-                }
-              } catch (error) {
-                console.error(`Error fetching cities for ${province}:`, error);
-              }
-            })
-          );
-          setCitiesMap(citiesData);
-        }
-      }
-    } catch (error) {
-      console.error("Error refreshing employees:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    refreshEmployees();
-  }, [pagination.pageIndex, pagination.pageSize, search]);
-
-  useEffect(() => {
-    if (hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
-
-    const fetchAllData = async () => {
-      try {
-        getDepartments().then(res => {
-          if (res.status) setDepartments(res.data || []);
-        });
-
-        getDesignations().then(res => {
-          if (res.status) setDesignations(res.data || []);
-        });
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast.error("Failed to fetch records");
-      }
-    };
-
-    fetchAllData();
-  }, []);
-
-  const getDepartmentName = (id: string | null | undefined) => {
-    if (!id) return "N/A";
-    const dept = departments.find(d => d.id === id);
-    return dept?.name || id;
-  };
-
-  const getDesignationName = (id: string | null | undefined) => {
-    if (!id) return "N/A";
-    const designation = designations.find(d => d.id === id);
-    return designation?.name || id;
-  };
-
-  const getCityName = (id: string | null | undefined, province: string | null | undefined) => {
-    if (!id || !province) return "N/A";
-    const cities = citiesMap[province] || [];
-    const city = cities.find(c => c.id === id);
-    return city?.name || id;
-  };
-
   const handleStatusToggle = (employee: Employee) => {
     const newStatus = employee.status === "active" ? "inactive" : "active";
     startTransition(async () => {
       try {
-        const result = await updateEmployee(employee.id, {
-          status: newStatus,
-        });
+        const result = await updateEmployee(employee.id, { status: newStatus });
         if (result.status) {
-          setEmployees(
-            employees.map((e) =>
-              e.id === employee.id ? { ...e, status: newStatus } : e
-            )
+          setEmployees((prev) =>
+            prev.map((e) => (e.id === employee.id ? { ...e, status: newStatus } : e))
           );
           toast.success(
             `Employee ${newStatus === "active" ? "activated" : "deactivated"} successfully`
@@ -353,8 +269,7 @@ export default function EmployeeListPage() {
         } else {
           toast.error(result.message || "Failed to update status");
         }
-      } catch (error) {
-        console.error("Error toggling employee status:", error);
+      } catch {
         toast.error("Failed to update status");
       }
     });
@@ -366,14 +281,13 @@ export default function EmployeeListPage() {
       try {
         const result = await deleteEmployee(deletingEmployee.id);
         if (result.status) {
-          setEmployees(employees.filter((e) => e.id !== deletingEmployee.id));
+          setEmployees((prev) => prev.filter((e) => e.id !== deletingEmployee.id));
           toast.success(result.message || "Employee deleted successfully");
           setDeleteDialog(false);
         } else {
           toast.error(result.message || "Failed to delete employee");
         }
-      } catch (error) {
-        console.error("Error deleting employee:", error);
+      } catch {
         toast.error("Failed to delete employee");
       }
     });
@@ -389,7 +303,6 @@ export default function EmployeeListPage() {
         credentials: "include",
         body: JSON.stringify({ employeeId: employee.id }),
       });
-
       const payload = await res.json();
       if (!res.ok || !payload.status) {
         toast.error(payload.message || "Failed to open dashboard.");
@@ -400,8 +313,7 @@ export default function EmployeeListPage() {
         router.push("/hr/employee/list");
         router.refresh();
       });
-    } catch (error) {
-      console.error("Error impersonating user:", error);
+    } catch {
       toast.error("Failed to open dashboard");
     } finally {
       setImpersonatePendingId(null);
@@ -430,29 +342,16 @@ export default function EmployeeListPage() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <DataTable
-            data={employees}
-            columns={columns}
-            toggleAction={() => setUploadModalOpen(true)}
-            actionText="Bulk Upload"
-            searchFields={[
-              { key: "employeeName", label: "Employee Name" },
-              { key: "employeeId", label: "Employee ID" },
-              { key: "contactNumber", label: "Contact Number" },
-            ]}
-            manualPagination={true}
-            rowCount={totalRows}
-            pageCount={totalPages}
-            onPaginationChange={setPagination}
-            onSearchChange={setSearch}
-            isLoading={loading}
-          />
-        )}
+        <DataTable
+          data={employees}
+          columns={columns}
+          searchFields={[
+            { key: "employeeName", label: "Employee Name" },
+            { key: "employeeId", label: "Employee ID" },
+            { key: "contactNumber", label: "Contact Number" },
+          ]}
+          isLoading={loading}
+        />
 
         <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
           <AlertDialogContent>
@@ -460,8 +359,7 @@ export default function EmployeeListPage() {
               <AlertDialogTitle>Delete Employee</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete &quot;
-                {deletingEmployee?.employeeName}&quot;? This action cannot be
-                undone.
+                {deletingEmployee?.employeeName}&quot;? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -483,9 +381,7 @@ export default function EmployeeListPage() {
           onOpenChange={setUploadModalOpen}
           uploadId={bulkUploadId}
           onUploadIdChange={handleUploadIdChange}
-          onSuccess={() => {
-            refreshEmployees();
-          }}
+          onSuccess={fetchAll}
         />
       </div>
     </PermissionGuard>

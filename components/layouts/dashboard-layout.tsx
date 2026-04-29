@@ -75,7 +75,7 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
 
     {/* First Password Banner - Full Screen Width */}
     {!isImpersonating && user?.isFirstPassword && (
-      <div className="bg-orange-600 text-white text-center font-medium shrink-0 h-10 z-60 flex items-center justify-center gap-4 shadow-md border-b border-orange-700 fixed top-0 left-0 right-0">
+      <div className="bg-orange-600 text-white text-center font-medium shrink-0 h-10 z-60 flex items-center justify-center gap-4 shadow-md border-b border-orange-700 fixed left-0 right-0" style={{ top: "var(--titlebar-height)" }}>
         <AlertTriangle className="h-4 w-4 text-white animate-pulse" />
         <span className="text-xs tracking-wide">
           TEMPORARY PASSWORD DETECTED - PLEASE CHANGE YOUR PASSWORD
@@ -97,7 +97,7 @@ export function DashboardLayout({ children, companyOptional = false }: Dashboard
       <AppSidebar />
       <SidebarInset>
         <header className="flex shrink-0 h-16 items-center gap-3 sm:gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-4 sm:px-6 sticky z-40 w-full justify-between shadow-sm" style={{
-          top: "var(--banner-height)",
+          top: "calc(var(--banner-height) - var(--titlebar-height))",
           viewTransitionName: "site-header",
         }}>
           <div className="flex items-center gap-3 flex-1 min-w-0">

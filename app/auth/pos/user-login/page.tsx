@@ -52,7 +52,7 @@ export default function PosUserLogin() {
     };
 
     return (
-        <div className="min-h-screen bg-muted/30 flex items-center justify-center p-4">
+        <div className="min-h-screen flex items-center justify-center p-4">
             <Card className="w-full max-w-md shadow-2xl border-primary/10">
                 <CardHeader className="text-center pb-4">
                     <div className="bg-primary/10 w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 border border-primary/20">

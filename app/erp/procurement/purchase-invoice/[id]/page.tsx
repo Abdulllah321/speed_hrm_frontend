@@ -60,6 +60,7 @@ export default function PurchaseInvoiceDetailPage() {
   const fetchInvoice = async () => {
     try {
       setLoading(true);
+      // Add cache busting to force fresh data
       const data = await getPurchaseInvoice(id);
       setInvoice(data);
     } catch (error) {
@@ -73,12 +74,46 @@ export default function PurchaseInvoiceDetailPage() {
   const handleApprove = async () => {
     try {
       setActionLoading(true);
-      await approvePurchaseInvoice(id);
-      toast.success('Invoice approved successfully');
-      fetchInvoice();
+      const result = await approvePurchaseInvoice(id);
+      
+      console.log('Approve result:', result);
+      
+      // Check if approval was successful
+      if (result && result.status === 'APPROVED') {
+        // Immediately update the local state with approved status
+        if (invoice) {
+          const updatedInvoice = {
+            ...invoice,
+            status: 'APPROVED' as const
+          };
+          setInvoice(updatedInvoice);
+        }
+        
+        toast.success('Invoice approved successfully');
+        
+        // Also fetch fresh data in background
+        setTimeout(async () => {
+          const freshData = await getPurchaseInvoice(id);
+          setInvoice(freshData);
+        }, 500);
+      } else {
+        // If result doesn't have APPROVED status, something went wrong
+        toast.error('Failed to approve invoice. Please check configuration.');
+      }
     } catch (error: any) {
       console.error('Error approving invoice:', error);
-      toast.error(error.message || 'Failed to approve invoice');
+      // Show the actual error message from backend
+      const errorMessage = error.message || error.error?.message || 'Failed to approve invoice';
+      
+      // If it's a finance account configuration error, show helpful message
+      if (errorMessage.includes('Finance account not configured')) {
+        toast.error(
+          'Finance account not configured. Please set up PURCHASES_LOCAL account in Finance → Account Configuration.',
+          { duration: 6000 }
+        );
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setActionLoading(false);
     }
@@ -89,8 +124,21 @@ export default function PurchaseInvoiceDetailPage() {
     try {
       setActionLoading(true);
       await cancelPurchaseInvoice(id);
+      
+      // Immediately update the local state with cancelled status
+      if (invoice) {
+        setInvoice({
+          ...invoice,
+          status: 'CANCELLED'
+        });
+      }
+      
       toast.success('Invoice cancelled successfully');
-      fetchInvoice();
+      
+      // Also fetch fresh data in background
+      setTimeout(() => {
+        fetchInvoice();
+      }, 500);
     } catch (error: any) {
       console.error('Error cancelling invoice:', error);
       toast.error(error.message || 'Failed to cancel invoice');
@@ -137,7 +185,7 @@ export default function PurchaseInvoiceDetailPage() {
 
   return (
     <PermissionGuard permissions="erp.procurement.pi.read">
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-6" key={invoice.status}>
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div>
@@ -145,7 +193,7 @@ export default function PurchaseInvoiceDetailPage() {
               <p className="text-gray-600">Purchase Invoice Details</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2" key={`buttons-${invoice.status}`}>
             <PermissionGuard permissions="erp.procurement.pi.update" fallback={null}>
               <Button
                 variant="outline"

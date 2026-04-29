@@ -397,7 +397,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check for first password status or impersonation
   useEffect(() => {
     if (user?.isFirstPassword || user?.isImpersonating) {
-      document.documentElement.style.setProperty("--banner-height", "2.5rem");
+      document.documentElement.style.setProperty("--banner-height", "calc(var(--titlebar-height) + 2.5rem)");
 
       if (user?.isFirstPassword && !user?.isImpersonating) {
         // You can implement forced redirect here if needed
@@ -415,7 +415,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       }
     } else {
-      document.documentElement.style.setProperty("--banner-height", "0px");
+      document.documentElement.style.setProperty("--banner-height", "var(--titlebar-height)");
     }
   }, [user, router]);
 

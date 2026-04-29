@@ -420,9 +420,9 @@ export function AppSidebar({
         <div className="flex flex-col gap-3 group-data-[collapsible=icon]:gap-0">
           <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
-              <Building2
-                // src={"/image.png"}
-                // alt="Logo"
+              <Image
+                src={"/image.png"}
+                alt="Logo"
                 width={30}
                 height={30}
                 className="object-contain"
@@ -430,7 +430,7 @@ export function AppSidebar({
               </div>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
               <span className="font-bold text-base leading-tight text-sidebar-foreground">
-                Demo Version
+                Speed Pvt. Limited
               </span>
               <span className="text-xs text-sidebar-foreground/60 font-medium">
                 {logoLabel}

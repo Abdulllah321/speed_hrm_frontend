@@ -118,6 +118,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Separator } from "../ui/separator";
+import { Skeleton } from "../ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ScrollArea } from "../ui/scroll-area";
@@ -731,19 +732,30 @@ export default function DataTable<TData extends DataTableRow>({
               </thead>
               <tbody className="[&_tr:last-child]:border-0">
                 {isLoading ? (
-                  <tr>
-                    <td
-                      colSpan={tableColumns.length}
-                      className="h-32 text-center p-2 align-middle"
-                    >
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        <span className="text-sm font-medium text-muted-foreground">
-                          Loading data...
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
+                  Array.from({ length: 8 }).map((_, rowIndex) => (
+                    <tr key={rowIndex} className="border-b border-border/30">
+                      <td className="p-4 align-middle">
+                        <Skeleton className="h-4 w-4" />
+                      </td>
+                      {tableColumns.slice(1).map((_, colIndex) => {
+                        const widths = [80, 60, 70, 90, 65, 75, 85];
+                        const w = widths[(rowIndex * tableColumns.length + colIndex) % widths.length];
+                        return (
+                          <td key={colIndex} className="p-4 align-middle">
+                            <div className="space-y-1.5">
+                              <Skeleton className="h-3.5" style={{ width: `${w}%` }} />
+                              {colIndex === 1 && (
+                                <>
+                                  <Skeleton className="h-3" style={{ width: `${w - 15}%` }} />
+                                  <Skeleton className="h-3" style={{ width: `${w - 10}%` }} />
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
                 ) : table.getRowModel().rows.length ? (
                   table.getRowModel().rows.map((row, index) => {
                     const isNew = row.original.id === highlightedId;
