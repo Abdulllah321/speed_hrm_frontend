@@ -41,10 +41,12 @@ export default function VendorQuotationList({ params }: { params: { rfqId: strin
                     <p className="text-muted-foreground">For {rfqNumber}</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => router.push('/erp/procurement/rfq')}>
-                        Back to RFQs
-                    </Button>
-                    <Link href={`/erp/procurement/vendor-quotation/compare/${rfqId}`}>
+                    <Link href="/erp/procurement/rfq" transitionTypes={["nav-back"]}>
+                        <Button variant="outline">
+                            Back to RFQs
+                        </Button>
+                    </Link>
+                    <Link href={`/erp/procurement/vendor-quotation/compare/${rfqId}`} transitionTypes={["nav-forward"]}>
                         <Button variant="secondary">Compare Quotations</Button>
                     </Link>
                 </div>
@@ -92,7 +94,7 @@ export default function VendorQuotationList({ params }: { params: { rfqId: strin
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/erp/procurement/vendor-quotation/list/${quotation.id}`}>
+                                            <Link href={`/erp/procurement/vendor-quotation/list/${quotation.id}`} transitionTypes={["nav-forward"]}>
                                                 <Button variant="ghost" size="sm">View</Button>
                                             </Link>
                                         </TableCell>

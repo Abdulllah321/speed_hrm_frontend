@@ -361,7 +361,7 @@ export default function StockTransferPage() {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
-                                <Link href="/erp/inventory/transactions/stock-transfer/history">
+                                <Link href="/erp/inventory/transactions/stock-transfer/history" transitionTypes={["nav-forward"]}>
                                     <History className="h-4 w-4 mr-2" /> History
                                 </Link>
                             </Button>

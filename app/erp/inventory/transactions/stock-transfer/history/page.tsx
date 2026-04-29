@@ -18,7 +18,7 @@ export default async function StockTransferHistoryPage() {
                     <div className="flex items-center justify-between">
                         <h2 className="text-3xl font-bold tracking-tight">Transfer History</h2>
                         <Button variant="outline" asChild>
-                            <Link href="/erp/inventory/transactions/stock-transfer">
+                            <Link href="/erp/inventory/transactions/stock-transfer" transitionTypes={["nav-back"]}>
                                 <ArrowLeft className="h-4 w-4 mr-2" /> Back to Transfer
                             </Link>
                         </Button>
@@ -42,7 +42,7 @@ export default async function StockTransferHistoryPage() {
                             <p className="text-muted-foreground">Monitor all warehouse to shop transfer requests and their current fulfillment status.</p>
                         </div>
                         <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
-                            <Link href="/erp/inventory/transactions/stock-transfer">
+                            <Link href="/erp/inventory/transactions/stock-transfer" transitionTypes={["nav-back"]}>
                                 <ArrowLeft className="h-4 w-4 mr-2" /> Back to Transfer
                             </Link>
                         </Button>

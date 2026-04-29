@@ -79,14 +79,14 @@ export const columns: ColumnDef<VendorRow>[] = [
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/erp/procurement/vendors/view/${vendor.id}`}>
+              <Link href={`/erp/procurement/vendors/view/${vendor.id}`} transitionTypes={["nav-forward"]}>
                 <Eye className="h-4 w-4 mr-2" />
                 View Details
               </Link>
             </DropdownMenuItem>
             {hasPermission("erp.procurement.vendor.update") && (
               <DropdownMenuItem asChild>
-                <Link href={`/erp/procurement/vendors/edit/${vendor.id}`}>
+                <Link href={`/erp/procurement/vendors/edit/${vendor.id}`} transitionTypes={["nav-forward"]}>
                   <Pencil className="h-4 w-4 mr-2" />
                   Edit
                 </Link>

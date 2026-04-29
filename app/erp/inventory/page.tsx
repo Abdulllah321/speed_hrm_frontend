@@ -65,7 +65,7 @@ export default function InventoryDashboard() {
                 <div className="flex items-center gap-2">
                     {hasPermission("erp.inventory.explorer.view") && (
                         <Button variant="outline" asChild>
-                            <Link href="/erp/inventory/explorer">
+                            <Link href="/erp/inventory/explorer" transitionTypes={["nav-forward"]}>
                                 <LayoutGrid className="h-4 w-4 mr-2" />
                                 Explorer
                             </Link>
@@ -73,7 +73,7 @@ export default function InventoryDashboard() {
                     )}
                     {hasPermission("erp.inventory.transfer.create") && (
                         <Button asChild>
-                            <Link href="/erp/inventory/transactions/stock-transfer">
+                            <Link href="/erp/inventory/transactions/stock-transfer" transitionTypes={["nav-forward"]}>
                                 <ArrowRightLeft className="h-4 w-4 mr-2" />
                                 Transfer Stock
                             </Link>
@@ -176,7 +176,7 @@ export default function InventoryDashboard() {
                             </p>
                             {hasPermission("erp.inventory.explorer.view") && (
                                 <Button className="w-full" variant="outline" asChild>
-                                    <Link href="/erp/inventory/explorer">
+                                    <Link href="/erp/inventory/explorer" transitionTypes={["nav-forward"]}>
                                         View Detailed Matrix
                                     </Link>
                                 </Button>

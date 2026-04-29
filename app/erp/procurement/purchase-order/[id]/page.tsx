@@ -96,10 +96,14 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                         <p className="text-muted-foreground">Order Date: {new Date(order.orderDate).toLocaleDateString()}</p>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => router.back()}>Back</Button>
+                        <Button variant="outline" asChild>
+                            <Link href="/erp/procurement/purchase-order" transitionTypes={["nav-back"]}>
+                                Back
+                            </Link>
+                        </Button>
                         {(order.status === 'OPEN' || order.status === 'PARTIALLY_RECEIVED') && canCreateGrn && (
                             <Button variant="default" className="bg-blue-600 hover:bg-blue-700" asChild>
-                                <Link href={`/erp/procurement/grn/create/${order.id}`}>
+                                <Link href={`/erp/procurement/grn/create/${order.id}`} transitionTypes={["nav-forward"]}>
                                     Create GRN
                                 </Link>
                             </Button>

@@ -134,7 +134,7 @@ import { PermissionGuard } from '@/components/auth/permission-guard';
              </SelectContent>
            </Select>
            <Button variant="outline" asChild>
-             <Link href="/erp/procurement/landed-cost/setup">Setup</Link>
+             <Link href="/erp/procurement/landed-cost/setup" transitionTypes={["nav-forward"]}>Setup</Link>
            </Button>         </div>
        </div>
  
@@ -196,21 +196,21 @@ import { PermissionGuard } from '@/components/auth/permission-guard';
                        </TableCell>
                        <TableCell className="text-right flex justify-end gap-2">
                          <Button variant="ghost" size="sm" asChild>
-                           <Link href={`/erp/procurement/grn/${grn.id}`}>
+                           <Link href={`/erp/procurement/grn/${grn.id}`} transitionTypes={["nav-forward"]}>
                              <Eye className="h-4 w-4 mr-2" />
                              View
                            </Link>
                          </Button>
-                         <Button
-                           size="sm"
-                           onClick={() => {
-                             router.push(`/erp/procurement/landed-cost/setup?grnId=${grn.id}`);
-                           }}
-                           disabled={!canCreate}
-                         >
-                           <Check className="h-4 w-4 mr-2" />
-                           Post Landed Cost
-                         </Button>
+                          <Button
+                            size="sm"
+                            asChild
+                            disabled={!canCreate}
+                          >
+                            <Link href={`/erp/procurement/landed-cost/setup?grnId=${grn.id}`} transitionTypes={["nav-forward"]}>
+                              <Check className="h-4 w-4 mr-2" />
+                              Post Landed Cost
+                            </Link>
+                          </Button>
                        </TableCell>
                      </TableRow>
                    ))

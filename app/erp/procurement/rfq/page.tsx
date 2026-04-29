@@ -41,7 +41,7 @@ export default function RfqList() {
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold tracking-tight">Request For Quotations (RFQ)</h1>
                 {canCreate && (
-                    <Link href="/erp/procurement/rfq/create">
+                    <Link href="/erp/procurement/rfq/create" transitionTypes={["nav-forward"]}>
                         <Button>
                             <Plus className="mr-2 h-4 w-4" /> Create RFQ
                         </Button>
@@ -90,7 +90,7 @@ export default function RfqList() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Link href={`/erp/procurement/rfq/${rfq.id}`}>
+                                            <Link href={`/erp/procurement/rfq/${rfq.id}`} transitionTypes={["nav-forward"]}>
                                                 <Button variant="ghost" size="sm">View</Button>
                                             </Link>
                                         </TableCell>

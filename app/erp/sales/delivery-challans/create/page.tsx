@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, Plus, Search, Package, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,10 +138,12 @@ export default function CreateDeliveryChallanPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/erp/sales/delivery-challans")}
+            asChild
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Delivery Challans
+            <Link href="/erp/sales/delivery-challans" transitionTypes={["nav-back"]}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Delivery Challans
+            </Link>
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Create Delivery Challan</h1>
@@ -151,8 +154,10 @@ export default function CreateDeliveryChallanPage() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => router.push("/erp/sales/delivery-challans")}>
-            Cancel
+          <Button variant="outline" asChild>
+            <Link href="/erp/sales/delivery-challans" transitionTypes={["nav-back"]}>
+              Cancel
+            </Link>
           </Button>
           <Button onClick={handleCreateChallan} disabled={createLoading || !selectedOrder}>
             {createLoading ? "Creating..." : "Create Challan"}

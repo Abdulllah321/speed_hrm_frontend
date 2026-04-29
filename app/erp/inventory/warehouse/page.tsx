@@ -53,8 +53,8 @@ export default function InventoryDashboardPage() {
             // Fetch Transfer Requests
             const transfersResponse = await getTransferRequests();
             const transfers = transfersResponse.data || [];
-            const pending = transfers.filter(t => t.status === 'PENDING').length;
-            const completed = transfers.filter(t => t.status === 'COMPLETED').length;
+            const pending = transfers.filter((t: any) => t.status === 'PENDING').length;
+            const completed = transfers.filter((t: any) => t.status === 'COMPLETED').length;
 
             setStats({
                 lowStockCount: uniqueLowStock.length,
@@ -231,7 +231,7 @@ export default function InventoryDashboardPage() {
                         )}
                         <div className="mt-6">
                             <Button variant="outline" className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700" asChild>
-                                <Link href="/erp/inventory/explorer">
+                                <Link href="/erp/inventory/explorer" transitionTypes={["nav-forward"]}>
                                     View Full Inventory
                                 </Link>
                             </Button>

@@ -28,7 +28,7 @@ export default function EditWarehousePage({ params }: { params: Promise<{ id: st
                     </div>
                 </div>
                 <Button variant="outline" asChild>
-                    <Link href="/erp/inventory/warehouse">
+                    <Link href="/erp/inventory/warehouse" transitionTypes={["nav-back"]}>
                         <List className="h-4 w-4 mr-2" />
                         Warehouse List
                     </Link>

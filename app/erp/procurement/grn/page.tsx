@@ -77,9 +77,10 @@ export default function GrnListPage() {
                                     <p className="text-center py-4 text-sm">No available purchase orders found.</p>
                                 ) : (
                                     orders.map((order) => (
-                                        <div
+                                        <Link
                                             key={order.id}
-                                            onClick={() => handleGenerateGrn(order.id)}
+                                            href={`/erp/procurement/grn/create/${order.id}`}
+                                            transitionTypes={["nav-forward"]}
                                             className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
                                         >
                                             <div>
@@ -94,7 +95,7 @@ export default function GrnListPage() {
                                                 </div>
                                             </div>
                                             <Receipt className="h-4 w-4 text-muted-foreground" />
-                                        </div>
+                                        </Link>
                                     ))
                                 )}
                             </div>
@@ -164,7 +165,7 @@ export default function GrnListPage() {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={`/erp/procurement/grn/${grn.id}`}>
+                                                        <Link href={`/erp/procurement/grn/${grn.id}`} transitionTypes={["nav-forward"]}>
                                                             <Eye className="h-4 w-4 mr-2" />
                                                             View
                                                         </Link>

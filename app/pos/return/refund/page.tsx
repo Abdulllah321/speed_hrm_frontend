@@ -62,7 +62,7 @@ export default function PosRefundPage() {
                     <div className="bg-background border-b p-4 flex items-center justify-between">
                          <div className="flex items-center gap-4">
                              <Button variant="ghost" size="sm" asChild>
-                                 <Link href={step === "search" ? "/pos/return" : "#"} onClick={() => step !== "search" && setStep("search")}>
+                                 <Link href={step === "search" ? "/pos/return" : "#"} onClick={() => step !== "search" && setStep("search")} transitionTypes={["nav-back"]}>
                                      <ArrowLeft className="h-4 w-4 mr-2" />
                                      {step === "search" ? "Back to Selection" : "Back"}
                                  </Link>

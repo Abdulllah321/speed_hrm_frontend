@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Plus, Search, Eye, FileText, Truck, Filter, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -339,9 +340,11 @@ export default function SalesOrdersPage() {
             </p>
           </div>
           <PermissionGuard permissions="erp.sales.order.create" fallback={null}>
-            <Button onClick={() => router.push("/erp/sales/orders/create")}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Sales Order
+            <Button asChild>
+              <Link href="/erp/sales/orders/create" transitionTypes={["nav-forward"]}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Sales Order
+              </Link>
             </Button>
           </PermissionGuard>
         </div>
@@ -490,9 +493,11 @@ export default function SalesOrdersPage() {
                           variant="ghost"
                           size="sm"
                           title="View"
-                          onClick={() => router.push(`/erp/sales/orders/${order.id}`)}
+                          asChild
                         >
-                          <Eye className="h-4 w-4" />
+                          <Link href={`/erp/sales/orders/${order.id}`} transitionTypes={["nav-forward"]}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
                         </Button>
                         {order.status === "DRAFT" && (
                           <PermissionGuard permissions="erp.sales.order.approve" fallback={null}>
@@ -512,9 +517,11 @@ export default function SalesOrdersPage() {
                               variant="ghost"
                               size="sm"
                               title="Create Delivery Challan"
-                              onClick={() => router.push(`/erp/sales/delivery-challans/create?orderId=${order.id}`)}
+                              asChild
                             >
-                              <Truck className="h-4 w-4" />
+                              <Link href={`/erp/sales/delivery-challans/create?orderId=${order.id}`} transitionTypes={["nav-forward"]}>
+                                <Truck className="h-4 w-4" />
+                              </Link>
                             </Button>
                           </PermissionGuard>
                         )}

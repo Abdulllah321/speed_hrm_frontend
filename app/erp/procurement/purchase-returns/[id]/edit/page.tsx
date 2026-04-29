@@ -121,7 +121,7 @@ export default function EditPurchaseReturnPage() {
     return (
       <div className="p-6 text-center">
         <div className="text-red-500 mb-4">This purchase return cannot be edited</div>
-        <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}`}>
+        <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}`} transitionTypes={["nav-back"]}>
           <Button>View Return</Button>
         </Link>
       </div>
@@ -131,7 +131,7 @@ export default function EditPurchaseReturnPage() {
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-4">
-        <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}`}>
+        <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}`} transitionTypes={["nav-back"]}>
           <Button variant="outline" size="sm">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
@@ -276,7 +276,7 @@ export default function EditPurchaseReturnPage() {
 
         {/* Actions */}
         <div className="flex justify-end gap-4">
-          <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}`}>
+          <Link href={`/erp/procurement/purchase-returns/${purchaseReturn.id}`} transitionTypes={["nav-back"]}>
             <Button type="button" variant="outline">
               Cancel
             </Button>

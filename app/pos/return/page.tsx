@@ -20,7 +20,7 @@ export default function PosReturnPage() {
              <div className="flex-1 flex items-center justify-center">
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl w-full">
                      {/* Refund Item */}
-                     <Link href="/pos/return/refund" className="contents">
+                     <Link href="/pos/return/refund" transitionTypes={["nav-forward"]} className="contents">
                         <Card className="hover:shadow-lg transition-shadow cursor-pointer border-none shadow-sm h-64 flex flex-col items-center justify-center text-center p-6">
                             <div className="h-20 w-20 rounded-full bg-violet-100 flex items-center justify-center mb-6 text-violet-600">
                                 <RotateCcw className="h-10 w-10" />

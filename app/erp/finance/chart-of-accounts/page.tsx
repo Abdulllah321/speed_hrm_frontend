@@ -47,7 +47,7 @@ export default async function ChartOfAccountsPage() {
             </p>
           </div>
           {canCreate && (
-            <Link href="/erp/finance/chart-of-accounts/create">
+            <Link href="/erp/finance/chart-of-accounts/create" transitionTypes={["nav-forward"]}>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Account
