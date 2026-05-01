@@ -98,7 +98,9 @@ export async function createAttendance(data: {
     // Convert dates to ISO strings
     const payload: any = {
       employeeId: data.employeeId,
-      date: data.date instanceof Date ? data.date.toISOString() : data.date,
+      date: data.date instanceof Date 
+        ? `${data.date.getFullYear()}-${String(data.date.getMonth() + 1).padStart(2, '0')}-${String(data.date.getDate()).padStart(2, '0')}`
+        : data.date,
     };
     if (data.checkIn) {
       payload.checkIn = data.checkIn instanceof Date ? data.checkIn.toISOString() : data.checkIn;
@@ -149,8 +151,12 @@ export async function createAttendanceForDateRange(data: {
   try {
     const payload: any = {
       employeeId: data.employeeId,
-      fromDate: data.fromDate instanceof Date ? data.fromDate.toISOString() : data.fromDate,
-      toDate: data.toDate instanceof Date ? data.toDate.toISOString() : data.toDate,
+      fromDate: data.fromDate instanceof Date 
+        ? `${data.fromDate.getFullYear()}-${String(data.fromDate.getMonth() + 1).padStart(2, '0')}-${String(data.fromDate.getDate()).padStart(2, '0')}`
+        : data.fromDate,
+      toDate: data.toDate instanceof Date 
+        ? `${data.toDate.getFullYear()}-${String(data.toDate.getMonth() + 1).padStart(2, '0')}-${String(data.toDate.getDate()).padStart(2, '0')}`
+        : data.toDate,
     };
     if (data.checkIn) payload.checkIn = data.checkIn;
     if (data.checkOut) payload.checkOut = data.checkOut;
