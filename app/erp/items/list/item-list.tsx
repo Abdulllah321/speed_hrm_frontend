@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Upload, Loader2, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, Upload, Loader2, Eye, Edit, Trash2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -317,6 +317,13 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                         <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
                             <Upload className="mr-2 h-4 w-4" /> Bulk Upload
                         </Button>
+                    )}
+                    {canUpdate && (
+                        <Link href="/erp/items/bulk-discount" transitionTypes={["nav-forward"]}>
+                            <Button variant="outline" className="border-primary/40 text-primary hover:bg-primary/5">
+                                <Sparkles className="mr-2 h-4 w-4" /> Bulk Discount
+                            </Button>
+                        </Link>
                     )}
                     {canCreate && (
                         <Link href="/erp/items/create" transitionTypes={["nav-forward"]}>

@@ -291,7 +291,7 @@ export default function NewSalePage() {
                                 : i
                         );
                     }
-                    return [...prev, computeLineItem(product, 1, Number(product.discountRate) || 0, false, defTax)];
+                    return [...prev, computeLineItem(product, 1, Number(product.effectiveDiscountPercent ?? product.discountRate) || 0, false, defTax)];
                 });
             } else {
                 toast.error(res.data?.message || "Item not found");
@@ -319,7 +319,7 @@ export default function NewSalePage() {
                         : i
                 );
             }
-            return [...prev, computeLineItem(product, 1, Number(product.discountRate) || 0, false, defTax)];
+            return [...prev, computeLineItem(product, 1, Number(product.effectiveDiscountPercent ?? product.discountRate) || 0, false, defTax)];
         });
         setSearchQuery("");
         setSearchResults([]);

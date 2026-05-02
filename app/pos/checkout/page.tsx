@@ -78,7 +78,7 @@ const TENDER_OPTIONS = [
 // ─── Customer Selection ──────────────────────────────────────────────────
 function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, onOpenChange: (open: boolean) => void, onSuccess: (customer: Customer) => void }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({ name: "", contactNo: "", address: "" });
+    const [formData, setFormData] = useState({ name: "", contactNo: "", email: "" });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,14 +88,14 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
             // Generate a code if backend requires one and doesn't auto-gen
             const code = `CUST-${Date.now()}`;
             const res = await authFetch(
-                "/sales/customers",
+                "/pos-sales/customers",
                 { method: "POST", body: { ...formData, code } }
             );
             if (res.ok && res.data?.status) {
                 toast.success("Customer added successfully");
                 onSuccess(res.data.data);
                 onOpenChange(false);
-                setFormData({ name: "", contactNo: "", address: "" });
+                setFormData({ name: "", contactNo: "", email: "" });
             } else {
                 toast.error(res.data?.message || "Failed to add customer");
             }
@@ -132,11 +132,12 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label>Address</Label>
+                        <Label>Email Address</Label>
                         <Input
-                            placeholder="Optional address details"
-                            value={formData.address}
-                            onChange={e => setFormData(d => ({ ...d, address: e.target.value }))}
+                            type="email"
+                            placeholder="e.g. customer@example.com"
+                            value={formData.email}
+                            onChange={e => setFormData(d => ({ ...d, email: e.target.value }))}
                         />
                     </div>
                     <DialogFooter className="pt-2">
@@ -210,6 +211,8 @@ export default function CheckoutPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [completedOrder, setCompletedOrder] = useState<any>(null);
     const [isGiftReceipt, setIsGiftReceipt] = useState(false);
+    // When isGiftReceipt is true and sale completes, we show both receipts sequentially
+    const [showGiftReceiptAfterSales, setShowGiftReceiptAfterSales] = useState(false);
 
     // ── Voucher tender state ───────────────────────────────────────────
     const [voucherCode, setVoucherCode] = useState("");
@@ -257,7 +260,7 @@ export default function CheckoutPage() {
     useEffect(() => {
         setIsLoadingCustomers(true);
         const searchParam = customerSearch ? `?search=${encodeURIComponent(customerSearch)}` : '';
-        authFetch(`/sales/customers${searchParam}`)
+        authFetch(`/pos-sales/customers${searchParam}`)
             .then(res => {
                 if (res.ok && res.data?.status) setCustomers(res.data.data || []);
             })
@@ -273,30 +276,23 @@ export default function CheckoutPage() {
     const subtotalAfterItems = subtotal - itemDiscounts;
 
     let orderDiscount = 0;
-    let allianceDiscount = 0;
-    
-    // Calculate alliance discount if selected
-    if (discountMode === "alliance" && selectedAlliance) {
-        allianceDiscount = Math.round(subtotal * (Number(selectedAlliance.discountPercent) / 100));
-    }
-    
-    // Determine which discount to apply based on priority
+    // finalItemDiscounts: item-level discounts that will actually be applied.
+    // When alliance wins the comparison, this is zeroed out so only one discount applies.
     let finalItemDiscounts = itemDiscounts;
-    
-    if (itemDiscounts > 0 && allianceDiscount > 0) {
-        // Both discounts exist - apply the greater one
+
+    if (discountMode === "alliance" && selectedAlliance) {
+        // Alliance discount is calculated on the raw subtotal (before any item discounts)
+        const allianceDiscount = Math.round(subtotal * (Number(selectedAlliance.discountPercent) / 100));
+
+        // Alliance wins when it's >= item discounts (equal → alliance preferred)
         if (allianceDiscount >= itemDiscounts) {
-            // Alliance is greater or equal - use alliance, remove item discounts
             orderDiscount = allianceDiscount;
-            finalItemDiscounts = 0;
+            finalItemDiscounts = 0; // suppress item discounts — alliance is more beneficial
         } else {
-            // Item discounts are greater - keep item discounts, no alliance
+            // Item discounts are strictly greater — keep them, alliance gives nothing extra
             orderDiscount = 0;
-            allianceDiscount = 0;
+            finalItemDiscounts = itemDiscounts;
         }
-    } else if (allianceDiscount > 0) {
-        // Only alliance discount
-        orderDiscount = allianceDiscount;
     } else if (discountMode === "promo" && selectedPromo) {
         // Promo discount
         const scopedSubtotal = promoScopeAll
@@ -820,6 +816,24 @@ export default function CheckoutPage() {
                                         {discountMode === "manual" && "Manual Discount"}
                                     </span>
                                     <span className="text-muted-foreground ml-2 font-mono">−{fmtCurrency(orderDiscount)}</span>
+                                    {discountMode === "alliance" && finalItemDiscounts === 0 && itemDiscounts > 0 && (
+                                        <span className="text-xs text-muted-foreground ml-2">(replaces item discounts)</span>
+                                    )}
+                                </div>
+                                <button onClick={clearDiscount} className="text-muted-foreground hover:text-foreground">
+                                    <XCircle className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+                        {/* Info chip when alliance is selected but item discounts are kept (item discounts > alliance) */}
+                        {discountMode === "alliance" && selectedAlliance && orderDiscount === 0 && itemDiscounts > 0 && (
+                            <div className="flex items-center gap-2 rounded-lg border border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2">
+                                <XCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                                <div className="flex-1 text-sm">
+                                    <span className="font-medium text-amber-700 dark:text-amber-400">{selectedAlliance.partnerName}</span>
+                                    <span className="text-xs text-muted-foreground ml-2">
+                                        Item discounts ({fmtCurrency(itemDiscounts)}) are more beneficial — alliance not applied
+                                    </span>
                                 </div>
                                 <button onClick={clearDiscount} className="text-muted-foreground hover:text-foreground">
                                     <XCircle className="h-4 w-4" />
@@ -1160,6 +1174,13 @@ export default function CheckoutPage() {
                                     <span className="font-mono">−{fmtCurrency(finalItemDiscounts)}</span>
                                 </div>
                             )}
+                            {/* Show suppressed item discounts when alliance wins */}
+                            {discountMode === "alliance" && finalItemDiscounts === 0 && itemDiscounts > 0 && (
+                                <div className="flex justify-between text-muted-foreground line-through text-xs">
+                                    <span>Item Discounts (overridden)</span>
+                                    <span className="font-mono">−{fmtCurrency(itemDiscounts)}</span>
+                                </div>
+                            )}
                             {orderDiscount > 0 && (
                                 <div className="flex justify-between text-primary">
                                     <span>
@@ -1424,9 +1445,32 @@ export default function CheckoutPage() {
             </div>
 
             {/* Show receipt dialog upon completion */}
-            {completedOrder && (
+            {completedOrder && !showGiftReceiptAfterSales && (
                 <PrintReceipt
-                    order={completedOrder}
+                    order={{ ...completedOrder, isGiftReceipt: false }}
+                    cartItems={cartItems}
+                    tenders={tenders}
+                    discountMode={discountMode}
+                    selectedPromo={selectedPromo}
+                    appliedCoupon={appliedCoupon}
+                    selectedAlliance={selectedAlliance}
+                    settings={settings}
+                    onClose={() => {
+                        if (isGiftReceipt) {
+                            // After closing the sales receipt, show the gift receipt
+                            setShowGiftReceiptAfterSales(true);
+                        } else {
+                            setCompletedOrder(null);
+                            router.push("/pos/new-sale");
+                        }
+                    }}
+                />
+            )}
+
+            {/* Gift receipt — shown after sales receipt when isGiftReceipt is true */}
+            {completedOrder && showGiftReceiptAfterSales && (
+                <PrintReceipt
+                    order={{ ...completedOrder, isGiftReceipt: true }}
                     cartItems={cartItems}
                     tenders={tenders}
                     discountMode={discountMode}
@@ -1436,6 +1480,7 @@ export default function CheckoutPage() {
                     settings={settings}
                     onClose={() => {
                         setCompletedOrder(null);
+                        setShowGiftReceiptAfterSales(false);
                         router.push("/pos/new-sale");
                     }}
                 />

@@ -833,10 +833,10 @@ export interface StockLedgerEntry {
 export interface StockLevel {
   itemId: string;
   warehouseId: string;
-  locationId?: string;
-  totalQty: string;
+  locationId?: string | null;
+  totalQty: number;
   item: {
-    name: string;
+    id: string;
     itemId: string;
     sku: string;
     description: string | null;
@@ -849,7 +849,7 @@ export interface StockLevel {
   location: {
     name: string;
     code: string;
-    type: string;
+    warehouse: { name: string } | null;
   } | null;
 }
 

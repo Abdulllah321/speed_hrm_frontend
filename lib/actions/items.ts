@@ -61,7 +61,19 @@ export async function createItem(data: any) {
     }
 }
 
-export async function getItems(page: number = 1, limit: number = 50, search?: string, sortBy?: string, sortOrder?: "asc" | "desc") {
+export async function getItems(
+    page: number = 1,
+    limit: number = 50,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: "asc" | "desc",
+    filters?: {
+        brandIds?: string[];
+        categoryIds?: string[];
+        silhouetteIds?: string[];
+        genderIds?: string[];
+    },
+) {
     try {
         const queryParams = new URLSearchParams();
         queryParams.append("page", page.toString());
@@ -69,13 +81,14 @@ export async function getItems(page: number = 1, limit: number = 50, search?: st
         if (search) queryParams.append("search", search);
         if (sortBy) queryParams.append("sortBy", sortBy);
         if (sortOrder) queryParams.append("sortOrder", sortOrder);
+        if (filters?.brandIds?.length) queryParams.append("brandIds", filters.brandIds.join(","));
+        if (filters?.categoryIds?.length) queryParams.append("categoryIds", filters.categoryIds.join(","));
+        if (filters?.silhouetteIds?.length) queryParams.append("silhouetteIds", filters.silhouetteIds.join(","));
+        if (filters?.genderIds?.length) queryParams.append("genderIds", filters.genderIds.join(","));
 
-        const response = await authFetch(`/finance/items?${queryParams.toString()}`, {
-            method: "GET",
-        });
-
+        const response = await authFetch(`/finance/items?${queryParams.toString()}`, { method: "GET" });
         const result = response.data;
-        return result; // { status: true, data: Item[], meta: { total, page, limit, totalPages } }
+        return result;
     } catch (error) {
         console.error("Get items error:", error);
         return { status: false, data: [], meta: { total: 0, page, limit, totalPages: 0 } };
@@ -140,5 +153,125 @@ export async function deleteItem(id: string) {
     } catch (error) {
         console.error("Delete item error:", error);
         return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+// ─── Bulk Discount ────────────────────────────────────────────────────────────
+
+export interface BulkDiscountItemOverride {
+    id: string;
+    discountRate?: number;
+    discountAmount?: number;
+}
+
+export interface BulkDiscountPayload {
+    campaignName: string;
+    itemIds: string[];
+    discountRate?: number;
+    discountAmount?: number;
+    discountStartDate?: string;
+    discountEndDate?: string;
+    clearDiscount?: boolean;
+    notes?: string;
+    locationIds?: string[];
+    locationNames?: string[];
+    overrides?: BulkDiscountItemOverride[];
+    appliedById?: string;
+}
+
+export async function bulkApplyDiscount(payload: BulkDiscountPayload) {
+    try {
+        const response = await authFetch("/finance/items/bulk-discount", {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+        });
+        const result = response.data;
+        if (result?.status) {
+            revalidatePath("/erp/items/list");
+            revalidatePath("/erp/items/bulk-discount");
+        }
+        return result ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Bulk discount error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function rollbackCampaign(campaignId: string) {
+    try {
+        const response = await authFetch("/finance/items/campaigns/rollback", {
+            method: "POST",
+            body: JSON.stringify({ campaignId }),
+        });
+        const result = response.data;
+        if (result?.status) {
+            revalidatePath("/erp/items/list");
+            revalidatePath("/erp/items/bulk-discount");
+        }
+        return result ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Rollback campaign error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getDiscountCampaigns(page = 1, limit = 20) {
+    try {
+        const response = await authFetch(
+            `/finance/items/campaigns?page=${page}&limit=${limit}`,
+            { method: "GET" },
+        );
+        return response.data ?? { status: false, data: [], meta: {} };
+    } catch (error) {
+        console.error("Get campaigns error:", error);
+        return { status: false, data: [], meta: {} };
+    }
+}
+
+// ─── Fetch all item IDs matching a search (for select-all-pages) ──────────────
+
+export async function getAllItemIds(
+    search?: string,
+    filters?: {
+        brandIds?: string[];
+        categoryIds?: string[];
+        silhouetteIds?: string[];
+        genderIds?: string[];
+    },
+): Promise<string[]> {
+    try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("page", "1");
+        queryParams.append("limit", "10000");
+        queryParams.append("sortBy", "createdAt");
+        queryParams.append("sortOrder", "desc");
+        if (search) queryParams.append("search", search);
+        if (filters?.brandIds?.length) queryParams.append("brandIds", filters.brandIds.join(","));
+        if (filters?.categoryIds?.length) queryParams.append("categoryIds", filters.categoryIds.join(","));
+        if (filters?.silhouetteIds?.length) queryParams.append("silhouetteIds", filters.silhouetteIds.join(","));
+        if (filters?.genderIds?.length) queryParams.append("genderIds", filters.genderIds.join(","));
+
+        const response = await authFetch(`/finance/items?${queryParams.toString()}`, { method: "GET" });
+        const result = response.data;
+        if (result?.status && Array.isArray(result.data)) {
+            return result.data.map((i: any) => i.id as string);
+        }
+        return [];
+    } catch (error) {
+        console.error("Get all item IDs error:", error);
+        return [];
+    }
+}
+
+export async function getDiscountCampaign(campaignId: string) {
+    try {
+        const response = await authFetch(
+            `/finance/items/campaigns/${campaignId}`,
+            { method: "GET" },
+        );
+        return response.data ?? { status: false, data: null };
+    } catch (error) {
+        console.error("Get campaign error:", error);
+        return { status: false, data: null };
     }
 }

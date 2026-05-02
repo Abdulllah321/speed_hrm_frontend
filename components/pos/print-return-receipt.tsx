@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Printer, RotateCcw } from "lucide-react";
+import { Printer, RotateCcw, Loader2 } from "lucide-react";
 import type { PosSettings } from "@/hooks/use-pos-settings";
 import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -71,7 +71,55 @@ export interface PrintReturnReceiptProps {
     returnedAt?: string;
     paymentMethod?: string;
     settings?: Partial<PosSettings>;
+    isLoading?: boolean;
     onClose: () => void;
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function ReturnReceiptSkeleton() {
+    return (
+        <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-6 select-none">
+            <div className="relative flex flex-col items-center">
+                <div className="absolute inset-0 rounded-full bg-destructive/10 blur-2xl scale-150 animate-pulse" />
+                <div className="relative z-10 flex items-center justify-center w-20 h-20 rounded-2xl bg-destructive/10 border border-destructive/20 shadow-lg shadow-destructive/10">
+                    <RotateCcw className="h-9 w-9 text-destructive animate-pulse" />
+                </div>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full">
+                    <div
+                        className="absolute w-2.5 h-2.5 rounded-full bg-destructive shadow-md shadow-destructive/40"
+                        style={{
+                            top: "50%", left: "50%",
+                            transformOrigin: "0 0",
+                            animation: "orbit-ret 1.4s linear infinite",
+                            marginTop: "-5px", marginLeft: "-5px",
+                        }}
+                    />
+                </div>
+            </div>
+            <div className="text-center space-y-1.5">
+                <p className="text-base font-bold tracking-tight">Generating Return Slip</p>
+                <p className="text-sm text-muted-foreground">Fetching return details, please wait…</p>
+            </div>
+            <div className="w-64 space-y-2 opacity-40">
+                <div className="h-2.5 bg-muted rounded-full w-3/4 mx-auto animate-pulse" />
+                <div className="h-2 bg-muted rounded-full w-1/2 mx-auto animate-pulse delay-75" />
+                <div className="h-px bg-border w-full my-3" />
+                {[75, 55, 85, 50, 65].map((w, i) => (
+                    <div key={i} className="h-2 bg-muted rounded-full animate-pulse"
+                        style={{ width: `${w}%`, animationDelay: `${i * 60}ms` }} />
+                ))}
+                <div className="h-px bg-border w-full my-3" />
+                <div className="h-3 bg-muted rounded-full w-2/3 mx-auto animate-pulse" />
+            </div>
+            <style>{`
+                @keyframes orbit-ret {
+                    from { transform: rotate(0deg) translateX(44px) rotate(0deg); }
+                    to   { transform: rotate(360deg) translateX(44px) rotate(-360deg); }
+                }
+            `}</style>
+        </div>
+    );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -86,31 +134,32 @@ export function PrintReturnReceipt({
     returnedAt,
     paymentMethod,
     settings: settingsOverride,
+    isLoading = false,
     onClose,
 }: PrintReturnReceiptProps) {
     const settings: PosSettings = { ...POS_SETTINGS_DEFAULTS, ...settingsOverride };
     const { user } = useAuth();
 
     useEffect(() => {
-        if (settings.receiptAutoPrint) {
+        if (!isLoading && settings.receiptAutoPrint) {
             const timer = setTimeout(() => window.print(), 400);
             return () => clearTimeout(timer);
         }
-    }, [settings.receiptAutoPrint]);
+    }, [isLoading, settings.receiptAutoPrint]);
 
     // ── Store info (same priority as sales receipt) ───────────────────
     const storeName =
         settings.receiptStoreName ||
-        user?.terminal?.location?.fbrSellerName ||
-        user?.terminal?.location?.name ||
+        (typeof user?.terminal?.location?.fbrSellerName === "string" ? user.terminal.location.fbrSellerName : "") ||
+        (typeof user?.terminal?.location?.name === "string" ? user.terminal.location.name : "") ||
         getCookie("companyName") ||
         "Store";
 
-    const storeAddress = settings.receiptAddress || user?.terminal?.location?.address || "";
-    const storePhone   = settings.receiptPhone   || user?.terminal?.location?.phone   || "";
-    const storeNTN     = settings.receiptNTN     || user?.terminal?.location?.fbrNtn  || "";
+    const storeAddress = settings.receiptAddress || (typeof user?.terminal?.location?.address === "string" ? user.terminal.location.address : "") || "";
+    const storePhone   = settings.receiptPhone   || (typeof user?.terminal?.location?.phone   === "string" ? user.terminal.location.phone   : "") || "";
+    const storeNTN     = settings.receiptNTN     || (typeof user?.terminal?.location?.fbrNtn  === "string" ? user.terminal.location.fbrNtn  : "") || "";
     const storeSTRN    = settings.receiptSTRN    || "";
-    const terminalName = user?.terminal?.name    || user?.terminal?.code              || "";
+    const terminalName = (typeof user?.terminal?.name === "string" ? user.terminal.name : "") || (typeof user?.terminal?.code === "string" ? user.terminal.code : "") || "";
 
     const cashierName = user ? `${user.firstName} ${user.lastName}`.trim() : "";
 
@@ -153,33 +202,43 @@ export function PrintReturnReceipt({
                 <DialogContent className="max-w-2xl w-full h-[92vh] flex flex-col p-0 gap-0">
                     <DialogHeader className="px-5 pt-4 pb-3 border-b shrink-0">
                         <DialogTitle className="flex items-center gap-2">
-                            <RotateCcw className="h-4 w-4 text-destructive" />
+                            {isLoading
+                                ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                : <RotateCcw className="h-4 w-4 text-destructive" />
+                            }
                             Return Receipt
                         </DialogTitle>
-                        <p className="text-sm text-muted-foreground">Review before printing.</p>
+                        <p className="text-sm text-muted-foreground">
+                            {isLoading ? "Loading return details…" : "Review before printing."}
+                        </p>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto px-4 py-3">
-                        <ReturnBody {...bodyProps} />
+                        {isLoading ? <ReturnReceiptSkeleton /> : <ReturnBody {...bodyProps} />}
                     </div>
 
                     <DialogFooter className="px-5 py-3 border-t shrink-0 gap-2">
                         <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
-                        <Button onClick={() => window.print()} className="flex-1 gap-2">
-                            <Printer className="h-4 w-4" /> Print Return Receipt
+                        <Button onClick={() => window.print()} className="flex-1 gap-2" disabled={isLoading}>
+                            {isLoading
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>
+                                : <><Printer className="h-4 w-4" /> Print Return Receipt</>
+                            }
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* ── Print target — off-screen, always rendered ── */}
-            <div
-                id="return-print-root"
-                style={{ position: "fixed", left: "-9999px", top: 0, width: "80mm", pointerEvents: "none" }}
-                aria-hidden="true"
-            >
-                <ReturnBody {...bodyProps} />
-            </div>
+            {!isLoading && (
+                <div
+                    id="return-print-root"
+                    style={{ position: "fixed", left: "-9999px", top: 0, width: "80mm", pointerEvents: "none" }}
+                    aria-hidden="true"
+                >
+                    <ReturnBody {...bodyProps} />
+                </div>
+            )}
         </>
     );
 }

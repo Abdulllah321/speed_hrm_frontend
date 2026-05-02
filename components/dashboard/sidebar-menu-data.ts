@@ -732,10 +732,12 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Item Setup",
-        permissions: ["erp.item.read", "erp.item.create"],
+        permissions: ["erp.item.read", "erp.item.create", "erp.item.update"],
         children: [
           { title: "Create", href: "/erp/items/create", permissions: ["erp.item.create"] },
           { title: "List", href: "/erp/items/list", permissions: ["erp.item.read"] },
+          { title: "Bulk Discount", href: "/erp/items/bulk-discount", permissions: ["erp.item.update"] },
+          { title: "Campaigns", href: "/erp/items/campaigns", permissions: ["erp.item.read"] },
           // { title: "Categories", href: "/erp/inventory/categories" },
         ],
       },
@@ -743,7 +745,7 @@ export const menuData: MenuItem[] = [
         title: "Transactions",
         children: [
           {
-            title: "Stock Received",
+            title: "Stock Ledger",
             href: "/erp/inventory/transactions/stock-received",
           },
           {

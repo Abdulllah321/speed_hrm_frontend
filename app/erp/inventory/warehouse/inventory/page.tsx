@@ -100,9 +100,6 @@ function StockBreakdownSheet({ item, onClose }: { item: GroupedItem | null; onCl
                                                         <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
                                                             <Building2 className="h-3 w-3 text-primary/50" />
                                                             {entry.location?.warehouse?.name}
-                                                            {entry.location?.type && (
-                                                                <Badge variant="secondary" className="text-[9px] h-3.5 px-1 ml-1">{entry.location.type}</Badge>
-                                                            )}
                                                         </p>
                                                     </>
                                                 ) : (
@@ -173,21 +170,19 @@ export default function InventoryPage() {
 
     // Unique locations from data (only outlet locations, not warehouse bulk)
     const locations = useMemo(() => {
-        const map = new Map<string, { id: string; name: string; code: string; type: string }>();
+        const map = new Map<string, { id: string; name: string; code: string }>();
         stockLevels.forEach(l => {
             if (l.locationId && l.location && !map.has(l.locationId)) {
                 map.set(l.locationId, {
                     id: l.locationId,
                     name: l.location.name,
                     code: l.location.code,
-                    type: l.location.type,
                 });
             }
         });
         return Array.from(map.values());
     }, [stockLevels]);
 
-    // Group by itemId
     const groupedItems = useMemo<GroupedItem[]>(() => {
         const map = new Map<string, GroupedItem & { warehouseNames: string[] }>();
         stockLevels.forEach(level => {

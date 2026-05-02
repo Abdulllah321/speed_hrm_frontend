@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Printer } from "lucide-react";
+import { Printer, Receipt, Loader2 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import type { PosSettings } from "@/hooks/use-pos-settings";
 import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
@@ -50,7 +50,71 @@ interface PrintReceiptProps {
     appliedCoupon?: any;
     selectedAlliance?: any;
     settings?: Partial<PosSettings>;
+    isLoading?: boolean;
     onClose: () => void;
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function ReceiptSkeleton() {
+    return (
+        <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-6 select-none">
+            {/* Animated receipt illustration */}
+            <div className="relative flex flex-col items-center">
+                {/* Glow ring */}
+                <div className="absolute inset-0 rounded-full bg-primary/10 blur-2xl scale-150 animate-pulse" />
+
+                {/* Receipt icon with spin */}
+                <div className="relative z-10 flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 border border-primary/20 shadow-lg shadow-primary/10">
+                    <Receipt className="h-9 w-9 text-primary animate-pulse" />
+                </div>
+
+                {/* Orbiting dot */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full">
+                    <div
+                        className="absolute w-2.5 h-2.5 rounded-full bg-primary shadow-md shadow-primary/40"
+                        style={{
+                            top: "50%",
+                            left: "50%",
+                            transformOrigin: "0 0",
+                            animation: "orbit 1.4s linear infinite",
+                            marginTop: "-5px",
+                            marginLeft: "-5px",
+                        }}
+                    />
+                </div>
+            </div>
+
+            {/* Text */}
+            <div className="text-center space-y-1.5">
+                <p className="text-base font-bold tracking-tight">Generating Receipt</p>
+                <p className="text-sm text-muted-foreground">Fetching order details, please wait…</p>
+            </div>
+
+            {/* Skeleton lines mimicking a receipt */}
+            <div className="w-64 space-y-2 opacity-40">
+                <div className="h-2.5 bg-muted rounded-full w-3/4 mx-auto animate-pulse" />
+                <div className="h-2 bg-muted rounded-full w-1/2 mx-auto animate-pulse delay-75" />
+                <div className="h-px bg-border w-full my-3" />
+                {[80, 60, 90, 55, 70].map((w, i) => (
+                    <div
+                        key={i}
+                        className="h-2 bg-muted rounded-full animate-pulse"
+                        style={{ width: `${w}%`, animationDelay: `${i * 60}ms` }}
+                    />
+                ))}
+                <div className="h-px bg-border w-full my-3" />
+                <div className="h-3 bg-muted rounded-full w-2/3 mx-auto animate-pulse" />
+            </div>
+
+            <style>{`
+                @keyframes orbit {
+                    from { transform: rotate(0deg) translateX(44px) rotate(0deg); }
+                    to   { transform: rotate(360deg) translateX(44px) rotate(-360deg); }
+                }
+            `}</style>
+        </div>
+    );
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -64,6 +128,7 @@ export function PrintReceipt({
     appliedCoupon,
     selectedAlliance,
     settings: settingsOverride,
+    isLoading = false,
     onClose,
 }: PrintReceiptProps) {
     const settings: PosSettings = { ...POS_SETTINGS_DEFAULTS, ...settingsOverride };
@@ -71,25 +136,25 @@ export function PrintReceipt({
     const isGiftReceipt = order?.isGiftReceipt || false;
 
     useEffect(() => {
-        if (settings.receiptAutoPrint) {
+        if (!isLoading && settings.receiptAutoPrint) {
             const timer = setTimeout(() => window.print(), 400);
             return () => clearTimeout(timer);
         }
-    }, [settings.receiptAutoPrint]);
+    }, [isLoading, settings.receiptAutoPrint]);
 
     // ── Store info ────────────────────────────────────────────────────
     const storeName =
         settings.receiptStoreName ||
-        user?.terminal?.location?.fbrSellerName ||
-        user?.terminal?.location?.name ||
+        (typeof user?.terminal?.location?.fbrSellerName === "string" ? user.terminal.location.fbrSellerName : "") ||
+        (typeof user?.terminal?.location?.name === "string" ? user.terminal.location.name : "") ||
         getCookie("companyName") ||
         "Store";
 
-    const storeAddress = settings.receiptAddress || user?.terminal?.location?.address || "";
-    const storePhone   = settings.receiptPhone   || user?.terminal?.location?.phone   || "";
-    const storeNTN     = settings.receiptNTN     || user?.terminal?.location?.fbrNtn  || "";
+    const storeAddress = settings.receiptAddress || (typeof user?.terminal?.location?.address === "string" ? user.terminal.location.address : "") || "";
+    const storePhone   = settings.receiptPhone   || (typeof user?.terminal?.location?.phone   === "string" ? user.terminal.location.phone   : "") || "";
+    const storeNTN     = settings.receiptNTN     || (typeof user?.terminal?.location?.fbrNtn  === "string" ? user.terminal.location.fbrNtn  : "") || "";
     const storeSTRN    = settings.receiptSTRN    || "";
-    const terminalName = user?.terminal?.name    || user?.terminal?.code              || "";
+    const terminalName = (typeof user?.terminal?.name === "string" ? user.terminal.name : "") || (typeof user?.terminal?.code === "string" ? user.terminal.code : "") || "";
 
     const cashierName =
         order?.cashierName ||
@@ -149,22 +214,11 @@ export function PrintReceipt({
 
     return (
         <>
-            {/* ── Print styles ──────────────────────────────────────────────
-                Strategy: hide the entire page, show only #receipt-print-root.
-                We avoid setting display:block on everything (breaks grids/flex).
-                Instead we let the receipt-print-root subtree render normally
-                with its own inline styles that don't rely on Tailwind utilities.
-            ─────────────────────────────────────────────────────────────── */}
             <style>{`
                 @media print {
-                    /* Hide everything */
                     body * { visibility: hidden !important; }
-
-                    /* Show only the receipt */
                     #receipt-print-root,
                     #receipt-print-root * { visibility: visible !important; }
-
-                    /* Move it into the printable area */
                     #receipt-print-root {
                         position: fixed !important;
                         left: 0 !important;
@@ -177,10 +231,7 @@ export function PrintReceipt({
                         font-size: 9pt !important;
                         line-height: 1.35 !important;
                     }
-
                     @page { margin: 0; size: 80mm auto; }
-
-                    /* Prevent content from being cut across pages */
                     #receipt-print-root > div > * { page-break-inside: avoid; break-inside: avoid; }
                 }
             `}</style>
@@ -189,31 +240,45 @@ export function PrintReceipt({
             <Dialog open onOpenChange={onClose}>
                 <DialogContent className="max-w-2xl w-full h-[92vh] flex flex-col p-0 gap-0">
                     <DialogHeader className="px-5 pt-4 pb-3 border-b shrink-0">
-                        <DialogTitle>Receipt Preview</DialogTitle>
-                        <p className="text-sm text-muted-foreground">Review before printing.</p>
+                        <DialogTitle className="flex items-center gap-2">
+                            {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                            Receipt Preview
+                        </DialogTitle>
+                        <p className="text-sm text-muted-foreground">
+                            {isLoading ? "Loading order data…" : "Review before printing."}
+                        </p>
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto px-4 py-3">
-                        <ReceiptBody {...bodyProps} />
+                        {isLoading ? <ReceiptSkeleton /> : <ReceiptBody {...bodyProps} />}
                     </div>
 
                     <DialogFooter className="px-5 py-3 border-t shrink-0 gap-2">
                         <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
-                        <Button onClick={() => window.print()} className="flex-1 gap-2">
-                            <Printer className="h-4 w-4" /> Print Receipt
+                        <Button
+                            onClick={() => window.print()}
+                            className="flex-1 gap-2"
+                            disabled={isLoading}
+                        >
+                            {isLoading
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>
+                                : <><Printer className="h-4 w-4" /> Print Receipt</>
+                            }
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
 
             {/* ── Print target — off-screen but rendered, visible only on print ── */}
-            <div
-                id="receipt-print-root"
-                style={{ position: "fixed", left: "-9999px", top: 0, width: "80mm", pointerEvents: "none" }}
-                aria-hidden="true"
-            >
-                <ReceiptBody {...bodyProps} />
-            </div>
+            {!isLoading && (
+                <div
+                    id="receipt-print-root"
+                    style={{ position: "fixed", left: "-9999px", top: 0, width: "80mm", pointerEvents: "none" }}
+                    aria-hidden="true"
+                >
+                    <ReceiptBody {...bodyProps} />
+                </div>
+            )}
         </>
     );
 }
@@ -254,7 +319,6 @@ function ReceiptBody({
     changeAmount, totalPaid, tenders, orderDiscountLabel, fbrVerifyUrl, settings,
 }: ReceiptBodyProps) {
 
-    // Shared row: label left, value right
     const Row = ({ label, value, bold = false, indent = false }: {
         label: string; value: string; bold?: boolean; indent?: boolean;
     }) => (
@@ -345,11 +409,8 @@ function ReceiptBody({
 
                 return (
                     <div key={item.id ?? idx} className="pb-2 border-b border-dashed last:border-0">
-
-                        {/* Item name */}
                         <p className="font-bold text-[11px] leading-tight mb-0.5">{item.name}</p>
 
-                        {/* Data row */}
                         {!isGiftReceipt ? (
                             <div
                                 className="rpt-grid-item text-[11px]"
@@ -373,7 +434,6 @@ function ReceiptBody({
                             </div>
                         )}
 
-                        {/* FBR breakdown */}
                         {!isGiftReceipt && (
                             <div className="mt-1 space-y-0.5 text-[10px]">
                                 <Row label="Discount %"             value={`${discPct}%`} />
