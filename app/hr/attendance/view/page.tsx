@@ -208,27 +208,16 @@ function ViewEmployeeAttendanceDetailPage() {
 
   // Check if a date is a holiday
   const isHolidayDate = (date: Date): { isHoliday: boolean; name?: string } => {
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
+    const checkDate = new Date(date.getTime() + 12 * 60 * 60 * 1000).toISOString().split('T')[0];
 
     for (const holiday of holidays) {
       if (holiday.status !== 'active') continue;
 
-      const from = new Date(holiday.dateFrom);
-      const to = new Date(holiday.dateTo);
-      const fromMonth = from.getMonth() + 1;
-      const fromDay = from.getDate();
-      const toMonth = to.getMonth() + 1;
-      const toDay = to.getDate();
+      const from = new Date(new Date(holiday.dateFrom).getTime() + 12 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const to = new Date(new Date(holiday.dateTo).getTime() + 12 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      if (fromMonth === toMonth) {
-        if (month === fromMonth && day >= fromDay && day <= toDay) {
-          return { isHoliday: true, name: holiday.name };
-        }
-      } else {
-        if ((month === fromMonth && day >= fromDay) || (month === toMonth && day <= toDay)) {
-          return { isHoliday: true, name: holiday.name };
-        }
+      if (checkDate >= from && checkDate <= to) {
+        return { isHoliday: true, name: holiday.name };
       }
     }
     return { isHoliday: false };
@@ -282,8 +271,17 @@ function ViewEmployeeAttendanceDetailPage() {
           // If explicitly marked as absent, keep it as absent even on weekends/holidays
           status = "absent";
           isOvertime = false;
-        } else if (holidayInfo.isHoliday || isWeeklyOffDay) {
-          // Employee worked on a holiday or weekly off (only if not absent)
+        } else if (recordStatus === 'holiday') {
+          status = "holiday";
+          isOvertime = false;
+        } else if (recordStatus === 'weekend' || recordStatus === 'weekly-off') {
+          status = "weekly-off";
+          isOvertime = false;
+        } else if (recordStatus === 'on-leave' || recordStatus === 'leave') {
+          status = "leave";
+          isOvertime = false;
+        } else if ((holidayInfo.isHoliday || isWeeklyOffDay) && (attendanceRecord.checkIn || attendanceRecord.checkOut)) {
+          // Employee worked on a holiday or weekly off (only if they have clock times)
           isOvertime = true;
           status = "present";
         } else if (recordStatus === 'present') {
@@ -292,8 +290,6 @@ function ViewEmployeeAttendanceDetailPage() {
           status = "late";
         } else if (recordStatus === 'half-day' || recordStatus === 'halfday') {
           status = "half-day";
-        } else if (recordStatus === 'on-leave' || recordStatus === 'leave') {
-          status = "leave";
         } else {
           status = "present";
         }

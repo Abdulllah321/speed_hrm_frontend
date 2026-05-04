@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/form";
 import { toast } from "sonner";
 import {
-  ArrowLeft,
   Loader2,
   Gift,
   Users,
@@ -42,7 +41,6 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
-import Link from "next/link";
 import {
   getEmployeesForDropdown,
   getEmployeeById,
@@ -601,15 +599,6 @@ export default function IssueBonusPage() {
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      <div className="mb-6">
-        <Link href="/hr/payroll-setup/bonus/view" transitionTypes={["nav-back"]}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </Link>
-      </div>
-
       <Form {...form}>
         <form onSubmit={onSubmit} className="space-y-6">
           <Card>

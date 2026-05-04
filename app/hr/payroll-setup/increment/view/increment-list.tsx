@@ -72,10 +72,10 @@ export function IncrementList({ initialData = [] }: IncrementListProps) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
-            View Promotion List
+            Promotion & Demotion List
           </h2>
           <p className="text-muted-foreground">
-            View employee promotion/increment & decrement records
+            View employee increment & decrement records
           </p>
         </div>
         <div className="flex gap-2">

@@ -21,7 +21,7 @@ import {
     ArrowLeft, Loader2, Tag, TicketPercent, Handshake, CheckCircle2,
     XCircle, Search, ShoppingCart, Printer, Trash2, Plus, Percent,
     BadgeDollarSign, CreditCard, Banknote, Building2, Ticket,
-    ChevronDown, ChevronUp, BookOpen,PauseCircle,
+    ChevronDown, ChevronUp, BookOpen, PauseCircle, UserRound,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import { cn, getCookie } from "@/lib/utils";
@@ -167,6 +167,45 @@ export default function CheckoutPage() {
     const [alliances, setAlliances] = useState<AllianceConfig[]>([]);
     const [allianceSearch, setAllianceSearch] = useState("");
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+    const { user } = useAuth();
+
+    // ── Cashier state ──────────────────────────────────────────────────
+    const [cashiers, setCashiers] = useState<any[]>([]);
+    const [selectedCashierId, setSelectedCashierId] = useState<string>("");
+    const [isLoadingCashiers, setIsLoadingCashiers] = useState(false);
+
+    // Load selected cashier from session storage
+    useEffect(() => {
+        const saved = sessionStorage.getItem("pos_selected_cashier_id");
+        if (saved) setSelectedCashierId(saved);
+    }, []);
+
+    // Save selected cashier to session storage
+    useEffect(() => {
+        if (selectedCashierId) {
+            sessionStorage.setItem("pos_selected_cashier_id", selectedCashierId);
+        }
+    }, [selectedCashierId]);
+
+    // Fetch cashiers for the current location
+    useEffect(() => {
+        setIsLoadingCashiers(true);
+        authFetch(`/pos-sales/cashiers`)
+            .then(res => {
+                if (res.ok && res.data?.status) {
+                    const list = res.data.data || [];
+                    setCashiers(list);
+                    // Pre-select current user if they are in the list and nothing is saved
+                    if (!sessionStorage.getItem("pos_selected_cashier_id") && user?.id) {
+                        if (list.some((c: any) => c.userId === user.id)) {
+                            setSelectedCashierId(user.id);
+                        }
+                    }
+                }
+            })
+            .catch(() => { })
+            .finally(() => setIsLoadingCashiers(false));
+    }, [user?.id]);
 
     // ── Hold state ──────────────────────────────────────────────────────
     const [showHoldModal, setShowHoldModal] = useState(false);
@@ -491,6 +530,7 @@ export default function CheckoutPage() {
                 customerId: selectedCustomer?.id || null,
                 isGiftReceipt,
                 voucherRedemptions: appliedVouchers.length > 0 ? appliedVouchers : undefined,
+                cashierUserId: selectedCashierId || null,
             };
 
             // If resuming from a hold order, pass holdOrderId to skip double stock deduction
@@ -691,6 +731,41 @@ export default function CheckoutPage() {
                         <div className="flex items-center gap-2 px-4 py-3 border-b bg-muted/30">
                             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
                             <span className="font-semibold text-sm">Order Summary</span>
+                        </div>
+
+                        {/* Cashier Selection */}
+                        <div className="px-4 py-4 border-b space-y-3 bg-muted/5">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                <UserRound className="h-3 w-3" /> Cashier / Employee
+                            </Label>
+                            <Select
+                                value={selectedCashierId}
+                                onValueChange={setSelectedCashierId}
+                            >
+                                <SelectTrigger className="w-full bg-muted/20 border-none h-10 px-3 font-medium">
+                                    <SelectValue placeholder={isLoadingCashiers ? "Loading cashiers..." : "Select Cashier"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {isLoadingCashiers ? (
+                                        <div className="p-4 text-center text-xs text-muted-foreground">
+                                            <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1" /> Loading...
+                                        </div>
+                                    ) : cashiers.length === 0 ? (
+                                        <div className="p-4 text-center text-xs text-muted-foreground">
+                                            No cashiers found for this location
+                                        </div>
+                                    ) : (
+                                        cashiers.map(c => (
+                                            <SelectItem key={c.userId} value={c.userId}>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{c.name}</span>
+                                                    <span className="text-[10px] opacity-70 font-mono">{c.empCode} · {c.email}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))
+                                    )}
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {/* Customer Section */}

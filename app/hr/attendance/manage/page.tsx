@@ -274,23 +274,35 @@ export default function AttendanceManagePage() {
   // Check for leave days in date range
   const checkForLeaveDays = async (fromDate: Date, toDate: Date, employeeId: string): Promise<Array<{ date: Date; type: string; name?: string }>> => {
     const dates: Array<{ date: Date; type: string; name?: string }> = [];
-    const allDays = eachDayOfInterval({ start: fromDate, end: toDate });
+    
+    // Normalize dates to avoid timezone issues
+    const normalizedFromDate = new Date(fromDate);
+    normalizedFromDate.setHours(0, 0, 0, 0);
+    
+    const normalizedToDate = new Date(toDate);
+    normalizedToDate.setHours(23, 59, 59, 999);
+    
+    const allDays = eachDayOfInterval({ start: normalizedFromDate, end: normalizedToDate });
 
     // Get leave requests for the employee
     const leaveRequestsResult = await getLeaveRequests({
       employeeId,
-      fromDate: format(fromDate, 'yyyy-MM-dd'),
-      toDate: format(toDate, 'yyyy-MM-dd'),
+      fromDate: format(normalizedFromDate, 'yyyy-MM-dd'),
+      toDate: format(normalizedToDate, 'yyyy-MM-dd'),
       status: 'approved', // Only check approved leaves
     });
     const leaveRequests = leaveRequestsResult.status && leaveRequestsResult.data ? leaveRequestsResult.data : [];
 
     for (const day of allDays) {
-      // Check if leave day
+      // Check if leave day using simple date comparison
+      const dayStr = format(day, 'yyyy-MM-dd');
+      
       const leaveRequest = leaveRequests.find(lr => {
-        const leaveFrom = parseISO(lr.fromDate);
-        const leaveTo = parseISO(lr.toDate);
-        return isWithinInterval(day, { start: leaveFrom, end: leaveTo });
+        const leaveFromStr = format(parseISO(lr.fromDate), 'yyyy-MM-dd');
+        const leaveToStr = format(parseISO(lr.toDate), 'yyyy-MM-dd');
+        
+        // Check if day is within leave range (inclusive)
+        return dayStr >= leaveFromStr && dayStr <= leaveToStr;
       });
 
       if (leaveRequest) {
