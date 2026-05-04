@@ -32,8 +32,7 @@ import {
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Search, Plus, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { Loader2, Search, Plus, Trash2 } from "lucide-react";
 import {
   getEmployeesForDropdown,
   type EmployeeDropdownOption,
@@ -89,6 +88,7 @@ export function CreateDeductionClient({
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [employeeDeductions, setEmployeeDeductions] = useState<EmployeeDeductionItem[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Fetch sub-departments when department changes
   useEffect(() => {
@@ -211,6 +211,7 @@ export function CreateDeductionClient({
     });
 
     setEmployeeDeductions([...employeeDeductions, ...newDeductions]);
+    setHasSearched(true);
     toast.success(`Added deductions for ${selectedEmployeeIds.length} employee(s) across ${selectedMonths.length} month(s)`);
   };
 
@@ -284,15 +285,6 @@ export function CreateDeductionClient({
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      <div className="mb-6">
-        <Link href="/hr/payroll-setup/deduction/view">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </Link>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="border-0 shadow-lg bg-card">
           <CardHeader className="pb-4">
@@ -483,7 +475,7 @@ export function CreateDeductionClient({
               <Button
                 type="button"
                 onClick={handleSearch}
-                disabled={isPending}
+                disabled={isPending || hasSearched}
                 className="w-fit self-end"
               >
                 <Search className="h-4 w-4 mr-2" />

@@ -74,6 +74,7 @@ export default function EditEmployeePage() {
   const [socialSecurityInstitutions, setSocialSecurityInstitutions] = useState<any[]>([]);
   const [banks, setBanks] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  
   // Load employee data
   useEffect(() => {
     const fetchEmployee = async () => {
@@ -156,7 +157,6 @@ export default function EditEmployeePage() {
         if (banksRes.status) setBanks(banksRes.data || []);
       } catch (error) {
         console.error("Error fetching data:", error);
-        // toast.error("Failed to load form data");
       } finally {
         setLoadingData(false);
       }
@@ -166,7 +166,6 @@ export default function EditEmployeePage() {
   }, []);
 
   // Fetch sub-departments when employee department is available
-  // Note: employee.department should now be an ID string from the backend
   useEffect(() => {
     if (!employee?.department) return;
     const departmentId = typeof employee.department === 'string'

@@ -29,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DatePicker } from "@/components/ui/date-picker";
+import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
@@ -47,7 +48,7 @@ import {
 } from "@/lib/actions/department";
 import { getEmployeeGrades, type EmployeeGrade } from "@/lib/actions/employee-grade";
 import { getDesignations, type Designation } from "@/lib/actions/designation";
-import { bulkCreateIncrements, updateIncrement, type Increment } from "@/lib/actions/increment";
+import { bulkCreateIncrements, updateIncrement, type Increment, getLatestEmployeeSalary } from "@/lib/actions/increment";
 
 interface EmployeeIncrementItem {
   id: string;
@@ -65,7 +66,6 @@ interface EmployeeIncrementItem {
   salary: number;
   promotionDate: string;
   currentMonth: string;
-  monthsOfIncrement: number;
   notes: string;
 }
 
@@ -107,13 +107,13 @@ export function CreateIncrementClient({
     incrementPercentage: "",
     promotionDate: "",
     currentMonth: "",
-    monthsOfIncrement: "",
   });
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [employeeIncrements, setEmployeeIncrements] = useState<EmployeeIncrementItem[]>([]);
   const [selectedEmployeeDetails, setSelectedEmployeeDetails] = useState<Record<string, Employee>>({});
   const [loadingEmployeeDetails, setLoadingEmployeeDetails] = useState<Record<string, boolean>>({});
+  const [latestSalaries, setLatestSalaries] = useState<Record<string, number>>({});
 
   // Calculate salary based on increment/decrement
   const calculateSalary = (
@@ -152,7 +152,6 @@ export function CreateIncrementClient({
         incrementPercentage: initialIncrement.incrementPercentage?.toString() || "",
         promotionDate: initialIncrement.promotionDate || "",
         currentMonth: initialIncrement.currentMonth || "",
-        monthsOfIncrement: initialIncrement.monthsOfIncrement?.toString() || "",
       });
       
       // Set selected employee
@@ -173,7 +172,6 @@ export function CreateIncrementClient({
         salary: initialIncrement.salary,
         promotionDate: initialIncrement.promotionDate,
         currentMonth: initialIncrement.currentMonth,
-        monthsOfIncrement: initialIncrement.monthsOfIncrement,
         notes: initialIncrement.notes || "",
       };
       setEmployeeIncrements([incrementItem]);
@@ -290,16 +288,23 @@ export function CreateIncrementClient({
     // Fetch employee details for newly selected employees
     const newIds = selectedIds.filter(id => !selectedEmployeeDetails[id]);
     if (newIds.length > 0) {
-      newIds.forEach(empId => {
+      newIds.forEach(async empId => {
         setLoadingEmployeeDetails(prev => ({ ...prev, [empId]: true }));
-        getEmployeeById(empId).then(result => {
+        try {
+          const result = await getEmployeeById(empId);
           if (result.status && result.data) {
             setSelectedEmployeeDetails(prev => ({ ...prev, [empId]: result.data! }));
+            
+            // Fetch latest salary for this employee
+            const joiningOrBaseSalary = result.data.employeeSalary ? Number(result.data.employeeSalary) : 0;
+            const latestSalary = await getLatestEmployeeSalary(empId, joiningOrBaseSalary);
+            setLatestSalaries(prev => ({ ...prev, [empId]: latestSalary }));
           }
+        } catch (error) {
+          console.error('Error fetching employee details:', error);
+        } finally {
           setLoadingEmployeeDetails(prev => ({ ...prev, [empId]: false }));
-        }).catch(() => {
-          setLoadingEmployeeDetails(prev => ({ ...prev, [empId]: false }));
-        });
+        }
       });
     }
     
@@ -307,6 +312,11 @@ export function CreateIncrementClient({
     const removedIds = Object.keys(selectedEmployeeDetails).filter(id => !selectedIds.includes(id));
     if (removedIds.length > 0) {
       setSelectedEmployeeDetails(prev => {
+        const updated = { ...prev };
+        removedIds.forEach(id => delete updated[id]);
+        return updated;
+      });
+      setLatestSalaries(prev => {
         const updated = { ...prev };
         removedIds.forEach(id => delete updated[id]);
         return updated;
@@ -321,13 +331,12 @@ export function CreateIncrementClient({
     description: `${emp.employeeId}${emp.departmentName ? ` • ${emp.departmentName}` : ""}`,
   }));
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (
       !formData.incrementType ||
       (!formData.incrementAmount && !formData.incrementPercentage) ||
       !formData.promotionDate ||
-      !formData.currentMonth ||
-      !formData.monthsOfIncrement
+      !formData.currentMonth
     ) {
       toast.error("Please fill all required fields");
       return;
@@ -348,19 +357,13 @@ export function CreateIncrementClient({
       return;
     }
 
-    const monthsOfIncrement = parseInt(formData.monthsOfIncrement);
-    if (isNaN(monthsOfIncrement) || monthsOfIncrement <= 0) {
-      toast.error("Please enter a valid number of months");
-      return;
-    }
-
     if (selectedEmployeeIds.length === 0) {
       toast.error("Please select at least one employee");
       return;
     }
 
     // Create increment items for all selected employees
-    const newIncrements: EmployeeIncrementItem[] = selectedEmployeeIds.map((empId) => {
+    const newIncrementsPromises = selectedEmployeeIds.map(async (empId) => {
       const employee = employees.find((e) => e.id === empId);
       const employeeDetail = selectedEmployeeDetails[empId];
       
@@ -399,11 +402,14 @@ export function CreateIncrementClient({
         return "";
       };
       
-      // Calculate salary for this specific employee
-      const baseSalary = employeeDetail?.employeeSalary ? Number(employeeDetail.employeeSalary) : 0;
-      const calculatedSalary = baseSalary > 0 && incrementValue > 0
-        ? calculateSalary(baseSalary, formData.incrementType, formData.incrementMethod, incrementValue)
-        : baseSalary; // Use base salary if calculation fails
+      // Get the LATEST salary (from most recent increment or joining salary)
+      const joiningOrBaseSalary = employeeDetail?.employeeSalary ? Number(employeeDetail.employeeSalary) : 0;
+      const latestSalary = await getLatestEmployeeSalary(empId, joiningOrBaseSalary);
+      
+      // Calculate NEW salary based on LATEST salary
+      const calculatedSalary = latestSalary > 0 && incrementValue > 0
+        ? calculateSalary(latestSalary, formData.incrementType, formData.incrementMethod, incrementValue)
+        : latestSalary;
       
       return {
         id: `${empId}-${Date.now()}`,
@@ -411,9 +417,9 @@ export function CreateIncrementClient({
         employeeName: employee?.employeeName || "",
         employeeCode: employee?.employeeId || "",
         previousDesignation: getPreviousDesignation(),
-        previousSalary: baseSalary,
-        employeeGradeId: getEmployeeGradeId(), // Pre-populate with employee's current grade
-        designationId: getDesignationId(), // Pre-populate with employee's current designation
+        previousSalary: latestSalary, // This is now the LATEST salary, not joining salary
+        employeeGradeId: getEmployeeGradeId(),
+        designationId: getDesignationId(),
         incrementType: formData.incrementType,
         incrementAmount: formData.incrementMethod === "Amount" ? incrementValue : undefined,
         incrementPercentage: formData.incrementMethod === "Percent" ? incrementValue : undefined,
@@ -421,10 +427,11 @@ export function CreateIncrementClient({
         salary: calculatedSalary,
         promotionDate: formData.promotionDate,
         currentMonth: formData.currentMonth,
-        monthsOfIncrement: monthsOfIncrement,
         notes: formData.remarks || "",
       };
     });
+
+    const newIncrements = await Promise.all(newIncrementsPromises);
 
     setEmployeeIncrements([...employeeIncrements, ...newIncrements]);
     toast.success(`Added increments for ${selectedEmployeeIds.length} employee(s)`);
@@ -474,7 +481,6 @@ export function CreateIncrementClient({
             salary: item.salary,
             promotionDate: item.promotionDate,
             currentMonth: item.currentMonth,
-            monthsOfIncrement: item.monthsOfIncrement,
             notes: item.notes || undefined,
           });
 
@@ -499,7 +505,6 @@ export function CreateIncrementClient({
               salary: item.salary,
               promotionDate: item.promotionDate,
               currentMonth: item.currentMonth,
-              monthsOfIncrement: item.monthsOfIncrement,
               notes: item.notes || undefined,
             })),
           });
@@ -642,7 +647,10 @@ export function CreateIncrementClient({
             {selectedEmployeeIds.length > 0 && (
               <Card className="border-dashed">
                 <CardHeader>
-                  <CardTitle className="text-lg">Previous Designation & Salary</CardTitle>
+                  <CardTitle className="text-lg">Current Designation & Salary</CardTitle>
+                  <CardDescription className="text-sm text-muted-foreground">
+                    Showing latest salary (including previous increments if any)
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
@@ -668,9 +676,14 @@ export function CreateIncrementClient({
                             return (designation && typeof designation === 'object' && designation.name) ? designation.name : "N/A";
                           };
                           
-                          // Get salary
+                          // Get salary - show LATEST salary (from increment or joining)
                           const getSalary = () => {
-                            if (!employeeDetail) return isLoading ? "Loading..." : "N/A";
+                            if (isLoading) return "Loading...";
+                            const latestSalary = latestSalaries[empId];
+                            if (latestSalary !== undefined) {
+                              return `PKR ${Number(latestSalary).toLocaleString()}`;
+                            }
+                            if (!employeeDetail) return "N/A";
                             return employeeDetail.employeeSalary ? `PKR ${Number(employeeDetail.employeeSalary).toLocaleString()}` : "N/A";
                           };
                           
@@ -807,8 +820,8 @@ export function CreateIncrementClient({
               </div>
             </div>
 
-            {/* Fourth Row - Promotion Date, Current Month, Months of Increment */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Fourth Row - Promotion Date, Current Month */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Promotion / Increment Date */}
               <div className="space-y-2">
                 <Label htmlFor="promotionDate">
@@ -827,34 +840,16 @@ export function CreateIncrementClient({
               {/* Select Current Month */}
               <div className="space-y-2">
                 <Label htmlFor="currentMonth">
-                  Select Current Month <span className="text-destructive">*</span>
+                  Select Month & Year <span className="text-destructive">*</span>
                 </Label>
-                <DatePicker
+                <MonthYearPicker
                   value={formData.currentMonth}
-                  onChange={(value) =>
-                    setFormData((prev) => ({ ...prev, currentMonth: value || "" }))
-                  }
+                  onChange={(value) => {
+                    const actualValue = Array.isArray(value) ? (value[0] ?? "") : value;
+                    setFormData((prev) => ({ ...prev, currentMonth: actualValue }));
+                  }}
                   disabled={isPending || viewMode}
-                  placeholder="mm/dd/yyyy"
-                />
-              </div>
-
-              {/* Months of Increment */}
-              <div className="space-y-2">
-                <Label htmlFor="monthsOfIncrement">
-                  Months of Increment <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="monthsOfIncrement"
-                  type="number"
-                  min="1"
-                  value={formData.monthsOfIncrement}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, monthsOfIncrement: e.target.value }))
-                  }
-                  placeholder="Enter months"
-                  disabled={isPending || viewMode}
-                  required
+                  placeholder="Select month and year"
                 />
               </div>
             </div>

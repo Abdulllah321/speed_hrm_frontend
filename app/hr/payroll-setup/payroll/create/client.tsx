@@ -271,14 +271,10 @@ export function GeneratePayrollClient({
 
     return (
         <div className="max-w-6xl mx-auto pb-10">
-            <div className="mb-6">
-                <Link href="/hr/payroll">
-                    <Button variant="ghost" size="sm">
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        Back to Payroll
-                    </Button>
-                </Link>
-            </div>
+        
+
+
+            
 
             {step === "select" ? (
                 <form onSubmit={handlePreview} className="space-y-6">
@@ -466,6 +462,12 @@ export function GeneratePayrollClient({
                                                     <TableCell>{index + 1}</TableCell>
                                                     <TableCell className="font-medium">
                                                         <div>({row.employeeCode}) {row.employeeName}</div>
+                                                        {/* Zero Attendance Warning */}
+                                                        {row.hasZeroAttendance && (
+                                                            <div className="mt-1 px-2 py-1 bg-red-50 border border-red-200 rounded text-[10px] text-red-700 font-semibold">
+                                                                ⚠️ {row.zeroAttendanceMessage || 'No attendance record found'}
+                                                            </div>
+                                                        )}
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="text-[10px] space-y-0.5 min-w-[200px]">
