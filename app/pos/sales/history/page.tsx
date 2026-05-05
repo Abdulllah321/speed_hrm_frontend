@@ -218,6 +218,8 @@ export default function SalesHistoryPage() {
     const [showGiftPrint, setShowGiftPrint] = useState(false);
     const [showReturnPrint, setShowReturnPrint] = useState(false);
     const [showUpdateTender, setShowUpdateTender] = useState(false);
+    // isLoadingReceipt: dialog opens immediately, receipt fetches in background
+    const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
 
     const fetchOrders = useCallback(async () => {
         setIsLoading(true);
@@ -232,9 +234,8 @@ export default function SalesHistoryPage() {
                 }
             });
             if (res.ok && res.data?.status) {
-                // Filter out expired hold orders — they're noise in the history view
-                const filtered = (res.data.data || []).filter((o: any) => o.status !== 'hold_expired');
-                setOrders(filtered);
+                // hold_expired orders are excluded by the backend
+                setOrders(res.data.data || []);
                 setRowCount(res.data.meta?.total || 0);
                 setPageCount(res.data.meta?.totalPages || 0);
             }
@@ -244,6 +245,46 @@ export default function SalesHistoryPage() {
 
     useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [search, dateRange]);
     useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+    // Open print dialog immediately with skeleton, then fetch full order in background
+    const openPrintDialog = useCallback(async (
+        listOrder: any,
+        mode: "sales" | "gift" | "return",
+    ) => {
+        // Open dialog right away with loading state
+        setIsLoadingReceipt(true);
+        if (mode === "sales") {
+            setSelectedOrder({ ...listOrder, isGiftReceipt: false });
+            setShowPrint(true);
+        } else if (mode === "gift") {
+            setSelectedOrder({ ...listOrder, isGiftReceipt: true });
+            setShowGiftPrint(true);
+        } else {
+            setSelectedOrder(listOrder);
+            setReturnDetails(null);
+            setShowReturnPrint(true);
+        }
+
+        try {
+            const res = await authFetch(`/pos-sales/orders/${listOrder.id}`);
+            if (res.ok && res.data?.status) {
+                const full = res.data.data;
+                if (mode === "sales")  setSelectedOrder({ ...full, isGiftReceipt: false });
+                if (mode === "gift")   setSelectedOrder({ ...full, isGiftReceipt: true });
+                if (mode === "return") {
+                    setSelectedOrder(full);
+                    const retRes = await authFetch(`/pos-sales/orders/${listOrder.id}/return-details`);
+                    if (retRes.ok && retRes.data?.status) setReturnDetails(retRes.data.data);
+                }
+            } else {
+                toast.error("Failed to load order details");
+            }
+        } catch {
+            toast.error("Failed to load order details");
+        } finally {
+            setIsLoadingReceipt(false);
+        }
+    }, []);
 
     // Resume a hold order into new-sale
     const handleResumeHold = useCallback(async (order: any) => {
@@ -383,7 +424,7 @@ export default function SalesHistoryPage() {
                             <Button variant="ghost" size="icon"
                                 className="h-8 w-8 rounded-full text-primary hover:bg-primary/5"
                                 title="Print receipt"
-                                onClick={() => { setSelectedOrder(order); setShowPrint(true); }}>
+                                onClick={() => openPrintDialog(order, "sales")}>
                                 <Printer className="h-3.5 w-3.5" />
                             </Button>
                             {/* Gift receipt button - only show if order was marked as gift receipt */}
@@ -391,7 +432,7 @@ export default function SalesHistoryPage() {
                                 <Button variant="ghost" size="icon"
                                     className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
                                     title="Print gift receipt (no prices)"
-                                    onClick={() => { setSelectedOrder(order); setShowGiftPrint(true); }}>
+                                    onClick={() => openPrintDialog(order, "gift")}>
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
                             )}
@@ -399,13 +440,7 @@ export default function SalesHistoryPage() {
                                 <Button variant="ghost" size="icon"
                                     className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
                                     title="Print return slip"
-                                    onClick={async () => {
-                                        setSelectedOrder(order);
-                                        setReturnDetails(null);
-                                        const res = await authFetch(`/pos-sales/orders/${order.id}/return-details`);
-                                        if (res.ok && res.data?.status) setReturnDetails(res.data.data);
-                                        setShowReturnPrint(true);
-                                    }}>
+                                    onClick={() => openPrintDialog(order, "return")}>
                                     <RotateCcw className="h-3.5 w-3.5" />
                                 </Button>
                             )}
@@ -755,15 +790,14 @@ export default function SalesHistoryPage() {
                                         </Button>
                                     ) : (
                                         <>
-                                        {/* Gift receipt button - only show if order was marked as gift receipt */}
                                         {selectedOrder?.isGiftReceipt && (
                                             <Button variant="outline" className="rounded-xl font-black text-[10px] uppercase px-8 h-11 gap-2.5 tracking-widest border-pink-300 text-pink-600 hover:bg-pink-50"
-                                                onClick={() => { setShowDetails(false); setShowGiftPrint(true); }}>
+                                                onClick={() => { setShowDetails(false); openPrintDialog(selectedOrder, "gift"); }}>
                                                 <Printer className="h-4 w-4" /> Gift Receipt
                                             </Button>
                                         )}
                                         <Button className="rounded-xl font-black text-[10px] uppercase px-8 h-11 shadow-lg shadow-primary/30 gap-2.5 tracking-widest"
-                                            onClick={() => { setShowDetails(false); setShowPrint(true); }}>
+                                            onClick={() => { setShowDetails(false); openPrintDialog(selectedOrder, "sales"); }}>
                                             <Printer className="h-4 w-4" /> Print Receipt
                                         </Button>
                                         </>
@@ -780,7 +814,8 @@ export default function SalesHistoryPage() {
                 <PrintReceipt
                     order={{ ...selectedOrder, isGiftReceipt: false }}
                     tenders={selectedOrder.tenders || []}
-                    onClose={() => setShowPrint(false)}
+                    isLoading={isLoadingReceipt}
+                    onClose={() => { setShowPrint(false); setIsLoadingReceipt(false); }}
                 />
             )}
 
@@ -789,7 +824,8 @@ export default function SalesHistoryPage() {
                 <PrintReceipt
                     order={{ ...selectedOrder, isGiftReceipt: true }}
                     tenders={selectedOrder.tenders || []}
-                    onClose={() => setShowGiftPrint(false)}
+                    isLoading={isLoadingReceipt}
+                    onClose={() => { setShowGiftPrint(false); setIsLoadingReceipt(false); }}
                 />
             )}
 

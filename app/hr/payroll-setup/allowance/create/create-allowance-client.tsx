@@ -31,8 +31,7 @@ import {
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Search, Plus, Trash2, DollarSign, Percent, Wallet } from "lucide-react";
-import Link from "next/link";
+import { Loader2, Search, Plus, Trash2, DollarSign, Percent, Wallet } from "lucide-react";
 import {
   getEmployeesForDropdown,
   getEmployeeById,
@@ -104,6 +103,7 @@ export function CreateAllowanceClient({
 
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
   const [employeeAllowances, setEmployeeAllowances] = useState<EmployeeAllowanceItem[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Fetch sub-departments when department changes
   useEffect(() => {
@@ -360,6 +360,7 @@ export function CreateAllowanceClient({
     );
 
     setEmployeeAllowances([...employeeAllowances, ...uniqueNewAllowances]);
+    setHasSearched(true);
     toast.success(`Added allowances for ${uniqueNewAllowances.length} employee-month combination(s)`);
   };
 
@@ -440,15 +441,6 @@ export function CreateAllowanceClient({
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
-      <div className="mb-6">
-        <Link href="/hr/payroll-setup/allowance/view" transitionTypes={["nav-back"]}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-        </Link>
-      </div>
-
       <form onSubmit={handleSubmit} className="space-y-6">
         <Card className="border-0 shadow-lg bg-card">
           <CardHeader className="pb-4">
@@ -848,7 +840,7 @@ export function CreateAllowanceClient({
                 <Button
                   type="button"
                   onClick={handleSearch}
-                  disabled={isPending}
+                  disabled={isPending || hasSearched}
                   className="w-full"
                 >
                   <Search className="h-4 w-4 mr-2" />

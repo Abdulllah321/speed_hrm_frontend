@@ -21,6 +21,7 @@ export default function AddSalaryBreakupPage() {
   const [name, setName] = useState("");
   const [percent, setPercent] = useState("");
   const [isTaxable, setIsTaxable] = useState<string>("no");
+  const [isDeductible, setIsDeductible] = useState<string>("no");
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -42,13 +43,15 @@ export default function AddSalaryBreakupPage() {
       const res = await createSalaryBreakup(
         name.trim(), 
         percentage, 
-        isTaxable === "yes"
+        isTaxable === "yes",
+        isDeductible === "yes"
       );
       if (res.status) {
         toast.success("Salary breakup created successfully");
         setName("");
         setPercent("");
         setIsTaxable("no");
+        setIsDeductible("no");
       } else {
         toast.error(res.message || "Failed to create salary breakup");
       }
@@ -59,6 +62,7 @@ export default function AddSalaryBreakupPage() {
     setName("");
     setPercent("");
     setIsTaxable("no");
+    setIsDeductible("no");
   };
 
   return (
@@ -78,7 +82,7 @@ export default function AddSalaryBreakupPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <Label>
                   Name <span className="text-destructive">*</span>
@@ -114,6 +118,24 @@ export default function AddSalaryBreakupPage() {
                 <Select
                   value={isTaxable}
                   onValueChange={setIsTaxable}
+                  disabled={isPending}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="yes">Yes</SelectItem>
+                    <SelectItem value="no">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>
+                  Is Deductible <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={isDeductible}
+                  onValueChange={setIsDeductible}
                   disabled={isPending}
                 >
                   <SelectTrigger className="w-full">

@@ -16,12 +16,16 @@ import {
 import { User as UserIcon, Settings, LogOut, Shield, History, Key, UserPlus, ChevronRight } from "lucide-react";
 import { createNavigationHandler } from "@/lib/navigation";
 import { getAvailableProfilesClient, User as AuthUser } from "@/lib/client-auth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export function HeaderUserMenu() {
   const { user, logout, loading } = useAuth();
   const router = useRouter();
   const [otherProfiles, setOtherProfiles] = useState<AuthUser[]>([]);
+  const [isAddingAccount, setIsAddingAccount] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const addAccountRef = useRef(false);
+  const logoutRef = useRef(false);
 
   useEffect(() => {
     if (user) {
@@ -53,8 +57,29 @@ export function HeaderUserMenu() {
     router.push(`/auth/login?email=${email}`);
   };
 
-  const handleAddAccount = () => {
-    router.push("/auth/login");
+  const handleAddAccount = async () => {
+    if (addAccountRef.current) return;
+    addAccountRef.current = true;
+    setIsAddingAccount(true);
+    try {
+      await logout();
+      router.push("/auth/login");
+    } finally {
+      addAccountRef.current = false;
+      setIsAddingAccount(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (logoutRef.current) return;
+    logoutRef.current = true;
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      logoutRef.current = false;
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -101,9 +126,9 @@ export function HeaderUserMenu() {
 
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={handleAddAccount}>
+          <DropdownMenuItem onClick={handleAddAccount} disabled={isAddingAccount} className={isAddingAccount ? "opacity-50 cursor-not-allowed" : ""}>
             <UserPlus className="mr-2 h-4 w-4" />
-            Add another account
+            {isAddingAccount ? "Signing out..." : "Add another account"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => navigate("/hr/settings/profile")}>
@@ -131,9 +156,9 @@ export function HeaderUserMenu() {
           </>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+        <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} className={`text-destructive focus:text-destructive${isLoggingOut ? " opacity-50 cursor-not-allowed" : ""}`}>
           <LogOut className="mr-2 h-4 w-4" />
-          Logout
+          {isLoggingOut ? "Logging out..." : "Logout"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

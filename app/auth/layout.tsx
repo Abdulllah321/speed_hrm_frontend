@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { AuthTitleUpdater } from "./title-updater";
 
 export default function AuthLayout({
   children,
@@ -7,6 +8,7 @@ export default function AuthLayout({
 }) {
   return (
     <div className="min-h-screen bg-linear-to-br from-background to-secondary/20 flex items-center justify-center p-4 font-geist relative overflow-hidden">
+      <AuthTitleUpdater />
       {/* Shared Background decoration */}
       <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] opacity-50" />

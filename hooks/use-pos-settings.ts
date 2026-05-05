@@ -5,6 +5,10 @@ import { authFetch } from "@/lib/auth";
 
 export interface PosSettings {
     receiptStoreName: string;
+    receiptAddress: string;
+    receiptPhone: string;
+    receiptNTN: string;
+    receiptSTRN: string;
     receiptFooter: string;
     receiptShowTax: boolean;
     receiptAutoPrint: boolean;
@@ -17,6 +21,10 @@ export interface PosSettings {
 
 export const POS_SETTINGS_DEFAULTS: PosSettings = {
     receiptStoreName: "",
+    receiptAddress: "",
+    receiptPhone: "",
+    receiptNTN: "",
+    receiptSTRN: "",
     receiptFooter: "Thank you for your purchase!",
     receiptShowTax: true,
     receiptAutoPrint: false,

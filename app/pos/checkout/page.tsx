@@ -20,8 +20,8 @@ import {
 import {
     ArrowLeft, Loader2, Tag, TicketPercent, Handshake, CheckCircle2,
     XCircle, Search, ShoppingCart, Printer, Trash2, Plus, Percent,
-    Wallet, CreditCard, Banknote, Building2, Ticket,
-    ChevronDown, ChevronUp, BookOpen,PauseCircle,
+    BadgeDollarSign, CreditCard, Banknote, Building2, Ticket,
+    ChevronDown, ChevronUp, BookOpen, PauseCircle, UserRound,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import { cn, getCookie, formatCurrency } from "@/lib/utils";
@@ -78,7 +78,7 @@ const TENDER_OPTIONS = [
 // ─── Customer Selection ──────────────────────────────────────────────────
 function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, onOpenChange: (open: boolean) => void, onSuccess: (customer: Customer) => void }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({ name: "", contactNo: "", address: "" });
+    const [formData, setFormData] = useState({ name: "", contactNo: "", email: "" });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,14 +88,14 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
             // Generate a code if backend requires one and doesn't auto-gen
             const code = `CUST-${Date.now()}`;
             const res = await authFetch(
-                "/sales/customers",
+                "/pos-sales/customers",
                 { method: "POST", body: { ...formData, code } }
             );
             if (res.ok && res.data?.status) {
                 toast.success("Customer added successfully");
                 onSuccess(res.data.data);
                 onOpenChange(false);
-                setFormData({ name: "", contactNo: "", address: "" });
+                setFormData({ name: "", contactNo: "", email: "" });
             } else {
                 toast.error(res.data?.message || "Failed to add customer");
             }
@@ -132,11 +132,12 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: { open: boolean, on
                         />
                     </div>
                     <div className="space-y-2">
-                        <Label>Address</Label>
+                        <Label>Email Address</Label>
                         <Input
-                            placeholder="Optional address details"
-                            value={formData.address}
-                            onChange={e => setFormData(d => ({ ...d, address: e.target.value }))}
+                            type="email"
+                            placeholder="e.g. customer@example.com"
+                            value={formData.email}
+                            onChange={e => setFormData(d => ({ ...d, email: e.target.value }))}
                         />
                     </div>
                     <DialogFooter className="pt-2">
@@ -166,6 +167,45 @@ export default function CheckoutPage() {
     const [alliances, setAlliances] = useState<AllianceConfig[]>([]);
     const [allianceSearch, setAllianceSearch] = useState("");
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+    const { user } = useAuth();
+
+    // ── Cashier state ──────────────────────────────────────────────────
+    const [cashiers, setCashiers] = useState<any[]>([]);
+    const [selectedCashierId, setSelectedCashierId] = useState<string>("");
+    const [isLoadingCashiers, setIsLoadingCashiers] = useState(false);
+
+    // Load selected cashier from session storage
+    useEffect(() => {
+        const saved = sessionStorage.getItem("pos_selected_cashier_id");
+        if (saved) setSelectedCashierId(saved);
+    }, []);
+
+    // Save selected cashier to session storage
+    useEffect(() => {
+        if (selectedCashierId) {
+            sessionStorage.setItem("pos_selected_cashier_id", selectedCashierId);
+        }
+    }, [selectedCashierId]);
+
+    // Fetch cashiers for the current location
+    useEffect(() => {
+        setIsLoadingCashiers(true);
+        authFetch(`/pos-sales/cashiers`)
+            .then(res => {
+                if (res.ok && res.data?.status) {
+                    const list = res.data.data || [];
+                    setCashiers(list);
+                    // Pre-select current user if they are in the list and nothing is saved
+                    if (!sessionStorage.getItem("pos_selected_cashier_id") && user?.id) {
+                        if (list.some((c: any) => c.userId === user.id)) {
+                            setSelectedCashierId(user.id);
+                        }
+                    }
+                }
+            })
+            .catch(() => { })
+            .finally(() => setIsLoadingCashiers(false));
+    }, [user?.id]);
 
     // ── Hold state ──────────────────────────────────────────────────────
     const [showHoldModal, setShowHoldModal] = useState(false);
@@ -210,6 +250,8 @@ export default function CheckoutPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [completedOrder, setCompletedOrder] = useState<any>(null);
     const [isGiftReceipt, setIsGiftReceipt] = useState(false);
+    // When isGiftReceipt is true and sale completes, we show both receipts sequentially
+    const [showGiftReceiptAfterSales, setShowGiftReceiptAfterSales] = useState(false);
 
     // ── Voucher tender state ───────────────────────────────────────────
     const [voucherCode, setVoucherCode] = useState("");
@@ -257,7 +299,7 @@ export default function CheckoutPage() {
     useEffect(() => {
         setIsLoadingCustomers(true);
         const searchParam = customerSearch ? `?search=${encodeURIComponent(customerSearch)}` : '';
-        authFetch(`/sales/customers${searchParam}`)
+        authFetch(`/pos-sales/customers${searchParam}`)
             .then(res => {
                 if (res.ok && res.data?.status) setCustomers(res.data.data || []);
             })
@@ -273,30 +315,23 @@ export default function CheckoutPage() {
     const subtotalAfterItems = subtotal - itemDiscounts;
 
     let orderDiscount = 0;
-    let allianceDiscount = 0;
-    
-    // Calculate alliance discount if selected
-    if (discountMode === "alliance" && selectedAlliance) {
-        allianceDiscount = Math.round(subtotal * (Number(selectedAlliance.discountPercent) / 100));
-    }
-    
-    // Determine which discount to apply based on priority
+    // finalItemDiscounts: item-level discounts that will actually be applied.
+    // When alliance wins the comparison, this is zeroed out so only one discount applies.
     let finalItemDiscounts = itemDiscounts;
-    
-    if (itemDiscounts > 0 && allianceDiscount > 0) {
-        // Both discounts exist - apply the greater one
+
+    if (discountMode === "alliance" && selectedAlliance) {
+        // Alliance discount is calculated on the raw subtotal (before any item discounts)
+        const allianceDiscount = Math.round(subtotal * (Number(selectedAlliance.discountPercent) / 100));
+
+        // Alliance wins when it's >= item discounts (equal → alliance preferred)
         if (allianceDiscount >= itemDiscounts) {
-            // Alliance is greater or equal - use alliance, remove item discounts
             orderDiscount = allianceDiscount;
-            finalItemDiscounts = 0;
+            finalItemDiscounts = 0; // suppress item discounts — alliance is more beneficial
         } else {
-            // Item discounts are greater - keep item discounts, no alliance
+            // Item discounts are strictly greater — keep them, alliance gives nothing extra
             orderDiscount = 0;
-            allianceDiscount = 0;
+            finalItemDiscounts = itemDiscounts;
         }
-    } else if (allianceDiscount > 0) {
-        // Only alliance discount
-        orderDiscount = allianceDiscount;
     } else if (discountMode === "promo" && selectedPromo) {
         // Promo discount
         const scopedSubtotal = promoScopeAll
@@ -495,6 +530,7 @@ export default function CheckoutPage() {
                 customerId: selectedCustomer?.id || null,
                 isGiftReceipt,
                 voucherRedemptions: appliedVouchers.length > 0 ? appliedVouchers : undefined,
+                cashierUserId: selectedCashierId || null,
             };
 
             // If resuming from a hold order, pass holdOrderId to skip double stock deduction
@@ -697,6 +733,41 @@ export default function CheckoutPage() {
                             <span className="font-semibold text-sm">Order Summary</span>
                         </div>
 
+                        {/* Cashier Selection */}
+                        <div className="px-4 py-4 border-b space-y-3 bg-muted/5">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                                <UserRound className="h-3 w-3" /> Cashier / Employee
+                            </Label>
+                            <Select
+                                value={selectedCashierId}
+                                onValueChange={setSelectedCashierId}
+                            >
+                                <SelectTrigger className="w-full bg-muted/20 border-none h-10 px-3 font-medium">
+                                    <SelectValue placeholder={isLoadingCashiers ? "Loading cashiers..." : "Select Cashier"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {isLoadingCashiers ? (
+                                        <div className="p-4 text-center text-xs text-muted-foreground">
+                                            <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1" /> Loading...
+                                        </div>
+                                    ) : cashiers.length === 0 ? (
+                                        <div className="p-4 text-center text-xs text-muted-foreground">
+                                            No cashiers found for this location
+                                        </div>
+                                    ) : (
+                                        cashiers.map(c => (
+                                            <SelectItem key={c.userId} value={c.userId}>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium">{c.name}</span>
+                                                    <span className="text-[10px] opacity-70 font-mono">{c.empCode} · {c.email}</span>
+                                                </div>
+                                            </SelectItem>
+                                        ))
+                                    )}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         {/* Customer Section */}
                         <div className="px-4 py-4 border-b space-y-3">
                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -820,6 +891,24 @@ export default function CheckoutPage() {
                                         {discountMode === "manual" && "Manual Discount"}
                                     </span>
                                     <span className="text-muted-foreground ml-2 font-mono">−{fmtCurrency(orderDiscount)}</span>
+                                    {discountMode === "alliance" && finalItemDiscounts === 0 && itemDiscounts > 0 && (
+                                        <span className="text-xs text-muted-foreground ml-2">(replaces item discounts)</span>
+                                    )}
+                                </div>
+                                <button onClick={clearDiscount} className="text-muted-foreground hover:text-foreground">
+                                    <XCircle className="h-4 w-4" />
+                                </button>
+                            </div>
+                        )}
+                        {/* Info chip when alliance is selected but item discounts are kept (item discounts > alliance) */}
+                        {discountMode === "alliance" && selectedAlliance && orderDiscount === 0 && itemDiscounts > 0 && (
+                            <div className="flex items-center gap-2 rounded-lg border border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20 px-3 py-2">
+                                <XCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                                <div className="flex-1 text-sm">
+                                    <span className="font-medium text-amber-700 dark:text-amber-400">{selectedAlliance.partnerName}</span>
+                                    <span className="text-xs text-muted-foreground ml-2">
+                                        Item discounts ({fmtCurrency(itemDiscounts)}) are more beneficial — alliance not applied
+                                    </span>
                                 </div>
                                 <button onClick={clearDiscount} className="text-muted-foreground hover:text-foreground">
                                     <XCircle className="h-4 w-4" />
@@ -1160,6 +1249,13 @@ export default function CheckoutPage() {
                                     <span className="font-mono">−{fmtCurrency(finalItemDiscounts)}</span>
                                 </div>
                             )}
+                            {/* Show suppressed item discounts when alliance wins */}
+                            {discountMode === "alliance" && finalItemDiscounts === 0 && itemDiscounts > 0 && (
+                                <div className="flex justify-between text-muted-foreground line-through text-xs">
+                                    <span>Item Discounts (overridden)</span>
+                                    <span className="font-mono">−{fmtCurrency(itemDiscounts)}</span>
+                                </div>
+                            )}
                             {orderDiscount > 0 && (
                                 <div className="flex justify-between text-primary">
                                     <span>
@@ -1424,9 +1520,32 @@ export default function CheckoutPage() {
             </div>
 
             {/* Show receipt dialog upon completion */}
-            {completedOrder && (
+            {completedOrder && !showGiftReceiptAfterSales && (
                 <PrintReceipt
-                    order={completedOrder}
+                    order={{ ...completedOrder, isGiftReceipt: false }}
+                    cartItems={cartItems}
+                    tenders={tenders}
+                    discountMode={discountMode}
+                    selectedPromo={selectedPromo}
+                    appliedCoupon={appliedCoupon}
+                    selectedAlliance={selectedAlliance}
+                    settings={settings}
+                    onClose={() => {
+                        if (isGiftReceipt) {
+                            // After closing the sales receipt, show the gift receipt
+                            setShowGiftReceiptAfterSales(true);
+                        } else {
+                            setCompletedOrder(null);
+                            router.push("/pos/new-sale");
+                        }
+                    }}
+                />
+            )}
+
+            {/* Gift receipt — shown after sales receipt when isGiftReceipt is true */}
+            {completedOrder && showGiftReceiptAfterSales && (
+                <PrintReceipt
+                    order={{ ...completedOrder, isGiftReceipt: true }}
                     cartItems={cartItems}
                     tenders={tenders}
                     discountMode={discountMode}
@@ -1436,6 +1555,7 @@ export default function CheckoutPage() {
                     settings={settings}
                     onClose={() => {
                         setCompletedOrder(null);
+                        setShowGiftReceiptAfterSales(false);
                         router.push("/pos/new-sale");
                     }}
                 />

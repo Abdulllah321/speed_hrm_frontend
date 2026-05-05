@@ -125,14 +125,6 @@ export function SilhouetteList({
                         </div>
                     )}
                 </div>
-                {canCreate && (
-                    <Link href="/master/silhouette/add" transitionTypes={["nav-forward"]}>
-                        <Button size="sm" className="h-8">
-                            <Plus className="mr-2 h-4 w-4" />
-                            Add Silhouette
-                        </Button>
-                    </Link>
-                )}
             </div>
 
             <DataTable<SilhouetteRow>

@@ -274,23 +274,35 @@ export default function AttendanceManagePage() {
   // Check for leave days in date range
   const checkForLeaveDays = async (fromDate: Date, toDate: Date, employeeId: string): Promise<Array<{ date: Date; type: string; name?: string }>> => {
     const dates: Array<{ date: Date; type: string; name?: string }> = [];
-    const allDays = eachDayOfInterval({ start: fromDate, end: toDate });
+    
+    // Normalize dates to avoid timezone issues
+    const normalizedFromDate = new Date(fromDate);
+    normalizedFromDate.setHours(0, 0, 0, 0);
+    
+    const normalizedToDate = new Date(toDate);
+    normalizedToDate.setHours(23, 59, 59, 999);
+    
+    const allDays = eachDayOfInterval({ start: normalizedFromDate, end: normalizedToDate });
 
     // Get leave requests for the employee
     const leaveRequestsResult = await getLeaveRequests({
       employeeId,
-      fromDate: format(fromDate, 'yyyy-MM-dd'),
-      toDate: format(toDate, 'yyyy-MM-dd'),
+      fromDate: format(normalizedFromDate, 'yyyy-MM-dd'),
+      toDate: format(normalizedToDate, 'yyyy-MM-dd'),
       status: 'approved', // Only check approved leaves
     });
     const leaveRequests = leaveRequestsResult.status && leaveRequestsResult.data ? leaveRequestsResult.data : [];
 
     for (const day of allDays) {
-      // Check if leave day
+      // Check if leave day using simple date comparison
+      const dayStr = format(day, 'yyyy-MM-dd');
+      
       const leaveRequest = leaveRequests.find(lr => {
-        const leaveFrom = parseISO(lr.fromDate);
-        const leaveTo = parseISO(lr.toDate);
-        return isWithinInterval(day, { start: leaveFrom, end: leaveTo });
+        const leaveFromStr = format(parseISO(lr.fromDate), 'yyyy-MM-dd');
+        const leaveToStr = format(parseISO(lr.toDate), 'yyyy-MM-dd');
+        
+        // Check if day is within leave range (inclusive)
+        return dayStr >= leaveFromStr && dayStr <= leaveToStr;
       });
 
       if (leaveRequest) {
@@ -438,6 +450,19 @@ export default function AttendanceManagePage() {
       return;
     }
 
+    // Add joining date client guard (Timezone-ignorant)
+    if (selectedEmployee?.joiningDate) {
+      const joiningDateStr = selectedEmployee.joiningDate.split('T')[0];
+      const fromDateStr = format(formData.dateRange.from, 'yyyy-MM-dd');
+      
+      if (fromDateStr < joiningDateStr) {
+        toast.error('Attendance cannot be marked before employee joining date.', {
+          description: `${selectedEmployee.employeeName} joined on ${format(new Date(joiningDateStr), 'dd MMM yyyy')}`,
+        });
+        return;
+      }
+    }
+
     const fromDate = formData.dateRange.from;
     const toDate = formData.dateRange.to;
     const isSingleDate = format(fromDate, 'yyyy-MM-dd') === format(toDate, 'yyyy-MM-dd');
@@ -563,66 +588,80 @@ export default function AttendanceManagePage() {
                 </div>
               </div>
 
-              {/* Show selected employee info and working hours policy */}
-              {selectedEmployee && (
-                <div className="mt-4 p-3 bg-muted rounded-lg space-y-2">
-                  <div className="flex items-center gap-4 text-sm">
-                    {selectedEmployee.department && (
-                      <div>
-                        <span className="text-muted-foreground">Department: </span>
-                        <span className="font-medium">{selectedEmployee.department.name}</span>
-                      </div>
-                    )}
-                    {selectedEmployee.subDepartment && (
-                      <div>
-                        <span className="text-muted-foreground">Sub Department: </span>
-                        <span className="font-medium">{selectedEmployee.subDepartment.name}</span>
-                      </div>
-                    )}
-                  </div>
-                  {selectedEmployee.workingHoursPolicy && (
-                    <>
-                      <p className="text-sm font-medium">
-                        Working Hours Policy: {selectedEmployee.workingHoursPolicy.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Default: {selectedEmployee.workingHoursPolicy.startWorkingHours} - {selectedEmployee.workingHoursPolicy.endWorkingHours}
-                      </p>
-                    </>
+            {/* Show selected employee info and working hours policy */}
+            {selectedEmployee && (
+              <div className="mt-4 p-3 bg-muted rounded-lg space-y-2">
+                <div className="flex items-center gap-4 text-sm">
+                  {selectedEmployee.department && (
+                    <div>
+                      <span className="text-muted-foreground">Department: </span>
+                      <span className="font-medium">{selectedEmployee.department.name}</span>
+                    </div>
+                  )}
+                  {selectedEmployee.subDepartment && (
+                    <div>
+                      <span className="text-muted-foreground">Sub Department: </span>
+                      <span className="font-medium">{selectedEmployee.subDepartment.name}</span>
+                    </div>
                   )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Date Range */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Date Range</CardTitle>
-              <CardDescription>
-                Select the date or date range for attendance
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <Label>Date Range <span className="text-red-500">*</span></Label>
-                <DateRangePicker
-                  initialDateFrom={formData.dateRange.from}
-                  initialDateTo={formData.dateRange.to}
-                  showCompare={false}
-                  onUpdate={(values) => {
-                    if (values.range) {
-                      setFormData({
-                        ...formData,
-                        dateRange: values.range,
-                      });
-                    }
-                  }}
-                  dateRange={undefined}
-                />
+                {selectedEmployee.workingHoursPolicy && (
+                  <>
+                    <p className="text-sm font-medium">
+                      Working Hours Policy: {selectedEmployee.workingHoursPolicy.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Default: {selectedEmployee.workingHoursPolicy.startWorkingHours} - {selectedEmployee.workingHoursPolicy.endWorkingHours}
+                    </p>
+                  </>
+                )}
+                {selectedEmployee.joiningDate && (
+                  <div className="mt-1 text-xs text-blue-600 font-medium flex items-center gap-1">
+                    📅 Employee joined on{' '}
+                    <span className="font-semibold">
+                      {format(new Date(selectedEmployee.joiningDate.split('T')[0]), 'dd MMM yyyy')}
+                    </span>
+                    {' '}— attendance cannot be marked before this date.
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Date Range */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Date Range</CardTitle>
+            <CardDescription>
+              Select the date or date range for attendance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Date Range <span className="text-red-500">*</span></Label>
+              <DateRangePicker
+                initialDateFrom={formData.dateRange.from}
+                initialDateTo={formData.dateRange.to}
+                showCompare={false}
+                minDate={
+                  selectedEmployee?.joiningDate
+                    ? new Date(selectedEmployee.joiningDate.split('T')[0])
+                    : undefined
+                }
+                onUpdate={(values) => {
+                  if (values.range) {
+                    setFormData({
+                      ...formData,
+                      dateRange: values.range,
+                    });
+                  }
+                }}
+                dateRange={undefined}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
           {/* Attendance Details */}
           <Card>

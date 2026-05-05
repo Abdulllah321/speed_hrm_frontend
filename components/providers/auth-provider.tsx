@@ -65,6 +65,11 @@ export interface User {
       id: string;
       code: string;
       name: string;
+      phone?: string;
+      address?: string;
+      fbrNtn?: string;
+      fbrSellerName?: string;
+      fbrEnabled?: boolean;
     } | null;
   };
 }

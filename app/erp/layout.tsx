@@ -1,19 +1,19 @@
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-import { DashboardLayout } from "@/components/layouts/dashboard-layout";
+import ErpLayoutClient from "./layout-client";
 import { PageTransition } from "@/components/layouts/page-transition";
 
-export default function FinanceLayout({
+export default function ErpLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
     return (
-        <DashboardLayout>
+        <ErpLayoutClient>
             <PageTransition>
                 {children}
             </PageTransition>
-        </DashboardLayout>
+        </ErpLayoutClient>
     );
 }

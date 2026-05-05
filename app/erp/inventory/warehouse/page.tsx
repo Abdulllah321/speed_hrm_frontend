@@ -188,8 +188,8 @@ export default function InventoryDashboardPage() {
                 </Card>
 
                 {/* Low Stock Alerts */}
-                <Card className="col-span-3 shadow-sm border-red-100">
-                    <CardHeader className="bg-red-50/50 rounded-t-lg border-b border-red-100 pb-4">
+                <Card className="col-span-3 shadow-sm border-red-100 pb-6 pt-0">
+                    <CardHeader className="bg-red-50/50 rounded-t-lg border-b border-red-100 dark:border-red-900 dark:bg-red-500/10 py-4">
                         <CardTitle className="flex items-center gap-2 text-red-800">
                             <AlertTriangle className="h-5 w-5" />
                             Needs Attention

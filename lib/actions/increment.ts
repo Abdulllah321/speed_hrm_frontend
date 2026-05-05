@@ -20,7 +20,6 @@ export interface Increment {
   salary: number;
   promotionDate: string;
   currentMonth: string;
-  monthsOfIncrement: number;
   notes?: string;
   status?: string;
   createdById?: string;
@@ -39,7 +38,6 @@ export interface CreateIncrementData {
   salary: number;
   promotionDate: string;
   currentMonth: string;
-  monthsOfIncrement: number;
   notes?: string;
 }
 
@@ -53,7 +51,6 @@ export interface UpdateIncrementData {
   salary?: number;
   promotionDate?: string;
   currentMonth?: string;
-  monthsOfIncrement?: number;
   notes?: string;
 }
 
@@ -159,5 +156,25 @@ export async function deleteIncrement(id: string): Promise<{ status: boolean; me
   } catch (error) {
     console.error('Error deleting increment:', error);
     return { status: false, message: error instanceof Error ? error.message : 'Failed to delete increment' };
+  }
+}
+
+// Get latest salary for an employee (from most recent increment or joining salary)
+export async function getLatestEmployeeSalary(employeeId: string, joiningOrBaseSalary: number): Promise<number> {
+  try {
+    const result = await getIncrements({ employeeId });
+    if (result.status && result.data && result.data.length > 0) {
+      // Sort by promotion date descending to get the latest increment
+      const sortedIncrements = result.data.sort((a, b) => 
+        new Date(b.promotionDate).getTime() - new Date(a.promotionDate).getTime()
+      );
+      return sortedIncrements[0].salary;
+    }
+    // If no increments found, return the joining/base salary
+    return joiningOrBaseSalary;
+  } catch (error) {
+    console.error('Error fetching latest salary:', error);
+    // Fallback to joining salary on error
+    return joiningOrBaseSalary;
   }
 }

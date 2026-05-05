@@ -50,7 +50,9 @@ export default function OrderDetailsPage() {
     const [returnDetails, setReturnDetails] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showPrint, setShowPrint] = useState(false);
+    const [showGiftPrint, setShowGiftPrint] = useState(false);
     const [showReturnPrint, setShowReturnPrint] = useState(false);
+    const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
 
     useEffect(() => {
         if (orderId) fetchOrder();
@@ -81,13 +83,23 @@ export default function OrderDetailsPage() {
     };
 
     const handlePrintReturn = async () => {
+        // Open dialog immediately with skeleton
         setReturnDetails(null);
-        const res = await authFetch(`/pos-sales/orders/${orderId}/return-details`);
-        if (res.ok && res.data?.status) {
-            setReturnDetails(res.data.data);
-            setShowReturnPrint(true);
-        } else {
+        setIsLoadingReceipt(true);
+        setShowReturnPrint(true);
+        try {
+            const res = await authFetch(`/pos-sales/orders/${orderId}/return-details`);
+            if (res.ok && res.data?.status) {
+                setReturnDetails(res.data.data);
+            } else {
+                toast.error("Failed to load return details");
+                setShowReturnPrint(false);
+            }
+        } catch {
             toast.error("Failed to load return details");
+            setShowReturnPrint(false);
+        } finally {
+            setIsLoadingReceipt(false);
         }
     };
 
@@ -112,7 +124,7 @@ export default function OrderDetailsPage() {
     return (
         <div className="flex flex-col h-screen bg-background">
             {/* Header */}
-            <div className="border-b bg-card px-6 py-4 flex items-center justify-between">
+            <div className="bg-card px-6 py-4 flex items-center justify-between rounded-lg">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" onClick={() => {
                         startTransition(() => {
@@ -153,6 +165,12 @@ export default function OrderDetailsPage() {
                     {(order.status === 'returned' || order.status === 'partially_returned') && (
                         <Button variant="outline" onClick={handlePrintReturn} className="gap-2">
                             <RotateCcw className="h-4 w-4" /> Return Slip
+                        </Button>
+                    )}
+                    {!isHold && order.isGiftReceipt && (
+                        <Button variant="outline" onClick={() => setShowGiftPrint(true)}
+                            className="gap-2 border-pink-300 text-pink-600 hover:bg-pink-50 hover:text-pink-700">
+                            <Printer className="h-4 w-4" /> Gift Receipt
                         </Button>
                     )}
                     {!isHold && (
@@ -349,17 +367,25 @@ export default function OrderDetailsPage() {
             {/* Print Modals */}
             {showPrint && order && (
                 <PrintReceipt
-                    order={order}
+                    order={{ ...order, isGiftReceipt: false }}
                     tenders={order.tenders || []}
                     onClose={() => setShowPrint(false)}
                 />
             )}
 
-            {showReturnPrint && order && returnDetails && (
+            {showGiftPrint && order && (
+                <PrintReceipt
+                    order={{ ...order, isGiftReceipt: true }}
+                    tenders={order.tenders || []}
+                    onClose={() => setShowGiftPrint(false)}
+                />
+            )}
+
+            {showReturnPrint && order && (
                 <PrintReturnReceipt
                     returnRef={order.orderNumber}
                     originalOrders={[{ orderNumber: order.orderNumber, grandTotal: Number(order.grandTotal) }]}
-                    returnedLines={returnDetails.items.map((item: any) => ({
+                    returnedLines={(returnDetails?.items ?? []).map((item: any) => ({
                         name: item.item?.description || "Unknown Item",
                         sku: item.item?.sku || "-",
                         brand: item.item?.brand?.name,
@@ -377,12 +403,13 @@ export default function OrderDetailsPage() {
                         originalPaidPerUnit: Number(item.originalPaidPerUnit || item.unitPrice),
                         couponDeduction: Number(item.couponDeduction || 0),
                     }))}
-                    refundTotal={returnDetails.items.reduce((sum: number, item: any) => sum + Number(item.refundAmount || 0), 0)}
-                    notes={returnDetails.reason}
-                    discountNotes={returnDetails.discountNotes}
-                    returnedAt={returnDetails.returnedAt}
+                    refundTotal={(returnDetails?.items ?? []).reduce((sum: number, item: any) => sum + Number(item.refundAmount || 0), 0)}
+                    notes={returnDetails?.reason}
+                    discountNotes={returnDetails?.discountNotes}
+                    returnedAt={returnDetails?.returnedAt}
                     paymentMethod={order.paymentMethod}
-                    onClose={() => setShowReturnPrint(false)}
+                    isLoading={isLoadingReceipt}
+                    onClose={() => { setShowReturnPrint(false); setIsLoadingReceipt(false); }}
                 />
             )}
         </div>
