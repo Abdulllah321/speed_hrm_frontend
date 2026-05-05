@@ -37,6 +37,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { EllipsisIcon, Loader2, Pencil, Trash2, Key } from "lucide-react";
 import { useState, useTransition } from "react";
@@ -222,17 +223,13 @@ function RowActions({ row, companies }: RowActionsProps) {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="edit-pin">Terminal PIN (Optional)</Label>
-                                <div className="relative">
-                                    <Input
-                                        id="edit-pin"
-                                        name="terminalPin"
-                                        placeholder="Leave empty to keep current"
-                                        type="password"
-                                        maxLength={6}
-                                        disabled={isPending}
-                                    />
-                                    <Key className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground opacity-50" />
-                                </div>
+                                <PasswordInput
+                                    id="edit-pin"
+                                    name="terminalPin"
+                                    placeholder="Leave empty to keep current"
+                                    maxLength={6}
+                                    disabled={isPending}
+                                />
                                 <p className="text-[10px] text-muted-foreground">4-6 digits numeric PIN for terminal login.</p>
                             </div>
                             <div className="space-y-2">

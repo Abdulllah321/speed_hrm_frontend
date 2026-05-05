@@ -7,7 +7,7 @@ import { EmployeeUserList } from "./employee-user-list";
 export default async function UserAccountPage() {
   const [{ data: users }, { data: employees }, { data: roles }, user] = await Promise.all([
     getUsers(),
-    getEmployees({ limit: 1000 }),
+    getEmployees({ limit: 10000 }),
     getRoles(),
     getCurrentUser()
   ]);

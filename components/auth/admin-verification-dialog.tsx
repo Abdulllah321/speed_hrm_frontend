@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
@@ -68,9 +69,8 @@ export function AdminVerificationDialog({
                 <div className="space-y-4 py-4">
                     <div className="space-y-2">
                         <Label htmlFor="admin-password">Your Password</Label>
-                        <Input
+                        <PasswordInput
                             id="admin-password"
-                            type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"

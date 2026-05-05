@@ -16,6 +16,7 @@ export default function ProfilePage() {
     const { user, refreshUser } = useAuth();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
+        id: "",
         firstName: "",
         lastName: "",
         phone: "",
@@ -25,6 +26,7 @@ export default function ProfilePage() {
     useEffect(() => {
         if (user) {
             setFormData({
+                id: String(user.id) || "",
                 firstName: user.firstName || "",
                 lastName: user.lastName || "",
                 phone: user.phone || "",
