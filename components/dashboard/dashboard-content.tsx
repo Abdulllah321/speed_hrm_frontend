@@ -44,6 +44,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
+import Link from "next/link";
 
 export function DashboardContent() {
     const { currentCompany, loading: companyLoading } = useCompany();
@@ -230,9 +231,9 @@ export function DashboardContent() {
                                     <FileText className="h-5 w-5 text-primary" />
                                     <CardTitle className="text-lg font-bold">Recent Leave Requests</CardTitle>
                                 </div>
-                                <button className="text-xs font-bold text-primary hover:underline group flex items-center gap-1">
+                                <Link href="/hr/leaves/requests" className="text-xs font-bold text-primary hover:underline group flex items-center gap-1">
                                     View All Requests <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                                </button>
+                                </Link>
                             </div>
                         </CardHeader>
                         <CardContent className="p-0">

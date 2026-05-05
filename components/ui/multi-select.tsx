@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { X, ChevronDown, Check, Users } from "lucide-react";
+import { X, ChevronDown, Check, Users, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -229,12 +229,30 @@ export function MultiSelect({
             ))}
 
             {hasMore && (
-              <div ref={loadMoreRef} className="flex justify-center p-3">
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                ) : (
-                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Load More</span>
-                )}
+              <div className="p-2 border-t mt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full h-8 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground hover:text-foreground"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isLoading && onLoadMore) {
+                      onLoadMore();
+                    }
+                  }}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Load More"
+                  )}
+                </Button>
+                {/* Keep the observer ref for automatic loading on scroll */}
+                <div ref={loadMoreRef} className="h-1" />
               </div>
             )}
 

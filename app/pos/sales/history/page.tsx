@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PermissionGuard } from "@/components/auth/permission-guard";
-
+import { formatCurrency } from "@/lib/utils";
 
 
 function isSameDay(date: Date) {

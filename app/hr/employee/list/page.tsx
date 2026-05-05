@@ -88,7 +88,7 @@ export default function EmployeeListPage() {
       if (desigRes.status) setDesignations(desigRes.data ?? []);
     } catch (error) {
       console.error("Error fetching employees:", error);
-      toast.error("Failed to fetch employee records");
+      // toast.error("Failed to fetch employee records");
     } finally {
       setLoading(false);
     }

@@ -20,7 +20,7 @@ import {
 import {
     ArrowLeft, Loader2, Tag, TicketPercent, Handshake, CheckCircle2,
     XCircle, Search, ShoppingCart, Printer, Trash2, Plus, Percent,
-    BadgeDollarSign, CreditCard, Banknote, Building2, Ticket,
+    BadgeDollarSign, CreditCard, Banknote, Wallet, Building2, Ticket,
     ChevronDown, ChevronUp, BookOpen, PauseCircle, UserRound,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";

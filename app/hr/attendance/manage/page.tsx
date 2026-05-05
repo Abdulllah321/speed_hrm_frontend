@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Upload, Download } from "lucide-react";
 import Link from "next/link";
@@ -65,6 +67,13 @@ export default function AttendanceManagePage() {
   const [leaveConfirmDialog, setLeaveConfirmDialog] = useState(false);
   const [leaveDates, setLeaveDates] = useState<Array<{ date: Date; type: string; name?: string }>>([]);
   const [pendingSubmit, setPendingSubmit] = useState<((includeLeaves: boolean) => void) | null>(null);
+  const [reportDialog, setReportDialog] = useState<{
+    isOpen: boolean;
+    successCount: number;
+    errorCount: number;
+    totalEmployees: number;
+    errors: Array<{ employee: string; date?: string; error: string }>;
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     employeeIds: [] as string[],
@@ -342,7 +351,7 @@ export default function AttendanceManagePage() {
 
       let successCount = 0;
       let errorCount = 0;
-      const errors: Array<{ employee: string; error: string }> = [];
+      const errors: Array<{ employee: string; date?: string; error: string }> = [];
 
       for (const employee of employeesToProcess) {
         try {
@@ -369,7 +378,11 @@ export default function AttendanceManagePage() {
               successCount++;
             } else {
               errorCount++;
-              errors.push({ employee: employee.employeeName, error: result.message || "Unknown error" });
+              errors.push({ 
+                employee: employee.employeeName, 
+                date: format(fromDate, 'MMM dd, yyyy'),
+                error: result.message || "Unknown error" 
+              });
             }
           } else {
             const result = await createAttendanceForDateRange({
@@ -386,10 +399,22 @@ export default function AttendanceManagePage() {
 
             if (result.status) {
               successCount += result.data?.length || 0;
-              errorCount += result.errors?.length || 0;
+              if (result.errors && result.errors.length > 0) {
+                errorCount += result.errors.length;
+                result.errors.forEach(err => {
+                  errors.push({
+                    employee: employee.employeeName,
+                    date: format(parseISO(err.date), 'MMM dd, yyyy'),
+                    error: err.error
+                  });
+                });
+              }
             } else {
               errorCount++;
-              errors.push({ employee: employee.employeeName, error: result.message || "Unknown error" });
+              errors.push({ 
+                employee: employee.employeeName, 
+                error: result.message || "Unknown error" 
+              });
             }
           }
         } catch (error) {
@@ -398,43 +423,35 @@ export default function AttendanceManagePage() {
         }
       }
 
-      if (errorCount > 0) {
-        toast.warning(
-          `${successCount} records created, ${errorCount} failed`,
-          {
-            description: `Processed ${employeesToProcess.length} employees. Check console for details.`,
-            duration: 6000,
-          }
-        );
-        console.error("Failed records:", errors);
-      } else {
-        toast.success(
-          `${successCount} attendance records created successfully!`,
-          {
-            description: `Processed ${employeesToProcess.length} employees`,
-            duration: 5000,
-          }
-        );
-      }
-
-      // Reset form
-      setFormData({
-        employeeIds: [],
-        employeeName: "",
-        departmentId: "",
-        subDepartmentId: "",
-        dateRange: {
-          from: new Date(),
-          to: new Date(),
-        } as DateRange,
-        checkIn: "",
-        checkOut: "",
-        status: "present",
-        isRemote: false,
-        location: "",
-        notes: "",
+      // Show report dialog instead of toast if there are any results
+      setReportDialog({
+        isOpen: true,
+        successCount,
+        errorCount,
+        totalEmployees: employeesToProcess.length,
+        errors,
       });
-      setSelectedEmployee(null);
+
+      // Reset form on success (if any success)
+      if (successCount > 0) {
+        setFormData({
+          employeeIds: [],
+          employeeName: "",
+          departmentId: "",
+          subDepartmentId: "",
+          dateRange: {
+            from: new Date(),
+            to: new Date(),
+          } as DateRange,
+          checkIn: "",
+          checkOut: "",
+          status: "present",
+          isRemote: false,
+          location: "",
+          notes: "",
+        });
+        setSelectedEmployee(null);
+      }
     } catch (error) {
       console.error("Error:", error);
       toast.error("Failed to create attendance record");
@@ -883,6 +900,94 @@ export default function AttendanceManagePage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Attendance Creation Report Dialog */}
+        <Dialog open={!!reportDialog?.isOpen} onOpenChange={(open) => !open && setReportDialog(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl">
+                Attendance Processing Report
+              </DialogTitle>
+              <DialogDescription>
+                Summary of attendance records processed for {reportDialog?.totalEmployees} employee(s).
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-6 py-4">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-green-50 border border-green-100 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-green-600">{reportDialog?.successCount}</span>
+                  <span className="text-sm font-medium text-green-700">Records Created</span>
+                </div>
+                <div className={cn(
+                  "p-4 rounded-xl flex flex-col items-center justify-center border",
+                  reportDialog?.errorCount === 0 
+                    ? "bg-gray-50 border-gray-100" 
+                    : "bg-red-50 border-red-100"
+                )}>
+                  <span className={cn(
+                    "text-2xl font-bold",
+                    reportDialog?.errorCount === 0 ? "text-gray-600" : "text-red-600"
+                  )}>{reportDialog?.errorCount}</span>
+                  <span className={cn(
+                    "text-sm font-medium",
+                    reportDialog?.errorCount === 0 ? "text-gray-700" : "text-red-700"
+                  )}>Records Failed</span>
+                </div>
+              </div>
+
+              {/* Error Details */}
+              {reportDialog && reportDialog.errors.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    Failure Details
+                    <Badge variant="destructive" className="rounded-full px-2 py-0 h-5">
+                      {reportDialog.errors.length}
+                    </Badge>
+                  </h4>
+                  <ScrollArea className="h-[300px] rounded-lg border bg-muted/30">
+                    <div className="p-4 space-y-3">
+                      {reportDialog.errors.map((err, idx) => (
+                        <div key={idx} className="p-3 rounded-lg bg-white border border-red-100 shadow-sm space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-sm">{err.employee}</span>
+                            {err.date && (
+                              <span className="text-[10px] uppercase font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                {err.date}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-red-600 leading-relaxed font-medium">
+                            {err.error}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              )}
+
+              {reportDialog && reportDialog.errorCount === 0 && (
+                <div className="flex flex-col items-center justify-center py-6 text-center space-y-2">
+                  <div className="h-12 w-12 rounded-full bg-green-100 flex items-center justify-center mb-2">
+                    <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <h4 className="font-bold text-gray-900">Success!</h4>
+                  <p className="text-sm text-gray-500">All attendance records were created successfully.</p>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button onClick={() => setReportDialog(null)} className="w-full sm:w-auto">
+                Close Report
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DirectionalTransition>
   );
