@@ -202,7 +202,7 @@ export function GeneratePayrollClient({
             : (row.basicSalary || 0);
         row.grossSalary = salaryBreakupTotal + row.totalAllowances + calculatedOvertimeAmount + calculatedBonusAmount;
 
-        const totalDed = row.totalDeductions + row.taxDeduction + row.attendanceDeduction + row.loanDeduction + row.advanceSalaryDeduction + row.eobiDeduction + row.providentFundDeduction;
+        const totalDed = row.totalDeductions + row.taxDeduction + row.attendanceDeduction + row.loanDeduction + row.advanceSalaryDeduction + row.providentFundDeduction;
         row.netSalary = row.grossSalary - totalDed;
 
         setPreviewData(updatedData);
@@ -229,7 +229,6 @@ export function GeneratePayrollClient({
                 row.taxDeduction + 
                 row.loanDeduction + 
                 row.advanceSalaryDeduction + 
-                row.eobiDeduction + 
                 row.providentFundDeduction;
             
             row.netSalary = row.grossSalary - totalDed;
@@ -432,7 +431,6 @@ export function GeneratePayrollClient({
                                         <TableHead>Salary/Allowances</TableHead>
                                         <TableHead>Tax</TableHead>
                                         <TableHead>Deductions</TableHead>
-                                        <TableHead>Social Security</TableHead>
                                         <TableHead>Net Salary</TableHead>
                                         <TableHead>Account No</TableHead>
                                         <TableHead>Payment Mode</TableHead>
@@ -589,10 +587,6 @@ export function GeneratePayrollClient({
                                                                 <span className="text-right">{Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString()}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center gap-2">
-                                                                <span className="font-bold shrink-0">EOBI:</span>
-                                                                <span className="text-right">{Math.round(Number(row.eobiDeduction || 0)).toLocaleString()}</span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center gap-2">
                                                                 <span className="font-bold shrink-0">Loan:</span>
                                                                 <span className="text-right">{Math.round(Number(row.loanDeduction || 0)).toLocaleString()}</span>
                                                             </div>
@@ -663,25 +657,12 @@ export function GeneratePayrollClient({
                                                                         Number(row.attendanceDeduction || 0) +
                                                                         Number(row.loanDeduction || 0) +
                                                                         Number(row.advanceSalaryDeduction || 0) +
-                                                                        Number(row.eobiDeduction || 0) +
                                                                         Number(row.providentFundDeduction || 0) +
                                                                         Number(row.taxDeduction || 0) +
                                                                         deductionBreakupTotal
                                                                     ).toLocaleString()}
                                                                 </span>
                                                             </div>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <div className="text-[10px] min-w-[120px]">
-                                                            {row.socialSecurityContributionAmount > 0 ? (
-                                                                <div className="flex justify-between items-center gap-2">
-                                                                    <span className="font-bold shrink-0">Contribution:</span>
-                                                                    <span className="text-right">{Math.round(Number(row.socialSecurityContributionAmount || 0)).toLocaleString()}</span>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-muted-foreground">-</span>
-                                                            )}
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="font-bold text-green-600">

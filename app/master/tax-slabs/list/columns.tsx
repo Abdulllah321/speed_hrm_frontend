@@ -59,6 +59,7 @@ export const columns: ColumnDef<TaxSlabRow>[] = [
   { header: "Name", accessorKey: "name", size: 200, enableSorting: true, cell: ({ row }) => <HighlightText text={row.original.name} /> },
   { header: "Min Amount", accessorKey: "minAmount", size: 120, enableSorting: true, cell: ({ row }) => row.original.minAmount.toLocaleString() },
   { header: "Max Amount", accessorKey: "maxAmount", size: 120, enableSorting: true, cell: ({ row }) => row.original.maxAmount.toLocaleString() },
+  { header: "Fixed Amount", accessorKey: "fixedAmount", size: 120, enableSorting: true, cell: ({ row }) => row.original.fixedAmount?.toLocaleString() || "0" },
   { header: "Rate (%)", accessorKey: "rate", size: 100, enableSorting: true, cell: ({ row }) => `${row.original.rate}%` },
   { header: "Created By", accessorKey: "createdBy", size: 120, enableSorting: true, cell: ({ row }) => row.original.createdBy || "—" },
   { header: "Created At", accessorKey: "createdAt", size: 120, cell: ({ row }) => new Date(row.original.createdAt).toLocaleDateString(), enableSorting: true },
@@ -120,7 +121,10 @@ function RowActions({ row }: { row: Row<TaxSlabRow> }) {
                 <div className="space-y-2"><Label>Min Amount</Label><Input name="minAmount" type="number" defaultValue={ts.minAmount} disabled={isPending} required /></div>
                 <div className="space-y-2"><Label>Max Amount</Label><Input name="maxAmount" type="number" defaultValue={ts.maxAmount} disabled={isPending} required /></div>
               </div>
-              <div className="space-y-2"><Label>Rate (%)</Label><Input name="rate" type="number" step="0.01" defaultValue={ts.rate} disabled={isPending} required /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>Fixed Amount</Label><Input name="fixedAmount" type="number" step="0.01" defaultValue={ts.fixedAmount || 0} disabled={isPending} /></div>
+                <div className="space-y-2"><Label>Rate (%)</Label><Input name="rate" type="number" step="0.01" defaultValue={ts.rate} disabled={isPending} required /></div>
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditDialog(false)}>Cancel</Button>

@@ -123,7 +123,6 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                 Number(curr.attendanceDeduction || 0) +
                 Number(curr.loanDeduction || 0) +
                 Number(curr.advanceSalaryDeduction || 0) +
-                Number(curr.eobiDeduction || 0) +
                 Number(curr.providentFundDeduction || 0) +
                 Number(curr.taxDeduction || 0) +
                 deductionBreakupTotal;
@@ -133,9 +132,8 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                 netSalary: acc.netSalary + Number(curr.netSalary || 0),
                 totalDeductions: acc.totalDeductions + rowDeductions,
                 taxDeduction: acc.taxDeduction + Number(curr.taxDeduction || 0),
-                socialSecurityContributionAmount: acc.socialSecurityContributionAmount + Number(curr.socialSecurityContributionAmount || 0),
             };
-        }, { grossSalary: 0, netSalary: 0, totalDeductions: 0, taxDeduction: 0, socialSecurityContributionAmount: 0 });
+        }, { grossSalary: 0, netSalary: 0, totalDeductions: 0, taxDeduction: 0 });
     }, [data]);
 
     const handlePrint = () => {
@@ -189,7 +187,6 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                 <th style="width: 18%">Salary/Allowances</th>
                 <th style="width: 12%">Tax</th>
                 <th style="width: 15%">Deductions</th>
-                <th style="width: 10%">Social Security</th>
                 <th style="width: 8%">Net Salary</th>
                 <th style="width: 10%">Account No</th>
                 <th style="width: 7%">Payment Mode</th>
@@ -204,7 +201,7 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
             const totalGross = Number(row.grossSalary || 0);
             const totalDed = Number(row.attendanceDeduction || 0) +
                 Number(row.loanDeduction || 0) + Number(row.advanceSalaryDeduction || 0) +
-                Number(row.eobiDeduction || 0) + Number(row.providentFundDeduction || 0) +
+                Number(row.providentFundDeduction || 0) +
                 Number(row.taxDeduction || 0) + deductionBreakupTotal;
 
             return `
@@ -236,14 +233,10 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                   <td>
                     <div><b>PF:</b> ${Math.round(Number(row.providentFundDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                     <div><b>Advance:</b> ${Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                    <div><b>EOBI:</b> ${Math.round(Number(row.eobiDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                     <div><b>Loan:</b> ${Math.round(Number(row.loanDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                     ${deductionBreakup.map((d: any) => `<div><b>${d.name}:</b> ${Math.round(Number(d.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>`).join('')}
                     <div><b>Attendance:</b> ${Math.round(Number(row.attendanceDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                     <div class="total-row deduction" style="margin-top: 4px; border-top: 1px solid #999;"><b>Total:</b> ${Math.round(totalDed).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                  </td>
-                  <td>
-                    ${Number(row.socialSecurityContributionAmount || 0) > 0 ? `<div><b>Contribution:</b> ${Math.round(Number(row.socialSecurityContributionAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>` : '<div>-</div>'}
                   </td>
                   <td class="net-salary">${Math.round(Number(row.netSalary || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                   <td>${row.accountNumber || '-'}</td>
@@ -255,7 +248,6 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                 <td><b>${Math.round(totals.grossSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
                 <td><b>${Math.round(totals.taxDeduction).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
                 <td><b>${Math.round(totals.totalDeductions).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
-                <td><b>${Math.round(totals.socialSecurityContributionAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
                 <td class="net-salary"><b>${Math.round(totals.netSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
                 <td colspan="2"></td>
               </tr>
@@ -325,11 +317,9 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                 "Taxable Income",
                 "Tax Deduction",
                 "PF Deduction",
-                "EOBI Deduction",
                 "Loan Deduction",
                 "Advance Salary Deduction",
                 "Attendance Deduction",
-                "Social Security Contribution",
                 "Net Salary",
                 "Bank Name",
                 "Account No",
@@ -379,11 +369,9 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
                     Number(row.taxBreakup?.taxableIncome || 0),
                     Number(row.taxDeduction || 0),
                     Number(row.providentFundDeduction || 0),
-                    Number(row.eobiDeduction || 0),
                     Number(row.loanDeduction || 0),
                     Number(row.advanceSalaryDeduction || 0),
                     Number(row.attendanceDeduction || 0),
-                    Number(row.socialSecurityContributionAmount || 0),
                     Number(row.netSalary || 0),
                     `"${row.bankName || ""}"`,
                     `"${row.accountNumber || ""}"`,

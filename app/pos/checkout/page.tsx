@@ -40,7 +40,7 @@ interface PromoConfig {
 }
 interface AllianceConfig {
     id: string; partnerName: string; code: string;
-    discountPercent: number; description?: string;
+    discountPercent: number; maxDiscount?: number; description?: string;
 }
 interface AppliedCoupon {
     id: string; code: string; discountType: string;
@@ -320,8 +320,13 @@ export default function CheckoutPage() {
     let finalItemDiscounts = itemDiscounts;
 
     if (discountMode === "alliance" && selectedAlliance) {
-        // Alliance discount is calculated on the raw subtotal (before any item discounts)
-        const allianceDiscount = Math.round(subtotal * (Number(selectedAlliance.discountPercent) / 100));
+        // Alliance discount: use maxDiscount as fixed amount if exists, otherwise use percentage
+        let allianceDiscount = 0;
+        if (selectedAlliance.maxDiscount) {
+            allianceDiscount = Number(selectedAlliance.maxDiscount);
+        } else {
+            allianceDiscount = Math.round(subtotal * (Number(selectedAlliance.discountPercent) / 100));
+        }
 
         // Alliance wins when it's >= item discounts (equal → alliance preferred)
         if (allianceDiscount >= itemDiscounts) {
@@ -352,6 +357,10 @@ export default function CheckoutPage() {
     }
 
     const totalDiscount = finalItemDiscounts + orderDiscount;
+
+    // Alliance distribution for display
+    const allianceDiscPerItem = (discountMode === "alliance" && orderDiscount > 0 && cartItems.length > 0) ? Math.floor(orderDiscount / cartItems.length) : 0;
+    const allianceRemainder = (discountMode === "alliance" && orderDiscount > 0 && cartItems.length > 0) ? (orderDiscount - (allianceDiscPerItem * cartItems.length)) : 0;
     const grandTotal = Math.max(0, subtotal - totalDiscount + itemTax);
     const totalPaid = tenders.reduce((a, t) => a + t.amount, 0);
     const balanceDue = Math.max(0, grandTotal - totalPaid);
@@ -848,30 +857,47 @@ export default function CheckoutPage() {
 
                         <ScrollArea className="flex-1">
                             <div className="divide-y">
-                                {cartItems.map((item) => (
-                                    <div key={item.id} className="flex items-start gap-3 px-4 py-3">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-sm truncate">{item.name}</p>
-                                            <p className="text-xs text-muted-foreground">{item.sku} · {item.brand}</p>
-                                        </div>
-                                        <div className="text-right text-sm shrink-0 space-y-0.5">
-                                            <p className="font-mono text-muted-foreground text-xs">
-                                                {item.quantity} × {fmtCurrency(item.price)}
-                                            </p>
-                                            {item.discountPercent > 0 && (
-                                                <p className="text-xs text-destructive font-mono">
-                                                    Disc {item.discountPercent}% −{fmtCurrency(item.discountAmount)}
+                                {cartItems.map((item, idx) => {
+                                    const isAllianceApplied = discountMode === "alliance" && orderDiscount > 0;
+                                    const allianceShare = isAllianceApplied ? (allianceDiscPerItem + (idx < allianceRemainder ? 1 : 0)) : 0;
+                                    
+                                    return (
+                                        <div key={item.id} className="flex items-start gap-3 px-4 py-3">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm truncate">{item.name}</p>
+                                                <p className="text-xs text-muted-foreground">{item.sku} · {item.brand}</p>
+                                            </div>
+                                            <div className="text-right text-sm shrink-0 space-y-0.5">
+                                                <p className="font-mono text-muted-foreground text-xs">
+                                                    {item.quantity} × {fmtCurrency(item.price)}
                                                 </p>
-                                            )}
-                                            {item.taxPercent > 0 && (
-                                                <p className="text-xs text-amber-600 dark:text-amber-400 font-mono">
-                                                    Tax {item.taxPercent}% +{fmtCurrency(item.taxAmount)}
+                                                {/* Show Alliance share if applied, otherwise show item discount if exists */}
+                                                {isAllianceApplied ? (
+                                                    <p className="text-xs text-primary font-mono font-semibold">
+                                                        Alliance Disc −{fmtCurrency(allianceShare)}
+                                                    </p>
+                                                ) : (
+                                                    item.discountPercent > 0 && (
+                                                        <p className="text-xs text-destructive font-mono">
+                                                            Disc {item.discountPercent}% −{fmtCurrency(item.discountAmount)}
+                                                        </p>
+                                                    )
+                                                )}
+                                                {item.taxPercent > 0 && (
+                                                    <p className="text-xs text-amber-600 dark:text-amber-400 font-mono">
+                                                        Tax {item.taxPercent}% +{fmtCurrency(item.taxAmount)}
+                                                    </p>
+                                                )}
+                                                <p className="font-semibold font-mono">
+                                                    {isAllianceApplied 
+                                                        ? fmtCurrency(item.price * item.quantity + item.taxAmount - allianceShare)
+                                                        : fmtCurrency(item.total)
+                                                    }
                                                 </p>
-                                            )}
-                                            <p className="font-semibold font-mono">{fmtCurrency(item.total)}</p>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </ScrollArea>
                     </div>
@@ -1095,7 +1121,12 @@ export default function CheckoutPage() {
                                                     <p className="text-xs text-muted-foreground italic py-1">No matching alliances.</p>
                                                 )}
                                                 {filteredAlliances.map((a) => {
-                                                    const disc = Math.round(subtotalAfterItems * (Number(a.discountPercent) / 100));
+                                                    let disc = 0;
+                                                    if (a.maxDiscount) {
+                                                        disc = Number(a.maxDiscount);
+                                                    } else {
+                                                        disc = Math.round(subtotal * (Number(a.discountPercent) / 100));
+                                                    }
                                                     const isSelected = selectedAlliance?.id === a.id && discountMode === "alliance";
                                                     const disabled = discountMode !== "none" && !isSelected;
                                                     return (
