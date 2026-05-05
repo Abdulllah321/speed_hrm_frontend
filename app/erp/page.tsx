@@ -4,7 +4,7 @@ import { useAuth } from "@/components/providers/auth-provider";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import {
   Users,
-  DollarSign,
+  Banknote,
   Package,
   ShoppingCart,
   ArrowUpRight,
@@ -27,9 +27,9 @@ import {
   PieChart as PieChartIcon
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { 
-  Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-  Cell, PieChart, Pie, Line, LineChart as ReLineChart, 
+import {
+  Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  Cell, PieChart, Pie, Line, LineChart as ReLineChart,
   Area, AreaChart, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   Scatter, ScatterChart, ZAxis
 } from "recharts";
@@ -165,17 +165,17 @@ const ERPDashboard = () => {
     const hasOrders = orders.length > 0;
     const hasStock = stockLevels.length > 0;
 
-    const totalRevenue = hasOrders 
+    const totalRevenue = hasOrders
       ? orders.reduce((sum, order) => sum + Number(order.grandTotal || 0), 0)
       : 0;
 
-    const activeUsers = hasOrders 
+    const activeUsers = hasOrders
       ? new Set(orders.map(o => o.customerId).filter(Boolean)).size
       : 0;
 
     const totalOrders = hasOrders ? orders.length : 0;
 
-    const inventoryValue = hasStock 
+    const inventoryValue = hasStock
       ? stockLevels.reduce((sum, level) => sum + (Number(level.totalQty || 0) * 0), 0)
       : 0;
 
@@ -195,7 +195,7 @@ const ERPDashboard = () => {
 
     // If no orders, return empty trend
     if (orders.length === 0 && !loading) {
-       return [];
+      return [];
     }
 
     const monthlyData: Record<string, { label: string, revenue: number, profit: number }> = {};
@@ -268,11 +268,11 @@ const ERPDashboard = () => {
     const multiItem = orders.filter(o => (o.items?.length || 0) > 1).length;
 
     return [
-      { stage: 'Total Orders',     value: total,                                          fill: "var(--primary)" },
-      { stage: 'With Customer',    value: withCustomer,                                   fill: "oklch(0.6721 0.1944 294.4928)" },
-      { stage: 'Multi-Item',       value: multiItem,                                      fill: "oklch(0.8003 0.1821 151.7110)" },
-      { stage: 'Completed',        value: completed,                                      fill: "oklch(0.7106 0.1661 22.2162)" },
-      { stage: 'Held / Pending',   value: held,                                           fill: "#10b981" },
+      { stage: 'Total Orders', value: total, fill: "var(--primary)" },
+      { stage: 'With Customer', value: withCustomer, fill: "oklch(0.6721 0.1944 294.4928)" },
+      { stage: 'Multi-Item', value: multiItem, fill: "oklch(0.8003 0.1821 151.7110)" },
+      { stage: 'Completed', value: completed, fill: "oklch(0.7106 0.1661 22.2162)" },
+      { stage: 'Held / Pending', value: held, fill: "#10b981" },
     ];
   }, [orders]);
 
@@ -333,18 +333,18 @@ const ERPDashboard = () => {
     const supportScore = Math.max(150 - Math.round((heldOrders / orders.length) * 300), 30);
 
     return [
-      { subject: 'Completion',  A: completionRate,  B: 110, fullMark: 150 },
-      { subject: 'Retention',   A: retentionScore,  B: 130, fullMark: 150 },
-      { subject: 'Efficiency',  A: efficiencyScore, B: 130, fullMark: 150 },
-      { subject: 'Avg Order',   A: marginsScore,    B: 100, fullMark: 150 },
-      { subject: 'Volume',      A: volumeScore,     B: 90,  fullMark: 150 },
-      { subject: 'Hold Rate',   A: supportScore,    B: 85,  fullMark: 150 },
+      { subject: 'Completion', A: completionRate, B: 110, fullMark: 150 },
+      { subject: 'Retention', A: retentionScore, B: 130, fullMark: 150 },
+      { subject: 'Efficiency', A: efficiencyScore, B: 130, fullMark: 150 },
+      { subject: 'Avg Order', A: marginsScore, B: 100, fullMark: 150 },
+      { subject: 'Volume', A: volumeScore, B: 90, fullMark: 150 },
+      { subject: 'Hold Rate', A: supportScore, B: 85, fullMark: 150 },
     ];
   }, [orders]);
 
   const analyticsKpis = useMemo(() => {
     if (orders.length === 0) return {
-      forecastedRevenue: 'Rs. 0', churnPct: '0%',
+      forecastedRevenue: formatCurrency(0), churnPct: '0%',
       logisticsEff: '0%', topCategory: 'N/A',
       forecastTrend: '0%', topCategoryShare: '0%',
     };
@@ -373,8 +373,8 @@ const ERPDashboard = () => {
     const topCatShare = topCat ? Math.round((topCat[1] / (totalCatRev || 1)) * 100) : 0;
 
     const fmt = (n: number) => n >= 1_000_000
-      ? `${formatCurrency(n / 1_000_000).replace('PKR ', '')}M`
-      : n >= 1_000 ? `${formatCurrency(n / 1_000).replace('PKR ', '')}K` : formatCurrency(Math.round(n));
+      ? `PKR ${(n / 1_000_000).toFixed(2)}M`
+      : n >= 1_000 ? `PKR ${(n / 1_000).toFixed(2)}K` : formatCurrency(Math.round(n));
 
     return {
       forecastedRevenue: fmt(projected),
@@ -481,401 +481,401 @@ const ERPDashboard = () => {
         <div className="animate-in fade-in duration-500">
           <TabsContent value="overview" className="m-0 space-y-6">
             <PermissionGuard permissions="erp.dashboard.overview.view">
-            {/* KPI Grid */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatsCard
-                title="Total Revenue"
-                value={kpis.totalRevenue}
-                icon={DollarSign}
-                description="Gross sales from POS"
-                trend="Live"
-                trendType="up"
-                highlight
-                loading={loading}
-              />
-              <StatsCard
-                title="Active Customers"
-                value={kpis.activeUsers}
-                icon={Users}
-                description="Unique purchasers"
-                trend="Stable"
-                trendType="up"
-                loading={loading}
-              />
-              <StatsCard
-                title="Inventory Items"
-                value={kpis.inventoryCount}
-                icon={Package}
-                description="Unique SKUs in stock"
-                trend="Updated"
-                trendType="up"
-                loading={loading}
-              />
-              <StatsCard
-                title="Total Orders"
-                value={kpis.totalOrders}
-                icon={ShoppingCart}
-                description="Combined transaction count"
-                trend="Active"
-                trendType="up"
-                loading={loading}
-              />
-            </div>
+              {/* KPI Grid */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatsCard
+                  title="Total Revenue"
+                  value={kpis.totalRevenue}
+                  icon={Banknote}
+                  description="Gross sales from POS"
+                  trend="Live"
+                  trendType="up"
+                  highlight
+                  loading={loading}
+                />
+                <StatsCard
+                  title="Active Customers"
+                  value={kpis.activeUsers}
+                  icon={Users}
+                  description="Unique purchasers"
+                  trend="Stable"
+                  trendType="up"
+                  loading={loading}
+                />
+                <StatsCard
+                  title="Inventory Items"
+                  value={kpis.inventoryCount}
+                  icon={Package}
+                  description="Unique SKUs in stock"
+                  trend="Updated"
+                  trendType="up"
+                  loading={loading}
+                />
+                <StatsCard
+                  title="Total Orders"
+                  value={kpis.totalOrders}
+                  icon={ShoppingCart}
+                  description="Combined transaction count"
+                  trend="Active"
+                  trendType="up"
+                  loading={loading}
+                />
+              </div>
 
-            <div className="grid gap-6 md:grid-cols-12">
-              {/* Main Analytics Section */}
-              <div className="md:col-span-8 space-y-6">
-                <Card className="transition-all hover:shadow-lg border-border/50 overflow-hidden min-h-[400px]">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                        <TrendingUp className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-base font-bold">Performance Matrix</CardTitle>
-                        <CardDescription>Revenue vs Estimated Profit (6 Months)</CardDescription>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    {loading ? (
-                      <div className="h-[280px] w-full flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : (
-                      <ChartContainer config={{
-                        revenue: { label: "Revenue", color: "var(--primary)" },
-                        profit: { label: "Est. Profit", color: "#10b981" }
-                      }} className="h-[280px] w-full">
-                        <ReLineChart data={revenueTrendData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                          <XAxis dataKey="label" axisLine={false} tickLine={false} fontSize={10} fontWeight={500} dy={10} />
-                          <YAxis axisLine={false} tickLine={false} fontSize={10} fontWeight={500} tickFormatter={(v) => `PKR ${(v/1000).toFixed(0)}K`} />
-                          <Tooltip content={<ChartTooltipContent />} />
-                          <Line type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                          <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 6, strokeWidth: 0 }} />
-                        </ReLineChart>
-                      </ChartContainer>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Assets Table */}
-                <Card className="border-border/50 shadow-sm overflow-hidden min-h-[400px]">
-                  <CardHeader className="bg-muted/5 border-b py-4">
-                    <div className="flex items-center justify-between">
+              <div className="grid gap-6 md:grid-cols-12">
+                {/* Main Analytics Section */}
+                <div className="md:col-span-8 space-y-6">
+                  <Card className="transition-all hover:shadow-lg border-border/50 overflow-hidden min-h-[400px]">
+                    <CardHeader className="pb-2">
                       <div className="flex items-center gap-2">
-                        <Layers className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg font-bold">Recent Transactions</CardTitle>
-                      </div>
-                      <button className="text-xs font-bold text-primary hover:underline group flex items-center gap-1">
-                        View All <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                      </button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left">
-                        <thead className="bg-muted/30 text-[10px] uppercase tracking-wider font-bold text-muted-foreground border-b">
-                          <tr>
-                            <th className="px-6 py-4">Entity ID</th>
-                            <th className="px-6 py-4">Transaction Name</th>
-                            <th className="px-6 py-4">Allocation</th>
-                            <th className="px-6 py-4 text-right">Value</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/30">
-                          {loading ? (
-                            Array.from({ length: 4 }).map((_, i) => (
-                              <tr key={i}>
-                                <td className="px-6 py-4"><div className="h-4 w-16 bg-muted animate-pulse rounded" /></td>
-                                <td className="px-6 py-4"><div className="h-4 w-32 bg-muted animate-pulse rounded" /></td>
-                                <td className="px-6 py-4"><div className="h-4 w-20 bg-muted animate-pulse rounded" /></td>
-                                <td className="px-6 py-4"><div className="h-4 w-24 bg-muted animate-pulse rounded ml-auto" /></td>
-                              </tr>
-                            ))
-                          ) : recentTransactions.length > 0 ? (
-                            recentTransactions.map((item) => (
-                              <tr key={item.id} className="hover:bg-muted/20 transition-colors">
-                                <td className="px-6 py-4 font-mono text-xs font-black text-primary">{item.id}</td>
-                                <td className="px-6 py-4 text-sm font-bold">{item.name}</td>
-                                <td className="px-6 py-4">
-                                  <Badge variant="outline" className="text-[10px] font-bold uppercase">{item.cat}</Badge>
-                                </td>
-                                <td className="px-6 py-4 text-sm font-black text-right">{item.val}</td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground font-medium">
-                                No recent transactions found
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Sidebar Column */}
-              <div className="md:col-span-4 space-y-6">
-                <Card className="transition-all hover:shadow-md border-border/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-lg font-bold">Category Distribution</CardTitle>
-                    <CardDescription>Sales share by item category</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {loading ? (
-                      <div className="h-[250px] w-full flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : (
-                      <>
-                        <ChartContainer config={{}} className="h-[250px] w-full">
-                          <PieChart>
-                            <Pie
-                              data={categoryAggregation}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={80}
-                              paddingAngle={5}
-                              dataKey="value"
-                              strokeWidth={0}
-                            >
-                              {categoryAggregation.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip content={<ChartTooltipContent />} />
-                          </PieChart>
-                        </ChartContainer>
-                        <div className="grid gap-2 mt-4">
-                          {categoryAggregation.slice(0, 5).map((item) => (
-                            <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
-                                <span className="text-xs font-bold text-muted-foreground line-clamp-1">{item.name}</span>
-                              </div>
-                              <span className="text-xs font-black">{item.value}%</span>
-                            </div>
-                          ))}
+                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                          <TrendingUp className="h-4 w-4" />
                         </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
+                        <div>
+                          <CardTitle className="text-base font-bold">Performance Matrix</CardTitle>
+                          <CardDescription>Revenue vs Estimated Profit (6 Months)</CardDescription>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      {loading ? (
+                        <div className="h-[280px] w-full flex items-center justify-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : (
+                        <ChartContainer config={{
+                          revenue: { label: "Revenue", color: "var(--primary)" },
+                          profit: { label: "Est. Profit", color: "#10b981" }
+                        }} className="h-[280px] w-full">
+                          <ReLineChart data={revenueTrendData}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                            <XAxis dataKey="label" axisLine={false} tickLine={false} fontSize={10} fontWeight={500} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} fontSize={10} fontWeight={500} tickFormatter={(v) => `PKR ${(v / 1000).toFixed(0)}K`} />
+                            <Tooltip content={<ChartTooltipContent />} />
+                            <Line type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                            <Line type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: "#fff" }} activeDot={{ r: 6, strokeWidth: 0 }} />
+                          </ReLineChart>
+                        </ChartContainer>
+                      )}
+                    </CardContent>
+                  </Card>
 
-                <Card className="border-primary/20 bg-primary/5 shadow-sm">
-                  <CardHeader>
-                    <CardTitle className="text-base font-bold flex items-center gap-2">
-                      <BarChart3 className="h-4 w-4 text-primary" />
-                      Strategic Insight
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Based on {orders.length} transactions, your average order value is <span className="text-primary font-bold">
-                        PKR {orders.length > 0 ? (orders.reduce((s, o) => s + Number(o.grandTotal), 0) / orders.length).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
-                      </span>.
-                      Most sales occur in the <span className="text-primary font-bold">{categoryAggregation[0]?.name || "N/A"}</span> category.
-                    </p>
-                    <Button size="sm" className="w-full text-xs font-bold" onClick={fetchData}>Refresh Insights</Button>
-                  </CardContent>
-                </Card>
+                  {/* Assets Table */}
+                  <Card className="border-border/50 shadow-sm overflow-hidden min-h-[400px]">
+                    <CardHeader className="bg-muted/5 border-b py-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Layers className="h-5 w-5 text-primary" />
+                          <CardTitle className="text-lg font-bold">Recent Transactions</CardTitle>
+                        </div>
+                        <button className="text-xs font-bold text-primary hover:underline group flex items-center gap-1">
+                          View All <ChevronRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                        </button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead className="bg-muted/30 text-[10px] uppercase tracking-wider font-bold text-muted-foreground border-b">
+                            <tr>
+                              <th className="px-6 py-4">Entity ID</th>
+                              <th className="px-6 py-4">Transaction Name</th>
+                              <th className="px-6 py-4">Allocation</th>
+                              <th className="px-6 py-4 text-right">Value</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/30">
+                            {loading ? (
+                              Array.from({ length: 4 }).map((_, i) => (
+                                <tr key={i}>
+                                  <td className="px-6 py-4"><div className="h-4 w-16 bg-muted animate-pulse rounded" /></td>
+                                  <td className="px-6 py-4"><div className="h-4 w-32 bg-muted animate-pulse rounded" /></td>
+                                  <td className="px-6 py-4"><div className="h-4 w-20 bg-muted animate-pulse rounded" /></td>
+                                  <td className="px-6 py-4"><div className="h-4 w-24 bg-muted animate-pulse rounded ml-auto" /></td>
+                                </tr>
+                              ))
+                            ) : recentTransactions.length > 0 ? (
+                              recentTransactions.map((item) => (
+                                <tr key={item.id} className="hover:bg-muted/20 transition-colors">
+                                  <td className="px-6 py-4 font-mono text-xs font-black text-primary">{item.id}</td>
+                                  <td className="px-6 py-4 text-sm font-bold">{item.name}</td>
+                                  <td className="px-6 py-4">
+                                    <Badge variant="outline" className="text-[10px] font-bold uppercase">{item.cat}</Badge>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm font-black text-right">{item.val}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground font-medium">
+                                  No recent transactions found
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Sidebar Column */}
+                <div className="md:col-span-4 space-y-6">
+                  <Card className="transition-all hover:shadow-md border-border/50">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg font-bold">Category Distribution</CardTitle>
+                      <CardDescription>Sales share by item category</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {loading ? (
+                        <div className="h-[250px] w-full flex items-center justify-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : (
+                        <>
+                          <ChartContainer config={{}} className="h-[250px] w-full">
+                            <PieChart>
+                              <Pie
+                                data={categoryAggregation}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={5}
+                                dataKey="value"
+                                strokeWidth={0}
+                              >
+                                {categoryAggregation.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip content={<ChartTooltipContent />} />
+                            </PieChart>
+                          </ChartContainer>
+                          <div className="grid gap-2 mt-4">
+                            {categoryAggregation.slice(0, 5).map((item) => (
+                              <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                  <span className="text-xs font-bold text-muted-foreground line-clamp-1">{item.name}</span>
+                                </div>
+                                <span className="text-xs font-black">{item.value}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-primary/20 bg-primary/5 shadow-sm">
+                    <CardHeader>
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-primary" />
+                        Strategic Insight
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        Based on {orders.length} transactions, your average order value is <span className="text-primary font-bold">
+                          PKR {orders.length > 0 ? (orders.reduce((s, o) => s + Number(o.grandTotal), 0) / orders.length).toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00"}
+                        </span>.
+                        Most sales occur in the <span className="text-primary font-bold">{categoryAggregation[0]?.name || "N/A"}</span> category.
+                      </p>
+                      <Button size="sm" className="w-full text-xs font-bold" onClick={fetchData}>Refresh Insights</Button>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
-            </div>
             </PermissionGuard>
           </TabsContent>
 
           <TabsContent value="analytics" className="m-0 space-y-6">
             <PermissionGuard permissions="erp.dashboard.analytics.view">
-            {/* Advanced KPIs */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatsCard
-                title="Projected Revenue"
-                value={analyticsKpis.forecastedRevenue}
-                icon={BrainCircuit}
-                description="Linear projection from last 30 days"
-                trend={analyticsKpis.forecastTrend}
-                trendType="up"
-                subValue="Based on recent trend"
-                highlight
-                loading={loading}
-              />
-              <StatsCard
-                title="Walk-in Rate"
-                value={analyticsKpis.churnPct}
-                icon={Target}
-                description="Orders without a linked customer"
-                trend="Anonymous sales"
-                trendType="neutral"
-                loading={loading}
-              />
-              <StatsCard
-                title="Completion Rate"
-                value={analyticsKpis.logisticsEff}
-                icon={Zap}
-                description="Orders marked as completed"
-                trend="Fulfilment"
-                trendType="up"
-                loading={loading}
-              />
-              <StatsCard
-                title="Top Category"
-                value={analyticsKpis.topCategory}
-                icon={PieChartIcon}
-                description="Highest revenue category"
-                trend={analyticsKpis.topCategoryShare}
-                trendType="up"
-                loading={loading}
-              />
-            </div>
-
-            <div className="grid gap-6 md:grid-cols-12">
-              {/* Funnel & Heatmap Section */}
-              <div className="md:col-span-8 space-y-6">
-                <Card className="border-border/50 shadow-sm overflow-hidden">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-bold flex items-center gap-2">
-                       <Filter className="h-4 w-4 text-primary" />
-                       Order Pipeline Funnel
-                    </CardTitle>
-                    <CardDescription>Breakdown of orders by status and engagement</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    {loading ? (
-                      <div className="h-[350px] flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : (
-                      <ChartContainer
-                        config={{
-                          value: { label: "Orders" },
-                        }}
-                        className="h-[350px] w-full"
-                      >
-                        <BarChart
-                          layout="vertical"
-                          data={funnelData}
-                          margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                          <XAxis type="number" hide />
-                          <YAxis
-                            dataKey="stage"
-                            type="category"
-                            axisLine={false}
-                            tickLine={false}
-                            fontSize={12}
-                            fontWeight={600}
-                          />
-                          <ChartTooltip
-                            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                            content={
-                              <ChartTooltipContent
-                                indicator="line"
-                                labelKey="stage"
-                                nameKey="stage"
-                                formatter={(value, name, item) => (
-                                  <div className="flex items-center justify-between gap-4 w-full">
-                                    <span className="text-muted-foreground">{item.payload.stage}</span>
-                                    <span className="font-mono font-semibold tabular-nums text-foreground">
-                                      {Number(value).toLocaleString()}
-                                    </span>
-                                  </div>
-                                )}
-                              />
-                            }
-                          />
-                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
-                            {funnelData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ChartContainer>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card className="border-border/50 shadow-sm overflow-hidden">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-bold flex items-center gap-2">
-                       <Activity className="h-4 w-4 text-primary" />
-                       Order Intensity Matrix
-                    </CardTitle>
-                    <CardDescription>Peak activity hours across the business week</CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    {loading ? (
-                      <div className="h-[300px] flex items-center justify-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : (
-                      <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis
-                              dataKey="hourIdx"
-                              name="Hour"
-                              type="number"
-                              ticks={[0, 1, 2, 3, 4]}
-                              tickFormatter={(v) => hourMap[v] || ''}
-                              axisLine={false}
-                              tickLine={false}
-                              fontSize={10}
-                              fontWeight={600}
-                            />
-                            <YAxis
-                              dataKey="dayIdx"
-                              name="Day"
-                              type="number"
-                              ticks={[0, 1, 2, 3, 4, 5, 6]}
-                              tickFormatter={(v) => dayMap[v] || ''}
-                              axisLine={false}
-                              tickLine={false}
-                              fontSize={10}
-                              fontWeight={600}
-                            />
-                            <ZAxis dataKey="intensity" range={[50, 800]} name="Intensity" />
-                            <Tooltip
-                              cursor={{ strokeDasharray: '3 3' }}
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const d = payload[0].payload;
-                                  return (
-                                    <div className="bg-background border border-border p-2 rounded-lg shadow-sm text-xs">
-                                      <div className="font-bold">{d.day} @ {d.hour}</div>
-                                      <div className="text-primary font-bold">Intensity: {d.intensity}%</div>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Scatter name="Activity" data={activityData} fill="var(--primary)" fillOpacity={0.6}>
-                              {activityData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fillOpacity={entry.intensity / 100} />
-                              ))}
-                            </Scatter>
-                          </ScatterChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+              {/* Advanced KPIs */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatsCard
+                  title="Projected Revenue"
+                  value={analyticsKpis.forecastedRevenue}
+                  icon={BrainCircuit}
+                  description="Linear projection from last 30 days"
+                  trend={analyticsKpis.forecastTrend}
+                  trendType="up"
+                  subValue="Based on recent trend"
+                  highlight
+                  loading={loading}
+                />
+                <StatsCard
+                  title="Walk-in Rate"
+                  value={analyticsKpis.churnPct}
+                  icon={Target}
+                  description="Orders without a linked customer"
+                  trend="Anonymous sales"
+                  trendType="neutral"
+                  loading={loading}
+                />
+                <StatsCard
+                  title="Completion Rate"
+                  value={analyticsKpis.logisticsEff}
+                  icon={Zap}
+                  description="Orders marked as completed"
+                  trend="Fulfilment"
+                  trendType="up"
+                  loading={loading}
+                />
+                <StatsCard
+                  title="Top Category"
+                  value={analyticsKpis.topCategory}
+                  icon={PieChartIcon}
+                  description="Highest revenue category"
+                  trend={analyticsKpis.topCategoryShare}
+                  trendType="up"
+                  loading={loading}
+                />
               </div>
 
-              {/* Advanced Sidebar */}
-              <div className="md:col-span-4 space-y-6">
-                 <Card className="border-border/50 shadow-sm overflow-hidden">
+              <div className="grid gap-6 md:grid-cols-12">
+                {/* Funnel & Heatmap Section */}
+                <div className="md:col-span-8 space-y-6">
+                  <Card className="border-border/50 shadow-sm overflow-hidden">
                     <CardHeader>
-                       <CardTitle className="text-lg font-bold">Operational Radar</CardTitle>
-                       <CardDescription>KPI balance vs benchmark</CardDescription>
+                      <CardTitle className="text-lg font-bold flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-primary" />
+                        Order Pipeline Funnel
+                      </CardTitle>
+                      <CardDescription>Breakdown of orders by status and engagement</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      {loading ? (
+                        <div className="h-[350px] flex items-center justify-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : (
+                        <ChartContainer
+                          config={{
+                            value: { label: "Orders" },
+                          }}
+                          className="h-[350px] w-full"
+                        >
+                          <BarChart
+                            layout="vertical"
+                            data={funnelData}
+                            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                            <XAxis type="number" hide />
+                            <YAxis
+                              dataKey="stage"
+                              type="category"
+                              axisLine={false}
+                              tickLine={false}
+                              fontSize={12}
+                              fontWeight={600}
+                            />
+                            <ChartTooltip
+                              cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                              content={
+                                <ChartTooltipContent
+                                  indicator="line"
+                                  labelKey="stage"
+                                  nameKey="stage"
+                                  formatter={(value, name, item) => (
+                                    <div className="flex items-center justify-between gap-4 w-full">
+                                      <span className="text-muted-foreground">{item.payload.stage}</span>
+                                      <span className="font-mono font-semibold tabular-nums text-foreground">
+                                        {Number(value).toLocaleString()}
+                                      </span>
+                                    </div>
+                                  )}
+                                />
+                              }
+                            />
+                            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={32}>
+                              {funnelData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ChartContainer>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border-border/50 shadow-sm overflow-hidden">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-bold flex items-center gap-2">
+                        <Activity className="h-4 w-4 text-primary" />
+                        Order Intensity Matrix
+                      </CardTitle>
+                      <CardDescription>Peak activity hours across the business week</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      {loading ? (
+                        <div className="h-[300px] flex items-center justify-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : (
+                        <div className="h-[300px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                              <XAxis
+                                dataKey="hourIdx"
+                                name="Hour"
+                                type="number"
+                                ticks={[0, 1, 2, 3, 4]}
+                                tickFormatter={(v) => hourMap[v] || ''}
+                                axisLine={false}
+                                tickLine={false}
+                                fontSize={10}
+                                fontWeight={600}
+                              />
+                              <YAxis
+                                dataKey="dayIdx"
+                                name="Day"
+                                type="number"
+                                ticks={[0, 1, 2, 3, 4, 5, 6]}
+                                tickFormatter={(v) => dayMap[v] || ''}
+                                axisLine={false}
+                                tickLine={false}
+                                fontSize={10}
+                                fontWeight={600}
+                              />
+                              <ZAxis dataKey="intensity" range={[50, 800]} name="Intensity" />
+                              <Tooltip
+                                cursor={{ strokeDasharray: '3 3' }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const d = payload[0].payload;
+                                    return (
+                                      <div className="bg-background border border-border p-2 rounded-lg shadow-sm text-xs">
+                                        <div className="font-bold">{d.day} @ {d.hour}</div>
+                                        <div className="text-primary font-bold">Intensity: {d.intensity}%</div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Scatter name="Activity" data={activityData} fill="var(--primary)" fillOpacity={0.6}>
+                                {activityData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fillOpacity={entry.intensity / 100} />
+                                ))}
+                              </Scatter>
+                            </ScatterChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Advanced Sidebar */}
+                <div className="md:col-span-4 space-y-6">
+                  <Card className="border-border/50 shadow-sm overflow-hidden">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-bold">Operational Radar</CardTitle>
+                      <CardDescription>KPI balance vs benchmark</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-2">
                       {loading ? (
@@ -887,7 +887,7 @@ const ERPDashboard = () => {
                           <ChartContainer
                             config={{
                               A: { label: "Your Business", color: "var(--primary)" },
-                              B: { label: "Benchmark",     color: "#10b981" },
+                              B: { label: "Benchmark", color: "#10b981" },
                             }}
                             className="h-[280px] w-full"
                           >
@@ -920,150 +920,150 @@ const ERPDashboard = () => {
                         </>
                       )}
                     </CardContent>
-                 </Card>
+                  </Card>
 
-                 <Card className="bg-linear-to-br from-primary/10 to-transparent border-primary/20">
+                  <Card className="bg-linear-to-br from-primary/10 to-transparent border-primary/20">
                     <CardHeader>
-                       <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
-                          <BrainCircuit className="h-4 w-4" />
-                          Predictive Insight
-                       </CardTitle>
+                      <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
+                        <BrainCircuit className="h-4 w-4" />
+                        Predictive Insight
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                       {loading ? (
-                         <div className="space-y-2">
-                           <div className="h-4 bg-muted animate-pulse rounded w-full" />
-                           <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
-                         </div>
-                       ) : (
-                         <>
-                           <p className="text-xs font-medium leading-relaxed">
-                             Based on <span className="font-bold">{orders.length}</span> orders, your top category is{" "}
-                             <span className="font-bold underline">{analyticsKpis.topCategory}</span> with{" "}
-                             <span className="font-bold">{analyticsKpis.topCategoryShare}</span> of revenue.
-                             Projected next-period revenue is{" "}
-                             <span className="font-bold">{analyticsKpis.forecastedRevenue}</span>.
-                           </p>
-                           <div className="p-3 rounded-lg bg-background/50 border border-primary/10">
-                             <div className="text-[10px] uppercase tracking-wider font-extrabold text-muted-foreground mb-1">Recommended Action</div>
-                             <p className="text-xs font-bold leading-snug">
-                               {analyticsKpis.logisticsEff !== '0%'
-                                 ? `Maintain ${analyticsKpis.logisticsEff} completion rate. Focus on converting walk-in customers (${analyticsKpis.churnPct}) to registered accounts.`
-                                 : 'Start processing orders to unlock actionable insights.'}
-                             </p>
-                           </div>
-                         </>
-                       )}
+                      {loading ? (
+                        <div className="space-y-2">
+                          <div className="h-4 bg-muted animate-pulse rounded w-full" />
+                          <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-xs font-medium leading-relaxed">
+                            Based on <span className="font-bold">{orders.length}</span> orders, your top category is{" "}
+                            <span className="font-bold underline">{analyticsKpis.topCategory}</span> with{" "}
+                            <span className="font-bold">{analyticsKpis.topCategoryShare}</span> of revenue.
+                            Projected next-period revenue is{" "}
+                            <span className="font-bold">{analyticsKpis.forecastedRevenue}</span>.
+                          </p>
+                          <div className="p-3 rounded-lg bg-background/50 border border-primary/10">
+                            <div className="text-[10px] uppercase tracking-wider font-extrabold text-muted-foreground mb-1">Recommended Action</div>
+                            <p className="text-xs font-bold leading-snug">
+                              {analyticsKpis.logisticsEff !== '0%'
+                                ? `Maintain ${analyticsKpis.logisticsEff} completion rate. Focus on converting walk-in customers (${analyticsKpis.churnPct}) to registered accounts.`
+                                : 'Start processing orders to unlock actionable insights.'}
+                            </p>
+                          </div>
+                        </>
+                      )}
                     </CardContent>
-                 </Card>
+                  </Card>
+                </div>
               </div>
-            </div>
             </PermissionGuard>
           </TabsContent>
 
           <TabsContent value="inventory" className="m-0 space-y-6">
             <PermissionGuard permissions="erp.dashboard.inventory.view">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <StatsCard
-                title="Total SKUs"
-                value={inventoryStats.totalSkus}
-                icon={Package}
-                description="Unique items tracked in stock"
-                highlight
-                loading={loading}
-              />
-              <StatsCard
-                title="Low Stock"
-                value={`${inventoryStats.lowStockCount} SKUs`}
-                icon={Filter}
-                description="Items at or below 10 units"
-                trendType="down"
-                trend={inventoryStats.lowStockCount > 0 ? "Caution" : "OK"}
-                loading={loading}
-              />
-              <StatsCard
-                title="Out of Stock"
-                value={`${inventoryStats.outOfStockCount} SKUs`}
-                icon={Activity}
-                description="Items with zero quantity"
-                trendType={inventoryStats.outOfStockCount > 0 ? "down" : "up"}
-                trend={inventoryStats.outOfStockCount > 0 ? "Action needed" : "Clear"}
-                loading={loading}
-              />
-              <StatsCard
-                title="In Transit"
-                value={`${inventoryStats.inTransitCount} Units`}
-                icon={Zap}
-                description="Stock at transit locations"
-                trendType="neutral"
-                trend="Tracked"
-                loading={loading}
-              />
-            </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatsCard
+                  title="Total SKUs"
+                  value={inventoryStats.totalSkus}
+                  icon={Package}
+                  description="Unique items tracked in stock"
+                  highlight
+                  loading={loading}
+                />
+                <StatsCard
+                  title="Low Stock"
+                  value={`${inventoryStats.lowStockCount} SKUs`}
+                  icon={Filter}
+                  description="Items at or below 10 units"
+                  trendType="down"
+                  trend={inventoryStats.lowStockCount > 0 ? "Caution" : "OK"}
+                  loading={loading}
+                />
+                <StatsCard
+                  title="Out of Stock"
+                  value={`${inventoryStats.outOfStockCount} SKUs`}
+                  icon={Activity}
+                  description="Items with zero quantity"
+                  trendType={inventoryStats.outOfStockCount > 0 ? "down" : "up"}
+                  trend={inventoryStats.outOfStockCount > 0 ? "Action needed" : "Clear"}
+                  loading={loading}
+                />
+                <StatsCard
+                  title="In Transit"
+                  value={`${inventoryStats.inTransitCount} Units`}
+                  icon={Zap}
+                  description="Stock at transit locations"
+                  trendType="neutral"
+                  trend="Tracked"
+                  loading={loading}
+                />
+              </div>
 
-            <Card className="border-border/50 shadow-sm overflow-hidden gap-0">
-              <CardHeader className="bg-muted/5 border-b py-0">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg font-bold">Inventory Reconciliation</CardTitle>
-                    <CardDescription>Current stock levels — showing top {inventoryRows.length} SKUs</CardDescription>
+              <Card className="border-border/50 shadow-sm overflow-hidden gap-0">
+                <CardHeader className="bg-muted/5 border-b py-0">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg font-bold">Inventory Reconciliation</CardTitle>
+                      <CardDescription>Current stock levels — showing top {inventoryRows.length} SKUs</CardDescription>
+                    </div>
+                    {hasPermission("erp.dashboard.inventory.refresh") && (
+                      <Button variant="ghost" size="sm" onClick={fetchData} disabled={loading} className="gap-2 text-xs">
+                        <RefreshCcw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                        Refresh
+                      </Button>
+                    )}
                   </div>
-                  {hasPermission("erp.dashboard.inventory.refresh") && (
-                    <Button variant="ghost" size="sm" onClick={fetchData} disabled={loading} className="gap-2 text-xs">
-                      <RefreshCcw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-                      Refresh
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="p-0 mt-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead className="bg-muted/30 text-[10px] uppercase tracking-wider font-bold text-muted-foreground border-b">
-                      <tr>
-                        <th className="px-6 py-4">SKU</th>
-                        <th className="px-6 py-4">Name</th>
-                        <th className="px-6 py-4">Warehouse / Location</th>
-                        <th className="px-6 py-4 text-right">Quantity</th>
-                        <th className="px-6 py-4 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/30">
-                      {loading ? (
-                        Array.from({ length: 5 }).map((_, i) => (
-                          <tr key={i}>
-                            {Array.from({ length: 5 }).map((_, j) => (
-                              <td key={j} className="px-6 py-4">
-                                <div className="h-4 bg-muted animate-pulse rounded" />
-                              </td>
-                            ))}
-                          </tr>
-                        ))
-                      ) : inventoryRows.map((item) => (
-                        <tr key={item.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-6 py-4 font-mono text-xs font-black text-primary">{item.id}</td>
-                          <td className="px-6 py-4 text-sm font-bold max-w-[240px] truncate">{item.name}</td>
-                          <td className="px-6 py-4">
-                            <Badge variant="outline" className="text-[10px] font-bold uppercase">{item.category}</Badge>
-                          </td>
-                          <td className="px-6 py-4 text-sm font-black text-right">{item.qty.toLocaleString('en-PK')}</td>
-                          <td className="px-6 py-4 text-right">
-                            <Badge variant="outline" className={cn(
-                              "text-[10px] font-bold",
-                              item.status === "In Stock"     ? "bg-green-500/10 text-green-600 border-green-500/20" :
-                              item.status === "Low Stock"    ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
-                                                               "bg-red-500/10 text-red-600 border-red-500/20"
-                            )}>
-                              {item.status}
-                            </Badge>
-                          </td>
+                </CardHeader>
+                <CardContent className="p-0 mt-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead className="bg-muted/30 text-[10px] uppercase tracking-wider font-bold text-muted-foreground border-b">
+                        <tr>
+                          <th className="px-6 py-4">SKU</th>
+                          <th className="px-6 py-4">Name</th>
+                          <th className="px-6 py-4">Warehouse / Location</th>
+                          <th className="px-6 py-4 text-right">Quantity</th>
+                          <th className="px-6 py-4 text-right">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+                      </thead>
+                      <tbody className="divide-y divide-border/30">
+                        {loading ? (
+                          Array.from({ length: 5 }).map((_, i) => (
+                            <tr key={i}>
+                              {Array.from({ length: 5 }).map((_, j) => (
+                                <td key={j} className="px-6 py-4">
+                                  <div className="h-4 bg-muted animate-pulse rounded" />
+                                </td>
+                              ))}
+                            </tr>
+                          ))
+                        ) : inventoryRows.map((item) => (
+                          <tr key={item.id} className="hover:bg-muted/20 transition-colors">
+                            <td className="px-6 py-4 font-mono text-xs font-black text-primary">{item.id}</td>
+                            <td className="px-6 py-4 text-sm font-bold max-w-[240px] truncate">{item.name}</td>
+                            <td className="px-6 py-4">
+                              <Badge variant="outline" className="text-[10px] font-bold uppercase">{item.category}</Badge>
+                            </td>
+                            <td className="px-6 py-4 text-sm font-black text-right">{item.qty.toLocaleString('en-PK')}</td>
+                            <td className="px-6 py-4 text-right">
+                              <Badge variant="outline" className={cn(
+                                "text-[10px] font-bold",
+                                item.status === "In Stock" ? "bg-green-500/10 text-green-600 border-green-500/20" :
+                                  item.status === "Low Stock" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" :
+                                    "bg-red-500/10 text-red-600 border-red-500/20"
+                              )}>
+                                {item.status}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
             </PermissionGuard>
           </TabsContent>
         </div>

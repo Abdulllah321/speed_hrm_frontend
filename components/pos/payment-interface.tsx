@@ -10,6 +10,7 @@ import { ArrowLeft, Printer, Trash2, CreditCard, Banknote } from "lucide-react";
 import Link from "next/link";
 import { ReceiptPreview } from "@/components/pos/receipt-preview";
 import { useState } from "react";
+import { formatCurrency } from "@/lib/utils";
 
 export function PaymentInterface() {
   const [showReceipt, setShowReceipt] = useState(false);

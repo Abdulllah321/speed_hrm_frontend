@@ -19,6 +19,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
     Select,
@@ -125,11 +126,10 @@ export function PosList({ initialPos, location, companies, newItemId }: PosListP
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="terminalPin">Initial PIN (Optional)</Label>
-                                    <Input
+                                    <PasswordInput
                                         id="terminalPin"
                                         name="terminalPin"
                                         placeholder="4-6 digits"
-                                        type="password"
                                         maxLength={6}
                                         disabled={isPending}
                                     />

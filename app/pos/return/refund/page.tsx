@@ -223,7 +223,7 @@ export default function PosRefundPage() {
                                             </div>
                                         </Button>
                                         <Button variant="outline" className="h-24 flex flex-col gap-2 border-violet-600 bg-violet-50 text-violet-700">
-                                            <span className="text-lg font-bold">$</span>
+                                            <span className="text-lg font-bold">PKR</span>
                                             <div className="text-center">
                                                 <div className="text-xs font-bold">Cash Refund</div>
                                             </div>

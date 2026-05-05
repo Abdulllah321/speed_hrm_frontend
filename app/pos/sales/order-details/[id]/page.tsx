@@ -11,7 +11,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-    ArrowLeft, Printer, ShoppingCart, BadgeDollarSign, Calendar as CalendarIcon,
+    ArrowLeft, Printer, ShoppingCart, Wallet, Calendar as CalendarIcon,
     PauseCircle, RotateCcw, Clock, Pencil,
     Banknote, CreditCard, Building2, Ticket, BookOpen,
 } from "lucide-react";
@@ -20,9 +20,7 @@ import { PrintReturnReceipt } from "@/components/pos/print-return-receipt";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 
-function fmtCurrency(val: number) {
-    return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+import { formatCurrency } from "@/lib/utils";
 
 function isSameDay(date: Date) {
     const now = new Date();
@@ -172,21 +170,21 @@ export default function OrderDetailsPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="bg-muted/50 px-4 py-3 rounded-xl border border-border/50">
                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1.5">Subtotal</p>
-                            <p className="text-lg font-black tracking-tight">Rs. {fmtCurrency(order.subtotal || 0)}</p>
+                            <p className="text-lg font-black tracking-tight">{formatCurrency(order.subtotal || 0)}</p>
                         </div>
                         <div className="bg-primary/5 px-4 py-3 rounded-xl border border-primary/20">
                             <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1.5">Discount</p>
-                            <p className="text-lg font-black tracking-tight text-primary">Rs. {fmtCurrency(order.discountAmount || 0)}</p>
+                            <p className="text-lg font-black tracking-tight text-primary">{formatCurrency(order.discountAmount || 0)}</p>
                         </div>
                         <div className="bg-primary px-4 py-3 rounded-xl shadow-lg shadow-primary/20">
                             <p className="text-[9px] font-black text-primary-foreground/70 uppercase tracking-widest mb-1.5">Grand Total</p>
-                            <p className="text-lg font-black tracking-tight text-primary-foreground">Rs. {fmtCurrency(order.grandTotal || 0)}</p>
+                            <p className="text-lg font-black tracking-tight text-primary-foreground">{formatCurrency(order.grandTotal || 0)}</p>
                         </div>
                         {!isHold && (
                             <div className={cn("px-4 py-3 rounded-xl border shadow-lg",
                                 balanceDue > 0 ? "bg-orange-500/10 border-orange-500/30 text-orange-600" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600")}>
                                 <p className="text-[9px] font-black uppercase tracking-widest mb-1.5 opacity-80">{balanceDue > 0 ? "Balance Due" : "Settled"}</p>
-                                <p className="text-lg font-black tracking-tight">Rs. {fmtCurrency(balanceDue)}</p>
+                                <p className="text-lg font-black tracking-tight">{formatCurrency(balanceDue)}</p>
                             </div>
                         )}
                     </div>
@@ -203,7 +201,7 @@ export default function OrderDetailsPage() {
                                 )}
                                 {order.coupon && (
                                     <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1.5 py-1 px-3 rounded-lg">
-                                        <BadgeDollarSign className="h-3 w-3" />
+                                        <Wallet className="h-3 w-3" />
                                         Coupon: <span className="font-black">{order.coupon.code}</span>
                                     </Badge>
                                 )}
@@ -296,12 +294,12 @@ export default function OrderDetailsPage() {
                                                         </TableCell>
                                                     </>
                                                 )}
-                                                <TableCell className="text-right text-sm font-mono">{fmtCurrency(item.unitPrice)}</TableCell>
+                                                <TableCell className="text-right text-sm font-mono">{formatCurrency(item.unitPrice)}</TableCell>
                                                 <TableCell className="text-right text-sm font-mono text-destructive">
-                                                    {Number(item.discountAmount) > 0 ? `-${fmtCurrency(item.discountAmount)}` : "—"}
+                                                    {Number(item.discountAmount) > 0 ? `-${formatCurrency(item.discountAmount)}` : "—"}
                                                 </TableCell>
                                                 <TableCell className="text-right font-bold text-sm font-mono pr-4">
-                                                    {fmtCurrency(item.lineTotal ?? (item.unitPrice - (item.discountAmount || 0)) * item.quantity)}
+                                                    {formatCurrency(item.lineTotal ?? (item.unitPrice - (item.discountAmount || 0)) * item.quantity)}
                                                 </TableCell>
                                             </TableRow>
                                         );
@@ -316,10 +314,10 @@ export default function OrderDetailsPage() {
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-foreground/70">
-                                    <BadgeDollarSign className="h-5 w-5 text-muted-foreground" /> Payment Information
+                                    <Wallet className="h-5 w-5 text-muted-foreground" /> Payment Information
                                 </h3>
                                 <span className="text-xs font-black uppercase text-muted-foreground px-3 py-1 bg-muted/50 rounded-lg">
-                                    Total Paid: <span className="text-foreground ml-1">Rs. {fmtCurrency(totalPaid)}</span>
+                                    Total Paid: <span className="text-foreground ml-1">{formatCurrency(totalPaid)}</span>
                                 </span>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -327,7 +325,7 @@ export default function OrderDetailsPage() {
                                     <div key={i} className="flex items-center justify-between px-4 py-3 rounded-2xl border border-border/80 bg-card shadow-sm">
                                         <div className="flex items-center gap-2.5">
                                             <div className="p-1.5 bg-background border border-border/40 rounded-lg shadow-sm">
-                                                <BadgeDollarSign className="h-4 w-4 text-primary" />
+                                                <Wallet className="h-4 w-4 text-primary" />
                                             </div>
                                             <div>
                                                 <p className="text-[9px] font-black text-muted-foreground uppercase">Method</p>
@@ -338,7 +336,7 @@ export default function OrderDetailsPage() {
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[9px] font-black text-muted-foreground uppercase">Paid</p>
-                                            <p className="text-sm font-black font-mono">Rs. {fmtCurrency(t.amount)}</p>
+                                            <p className="text-sm font-black font-mono">{formatCurrency(t.amount)}</p>
                                         </div>
                                     </div>
                                 ))}

@@ -20,7 +20,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-    Printer, Eye, ShoppingCart, BadgeDollarSign, Calendar as CalendarIcon,
+    Printer, Eye, ShoppingCart, Wallet, Calendar as CalendarIcon,
     PauseCircle, RotateCcw, Clock, Pencil, Plus, Trash2, Loader2,
     Banknote, CreditCard, Building2, Ticket, BookOpen,
 } from "lucide-react";
@@ -34,9 +34,7 @@ import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 
-function fmtCurrency(val: number) {
-    return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-}
+
 
 function isSameDay(date: Date) {
     const now = new Date();
@@ -113,7 +111,7 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
                     {/* Grand total reference */}
                     <div className="flex justify-between text-sm bg-muted/40 rounded-lg px-3 py-2">
                         <span className="text-muted-foreground">Order Total</span>
-                        <span className="font-bold">Rs. {fmtCurrency(grandTotal)}</span>
+                        <span className="font-bold">{formatCurrency(grandTotal)}</span>
                     </div>
 
                     {/* Existing tenders */}
@@ -128,7 +126,7 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
                                             {t.cardLast4 && <span className="font-mono text-xs text-muted-foreground ml-1">••{t.cardLast4}</span>}
                                             {t.slipNo && <span className="font-mono text-xs text-muted-foreground ml-1">#{t.slipNo}</span>}
                                         </span>
-                                        <span className="font-mono font-semibold">Rs. {fmtCurrency(t.amount)}</span>
+                                        <span className="font-mono font-semibold">{formatCurrency(t.amount)}</span>
                                         <button onClick={() => setTenders(prev => prev.filter((_, j) => j !== i))}
                                             className="text-muted-foreground hover:text-destructive transition-colors ml-1">
                                             <Trash2 className="h-3.5 w-3.5" />
@@ -181,7 +179,7 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
                     <div className={cn("flex justify-between rounded-lg px-3 py-2 text-sm font-semibold",
                         balanceDue <= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive")}>
                         <span>{balanceDue <= 0 ? (changeAmount > 0 ? "Change" : "Fully Paid ✓") : "Balance Due"}</span>
-                        <span className="font-mono">Rs. {fmtCurrency(balanceDue <= 0 && changeAmount > 0 ? changeAmount : balanceDue)}</span>
+                        <span className="font-mono">{formatCurrency(balanceDue <= 0 && changeAmount > 0 ? changeAmount : balanceDue)}</span>
                     </div>
                 </div>
 
@@ -323,7 +321,7 @@ export default function SalesHistoryPage() {
             accessorKey: "grandTotal",
             header: () => <div className="text-right">Total</div>,
             cell: ({ row }) => (
-                <div className="text-right font-bold">Rs. {fmtCurrency(row.getValue("grandTotal"))}</div>
+                <div className="text-right font-bold">{formatCurrency(row.getValue("grandTotal"))}</div>
             ),
         },
         {
@@ -553,21 +551,21 @@ export default function SalesHistoryPage() {
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                         <div className="bg-muted/50 px-4 py-3 rounded-xl border border-border/50">
                                             <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mb-1.5">Subtotal</p>
-                                            <p className="text-sm font-black tracking-tight">Rs. {fmtCurrency(selectedOrder?.subtotal || 0)}</p>
+                                            <p className="text-sm font-black tracking-tight">{formatCurrency(selectedOrder?.subtotal || 0)}</p>
                                         </div>
                                         <div className="bg-primary/5 px-4 py-3 rounded-xl border border-primary/20">
                                             <p className="text-[9px] font-black text-primary uppercase tracking-widest mb-1.5">Discount</p>
-                                            <p className="text-sm font-black tracking-tight text-primary">Rs. {fmtCurrency(selectedOrder?.discountAmount || 0)}</p>
+                                            <p className="text-sm font-black tracking-tight text-primary">{formatCurrency(selectedOrder?.discountAmount || 0)}</p>
                                         </div>
                                         <div className="bg-primary px-4 py-3 rounded-xl shadow-lg shadow-primary/20">
                                             <p className="text-[9px] font-black text-primary-foreground/70 uppercase tracking-widest mb-1.5">Grand Total</p>
-                                            <p className="text-sm font-black tracking-tight text-primary-foreground">Rs. {fmtCurrency(selectedOrder?.grandTotal || 0)}</p>
+                                            <p className="text-sm font-black tracking-tight text-primary-foreground">{formatCurrency(selectedOrder?.grandTotal || 0)}</p>
                                         </div>
                                         {!isHold && (
                                             <div className={cn("px-4 py-3 rounded-xl border shadow-lg",
                                                 balanceDue > 0 ? "bg-orange-500/10 border-orange-500/30 text-orange-600" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-600")}>
                                                 <p className="text-[9px] font-black uppercase tracking-widest mb-1.5 opacity-80">{balanceDue > 0 ? "Balance Due" : "Settled"}</p>
-                                                <p className="text-sm font-black tracking-tight">Rs. {fmtCurrency(balanceDue)}</p>
+                                                <p className="text-sm font-black tracking-tight">{formatCurrency(balanceDue)}</p>
                                             </div>
                                         )}
                                     </div>
@@ -584,7 +582,7 @@ export default function SalesHistoryPage() {
                                                 )}
                                                 {selectedOrder?.coupon && (
                                                     <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1.5 py-1 px-3 rounded-lg">
-                                                        <BadgeDollarSign className="h-3 w-3" />
+                                                    <Wallet className="h-3 w-3" />
                                                         Coupon: <span className="font-black">{selectedOrder.coupon.code}</span>
                                                     </Badge>
                                                 )}
@@ -682,13 +680,13 @@ export default function SalesHistoryPage() {
                                                                     </>
                                                                 )}
                                                                 <TableCell className="text-right text-xs font-mono text-muted-foreground/80">
-                                                                    {fmtCurrency(item.unitPrice)}
+                                                                    {formatCurrency(item.unitPrice)}
                                                                 </TableCell>
                                                                 <TableCell className="text-right text-xs font-mono text-destructive">
-                                                                    {Number(item.discountAmount) > 0 ? `-${fmtCurrency(item.discountAmount)}` : "—"}
+                                                                    {Number(item.discountAmount) > 0 ? `-${formatCurrency(item.discountAmount)}` : "—"}
                                                                 </TableCell>
                                                                 <TableCell className="text-right font-bold text-xs font-mono pr-4">
-                                                                    {fmtCurrency(item.lineTotal ?? (item.unitPrice - (item.discountAmount || 0)) * item.quantity)}
+                                                                    {formatCurrency(item.lineTotal ?? (item.unitPrice - (item.discountAmount || 0)) * item.quantity)}
                                                                 </TableCell>
                                                             </TableRow>
                                                         );
@@ -703,11 +701,11 @@ export default function SalesHistoryPage() {
                                         <div className="space-y-3">
                                             <div className="flex items-center justify-between">
                                                 <h3 className="text-[11px] font-black uppercase tracking-widest flex items-center gap-2 text-foreground/70">
-                                                    <BadgeDollarSign className="h-4 w-4 text-muted-foreground" /> Payment Information
+                                                    <Wallet className="h-4 w-4 text-muted-foreground" /> Payment Information
                                                 </h3>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-black uppercase text-muted-foreground px-3 py-1 bg-muted/50 rounded-lg">
-                                                        Total Paid: <span className="text-foreground ml-1">Rs. {fmtCurrency(totalPaid)}</span>
+                                                        Total Paid: <span className="text-foreground ml-1">{formatCurrency(totalPaid)}</span>
                                                     </span>
                                                     {canEditTender && (
                                                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5"
@@ -722,7 +720,7 @@ export default function SalesHistoryPage() {
                                                     <div key={i} className="flex items-center justify-between px-4 py-3 rounded-2xl border border-border/80 bg-secondary/5 shadow-sm">
                                                         <div className="flex items-center gap-2.5">
                                                             <div className="p-1.5 bg-background border border-border/40 rounded-lg shadow-sm">
-                                                                <BadgeDollarSign className="h-3.5 w-3.5 text-primary" />
+                                                                <Wallet className="h-3.5 w-3.5 text-primary" />
                                                             </div>
                                                             <div>
                                                                 <p className="text-[9px] font-black text-muted-foreground uppercase leading-none mb-1">Method</p>
@@ -733,7 +731,7 @@ export default function SalesHistoryPage() {
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="text-[9px] font-black text-muted-foreground uppercase leading-none mb-1">Paid</p>
-                                                            <p className="text-[12px] font-black font-mono">Rs. {fmtCurrency(t.amount)}</p>
+                                                            <p className="text-[12px] font-black font-mono">{formatCurrency(t.amount)}</p>
                                                         </div>
                                                     </div>
                                                 ))}

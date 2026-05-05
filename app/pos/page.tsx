@@ -7,7 +7,6 @@ import {
     ShoppingCart,
     Receipt,
     Users,
-    DollarSign,
     TrendingUp,
     Package,
     BarChart3,
@@ -306,7 +305,7 @@ export default function PosPage() {
         {
             title: "Today's Sales",
             value: formatCurrency(stats?.todaySales ?? 0),
-            icon: DollarSign,
+            icon: Banknote,
             color: "from-green-500 to-emerald-600",
         },
         // {
@@ -408,7 +407,7 @@ export default function PosPage() {
                         <div className="space-y-4">
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 {[
-                                    { label: "My Sales", value: formatCurrency(cashier?.sales ?? 0), icon: DollarSign, color: "text-green-600" },
+                                    { label: "My Sales", value: formatCurrency(cashier?.sales ?? 0), icon: Banknote, color: "text-green-600" },
                                     { label: "My Transactions", value: String(cashier?.transactions ?? 0), icon: Receipt, color: "text-blue-600" },
                                     { label: "Avg. Sale", value: formatCurrency(cashier?.avgTransaction ?? 0), icon: TrendingUp, color: "text-purple-600" },
                                     { label: "Cash / Card", value: `${formatCurrency(cashier?.cashSales ?? 0)} / ${formatCurrency(cashier?.cardSales ?? 0)}`, icon: CreditCard, color: "text-orange-600" },

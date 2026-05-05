@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Printer, ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { formatCurrency } from '@/lib/utils';
 
 export default function LandedCostReportPage() {
     const params = useParams();
@@ -121,7 +122,7 @@ export default function LandedCostReportPage() {
                         <p className="text-[9px] text-blue-400 uppercase font-black tracking-tighter">Summary</p>
                         <p><strong>Total Items:</strong> {data.items.length}</p>
                         <p><strong>Total Qty:</strong> {Number(data.totalQuantity).toLocaleString()}</p>
-                        <p className="text-blue-700 font-bold"><strong>Total Cost:</strong> {Number(data.totalLandedCost).toLocaleString()} PKR</p>
+                        <p className="text-blue-700 font-bold"><strong>Total Cost:</strong> {formatCurrency(data.totalLandedCost)}</p>
                     </div>
                 </CardContent>
             </Card>
@@ -158,9 +159,9 @@ export default function LandedCostReportPage() {
 
                                 {/* AV */}
                                 <TableHead className="px-1 text-center bg-blue-50">Qty</TableHead>
-                                <TableHead className="px-1 text-center bg-blue-50">FOB$</TableHead>
-                                <TableHead className="px-1 text-center bg-blue-50">Inv$</TableHead>
-                                <TableHead className="px-1 text-center bg-blue-50">Frg$</TableHead>
+                                <TableHead className="px-1 text-center bg-blue-50">FOB PKR</TableHead>
+                                <TableHead className="px-1 text-center bg-blue-50">Inv PKR</TableHead>
+                                <TableHead className="px-1 text-center bg-blue-50">Frg PKR</TableHead>
                                 <TableHead className="px-1 text-center bg-blue-50">Rate</TableHead>
                                 <TableHead className="px-1 text-center bg-blue-50">InvPKR</TableHead>
                                 <TableHead className="px-1 text-center bg-blue-50">Ins</TableHead>
@@ -182,7 +183,7 @@ export default function LandedCostReportPage() {
                                 <TableHead className="px-1 text-center bg-purple-50 border-r-2 border-purple-300">Freight (MIS)</TableHead>
 
                                 {/* MIS */}
-                                <TableHead className="px-1 text-center bg-green-50">Frg$</TableHead>
+                                <TableHead className="px-1 text-center bg-green-50">Frg PKR</TableHead>
                                 <TableHead className="px-1 text-center bg-green-50">FrgPKR</TableHead>
                                 <TableHead className="px-1 text-center bg-green-50">Inv#</TableHead>
                                 <TableHead className="px-1 text-center bg-green-50">Date</TableHead>
@@ -219,14 +220,14 @@ export default function LandedCostReportPage() {
 
                                     {/* AV */}
                                     <TableCell className="px-1 text-right bg-blue-50/30">{Number(item.qty).toLocaleString()}</TableCell>
-                                    <TableCell className="px-1 text-right bg-blue-50/30">{Number(item.unitFob).toFixed(2)}</TableCell>
-                                    <TableCell className="px-1 text-right bg-blue-50/30">{Number(item.invoiceForeign).toLocaleString()}</TableCell>
-                                    <TableCell className="px-1 text-right bg-blue-50/30">{Number(item.freightForeign).toLocaleString()}</TableCell>
+                                    <TableCell className="px-1 text-right bg-blue-50/30">{formatCurrency(item.unitFob)}</TableCell>
+                                    <TableCell className="px-1 text-right bg-blue-50/30">{formatCurrency(item.invoiceForeign)}</TableCell>
+                                    <TableCell className="px-1 text-right bg-blue-50/30">{formatCurrency(item.freightForeign)}</TableCell>
                                     <TableCell className="px-1 text-right bg-blue-50/30">{Number(item.exchangeRate).toFixed(2)}</TableCell>
-                                    <TableCell className="px-1 text-right bg-blue-50/30">{Number(item.invoicePKR).toLocaleString()}</TableCell>
-                                    <TableCell className="px-1 text-right bg-blue-50/30">{Number(item.insuranceCharges).toLocaleString()}</TableCell>
-                                    <TableCell className="px-1 text-right bg-blue-50/30">{Number(item.landingCharges).toLocaleString()}</TableCell>
-                                    <TableCell className="px-1 text-right bg-blue-50 font-bold border-r-2 border-blue-300">{Number(item.assessableValue).toLocaleString()}</TableCell>
+                                    <TableCell className="px-1 text-right bg-blue-50/30">{formatCurrency(item.invoicePKR)}</TableCell>
+                                    <TableCell className="px-1 text-right bg-blue-50/30">{formatCurrency(item.insuranceCharges)}</TableCell>
+                                    <TableCell className="px-1 text-right bg-blue-50/30">{formatCurrency(item.landingCharges)}</TableCell>
+                                    <TableCell className="px-1 text-right bg-blue-50 font-bold border-r-2 border-blue-300">{formatCurrency(item.assessableValue)}</TableCell>
 
                                     {/* Duties */}
                                     <TableCell className="px-1 text-right bg-orange-50/30">{Number(item.customsDutyAmount).toLocaleString()}</TableCell>
@@ -238,15 +239,15 @@ export default function LandedCostReportPage() {
                                     <TableCell className="px-1 text-right bg-orange-50/30">{(Number(item.assessableValue) + Number(item.customsDutyAmount) + Number(item.regulatoryDutyAmount) + Number(item.additionalCustomsDutyAmount) + Number(item.salesTaxAmount) + Number(item.additionalSalesTaxAmount)).toLocaleString()}</TableCell>
                                     <TableCell className="px-1 text-right bg-orange-50/30">{Number(item.incomeTaxAmount).toLocaleString()}</TableCell>
                                     <TableCell className="px-1 text-right bg-orange-50 font-bold border-r-2 border-orange-300">
-                                        {(Number(item.customsDutyAmount) + Number(item.regulatoryDutyAmount) + Number(item.additionalCustomsDutyAmount) + Number(item.salesTaxAmount) + Number(item.additionalSalesTaxAmount) + Number(item.incomeTaxAmount)).toLocaleString()}
+                                        {formatCurrency(Number(item.customsDutyAmount) + Number(item.regulatoryDutyAmount) + Number(item.additionalCustomsDutyAmount) + Number(item.salesTaxAmount) + Number(item.additionalSalesTaxAmount) + Number(item.incomeTaxAmount))}
                                     </TableCell>
 
                                     {/* Freight (MIS) */}
-                                    <TableCell className="px-1 text-right bg-purple-50 font-bold border-r-2 border-purple-300">{Number(item.misFreightPKR || 0).toLocaleString()}</TableCell>
+                                    <TableCell className="px-1 text-right bg-purple-50 font-bold border-r-2 border-purple-300">{formatCurrency(item.misFreightPKR || 0)}</TableCell>
 
                                     {/* MIS shares */}
-                                    <TableCell className="px-1 text-right">{Number(item.misFreightUSD || 0).toFixed(2)}</TableCell>
-                                    <TableCell className="px-1 text-right">{Number(item.misFreightPKR || 0).toLocaleString()}</TableCell>
+                                    <TableCell className="px-1 text-right">{formatCurrency(item.misFreightUSD || 0)}</TableCell>
+                                    <TableCell className="px-1 text-right">{formatCurrency(item.misFreightPKR || 0)}</TableCell>
                                     <TableCell className="px-1 text-center">{item.misFreightInvNo || '-'}</TableCell>
                                     <TableCell className="px-1 text-center">{item.misFreightDate || '-'}</TableCell>
                                     <TableCell className="px-1 text-right">{Number(item.misDoThcPKR || 0).toLocaleString()}</TableCell>
@@ -255,15 +256,15 @@ export default function LandedCostReportPage() {
                                     <TableCell className="px-1 text-right">{Number(item.misBankPKR || 0).toLocaleString()}</TableCell>
                                     <TableCell className="px-1 text-right">{Number(item.misInsurancePKR || 0).toLocaleString()}</TableCell>
                                     <TableCell className="px-1 text-center">{item.misInsurancePolicyNo || '-'}</TableCell>
-                                    <TableCell className="px-1 text-right">{Number(item.misClgFwdPKR || 0).toLocaleString()}</TableCell>
+                                    <TableCell className="px-1 text-right">{formatCurrency(item.misClgFwdPKR || 0)}</TableCell>
                                     <TableCell className="px-1 text-center border-r-2 border-green-300">{item.misClgFwdBillNo || '-'}</TableCell>
 
                                     {/* Totals */}
                                     <TableCell className="px-1 text-right font-bold bg-yellow-50 text-orange-800">
-                                        {(Number(item.misFreightPKR || 0) + Number(item.misDoThcPKR || 0) + Number(item.misBankPKR || 0) + Number(item.misInsurancePKR || 0) + Number(item.misClgFwdPKR || 0)).toLocaleString()}
+                                        {formatCurrency(Number(item.misFreightPKR || 0) + Number(item.misDoThcPKR || 0) + Number(item.misBankPKR || 0) + Number(item.misInsurancePKR || 0) + Number(item.misClgFwdPKR || 0))}
                                     </TableCell>
-                                    <TableCell className="px-1 text-right font-bold bg-gray-50 text-blue-800">{Number(item.unitCostPKR).toLocaleString()}</TableCell>
-                                    <TableCell className="px-1 text-right font-black bg-blue-700 text-white text-[10px]">{Number(item.totalCostPKR).toLocaleString()}</TableCell>
+                                    <TableCell className="px-1 text-right font-bold bg-gray-50 text-blue-800">{formatCurrency(item.unitCostPKR)}</TableCell>
+                                    <TableCell className="px-1 text-right font-black bg-blue-700 text-white text-[10px]">{formatCurrency(item.totalCostPKR)}</TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

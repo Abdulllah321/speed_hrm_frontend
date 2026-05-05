@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
@@ -73,9 +74,8 @@ export default function PasswordPage() {
                 <div className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="oldPassword">Current Password</Label>
-                        <Input
+                        <PasswordInput
                             id="oldPassword"
-                            type="password"
                             value={formData.oldPassword}
                             onChange={(e) =>
                                 setFormData({ ...formData, oldPassword: e.target.value })
@@ -87,9 +87,8 @@ export default function PasswordPage() {
 
                     <div className="space-y-2">
                         <Label htmlFor="newPassword">New Password</Label>
-                        <Input
+                        <PasswordInput
                             id="newPassword"
-                            type="password"
                             value={formData.newPassword}
                             onChange={(e) =>
                                 setFormData({ ...formData, newPassword: e.target.value })
@@ -101,9 +100,8 @@ export default function PasswordPage() {
 
                     <div className="space-y-2">
                         <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                        <Input
+                        <PasswordInput
                             id="confirmPassword"
-                            type="password"
                             value={formData.confirmPassword}
                             onChange={(e) =>
                                 setFormData({ ...formData, confirmPassword: e.target.value })
