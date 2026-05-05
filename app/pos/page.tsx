@@ -652,7 +652,7 @@ export default function PosPage() {
                                 )}
                             </div>
                             <Button className="bg-linear-to-r from-blue-600 to-purple-600" asChild>
-                                <Link href="/pos/close" transitionTypes={["nav-forward"]}>
+                                <Link href="pos/terminal/logout" transitionTypes={["nav-forward"]}>
                                     Close Register
                                     <ArrowRight className="h-4 w-4 ml-2" />
                                 </Link>

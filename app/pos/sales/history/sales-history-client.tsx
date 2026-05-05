@@ -224,7 +224,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
     const [showUpdateTender, setShowUpdateTender] = useState(false);
     const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
 
-    // Re-fetch when filters/pagination change (skip on first render — we have SSR data)
+    // Re-fetch when filters/pagination change (skip on first render ï¿½ we have SSR data)
     const isFirstRender = useState(true);
     const fetchOrders = useCallback(async () => {
         setIsLoading(true);
@@ -253,7 +253,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
     // Reset to page 0 when filters change
     useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [search, dateRange]);
 
-    // Fetch on pagination/filter change — but skip the very first render (SSR data is fresh)
+    // Fetch on pagination/filter change ï¿½ but skip the very first render (SSR data is fresh)
     const [hasMounted, setHasMounted] = useState(false);
     useEffect(() => {
         if (!hasMounted) { setHasMounted(true); return; }

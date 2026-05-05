@@ -28,6 +28,7 @@ import { Database, ChevronRight, Search, LayoutGrid, Users, Package, Monitor } f
 import { masterMenuData, MenuItem, filterMenuByPermissions } from "./sidebar-menu-data";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
+import Link from "next/link";
 
 function getCategoryLabel(environment?: string) {
   switch (environment) {
@@ -99,7 +100,8 @@ function MasterMenuItem({
   }
 
   return (
-    <button
+    <Link
+      href={item.href ||"#"}
       onClick={(e) => item.href && onNavigate(item.href, e)}
       className={cn(
         "flex items-center justify-between rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent hover:text-accent-foreground w-full text-left",
@@ -114,7 +116,7 @@ function MasterMenuItem({
           </span>
         )}
       </div>
-    </button>
+    </Link>
   );
 }
 
@@ -159,6 +161,8 @@ export function HeaderMasterMenu() {
   }, [search, filteredMasterMenu]);
 
   const handleClick = (href: string, e: React.MouseEvent) => {
+    // Let the browser handle Cmd/Ctrl+click and middle-click natively (new tab)
+    if (e.metaKey || e.ctrlKey || e.button === 1) return;
     e.preventDefault();
     setOpen(false);
     startTransition(() => {

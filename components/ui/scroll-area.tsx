@@ -43,12 +43,17 @@ function ScrollArea({
     handleScroll()
 
     viewport.addEventListener("scroll", handleScroll)
-    // Also observe resize
-    const resizeObserver = new ResizeObserver(handleScroll)
+    // Observe resize but debounce to avoid setState loops
+    let rafId: number
+    const resizeObserver = new ResizeObserver(() => {
+      cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(handleScroll)
+    })
     resizeObserver.observe(viewport)
 
     return () => {
       viewport.removeEventListener("scroll", handleScroll)
+      cancelAnimationFrame(rafId)
       resizeObserver.disconnect()
     }
   }, [showShadows])

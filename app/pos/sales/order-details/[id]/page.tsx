@@ -124,9 +124,9 @@ export default function OrderDetailsPage() {
     const isToday = isSameDay(new Date(order.createdAt));
 
     return (
-        <div className="flex flex-col h-screen bg-background">
+        <div className="flex flex-col h-screen">
             {/* Header */}
-            <div className="bg-card px-6 py-4 flex items-center justify-between rounded-lg">
+            <div className="px-6 py-4 flex items-center justify-between rounded-lg">
                 <div className="flex items-center gap-4">
                     <Button variant="ghost" size="icon" onClick={() => {
                         startTransition(() => {

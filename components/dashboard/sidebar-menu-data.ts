@@ -567,20 +567,40 @@ export const masterMenuData: MenuItem[] = [
     environment: "POS",
   },
   {
-    title: "Terminal List",
-    href: "/master/pos/list",
-    permissions: ["master.pos.read"],
+    title: "Promo Campaigns",
     environment: "POS",
+    permissions: ["master.promo.read", "master.promo.create"],
+    children: [
+      { title: "Create", href: "/master/pos-config/promos/new", permissions: ["master.promo.create"] },
+      { title: "List", href: "/master/pos-config/promos", permissions: ["master.promo.read"] },
+    ],
   },
   {
-    title: "POS Config",
+    title: "Coupon Codes",
     environment: "POS",
-    permissions: ["master.promo.read", "master.coupon.read", "master.alliance.read"],
+    permissions: ["master.coupon.read", "master.coupon.create"],
     children: [
-      { title: "Promos", href: "/master/pos-config?tab=promos", permissions: ["master.promo.read"] },
-      { title: "Coupons", href: "/master/pos-config?tab=coupons", permissions: ["master.coupon.read"] },
-      { title: "Alliances", href: "/master/pos-config?tab=alliances", permissions: ["master.alliance.read"] },
-    ]
+      { title: "Create", href: "/master/pos-config/coupons/new", permissions: ["master.coupon.create"] },
+      { title: "List", href: "/master/pos-config/coupons", permissions: ["master.coupon.read"] },
+    ],
+  },
+  {
+    title: "Alliance Discounts",
+    environment: "POS",
+    permissions: ["master.alliance.read", "master.alliance.create"],
+    children: [
+      { title: "Create", href: "/master/pos-config/alliances/new", permissions: ["master.alliance.create"] },
+      { title: "List", href: "/master/pos-config/alliances", permissions: ["master.alliance.read"] },
+    ],
+  },
+  {
+    title: "Vouchers",
+    environment: "POS",
+    permissions: ["pos.voucher.view", "pos.voucher.create"],
+    children: [
+      { title: "Issue", href: "/master/pos-config/vouchers/new", permissions: ["pos.voucher.create"] },
+      { title: "List", href: "/master/pos-config/vouchers", permissions: ["pos.voucher.view"] },
+    ],
   },
 
 ];
@@ -1420,20 +1440,11 @@ export const menuData: MenuItem[] = [
         permissions: ["pos.return.create", "pos.exchange.create"],
       },
       {
-        title: "Claims",
-        href: "/pos/claims",
-        permissions: ["pos.claim.create"],
-      },
-      {
         title: "Customers",
         href: "/pos/customers",
         permissions: ["pos.customer.view"],
       },
-      {
-        title: "Customer Ledgers",
-        href: "/pos/customer-ledger",
-        permissions: ["pos.ledger.view"],
-      },
+    
       {
         title: "Cash Drawer",
         href: "/pos/shifts",
@@ -1533,11 +1544,11 @@ export const menuData: MenuItem[] = [
         href: "/pos/shifts",
         permissions: ["pos.shift.view", "pos.shift.open", "pos.shift.close"],
       },
-      {
-        title: "Close Register",
-        href: "/pos/close",
-        permissions: ["pos.shift.close"],
-      },
+      // {
+      //   title: "Close Register",
+      //   href: "pos/terminal/logout",
+      //   permissions: ["pos.shift.close"],
+      // },
       {
         title: "Settings",
         href: "/pos/terminal/settings",

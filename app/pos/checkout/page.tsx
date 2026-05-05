@@ -41,6 +41,8 @@ interface PromoConfig {
 interface AllianceConfig {
     id: string; partnerName: string; code: string;
     discountPercent: number; description?: string;
+    /** BIN prefixes (4–8 digits) that qualify for this alliance */
+    binNumbers: string[];
 }
 interface AppliedCoupon {
     id: string; code: string; discountType: string;
@@ -644,7 +646,9 @@ export default function CheckoutPage() {
 
     const filteredAlliances = alliances.filter(
         (a) => a.partnerName.toLowerCase().includes(allianceSearch.toLowerCase()) ||
-            a.code.toLowerCase().includes(allianceSearch.toLowerCase())
+            a.code.toLowerCase().includes(allianceSearch.toLowerCase()) ||
+            // BIN search: if the search looks like digits, match against stored BINs by prefix
+            (allianceSearch.match(/^\d+/) && a.binNumbers.some(bin => bin.startsWith(allianceSearch.trim())))
     );
 
     // ── Keyboard shortcuts (placed after all derived values + callbacks) ─────────
@@ -1081,7 +1085,7 @@ export default function CheckoutPage() {
                                 <div className="p-3 space-y-2">
                                     <div className="relative">
                                         <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                                        <Input ref={allianceSearchRef} className="pl-8 text-sm" placeholder="Search bank, card type... (F3)"
+                                        <Input ref={allianceSearchRef} className="pl-8 text-sm" placeholder="Search bank, card type, or BIN... (F3)"
                                             value={allianceSearch} onChange={(e) => setAllianceSearch(e.target.value)} />
                                     </div>
                                     {isLoadingConfig ? (
@@ -1118,6 +1122,11 @@ export default function CheckoutPage() {
                                                                     <div>
                                                                         <p className="font-medium text-xs">{a.partnerName}</p>
                                                                         <p className="text-[10px] text-muted-foreground">{a.description || a.code}</p>
+                                                                        {a.binNumbers.length > 0 && (
+                                                                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                                                                                BIN: {a.binNumbers.slice(0, 3).join(", ")}{a.binNumbers.length > 3 ? ` +${a.binNumbers.length - 3}` : ""}
+                                                                            </p>
+                                                                        )}
                                                                     </div>
                                                                     <div className="text-right shrink-0 ml-2">
                                                                         <p className="font-bold text-primary font-mono text-xs">−{fmtCurrency(disc)}</p>
