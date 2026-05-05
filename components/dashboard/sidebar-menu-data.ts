@@ -110,7 +110,7 @@ export const masterMenuData: MenuItem[] = [
     title: "HS Code",
     environment: "ERP",
     permissions: ["master.hs-code.read", "master.hs-code.create"],
-   
+
     children: [
       { title: "Add", href: "/master/hs-code/add" },
       { title: "View", href: "/master/hs-code/list" },
@@ -131,7 +131,7 @@ export const masterMenuData: MenuItem[] = [
     title: "Old Season",
     environment: "ERP",
     permissions: ["master.old-season.read", "master.old-season.create"],
-     children: [
+    children: [
       { title: "Add", href: "/master/old-season/add" },
       { title: "View", href: "/master/old-season/list" },
     ],
@@ -474,15 +474,7 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/unit-of-measurement/list" },
     ],
   },
-  {
-    title: "Tax Rate 1",
-    environment: "ERP",
-    permissions: ["master.tax-rate.read", "master.tax-rate.create"],
-    children: [
-      { title: "Add", href: "/master/tax-rate/add" },
-      { title: "View", href: "/master/tax-rate/list" },
-    ],
-  },
+
   {
     title: "Demand Type",
     environment: "ERP",

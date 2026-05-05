@@ -7,6 +7,7 @@ export interface TaxSlab {
   minAmount: number;
   maxAmount: number;
   rate: number;
+  fixedAmount: number;
   status: string;
   createdBy?: string;
   createdAt: string;
@@ -27,13 +28,14 @@ export async function createTaxSlab(formData: FormData): Promise<{ status: boole
   const minAmount = parseFloat(formData.get("minAmount") as string);
   const maxAmount = parseFloat(formData.get("maxAmount") as string);
   const rate = parseFloat(formData.get("rate") as string);
+  const fixedAmount = parseFloat(formData.get("fixedAmount") as string) || 0;
   if (!name?.trim() || isNaN(minAmount) || isNaN(maxAmount) || isNaN(rate)) {
     return { status: false, message: "All fields are required" };
   }
   try {
     const res = await authFetch(`/tax-slabs`, {
       method: "POST",
-      body: JSON.stringify({ name, minAmount, maxAmount, rate }),
+      body: JSON.stringify({ name, minAmount, maxAmount, rate, fixedAmount }),
     });
     const data = res.data;
     if (data.status) revalidatePath("/master/tax-slabs");
@@ -43,7 +45,7 @@ export async function createTaxSlab(formData: FormData): Promise<{ status: boole
   }
 }
 export async function createTaxSlabs(
-  items: { name: string; minAmount: number; maxAmount: number; rate: number }[]
+  items: { name: string; minAmount: number; maxAmount: number; rate: number; fixedAmount?: number }[]
 ): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "At least one tax slab is required" };
   try {
@@ -63,11 +65,12 @@ export async function updateTaxSlab(id: string, formData: FormData): Promise<{ s
   const minAmount = parseFloat(formData.get("minAmount") as string);
   const maxAmount = parseFloat(formData.get("maxAmount") as string);
   const rate = parseFloat(formData.get("rate") as string);
+  const fixedAmount = parseFloat(formData.get("fixedAmount") as string) || 0;
   if (!name?.trim()) return { status: false, message: "Name is required" };
   try {
     const res = await authFetch(`/tax-slabs/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ id, name, minAmount, maxAmount, rate }),
+      body: JSON.stringify({ id, name, minAmount, maxAmount, rate, fixedAmount }),
     });
     const data = res.data;
     if (data.status) revalidatePath("/master/tax-slabs");
@@ -103,7 +106,7 @@ export async function deleteTaxSlabs(ids: string[]): Promise<{ status: boolean; 
   }
 }
 export async function updateTaxSlabs(
-  items: { id: string; name: string; minAmount: number; maxAmount: number; rate: number }[]
+  items: { id: string; name: string; minAmount: number; maxAmount: number; rate: number; fixedAmount?: number }[]
 ): Promise<{ status: boolean; message: string }> {
   if (!items.length) return { status: false, message: "No items to update" };
   try {

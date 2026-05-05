@@ -180,16 +180,27 @@ export function PrintReceipt({
         }));
 
     // ── Totals ────────────────────────────────────────────────────────
-    const subtotal        = Number(order?.subtotal ?? 0) || items.reduce((s, i) => s + i.price * i.quantity, 0);
-    const totalTax        = Number(order?.taxAmount ?? 0) || items.reduce((s, i) => s + (i.taxAmount ?? 0), 0);
-    const orderDiscount   = Number(order?.globalDiscountAmount ?? 0);
-    const totalDiscount   = items.reduce((s, i) => s + (i.discountAmount ?? 0), 0) + orderDiscount;
+    const subtotal = Number(order?.subtotal ?? 0) || items.reduce((s, i) => s + i.price * i.quantity, 0);
+    const totalTax = Number(order?.taxAmount ?? 0) || items.reduce((s, i) => s + (i.taxAmount ?? 0), 0);
+
+    const itemDiscountsRaw = items.reduce((s, i) => s + (i.discountAmount ?? 0), 0);
+    const orderDiscount    = Number(order?.globalDiscountAmount ?? 0);
+
+    // Alliance suppression logic: if alliance is active and >= item discounts, item discounts are zeroed
+    const isAlliance = (discountMode === "alliance" || !!order?.alliance || !!order?.allianceId);
+    const suppressItemDiscounts = isAlliance && orderDiscount >= itemDiscountsRaw && orderDiscount > 0;
+
+    const totalDiscount   = (suppressItemDiscounts ? 0 : itemDiscountsRaw) + orderDiscount;
     const valueForSales   = subtotal - totalDiscount;
     const grandTotal      = Number(order?.grandTotal ?? 0) || (valueForSales + totalTax);
     const fbrPosFee       = Number(order?.fbrPosFee ?? 0);
     const finalGrandTotal = grandTotal + fbrPosFee;
     const changeAmount    = Number(order?.changeAmount ?? 0);
     const totalPaid       = tenders.reduce((s, t) => s + t.amount, 0);
+
+    // Alliance distribution for display
+    const allianceDiscPerItem = suppressItemDiscounts && items.length > 0 ? Math.floor(orderDiscount / items.length) : 0;
+    const allianceRemainder = suppressItemDiscounts && items.length > 0 ? (orderDiscount - (allianceDiscPerItem * items.length)) : 0;
 
     const orderDiscountLabel = (() => {
         if (discountMode === "promo")    return `Promo: ${selectedPromo?.code    ?? order?.promo?.code    ?? ""}`;
@@ -210,6 +221,7 @@ export function PrintReceipt({
         terminalName, cashierName, order, items, subtotal, totalTax, orderDiscount,
         totalDiscount, valueForSales, grandTotal, fbrPosFee, finalGrandTotal,
         changeAmount, totalPaid, tenders, orderDiscountLabel, fbrVerifyUrl, settings,
+        suppressItemDiscounts, allianceDiscPerItem, allianceRemainder,
     };
 
     return (
@@ -310,6 +322,9 @@ interface ReceiptBodyProps {
     orderDiscountLabel: string;
     fbrVerifyUrl: string;
     settings: PosSettings;
+    suppressItemDiscounts: boolean;
+    allianceDiscPerItem: number;
+    allianceRemainder: number;
 }
 
 function ReceiptBody({
@@ -317,6 +332,7 @@ function ReceiptBody({
     terminalName, cashierName, order, items, subtotal, totalTax, orderDiscount,
     totalDiscount, valueForSales, grandTotal, fbrPosFee, finalGrandTotal,
     changeAmount, totalPaid, tenders, orderDiscountLabel, fbrVerifyUrl, settings,
+    suppressItemDiscounts, allianceDiscPerItem, allianceRemainder,
 }: ReceiptBodyProps) {
 
     const Row = ({ label, value, bold = false, indent = false }: {
@@ -397,14 +413,25 @@ function ReceiptBody({
             {/* ── Item lines ── */}
             {items.map((item: any, idx: number) => {
                 const wostPerUnit  = item.price;
-                const disc         = item.discountAmount  ?? 0;
-                const discPct      = item.discountPercent ?? 0;
+                const rawDisc      = item.discountAmount  ?? 0;
+                
+                // If alliance suppressed item discount, we show the alliance share instead
+                let disc = suppressItemDiscounts ? 0 : rawDisc;
+                let displayDisc = disc;
+                let displayDiscPct = suppressItemDiscounts ? 0 : (item.discountPercent ?? 0);
+                
+                if (suppressItemDiscounts) {
+                    displayDisc = allianceDiscPerItem + (idx < allianceRemainder ? 1 : 0);
+                    displayDiscPct = Math.round((displayDisc / (wostPerUnit * item.quantity)) * 100 * 100) / 100;
+                }
+
+                const discPct      = displayDiscPct;
                 const tax          = item.taxAmount  ?? 0;
                 const taxPct       = item.taxPercent ?? 0;
                 const taxPerUnit   = item.quantity > 0 ? tax / item.quantity : 0;
                 const retailPrice  = wostPerUnit + taxPerUnit;
-                const amtAfterDisc = (wostPerUnit * item.quantity) - disc;
-                const valueInclTax = amtAfterDisc + tax;
+                const totalWost    = wostPerUnit * item.quantity;
+                const amtAfterDisc = totalWost - (suppressItemDiscounts ? displayDisc : disc);
                 const uniqueNo     = item.sku || item.upc || "—";
 
                 return (
@@ -421,7 +448,7 @@ function ReceiptBody({
                                 <span style={{ textAlign: "center", fontWeight: "bold" }}>{item.quantity}</span>
                                 <span style={{ textAlign: "right" }}>{fmt(retailPrice)}</span>
                                 <span style={{ textAlign: "right" }}>{fmt(wostPerUnit)}</span>
-                                <span style={{ textAlign: "right", fontWeight: "bold" }}>{fmt(valueInclTax)}</span>
+                                <span style={{ textAlign: "right", fontWeight: "bold" }}>{fmt(totalWost)}</span>
                             </div>
                         ) : (
                             <div
@@ -436,8 +463,8 @@ function ReceiptBody({
 
                         {!isGiftReceipt && (
                             <div className="mt-1 space-y-0.5 text-[10px]">
-                                <Row label="Discount %"             value={`${discPct}%`} />
-                                <Row label="Discount Amount"        value={disc > 0 ? fmt(disc) : "—"} />
+                                {!suppressItemDiscounts && <Row label="Discount %" value={`${discPct}%`} />}
+                                <Row label={suppressItemDiscounts ? "Alliance Disc" : "Discount Amount"} value={displayDisc > 0 ? fmt(displayDisc) : "—"} />
                                 <Row label="Amount after Discount"  value={fmt(amtAfterDisc)} />
                                 <Row label="Sales Tax Rate"         value={`${taxPct}%`} />
                                 <Row label="Sales Tax Amount"       value={tax > 0 ? fmt(tax) : "—"} />
@@ -445,8 +472,8 @@ function ReceiptBody({
                                     className="rpt-fbr-row flex justify-between font-bold text-[10px] border-t border-dashed pt-0.5 mt-0.5"
                                     style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}
                                 >
-                                    <span>Value Including Sales Tax</span>
-                                    <span>{fmt(valueInclTax)}</span>
+                                    <span>Total Value Excl. Sales Tax</span>
+                                    <span>{fmt(amtAfterDisc)}</span>
                                 </div>
                             </div>
                         )}
@@ -459,12 +486,12 @@ function ReceiptBody({
             {/* ── Summary totals ── */}
             {!isGiftReceipt ? (
                 <div className="space-y-0.5 text-[11px]">
-                    <Row label={`Total Value Excl. Sales Tax (${items.length})`} value={fmt(subtotal)} />
+                    <Row label={`Subtotal (${items.length})`} value={fmt(subtotal)} />
                     <Row label="Total Discount"  value={totalDiscount > 0 ? fmt(totalDiscount) : "—"} />
                     {orderDiscount > 0 && (
                         <Row label={orderDiscountLabel} value={`−${fmt(orderDiscount)}`} indent />
                     )}
-                    <Row label="Value for Sales" value={fmt(valueForSales)} />
+                    <Row label={`Total Value Excl. Sales Tax (${items.length})`} value={fmt(valueForSales)} />
                     {settings.receiptShowTax && (
                         <Row label="Total Sales Tax" value={fmt(totalTax)} />
                     )}

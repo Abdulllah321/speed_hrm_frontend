@@ -128,7 +128,7 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Date</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Reference</th>
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Source</th>
-                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Description</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Narration</th>
                       <th className="text-right px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Debit</th>
                       <th className="text-right px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Credit</th>
                       <th className="text-right px-4 py-3 font-semibold text-muted-foreground uppercase text-xs tracking-wider">Balance</th>

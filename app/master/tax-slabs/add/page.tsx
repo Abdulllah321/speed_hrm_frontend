@@ -22,6 +22,7 @@ interface TaxSlabRow {
   name: string;
   minAmount: string;
   maxAmount: string;
+  fixedAmount: string;
   rate: string;
 }
 
@@ -29,13 +30,13 @@ export default function AddTaxSlabPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [taxSlabs, setTaxSlabs] = useState<TaxSlabRow[]>([
-    { id: 1, name: "", minAmount: "", maxAmount: "", rate: "" },
+    { id: 1, name: "", minAmount: "", maxAmount: "", fixedAmount: "", rate: "" },
   ]);
 
   const addRow = () => {
     setTaxSlabs([
       ...taxSlabs,
-      { id: Date.now(), name: "", minAmount: "", maxAmount: "", rate: "" },
+      { id: Date.now(), name: "", minAmount: "", maxAmount: "", fixedAmount: "", rate: "" },
     ]);
   };
 
@@ -57,6 +58,7 @@ export default function AddTaxSlabPage() {
         name: t.name.trim(),
         minAmount: parseFloat(t.minAmount),
         maxAmount: parseFloat(t.maxAmount),
+        fixedAmount: parseFloat(t.fixedAmount) || 0,
         rate: parseFloat(t.rate),
       }));
 
@@ -149,7 +151,20 @@ export default function AddTaxSlabPage() {
                       disabled={isPending}
                     />
                   </div>
-                  <div className="space-y-2 col-span-2">
+                  <div className="space-y-2">
+                    <Label>Fixed Amount</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0"
+                      value={ts.fixedAmount}
+                      onChange={(e) =>
+                        updateField(ts.id, "fixedAmount", e.target.value)
+                      }
+                      disabled={isPending}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label>Rate (%) *</Label>
                     <Input
                       type="number"
