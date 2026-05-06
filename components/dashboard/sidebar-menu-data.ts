@@ -813,6 +813,11 @@ export const menuData: MenuItem[] = [
         permissions: ["sales.order.read"],
       },
       {
+        title: "Warehouse Verification",
+        href: "/erp/sales/orders/verification",
+        permissions: ["sales.order.read"],
+      },
+      {
         title: "Delivery Challans",
         href: "/erp/sales/delivery-challans",
         permissions: ["sales.challan.read"],

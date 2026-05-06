@@ -22,13 +22,14 @@ import {
 import {
     Printer, Eye, ShoppingCart, BadgeDollarSign, Calendar as CalendarIcon,
     PauseCircle, RotateCcw, Clock, Pencil, Plus, Trash2, Loader2,
-    Banknote, CreditCard, Building2, Ticket, BookOpen,
+    Banknote, CreditCard, Building2, Ticket, BookOpen, FileText,
 } from "lucide-react";
 
 import DataTable from "@/components/common/data-table";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { PrintReceipt } from "@/components/pos/print-receipt";
 import { PrintReturnReceipt } from "@/components/pos/print-return-receipt";
+import { PrintClaimReceipt } from "@/components/pos/print-claim-receipt";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -222,6 +223,8 @@ export default function SalesHistoryPage() {
     const [showUpdateTender, setShowUpdateTender] = useState(false);
     // isLoadingReceipt: dialog opens immediately, receipt fetches in background
     const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
+    const [showClaimReceipt, setShowClaimReceipt] = useState(false);
+    const [selectedClaim, setSelectedClaim] = useState<any>(null);
 
     const fetchOrders = useCallback(async () => {
         setIsLoading(true);
@@ -247,6 +250,20 @@ export default function SalesHistoryPage() {
 
     useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [search, dateRange]);
     useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+    // Debug: Log orders when they update
+    useEffect(() => {
+        console.log('📊 Orders updated:', {
+            totalOrders: orders.length,
+            ordersWithClaims: orders.filter(o => o.claims && o.claims.length > 0).length,
+            sampleOrder: orders[0] ? {
+                orderNumber: orders[0].orderNumber,
+                hasClaims: !!orders[0].claims,
+                claimsCount: orders[0].claims?.length || 0,
+                claims: orders[0].claims
+            } : null
+        });
+    }, [orders]);
 
     // Open print dialog immediately with skeleton, then fetch full order in background
     const openPrintDialog = useCallback(async (
@@ -322,6 +339,21 @@ export default function SalesHistoryPage() {
         } catch { toast.error("Failed to resume hold order"); }
     }, [router]);
 
+    // Print claim receipt
+    const handlePrintClaim = useCallback(async (claimId: string) => {
+        try {
+            const res = await authFetch(`/pos-claims/${claimId}`);
+            if (res.ok && res.data?.status) {
+                setSelectedClaim(res.data.data);
+                setShowClaimReceipt(true);
+            } else {
+                toast.error("Failed to load claim details");
+            }
+        } catch {
+            toast.error("Failed to load claim details");
+        }
+    }, []);
+
     const STATUS_BADGE: Record<string, string> = {
         completed: "bg-emerald-500/10 text-emerald-700 border-emerald-300",
         hold: "bg-amber-500/10 text-amber-700 border-amber-300",
@@ -372,11 +404,45 @@ export default function SalesHistoryPage() {
             header: "Status",
             cell: ({ row }) => {
                 const status = row.getValue("status") as string;
+                const claims = row.original.claims || [];
+                const hasClaims = claims.length > 0;
+                
+                // Determine claim status badge
+                let claimBadge = null;
+                if (hasClaims) {
+                    const pendingClaims = claims.filter((c: any) => c.status === 'SUBMITTED' || c.status === 'UNDER_REVIEW');
+                    const approvedClaims = claims.filter((c: any) => c.status === 'APPROVED' || c.status === 'PARTIALLY_APPROVED');
+                    const rejectedClaims = claims.filter((c: any) => c.status === 'REJECTED');
+                    
+                    if (pendingClaims.length > 0) {
+                        claimBadge = (
+                            <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 border-amber-300 ml-1">
+                                ⏳ Claim Pending
+                            </Badge>
+                        );
+                    } else if (approvedClaims.length > 0) {
+                        claimBadge = (
+                            <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5 bg-green-500/10 text-green-700 border-green-300 ml-1">
+                                ✓ Claim Approved
+                            </Badge>
+                        );
+                    } else if (rejectedClaims.length > 0) {
+                        claimBadge = (
+                            <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5 bg-red-500/10 text-red-700 border-red-300 ml-1">
+                                ✗ Claim Rejected
+                            </Badge>
+                        );
+                    }
+                }
+                
                 return (
-                    <Badge variant="outline" className={cn("capitalize text-[10px] px-1.5 py-0 h-5", STATUS_BADGE[status] ?? "")}>
-                        {status === "hold" && <PauseCircle className="h-2.5 w-2.5 mr-1" />}
-                        {status.replace(/_/g, " ")}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className={cn("capitalize text-[10px] px-1.5 py-0 h-5", STATUS_BADGE[status] ?? "")}>
+                            {status === "hold" && <PauseCircle className="h-2.5 w-2.5 mr-1" />}
+                            {status.replace(/_/g, " ")}
+                        </Badge>
+                        {claimBadge}
+                    </div>
                 );
             },
         },
@@ -444,6 +510,15 @@ export default function SalesHistoryPage() {
                                     title="Print return slip"
                                     onClick={() => openPrintDialog(order, "return")}>
                                     <RotateCcw className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                            {/* Claim receipt button - show if order has claims */}
+                            {order.claims && order.claims.length > 0 && (
+                                <Button variant="ghost" size="icon"
+                                    className="h-8 w-8 rounded-full text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                                    title={`Print claim receipt (${order.claims[0].claimNumber})`}
+                                    onClick={() => handlePrintClaim(order.claims[0].id)}>
+                                    <FileText className="h-3.5 w-3.5" />
                                 </Button>
                             )}
                             </>
@@ -870,6 +945,17 @@ export default function SalesHistoryPage() {
                     returnedAt={returnDetails.returnedAt}
                     paymentMethod={selectedOrder.paymentMethod}
                     onClose={() => setShowReturnPrint(false)}
+                />
+            )}
+
+            {/* Claim Receipt */}
+            {showClaimReceipt && selectedClaim && (
+                <PrintClaimReceipt
+                    claim={selectedClaim}
+                    onClose={() => {
+                        setShowClaimReceipt(false);
+                        setSelectedClaim(null);
+                    }}
                 />
             )}
         </div>

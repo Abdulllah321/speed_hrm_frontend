@@ -1285,7 +1285,7 @@ export interface SalesOrder {
   customer: Customer;
   warehouseId?: string;
   orderDate: string;
-  status: 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
+  status: 'DRAFT' | 'CONFIRMED' | 'WAREHOUSE_VERIFIED' | 'CANCELLED';
   subtotal: number;
   taxRate: number;
   taxAmount: number;
@@ -1381,6 +1381,10 @@ export const salesOrderApi = {
   }),
   confirm: (id: string) => fetchApi<{ status: boolean; data: SalesOrder }>(`/sales/orders/${id}/confirm`, {
     method: 'POST',
+  }),
+  verify: (id: string, items: any[]) => fetchApi<{ status: boolean; data: SalesOrder }>(`/sales/orders/${id}/verify`, {
+    method: 'POST',
+    body: JSON.stringify({ items }),
   }),
   cancel: (id: string) => fetchApi<{ status: boolean; data: SalesOrder }>(`/sales/orders/${id}/cancel`, {
     method: 'POST',

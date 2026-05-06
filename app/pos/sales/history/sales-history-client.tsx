@@ -23,7 +23,7 @@ import {
 import {
     Printer, Eye, ShoppingCart, BadgeDollarSign, Calendar as CalendarIcon,
     PauseCircle, RotateCcw, Clock, Pencil, Plus, Trash2, Loader2,
-    Banknote, CreditCard, Building2, Ticket, BookOpen,
+    Banknote, CreditCard, Building2, Ticket, BookOpen, AlertCircle, CheckCircle, XCircle,
 } from "lucide-react";
 
 import DataTable from "@/components/common/data-table";
@@ -224,7 +224,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
     const [showUpdateTender, setShowUpdateTender] = useState(false);
     const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
 
-    // Re-fetch when filters/pagination change (skip on first render — we have SSR data)
+    // Re-fetch when filters/pagination change (skip on first render ï¿½ we have SSR data)
     const isFirstRender = useState(true);
     const fetchOrders = useCallback(async () => {
         setIsLoading(true);
@@ -253,12 +253,26 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
     // Reset to page 0 when filters change
     useEffect(() => { setPagination(p => ({ ...p, pageIndex: 0 })); }, [search, dateRange]);
 
-    // Fetch on pagination/filter change — but skip the very first render (SSR data is fresh)
+    // Fetch on pagination/filter change ï¿½ but skip the very first render (SSR data is fresh)
     const [hasMounted, setHasMounted] = useState(false);
     useEffect(() => {
         if (!hasMounted) { setHasMounted(true); return; }
         fetchOrders();
     }, [fetchOrders]);
+
+    // Debug: Log orders when they change
+    useEffect(() => {
+        console.log('ðŸ“Š Orders updated:', {
+            totalOrders: orders.length,
+            ordersWithClaims: orders.filter(o => o.claims && o.claims.length > 0).length,
+            firstOrder: orders[0] ? {
+                orderNumber: orders[0].orderNumber,
+                hasClaims: !!orders[0].claims,
+                claimsCount: orders[0].claims?.length || 0,
+                claims: orders[0].claims
+            } : null
+        });
+    }, [orders]);
 
     // Open print dialog immediately with skeleton, fetch full order in background
     const openPrintDialog = useCallback(async (listOrder: any, mode: "sales" | "gift" | "return") => {
@@ -378,11 +392,58 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
             header: "Status",
             cell: ({ row }) => {
                 const status = row.getValue("status") as string;
+                const claims = row.original.claims || [];
+                const hasClaims = claims.length > 0;
+                
+                // Debug log
+                if (row.original.orderNumber === 'SO-20260506-0001') {
+                    console.log('ðŸ” Order Debug:', {
+                        orderNumber: row.original.orderNumber,
+                        claims: row.original.claims,
+                        hasClaims,
+                        claimsLength: claims.length
+                    });
+                }
+                
+                // Determine claim status badge
+                let claimBadge = null;
+                if (hasClaims) {
+                    const pendingClaims = claims.filter((c: any) => c.status === 'SUBMITTED' || c.status === 'UNDER_REVIEW');
+                    const approvedClaims = claims.filter((c: any) => c.status === 'APPROVED' || c.status === 'PARTIALLY_APPROVED');
+                    const rejectedClaims = claims.filter((c: any) => c.status === 'REJECTED');
+                    
+                    if (pendingClaims.length > 0) {
+                        claimBadge = (
+                            <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5 bg-amber-500/10 text-amber-700 border-amber-300 ml-1">
+                                <AlertCircle className="h-2.5 w-2.5 mr-1" />
+                                Claim Pending
+                            </Badge>
+                        );
+                    } else if (approvedClaims.length > 0) {
+                        claimBadge = (
+                            <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5 bg-green-500/10 text-green-700 border-green-300 ml-1">
+                                <CheckCircle className="h-2.5 w-2.5 mr-1" />
+                                Claim Approved
+                            </Badge>
+                        );
+                    } else if (rejectedClaims.length > 0) {
+                        claimBadge = (
+                            <Badge variant="outline" className="capitalize text-[10px] px-1.5 py-0 h-5 bg-red-500/10 text-red-700 border-red-300 ml-1">
+                                <XCircle className="h-2.5 w-2.5 mr-1" />
+                                Claim Rejected
+                            </Badge>
+                        );
+                    }
+                }
+                
                 return (
-                    <Badge variant="outline" className={cn("capitalize text-[10px] px-1.5 py-0 h-5", STATUS_BADGE[status] ?? "")}>
-                        {status === "hold" && <PauseCircle className="h-2.5 w-2.5 mr-1" />}
-                        {status.replace(/_/g, " ")}
-                    </Badge>
+                    <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className={cn("capitalize text-[10px] px-1.5 py-0 h-5", STATUS_BADGE[status] ?? "")}>
+                            {status === "hold" && <PauseCircle className="h-2.5 w-2.5 mr-1" />}
+                            {status.replace(/_/g, " ")}
+                        </Badge>
+                        {claimBadge}
+                    </div>
                 );
             },
         },
@@ -445,6 +506,19 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                                         title="Print return slip"
                                         onClick={() => openPrintDialog(order, "return")}>
                                         <RotateCcw className="h-3.5 w-3.5" />
+                                    </Button>
+                                )}
+                                {order.claims && order.claims.length > 0 && (
+                                    <Button variant="ghost" size="icon"
+                                        className="h-8 w-8 rounded-full text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                                        title={`View claim (${order.claims[0].claimNumber})`}
+                                        onClick={() => {
+                                            startTransition(() => {
+                                                addTransitionType("nav-forward");
+                                                router.push(`/pos/sales/order-details/${order.id}#claims`);
+                                            });
+                                        }}>
+                                        <AlertCircle className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
                             </>

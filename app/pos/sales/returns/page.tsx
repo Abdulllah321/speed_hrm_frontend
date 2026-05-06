@@ -129,11 +129,15 @@ export default function ReturnsPage() {
                 const lines: ReturnLine[] = orderItems
                     .filter((oi: any) => {
                         const alreadyReturned = Number(oi.returnedQty ?? 0);
-                        return Number(oi.quantity) - alreadyReturned > 0; // skip fully returned items
+                        const alreadyClaimed = Number(oi.claimedQty ?? 0);
+                        const totalProcessed = alreadyReturned + alreadyClaimed;
+                        return Number(oi.quantity) - totalProcessed > 0; // skip fully returned/claimed items
                     })
                     .map((oi: any) => {
                     const alreadyReturned = Number(oi.returnedQty ?? 0);
-                    const remainingQty = Number(oi.quantity) - alreadyReturned;
+                    const alreadyClaimed = Number(oi.claimedQty ?? 0);
+                    const totalProcessed = alreadyReturned + alreadyClaimed;
+                    const remainingQty = Number(oi.quantity) - totalProcessed;
                     return {
                         orderId: found.id, orderNumber: found.orderNumber,
                         orderItemId: oi.id, itemId: oi.itemId,

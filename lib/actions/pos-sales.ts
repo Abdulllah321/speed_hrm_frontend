@@ -22,6 +22,22 @@ export interface SalesOrder {
     promo: { name: string; code: string } | null;
     coupon: { code: string; description: string } | null;
     alliance: { partnerName: string; code: string; discountPercent: number; maxDiscount: number } | null;
+    claims?: Array<{
+        id: string;
+        claimNumber: string;
+        claimType: string;
+        status: string;
+        claimedAmount: number;
+        approvedAmount: number;
+        submittedAt: string;
+        reviewedAt: string | null;
+        items: Array<{
+            itemId: string;
+            claimedQty: number;
+            approvedQty: number;
+            itemStatus: string;
+        }>;
+    }>;
 }
 
 export interface ListOrdersResult {

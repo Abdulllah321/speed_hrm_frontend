@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, FileText, Truck, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Truck, Edit, Trash2, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,6 +69,8 @@ export default function SalesOrderViewPage() {
       case "DRAFT":
         return "bg-gray-100 text-gray-800";
       case "CONFIRMED":
+        return "bg-blue-100 text-blue-800";
+      case "WAREHOUSE_VERIFIED":
         return "bg-green-100 text-green-800";
       case "CANCELLED":
         return "bg-red-100 text-red-800";
@@ -144,6 +146,19 @@ export default function SalesOrderViewPage() {
           )}
           
           {order.status === "CONFIRMED" && (
+            <Button 
+              size="sm"
+              asChild
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Link href={`/erp/sales/orders/${order.id}/verify`} transitionTypes={["nav-forward"]}>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Warehouse Verify
+              </Link>
+            </Button>
+          )}
+          
+          {order.status === "WAREHOUSE_VERIFIED" && (
             <Button 
               size="sm"
               asChild
@@ -300,4 +315,4 @@ export default function SalesOrderViewPage() {
       </div>
     </div>
   );
-}
+}
