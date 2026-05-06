@@ -47,8 +47,9 @@ export default function InventoryDashboardPage() {
             setLowStockItems(uniqueLowStock.slice(0, 5));
 
             // Fetch Recent Ledger Entries
-            const ledger = await stockLedgerApi.getAll();
-            setRecentTransactions(ledger.slice(0, 6)); // Top 6
+            const ledgerRes = await stockLedgerApi.getAll();
+            const ledgerArray = Array.isArray(ledgerRes.data) ? ledgerRes.data : [];
+            setRecentTransactions(ledgerArray.slice(0, 6)); // Top 6
 
             // Fetch Transfer Requests
             const transfersResponse = await getTransferRequests();
@@ -167,7 +168,7 @@ export default function InventoryDashboardPage() {
                                             <div>
                                                 <p className="text-sm font-medium leading-none mb-1">
                                                     {tx.item?.sku || 'Unknown Item'}
-                                                    <span className="text-muted-foreground font-normal ml-2">{tx.item?.name || tx.item?.description}</span>
+                                                    <span className="text-muted-foreground font-normal ml-2">{tx.item?.description}</span>
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
                                                     {format(new Date(tx.createdAt), 'MMM d, yyyy h:mm a')} • {tx.warehouse?.name}
@@ -217,7 +218,7 @@ export default function InventoryDashboardPage() {
                                         <TableRow key={`${item.itemId}-${i}`}>
                                             <TableCell>
                                                 <div className="font-medium text-sm">{item.item?.sku}</div>
-                                                <div className="text-xs text-muted-foreground truncate max-w-[150px]">{item.item?.name || item.item?.description}</div>
+                                                <div className="text-xs text-muted-foreground truncate max-w-[150px]">{item.item?.description}</div>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Badge variant="destructive" className="font-bold">

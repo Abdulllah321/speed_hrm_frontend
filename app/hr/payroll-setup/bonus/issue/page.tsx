@@ -186,6 +186,7 @@ export default function IssueBonusPage() {
   const selectedSubDepartmentId = form.watch("subDepartmentId");
   const selectedBonusTypeId = form.watch("bonusTypeId");
   const selectedEmployeeIdsForm = form.watch("employeeIds");
+  const selectedBonusMonthYear = form.watch("bonusMonthYear");
 
   // Fetch departments on mount
   useEffect(() => {
@@ -1068,7 +1069,7 @@ export default function IssueBonusPage() {
                 />
               </div>
 
-              {/* Search Button */}
+              {/* Add Button */}
               <div className="flex justify-end">
                 <Button
                   type="button"
@@ -1077,13 +1078,13 @@ export default function IssueBonusPage() {
                   disabled={
                     form.formState.isSubmitting ||
                     submitting ||
-                    !form.getValues("bonusTypeId") ||
-                    !form.getValues("bonusMonthYear") ||
-                    form.getValues("employeeIds").length === 0
+                    !selectedBonusTypeId ||
+                    !selectedBonusMonthYear ||
+                    selectedEmployeeIdsForm.length === 0
                   }
                 >
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add
                 </Button>
               </div>
 

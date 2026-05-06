@@ -35,7 +35,6 @@ const formSchema = z.object({
   parentId: z.string().optional().nullable(),
   isGroup: z.boolean().default(false),
   isActive: z.boolean().default(true),
-  description: z.string().optional(),
 });
 
 interface ChartOfAccountFormProps {
@@ -56,7 +55,6 @@ export function ChartOfAccountForm({ initialData, accounts }: ChartOfAccountForm
       parentId: initialData?.parentId || "none", // Use "none" for select placeholder if needed or null
       isGroup: initialData?.isGroup || false,
       isActive: initialData?.isActive ?? true,
-      description: initialData?.description || "",
     },
   });
 
@@ -218,19 +216,6 @@ export function ChartOfAccountForm({ initialData, accounts }: ChartOfAccountForm
             />
         </div>
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Optional description" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <Button type="submit" disabled={loading}>
             {loading ? "Saving..." : initialData ? "Update Account" : "Create Account"}
         </Button>

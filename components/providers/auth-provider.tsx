@@ -504,10 +504,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     const { logoutClient } = await import("@/lib/client-auth");
     await logoutClient();
-    setUser(null);
-    setPreferences({});
-    router.push("/auth/choose-account");
-  }, [router]);
+    // Use window.location.href instead of router.push and avoid setUser(null) 
+    // to prevent the current protected page from crashing before the redirect completes.
+    window.location.href = "/auth/choose-account";
+  }, []);
 
   const isAdmin = useCallback((): boolean => {
     // Check role name from nested object or string property

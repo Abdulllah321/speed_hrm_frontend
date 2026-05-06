@@ -55,11 +55,20 @@ export function WarehouseForm({ id, onSuccess, onCancel }: WarehouseFormProps) {
         e.preventDefault();
         setLoading(true);
         try {
+            // Strip out relation and metadata fields that cannot be directly updated in Prisma
+            const { id: _id, createdAt, updatedAt, inventoryItems, _count, ...payload } = formData as any;
+
             if (id) {
-                await updateWarehouse(id, formData);
+                const res: any = await updateWarehouse(id, payload);
+                if (res?.statusCode >= 400 || res?.status === false || res?.error) {
+                    throw new Error(res.message || 'Failed to update warehouse');
+                }
                 toast.success('Warehouse updated successfully');
             } else {
-                await createWarehouse(formData);
+                const res: any = await createWarehouse(payload);
+                if (res?.statusCode >= 400 || res?.status === false || res?.error) {
+                    throw new Error(res.message || 'Failed to create warehouse');
+                }
                 toast.success('Warehouse created successfully');
             }
 
