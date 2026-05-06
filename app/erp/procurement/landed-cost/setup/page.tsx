@@ -729,200 +729,208 @@ console.log(res)
         <CardContent className="p-0">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Header Info Section */}
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold border-b pb-2">Header Info</h3>
-              <div>
-                <Label>Select GRN</Label>
-                <Select value={grnId} onValueChange={onGrnChange}>
-                  <SelectTrigger><SelectValue placeholder="Select GRN" /></SelectTrigger>
-                  <SelectContent>
-                    {getFilteredGrns().map(g => (
-                      <SelectItem key={g.id} value={g.id}>
-                        {g.grnNumber} - {(g as any).orderType || 'Unset'}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <h3 className="text-lg font-semibold text-gray-800">Header Info</h3>
               </div>
-              <div>
-                <Label>Supplier</Label>
-                <Input
-                  value={grns.find(g => g.id === grnId) ? ((grns.find(g => g.id === grnId) as any).purchaseOrder?.vendor?.name || supplierId) : ''}
-                  disabled
-                  placeholder="Auto-filled from GRN"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <Label>Currency {isLocalGrn() && <span className="text-xs text-gray-400">(Show PKR for local)</span>}</Label>
-                  <Input 
-                    value={isLocalGrn() ? 'PKR' : currency} 
-                    onChange={e => setCurrency(e.target.value)} 
-                    disabled={isLocalGrn()}
-                  />
+              
+              <div className="space-y-4">
+                <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                  <p className="text-sm font-semibold text-blue-700">Source Selection</p>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-600">Select GRN</Label>
+                    <Select value={grnId} onValueChange={onGrnChange}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Select GRN" /></SelectTrigger>
+                      <SelectContent>
+                        {getFilteredGrns().map(g => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.grnNumber} - {(g as any).orderType || 'Unset'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-600">Supplier</Label>
+                    <Input
+                      className="h-9 bg-gray-100"
+                      value={grns.find(g => g.id === grnId) ? ((grns.find(g => g.id === grnId) as any).purchaseOrder?.vendor?.name || supplierId) : ''}
+                      disabled
+                      placeholder="Auto-filled from GRN"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>Ex. Rate {isLocalGrn() && <span className="text-xs text-gray-400">(Fixed 1 for local)</span>}</Label>
-                  <Input 
-                    type="number" 
-                    value={isLocalGrn() ? 1 : exchangeRate} 
-                    onChange={e => setExchangeRate(Number(e.target.value))} 
-                    disabled={isLocalGrn()}
-                  />
+
+                <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                  <p className="text-sm font-semibold text-blue-700">Financials</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">Currency {isLocalGrn() && <span className="text-[10px] text-gray-400">(PKR)</span>}</Label>
+                      <Input 
+                        className="h-9"
+                        value={isLocalGrn() ? 'PKR' : currency} 
+                        onChange={e => setCurrency(e.target.value)} 
+                        disabled={isLocalGrn()}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">Ex. Rate {isLocalGrn() && <span className="text-[10px] text-gray-400">(1)</span>}</Label>
+                      <Input 
+                        className="h-9"
+                        type="number" 
+                        value={isLocalGrn() ? 1 : exchangeRate} 
+                        onChange={e => setExchangeRate(Number(e.target.value))} 
+                        disabled={isLocalGrn()}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-600">Total Freight ({isLocalGrn() ? 'PKR' : currency})</Label>
+                    <Input 
+                      className="h-9"
+                      type="number" 
+                      value={isLocalGrn() ? 0 : totalFreight} 
+                      onChange={e => setTotalFreight(Number(e.target.value))} 
+                      disabled={isLocalGrn()}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-600 font-bold">Total Invoice Value ({isLocalGrn() ? 'PKR' : currency})</Label>
+                    <Input 
+                      className="h-9 border-blue-200 focus:ring-blue-500"
+                      type="number" 
+                      value={totalInvoiceValue} 
+                      onChange={e => setTotalInvoiceValue(Number(e.target.value))} 
+                      placeholder="Enter manually"
+                    />
+                    <p className="text-[10px] text-gray-500 italic">
+                      Calculated item total shown below for comparison.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <Label>Total Freight ({isLocalGrn() ? 'PKR' : currency}) {isLocalGrn() && <span className="text-xs text-gray-400">(0 for local)</span>}</Label>
-                <Input 
-                  type="number" 
-                  value={isLocalGrn() ? 0 : totalFreight} 
-                  onChange={e => setTotalFreight(Number(e.target.value))} 
-                  disabled={isLocalGrn()}
-                />
-              </div>
-              <div>
-                <Label>Total Invoice Value ({isLocalGrn() ? 'PKR' : currency})</Label>
-                <Input 
-                  type="number" 
-                  value={totalInvoiceValue} 
-                  onChange={e => setTotalInvoiceValue(Number(e.target.value))} 
-                  placeholder="Enter total invoice value manually"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Enter the total invoice value manually. Calculated total from items will be shown in the table below for comparison.
-                </p>
               </div>
             </div>
 
             {/* Shipment Details Section */}
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold border-b pb-2">
-                Shipment Details {isLocalGrn() && <span className="text-sm text-gray-500">(Local - Limited Fields)</span>}
-              </h3>
-              <div>
-                <Label>LC No. {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
-                <Input 
-                  value={lcNo} 
-                  onChange={e => setLcNo(e.target.value)} 
-                  disabled={isLocalGrn()}
-                  placeholder={isLocalGrn() ? "-" : "Enter LC No."}
-                />
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <h3 className="text-lg font-semibold text-gray-800">Shipment Details</h3>
+                {isLocalGrn() && <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">Local</span>}
               </div>
-              <div>
-                <Label>B/L No. {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
-                <Input 
-                  value={blNo} 
-                  onChange={e => setBlNo(e.target.value)} 
-                  disabled={isLocalGrn()}
-                  placeholder={isLocalGrn() ? "-" : "Enter B/L No."}
-                />
+
+              <div className="space-y-4">
+                <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                  <p className="text-sm font-semibold text-orange-700">Documents</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">LC No.</Label>
+                      <Input value={lcNo} onChange={e => setLcNo(e.target.value)} disabled={isLocalGrn()} className="h-9" placeholder="LC #" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">B/L No.</Label>
+                      <Input value={blNo} onChange={e => setBlNo(e.target.value)} disabled={isLocalGrn()} className="h-9" placeholder="BL #" />
+                    </div>
+                    <div className="space-y-1 flex flex-col justify-end">
+                      <Label className="text-xs text-slate-600 mb-1">B/L Date</Label>
+                      <DatePicker value={blDate} onChange={setBlDate} disabled={isLocalGrn()} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">GD No.</Label>
+                      <Input value={gdNo} onChange={e => setGdNo(e.target.value)} disabled={isLocalGrn()} className="h-9" placeholder="GD #" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                  <p className="text-sm font-semibold text-orange-700">Tracking & Origin</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">Origin</Label>
+                      <Input value={countryOfOrigin} onChange={e => setCountryOfOrigin(e.target.value)} disabled={isLocalGrn()} className="h-9" placeholder="Origin" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">Season</Label>
+                      <Input value={season} onChange={e => setSeason(e.target.value)} className="h-9" placeholder="Season" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">Category</Label>
+                      <Input value={category} onChange={e => setCategory(e.target.value)} className="h-9" placeholder="Category" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-slate-600">Shipping Inv.</Label>
+                      <Input value={shippingInvoiceNo} onChange={e => setShippingInvoiceNo(e.target.value)} className="h-9" placeholder="Inv #" />
+                    </div>
+                    <div className="col-span-2 space-y-1 flex flex-col justify-end">
+                      <Label className="text-xs text-slate-600 mb-1">Invoice Date</Label>
+                      <DatePicker value={invoiceDate} onChange={setInvoiceDate} />
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div>
-                <Label>B/L Date {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
-                <DatePicker 
-                  value={blDate} 
-                  onChange={setBlDate} 
-                  placeholder={isLocalGrn() ? "-" : "Select B/L Date"}
-                  disabled={isLocalGrn()}
-                />
-              </div>
-              <div>
-                <Label>GD No. {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
-                <Input 
-                  value={gdNo} 
-                  onChange={e => setGdNo(e.target.value)} 
-                  disabled={isLocalGrn()}
-                  placeholder={isLocalGrn() ? "-" : "Enter GD No."}
-                />
-              </div>
-              <div>
-                <Label>Origin {isLocalGrn() && <span className="text-xs text-gray-400">(Not applicable for local)</span>}</Label>
-                <Input 
-                  value={countryOfOrigin} 
-                  onChange={e => setCountryOfOrigin(e.target.value)} 
-                  disabled={isLocalGrn()}
-                  placeholder={isLocalGrn() ? "-" : "Enter Origin"}
-                />
-              </div>
-              <div><Label>Season</Label><Input value={season} onChange={e => setSeason(e.target.value)} /></div>
-              <div><Label>Category</Label><Input value={category} onChange={e => setCategory(e.target.value)} /></div>
-              <div><Label>Shipping Inv.</Label><Input value={shippingInvoiceNo} onChange={e => setShippingInvoiceNo(e.target.value)} /></div>
-              <div><Label>Inv. Date</Label><DatePicker value={invoiceDate} onChange={setInvoiceDate} placeholder="Select Invoice Date" /></div>
             </div>
 
             {/* Other Charges (MIS Detail) Section */}
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold border-b pb-2">
-                Other Charges (MIS Detail) {isLocalGrn() && <span className="text-sm text-gray-500">(Not applicable for local)</span>}
-              </h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 border-b pb-2">
+                <h3 className="text-lg font-semibold text-gray-800">Other Charges (MIS)</h3>
+              </div>
+
               {isLocalGrn() ? (
-                <div className="p-4 bg-gray-50 rounded border text-center text-gray-500">
-                  <p>Other charges are not applicable for local purchases</p>
-                  <p className="text-sm">All MIS detail fields will show as 0 or "-"</p>
+                <div className="p-8 bg-gray-50 rounded-lg border-2 border-dashed text-center text-gray-500 flex flex-col items-center justify-center space-y-2">
+                  <p className="font-semibold">Not applicable for local purchases</p>
+                  <p className="text-xs">MIS details are reserved for import valuations.</p>
                 </div>
               ) : (
-                <>
-                  {/* Freight Section */}
-                  <div className="border p-2 rounded">
-                    <p className="text-xs font-bold text-green-700 mb-1">Freight</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-[10px]">PKR</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-7 text-xs" /></div>
-                      <div><Label className="text-[10px]">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-7 text-xs" /></div>
-                      <div><Label className="text-[10px]">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-7 text-xs" /></div>
-                      <div><Label className="text-[10px]">Date</Label><DatePicker value={freightDate} onChange={setFreightDate} placeholder="Date" className="h-7 text-xs" /></div>
+                <div className="space-y-4">
+                  <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-green-700">Freight (MIS)</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">PKR</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-slate-600 truncate">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-8 text-sm" /></div>
+                      <div className="space-y-1 flex flex-col justify-end"><Label className="text-xs text-slate-600 mb-1">Date</Label><DatePicker value={freightDate} onChange={setFreightDate} placeholder="Date" /></div>
                     </div>
                   </div>
 
-                  {/* DO/THC Section */}
-                  <div className="border p-2 rounded">
-                    <p className="text-xs font-bold text-green-700 mb-1">DO/THC</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div><Label className="text-[10px]">Charges</Label><Input type="number" value={doThcCharges} onChange={e => setDoThcCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
-                      <div><Label className="text-[10px]">P.O. #</Label><Input value={doThcPoNo} onChange={e => setDoThcPoNo(e.target.value)} className="h-7 text-xs" /></div>
-                      <div><Label className="text-[10px]">Date</Label><DatePicker value={doThcDate} onChange={setDoThcDate} placeholder="Date" className="h-7 text-xs" /></div>
+                  <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                    <p className="text-sm font-semibold text-green-700">DO/THC & Bank</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">DO Charges</Label><Input type="number" value={doThcCharges} onChange={e => setDoThcCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">P.O. #</Label><Input value={doThcPoNo} onChange={e => setDoThcPoNo(e.target.value)} className="h-8 text-sm" /></div>
+                      <div className="space-y-1 flex flex-col justify-end"><Label className="text-xs text-slate-600 mb-1">DO Date</Label><DatePicker value={doThcDate} onChange={setDoThcDate} placeholder="Date" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">Bank Charges</Label><Input type="number" value={bankCharges} onChange={e => setBankCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
                     </div>
                   </div>
 
-                  {/* Bank Section */}
-                  <div className="border p-2 rounded">
-                    <p className="text-xs font-bold text-green-700 mb-1">Bank</p>
-                    <Label className="text-[10px]">Charges</Label>
-                    <Input type="number" value={bankCharges} onChange={e => setBankCharges(Number(e.target.value))} className="h-7 text-xs" />
-                  </div>
-
-                  {/* M. Insurance Section */}
-                  <div className="border p-2 rounded">
-                    <p className="text-xs font-bold text-green-700 mb-1">M. Insurance</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-[10px]">Charges</Label><Input type="number" value={mInsuranceCharges} onChange={e => setMInsuranceCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
-                      <div><Label className="text-[10px]">Policy #</Label><Input value={mInsurancePolicyNo} onChange={e => setMInsurancePolicyNo(e.target.value)} className="h-7 text-xs" /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-2">
+                      <p className="text-sm font-semibold text-green-700">M. Insurance</p>
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">Charges</Label><Input type="number" value={mInsuranceCharges} onChange={e => setMInsuranceCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">Policy #</Label><Input value={mInsurancePolicyNo} onChange={e => setMInsurancePolicyNo(e.target.value)} className="h-8 text-sm" /></div>
+                    </div>
+                    <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-2">
+                      <p className="text-sm font-semibold text-green-700">Clg/Fwd</p>
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">Charges</Label><Input type="number" value={clgFwdCharges} onChange={e => setClgFwdCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-slate-600">Bill #</Label><Input value={clgFwdBillNo} onChange={e => setClgFwdBillNo(e.target.value)} className="h-8 text-sm" /></div>
                     </div>
                   </div>
 
-                  {/* Clg/Fwd Section */}
-                  <div className="border p-2 rounded">
-                    <p className="text-xs font-bold text-green-700 mb-1">Clg/Fwd</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-[10px]">Charges</Label><Input type="number" value={clgFwdCharges} onChange={e => setClgFwdCharges(Number(e.target.value))} className="h-7 text-xs" /></div>
-                      <div><Label className="text-[10px]">Bill #</Label><Input value={clgFwdBillNo} onChange={e => setClgFwdBillNo(e.target.value)} className="h-7 text-xs" /></div>
-                    </div>
-                  </div>
-
-                  {/* Excise Rate Section (NEW) */}
-                  <div className="border p-2 rounded bg-purple-50">
-                    <p className="text-xs font-bold text-purple-700 mb-1">Excise Charges</p>
-                    <div>
-                      <Label className="text-[10px]">Excise Rate (%)</Label>
+                  <div className="border p-3.5 rounded-md bg-purple-50/80 space-y-2">
+                    <p className="text-sm font-semibold text-purple-700">Excise Charges</p>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-purple-800">Excise Rate (%)</Label>
                       <Input 
                         type="number" 
                         value={globalExciseRate} 
                         onChange={e => setGlobalExciseRate(Number(e.target.value))} 
-                        className="h-7 text-xs" 
-                        placeholder="Enter Rate %"
+                        className="h-8 text-sm border-purple-200" 
+                        placeholder="Rate %"
                       />
                     </div>
                   </div>
-                </>
+                </div>
               )}
             </div>
           </div>

@@ -16,13 +16,12 @@ import { Plus, Building2, ArrowLeft, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 
@@ -153,27 +152,24 @@ export default function AddWarehousePage() {
       </div>
 
       {canCreate && (
-        <Sheet open={showForm} onOpenChange={setShowForm}>
-          <SheetContent
-            side="bottom"
-            className="sm:max-w-full lg:max-w-3xl mx-auto rounded-t-xl overflow-y-auto max-h-[90vh]"
-          >
-            <SheetHeader className="mb-6">
-              <SheetTitle className="text-2xl flex items-center gap-2">
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="sm:max-w-3xl overflow-y-auto max-h-[90vh]">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-2xl flex items-center gap-2">
                 <Building2 className="h-6 w-6 text-primary" />
                 Register New Warehouse
-              </SheetTitle>
-              <SheetDescription>
+              </DialogTitle>
+              <DialogDescription>
                 Enter the details for the new storage location.
-              </SheetDescription>
-            </SheetHeader>
+              </DialogDescription>
+            </DialogHeader>
 
             <WarehouseForm
               onSuccess={handleSuccess}
               onCancel={() => setShowForm(false)}
             />
-          </SheetContent>
-        </Sheet>
+          </DialogContent>
+        </Dialog>
       )}
 
       <div className="grid grid-cols-1 gap-6">

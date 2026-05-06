@@ -856,7 +856,7 @@ export interface StockLevel {
 export const stockLedgerApi = {
   getAll: (params?: { warehouseId?: string, movementType?: MovementType, itemId?: string }) => {
     const query = new URLSearchParams(params as any).toString();
-    return fetchApi<StockLedgerEntry[]>(`/stock-ledger?${query}`);
+    return fetchApi<{ status: boolean; data: StockLedgerEntry[]; meta: any }>(`/stock-ledger?${query}`);
   },
   getLevels: (params?: { warehouseId?: string, locationId?: string }) => {
     const query = new URLSearchParams(params as any).toString();

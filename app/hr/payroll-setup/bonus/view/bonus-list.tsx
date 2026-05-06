@@ -38,7 +38,7 @@ export function BonusList({ initialData = [] }: BonusListProps) {
   const [bonusTypes, setBonusTypes] = useState<BonusType[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
-  
+
   const [filters, setFilters] = useState({
     departmentId: "all",
     subDepartmentId: "all",
@@ -90,44 +90,44 @@ export function BonusList({ initialData = [] }: BonusListProps) {
           return false;
         }
       }
-      
+
       // Sub Department filter
       if (filters.subDepartmentId !== "all") {
         if (!row.subDepartmentId || row.subDepartmentId !== filters.subDepartmentId) {
           return false;
         }
       }
-      
+
       // Employee filter
       if (filters.employeeId !== "all" && row.employeeId !== filters.employeeId) {
         return false;
       }
-      
+
       // Bonus Type filter
       if (filters.bonusTypeId !== "all" && row.bonusTypeId !== filters.bonusTypeId) {
         return false;
       }
-      
+
       // Status filter
       if (filters.status !== "all" && row.status?.toLowerCase() !== filters.status.toLowerCase()) {
         return false;
       }
-      
+
       // Month filter
       if (filters.month !== "all" && row.bonusMonth !== filters.month) {
         return false;
       }
-      
+
       // Year filter
       if (filters.year !== "all" && row.bonusYear !== filters.year) {
         return false;
       }
-      
+
       // Payment Method filter
       if (filters.paymentMethod !== "all" && row.paymentMethod !== filters.paymentMethod) {
         return false;
       }
-      
+
       return true;
     });
   }, [allData, filters]);
@@ -431,29 +431,29 @@ export function BonusList({ initialData = [] }: BonusListProps) {
             <div class="summary-item">
               <div class="summary-label">Total Bonus Amount</div>
               <div class="summary-value">${new Intl.NumberFormat("en-PK", {
-                style: "currency",
-                currency: "PKR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              }).format(totalBonusAmount)}</div>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(totalBonusAmount)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Total Tax Amount</div>
               <div class="summary-value">${new Intl.NumberFormat("en-PK", {
-                style: "currency",
-                currency: "PKR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              }).format(totalTaxAmount)}</div>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(totalTaxAmount)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Total Net Amount</div>
               <div class="summary-value">${new Intl.NumberFormat("en-PK", {
-                style: "currency",
-                currency: "PKR",
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              }).format(totalNet)}</div>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(totalNet)}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Active Bonuses</div>
@@ -479,12 +479,12 @@ export function BonusList({ initialData = [] }: BonusListProps) {
             </thead>
             <tbody>
               ${data.map((row, index) => {
-                const taxAmount = 0; // Can be calculated based on taxPercentage if available
-                const netAmount = Number(row.amount) - taxAmount;
-                const paymentMethodLabel = row.paymentMethod === "with_salary" ? "With Salary" : "Separately";
-                const statusLabel = row.status?.charAt(0).toUpperCase() + row.status?.slice(1) || "Active";
-                
-                return `
+      const taxAmount = 0; // Can be calculated based on taxPercentage if available
+      const netAmount = Number(row.amount) - taxAmount;
+      const paymentMethodLabel = row.paymentMethod === "with_salary" ? "With Salary" : "Separately";
+      const statusLabel = row.status?.charAt(0).toUpperCase() + row.status?.slice(1) || "Active";
+
+      return `
                   <tr>
                     <td class="text-center">${index + 1}</td>
                     <td>${row.employeeCode}</td>
@@ -497,48 +497,48 @@ export function BonusList({ initialData = [] }: BonusListProps) {
                       </span>
                     </td>
                     <td class="text-right text-bold">${new Intl.NumberFormat("en-PK", {
-                      style: "currency",
-                      currency: "PKR",
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(Number(row.amount))}</td>
+        style: "currency",
+        currency: "PKR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(Number(row.amount))}</td>
                     <td class="text-right">${new Intl.NumberFormat("en-PK", {
-                      style: "currency",
-                      currency: "PKR",
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(taxAmount)}</td>
+        style: "currency",
+        currency: "PKR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(taxAmount)}</td>
                     <td class="text-right text-bold">${new Intl.NumberFormat("en-PK", {
-                      style: "currency",
-                      currency: "PKR",
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    }).format(netAmount)}</td>
+        style: "currency",
+        currency: "PKR",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(netAmount)}</td>
                     <td class="text-center">${row.bonusMonthYear}</td>
                     <td class="text-center">${statusLabel}</td>
                   </tr>
                 `;
-              }).join('')}
+    }).join('')}
               <tr class="total-row">
                 <td colspan="6" class="text-bold">Total</td>
                 <td class="text-right text-bold">${new Intl.NumberFormat("en-PK", {
-                  style: "currency",
-                  currency: "PKR",
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }).format(totalBonusAmount)}</td>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(totalBonusAmount)}</td>
                 <td class="text-right text-bold">${new Intl.NumberFormat("en-PK", {
-                  style: "currency",
-                  currency: "PKR",
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }).format(totalTaxAmount)}</td>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(totalTaxAmount)}</td>
                 <td class="text-right text-bold">${new Intl.NumberFormat("en-PK", {
-                  style: "currency",
-                  currency: "PKR",
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }).format(totalNet)}</td>
+      style: "currency",
+      currency: "PKR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(totalNet)}</td>
                 <td colspan="2"></td>
               </tr>
             </tbody>
@@ -546,7 +546,7 @@ export function BonusList({ initialData = [] }: BonusListProps) {
 
           <div class="footer">
             <p><strong>This is a system-generated document. Confidential and for internal use only.</strong></p>
-            <p>Generated by Speed Limit HR System | ${format(new Date(), "dd MMMM yyyy 'at' hh:mm a")}</p>
+            <p>Generated by Speed Pvt. Limited HR System | ${format(new Date(), "dd MMMM yyyy 'at' hh:mm a")}</p>
           </div>
         </body>
       </html>
@@ -555,12 +555,12 @@ export function BonusList({ initialData = [] }: BonusListProps) {
     printWindow.document.write(printContent);
     printWindow.document.close();
     printWindow.focus();
-    
+
     // Wait for content to load, then print
     setTimeout(() => {
       printWindow.print();
     }, 300);
-    
+
     toast.success("Print dialog opened");
   };
 
