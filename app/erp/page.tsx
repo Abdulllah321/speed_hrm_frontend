@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { useRouter } from "next/navigation";
 import {
   Users,
   Banknote,
@@ -119,6 +120,7 @@ function StatsCard({
 }
 
 const ERPDashboard = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("overview");
   const [orders, setOrders] = useState<any[]>([]);
   const [stockLevels, setStockLevels] = useState<any[]>([]);

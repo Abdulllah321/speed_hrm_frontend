@@ -13,6 +13,7 @@ export interface Warehouse {
     isActive: boolean;
     createdAt?: string;
     updatedAt?: string;
+    
 }
 
 export async function getWarehouses(): Promise<Warehouse[]> {

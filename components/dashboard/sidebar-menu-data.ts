@@ -416,15 +416,15 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/banks/list" },
     ],
   },
-  {
-    title: "Purchase Pool",
-    environment: "ERP",
-    permissions: ["master.purchase-pool.read", "master.purchase-pool.create"],
-    children: [
-      { title: "Add", href: "/master/purchase-pool/add" },
-      { title: "View", href: "/master/purchase-pool/list" },
-    ],
-  },
+  // {
+  //   title: "Purchase Pool",
+  //   environment: "ERP",
+  //   permissions: ["master.purchase-pool.read", "master.purchase-pool.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/purchase-pool/add" },
+  //     { title: "View", href: "/master/purchase-pool/list" },
+  //   ],
+  // },
   // {
   //   title: "Supplier",
   //   environment: "ERP",
@@ -452,15 +452,15 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/sub-category/list" },
     ],
   },
-  {
-    title: "Sub Item",
-    environment: "ERP",
-    permissions: ["master.sub-item.read", "master.sub-item.create"],
-    children: [
-      { title: "Add", href: "/master/sub-item/add" },
-      { title: "View", href: "/master/sub-item/list" },
-    ],
-  },
+  // {
+  //   title: "Sub Item",
+  //   environment: "ERP",
+  //   permissions: ["master.sub-item.read", "master.sub-item.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/sub-item/add" },
+  //     { title: "View", href: "/master/sub-item/list" },
+  //   ],
+  // },
   {
 
     title: "Unit Of Measurment",

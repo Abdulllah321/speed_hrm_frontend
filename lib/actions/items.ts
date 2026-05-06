@@ -275,3 +275,36 @@ export async function getDiscountCampaign(campaignId: string) {
         return { status: false, data: null };
     }
 }
+
+// ─── Bulk Sale Price Update ───────────────────────────────────────────────────
+
+export interface BulkSalePriceItemOverride {
+    id: string;
+    unitPrice: number;
+}
+
+export interface BulkSalePricePayload {
+    campaignName: string;
+    itemIds: string[];
+    unitPrice?: number;
+    overrides?: BulkSalePriceItemOverride[];
+    notes?: string;
+    appliedById?: string;
+}
+
+export async function bulkUpdateSalePrice(payload: BulkSalePricePayload) {
+    try {
+        const response = await authFetch("/finance/items/bulk-sale-price", {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+        });
+        const result = response.data;
+        if (result?.status) {
+            revalidatePath("/erp/items/list");
+        }
+        return result ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Bulk sale price error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}

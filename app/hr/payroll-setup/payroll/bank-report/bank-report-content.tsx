@@ -26,6 +26,7 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
         monthYear: format(new Date(), "yyyy-MM"),
         chequeDate: format(new Date(), "yyyy-MM-dd"),
         bankName: "",
+        branchAddress: "",
     });
 
     const handleSearch = () => {
@@ -130,6 +131,14 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                                 searchPlaceholder="Search bank..."
                             />
                         </div>
+                        <div className="min-w-[250px] flex-1">
+                            <label className="text-sm font-medium mb-2 block">Branch Address</label>
+                            <Input
+                                value={filters.branchAddress}
+                                onChange={(e) => setFilters({ ...filters, branchAddress: e.target.value })}
+                                placeholder="Enter Branch Address"
+                            />
+                        </div>
                         <div className="flex gap-2 min-w-fit">
                             <Button onClick={handleSearch} disabled={isPending} className="bg-indigo-600 hover:bg-indigo-700">
                                 <Search className="h-4 w-4 mr-2" />
@@ -161,8 +170,7 @@ export function BankReportContent({ initialBanks }: BankReportContentProps) {
                         <div className="space-y-1">
                             <p className="font-bold text-base underline">The Manager</p>
                             <p className="font-bold">{filters.bankName || "[Bank Name]"}</p>
-                            <p>[Branch Address Placeholder]</p>
-                            <p>[City Placeholder]</p>
+                            <p>{filters.branchAddress || "[Branch Address]"}</p>
                         </div>
 
                         <div className="text-center">
