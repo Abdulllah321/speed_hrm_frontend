@@ -73,6 +73,12 @@ export async function createAttendanceRequestQuery(data: Omit<AttendanceRequestQ
       revalidatePath('/hr/attendance/request-list');
       return { status: true, data: result.data };
     }
+    
+    // If backend explicitly returned status: false, return it immediately so the frontend knows it failed
+    if (result.status === false) {
+      return { status: false, message: result.message || 'Failed to create attendance request query' };
+    }
+
     if (result.id || result.status) {
       revalidatePath('/hr/attendance/request-list');
     }

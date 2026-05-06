@@ -47,6 +47,10 @@ export interface AllianceDiscount {
     discountPercent: number;
     maxDiscount?: number;
     description?: string;
+    startDate?: string;
+    endDate?: string;
+    /** BIN prefixes (4–8 digits) that qualify for this alliance */
+    binNumbers: string[];
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
@@ -61,8 +65,17 @@ export async function getPromos(): Promise<{ status: boolean; data?: PromoCampai
     try {
         const res = await authFetch(`/pos-config/promos`, {});
         return res.data;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to fetch promo campaigns' };
+    }
+}
+
+export async function getPromoById(id: string): Promise<{ status: boolean; data?: PromoCampaign; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-config/promos/${id}`, {});
+        return res.data;
+    } catch {
+        return { status: false, message: 'Failed to fetch promo campaign' };
     }
 }
 
@@ -86,7 +99,7 @@ export async function createPromo(data: {
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to create promo campaign' };
     }
 }
@@ -100,19 +113,23 @@ export async function updatePromo(id: string, data: any): Promise<{ status: bool
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to update promo campaign' };
     }
 }
 
-export async function deletePromo(id: string): Promise<{ status: boolean; message: string }> {
+/** Soft-deactivate — sets isActive = false. No hard delete allowed. */
+export async function deactivatePromo(id: string): Promise<{ status: boolean; message: string }> {
     try {
-        const res = await authFetch(`/pos-config/promos/${id}`, { method: 'DELETE' });
+        const res = await authFetch(`/pos-config/promos/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ isActive: false }),
+        });
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
-        return { status: false, message: 'Failed to delete promo campaign' };
+    } catch {
+        return { status: false, message: 'Failed to deactivate promo campaign' };
     }
 }
 
@@ -124,8 +141,17 @@ export async function getCoupons(): Promise<{ status: boolean; data?: CouponCode
     try {
         const res = await authFetch(`/pos-config/coupons`, {});
         return res.data;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to fetch coupon codes' };
+    }
+}
+
+export async function getCouponById(id: string): Promise<{ status: boolean; data?: CouponCode; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-config/coupons/${id}`, {});
+        return res.data;
+    } catch {
+        return { status: false, message: 'Failed to fetch coupon code' };
     }
 }
 
@@ -149,7 +175,7 @@ export async function createCoupon(data: {
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to create coupon code' };
     }
 }
@@ -163,19 +189,23 @@ export async function updateCoupon(id: string, data: any): Promise<{ status: boo
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to update coupon code' };
     }
 }
 
-export async function deleteCoupon(id: string): Promise<{ status: boolean; message: string }> {
+/** Soft-deactivate — sets isActive = false. No hard delete allowed. */
+export async function deactivateCoupon(id: string): Promise<{ status: boolean; message: string }> {
     try {
-        const res = await authFetch(`/pos-config/coupons/${id}`, { method: 'DELETE' });
+        const res = await authFetch(`/pos-config/coupons/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ isActive: false }),
+        });
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
-        return { status: false, message: 'Failed to delete coupon code' };
+    } catch {
+        return { status: false, message: 'Failed to deactivate coupon code' };
     }
 }
 
@@ -187,8 +217,17 @@ export async function getAlliances(): Promise<{ status: boolean; data?: Alliance
     try {
         const res = await authFetch(`/pos-config/alliances`, {});
         return res.data;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to fetch alliance discounts' };
+    }
+}
+
+export async function getAllianceById(id: string): Promise<{ status: boolean; data?: AllianceDiscount; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-config/alliances/${id}`, {});
+        return res.data;
+    } catch {
+        return { status: false, message: 'Failed to fetch alliance discount' };
     }
 }
 
@@ -198,8 +237,11 @@ export async function createAlliance(data: {
     discountPercent: number;
     maxDiscount?: number;
     description?: string;
+    startDate?: string;
+    endDate?: string;
     isActive?: boolean;
     locationIds: string[];
+    binNumbers?: string[];
 }): Promise<{ status: boolean; message: string; data?: AllianceDiscount }> {
     try {
         const res = await authFetch(`/pos-config/alliances`, {
@@ -209,7 +251,7 @@ export async function createAlliance(data: {
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to create alliance discount' };
     }
 }
@@ -223,18 +265,22 @@ export async function updateAlliance(id: string, data: any): Promise<{ status: b
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
+    } catch {
         return { status: false, message: 'Failed to update alliance discount' };
     }
 }
 
-export async function deleteAlliance(id: string): Promise<{ status: boolean; message: string }> {
+/** Soft-deactivate — sets isActive = false. No hard delete allowed. */
+export async function deactivateAlliance(id: string): Promise<{ status: boolean; message: string }> {
     try {
-        const res = await authFetch(`/pos-config/alliances/${id}`, { method: 'DELETE' });
+        const res = await authFetch(`/pos-config/alliances/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ isActive: false }),
+        });
         const result = res.data;
         if (result.status) revalidatePath('/master/pos-config');
         return result;
-    } catch (error) {
-        return { status: false, message: 'Failed to delete alliance discount' };
+    } catch {
+        return { status: false, message: 'Failed to deactivate alliance discount' };
     }
 }

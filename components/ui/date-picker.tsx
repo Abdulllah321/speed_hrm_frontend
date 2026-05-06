@@ -14,7 +14,12 @@ export function DatePicker({ value, onChange, disabled, className, placeholder, 
   const [viewMonth, setViewMonth] = React.useState<Date | undefined>(value ? new Date(value) : new Date());
 
   React.useEffect(() => {
-    setDate(value ? new Date(value) : undefined);
+    setDate((prev) => {
+      const next = value ? new Date(value) : undefined;
+      if (!next && !prev) return prev;
+      if (next && prev && format(next, "yyyy-MM-dd") === format(prev, "yyyy-MM-dd")) return prev;
+      return next;
+    });
   }, [value]);
 
   const handleSelect = (d: Date | undefined) => {

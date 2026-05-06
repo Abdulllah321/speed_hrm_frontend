@@ -33,6 +33,9 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
 import type { Voucher, VoucherType } from "@/lib/actions/vouchers";
+import { getLocations } from "@/lib/actions/location";
+import type { Location } from "@/lib/actions/location";
+import { LocationMultiSelect } from "@/app/master/pos-config/_components/location-multi-select";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -71,6 +74,9 @@ export default function PosVouchersPage() {
     const [isLoading,  setIsLoading]  = useState(true);
     const [activeTab,  setActiveTab]  = useState<string>("ALL");
 
+    // ── Locations ────────────────────────────────────────────────
+    const [locations, setLocations] = useState<Location[]>([]);
+
     // ── Single issue modal ───────────────────────────────────────
     const [showSingle,   setShowSingle]   = useState(false);
     const [singleType,   setSingleType]   = useState<VoucherType>("GIFT");
@@ -78,6 +84,7 @@ export default function PosVouchersPage() {
     const [singleDesc,   setSingleDesc]   = useState("");
     const [singleCo,     setSingleCo]     = useState("");
     const [singleExp,    setSingleExp]    = useState("");
+    const [singleLocationIds, setSingleLocationIds] = useState<string[]>([]);
     const [issuingSingle, setIssuingSingle] = useState(false);
     const [issuedVoucher, setIssuedVoucher] = useState<Voucher | null>(null);
 
@@ -89,6 +96,7 @@ export default function PosVouchersPage() {
     const [bulkDesc,    setBulkDesc]    = useState("");
     const [bulkCo,      setBulkCo]      = useState("");
     const [bulkExp,     setBulkExp]     = useState("");
+    const [bulkLocationIds, setBulkLocationIds] = useState<string[]>([]);
     const [issuingBulk, setIssuingBulk] = useState(false);
     const [bulkResult,  setBulkResult]  = useState<{ count: number; codes: string[] } | null>(null);
 
@@ -105,7 +113,12 @@ export default function PosVouchersPage() {
         finally { setIsLoading(false); }
     }, []);
 
-    useEffect(() => { fetchVouchers(); }, [fetchVouchers]);
+    useEffect(() => {
+        fetchVouchers();
+        getLocations().then(res => {
+            if (res.status && res.data) setLocations(res.data);
+        });
+    }, [fetchVouchers]);
 
     const filtered = activeTab === "ALL"
         ? vouchers
@@ -124,12 +137,13 @@ export default function PosVouchersPage() {
                     description: singleDesc || undefined,
                     companyName: singleCo || undefined,
                     expiresAt: singleExp || undefined,
+                    locationIds: singleLocationIds,
                 },
             });
             if (res.ok && res.data?.status) {
                 setIssuedVoucher(res.data.data);
                 setShowSingle(false);
-                setSingleAmount(""); setSingleDesc(""); setSingleCo(""); setSingleExp("");
+                setSingleAmount(""); setSingleDesc(""); setSingleCo(""); setSingleExp(""); setSingleLocationIds([]);
                 fetchVouchers();
             } else {
                 toast.error(res.data?.message || "Failed to issue voucher");
@@ -153,12 +167,13 @@ export default function PosVouchersPage() {
                     description: bulkDesc || undefined,
                     companyName: bulkCo || undefined,
                     expiresAt: bulkExp || undefined,
+                    locationIds: bulkLocationIds,
                 },
             });
             if (res.ok && res.data?.status) {
                 setBulkResult(res.data.data);
                 setShowBulk(false);
-                setBulkAmount(""); setBulkQty(10); setBulkDesc(""); setBulkCo(""); setBulkExp("");
+                setBulkAmount(""); setBulkQty(10); setBulkDesc(""); setBulkCo(""); setBulkExp(""); setBulkLocationIds([]);
                 fetchVouchers();
             } else {
                 toast.error(res.data?.message || "Failed to issue vouchers");
@@ -321,53 +336,75 @@ export default function PosVouchersPage() {
             </Tabs>
 
             {/* ── Single Issue Modal ──────────────────────────────────── */}
-            <Dialog open={showSingle} onOpenChange={setShowSingle}>
-                <DialogContent className="sm:max-w-110">
+            <Dialog open={showSingle} onOpenChange={open => { setShowSingle(open); if (!open) setSingleLocationIds([]); }}>
+                <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Ticket className="w-5 h-5 text-primary" /> Issue Voucher
                         </DialogTitle>
                         <DialogDescription>A unique code will be generated automatically.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
+                    <div className="flex gap-5 py-2">
+                        {/* Left — form fields */}
+                        <div className="flex-1 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Type</Label>
+                                    <Select value={singleType} onValueChange={v => setSingleType(v as VoucherType)}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {ISSUABLE_TYPES.map(({ value, label, icon: Icon }) => (
+                                                <SelectItem key={value} value={value}>
+                                                    <div className="flex items-center gap-2"><Icon className="w-3.5 h-3.5" />{label}</div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Amount (Rs.) <span className="text-destructive">*</span></Label>
+                                    <Input type="number" min="1" value={singleAmount}
+                                        onChange={e => setSingleAmount(e.target.value ? Number(e.target.value) : "")}
+                                        placeholder="e.g. 1000" autoFocus />
+                                </div>
+                            </div>
+                            {singleType === "CORPORATE" && (
+                                <div className="space-y-2">
+                                    <Label>Company Name</Label>
+                                    <Input value={singleCo} onChange={e => setSingleCo(e.target.value)} placeholder="e.g. Acme Corp" />
+                                </div>
+                            )}
                             <div className="space-y-2">
-                                <Label>Type</Label>
-                                <Select value={singleType} onValueChange={v => setSingleType(v as VoucherType)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {ISSUABLE_TYPES.map(({ value, label, icon: Icon }) => (
-                                            <SelectItem key={value} value={value}>
-                                                <div className="flex items-center gap-2"><Icon className="w-3.5 h-3.5" />{label}</div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Label>Description (Optional)</Label>
+                                <Input value={singleDesc} onChange={e => setSingleDesc(e.target.value)} placeholder="e.g. Birthday gift" />
                             </div>
                             <div className="space-y-2">
-                                <Label>Amount (Rs.) <span className="text-destructive">*</span></Label>
-                                <Input type="number" min="1" value={singleAmount}
-                                    onChange={e => setSingleAmount(e.target.value ? Number(e.target.value) : "")}
-                                    placeholder="e.g. 1000" autoFocus />
+                                <Label>Expiry Date (Optional)</Label>
+                                <DatePicker
+                                    value={singleExp}
+                                    onChange={val => setSingleExp(val)}
+                                    placeholder="Pick expiry date"
+                                    fromYear={new Date().getFullYear()}
+                                />
                             </div>
                         </div>
-                        {singleType === "CORPORATE" && (
-                            <div className="space-y-2">
-                                <Label>Company Name</Label>
-                                <Input value={singleCo} onChange={e => setSingleCo(e.target.value)} placeholder="e.g. Acme Corp" />
-                            </div>
-                        )}
-                        <div className="space-y-2">
-                            <Label>Description (Optional)</Label>
-                            <Input value={singleDesc} onChange={e => setSingleDesc(e.target.value)} placeholder="e.g. Birthday gift" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Expiry Date (Optional)</Label>
-                            <DatePicker
-                                value={singleExp}
-                                onChange={val => setSingleExp(val)}
-                                placeholder="Pick expiry date"
-                                fromYear={new Date().getFullYear()}
+
+                        {/* Right — location selector */}
+                        <div className="w-64 shrink-0 space-y-2">
+                            <Label className="flex items-center gap-1.5">
+                                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                                Redeemable At
+                                <span className="text-muted-foreground font-normal">(optional)</span>
+                            </Label>
+                            <p className="text-[11px] text-muted-foreground leading-snug">
+                                Leave empty to allow redemption at all locations.
+                            </p>
+                            <LocationMultiSelect
+                                locations={locations}
+                                selected={singleLocationIds}
+                                onChange={setSingleLocationIds}
+                                disabled={issuingSingle}
+                                maxHeight="280px"
                             />
                         </div>
                     </div>
@@ -382,8 +419,8 @@ export default function PosVouchersPage() {
             </Dialog>
 
             {/* ── Bulk Issue Modal ────────────────────────────────────── */}
-            <Dialog open={showBulk} onOpenChange={setShowBulk}>
-                <DialogContent className="sm:max-w-110">
+            <Dialog open={showBulk} onOpenChange={open => { setShowBulk(open); if (!open) setBulkLocationIds([]); }}>
+                <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Layers className="w-5 h-5 text-primary" /> Bulk Issue Vouchers
@@ -392,71 +429,93 @@ export default function PosVouchersPage() {
                             Generate multiple unique voucher codes at once — e.g. for pamphlets or campaigns.
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4 py-2">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label>Type</Label>
-                                <Select value={bulkType} onValueChange={v => setBulkType(v as VoucherType)}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {ISSUABLE_TYPES.map(({ value, label, icon: Icon }) => (
-                                            <SelectItem key={value} value={value}>
-                                                <div className="flex items-center gap-2"><Icon className="w-3.5 h-3.5" />{label}</div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                    <div className="flex gap-5 py-2">
+                        {/* Left — form fields */}
+                        <div className="flex-1 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Type</Label>
+                                    <Select value={bulkType} onValueChange={v => setBulkType(v as VoucherType)}>
+                                        <SelectTrigger><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                            {ISSUABLE_TYPES.map(({ value, label, icon: Icon }) => (
+                                                <SelectItem key={value} value={value}>
+                                                    <div className="flex items-center gap-2"><Icon className="w-3.5 h-3.5" />{label}</div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Amount per Voucher (Rs.) <span className="text-destructive">*</span></Label>
+                                    <Input type="number" min="1" value={bulkAmount}
+                                        onChange={e => setBulkAmount(e.target.value ? Number(e.target.value) : "")}
+                                        placeholder="e.g. 500" autoFocus />
+                                </div>
                             </div>
                             <div className="space-y-2">
-                                <Label>Amount per Voucher (Rs.) <span className="text-destructive">*</span></Label>
-                                <Input type="number" min="1" value={bulkAmount}
-                                    onChange={e => setBulkAmount(e.target.value ? Number(e.target.value) : "")}
-                                    placeholder="e.g. 500" autoFocus />
+                                <Label>Quantity <span className="text-destructive">*</span>
+                                    <span className="text-muted-foreground font-normal ml-1">(max 500)</span>
+                                </Label>
+                                <Input type="number" min="1" max="500" value={bulkQty}
+                                    onChange={e => setBulkQty(e.target.value ? Number(e.target.value) : "")}
+                                    placeholder="e.g. 100" />
                             </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Quantity <span className="text-destructive">*</span>
-                                <span className="text-muted-foreground font-normal ml-1">(max 500)</span>
-                            </Label>
-                            <Input type="number" min="1" max="500" value={bulkQty}
-                                onChange={e => setBulkQty(e.target.value ? Number(e.target.value) : "")}
-                                placeholder="e.g. 100" />
-                        </div>
-                        {bulkType === "CORPORATE" && (
+                            {bulkType === "CORPORATE" && (
+                                <div className="space-y-2">
+                                    <Label>Company Name</Label>
+                                    <Input value={bulkCo} onChange={e => setBulkCo(e.target.value)} placeholder="e.g. Acme Corp" />
+                                </div>
+                            )}
                             <div className="space-y-2">
-                                <Label>Company Name</Label>
-                                <Input value={bulkCo} onChange={e => setBulkCo(e.target.value)} placeholder="e.g. Acme Corp" />
+                                <Label>Description (Optional)</Label>
+                                <Input value={bulkDesc} onChange={e => setBulkDesc(e.target.value)}
+                                    placeholder="e.g. Summer campaign 2026" />
                             </div>
-                        )}
-                        <div className="space-y-2">
-                            <Label>Description (Optional)</Label>
-                            <Input value={bulkDesc} onChange={e => setBulkDesc(e.target.value)}
-                                placeholder="e.g. Summer campaign 2026" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Expiry Date (Optional)</Label>
-                            <Input type="date" value={bulkExp} onChange={e => setBulkExp(e.target.value)}
-                                min={new Date().toISOString().split("T")[0]} />
+                            <div className="space-y-2">
+                                <Label>Expiry Date (Optional)</Label>
+                                <Input type="date" value={bulkExp} onChange={e => setBulkExp(e.target.value)}
+                                    min={new Date().toISOString().split("T")[0]} />
+                            </div>
+
+                            {/* Summary preview */}
+                            {bulkAmount && bulkQty && Number(bulkAmount) > 0 && Number(bulkQty) > 0 && (
+                                <div className="rounded-lg bg-muted/40 border px-4 py-3 text-sm space-y-1">
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>Vouchers to generate</span>
+                                        <span className="font-semibold text-foreground">{bulkQty}</span>
+                                    </div>
+                                    <div className="flex justify-between text-muted-foreground">
+                                        <span>Value each</span>
+                                        <span className="font-semibold text-foreground">{formatCurrency(Number(bulkAmount))}</span>
+                                    </div>
+                                    <Separator className="my-1" />
+                                    <div className="flex justify-between font-semibold">
+                                        <span>Total value</span>
+                                        <span>{formatCurrency(Number(bulkAmount) * Number(bulkQty))}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Summary preview */}
-                        {bulkAmount && bulkQty && Number(bulkAmount) > 0 && Number(bulkQty) > 0 && (
-                            <div className="rounded-lg bg-muted/40 border px-4 py-3 text-sm space-y-1">
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span>Vouchers to generate</span>
-                                    <span className="font-semibold text-foreground">{bulkQty}</span>
-                                </div>
-                                <div className="flex justify-between text-muted-foreground">
-                                    <span>Value each</span>
-                                    <span className="font-semibold text-foreground">{formatCurrency(Number(bulkAmount))}</span>
-                                </div>
-                                <Separator className="my-1" />
-                                <div className="flex justify-between font-semibold">
-                                    <span>Total value</span>
-                                    <span>{formatCurrency(Number(bulkAmount) * Number(bulkQty))}</span>
-                                </div>
-                            </div>
-                        )}
+                        {/* Right — location selector */}
+                        <div className="w-64 shrink-0 space-y-2">
+                            <Label className="flex items-center gap-1.5">
+                                <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+                                Redeemable At
+                                <span className="text-muted-foreground font-normal">(optional)</span>
+                            </Label>
+                            <p className="text-[11px] text-muted-foreground leading-snug">
+                                Leave empty to allow redemption at all locations.
+                            </p>
+                            <LocationMultiSelect
+                                locations={locations}
+                                selected={bulkLocationIds}
+                                onChange={setBulkLocationIds}
+                                disabled={issuingBulk}
+                                maxHeight="280px"
+                            />
+                        </div>
                     </div>
                     <DialogFooter>
                         <Button variant="ghost" onClick={() => setShowBulk(false)}>Cancel</Button>

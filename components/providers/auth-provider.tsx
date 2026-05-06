@@ -495,8 +495,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Refresh user data
   const refreshUser = useCallback(async () => {
-    setLoading(true);
-    setLoadingProgress(0);
+    // We don't set global loading here to prevent "whole page reload" feel
+    // Just fetch in background
     await fetchUser();
   }, [fetchUser]);
 

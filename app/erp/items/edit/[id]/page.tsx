@@ -206,7 +206,7 @@ export default function ItemEditPage() {
                 });
             } catch (error) {
                 console.error("Failed to fetch masters:", error);
-                toast.error("Failed to load master data");
+                // toast.error("Failed to load master data");
             } finally {
                 setLoading(false);
             }

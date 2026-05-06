@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -85,9 +86,8 @@ export default function PosUserLogin() {
 
                     <div className="space-y-2">
                         <Label>Password</Label>
-                        <Input
+                        <PasswordInput
                             placeholder="••••••••"
-                            type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}

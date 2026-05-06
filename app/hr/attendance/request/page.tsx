@@ -26,12 +26,15 @@ import { useAuth } from "@/components/providers/auth-provider";
 
 export default function AttendanceRequestQueryPage() {
   const router = useRouter();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
+
+  // Can this user choose any employee, or only themselves?
+  const canViewAllEmployees = isAdmin() || hasPermission("hr.employees.view") || hasPermission("hr.employees.list");
 
   const [formData, setFormData] = useState({
     employeeId: "",
@@ -49,19 +52,29 @@ export default function AttendanceRequestQueryPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [employeesResult, departmentsResult] = await Promise.all([
-          getAllEmployeesForClearance(),
-          getDepartments(),
-        ]);
+        // Only fetch all employees if the user has permission to do so.
+        // Otherwise use the logged-in user's own employee record from auth context.
+        if (canViewAllEmployees) {
+          const [employeesResult, departmentsResult] = await Promise.all([
+            getAllEmployeesForClearance(),
+            getDepartments(),
+          ]);
 
-        if (employeesResult.status && employeesResult.data) {
-          setAllEmployees(employeesResult.data);
+          if (employeesResult.status && employeesResult.data) {
+            setAllEmployees(employeesResult.data);
+          } else {
+            toast.error(employeesResult.message || "Failed to load employees");
+          }
+
+          if (departmentsResult.status && departmentsResult.data) {
+            setDepartments(departmentsResult.data);
+          }
         } else {
-          toast.error(employeesResult.message || "Failed to load employees");
-        }
-
-        if (departmentsResult.status && departmentsResult.data) {
-          setDepartments(departmentsResult.data);
+          // Regular employee: only load departments (needed for display), skip employee list fetch
+          const departmentsResult = await getDepartments();
+          if (departmentsResult.status && departmentsResult.data) {
+            setDepartments(departmentsResult.data);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -72,31 +85,61 @@ export default function AttendanceRequestQueryPage() {
     };
 
     fetchData();
-  }, []);
+  }, [canViewAllEmployees]);
 
-  // Auto-select current employee for non-admins
+
+  // ── Non-privileged users: pre-fill from auth context only (no allEmployees dep → no loop) ──
   useEffect(() => {
-    if (!isAdmin() && user?.employeeId && allEmployees.length > 0) {
-      const currentEmployee = allEmployees.find(e => e.id === user.employeeId);
-      if (currentEmployee) {
-        setFormData(prev => ({
-          ...prev,
-          employeeId: currentEmployee.id,
-          employeeName: currentEmployee.employeeName,
-          department: currentEmployee.department || "",
-          subDepartment: currentEmployee.subDepartment || ""
-        }));
-        
-        // Also fetch sub-departments if department is set
-        if (currentEmployee.department) {
-           const dept = departments.find(d => d.name === currentEmployee.department);
-           if (dept && dept.subDepartments) {
-             setSubDepartments(dept.subDepartments);
-           }
-        }
-      }
+    if (!user || canViewAllEmployees) return;
+    
+    // We need some ID to submit. Fallback to user.employeeId if the full employee object isn't there
+    const loginId = user.employee?.id || user.employeeId;
+    if (!loginId) return;
+
+    const empName = user.employee 
+      ? `${user.firstName || ""} ${user.lastName || ""}` 
+      : `${user.firstName || ""} ${user.lastName || ""}`;
+
+    setFormData(prev => {
+      // Prevent loop
+      if (prev.employeeId === loginId) return prev;
+      return {
+        ...prev,
+        employeeId: loginId as string,
+        employeeName: empName,
+        department: user.employee?.department?.name || "",
+      };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, canViewAllEmployees]);
+
+  // ── Privileged users: auto-select current user once the full list is loaded ──
+  useEffect(() => {
+    const loginId = user?.employeeId || user?.employee?.id;
+    if (!canViewAllEmployees || !loginId || allEmployees.length === 0) return;
+
+    const currentEmployee = allEmployees.find(e => e.id === loginId || e.employeeId === loginId);
+    if (!currentEmployee) return;
+
+    setFormData(prev => {
+      // Guard: only update if not already set to prevent a re-render loop
+      if (prev.employeeId === currentEmployee.id) return prev;
+      return {
+        ...prev,
+        employeeId: currentEmployee.id,
+        employeeName: currentEmployee.employeeName,
+        department: currentEmployee.department || "",
+        subDepartment: currentEmployee.subDepartment || "",
+      };
+    });
+
+    if (currentEmployee.department) {
+      const dept = departments.find(d => d.name === currentEmployee.department);
+      if (dept?.subDepartments) setSubDepartments(dept.subDepartments);
     }
-  }, [user, isAdmin, allEmployees, departments]);
+  }, [canViewAllEmployees, user, allEmployees, departments]);
+
+
 
   const updateField = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -214,77 +257,99 @@ export default function AttendanceRequestQueryPage() {
             <CardDescription>Submit your attendance time correction request</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Department</Label>
-              <Select
-                value={formData.department}
-                onValueChange={handleDepartmentChange}
-                disabled={isPending || loading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {departments.map((dept) => (
-                    <SelectItem key={dept.id} value={dept.name}>
-                      {dept.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Sub Department</Label>
-              <Select
-                value={formData.subDepartment}
-                onValueChange={handleSubDepartmentChange}
-                disabled={isPending || loading || !formData.department}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={formData.department ? "Select sub department" : "Select department first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {subDepartments.length > 0 ? (
-                    subDepartments.map((subDept) => (
-                      <SelectItem key={subDept.id} value={subDept.name}>
-                        {subDept.name}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                      {formData.department ? "No sub departments available" : "Select department first"}
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Department and Sub Department Row - Only visible to admins/authorized users */}
+            {canViewAllEmployees && (
+              <>
+                <div className="space-y-2">
+                  <Label>Department</Label>
+                  <Select
+                    value={formData.department}
+                    onValueChange={handleDepartmentChange}
+                    disabled={isPending || loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments.map((dept) => (
+                        <SelectItem key={dept.id} value={dept.name}>
+                          {dept.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Sub Department</Label>
+                  <Select
+                    value={formData.subDepartment}
+                    onValueChange={handleSubDepartmentChange}
+                    disabled={isPending || loading || !formData.department}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={formData.department ? "Select sub department" : "Select department first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subDepartments.length > 0 ? (
+                        subDepartments.map((subDept) => (
+                          <SelectItem key={subDept.id} value={subDept.name}>
+                            {subDept.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          {formData.department ? "No sub departments available" : "Select department first"}
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
             <div className="space-y-2">
               <Label>Employee Name <span className="text-red-500">*</span></Label>
-              {loading ? (
-                <div className="h-10 bg-muted rounded animate-pulse" />
+              {canViewAllEmployees ? (
+                loading ? (
+                  <div className="h-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  <Select 
+                    value={formData.employeeId} 
+                    onValueChange={handleEmployeeChange} 
+                    disabled={isPending || loading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={formData.department ? "Select employee from department" : "Select employee"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredEmployees.length > 0 ? (
+                        filteredEmployees.map((e) => (
+                          <SelectItem key={e.id} value={e.id}>
+                            {e.employeeName} ({e.employeeId})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          {formData.department ? "No employees in this department" : "No employees available"}
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                )
               ) : (
-                <Select 
-                  value={formData.employeeId} 
-                  onValueChange={handleEmployeeChange} 
-                  disabled={isPending || loading || (!isAdmin() && !!user?.employeeId)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={formData.department ? "Select employee from department" : "Select employee"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredEmployees.length > 0 ? (
-                      filteredEmployees.map((e) => (
-                        <SelectItem key={e.id} value={e.id}>
-                          {e.employeeName} ({e.employeeId})
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1.5 text-sm text-muted-foreground">
-                        {formData.department ? "No employees in this department" : "No employees available"}
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
+                // Read-only view for employees without permission
+                <div>
+                  <div className="flex w-full rounded-md bg-muted px-3 py-2 text-sm border border-input h-10 items-center">
+                    {user?.employee 
+                      ? `${user.firstName || ""} ${user.lastName || ""} (${user.employee.employeeId})`
+                      : user?.employeeId
+                        ? `Employee ID: ${user.employeeId}`
+                        : "Loading..."}
+                  </div>
+                  <p className="text-[0.8rem] text-muted-foreground mt-2">
+                    You can only create requests for yourself
+                  </p>
+                </div>
               )}
             </div>
             <div className="space-y-2">

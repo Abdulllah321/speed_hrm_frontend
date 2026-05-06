@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Trash2, Plus, Calculator, Save } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 import { PermissionGuard } from '@/components/auth/permission-guard';
+import { formatCurrency } from '@/lib/utils';
 
 interface LocalItem {
   itemId: string;
@@ -753,9 +754,9 @@ console.log(res)
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <Label>Currency {isLocalGrn() && <span className="text-xs text-gray-400">(Show $ for local)</span>}</Label>
+                  <Label>Currency {isLocalGrn() && <span className="text-xs text-gray-400">(Show PKR for local)</span>}</Label>
                   <Input 
-                    value={isLocalGrn() ? 'USD ($)' : currency} 
+                    value={isLocalGrn() ? 'PKR' : currency} 
                     onChange={e => setCurrency(e.target.value)} 
                     disabled={isLocalGrn()}
                   />
@@ -771,7 +772,7 @@ console.log(res)
                 </div>
               </div>
               <div>
-                <Label>Total Freight ({isLocalGrn() ? '$' : currency}) {isLocalGrn() && <span className="text-xs text-gray-400">(0 for local)</span>}</Label>
+                <Label>Total Freight ({isLocalGrn() ? 'PKR' : currency}) {isLocalGrn() && <span className="text-xs text-gray-400">(0 for local)</span>}</Label>
                 <Input 
                   type="number" 
                   value={isLocalGrn() ? 0 : totalFreight} 
@@ -780,7 +781,7 @@ console.log(res)
                 />
               </div>
               <div>
-                <Label>Total Invoice Value ({isLocalGrn() ? '$' : currency})</Label>
+                <Label>Total Invoice Value ({isLocalGrn() ? 'PKR' : currency})</Label>
                 <Input 
                   type="number" 
                   value={totalInvoiceValue} 
@@ -865,7 +866,7 @@ console.log(res)
                   <div className="border p-2 rounded">
                     <p className="text-xs font-bold text-green-700 mb-1">Freight</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <div><Label className="text-[10px]">US$ ($)</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-7 text-xs" /></div>
+                      <div><Label className="text-[10px]">PKR</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-7 text-xs" /></div>
                       <div><Label className="text-[10px]">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-7 text-xs" /></div>
                       <div><Label className="text-[10px]">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-7 text-xs" /></div>
                       <div><Label className="text-[10px]">Date</Label><DatePicker value={freightDate} onChange={setFreightDate} placeholder="Date" className="h-7 text-xs" /></div>
@@ -961,9 +962,9 @@ console.log(res)
                 <TableHead className="border-r border-gray-300 min-w-[200px]">Description</TableHead>
                 <TableHead className="w-[120px] font-bold text-blue-800">HS Code</TableHead>
                 <TableHead>Qty</TableHead>
-                <TableHead>FOB ($)</TableHead>
-                <TableHead>Inv ($)</TableHead>
-                <TableHead>Freight ($)</TableHead>
+                <TableHead>FOB (PKR)</TableHead>
+                <TableHead>Inv (PKR)</TableHead>
+                <TableHead>Freight (PKR)</TableHead>
                 <TableHead>Ex. Rate</TableHead>
                 <TableHead>Inv PKR</TableHead>
                 <TableHead>1%+1%</TableHead>
@@ -978,7 +979,7 @@ console.log(res)
                 <TableHead>I.T.</TableHead>
                 <TableHead className="font-bold border-r border-gray-300">Total Duty</TableHead>
                 <TableHead className="bg-purple-50 border-r border-gray-300">Charges</TableHead>
-                <TableHead>$</TableHead>
+                <TableHead>PKR</TableHead>
                 <TableHead>PKR</TableHead>
                 <TableHead>Inv No.</TableHead>
                 <TableHead>Date</TableHead>

@@ -20,11 +20,11 @@ import {
 import {
     ArrowLeft, Loader2, Tag, TicketPercent, Handshake, CheckCircle2,
     XCircle, Search, ShoppingCart, Printer, Trash2, Plus, Percent,
-    BadgeDollarSign, CreditCard, Banknote, Building2, Ticket,
+    BadgeDollarSign, CreditCard, Banknote, Wallet, Building2, Ticket,
     ChevronDown, ChevronUp, BookOpen, PauseCircle, UserRound,
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
-import { cn, getCookie } from "@/lib/utils";
+import { cn, getCookie, formatCurrency } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 import { PrintReceipt } from "@/components/pos/print-receipt";
@@ -40,7 +40,9 @@ interface PromoConfig {
 }
 interface AllianceConfig {
     id: string; partnerName: string; code: string;
-    discountPercent: number; maxDiscount?: number; description?: string;
+    discountPercent: number; description?: string;
+    /** BIN prefixes (4–8 digits) that qualify for this alliance */
+    binNumbers: string[];
 }
 interface AppliedCoupon {
     id: string; code: string; discountType: string;
@@ -51,7 +53,7 @@ interface Customer { id: string; name: string; code: string; contactNo?: string;
 type DiscountMode = "none" | "promo" | "coupon" | "alliance" | "manual";
 
 function fmtCurrency(val: number) {
-    return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return formatCurrency(val);
 }
 
 function calcPromoDiscount(promo: PromoConfig, subtotal: number): number {
@@ -587,7 +589,7 @@ export default function CheckoutPage() {
             return;
         }
         
-        if (!confirm(`Confirm credit sale of Rs. ${fmtCurrency(grandTotal)} to ${selectedCustomer.name}?\n\nBalance will be added to customer ledger.`)) {
+        if (!confirm(`Confirm credit sale of ${formatCurrency(grandTotal)} to ${selectedCustomer.name}?\n\nBalance will be added to customer ledger.`)) {
             return;
         }
 
@@ -653,7 +655,9 @@ export default function CheckoutPage() {
 
     const filteredAlliances = alliances.filter(
         (a) => a.partnerName.toLowerCase().includes(allianceSearch.toLowerCase()) ||
-            a.code.toLowerCase().includes(allianceSearch.toLowerCase())
+            a.code.toLowerCase().includes(allianceSearch.toLowerCase()) ||
+            // BIN search: if the search looks like digits, match against stored BINs by prefix
+            (allianceSearch.match(/^\d+/) && a.binNumbers.some(bin => bin.startsWith(allianceSearch.trim())))
     );
 
     // ── Keyboard shortcuts (placed after all derived values + callbacks) ─────────
@@ -1107,7 +1111,7 @@ export default function CheckoutPage() {
                                 <div className="p-3 space-y-2">
                                     <div className="relative">
                                         <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                                        <Input ref={allianceSearchRef} className="pl-8 text-sm" placeholder="Search bank, card type... (F3)"
+                                        <Input ref={allianceSearchRef} className="pl-8 text-sm" placeholder="Search bank, card type, or BIN... (F3)"
                                             value={allianceSearch} onChange={(e) => setAllianceSearch(e.target.value)} />
                                     </div>
                                     {isLoadingConfig ? (
@@ -1149,6 +1153,11 @@ export default function CheckoutPage() {
                                                                     <div>
                                                                         <p className="font-medium text-xs">{a.partnerName}</p>
                                                                         <p className="text-[10px] text-muted-foreground">{a.description || a.code}</p>
+                                                                        {a.binNumbers.length > 0 && (
+                                                                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                                                                                BIN: {a.binNumbers.slice(0, 3).join(", ")}{a.binNumbers.length > 3 ? ` +${a.binNumbers.length - 3}` : ""}
+                                                                            </p>
+                                                                        )}
                                                                     </div>
                                                                     <div className="text-right shrink-0 ml-2">
                                                                         <p className="font-bold text-primary font-mono text-xs">−{fmtCurrency(disc)}</p>
@@ -1208,7 +1217,7 @@ export default function CheckoutPage() {
                             {canManualDiscount && (
                             <details className={cn(discountMode !== "none" && discountMode !== "manual" && "opacity-50 pointer-events-none")}>
                                 <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors">
-                                    <BadgeDollarSign className="h-4 w-4 text-muted-foreground" />
+                                    <Wallet className="h-4 w-4 text-muted-foreground" />
                                     <span className="font-semibold text-sm flex-1">Manual Discount</span>
                                     {discountMode === "manual" && orderDiscount > 0 &&
                                         <Badge variant="secondary" className="text-xs">−{fmtCurrency(orderDiscount)}</Badge>}
@@ -1231,7 +1240,7 @@ export default function CheckoutPage() {
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <RadioGroupItem value="flat" id="disc-flat" />
-                                            <Label htmlFor="disc-flat" className="text-sm">Flat Rs.</Label>
+                                            <Label htmlFor="disc-flat" className="text-sm">Flat PKR</Label>
                                         </div>
                                     </RadioGroup>
                                     <div className="flex gap-2">
@@ -1343,7 +1352,7 @@ export default function CheckoutPage() {
                                             type="number"
                                             min={0}
                                             className="mt-1 font-mono"
-                                            placeholder={`Rs. ${fmtCurrency(balanceDue)}`}
+                                            placeholder={`${fmtCurrency(balanceDue)}`}
                                             value={tenderAmount || ""}
                                             onChange={(e) => setTenderAmount(parseFloat(e.target.value) || 0)}
                                             onKeyDown={(e) => e.key === "Enter" && addTender()}
@@ -1413,7 +1422,7 @@ export default function CheckoutPage() {
                                                     </div>
                                                     <div className="flex items-center justify-between text-xs text-emerald-700">
                                                         <span>{validatedVoucher.description || "Voucher"}</span>
-                                                        <span className="font-mono font-bold">Rs. {fmtCurrency(validatedVoucher.faceValue)}</span>
+                                                        <span className="font-mono font-bold">{fmtCurrency(validatedVoucher.faceValue)}</span>
                                                     </div>
                                                     {validatedVoucher.requireCustomerMatch && (
                                                         <p className="text-[10px] text-amber-600">Customer-bound — verified ✓</p>
@@ -1541,7 +1550,7 @@ export default function CheckoutPage() {
                                 {isSubmitting
                                     ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
                                     : balanceDue > 0
-                                        ? `Balance Due: Rs. ${fmtCurrency(balanceDue)}`
+                                        ? `Balance Due: ${fmtCurrency(balanceDue)}`
                                         : <><Printer className="h-5 w-5" /> Complete Sale & Print Receipt</>
                                 }
                             </Button>
