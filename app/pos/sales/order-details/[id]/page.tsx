@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { PrintReceipt } from "@/components/pos/print-receipt";
 import { PrintReturnReceipt } from "@/components/pos/print-return-receipt";
+import { PrintClaimReceipt } from "@/components/pos/print-claim-receipt";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 
@@ -53,6 +54,8 @@ export default function OrderDetailsPage() {
     const [showGiftPrint, setShowGiftPrint] = useState(false);
     const [showReturnPrint, setShowReturnPrint] = useState(false);
     const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
+    const [showClaimReceipt, setShowClaimReceipt] = useState(false);
+    const [selectedClaim, setSelectedClaim] = useState<any>(null);
 
     useEffect(() => {
         if (orderId) fetchOrder();
@@ -100,6 +103,20 @@ export default function OrderDetailsPage() {
             setShowReturnPrint(false);
         } finally {
             setIsLoadingReceipt(false);
+        }
+    };
+
+    const handlePrintClaim = async (claimId: string) => {
+        try {
+            const res = await authFetch(`/pos-claims/${claimId}`);
+            if (res.ok && res.data?.status) {
+                setSelectedClaim(res.data.data);
+                setShowClaimReceipt(true);
+            } else {
+                toast.error("Failed to load claim details");
+            }
+        } catch {
+            toast.error("Failed to load claim details");
         }
     };
 
@@ -361,6 +378,103 @@ export default function OrderDetailsPage() {
                             </div>
                         </div>
                     )}
+
+                    {/* Claims Information */}
+                    {order.claims && order.claims.length > 0 && (
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-foreground/70">
+                                <RotateCcw className="h-5 w-5 text-muted-foreground" /> Warranty Claims
+                            </h3>
+                            <div className="space-y-3">
+                                {order.claims.map((claim: any, idx: number) => {
+                                    const statusColors: Record<string, string> = {
+                                        SUBMITTED: "bg-blue-500/10 text-blue-700 border-blue-300",
+                                        UNDER_REVIEW: "bg-amber-500/10 text-amber-700 border-amber-300",
+                                        APPROVED: "bg-green-500/10 text-green-700 border-green-300",
+                                        PARTIALLY_APPROVED: "bg-emerald-500/10 text-emerald-700 border-emerald-300",
+                                        REJECTED: "bg-red-500/10 text-red-700 border-red-300",
+                                        CANCELLED: "bg-gray-500/10 text-gray-700 border-gray-300",
+                                    };
+
+                                    return (
+                                        <div key={idx} className="rounded-2xl border border-border/60 overflow-hidden shadow-sm bg-card">
+                                            <div className="bg-muted/40 px-4 py-3 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <Badge variant="outline" className="font-mono text-xs">
+                                                        {claim.claimNumber}
+                                                    </Badge>
+                                                    <Badge variant="outline" className={cn("capitalize text-[10px] px-2 py-0.5", statusColors[claim.status] ?? "")}>
+                                                        {claim.status.replace(/_/g, " ")}
+                                                    </Badge>
+                                                    <Badge variant="outline" className="capitalize text-[10px] px-2 py-0.5 bg-purple-500/10 text-purple-700 border-purple-300">
+                                                        {claim.claimType}
+                                                    </Badge>
+                                                    {claim.transferRequestId && (
+                                                        <Badge variant="outline" className="capitalize text-[10px] px-2 py-0.5 bg-blue-500/10 text-blue-700 border-blue-300">
+                                                            <ShoppingCart className="h-2.5 w-2.5 mr-1" />
+                                                            Transfer Created
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <Button 
+                                                        size="sm" 
+                                                        variant="outline" 
+                                                        className="gap-2 h-8"
+                                                        onClick={() => handlePrintClaim(claim.id)}
+                                                    >
+                                                        <Printer className="h-3.5 w-3.5" />
+                                                        Print Claim Receipt
+                                                    </Button>
+                                                    <div className="text-right">
+                                                        <p className="text-[9px] font-black text-muted-foreground uppercase">Submitted</p>
+                                                        <p className="text-xs font-mono">{new Date(claim.submittedAt).toLocaleDateString()}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="p-4 space-y-3">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div>
+                                                        <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Claimed Amount</p>
+                                                        <p className="text-lg font-black font-mono">Rs. {fmtCurrency(claim.claimedAmount)}</p>
+                                                    </div>
+                                                    {(claim.status === 'APPROVED' || claim.status === 'PARTIALLY_APPROVED') && (
+                                                        <div>
+                                                            <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Approved Amount</p>
+                                                            <p className="text-lg font-black font-mono text-green-600">Rs. {fmtCurrency(claim.approvedAmount)}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {claim.items && claim.items.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <p className="text-[9px] font-black text-muted-foreground uppercase">Claimed Items</p>
+                                                        <div className="space-y-1.5">
+                                                            {claim.items.map((item: any, i: number) => (
+                                                                <div key={i} className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/30 border border-border/40">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs font-bold">Item #{i + 1}</span>
+                                                                        <Badge variant="outline" className={cn("text-[8px] px-1.5 py-0", statusColors[item.itemStatus] ?? "")}>
+                                                                            {item.itemStatus}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-4 text-xs">
+                                                                        <span className="text-muted-foreground">Claimed: <span className="font-bold text-foreground">{item.claimedQty}</span></span>
+                                                                        {item.approvedQty > 0 && (
+                                                                            <span className="text-muted-foreground">Approved: <span className="font-bold text-green-600">{item.approvedQty}</span></span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </ScrollArea>
 
@@ -410,6 +524,17 @@ export default function OrderDetailsPage() {
                     paymentMethod={order.paymentMethod}
                     isLoading={isLoadingReceipt}
                     onClose={() => { setShowReturnPrint(false); setIsLoadingReceipt(false); }}
+                />
+            )}
+
+            {/* Claim Receipt */}
+            {showClaimReceipt && selectedClaim && (
+                <PrintClaimReceipt
+                    claim={selectedClaim}
+                    onClose={() => {
+                        setShowClaimReceipt(false);
+                        setSelectedClaim(null);
+                    }}
                 />
             )}
         </div>

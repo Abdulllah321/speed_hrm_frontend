@@ -308,6 +308,8 @@ export default function SalesOrdersPage() {
       case "DRAFT":
         return "bg-gray-100 text-gray-800";
       case "CONFIRMED":
+        return "bg-blue-100 text-blue-800";
+      case "WAREHOUSE_VERIFIED":
         return "bg-green-100 text-green-800";
       case "CANCELLED":
         return "bg-red-100 text-red-800";
@@ -445,6 +447,7 @@ export default function SalesOrdersPage() {
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="confirmed">Confirmed</SelectItem>
+              <SelectItem value="warehouse_verified">Warehouse Verified</SelectItem>
               <SelectItem value="cancelled">Cancelled</SelectItem>
             </SelectContent>
           </Select>
@@ -511,7 +514,7 @@ export default function SalesOrdersPage() {
                             </Button>
                           </PermissionGuard>
                         )}
-                        {order.status === "CONFIRMED" && (
+                        {order.status === "WAREHOUSE_VERIFIED" && (
                           <PermissionGuard permissions="erp.sales.dc.create" fallback={null}>
                             <Button
                               variant="ghost"
