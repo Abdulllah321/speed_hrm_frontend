@@ -49,6 +49,15 @@ import Cropper from "react-easy-crop";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { QRCodeSVG } from "qrcode.react";
+import {
+    generateBarcode, encodeCode128, BARCODE_PATTERNS, type BarcodePattern,
+} from "@/lib/barcode";
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+    DropdownMenuSeparator, DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
+import { Wand2, RefreshCw, Printer, CheckCircle2, ChevronDown, ScanBarcode } from "lucide-react";
 
 // --- Validation Schemas ---
 
@@ -101,6 +110,144 @@ type ItemFormValues = z.infer<typeof itemFormSchema>;
 
 const STEPS = ["Basic Details", "Classification", "Pricing & Discounts", "Attributes", "Review"];
 
+// ─── Inline barcode preview (used in form + success screen) ──────────────────
+
+function SvgBarcodePreview({ value, height = 32 }: { value: string; height?: number }) {
+    const bits = encodeCode128(value.toUpperCase());
+    const mw = 1.2;
+    const totalWidth = bits.length * mw;
+    const bars: { x: number; w: number }[] = [];
+    let x = 0, i = 0;
+    while (i < bits.length) {
+        const bit = bits[i];
+        let run = 0;
+        while (i + run < bits.length && bits[i + run] === bit) run++;
+        if (bit === "1") bars.push({ x, w: run * mw });
+        x += run * mw;
+        i += run;
+    }
+    return (
+        <svg viewBox={`0 0 ${totalWidth} ${height}`} height={height} style={{ display: "block", maxWidth: "100%" }}>
+            {bars.map((b, idx) => (
+                <rect key={idx} x={b.x} y={0} width={b.w} height={height} fill="black" />
+            ))}
+        </svg>
+    );
+}
+
+// ─── Success screen ───────────────────────────────────────────────────────────
+
+function CreatedItemSuccess({
+    item,
+    onCreateAnother,
+    onGoToList,
+}: {
+    item: { barCode: string; sku: string; description: string; unitPrice: number; itemId: string };
+    onCreateAnother: () => void;
+    onGoToList: () => void;
+}) {
+    const price = Number(item.unitPrice).toLocaleString("en-US", {
+        style: "currency", currency: "PKR", minimumFractionDigits: 0,
+    });
+
+    const handlePrint = () => {
+        const styleId = "barcode-success-print-styles";
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement("style");
+            style.id = styleId;
+            style.textContent = `
+                @media print {
+                    body > *:not(#barcode-success-root) { display: none !important; }
+                    #barcode-success-root {
+                        display: flex !important;
+                        align-items: center;
+                        justify-content: center;
+                        position: fixed;
+                        inset: 0;
+                        background: white;
+                        z-index: 99999;
+                    }
+                    @page { margin: 8mm; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        let root = document.getElementById("barcode-success-root");
+        if (!root) {
+            root = document.createElement("div");
+            root.id = "barcode-success-root";
+            document.body.appendChild(root);
+        }
+        const printEl = document.getElementById("barcode-success-label");
+        if (printEl) root.innerHTML = printEl.innerHTML;
+        window.print();
+        setTimeout(() => { if (root) root.innerHTML = ""; }, 1000);
+    };
+
+    return (
+        <div className="flex flex-col items-center gap-8 py-10 px-4 text-center">
+            {/* Success icon */}
+            <div className="flex flex-col items-center gap-3">
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle2 className="h-9 w-9 text-green-600" />
+                </div>
+                <div>
+                    <h2 className="text-2xl font-bold">Item Created!</h2>
+                    <p className="text-muted-foreground text-sm mt-1">
+                        {item.description || item.sku} has been added to the catalog.
+                    </p>
+                </div>
+            </div>
+
+            {/* Barcode label card */}
+            <div
+                id="barcode-success-label"
+                className="bg-white border-2 border-border rounded-xl shadow-md px-8 py-6 flex flex-col items-center gap-3 min-w-64"
+            >
+                {item.description && (
+                    <div className="text-base font-bold tracking-tight text-center leading-tight max-w-xs">
+                        {item.description}
+                    </div>
+                )}
+                <div className="text-xs text-muted-foreground font-mono">{item.sku}</div>
+
+                {item.barCode ? (
+                    <>
+                        <div className="my-1">
+                            <SvgBarcodePreview value={item.barCode} height={56} />
+                        </div>
+                        <div className="text-sm font-mono font-semibold tracking-widest text-foreground">
+                            {item.barCode}
+                        </div>
+                        <div className="mt-1">
+                            <QRCodeSVG value={item.barCode} size={72} level="M" />
+                        </div>
+                    </>
+                ) : (
+                    <div className="text-sm text-muted-foreground italic py-4">No barcode assigned</div>
+                )}
+
+                <div className="text-xl font-bold mt-1">{price}</div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-wrap gap-3 justify-center">
+                {item.barCode && (
+                    <Button variant="outline" onClick={handlePrint} className="gap-2">
+                        <Printer className="h-4 w-4" /> Print Label
+                    </Button>
+                )}
+                <Button variant="outline" onClick={onCreateAnother} className="gap-2">
+                    <ScanBarcode className="h-4 w-4" /> Create Another
+                </Button>
+                <Button onClick={onGoToList} className="gap-2">
+                    <ArrowLeft className="h-4 w-4" /> Back to List
+                </Button>
+            </div>
+        </div>
+    );
+}
+
 export default function ItemCreatePage() {
     const router = useRouter();
     const [currentStep, setCurrentStep] = useState(0);
@@ -140,6 +287,13 @@ export default function ItemCreatePage() {
 
     const [loading, setLoading] = useState(true);
     const [nextItemId, setNextItemId] = useState<string>("");
+    const [createdItem, setCreatedItem] = useState<{
+        barCode: string;
+        sku: string;
+        description: string;
+        unitPrice: number;
+        itemId: string;
+    } | null>(null);
 
     const form = useForm({
         resolver: zodResolver(itemFormSchema),
@@ -307,9 +461,12 @@ export default function ItemCreatePage() {
             const result = await createItem(data);
             if (result.status) {
                 toast.success("Item created successfully");
-                startTransition(() => {
-                    addTransitionType("nav-back");
-                    router.push("/erp/items/list");
+                setCreatedItem({
+                    barCode: data.barCode || "",
+                    sku: data.sku,
+                    description: data.description || "",
+                    unitPrice: data.unitPrice,
+                    itemId: result.data?.itemId || nextItemId,
                 });
             } else {
                 toast.error(result.message || "Failed to create item");
@@ -326,7 +483,7 @@ export default function ItemCreatePage() {
                 return ["brandId", "segmentId", "sku", "barCode", "hsCodeId", "isActive", "description"];
             case 1:
                 return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId"];
-            case 2:
+            case 2:lo
                 return ["unitPrice", "fob", "unitCost", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
             case 3:
                 return ["sizeId", "colorId", "silhouetteId", "case", "band", "movementType", "heelHeight", "width"];
@@ -357,6 +514,30 @@ export default function ItemCreatePage() {
                     <div className="flex items-center justify-center p-20">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
+                ) : createdItem ? (
+                    <Card>
+                        <CardContent className="pt-6">
+                            <CreatedItemSuccess
+                                item={createdItem}
+                                onCreateAnother={() => {
+                                    setCreatedItem(null);
+                                    form.reset();
+                                    setCurrentStep(0);
+                                    setImagePreview(null);
+                                    // Refresh next item ID
+                                    getNextItemId().then((r) => {
+                                        if (r?.status && r?.data?.nextId) setNextItemId(r.data.nextId);
+                                    });
+                                }}
+                                onGoToList={() => {
+                                    startTransition(() => {
+                                        addTransitionType("nav-back");
+                                        router.push("/erp/items/list");
+                                    });
+                                }}
+                            />
+                        </CardContent>
+                    </Card>
                 ) : (
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -478,9 +659,71 @@ export default function ItemCreatePage() {
                                                     render={({ field }: { field: any }) => (
                                                         <FormItem>
                                                             <FormLabel>Barcode</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="EAN / UPC" {...field} value={field.value ?? ""} />
-                                                            </FormControl>
+                                                            <div className="flex gap-2">
+                                                                <FormControl>
+                                                                    <Input
+                                                                        placeholder="EAN / UPC / Code128"
+                                                                        {...field}
+                                                                        value={field.value ?? ""}
+                                                                        className="font-mono"
+                                                                    />
+                                                                </FormControl>
+                                                                <DropdownMenu>
+                                                                    <DropdownMenuTrigger asChild>
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="icon"
+                                                                            className="shrink-0"
+                                                                            title="Auto-generate barcode"
+                                                                        >
+                                                                            <Wand2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </DropdownMenuTrigger>
+                                                                    <DropdownMenuContent align="end" className="w-52">
+                                                                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                                                            Generate barcode
+                                                                        </DropdownMenuLabel>
+                                                                        <DropdownMenuSeparator />
+                                                                        {BARCODE_PATTERNS.map((p) => (
+                                                                            <DropdownMenuItem
+                                                                                key={p.value}
+                                                                                onClick={() => field.onChange(generateBarcode(p.value as BarcodePattern, form.getValues("sku")))}
+                                                                            >
+                                                                                <div>
+                                                                                    <div className="font-medium text-sm">{p.label}</div>
+                                                                                    <div className="text-xs text-muted-foreground">{p.description}</div>
+                                                                                </div>
+                                                                            </DropdownMenuItem>
+                                                                        ))}
+                                                                        {field.value && (
+                                                                            <>
+                                                                                <DropdownMenuSeparator />
+                                                                                <DropdownMenuItem
+                                                                                    onClick={() => {
+                                                                                        // Re-generate with same pattern by detecting format
+                                                                                        const v = field.value as string;
+                                                                                        const pattern: BarcodePattern =
+                                                                                            /^\d{13}$/.test(v) ? "ean13" :
+                                                                                            /^\d{12}$/.test(v) ? "upca" :
+                                                                                            /^[A-Z0-9]{10}$/.test(v) ? "code128" : "sku";
+                                                                                        field.onChange(generateBarcode(pattern, form.getValues("sku")));
+                                                                                    }}
+                                                                                >
+                                                                                    <RefreshCw className="h-3.5 w-3.5 mr-2" />
+                                                                                    Regenerate
+                                                                                </DropdownMenuItem>
+                                                                            </>
+                                                                        )}
+                                                                    </DropdownMenuContent>
+                                                                </DropdownMenu>
+                                                            </div>
+                                                            {field.value && (
+                                                                <div className="mt-2 flex items-center gap-3 p-2 rounded-md bg-muted/50 border">
+                                                                    <SvgBarcodePreview value={field.value} />
+                                                                    <span className="text-xs font-mono text-muted-foreground break-all">{field.value}</span>
+                                                                </div>
+                                                            )}
                                                             <FormMessage />
                                                         </FormItem>
                                                     )}
@@ -1002,8 +1245,6 @@ export default function ItemCreatePage() {
                     </Form>
                 )}
             </div>
-
-            {/* Dev helper to visualize state */}
             {/* <pre className="mt-10 p-4 bg-gray-100 rounded text-xs">{JSON.stringify(form.watch(), null, 2)}</pre> */}
         </div>
         </PermissionGuard>

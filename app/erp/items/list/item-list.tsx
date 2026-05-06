@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Upload, Loader2, Eye, Edit, Trash2, Sparkles } from "lucide-react";
+import { Plus, Upload, Loader2, Eye, Edit, Trash2, Sparkles, Filter, X, ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -23,6 +23,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { brandApi, categoryApi, silhouetteApi, genderApi } from "@/lib/api";
+import { BarcodePrintModal } from "@/components/items/barcode-print-modal";
+import { ScanBarcode } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -30,6 +38,7 @@ interface Item {
     id: string;
     itemId: string;
     sku: string;
+    barCode: string | null;
     description: string | null;
     unitPrice: number;
     isActive: boolean;
@@ -38,22 +47,192 @@ interface Item {
     division?: { name: string } | null;
 }
 
+// ─── Filter Sheet ─────────────────────────────────────────────────────────────
+
+interface AppliedFilters {
+    brandIds: string[];
+    categoryIds: string[];
+    silhouetteIds: string[];
+    genderIds: string[];
+}
+
+interface FilterSheetProps {
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+    brands: any[];
+    categories: any[];
+    silhouettes: any[];
+    genders: any[];
+    pendingBrandIds: string[];
+    pendingCategoryIds: string[];
+    pendingSilhouetteIds: string[];
+    pendingGenderIds: string[];
+    setPendingBrandIds: (v: string[]) => void;
+    setPendingCategoryIds: (v: string[]) => void;
+    setPendingSilhouetteIds: (v: string[]) => void;
+    setPendingGenderIds: (v: string[]) => void;
+    onApply: (f: AppliedFilters) => void;
+    onClear: () => void;
+}
+
+function FilterSheet({
+    open, onOpenChange, brands, categories, silhouettes, genders,
+    pendingBrandIds, pendingCategoryIds, pendingSilhouetteIds, pendingGenderIds,
+    setPendingBrandIds, setPendingCategoryIds, setPendingSilhouetteIds, setPendingGenderIds,
+    onApply, onClear,
+}: FilterSheetProps) {
+    const [filterSearch, setFilterSearch] = useState("");
+    const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+    const toggle = (k: string) => setCollapsed((p) => ({ ...p, [k]: !p[k] }));
+
+    const sections = [
+        { key: "brand", label: "Brand", items: brands, ids: pendingBrandIds, setIds: setPendingBrandIds },
+        { key: "category", label: "Category", items: categories, ids: pendingCategoryIds, setIds: setPendingCategoryIds },
+        { key: "silhouette", label: "Silhouette", items: silhouettes, ids: pendingSilhouetteIds, setIds: setPendingSilhouetteIds },
+        { key: "gender", label: "Gender", items: genders, ids: pendingGenderIds, setIds: setPendingGenderIds },
+    ] as const;
+
+    const totalPending =
+        pendingBrandIds.length + pendingCategoryIds.length +
+        pendingSilhouetteIds.length + pendingGenderIds.length;
+
+    return (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+            <SheetContent side="right" className="w-90 sm:w-100 flex flex-col p-0">
+                <SheetHeader className="px-5 pt-5 pb-3 border-b">
+                    <SheetTitle className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-primary" />
+                        Filter Items
+                        {totalPending > 0 && (
+                            <Badge className="h-5 text-[10px] px-1.5 bg-primary text-primary-foreground">
+                                {totalPending}
+                            </Badge>
+                        )}
+                    </SheetTitle>
+                    <div className="relative mt-2">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                            placeholder="Search across all filters..."
+                            value={filterSearch}
+                            onChange={(e) => setFilterSearch(e.target.value)}
+                            className="pl-9 h-9 text-sm"
+                        />
+                        {filterSearch && (
+                            <button
+                                type="button"
+                                onClick={() => setFilterSearch("")}
+                                className="absolute right-3 top-1/2 -translate-y-1/2"
+                            >
+                                <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                            </button>
+                        )}
+                    </div>
+                </SheetHeader>
+                <ScrollArea className="flex-1 px-5 py-3">
+                    <div className="space-y-3">
+                        {sections.map(({ key, label, items, ids, setIds }) => {
+                            const filtered = filterSearch
+                                ? items.filter((i: any) =>
+                                    i.name.toLowerCase().includes(filterSearch.toLowerCase())
+                                )
+                                : items;
+                            if (filtered.length === 0) return null;
+                            const isCollapsed = collapsed[key];
+                            return (
+                                <div key={key} className="rounded-md border border-border overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggle(key)}
+                                        className="w-full flex items-center justify-between px-3 py-2.5 bg-muted/40 hover:bg-muted/70 transition-colors text-sm font-semibold"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <span>{label}</span>
+                                            {ids.length > 0 && (
+                                                <Badge variant="secondary" className="h-4 text-[10px] px-1">
+                                                    {ids.length}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <ChevronRight
+                                            className={cn(
+                                                "h-4 w-4 text-muted-foreground transition-transform",
+                                                !isCollapsed && "rotate-90",
+                                            )}
+                                        />
+                                    </button>
+                                    {!isCollapsed && (
+                                        <div className="p-3">
+                                            <ScrollArea className="h-40">
+                                                <div className="flex flex-wrap gap-1.5 pr-3">
+                                                    {filtered.map((item: any) => (
+                                                        <button
+                                                            key={item.id}
+                                                            type="button"
+                                                            onClick={() =>
+                                                                (setIds as any)((prev: string[]) =>
+                                                                    prev.includes(item.id)
+                                                                        ? prev.filter((x: string) => x !== item.id)
+                                                                        : [...prev, item.id],
+                                                                )
+                                                            }
+                                                            className={cn(
+                                                                "px-2.5 py-1 rounded-full text-xs border transition-all",
+                                                                ids.includes(item.id)
+                                                                    ? "bg-primary text-primary-foreground border-primary font-semibold"
+                                                                    : "bg-background border-border hover:border-primary/60 hover:bg-primary/5",
+                                                            )}
+                                                        >
+                                                            {item.name}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </ScrollArea>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </ScrollArea>
+                <SheetFooter className="px-5 py-4 border-t flex-row gap-2">
+                    <Button
+                        className="flex-1"
+                        onClick={() =>
+                            onApply({
+                                brandIds: pendingBrandIds,
+                                categoryIds: pendingCategoryIds,
+                                silhouetteIds: pendingSilhouetteIds,
+                                genderIds: pendingGenderIds,
+                            })
+                        }
+                    >
+                        Apply Filters
+                    </Button>
+                    <Button variant="outline" onClick={onClear}>
+                        <X className="h-3.5 w-3.5 mr-1" /> Clear
+                    </Button>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
 // ─── Column Definitions ───────────────────────────────────────────────────────
 
 function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canDelete: boolean): ColumnDef<Item>[] {
     return [
         {
-            accessorKey: "itemId",
-            header: "Item ID",
-            cell: ({ row }) => (
-                <span className="font-medium font-mono text-sm">{row.original.itemId}</span>
-            ),
-        },
-        {
             accessorKey: "sku",
-            header: "SKU",
+            header: "SKU / Description",
             cell: ({ row }) => (
-                <span className="font-mono text-sm text-muted-foreground">{row.original.sku}</span>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="font-mono text-sm font-medium">{row.original.sku}</span>
+                    {row.original.description && (
+                        <span className="text-xs text-muted-foreground truncate max-w-[220px]">
+                            {row.original.description}
+                        </span>
+                    )}
+                </div>
             ),
         },
         {
@@ -147,7 +326,8 @@ const itemsQueryKey = (
     search: string,
     sortBy: string,
     sortOrder: "asc" | "desc",
-) => ["items", { page, pageSize, search, sortBy, sortOrder }] as const;
+    filters: AppliedFilters,
+) => ["items", { page, pageSize, search, sortBy, sortOrder, filters }] as const;
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -176,11 +356,45 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     const [search, setSearch] = useState("");
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
+    const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
 
+    // ── Filter state ───────────────────────────────────────────────────────
+    const [brands, setBrands] = useState<any[]>([]);
+    const [categories, setCategories] = useState<any[]>([]);
+    const [silhouettes, setSilhouettes] = useState<any[]>([]);
+    const [genders, setGenders] = useState<any[]>([]);
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    // Pending = staged in sheet; applied = sent to API
+    const [pendingBrandIds, setPendingBrandIds] = useState<string[]>([]);
+    const [pendingCategoryIds, setPendingCategoryIds] = useState<string[]>([]);
+    const [pendingSilhouetteIds, setPendingSilhouetteIds] = useState<string[]>([]);
+    const [pendingGenderIds, setPendingGenderIds] = useState<string[]>([]);
+    const [appliedFilters, setAppliedFilters] = useState<AppliedFilters>({
+        brandIds: [], categoryIds: [], silhouetteIds: [], genderIds: [],
+    });
+
+    const activeFilterCount =
+        appliedFilters.brandIds.length + appliedFilters.categoryIds.length +
+        appliedFilters.silhouetteIds.length + appliedFilters.genderIds.length;
     // Persist and recover active uploadId
     useEffect(() => {
         const stored = localStorage.getItem("active_item_upload_id");
         if (stored) setActiveUploadId(stored);
+    }, []);
+
+    // ── Load master data for filters ───────────────────────────────────────
+    useEffect(() => {
+        Promise.allSettled([
+            brandApi.getAll(),
+            categoryApi.getAll(),
+            silhouetteApi.getAll(),
+            genderApi.getAll(),
+        ]).then(([b, c, s, g]) => {
+            if (b.status === "fulfilled" && b.value.status) setBrands(b.value.data);
+            if (c.status === "fulfilled" && c.value.status) setCategories(c.value.data);
+            if (s.status === "fulfilled" && s.value.status) setSilhouettes(s.value.data);
+            if (g.status === "fulfilled" && g.value.status) setGenders(g.value.data);
+        });
     }, []);
 
     const handleUploadIdChange = (id: string | null) => {
@@ -205,8 +419,13 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
 
     // ── Server-side fetch ──────────────────────────────────────────────────
     const { data, isLoading, isFetching } = useQuery({
-        queryKey: itemsQueryKey(currentPage, pageSize, search, sortColumn, sortDir),
-        queryFn: () => getItems(currentPage, pageSize, search || undefined, sortColumn, sortDir),
+        queryKey: itemsQueryKey(currentPage, pageSize, search, sortColumn, sortDir, appliedFilters),
+        queryFn: () => getItems(currentPage, pageSize, search || undefined, sortColumn, sortDir, {
+            brandIds: appliedFilters.brandIds.length ? appliedFilters.brandIds : undefined,
+            categoryIds: appliedFilters.categoryIds.length ? appliedFilters.categoryIds : undefined,
+            silhouetteIds: appliedFilters.silhouetteIds.length ? appliedFilters.silhouetteIds : undefined,
+            genderIds: appliedFilters.genderIds.length ? appliedFilters.genderIds : undefined,
+        }),
         placeholderData: keepPreviousData,
         staleTime: 30_000, // 30 s — treat cached pages as fresh for 30 s
         initialData:
@@ -214,7 +433,8 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                 pageSize === 50 &&
                 !search &&
                 sortColumn === "createdAt" &&
-                sortDir === "desc"
+                sortDir === "desc" &&
+                activeFilterCount === 0
                 ? { status: true, data: initialItems, meta: initialMeta }
                 : undefined,
     });
@@ -231,18 +451,23 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     useEffect(() => {
         if (currentPage < meta.totalPages) {
             queryClient.prefetchQuery({
-                queryKey: itemsQueryKey(currentPage + 1, pageSize, search, sortColumn, sortDir),
+                queryKey: itemsQueryKey(currentPage + 1, pageSize, search, sortColumn, sortDir, appliedFilters),
                 queryFn: () =>
-                    getItems(currentPage + 1, pageSize, search || undefined, sortColumn, sortDir),
+                    getItems(currentPage + 1, pageSize, search || undefined, sortColumn, sortDir, {
+                        brandIds: appliedFilters.brandIds.length ? appliedFilters.brandIds : undefined,
+                        categoryIds: appliedFilters.categoryIds.length ? appliedFilters.categoryIds : undefined,
+                        silhouetteIds: appliedFilters.silhouetteIds.length ? appliedFilters.silhouetteIds : undefined,
+                        genderIds: appliedFilters.genderIds.length ? appliedFilters.genderIds : undefined,
+                    }),
                 staleTime: 30_000,
             });
         }
-    }, [currentPage, pageSize, search, sortColumn, sortDir, meta.totalPages, queryClient]);
+    }, [currentPage, pageSize, search, sortColumn, sortDir, appliedFilters, meta.totalPages, queryClient]);
 
-    // ── Reset to page 1 on search/sort change ─────────────────────────────
+    // ── Reset to page 1 on search/sort/filter change ──────────────────────
     useEffect(() => {
         setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-    }, [search, sortColumn, sortDir]);
+    }, [search, sortColumn, sortDir, appliedFilters]);
 
     // ── Delete handler ─────────────────────────────────────────────────────
     const handleDelete = useCallback(
@@ -261,6 +486,62 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
             }
         },
         [queryClient],
+    );
+
+    // ── Filter handlers ────────────────────────────────────────────────────
+    const handleApplyFilters = (filters: AppliedFilters) => {
+        setAppliedFilters(filters);
+        setIsFilterOpen(false);
+    };
+
+    const handleClearFilters = () => {
+        setPendingBrandIds([]);
+        setPendingCategoryIds([]);
+        setPendingSilhouetteIds([]);
+        setPendingGenderIds([]);
+        setAppliedFilters({ brandIds: [], categoryIds: [], silhouetteIds: [], genderIds: [] });
+    };
+
+    // ── Filter slot (injected into DataTable toolbar) ──────────────────────
+    const filterSlot = (
+        <>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <div className="relative inline-flex">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-9 gap-1.5"
+                            onClick={() => {
+                                setPendingBrandIds(appliedFilters.brandIds);
+                                setPendingCategoryIds(appliedFilters.categoryIds);
+                                setPendingSilhouetteIds(appliedFilters.silhouetteIds);
+                                setPendingGenderIds(appliedFilters.genderIds);
+                                setIsFilterOpen(true);
+                            }}
+                        >
+                            <Filter className="h-3.5 w-3.5" /> Filter
+                        </Button>
+                        {activeFilterCount > 0 && (
+                            <span className="absolute -top-2 -right-2 h-5 min-w-5 px-1 rounded-full text-[10px] font-bold bg-primary text-primary-foreground flex items-center justify-center">
+                                {activeFilterCount}
+                            </span>
+                        )}
+                    </div>
+                </TooltipTrigger>
+                <TooltipContent>Filter by brand, category, silhouette or gender</TooltipContent>
+            </Tooltip>
+            {activeFilterCount > 0 && (
+                <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                >
+                    <X className="h-3 w-3" /> Clear filters
+                </button>
+            )}
+        </>
     );
 
     const columns = useItemColumns(handleDelete, canUpdate, canDelete);
@@ -318,6 +599,9 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                             <Upload className="mr-2 h-4 w-4" /> Bulk Upload
                         </Button>
                     )}
+                    <Button variant="outline" onClick={() => setIsBarcodeModalOpen(true)} disabled={items.length === 0}>
+                        <ScanBarcode className="mr-2 h-4 w-4" /> Print Barcodes
+                    </Button>
                     {canUpdate && (
                         <Link href="/erp/items/bulk-discount" transitionTypes={["nav-forward"]}>
                             <Button variant="outline" className="border-primary/40 text-primary hover:bg-primary/5">
@@ -341,12 +625,13 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     data={items}
                     tableId="items-catalog"
                     searchFields={[
-                        { key: "itemId", label: "Item ID" },
                         { key: "sku", label: "SKU" },
+                        { key: "description", label: "Description" },
                         { key: "brand", label: "Brand" },
                         { key: "category", label: "Category" },
                         { key: "division", label: "Division" },
                     ]}
+                    filterSlot={filterSlot}
                     /* ── Server-side controls ── */
                     manualPagination
                     manualSorting
@@ -375,6 +660,31 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     toast.success("Item list refreshed");
                     handleUploadIdChange(null);
                 }}
+            />
+
+            <FilterSheet
+                open={isFilterOpen}
+                onOpenChange={setIsFilterOpen}
+                brands={brands}
+                categories={categories}
+                silhouettes={silhouettes}
+                genders={genders}
+                pendingBrandIds={pendingBrandIds}
+                pendingCategoryIds={pendingCategoryIds}
+                pendingSilhouetteIds={pendingSilhouetteIds}
+                pendingGenderIds={pendingGenderIds}
+                setPendingBrandIds={setPendingBrandIds}
+                setPendingCategoryIds={setPendingCategoryIds}
+                setPendingSilhouetteIds={setPendingSilhouetteIds}
+                setPendingGenderIds={setPendingGenderIds}
+                onApply={handleApplyFilters}
+                onClear={handleClearFilters}
+            />
+
+            <BarcodePrintModal
+                open={isBarcodeModalOpen}
+                onOpenChange={setIsBarcodeModalOpen}
+                items={items}
             />
         </Card>
     );

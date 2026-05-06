@@ -71,17 +71,18 @@ interface ClaimSummary {
 }
 
 interface CashierStats {
+    userId: string | null;
+    name: string;
     sales: number;
     transactions: number;
     cashSales: number;
     cardSales: number;
     avgTransaction: number;
-    recentOrders: RecentOrder[];
 }
 
 interface PosDashboardData {
     stats: DashboardStats;
-    cashier: CashierStats | null;
+    salespeople: CashierStats[];
     recentOrders: RecentOrder[];
     topItems: TopItem[];
     hourlySales: HourlyBucket[];
@@ -277,11 +278,11 @@ export default function PosPage() {
                 authFetch("/pos-session/current"),
             ]);
 
-            if (dashRes.status === "fulfilled" && dashRes.value) {
-                setDashboard(dashRes.value as PosDashboardData);
+            if (dashRes.status === "fulfilled" && dashRes.value?.ok) {
+                setDashboard(dashRes.value.data as PosDashboardData);
             }
-            if (sessionRes.status === "fulfilled" && sessionRes.value) {
-                setSession(sessionRes.value as SessionData);
+            if (sessionRes.status === "fulfilled" && sessionRes.value?.ok) {
+                setSession(sessionRes.value.data as SessionData);
             }
         } catch {
             setError("Failed to load dashboard data.");
@@ -295,7 +296,7 @@ export default function PosPage() {
     }, [fetchData]);
 
     const stats = dashboard?.stats;
-    const cashier = dashboard?.cashier;
+    const salespeople = dashboard?.salespeople ?? [];
     const recentOrders = (dashboard?.recentOrders ?? []).slice(0, 5);
     const topItems = dashboard?.topItems ?? [];
     const hourlySales = dashboard?.hourlySales ?? [];
@@ -394,48 +395,60 @@ export default function PosPage() {
                     )}
                 </Card>
 
-                {/* Cashier Stats */}
-                <Card className="p-6 border-2 border-dashed">
-                    <h2 className="text-lg font-semibold mb-4">My Sales Today</h2>
+                {/* Salesperson Leaderboard */}
+                <Card className="p-6">
+                    <h2 className="text-lg font-semibold mb-4">Sales by Salesperson Today</h2>
                     {loading ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-pulse">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-16 bg-muted rounded" />
+                        <div className="space-y-3 animate-pulse">
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="h-10 bg-muted rounded" />
                             ))}
                         </div>
+                    ) : salespeople.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 gap-2 text-muted-foreground">
+                            <Users className="h-8 w-8 opacity-30" />
+                            <p className="text-sm">No sales recorded yet today.</p>
+                        </div>
                     ) : (
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                {[
-                                    { label: "My Sales", value: formatCurrency(cashier?.sales ?? 0), icon: Banknote, color: "text-green-600" },
-                                    { label: "My Transactions", value: String(cashier?.transactions ?? 0), icon: Receipt, color: "text-blue-600" },
-                                    { label: "Avg. Sale", value: formatCurrency(cashier?.avgTransaction ?? 0), icon: TrendingUp, color: "text-purple-600" },
-                                    { label: "Cash / Card", value: `${formatCurrency(cashier?.cashSales ?? 0)} / ${formatCurrency(cashier?.cardSales ?? 0)}`, icon: CreditCard, color: "text-orange-600" },
-                                ].map((s) => (
-                                    <div key={s.label} className="flex flex-col gap-1 p-4 rounded-lg bg-muted/40">
-                                        <div className="flex items-center gap-2">
-                                            <s.icon className={`h-4 w-4 ${s.color}`} />
-                                            <span className="text-xs text-muted-foreground">{s.label}</span>
-                                        </div>
-                                        <span className="text-lg font-bold">{s.value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                            {cashier && cashier.recentOrders.length > 0 && (
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground mb-2">My recent orders</p>
-                                    <div className="divide-y rounded-lg border">
-                                        {cashier.recentOrders.map((order) => (
-                                            <div key={order.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                                                <span className="font-medium">{order.orderNumber}</span>
-                                                <span className="text-muted-foreground">{order.items?.length ?? 0} items</span>
-                                                <span className="font-semibold">{formatCurrency(Number(order.grandTotal))}</span>
-                                                <span className="text-xs text-muted-foreground">{timeAgo(order.createdAt)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b text-muted-foreground text-xs">
+                                        <th className="text-left pb-2 font-medium w-6">#</th>
+                                        <th className="text-left pb-2 font-medium">Salesperson</th>
+                                        <th className="text-right pb-2 font-medium">Sales</th>
+                                        <th className="text-right pb-2 font-medium hidden sm:table-cell">Txns</th>
+                                        <th className="text-right pb-2 font-medium hidden md:table-cell">Avg</th>
+                                        <th className="text-right pb-2 font-medium hidden lg:table-cell">Cash</th>
+                                        <th className="text-right pb-2 font-medium hidden lg:table-cell">Card</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {salespeople.map((sp, idx) => (
+                                        <tr key={sp.userId ?? idx} className="hover:bg-muted/40 transition-colors">
+                                            <td className="py-2.5 pr-2 text-muted-foreground font-bold">{idx + 1}</td>
+                                            <td className="py-2.5">
+                                                <span className="font-medium">{sp.name}</span>
+                                            </td>
+                                            <td className="py-2.5 text-right font-semibold tabular-nums">
+                                                {formatCurrency(sp.sales)}
+                                            </td>
+                                            <td className="py-2.5 text-right text-muted-foreground hidden sm:table-cell tabular-nums">
+                                                {sp.transactions}
+                                            </td>
+                                            <td className="py-2.5 text-right text-muted-foreground hidden md:table-cell tabular-nums">
+                                                {formatCurrency(sp.avgTransaction)}
+                                            </td>
+                                            <td className="py-2.5 text-right text-muted-foreground hidden lg:table-cell tabular-nums">
+                                                {formatCurrency(sp.cashSales)}
+                                            </td>
+                                            <td className="py-2.5 text-right text-muted-foreground hidden lg:table-cell tabular-nums">
+                                                {formatCurrency(sp.cardSales)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </Card>

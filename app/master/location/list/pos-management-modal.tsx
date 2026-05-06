@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { getPosByLocation, updatePos, createPos, Pos } from "@/lib/actions/pos";
-import { AdminVerificationDialog } from "@/components/auth/admin-verification-dialog";
+import { ManagerVerificationDialog } from "@/components/auth/manager-verification-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Key, Loader2, Monitor, Plus, Power, PowerOff, ShieldAlert, X } from "lucide-react";
@@ -304,7 +304,7 @@ export function ManagePosModal({
                 </DialogContent>
             </Dialog>
 
-            <AdminVerificationDialog
+            <ManagerVerificationDialog
                 open={verificationOpen}
                 onOpenChange={setVerificationOpen}
                 onVerified={executeAction}

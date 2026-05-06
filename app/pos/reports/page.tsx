@@ -48,7 +48,14 @@ import {
   Calendar,
   Filter,
   X,
+  Info,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import DataTable from "@/components/common/data-table";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -188,6 +195,7 @@ function StatCard({
   icon: Icon,
   trend,
   color = "default",
+  tooltip,
 }: {
   title: string;
   value: string;
@@ -195,37 +203,56 @@ function StatCard({
   icon: React.ElementType;
   trend?: "up" | "down" | "neutral";
   color?: "default" | "green" | "blue" | "amber" | "red" | "purple";
+  tooltip?: string;
 }) {
-  const colorMap = {
-    default: "bg-muted/40 text-foreground",
-    green: "bg-emerald-500/10 text-emerald-600",
-    blue: "bg-blue-500/10 text-blue-600",
-    amber: "bg-amber-500/10 text-amber-600",
-    red: "bg-destructive/10 text-destructive",
-    purple: "bg-purple-500/10 text-purple-600",
+  const colorMap: Record<string, { icon: string; glow: string; bar: string }> = {
+    default: { icon: "bg-muted/60 text-foreground", glow: "", bar: "bg-foreground/20" },
+    green:   { icon: "bg-emerald-500/15 text-emerald-500", glow: "shadow-emerald-500/10", bar: "bg-emerald-500/40" },
+    blue:    { icon: "bg-blue-500/15 text-blue-500", glow: "shadow-blue-500/10", bar: "bg-blue-500/40" },
+    amber:   { icon: "bg-amber-500/15 text-amber-500", glow: "shadow-amber-500/10", bar: "bg-amber-500/40" },
+    red:     { icon: "bg-destructive/15 text-destructive", glow: "shadow-destructive/10", bar: "bg-destructive/40" },
+    purple:  { icon: "bg-purple-500/15 text-purple-500", glow: "shadow-purple-500/10", bar: "bg-purple-500/40" },
   };
 
+  const c = colorMap[color];
+
   return (
-    <Card className="relative overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground truncate">{title}</p>
-            <p className="text-xl font-bold mt-0.5 truncate">{value}</p>
-            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-          </div>
-          <div className={cn("rounded-lg p-2 shrink-0", colorMap[color])}>
-            <Icon className="h-4 w-4" />
-          </div>
-        </div>
-        {trend && (
-          <div className={cn("flex items-center gap-1 mt-2 text-xs font-medium",
-            trend === "up" ? "text-emerald-600" : trend === "down" ? "text-destructive" : "text-muted-foreground")}>
-            {trend === "up" ? <ArrowUpRight className="h-3 w-3" /> : trend === "down" ? <ArrowDownRight className="h-3 w-3" /> : null}
-          </div>
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Card className={cn("relative overflow-hidden transition-all hover:shadow-md cursor-default py-4!", c.glow)}>
+            {/* subtle accent bar on top */}
+            <div className={cn("absolute top-0 left-0 right-0 h-0.5", c.bar)} />
+            <CardContent className="p-3 pt-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 leading-none">
+                    {title}
+                    {tooltip && <Info className="h-2.5 w-2.5 opacity-50 shrink-0" />}
+                  </p>
+                  <p className="text-sm font-bold mt-1 leading-tight break-all">{value}</p>
+                  {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
+                </div>
+                <div className={cn("rounded-lg p-2 shrink-0", c.icon)}>
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+              </div>
+              {trend && (
+                <div className={cn("flex items-center gap-1 mt-1.5 text-xs font-medium",
+                  trend === "up" ? "text-emerald-500" : trend === "down" ? "text-destructive" : "text-muted-foreground")}>
+                  {trend === "up" ? <ArrowUpRight className="h-3 w-3" /> : trend === "down" ? <ArrowDownRight className="h-3 w-3" /> : null}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TooltipTrigger>
+        {tooltip && (
+          <TooltipContent side="bottom" className="max-w-[200px] text-xs">
+            {tooltip}
+          </TooltipContent>
         )}
-      </CardContent>
-    </Card>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
@@ -234,16 +261,16 @@ function StatCard({
 function MiniBarChart({ data, maxVal }: { data: TrendPoint[]; maxVal: number }) {
   if (!data.length) return <div className="text-xs text-muted-foreground text-center py-8">No data</div>;
   return (
-    <div className="flex items-end gap-0.5 h-24 w-full">
+    <div className="relative h-24 w-full flex items-end gap-0.5">
       {data.map((d) => {
-        const pct = maxVal > 0 ? (d.sales / maxVal) * 100 : 0;
+        const pct = maxVal > 0 ? Math.max((d.sales / maxVal) * 100, 2) : 2;
         return (
-          <div key={d.key} className="flex-1 flex flex-col items-center gap-0.5 group relative min-w-0">
-            <div
-              className="w-full rounded-t bg-primary/70 hover:bg-primary transition-all cursor-default"
-              style={{ height: `${Math.max(pct, 2)}%` }}
-            />
-            {/* Tooltip */}
+          <div
+            key={d.key}
+            className="group relative flex-1 min-w-0 rounded-t bg-primary/60 hover:bg-primary transition-colors cursor-default"
+            style={{ height: `${pct}%` }}
+          >
+            {/* Hover tooltip */}
             <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
               <div className="bg-popover border rounded shadow-md px-2 py-1 text-[10px] whitespace-nowrap">
                 <div className="font-semibold">{d.label}</div>
@@ -485,7 +512,7 @@ export default function SalesReportPage() {
       </div>
 
       {/* ── Filters ── */}
-      <Card>
+      <Card className="py-0!">
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3 items-end">
             {/* Date Range */}
@@ -623,7 +650,7 @@ export default function SalesReportPage() {
               <BarChart3 className="h-4 w-4 mr-1.5" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="top-items">
+            <TabsTrigger value="top-items" className="w-52">
               <Package className="h-4 w-4 mr-1.5" />
               Top Items
             </TabsTrigger>
@@ -640,61 +667,96 @@ export default function SalesReportPage() {
           {/* ══ OVERVIEW TAB ══ */}
           <TabsContent value="overview" className="flex flex-col gap-4 mt-0">
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <StatCard
                 title="Total Revenue"
                 value={fmt(summary?.totalRevenue)}
                 icon={TrendingUp}
                 color="green"
+                tooltip="Sum of all completed order grand totals in the selected period"
               />
               <StatCard
                 title="Total Orders"
                 value={fmtNum(summary?.totalOrders ?? 0)}
                 icon={ShoppingCart}
                 color="blue"
+                tooltip="Total number of orders placed, including all statuses"
               />
               <StatCard
                 title="Avg Order Value"
                 value={fmt(summary?.avgOrderValue)}
                 icon={Receipt}
                 color="default"
+                tooltip="Average grand total per order (Total Revenue ÷ Total Orders)"
               />
               <StatCard
                 title="Total Discount"
                 value={fmt(summary?.totalDiscount)}
                 icon={Tag}
                 color="amber"
+                tooltip="Total discount amount applied across all orders"
               />
               <StatCard
                 title="Total Tax"
                 value={fmt(summary?.totalTax)}
                 icon={Percent}
                 color="purple"
+                tooltip="Total tax collected across all orders in the selected period"
               />
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-xs text-muted-foreground mb-2">Cash vs Card</p>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1 text-emerald-600">
-                        <Banknote className="h-3 w-3" /> Cash
-                      </span>
-                      <span className="font-semibold">{fmt(summary?.totalCash)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1 text-blue-600">
-                        <CreditCard className="h-3 w-3" /> Card
-                      </span>
-                      <span className="font-semibold">{fmt(summary?.totalCard)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+
+              {/* Cash vs Card card */}
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Card className="relative overflow-hidden transition-all hover:shadow-md cursor-default">
+                      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-500/50 via-blue-500/50 to-emerald-500/10" />
+                      <CardContent className="p-3 pt-3.5">
+                        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1 leading-none mb-2">
+                          Cash vs Card
+                          <Info className="h-2.5 w-2.5 opacity-50 shrink-0" />
+                        </p>
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1 text-[11px] text-emerald-500 font-medium shrink-0">
+                              <span className="rounded bg-emerald-500/15 p-0.5"><Banknote className="h-2.5 w-2.5" /></span>
+                              Cash
+                            </span>
+                            <span className="text-xs font-bold text-right break-all">{fmt(summary?.totalCash)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1 text-[11px] text-blue-500 font-medium shrink-0">
+                              <span className="rounded bg-blue-500/15 p-0.5"><CreditCard className="h-2.5 w-2.5" /></span>
+                              Card
+                            </span>
+                            <span className="text-xs font-bold text-right break-all">{fmt(summary?.totalCard)}</span>
+                          </div>
+                          {/* mini split bar */}
+                          {((summary?.totalCash ?? 0) + (summary?.totalCard ?? 0)) > 0 && (() => {
+                            const total = (summary?.totalCash ?? 0) + (summary?.totalCard ?? 0);
+                            const cashPct = ((summary?.totalCash ?? 0) / total) * 100;
+                            return (
+                              <div className="h-1 rounded-full bg-muted overflow-hidden mt-0.5">
+                                <div
+                                  className="h-full rounded-full bg-emerald-500/60 transition-all"
+                                  style={{ width: `${cashPct.toFixed(1)}%` }}
+                                />
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="max-w-[200px] text-xs">
+                    Breakdown of cash vs card payments. The bar shows cash proportion of the two.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Payment Breakdown */}
-              <Card>
+              <Card className="py-0!">
                 <CardHeader className="pb-2 pt-4 px-4">
                   <CardTitle className="text-sm font-semibold">Payment Method Breakdown</CardTitle>
                 </CardHeader>
@@ -738,7 +800,7 @@ export default function SalesReportPage() {
               </Card>
 
               {/* Status Breakdown */}
-              <Card>
+              <Card className="py-0!">
                 <CardHeader className="pb-2 pt-4 px-4">
                   <CardTitle className="text-sm font-semibold">Status Breakdown</CardTitle>
                 </CardHeader>
@@ -781,7 +843,7 @@ export default function SalesReportPage() {
             </div>
 
             {/* Sales Trend */}
-            <Card>
+            <Card className="py-0!">
               <CardHeader className="pb-2 pt-4 px-4">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <CardTitle className="text-sm font-semibold">
@@ -828,7 +890,7 @@ export default function SalesReportPage() {
 
           {/* ══ TOP ITEMS TAB ══ */}
           <TabsContent value="top-items" className="mt-0">
-            <Card>
+            <Card className="py-0!">
               <CardHeader className="pb-2 pt-4 px-4">
                 <CardTitle className="text-sm font-semibold">Top 10 Items by Revenue</CardTitle>
               </CardHeader>
@@ -886,7 +948,7 @@ export default function SalesReportPage() {
 
           {/* ══ CASHIERS TAB ══ */}
           <TabsContent value="cashiers" className="mt-0">
-            <Card>
+            <Card className="py-0!">
               <CardHeader className="pb-2 pt-4 px-4">
                 <CardTitle className="text-sm font-semibold">Cashier Performance</CardTitle>
               </CardHeader>

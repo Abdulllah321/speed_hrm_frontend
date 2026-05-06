@@ -179,6 +179,8 @@ type DataTableProps<TData extends DataTableRow> = {
   isLoading?: boolean;
   /** Optional function to add custom class names per row */
   rowClassName?: (row: TData) => string;
+  /** Optional slot rendered inline after the search input (e.g. a filter trigger button) */
+  filterSlot?: React.ReactNode;
 };
 
 export default function DataTable<TData extends DataTableRow>({
@@ -212,6 +214,7 @@ export default function DataTable<TData extends DataTableRow>({
   onSearchChange,
   isLoading = false,
   rowClassName,
+  filterSlot,
 }: DataTableProps<TData>) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -595,9 +598,9 @@ export default function DataTable<TData extends DataTableRow>({
                 )}
               </div>
             )}
+            {filterSlot}
             {/* Filter dropdowns */}
-            {filters?.map((filter) => {
-              const isWideFilter =
+            {filters?.map((filter) => {              const isWideFilter =
                 filter.key === "department" || filter.key === "employeeId";
               const widthClass = isWideFilter ? "w-[220px]" : "w-[150px]";
 

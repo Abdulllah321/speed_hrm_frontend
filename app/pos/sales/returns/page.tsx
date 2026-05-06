@@ -21,6 +21,7 @@ import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
 import { formatCurrency } from "@/lib/utils";
 import { PrintReturnReceipt, type ReturnReceiptLine } from "@/components/pos/print-return-receipt";
+import { ManagerVerificationDialog } from "@/components/auth/manager-verification-dialog";
 
 function paidPerUnit(oi: any, orderGrandTotal: number, orderLineTotalsSum: number) {
   // Distribute grandTotal proportionally based on each item's lineTotal share
@@ -85,6 +86,7 @@ export default function ReturnsPage() {
     const [reasonCode, setReasonCode] = useState("DEFECTIVE");
     const [notes, setNotes] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showVerify, setShowVerify] = useState(false);
 
     // ── Memo-level discount on new items (exchange only) ──────────────
     const [memoDiscType, setMemoDiscType] = useState<"pct" | "flat">("pct");
@@ -693,7 +695,7 @@ export default function ReturnsPage() {
                                                 mode === "exchange" ? "bg-blue-600 hover:bg-blue-700"
                                                     : mode === "claim" ? "bg-amber-600 hover:bg-amber-700"
                                                         : "bg-destructive hover:bg-destructive/90")}
-                                            onClick={handleSubmit}
+                                            onClick={mode === "claim" ? () => setShowVerify(true) : handleSubmit}
                                             disabled={
                                                 isSubmitting ||
                                                 selectedLines.length === 0 ||
@@ -765,6 +767,15 @@ export default function ReturnsPage() {
                     }}
                 />
             )}
+
+            {/* ── Manager Verification (ERP Claim) ─────────────────────── */}
+            <ManagerVerificationDialog
+                open={showVerify}
+                onOpenChange={setShowVerify}
+                onVerified={handleSubmit}
+                title="Manager Verification Required"
+                description="Submitting a claim to ERP requires manager authorisation. Enter your password to proceed."
+            />
         </>
     );
 }
