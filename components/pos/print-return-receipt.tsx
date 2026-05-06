@@ -72,6 +72,7 @@ export interface PrintReturnReceiptProps {
     paymentMethod?: string;
     settings?: Partial<PosSettings>;
     isLoading?: boolean;
+    exchangeVoucher?: { code: string; faceValue: number; expiresAt: string } | null;
     onClose: () => void;
 }
 
@@ -135,6 +136,7 @@ export function PrintReturnReceipt({
     paymentMethod,
     settings: settingsOverride,
     isLoading = false,
+    exchangeVoucher,
     onClose,
 }: PrintReturnReceiptProps) {
     const settings: PosSettings = { ...POS_SETTINGS_DEFAULTS, ...settingsOverride };
@@ -166,7 +168,7 @@ export function PrintReturnReceipt({
     const bodyProps: ReturnBodyProps = {
         storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
         cashierName, returnRef, originalOrders, returnedLines, refundTotal,
-        notes, discountNotes, returnedAt, paymentMethod, settings,
+        notes, discountNotes, returnedAt, paymentMethod, settings, exchangeVoucher,
     };
 
     return (
@@ -262,12 +264,13 @@ interface ReturnBodyProps {
     returnedAt?: string;
     paymentMethod?: string;
     settings: PosSettings;
+    exchangeVoucher?: { code: string; faceValue: number; expiresAt: string } | null;
 }
 
 function ReturnBody({
     storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
     cashierName, returnRef, originalOrders, returnedLines, refundTotal,
-    notes, discountNotes, returnedAt, paymentMethod, settings,
+    notes, discountNotes, returnedAt, paymentMethod, settings, exchangeVoucher,
 }: ReturnBodyProps) {
 
     const Row = ({ label, value, bold = false, indent = false }: {
@@ -432,6 +435,32 @@ function ReturnBody({
                     <span>Rs. {fmt(refundTotal)}</span>
                 </div>
             </div>
+
+            {/* ── Exchange Voucher ── */}
+            {exchangeVoucher && (
+                <>
+                    <Separator />
+                    <div className="text-center space-y-1 border-2 border-dashed border-primary rounded-lg px-3 py-3 bg-primary/5">
+                        <p className="font-bold text-xs uppercase tracking-wide text-primary">Exchange Voucher Issued</p>
+                        <div className="bg-white border-2 border-primary rounded px-2 py-2">
+                            <p className="font-black text-2xl tracking-widest text-primary">{exchangeVoucher.code}</p>
+                        </div>
+                        <div className="text-[10px] space-y-0.5 pt-1">
+                            <p className="font-semibold">Value: <span className="font-black text-base">Rs. {fmt(Number(exchangeVoucher.faceValue))}</span></p>
+                            <p className="text-muted-foreground">
+                                Expires: {new Date(exchangeVoucher.expiresAt).toLocaleDateString('en-PK', { 
+                                    day: '2-digit', 
+                                    month: 'short', 
+                                    year: 'numeric' 
+                                })}
+                            </p>
+                        </div>
+                        <p className="text-[9px] text-muted-foreground pt-1 border-t border-dashed">
+                            Present this voucher for your next purchase
+                        </p>
+                    </div>
+                </>
+            )}
 
             {/* ── Coupon / voucher restored ── */}
             {discountNotes && discountNotes.length > 0 && (

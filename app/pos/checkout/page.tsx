@@ -1561,6 +1561,7 @@ export default function CheckoutPage() {
                     appliedCoupon={appliedCoupon}
                     selectedAlliance={selectedAlliance}
                     settings={settings}
+                    creditVouchers={completedOrder.creditVouchers}
                     onClose={() => {
                         if (isGiftReceipt) {
                             // After closing the sales receipt, show the gift receipt
@@ -1584,6 +1585,7 @@ export default function CheckoutPage() {
                     appliedCoupon={appliedCoupon}
                     selectedAlliance={selectedAlliance}
                     settings={settings}
+                    creditVouchers={completedOrder.creditVouchers}
                     onClose={() => {
                         setCompletedOrder(null);
                         setShowGiftReceiptAfterSales(false);

@@ -51,6 +51,7 @@ interface PrintReceiptProps {
     selectedAlliance?: any;
     settings?: Partial<PosSettings>;
     isLoading?: boolean;
+    creditVouchers?: { code: string; faceValue: number; expiresAt: Date | null }[];
     onClose: () => void;
 }
 
@@ -129,6 +130,7 @@ export function PrintReceipt({
     selectedAlliance,
     settings: settingsOverride,
     isLoading = false,
+    creditVouchers,
     onClose,
 }: PrintReceiptProps) {
     const settings: PosSettings = { ...POS_SETTINGS_DEFAULTS, ...settingsOverride };
@@ -221,7 +223,7 @@ export function PrintReceipt({
         terminalName, cashierName, order, items, subtotal, totalTax, orderDiscount,
         totalDiscount, valueForSales, grandTotal, fbrPosFee, finalGrandTotal,
         changeAmount, totalPaid, tenders, orderDiscountLabel, fbrVerifyUrl, settings,
-        suppressItemDiscounts, allianceDiscPerItem, allianceRemainder,
+        suppressItemDiscounts, allianceDiscPerItem, allianceRemainder, creditVouchers,
     };
 
     return (
@@ -325,6 +327,7 @@ interface ReceiptBodyProps {
     suppressItemDiscounts: boolean;
     allianceDiscPerItem: number;
     allianceRemainder: number;
+    creditVouchers?: { code: string; faceValue: number; expiresAt: Date | null }[];
 }
 
 function ReceiptBody({
@@ -332,7 +335,7 @@ function ReceiptBody({
     terminalName, cashierName, order, items, subtotal, totalTax, orderDiscount,
     totalDiscount, valueForSales, grandTotal, fbrPosFee, finalGrandTotal,
     changeAmount, totalPaid, tenders, orderDiscountLabel, fbrVerifyUrl, settings,
-    suppressItemDiscounts, allianceDiscPerItem, allianceRemainder,
+    suppressItemDiscounts, allianceDiscPerItem, allianceRemainder, creditVouchers,
 }: ReceiptBodyProps) {
 
     const Row = ({ label, value, bold = false, indent = false }: {
@@ -545,6 +548,30 @@ function ReceiptBody({
                         <Row label="Change" value={fmt(changeAmount)} bold />
                     )}
                 </div>
+            )}
+
+            {/* ── Credit Vouchers ── */}
+            {creditVouchers && creditVouchers.length > 0 && (
+                <>
+                    <Separator />
+                    <div className="text-center space-y-2 border-2 border-dashed border-green-600 rounded-lg px-3 py-3 bg-green-50">
+                        <p className="font-bold text-xs uppercase tracking-wide text-green-700">Credit Voucher Issued</p>
+                        {creditVouchers.map((voucher, idx) => (
+                            <div key={idx} className="bg-white border-2 border-green-600 rounded px-2 py-2 space-y-1">
+                                <p className="font-black text-xl tracking-widest text-green-700">{voucher.code}</p>
+                                <p className="font-semibold text-sm">Value: <span className="font-black text-base">Rs. {fmt(Number(voucher.faceValue))}</span></p>
+                                {voucher.expiresAt && (
+                                    <p className="text-[9px] text-muted-foreground">
+                                        Expires: {new Date(voucher.expiresAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+                        <p className="text-[9px] text-muted-foreground pt-1 border-t border-dashed">
+                            Unused voucher balance - Use on next purchase
+                        </p>
+                    </div>
+                </>
             )}
 
             <Separator />
