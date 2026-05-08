@@ -5,15 +5,17 @@ import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronRight, Folder, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ChevronRight, Folder, FileText, Upload, Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CoaBulkUploadModal } from "@/components/finance/coa-bulk-upload-modal";
+import { useUploadProgress } from "@/hooks/use-upload-progress";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/providers/auth-provider";
+import Link from "next/link";
 
 interface ChartOfAccountListProps {
   initialData: ChartOfAccount[];
-  permissions?: {
-    canUpdate: boolean;
-    canDelete: boolean;
-  };
 }
 
 const pkrFormatter = new Intl.NumberFormat("en-PK", {
@@ -43,7 +45,7 @@ function buildTree(flat: ChartOfAccount[]): ChartOfAccount[] {
 }
 
 // ---------------------------------------------------------------------------
-// Flatten visible rows based on expanded set (pure function, no React state)
+// Flatten visible rows based on expanded set
 // ---------------------------------------------------------------------------
 function flattenVisible(
   nodes: ChartOfAccount[],
@@ -74,7 +76,7 @@ function collectGroupIds(nodes: ChartOfAccount[], out = new Set<string>()): Set<
 }
 
 // ---------------------------------------------------------------------------
-// Row — memoized, re-renders only when its own expanded state changes
+// Row — memoized
 // ---------------------------------------------------------------------------
 const AccountRow = React.memo(
   ({
@@ -196,15 +198,47 @@ AccountRow.displayName = "AccountRow";
 // Main component
 // ---------------------------------------------------------------------------
 export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
+  const router = useRouter();
+  const { hasPermission } = useAuth();
+
+  const canCreate = hasPermission("erp.finance.chart-of-account.create");
+
   const tree = React.useMemo(() => buildTree(initialData), [initialData]);
 
-  // Start with all groups expanded
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(
     () => collectGroupIds(tree)
   );
-
   const [filter, setFilter] = React.useState("");
 
+  // ── Bulk upload state ────────────────────────────────────────────────────
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = React.useState(false);
+  const [activeUploadId, setActiveUploadId] = React.useState<string | null>(null);
+
+  // Persist upload ID across page navigations
+  React.useEffect(() => {
+    const stored = localStorage.getItem("active_coa_upload_id");
+    if (stored) setActiveUploadId(stored);
+  }, []);
+
+  const handleUploadIdChange = (id: string | null) => {
+    setActiveUploadId(id);
+    if (id) {
+      localStorage.setItem("active_coa_upload_id", id);
+    } else {
+      localStorage.removeItem("active_coa_upload_id");
+    }
+  };
+
+  const { data: uploadProgress } = useUploadProgress(activeUploadId, "coa");
+
+  // Refresh tree when import completes
+  React.useEffect(() => {
+    if (uploadProgress?.status === "completed") {
+      router.refresh();
+    }
+  }, [uploadProgress?.status, router]);
+
+  // ── Tree interaction ─────────────────────────────────────────────────────
   const toggle = React.useCallback((id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -214,7 +248,6 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     });
   }, []);
 
-  // Filter: if searching, show all matching nodes (ignore expand state)
   const visibleRows = React.useMemo(() => {
     if (!filter.trim()) {
       return flattenVisible(tree, expandedIds);
@@ -229,7 +262,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
           node.name.toLowerCase().includes(q) ||
           node.code.toLowerCase().includes(q)
         ) {
-          matched.push({ node, depth: 0 }); // flatten for search results
+          matched.push({ node, depth: 0 });
         }
         if (node.children?.length) search(node.children, depth + 1);
       }
@@ -238,17 +271,88 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     return matched;
   }, [tree, expandedIds, filter]);
 
+  // ── Upload progress button label ─────────────────────────────────────────
+  const progressLabel = React.useMemo(() => {
+    const s = uploadProgress?.status;
+    if (s === "failed")     return "Import Failed";
+    if (s === "completed")  return "Import Complete";
+    if (s === "validated")  return "Validation Complete";
+    if (s === "validating") return `Validating ${uploadProgress?.progress ?? 0}%`;
+    return `Importing ${uploadProgress?.progress ?? 0}%`;
+  }, [uploadProgress?.status, uploadProgress?.progress]);
+
+  const isInProgress =
+    uploadProgress?.status === "validating" ||
+    uploadProgress?.status === "processing" ||
+    uploadProgress?.status === "pending";
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center py-4">
+      {/* ── Page header ── */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Chart of Accounts</h1>
+          <p className="text-muted-foreground">Manage your financial accounts hierarchy.</p>
+        </div>
+
+        {canCreate && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Bulk Import
+            </Button>
+            <Link href="/erp/finance/chart-of-accounts/create" transitionTypes={["nav-forward"]}>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Account
+              </Button>
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ── Toolbar ── */}
+      <div className="flex items-center justify-between gap-3">
         <Input
           placeholder="Filter by name or code..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="max-w-sm"
         />
+
+        {/* Background progress pill — visible when modal is closed but job is running */}
+        {activeUploadId && !isBulkUploadOpen && (
+          <Button
+            variant={
+              uploadProgress?.status === "failed"
+                ? "destructive"
+                : uploadProgress?.status === "completed"
+                ? "default"
+                : "outline"
+            }
+            className={cn(
+              "relative overflow-hidden min-w-48 border-primary text-primary",
+              uploadProgress?.status === "failed" &&
+                "border-destructive! text-destructive-foreground! bg-destructive!",
+              uploadProgress?.status === "completed" &&
+                "text-primary-foreground! bg-primary!"
+            )}
+            onClick={() => setIsBulkUploadOpen(true)}
+          >
+            {/* Animated fill bar */}
+            <div
+              className="absolute inset-0 bg-primary/10 transition-all duration-500"
+              style={{ width: `${uploadProgress?.progress ?? 0}%` }}
+            />
+            <div className="relative flex items-center gap-2">
+              {isInProgress && <Loader2 className="h-4 w-4 animate-spin" />}
+              <span className="font-bold">{progressLabel}</span>
+            </div>
+          </Button>
+        )}
       </div>
 
+      {/* ── Table ── */}
       <div className="rounded-md border">
         <table className="w-full caption-bottom text-sm">
           <thead className="[&_tr]:border-b">
@@ -283,11 +387,20 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         </table>
       </div>
 
-      <div className="flex items-center py-4">
+      <div className="flex items-center py-2">
         <span className="text-sm text-muted-foreground">
           {visibleRows.length} row(s)
         </span>
       </div>
+
+      {/* ── Bulk Upload Modal ── */}
+      <CoaBulkUploadModal
+        open={isBulkUploadOpen}
+        onOpenChange={setIsBulkUploadOpen}
+        onSuccess={() => router.refresh()}
+        uploadId={activeUploadId}
+        onUploadIdChange={handleUploadIdChange}
+      />
     </div>
   );
 }
