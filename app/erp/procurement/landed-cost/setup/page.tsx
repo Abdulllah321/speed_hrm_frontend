@@ -313,9 +313,8 @@ export default function LandedCostSetupPage() {
       // const sumInvoice = basicItems.reduce((acc, item) => acc + (item.qty * item.unitFob), 0);
       // setTotalInvoiceValue(sumInvoice);
 
-      if (basicItems.length > 0) {
-        calculateTotals(basicItems, totalInvoiceValue); // Use current manual value
-      } else {
+      // Don't calculate totals yet - wait for enriched items with HS code rates
+      if (basicItems.length === 0) {
         toast.info('No items found in selected GRN');
         setLoading(false);
         return;
@@ -383,7 +382,7 @@ export default function LandedCostSetupPage() {
       ? manualTotalInvoice
       : totalInvoiceValue;
 
-    const updatedItems = itemsWithFullValues.map(item => {
+    const updatedItems = itemsWithFullValues.map((item, index) => {
       // 1. Invoice Foreign (already calculated above)
       const invoiceForeign = item.invoiceForeign;
 
@@ -461,11 +460,12 @@ export default function LandedCostSetupPage() {
       // 5. Assessable Value (AV)
       const assessableValue = valueAfterInsurance + landing;
 
-      // 6. Duties based on Assessable Value
+      // 6. Duties based on Assessable Value (All calculated on AV directly, not sequential)
       const cdAmount = (assessableValue * item.customsDutyRate) / 100;
       const rdAmount = (assessableValue * item.regulatoryDutyRate) / 100;
       const acdAmount = (assessableValue * item.additionalCustomsDutyRate) / 100;
 
+ 
       // 7. Sales Tax & AST based on valueForSaleTax (AV + Duties)
       const valueForSaleTax = assessableValue + cdAmount + rdAmount + acdAmount;
       const stAmount = (valueForSaleTax * item.salesTaxRate) / 100;
@@ -494,12 +494,15 @@ export default function LandedCostSetupPage() {
       // excise Charges (using global rate)
       const exciseAmount = (assessableValue * globalExciseRate) / 100;
 
-      // 11. Total Duty Amount (Sum of all taxes + excise)
-      const totalDutyAmount = cdAmount + rdAmount + acdAmount + stAmount + astAmount + itAmount + exciseAmount;
+      // 11. Total Duty Amount (Sum of CD + RD + ACD + ST + AST + IT, excluding excise)
+      const totalDutyAmount = cdAmount + rdAmount + acdAmount + stAmount + astAmount + itAmount;
 
-      // 12. Total Cost PKR (Formula requested by user: Inv PKR + CD + RD + ACD + Excise)
+      // Calculate Total Other Charges first
+      const totalOtherCharges = misFreight + misDoThc + misBank + misInsurance + misClgFwd;
+
+      // 12. Total Cost PKR (Formula: Inv PKR + CD + RD + ACD + Excise + Total Other Charges)
       const baseInvoicePKR = invoiceForeign * exchangeRate;
-      const totalCostPKR = baseInvoicePKR + cdAmount + rdAmount + acdAmount + exciseAmount;
+      const totalCostPKR = baseInvoicePKR + cdAmount + rdAmount + acdAmount + exciseAmount + totalOtherCharges;
       const unitCostPKR = item.qty > 0 ? totalCostPKR / item.qty : 0;
 
       return {
@@ -526,7 +529,7 @@ export default function LandedCostSetupPage() {
         misBankPKR: misBank,
         misInsurancePKR: misInsurance,
         misClgFwdPKR: misClgFwd,
-        totalOtherCharges: misFreight + misDoThc + misBank + misInsurance + misClgFwd,
+        totalOtherCharges: totalOtherCharges,
         misFreightInvNo: freightInvNo,
         misFreightDate: freightDate,
         misDoThcPoNo: doThcPoNo,
