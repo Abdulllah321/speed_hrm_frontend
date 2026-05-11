@@ -1,18 +1,36 @@
 "use client";
 
 import * as React from "react";
-import { ChartOfAccount } from "@/lib/actions/chart-of-account";
+import { ChartOfAccount, deleteChartOfAccount } from "@/lib/actions/chart-of-account";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Folder, FileText, Upload, Loader2, Plus } from "lucide-react";
+import { ChevronRight, Folder, FileText, Upload, Loader2, Plus, MoreHorizontal, Pencil, Trash2, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CoaBulkUploadModal } from "@/components/finance/coa-bulk-upload-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { verifyPassword } from "@/lib/actions/users";
 
 interface ChartOfAccountListProps {
   initialData: ChartOfAccount[];
@@ -85,12 +103,20 @@ const AccountRow = React.memo(
     isExpanded,
     hasChildren,
     onToggle,
+    canEdit,
+    canDelete,
+    onEdit,
+    onDelete,
   }: {
     node: ChartOfAccount;
     depth: number;
     isExpanded: boolean;
     hasChildren: boolean;
     onToggle: (id: string) => void;
+    canEdit: boolean;
+    canDelete: boolean;
+    onEdit: (node: ChartOfAccount) => void;
+    onDelete: (node: ChartOfAccount) => void;
   }) => {
     const indentSize = 24;
 
@@ -188,6 +214,41 @@ const AccountRow = React.memo(
         <td className="py-2 px-4 text-right font-medium font-mono">
           {pkrFormatter.format(node.balance).replace("PKR", "Rs.")}
         </td>
+
+        {/* Actions */}
+        {(canEdit || canDelete) && (
+          <td
+            className="py-2 px-4 text-right"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(node)}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {canEdit && canDelete && <DropdownMenuSeparator />}
+                {canDelete && (
+                  <DropdownMenuItem
+                    onClick={() => onDelete(node)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </td>
+        )}
       </tr>
     );
   }
@@ -199,9 +260,12 @@ AccountRow.displayName = "AccountRow";
 // ---------------------------------------------------------------------------
 export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
   const router = useRouter();
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
 
   const canCreate = hasPermission("erp.finance.chart-of-account.create");
+  const canEdit   = hasPermission("erp.finance.chart-of-account.update");
+  const canDelete = hasPermission("erp.finance.chart-of-account.delete");
+  const userIsAdmin = isAdmin();
 
   const tree = React.useMemo(() => buildTree(initialData), [initialData]);
 
@@ -209,6 +273,72 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     () => collectGroupIds(tree)
   );
   const [filter, setFilter] = React.useState("");
+
+  // ── Delete dialog state ──────────────────────────────────────────────────
+  const [deleteTarget, setDeleteTarget] = React.useState<ChartOfAccount | null>(null);
+  const [deleteStep, setDeleteStep] = React.useState<"confirm" | "password">("confirm");
+  const [adminPassword, setAdminPassword] = React.useState("");
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [passwordError, setPasswordError] = React.useState("");
+
+  const openDeleteDialog = React.useCallback((node: ChartOfAccount) => {
+    setDeleteTarget(node);
+    setDeleteStep("confirm");
+    setAdminPassword("");
+    setPasswordError("");
+  }, []);
+
+  const closeDeleteDialog = React.useCallback(() => {
+    if (isDeleting) return;
+    setDeleteTarget(null);
+    setAdminPassword("");
+    setPasswordError("");
+  }, [isDeleting]);
+
+  const handleDeleteProceed = React.useCallback(() => {
+    setDeleteStep("password");
+    setPasswordError("");
+  }, []);
+
+  const handleDeleteConfirm = React.useCallback(async () => {
+    if (!deleteTarget) return;
+    if (!adminPassword.trim()) {
+      setPasswordError("Password is required.");
+      return;
+    }
+
+    setIsDeleting(true);
+    setPasswordError("");
+
+    try {
+      // Step 1: verify admin password
+      const verify = await verifyPassword(adminPassword);
+      if (!verify.status) {
+        setPasswordError("Incorrect password. Only admins can delete accounts.");
+        setIsDeleting(false);
+        return;
+      }
+
+      // Step 2: delete the account
+      const result = await deleteChartOfAccount(deleteTarget.id);
+      if (result.status) {
+        toast.success(result.message || "Account deleted successfully");
+        setDeleteTarget(null);
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to delete account");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsDeleting(false);
+      setAdminPassword("");
+    }
+  }, [deleteTarget, adminPassword, router]);
+
+  const handleEditClick = React.useCallback((node: ChartOfAccount) => {
+    router.push(`/erp/finance/chart-of-accounts/edit/${node.id}`);
+  }, [router]);
 
   // ── Bulk upload state ────────────────────────────────────────────────────
   const [isBulkUploadOpen, setIsBulkUploadOpen] = React.useState(false);
@@ -286,6 +416,8 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     uploadProgress?.status === "processing" ||
     uploadProgress?.status === "pending";
 
+  const showActionsColumn = canEdit || canDelete;
+
   return (
     <div className="space-y-4">
       {/* ── Page header ── */}
@@ -362,6 +494,9 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Group</th>
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Active</th>
               <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Balance</th>
+              {showActionsColumn && (
+                <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground w-16">Actions</th>
+              )}
             </tr>
           </thead>
           <tbody className="[&_tr:last-child]:border-0">
@@ -374,11 +509,15 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
                   isExpanded={expandedIds.has(node.id)}
                   hasChildren={!!node.children?.length}
                   onToggle={toggle}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  onEdit={handleEditClick}
+                  onDelete={openDeleteDialog}
                 />
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="h-24 text-center text-muted-foreground">
+                <td colSpan={showActionsColumn ? 6 : 5} className="h-24 text-center text-muted-foreground">
                   No results.
                 </td>
               </tr>
@@ -401,6 +540,126 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         uploadId={activeUploadId}
         onUploadIdChange={handleUploadIdChange}
       />
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={!!deleteTarget} onOpenChange={closeDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          {deleteStep === "confirm" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <Trash2 className="h-5 w-5" />
+                  Delete Account
+                </DialogTitle>
+                <DialogDescription className="pt-1">
+                  You are about to delete{" "}
+                  <span className="font-semibold text-foreground">
+                    {deleteTarget?.code} — {deleteTarget?.name}
+                  </span>
+                  .
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-2 text-sm">
+                <p className="font-semibold text-destructive">This action will:</p>
+                <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                  <li>Permanently delete this account and all its sub-accounts</li>
+                  <li>Remove all associated journal entries and transactions</li>
+                  <li>Clear all related financial records</li>
+                </ul>
+                <p className="text-destructive font-medium pt-1">This cannot be undone.</p>
+              </div>
+
+              {!userIsAdmin && (
+                <div className="rounded-lg border border-amber-300/50 bg-amber-50/50 dark:bg-amber-950/20 p-3 flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
+                  <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>Only admins and super-admins can delete accounts. You will need to provide admin credentials.</span>
+                </div>
+              )}
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button variant="outline" onClick={closeDeleteDialog}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteProceed}>
+                  Continue to Delete
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-amber-500" />
+                  Admin Verification Required
+                </DialogTitle>
+                <DialogDescription className="pt-1">
+                  Enter your admin password to confirm deletion of{" "}
+                  <span className="font-semibold text-foreground">
+                    {deleteTarget?.code} — {deleteTarget?.name}
+                  </span>
+                  .
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="admin-password">Admin Password</Label>
+                  <Input
+                    id="admin-password"
+                    type="password"
+                    placeholder="Enter your password"
+                    value={adminPassword}
+                    onChange={(e) => {
+                      setAdminPassword(e.target.value);
+                      setPasswordError("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isDeleting) handleDeleteConfirm();
+                    }}
+                    disabled={isDeleting}
+                    autoFocus
+                    autoComplete="current-password"
+                  />
+                  {passwordError && (
+                    <p className="text-sm text-destructive">{passwordError}</p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Only super-admin and admin accounts can authorize this deletion.
+                </p>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteStep("confirm")}
+                  disabled={isDeleting}
+                >
+                  Back
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting || !adminPassword.trim()}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Confirm Delete
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
