@@ -700,10 +700,10 @@ console.log(res)
   return (
     <PermissionGuard permissions="erp.procurement.landed-cost.create">
     <div className="p-4 space-y-4">
-      <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
+      <div className="flex justify-between items-center bg-card p-4 rounded-lg shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Landed Cost Setup</h1>
-          <p className="text-sm text-gray-600">Complex import landed cost with duties and charges</p>
+          <h1 className="text-2xl font-bold ">Landed Cost Setup</h1>
+          <p className="text-sm">Complex import landed cost with duties and charges</p>
         </div>
         <div className="flex items-center space-x-2">
           <Select value={orderTypeFilter} onValueChange={(v: any) => setOrderTypeFilter(v)}>
@@ -726,19 +726,19 @@ console.log(res)
       </div>
 
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="py-0">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Header Info Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 border-b pb-2">
-                <h3 className="text-lg font-semibold text-gray-800">Header Info</h3>
+                <h3 className="text-lg font-semibold">Header Info</h3>
               </div>
               
               <div className="space-y-4">
-                <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                <div className="border p-3.5 rounded-md bg-card/50 space-y-3">
                   <p className="text-sm font-semibold text-blue-700">Source Selection</p>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-600">Select GRN</Label>
+                    <Label className="text-xs text-foreground/60">Select GRN</Label>
                     <Select value={grnId} onValueChange={onGrnChange}>
                       <SelectTrigger className="h-9"><SelectValue placeholder="Select GRN" /></SelectTrigger>
                       <SelectContent>
@@ -751,9 +751,9 @@ console.log(res)
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-600">Supplier</Label>
+                    <Label className="text-xs text-foreground/60">Supplier</Label>
                     <Input
-                      className="h-9 bg-gray-100"
+                      className="h-9"
                       value={grns.find(g => g.id === grnId) ? ((grns.find(g => g.id === grnId) as any).purchaseOrder?.vendor?.name || supplierId) : ''}
                       disabled
                       placeholder="Auto-filled from GRN"
@@ -761,11 +761,11 @@ console.log(res)
                   </div>
                 </div>
 
-                <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                <div className="border p-3.5 rounded-md space-y-3">
                   <p className="text-sm font-semibold text-blue-700">Financials</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">Currency {isLocalGrn() && <span className="text-[10px] text-gray-400">(PKR)</span>}</Label>
+                      <Label className="text-xs text-foreground/60">Currency {isLocalGrn() && <span className="text-[10px] text-gray-400">(PKR)</span>}</Label>
                       <Input 
                         className="h-9"
                         value={isLocalGrn() ? 'PKR' : currency} 
@@ -774,7 +774,7 @@ console.log(res)
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">Ex. Rate {isLocalGrn() && <span className="text-[10px] text-gray-400">(1)</span>}</Label>
+                      <Label className="text-xs text-foreground/60">Ex. Rate {isLocalGrn() && <span className="text-[10px] text-gray-400">(1)</span>}</Label>
                       <Input 
                         className="h-9"
                         type="number" 
@@ -785,7 +785,7 @@ console.log(res)
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-600">Total Freight ({isLocalGrn() ? 'PKR' : currency})</Label>
+                    <Label className="text-xs text-foreground/60">Total Freight ({isLocalGrn() ? 'PKR' : currency})</Label>
                     <Input 
                       className="h-9"
                       type="number" 
@@ -795,7 +795,7 @@ console.log(res)
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-600 font-bold">Total Invoice Value ({isLocalGrn() ? 'PKR' : currency})</Label>
+                    <Label className="text-xs text-foreground/60 font-bold">Total Invoice Value ({isLocalGrn() ? 'PKR' : currency})</Label>
                     <Input 
                       className="h-9 border-blue-200 focus:ring-blue-500"
                       type="number" 
@@ -803,7 +803,7 @@ console.log(res)
                       onChange={e => setTotalInvoiceValue(Number(e.target.value))} 
                       placeholder="Enter manually"
                     />
-                    <p className="text-[10px] text-gray-500 italic">
+                    <p className="text-[10px] text-foreground/50 italic">
                       Calculated item total shown below for comparison.
                     </p>
                   </div>
@@ -814,54 +814,54 @@ console.log(res)
             {/* Shipment Details Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 border-b pb-2">
-                <h3 className="text-lg font-semibold text-gray-800">Shipment Details</h3>
-                {isLocalGrn() && <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">Local</span>}
+                <h3 className="text-lg font-semibold">Shipment Details</h3>
+                {isLocalGrn() && <span className="text-xs px-2 py-0.5 rounded text-gray-500">Local</span>}
               </div>
 
               <div className="space-y-4">
-                <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                <div className="border p-3.5 rounded-md space-y-3">
                   <p className="text-sm font-semibold text-orange-700">Documents</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">LC No.</Label>
+                      <Label className="text-xs text-foreground/60">LC No.</Label>
                       <Input value={lcNo} onChange={e => setLcNo(e.target.value)} disabled={isLocalGrn()} className="h-9" placeholder="LC #" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">B/L No.</Label>
+                      <Label className="text-xs text-foreground/60">B/L No.</Label>
                       <Input value={blNo} onChange={e => setBlNo(e.target.value)} disabled={isLocalGrn()} className="h-9" placeholder="BL #" />
                     </div>
                     <div className="space-y-1 flex flex-col justify-end">
-                      <Label className="text-xs text-slate-600 mb-1">B/L Date</Label>
+                      <Label className="text-xs text-foreground/60 mb-1">B/L Date</Label>
                       <DatePicker value={blDate} onChange={setBlDate} disabled={isLocalGrn()} />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">GD No.</Label>
+                      <Label className="text-xs text-foreground/60">GD No.</Label>
                       <Input value={gdNo} onChange={e => setGdNo(e.target.value)} disabled={isLocalGrn()} className="h-9" placeholder="GD #" />
                     </div>
                   </div>
                 </div>
 
-                <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                <div className="border p-3.5 rounded-md space-y-3">
                   <p className="text-sm font-semibold text-orange-700">Tracking & Origin</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">Origin</Label>
+                      <Label className="text-xs text-foreground/60">Origin</Label>
                       <Input value={countryOfOrigin} onChange={e => setCountryOfOrigin(e.target.value)} disabled={isLocalGrn()} className="h-9" placeholder="Origin" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">Season</Label>
+                      <Label className="text-xs text-foreground/60">Season</Label>
                       <Input value={season} onChange={e => setSeason(e.target.value)} className="h-9" placeholder="Season" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">Category</Label>
+                      <Label className="text-xs text-foreground/60">Category</Label>
                       <Input value={category} onChange={e => setCategory(e.target.value)} className="h-9" placeholder="Category" />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-slate-600">Shipping Inv.</Label>
+                      <Label className="text-xs text-foreground/60">Shipping Inv.</Label>
                       <Input value={shippingInvoiceNo} onChange={e => setShippingInvoiceNo(e.target.value)} className="h-9" placeholder="Inv #" />
                     </div>
                     <div className="col-span-2 space-y-1 flex flex-col justify-end">
-                      <Label className="text-xs text-slate-600 mb-1">Invoice Date</Label>
+                      <Label className="text-xs text-foreground/60 mb-1">Invoice Date</Label>
                       <DatePicker value={invoiceDate} onChange={setInvoiceDate} />
                     </div>
                   </div>
@@ -872,7 +872,7 @@ console.log(res)
             {/* Other Charges (MIS Detail) Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 border-b pb-2">
-                <h3 className="text-lg font-semibold text-gray-800">Other Charges (MIS)</h3>
+                <h3 className="text-lg font-semibold">Other Charges (MIS)</h3>
               </div>
 
               {isLocalGrn() ? (
@@ -882,42 +882,42 @@ console.log(res)
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                  <div className="border p-3.5 rounded-md space-y-3">
                     <div className="flex justify-between items-center">
                       <p className="text-sm font-semibold text-green-700">Freight (MIS)</p>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">PKR</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-8 text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-xs text-slate-600 truncate">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-8 text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-8 text-sm" /></div>
-                      <div className="space-y-1 flex flex-col justify-end"><Label className="text-xs text-slate-600 mb-1">Date</Label><DatePicker value={freightDate} onChange={setFreightDate} placeholder="Date" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">PKR</Label><Input type="number" value={freightUSD} onChange={e => setFreightUSD(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60 truncate">(Ex. rate other)</Label><Input type="number" value={freightPKR} onChange={e => setFreightPKR(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">Invoice No.</Label><Input value={freightInvNo} onChange={e => setFreightInvNo(e.target.value)} className="h-8 text-sm" /></div>
+                      <div className="space-y-1 flex flex-col justify-end"><Label className="text-xs text-foreground/60 mb-1">Date</Label><DatePicker value={freightDate} onChange={setFreightDate} placeholder="Date" /></div>
                     </div>
                   </div>
 
-                  <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-3">
+                  <div className="border p-3.5 rounded-md space-y-3">
                     <p className="text-sm font-semibold text-green-700">DO/THC & Bank</p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">DO Charges</Label><Input type="number" value={doThcCharges} onChange={e => setDoThcCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">P.O. #</Label><Input value={doThcPoNo} onChange={e => setDoThcPoNo(e.target.value)} className="h-8 text-sm" /></div>
-                      <div className="space-y-1 flex flex-col justify-end"><Label className="text-xs text-slate-600 mb-1">DO Date</Label><DatePicker value={doThcDate} onChange={setDoThcDate} placeholder="Date" /></div>
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">Bank Charges</Label><Input type="number" value={bankCharges} onChange={e => setBankCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">DO Charges</Label><Input type="number" value={doThcCharges} onChange={e => setDoThcCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">P.O. #</Label><Input value={doThcPoNo} onChange={e => setDoThcPoNo(e.target.value)} className="h-8 text-sm" /></div>
+                      <div className="space-y-1 flex flex-col justify-end"><Label className="text-xs text-foreground/60 mb-1">DO Date</Label><DatePicker value={doThcDate} onChange={setDoThcDate} placeholder="Date" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">Bank Charges</Label><Input type="number" value={bankCharges} onChange={e => setBankCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-2">
+                    <div className="border p-3.5 rounded-md space-y-2">
                       <p className="text-sm font-semibold text-green-700">M. Insurance</p>
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">Charges</Label><Input type="number" value={mInsuranceCharges} onChange={e => setMInsuranceCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">Policy #</Label><Input value={mInsurancePolicyNo} onChange={e => setMInsurancePolicyNo(e.target.value)} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">Charges</Label><Input type="number" value={mInsuranceCharges} onChange={e => setMInsuranceCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">Policy #</Label><Input value={mInsurancePolicyNo} onChange={e => setMInsurancePolicyNo(e.target.value)} className="h-8 text-sm" /></div>
                     </div>
-                    <div className="border p-3.5 rounded-md bg-slate-50/50 space-y-2">
+                    <div className="border p-3.5 rounded-md space-y-2">
                       <p className="text-sm font-semibold text-green-700">Clg/Fwd</p>
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">Charges</Label><Input type="number" value={clgFwdCharges} onChange={e => setClgFwdCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
-                      <div className="space-y-1"><Label className="text-xs text-slate-600">Bill #</Label><Input value={clgFwdBillNo} onChange={e => setClgFwdBillNo(e.target.value)} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">Charges</Label><Input type="number" value={clgFwdCharges} onChange={e => setClgFwdCharges(Number(e.target.value))} className="h-8 text-sm" /></div>
+                      <div className="space-y-1"><Label className="text-xs text-foreground/60">Bill #</Label><Input value={clgFwdBillNo} onChange={e => setClgFwdBillNo(e.target.value)} className="h-8 text-sm" /></div>
                     </div>
                   </div>
 
-                  <div className="border p-3.5 rounded-md bg-purple-50/80 space-y-2">
+                  <div className="border p-3.5 rounded-md space-y-2">
                     <p className="text-sm font-semibold text-purple-700">Excise Charges</p>
                     <div className="space-y-1">
                       <Label className="text-xs text-purple-800">Excise Rate (%)</Label>
@@ -942,21 +942,21 @@ console.log(res)
           <Table>
             <TableHeader>
               {/* Primary Header Grouping */}
-              <TableRow className="bg-gray-200 border-b-2 border-gray-300">
-                <TableHead colSpan={11} className="text-center font-bold border-r border-gray-300">SHIPMENT DETAILS</TableHead>
-                <TableHead colSpan={9} className="text-center font-bold border-r border-gray-300 bg-blue-50 text-blue-800">ASSESSABLE VALUE</TableHead>
-                <TableHead colSpan={9} className="text-center font-bold border-r border-gray-300 bg-orange-50 text-orange-900">DUTY CALCULATION</TableHead>
-                <TableHead colSpan={1} className="text-center font-bold border-r border-gray-300 bg-purple-50 text-purple-900">EXCISE</TableHead>
-                <TableHead colSpan={4} className="text-center font-bold border-r border-gray-300 bg-green-100">FREIGHT (MIS)</TableHead>
-                <TableHead colSpan={3} className="text-center font-bold border-r border-gray-300 bg-green-100">DO/THC (MIS)</TableHead>
-                <TableHead colSpan={1} className="text-center font-bold border-r border-gray-300 bg-green-100">BANK (MIS)</TableHead>
-                <TableHead colSpan={2} className="text-center font-bold border-r border-gray-300 bg-green-100">INSURANCE (MIS)</TableHead>
-                <TableHead colSpan={2} className="text-center font-bold border-r border-gray-300 bg-green-100">CLG/FWD (MIS)</TableHead>
-                <TableHead className="text-center font-bold bg-yellow-50 text-yellow-900 border-r border-gray-300">Total Other Charges</TableHead>
-                <TableHead colSpan={3} className="text-center font-bold bg-gray-200">TOTALS</TableHead>
+              <TableRow className="border-b-2">
+                <TableHead colSpan={11} className="text-center font-bold border-r">SHIPMENT DETAILS</TableHead>
+                <TableHead colSpan={9} className="text-center font-bold border-r bg-blue-50 text-blue-800">ASSESSABLE VALUE</TableHead>
+                <TableHead colSpan={9} className="text-center font-bold border-r bg-orange-50 text-orange-900">DUTY CALCULATION</TableHead>
+                <TableHead colSpan={1} className="text-center font-bold border-r bg-purple-50 text-purple-900">EXCISE</TableHead>
+                <TableHead colSpan={4} className="text-center font-bold border-r bg-green-100 text-green-900">FREIGHT (MIS)</TableHead>
+                <TableHead colSpan={3} className="text-center font-bold border-r bg-green-100 text-green-900">DO/THC (MIS)</TableHead>
+                <TableHead colSpan={1} className="text-center font-bold border-r bg-green-100 text-green-900">BANK (MIS)</TableHead>
+                <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900">INSURANCE (MIS)</TableHead>
+                <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900">CLG/FWD (MIS)</TableHead>
+                <TableHead className="text-center font-bold bg-yellow-50 text-yellow-900 border-r">Total Other Charges</TableHead>
+                <TableHead colSpan={3} className="text-center font-bold bg-gray-200 dark:bg-gray-950">TOTALS</TableHead>
               </TableRow>
               {/* Secondary Detail Header */}
-              <TableRow className="bg-gray-100">
+              <TableRow className="bg-card/50">
                 <TableHead>L.C. #</TableHead>
                 <TableHead>B.L. #</TableHead>
                 <TableHead>B.L. Date</TableHead>
@@ -967,7 +967,7 @@ console.log(res)
                 <TableHead>Shipping Inv.</TableHead>
                 <TableHead>Inv. Date</TableHead>
                 <TableHead>SKU No.</TableHead>
-                <TableHead className="border-r border-gray-300 min-w-[200px]">Description</TableHead>
+                <TableHead className="border-r min-w-[200px]">Description</TableHead>
                 <TableHead className="w-[120px] font-bold text-blue-800">HS Code</TableHead>
                 <TableHead>Qty</TableHead>
                 <TableHead>FOB (PKR)</TableHead>
@@ -976,7 +976,7 @@ console.log(res)
                 <TableHead>Ex. Rate</TableHead>
                 <TableHead>Inv PKR</TableHead>
                 <TableHead>1%+1%</TableHead>
-                <TableHead className="bg-blue-50 font-bold">ASSL. VALUE</TableHead>
+                <TableHead className="bg-blue-50 font-bold dark:bg-blue-950/50">ASSL. VALUE</TableHead>
                 <TableHead>CD Amt</TableHead>
                 <TableHead>RD Amt</TableHead>
                 <TableHead>ACD Amt</TableHead>
@@ -985,8 +985,8 @@ console.log(res)
                 <TableHead>AST</TableHead>
                 <TableHead>val Inc Tax</TableHead>
                 <TableHead>I.T.</TableHead>
-                <TableHead className="font-bold border-r border-gray-300">Total Duty</TableHead>
-                <TableHead className="bg-purple-50 border-r border-gray-300">Charges</TableHead>
+                <TableHead className="font-bold border-r">Total Duty</TableHead>
+                <TableHead className="bg-purple-50 dark:bg-purple-900/50 border-r">Charges</TableHead>
                 <TableHead>PKR</TableHead>
                 <TableHead>PKR</TableHead>
                 <TableHead>Inv No.</TableHead>
@@ -998,10 +998,10 @@ console.log(res)
                 <TableHead>Charges</TableHead>
                 <TableHead>Policy #</TableHead>
                 <TableHead>Charges</TableHead>
-                <TableHead className="border-r border-gray-300">Bill #</TableHead>
-                <TableHead className="bg-yellow-50 font-bold border-r border-gray-300">PKR</TableHead>
+                <TableHead className="border-r">Bill #</TableHead>
+                <TableHead className="bg-yellow-50 font-bold border-r text-yellow-950">PKR</TableHead>
                 <TableHead>Unit Cost</TableHead>
-                <TableHead className="bg-green-50 font-bold">Total Cost</TableHead>
+                <TableHead className="bg-green-50 font-bold text-green-950">Total Cost</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1075,7 +1075,7 @@ console.log(res)
                     <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misInsurancePolicyNo}</TableCell>
                     <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misClgFwdPKR.toFixed(2)}</TableCell>
                     <TableCell className="text-[10px] border-r">{isLocalGrn() ? '-' : item.misClgFwdBillNo}</TableCell>
-                    <TableCell className="text-[10px] font-bold bg-yellow-50 border-r">{isLocalGrn() ? '0' : item.totalOtherCharges.toFixed(2)}</TableCell>
+                    <TableCell className="text-[10px] font-bold bg-yellow-50 text-black! border-r">{isLocalGrn() ? '0' : item.totalOtherCharges.toFixed(2)}</TableCell>
 
                     <TableCell className="text-[10px] font-bold">{Math.round(item.unitCostPKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px] font-bold bg-green-50">{Math.round(item.totalCostPKR).toLocaleString()}</TableCell>
@@ -1086,7 +1086,7 @@ console.log(res)
               {/* Totals / Summary Row */}
               {items.length > 0 && (
                 <>
-                  <TableRow className="bg-gray-100 font-bold border-t-2 border-gray-400">
+                  <TableRow className="font-bold border-t-2 border-gray-400">
                     <TableCell colSpan={12} className="text-right py-2">CALCULATED TOTALS:</TableCell>
                     <TableCell className="text-[11px]">{tableTotals.qty.toLocaleString()}</TableCell>
                     <TableCell></TableCell>
