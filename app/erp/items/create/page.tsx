@@ -483,7 +483,7 @@ export default function ItemCreatePage() {
                 return ["brandId", "segmentId", "sku", "barCode", "hsCodeId", "isActive", "description"];
             case 1:
                 return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId"];
-            case 2:lo
+            case 2:
                 return ["unitPrice", "fob", "unitCost", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
             case 3:
                 return ["sizeId", "colorId", "silhouetteId", "case", "band", "movementType", "heelHeight", "width"];

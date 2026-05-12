@@ -40,7 +40,7 @@ interface PromoConfig {
 }
 interface AllianceConfig {
     id: string; partnerName: string; code: string;
-    discountPercent: number; description?: string;
+    discountPercent: number; maxDiscount?: number; description?: string;
     /** BIN prefixes (4–8 digits) that qualify for this alliance */
     binNumbers: string[];
 }
@@ -322,12 +322,17 @@ export default function CheckoutPage() {
     let finalItemDiscounts = itemDiscounts;
 
     if (discountMode === "alliance" && selectedAlliance) {
-        // Alliance discount: use maxDiscount as fixed amount if exists, otherwise use percentage
+        // Alliance discount applies on the pre-tax subtotal (excl. item-level discounts).
+        // If maxDiscount is set it acts as a fixed cap; otherwise use the percentage.
         let allianceDiscount = 0;
+        const allianceBase = subtotalAfterItems; // pre-tax, after item discounts
         if (selectedAlliance.maxDiscount) {
-            allianceDiscount = Number(selectedAlliance.maxDiscount);
+            allianceDiscount = Math.min(
+                Math.round(allianceBase * (Number(selectedAlliance.discountPercent) / 100)),
+                Number(selectedAlliance.maxDiscount)
+            );
         } else {
-            allianceDiscount = Math.round(subtotal * (Number(selectedAlliance.discountPercent) / 100));
+            allianceDiscount = Math.round(allianceBase * (Number(selectedAlliance.discountPercent) / 100));
         }
 
         // Alliance wins when it's >= item discounts (equal → alliance preferred)
@@ -360,9 +365,32 @@ export default function CheckoutPage() {
 
     const totalDiscount = finalItemDiscounts + orderDiscount;
 
-    // Alliance distribution for display
-    const allianceDiscPerItem = (discountMode === "alliance" && orderDiscount > 0 && cartItems.length > 0) ? Math.floor(orderDiscount / cartItems.length) : 0;
-    const allianceRemainder = (discountMode === "alliance" && orderDiscount > 0 && cartItems.length > 0) ? (orderDiscount - (allianceDiscPerItem * cartItems.length)) : 0;
+    // Alliance distribution for display — proportional by item line value (price × qty)
+    // Each item gets: floor(orderDiscount × itemLineValue / subtotalAfterItems)
+    // Remainder (from flooring) is distributed 1 unit at a time to the highest-value items.
+    const allianceSharePerItem: number[] = [];
+    if (discountMode === "alliance" && orderDiscount > 0 && cartItems.length > 0) {
+        const base = subtotalAfterItems > 0 ? subtotalAfterItems : 1;
+        let distributed = 0;
+        const rawShares = cartItems.map(item => {
+            const lineValue = item.price * item.quantity - item.discountAmount;
+            const share = Math.floor(orderDiscount * lineValue / base);
+            distributed += share;
+            return share;
+        });
+        let remainder = orderDiscount - distributed;
+        // Sort indices by descending line value to give remainder to biggest items first
+        const sortedIdx = cartItems
+            .map((item, i) => ({ i, v: item.price * item.quantity - item.discountAmount }))
+            .sort((a, b) => b.v - a.v)
+            .map(x => x.i);
+        for (let k = 0; k < remainder; k++) {
+            rawShares[sortedIdx[k % sortedIdx.length]]++;
+        }
+        allianceSharePerItem.push(...rawShares);
+    } else {
+        cartItems.forEach(() => allianceSharePerItem.push(0));
+    }
     const grandTotal = Math.max(0, subtotal - totalDiscount + itemTax);
     const totalPaid = tenders.reduce((a, t) => a + t.amount, 0);
     const balanceDue = Math.max(0, grandTotal - totalPaid);
@@ -863,7 +891,7 @@ export default function CheckoutPage() {
                             <div className="divide-y">
                                 {cartItems.map((item, idx) => {
                                     const isAllianceApplied = discountMode === "alliance" && orderDiscount > 0;
-                                    const allianceShare = isAllianceApplied ? (allianceDiscPerItem + (idx < allianceRemainder ? 1 : 0)) : 0;
+                                    const allianceShare = isAllianceApplied ? allianceSharePerItem[idx] : 0;
                                     
                                     return (
                                         <div key={item.id} className="flex items-start gap-3 px-4 py-3">
@@ -1126,10 +1154,14 @@ export default function CheckoutPage() {
                                                 )}
                                                 {filteredAlliances.map((a) => {
                                                     let disc = 0;
+                                                    const allianceBase = subtotalAfterItems;
                                                     if (a.maxDiscount) {
-                                                        disc = Number(a.maxDiscount);
+                                                        disc = Math.min(
+                                                            Math.round(allianceBase * (Number(a.discountPercent) / 100)),
+                                                            Number(a.maxDiscount)
+                                                        );
                                                     } else {
-                                                        disc = Math.round(subtotal * (Number(a.discountPercent) / 100));
+                                                        disc = Math.round(allianceBase * (Number(a.discountPercent) / 100));
                                                     }
                                                     const isSelected = selectedAlliance?.id === a.id && discountMode === "alliance";
                                                     const disabled = discountMode !== "none" && !isSelected;

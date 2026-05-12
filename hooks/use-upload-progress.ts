@@ -35,7 +35,7 @@ export interface UploadStatusResponse {
     completedAt: string | null;
 }
 
-export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'hscode' | 'employee' | 'attendance' = 'item') {
+export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'hscode' | 'employee' | 'attendance' | 'coa' | 'alliance' = 'item') {
     const [data, setData] = useState<UploadStatusResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -65,11 +65,17 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
         if (uploadType === 'hscode') {
             return `${baseUrl}/master/hs-codes/bulk-upload/${endpoint}`;
         }
+        if (uploadType === 'alliance') {
+            return `${baseUrl}/pos-config/alliances/bulk-upload/${endpoint}`;
+        }
         if (uploadType === 'employee') {
             return `${baseUrl}/employees/bulk-upload/${endpoint}`;
         }
         if (uploadType === 'attendance') {
             return `${baseUrl}/attendances/bulk-upload/${endpoint}`;
+        }
+        if (uploadType === 'coa') {
+            return `${baseUrl}/finance/chart-of-accounts/bulk-upload/${endpoint}`;
         }
         return `${baseUrl}/items/bulk-upload/${endpoint}`;
     }, [uploadType]);
