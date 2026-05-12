@@ -1645,7 +1645,7 @@ function RowActions({ row }: RowActionsProps) {
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground">Amount</Label>
-                        <p className="font-medium">{viewPolicy.halfDayDeductionAmount}%</p>
+                        <p className="font-medium">{viewPolicy.halfDayDeductionAmount}</p>
                       </div>
                     </div>
                   </div>
@@ -1666,7 +1666,7 @@ function RowActions({ row }: RowActionsProps) {
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground">Amount</Label>
-                        <p className="font-medium">{viewPolicy.shortDayDeductionAmount}%</p>
+                        <p className="font-medium">{viewPolicy.shortDayDeductionAmount}</p>
                       </div>
                     </div>
                   </div>

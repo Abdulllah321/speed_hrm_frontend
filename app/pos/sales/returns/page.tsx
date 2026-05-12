@@ -98,6 +98,7 @@ export default function ReturnsPage() {
         refundTotal: number;
         returnedAt: string;
         itemRefundDetails?: { orderItemId: string; itemId: string; quantity: number; originalPaidPerUnit: number; refundPerUnit: number; priceAdjusted: boolean }[];
+        exchangeVoucher?: { code: string; faceValue: number; expiresAt: string } | null;
     } | null>(null);
 
     // ── Add an order ──────────────────────────────────────────────────
@@ -314,13 +315,17 @@ export default function ReturnsPage() {
 
             if (res?.ok && res.data?.status) {
                 if (mode === "return") {
-                    toast.success(`Return processed. Refund: ${formatCurrency(res.data.refundAmount ?? refundTotal)}`);
+                    const voucherMsg = res.data.exchangeVoucher 
+                        ? ` Exchange Voucher: ${res.data.exchangeVoucher.code}` 
+                        : ` Refund: ${formatCurrency(res.data.refundAmount ?? refundTotal)}`;
+                    toast.success(`Return processed.${voucherMsg}`);
                     // Show return receipt instead of redirecting
                     setReturnReceipt({
                         returnRef: res.data.returnRef || res.data.data?.returnNumber || `RET-${Date.now()}`,
                         refundTotal: res.data.refundAmount ?? refundTotal,
                         returnedAt: new Date().toISOString(),
                         itemRefundDetails: res.data.itemRefundDetails,
+                        exchangeVoucher: res.data.exchangeVoucher || null,
                     });
                 } else if (mode === "exchange") {
                     const d = res.data.data?.difference ?? diff;
@@ -756,6 +761,7 @@ export default function ReturnsPage() {
                     refundTotal={returnReceipt.refundTotal}
                     notes={notes || undefined}
                     returnedAt={returnReceipt.returnedAt}
+                    exchangeVoucher={returnReceipt.exchangeVoucher}
                     discountNotes={loadedOrders
                         .filter(o => o.coupon || o.promo || o.alliance)
                         .map(o => {
