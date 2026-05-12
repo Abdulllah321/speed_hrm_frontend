@@ -45,6 +45,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { EmployeeBulkUploadModal } from "@/components/employee/bulk-upload-modal";
+import { ProtectedSalaryCell } from "@/components/common/protected-salary-cell";
 
 export default function EmployeeListPage() {
   const router = useRouter();
@@ -167,14 +168,7 @@ export default function EmployeeListPage() {
       header: "Salary",
       cell: ({ row }) => {
         const salary = parseFloat(row.getValue("employeeSalary"));
-        return (
-          <div className="font-medium">
-            {new Intl.NumberFormat("en-PK", {
-              style: "currency",
-              currency: "PKR",
-            }).format(salary)}
-          </div>
-        );
+        return <ProtectedSalaryCell salary={salary} />;
       },
     },
     {
