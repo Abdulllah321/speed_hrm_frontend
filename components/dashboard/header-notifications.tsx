@@ -161,6 +161,45 @@ export function HeaderNotifications() {
     return null;
   }, []);
 
+  const handleNotificationSelect = useCallback(async (n: NotificationItem) => {
+    await handleMarkRead(n.id);
+
+    // item-export.ready — trigger file download directly
+    if (n.actionType === "item-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          const url = `${base}/finance/items/export/${jobId}/download`;
+          // Use raw fetch — authFetch always calls .json() which breaks binary responses
+          const response = await fetch(url, { credentials: "include" });
+          if (response.ok) {
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = objectUrl;
+            anchor.download = `items-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(objectUrl);
+          } else {
+            console.error("Export download failed with status:", response.status);
+          }
+        }
+      } catch (e) {
+        console.error("Export download failed:", e);
+      }
+      return;
+    }
+
+    const route = getActionRoute(n);
+    if (route) router.push(route);
+  }, [handleMarkRead, getActionRoute, router]);
+
   const badgeText = unreadCount > 99 ? "99+" : String(unreadCount);
 
   if (!user) return null;
@@ -188,15 +227,13 @@ export function HeaderNotifications() {
             </DropdownMenuItem>
           ) : (
             items.map((n) => {
-              const route = getActionRoute(n);
               const isUnread = n.status === "unread";
               return (
                 <DropdownMenuItem
                   key={n.id}
                   className="flex flex-col items-start gap-1"
                   onSelect={async () => {
-                    await handleMarkRead(n.id);
-                    if (route) router.push(route);
+                    await handleNotificationSelect(n);
                   }}
                 >
                   <div className="flex w-full items-center justify-between gap-2">
