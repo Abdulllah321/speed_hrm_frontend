@@ -210,9 +210,14 @@ const AccountRow = React.memo(
           </Badge>
         </td>
 
-        {/* Balance */}
+        {/* Debit */}
         <td className="py-2 px-4 text-right font-medium font-mono">
-          {pkrFormatter.format(node.balance).replace("PKR", "Rs.")}
+          {node.debit > 0 ? pkrFormatter.format(node.debit).replace("PKR", "Rs.") : "-"}
+        </td>
+
+        {/* Credit */}
+        <td className="py-2 px-4 text-right font-medium font-mono">
+          {node.credit > 0 ? pkrFormatter.format(node.credit).replace("PKR", "Rs.") : "-"}
         </td>
 
         {/* Actions */}
@@ -493,7 +498,8 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Type</th>
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Group</th>
               <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Active</th>
-              <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Balance</th>
+              <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Debit</th>
+              <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Credit</th>
               {showActionsColumn && (
                 <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground w-16">Actions</th>
               )}
@@ -517,7 +523,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
               ))
             ) : (
               <tr>
-                <td colSpan={showActionsColumn ? 6 : 5} className="h-24 text-center text-muted-foreground">
+                <td colSpan={showActionsColumn ? 7 : 6} className="h-24 text-center text-muted-foreground">
                   No results.
                 </td>
               </tr>
