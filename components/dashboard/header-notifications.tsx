@@ -262,6 +262,26 @@ export function HeaderNotifications() {
       return;
     }
 
+    // customer-export.ready
+    if (n.actionType === "customer-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/customers/export/${jobId}/download`,
+            `customers-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Customer export download failed:", e);
+      }
+      return;
+    }
+
     const route = getActionRoute(n);
     if (route) router.push(route);
   }, [handleMarkRead, getActionRoute, router]);
