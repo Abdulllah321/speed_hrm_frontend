@@ -13,6 +13,8 @@ export interface ChartOfAccount {
   isActive: boolean;
   description?: string | null;
   balance: number;
+  debit: number;
+  credit: number;
   createdAt: string;
   updatedAt: string;
 }
