@@ -97,3 +97,29 @@ export async function deleteChartOfAccount(id: string): Promise<{ status: boolea
     return { status: false, message: "Failed to delete chart of account" };
   }
 }
+
+// ─── Export Chart of Accounts ─────────────────────────────────────────────────
+
+export async function queueChartOfAccountsExport(
+  search?: string,
+  type?: string,
+  isGroup?: boolean,
+  isActive?: boolean,
+): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+  try {
+    const params = new URLSearchParams();
+    if (search)              params.append('search',   search);
+    if (type)                params.append('type',     type);
+    if (isGroup !== undefined)  params.append('isGroup',  String(isGroup));
+    if (isActive !== undefined) params.append('isActive', String(isActive));
+    const qs = params.toString();
+
+    const res = await authFetch(`/finance/chart-of-accounts/export${qs ? `?${qs}` : ''}`, {
+      method: 'POST',
+    });
+    return res.data ?? { status: false, message: 'No response from server' };
+  } catch (error) {
+    console.error('Queue chart-of-accounts export error:', error);
+    return { status: false, message: 'Failed to connect to server' };
+  }
+}

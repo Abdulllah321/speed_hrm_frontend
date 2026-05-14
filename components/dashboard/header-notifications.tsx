@@ -164,7 +164,25 @@ export function HeaderNotifications() {
   const handleNotificationSelect = useCallback(async (n: NotificationItem) => {
     await handleMarkRead(n.id);
 
-    // item-export.ready — trigger file download directly
+    // Generic binary-file download helper
+    const triggerDownload = async (url: string, filename: string) => {
+      const response = await fetch(url, { credentials: "include" });
+      if (response.ok) {
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(objectUrl);
+      } else {
+        console.error(`Download failed with status: ${response.status}`);
+      }
+    };
+
+    // item-export.ready
     if (n.actionType === "item-export.ready" && n.actionPayload) {
       try {
         const payload = typeof n.actionPayload === "string"
@@ -173,25 +191,53 @@ export function HeaderNotifications() {
         const jobId = payload?.jobId;
         if (jobId) {
           const base = getApiBaseUrl();
-          const url = `${base}/finance/items/export/${jobId}/download`;
-          // Use raw fetch — authFetch always calls .json() which breaks binary responses
-          const response = await fetch(url, { credentials: "include" });
-          if (response.ok) {
-            const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            const anchor = document.createElement("a");
-            anchor.href = objectUrl;
-            anchor.download = `items-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
-            document.body.appendChild(anchor);
-            anchor.click();
-            document.body.removeChild(anchor);
-            URL.revokeObjectURL(objectUrl);
-          } else {
-            console.error("Export download failed with status:", response.status);
-          }
+          await triggerDownload(
+            `${base}/finance/items/export/${jobId}/download`,
+            `items-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
         }
       } catch (e) {
-        console.error("Export download failed:", e);
+        console.error("Item export download failed:", e);
+      }
+      return;
+    }
+
+    // employee-export.ready
+    if (n.actionType === "employee-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/employees/export/${jobId}/download`,
+            `employees-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Employee export download failed:", e);
+      }
+      return;
+    }
+
+    // chart-of-account-export.ready
+    if (n.actionType === "chart-of-account-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/finance/chart-of-accounts/export/${jobId}/download`,
+            `chart-of-accounts-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Chart of accounts export download failed:", e);
       }
       return;
     }

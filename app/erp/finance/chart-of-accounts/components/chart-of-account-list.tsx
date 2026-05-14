@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { ChartOfAccount, deleteChartOfAccount } from "@/lib/actions/chart-of-account";
+import { ChartOfAccount, deleteChartOfAccount, queueChartOfAccountsExport } from "@/lib/actions/chart-of-account";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Folder, FileText, Upload, Loader2, Plus, MoreHorizontal, Pencil, Trash2, ShieldAlert } from "lucide-react";
+import { ChevronRight, Folder, FileText, Upload, Loader2, Plus, MoreHorizontal, Pencil, Trash2, ShieldAlert, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CoaBulkUploadModal } from "@/components/finance/coa-bulk-upload-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
@@ -81,13 +81,17 @@ function flattenVisible(
 }
 
 // ---------------------------------------------------------------------------
-// Collect all group IDs for "expand all" default
+// Collect IDs of every node that has children in the built tree —
+// used for "expand all" default so every level is open regardless of isGroup
 // ---------------------------------------------------------------------------
-function collectGroupIds(nodes: ChartOfAccount[], out = new Set<string>()): Set<string> {
+function collectAllNodeIdsWithChildren(
+  nodes: ChartOfAccount[],
+  out = new Set<string>(),
+): Set<string> {
   for (const node of nodes) {
-    if (node.isGroup && node.children?.length) {
+    if (node.children?.length) {
       out.add(node.id);
-      collectGroupIds(node.children, out);
+      collectAllNodeIdsWithChildren(node.children, out);
     }
   }
   return out;
@@ -270,7 +274,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
   const tree = React.useMemo(() => buildTree(initialData), [initialData]);
 
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(
-    () => collectGroupIds(tree)
+    () => collectAllNodeIdsWithChildren(buildTree(initialData))
   );
   const [filter, setFilter] = React.useState("");
 
@@ -339,6 +343,30 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
   const handleEditClick = React.useCallback((node: ChartOfAccount) => {
     router.push(`/erp/finance/chart-of-accounts/edit/${node.id}`);
   }, [router]);
+
+  // ── Export state ─────────────────────────────────────────────────────────
+  const [isExporting, setIsExporting] = React.useState(false);
+
+  const handleExport = React.useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      const result = await queueChartOfAccountsExport(
+        filter.trim() || undefined,
+      );
+      if (result.status) {
+        toast.success("Export queued — you'll get a notification when your file is ready.", {
+          duration: 6000,
+        });
+      } else {
+        toast.error(result.message || "Failed to queue export");
+      }
+    } catch {
+      toast.error("Export failed. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  }, [isExporting, filter]);
 
   // ── Bulk upload state ────────────────────────────────────────────────────
   const [isBulkUploadOpen, setIsBulkUploadOpen] = React.useState(false);
@@ -429,6 +457,19 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
 
         {canCreate && (
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              disabled={isExporting || initialData.length === 0}
+              className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+            >
+              {isExporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              {isExporting ? "Queuing…" : "Export"}
+            </Button>
             <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
               <Upload className="mr-2 h-4 w-4" />
               Bulk Import
