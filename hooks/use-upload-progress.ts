@@ -35,7 +35,7 @@ export interface UploadStatusResponse {
     completedAt: string | null;
 }
 
-export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'hscode' | 'employee' | 'attendance' | 'coa' | 'alliance' = 'item') {
+export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'hscode' | 'employee' | 'attendance' | 'coa' | 'alliance' | 'sales-history' = 'item') {
     const [data, setData] = useState<UploadStatusResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -76,6 +76,9 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
         }
         if (uploadType === 'coa') {
             return `${baseUrl}/finance/chart-of-accounts/bulk-upload/${endpoint}`;
+        }
+        if (uploadType === 'sales-history') {
+            return `${baseUrl}/pos-sales/bulk-upload/${endpoint}`;
         }
         return `${baseUrl}/items/bulk-upload/${endpoint}`;
     }, [uploadType]);

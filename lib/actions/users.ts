@@ -120,3 +120,20 @@ export async function verifyPassword(password: string): Promise<{ status: boolea
     return { status: false, message: "Failed to verify password" };
   }
 }
+
+export async function resetUserPassword(userId: string, newPassword: string) {
+  try {
+    const res = await authFetch(`/auth/users/reset-password`, {
+      method: "POST",
+      body: JSON.stringify({ userId, newPassword }),
+    });
+    if (!res.ok) {
+      const error = res.data;
+      return { status: false, message: error?.message || "Failed to reset password" };
+    }
+    revalidatePath("/hr/employee/user-account");
+    return { status: true, message: "Password reset successfully" };
+  } catch (error) {
+    return { status: false, message: "Failed to reset password" };
+  }
+}

@@ -17,17 +17,29 @@ import { Loader2 } from "lucide-react";
 import type { Employee } from "@/lib/actions/employee";
 import type { Role } from "@/lib/actions/roles";
 import type { User } from "@/lib/actions/users";
-import { updateUserRole, createUser } from "@/lib/actions/users";
+import { updateUserRole, createUser, resetUserPassword } from "@/lib/actions/users";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, LayoutDashboard } from "lucide-react";
+import { MoreHorizontal, LayoutDashboard, KeyRound } from "lucide-react";
 import Link from "next/link";
+import { ManagerVerificationDialog } from "@/components/auth/manager-verification-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 interface Row {
   employeeId: string;
@@ -64,6 +76,14 @@ export function EmployeeUserList({
   const [impersonatePendingId, setImpersonatePendingId] = useState<
     string | null
   >(null);
+
+  // Reset password state
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetTargetRow, setResetTargetRow] = useState<Row | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isResetting, startResetTransition] = useTransition();
 
   const roleName = (userRole || "").toLowerCase().trim();
   const isAdminRole =
@@ -152,6 +172,49 @@ export function EmployeeUserList({
         setSavingForId(null);
       });
     }
+  };
+
+  // Opens the manager verification dialog before showing the reset form
+  const handleResetPasswordClick = (row: Row) => {
+    if (!row.userId) {
+      toast.error("No user account linked to this employee");
+      return;
+    }
+    setResetTargetRow(row);
+    setNewPassword("");
+    setConfirmPassword("");
+    setVerifyDialogOpen(true);
+  };
+
+  // Called after manager verification passes — show the new-password form
+  const handleVerified = () => {
+    setResetDialogOpen(true);
+  };
+
+  // Performs the actual password reset
+  const handleConfirmReset = () => {
+    if (!newPassword) {
+      toast.error("New password is required");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    if (!resetTargetRow?.userId) return;
+
+    startResetTransition(async () => {
+      const result = await resetUserPassword(resetTargetRow.userId!, newPassword);
+      if (result.status) {
+        toast.success(`Password reset for ${resetTargetRow.employeeName}. They will be prompted to change it on next login.`);
+        setResetDialogOpen(false);
+        setResetTargetRow(null);
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        toast.error(result.message || "Failed to reset password");
+      }
+    });
   };
 
   const handleDashboardAccess = async (row: Row) => {
@@ -280,6 +343,21 @@ export function EmployeeUserList({
                     : "Dashboard Access"}
                 </button>
               </DropdownMenuItem>
+              {canUpdate && r.userId && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <button
+                      type="button"
+                      className="flex w-full items-center text-amber-600 focus:text-amber-600"
+                      onClick={() => handleResetPasswordClick(r)}
+                    >
+                      <KeyRound className="h-4 w-4 mr-2" />
+                      Reset Password
+                    </button>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         );
@@ -310,6 +388,86 @@ export function EmployeeUserList({
         Current Role: {userRole || "None"} | Admin Access:{" "}
         {isAdminRole ? "Yes" : "No"}
       </div>
+
+      {/* Step 1: Manager verification */}
+      <ManagerVerificationDialog
+        open={verifyDialogOpen}
+        onOpenChange={setVerifyDialogOpen}
+        onVerified={handleVerified}
+        title="Manager Verification Required"
+        description={`Verify your identity before resetting the password for ${resetTargetRow?.employeeName || "this employee"}.`}
+      />
+
+      {/* Step 2: New password form */}
+      <Dialog
+        open={resetDialogOpen}
+        onOpenChange={(o) => {
+          if (!isResetting) {
+            setResetDialogOpen(o);
+            if (!o) {
+              setNewPassword("");
+              setConfirmPassword("");
+            }
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-100">
+          <DialogHeader>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 rounded-full bg-amber-500/10">
+                <KeyRound className="h-5 w-5 text-amber-600" />
+              </div>
+              <DialogTitle>Reset Password</DialogTitle>
+            </div>
+            <DialogDescription>
+              Set a new password for{" "}
+              <span className="font-medium">{resetTargetRow?.employeeName}</span>.
+              They will be required to change it on next login.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="new-password">New Password</Label>
+              <PasswordInput
+                id="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={isResetting}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm Password</Label>
+              <PasswordInput
+                id="confirm-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={isResetting}
+                onKeyDown={(e) => e.key === "Enter" && handleConfirmReset()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setResetDialogOpen(false)}
+              disabled={isResetting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmReset}
+              disabled={isResetting}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              {isResetting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Reset Password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
