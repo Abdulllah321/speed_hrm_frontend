@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
     Table,
     TableBody,
@@ -13,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, CircleDot, Truck } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { ManagerVerificationDialog } from "@/components/auth/manager-verification-dialog";
+import { useAuth } from "@/components/providers/auth-provider";
 
 export interface CartItem {
     id: string;
@@ -49,8 +52,45 @@ export function CartTable({
     onRemoveItem,
     onToggleTransit,
 }: CartTableProps) {
+    const { user } = useAuth();
+    const isManager = user?.role === 'manager' || user?.role === 'admin';
+    
+    const [showManagerVerification, setShowManagerVerification] = useState(false);
+    const [pendingDiscountChange, setPendingDiscountChange] = useState<{
+        itemId: string;
+        newDiscount: number;
+    } | null>(null);
+
+    const handleDiscountInputChange = (itemId: string, newDiscount: number) => {
+        // If user is manager/admin, allow direct change
+        if (isManager) {
+            onDiscountChange?.(itemId, newDiscount);
+            return;
+        }
+
+        // Otherwise, require manager verification
+        setPendingDiscountChange({ itemId, newDiscount });
+        setShowManagerVerification(true);
+    };
+
+    const handleManagerVerified = () => {
+        if (pendingDiscountChange) {
+            onDiscountChange?.(
+                pendingDiscountChange.itemId,
+                pendingDiscountChange.newDiscount
+            );
+            setPendingDiscountChange(null);
+        }
+    };
+
+    const handleVerificationCancel = () => {
+        setPendingDiscountChange(null);
+        setShowManagerVerification(false);
+    };
+
     return (
-        <div className="rounded-xl border bg-card shadow-sm overflow-x-auto flex-1 min-w-0">
+        <>
+            <div className="rounded-xl border bg-card shadow-sm overflow-x-auto flex-1 min-w-0">
             <Table>
                 <TableHeader>
                     <TableRow className="bg-muted/40 hover:bg-muted/40">
@@ -257,7 +297,7 @@ export function CartTable({
                                             value={item.discountPercent}
                                             disabled={!onDiscountChange}
                                             onChange={(e) =>
-                                                onDiscountChange?.(
+                                                handleDiscountInputChange(
                                                     item.id,
                                                     Number(e.target.value)
                                                 )
@@ -318,5 +358,15 @@ export function CartTable({
                 </TableBody>
             </Table>
         </div>
+
+        {/* Manager Verification Dialog */}
+        <ManagerVerificationDialog
+            open={showManagerVerification}
+            onOpenChange={handleVerificationCancel}
+            onVerified={handleManagerVerified}
+            title="Manager Verification Required"
+            description="Discount override requires manager authorization. Enter manager password to proceed."
+        />
+    </>
     );
 }
