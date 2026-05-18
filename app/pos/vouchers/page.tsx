@@ -51,7 +51,7 @@ const VOUCHER_TYPES: { value: VoucherType; label: string; icon: React.ElementTyp
 const ISSUABLE_TYPES = VOUCHER_TYPES.filter(t => t.value !== "EXCHANGE");
 
 function voucherStatus(v: Voucher) {
-    if (!v.isActive)  return { label: "Voided",   cls: "bg-muted text-muted-foreground border-border" };
+    if (!v.isActive)  return { label: "Redeemed",   cls: "bg-muted text-muted-foreground border-border" };
     if (v.isRedeemed) return { label: "Redeemed", cls: "bg-blue-500/10 text-blue-700 border-blue-300" };
     if (v.expiresAt && new Date(v.expiresAt) < new Date())
         return { label: "Expired", cls: "bg-amber-500/10 text-amber-700 border-amber-300" };
