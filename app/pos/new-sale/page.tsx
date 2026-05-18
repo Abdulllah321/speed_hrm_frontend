@@ -99,6 +99,7 @@ export default function NewSalePage() {
     // ─── Auto-focus search on mount + handle resume from holds page ─
     useEffect(() => {
         searchInputRef.current?.focus();
+        
         // Check if we're resuming from the holds page
         const resumeCart = sessionStorage.getItem("pos_resume_cart");
         if (resumeCart) {
@@ -109,6 +110,17 @@ export default function NewSalePage() {
                 toast.success("Hold order resumed");
             } catch { /* ignore */ }
         }
+        
+        // Check if we're coming back from checkout (cart should be preserved)
+        const checkoutCart = sessionStorage.getItem("pos_cart");
+        if (checkoutCart && !resumeCart) {
+            try {
+                const items = JSON.parse(checkoutCart);
+                setCartItems(items);
+                // Don't remove pos_cart here - let checkout remove it after successful order
+            } catch { /* ignore */ }
+        }
+        
         // Auto-open hold orders panel if navigated from history with ?showHolds=1
         if (searchParams.get("showHolds") === "1") {
             loadHoldOrders();

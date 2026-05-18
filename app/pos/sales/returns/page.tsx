@@ -45,7 +45,7 @@ const REASON_CODES = [
     { value: "OTHER", label: "Other" },
 ];
 
-type Mode = "return" | "exchange" | "claim";
+type Mode = "return" | "exchange" | "claim" | "refund";
 
 interface ReturnLine {
     orderId: string; orderNumber: string;
@@ -300,6 +300,42 @@ export default function ReturnsPage() {
                         },
                     });
                 }
+            } else if (mode === "refund") {
+                // Refund — cash refund with refund voucher (record-only)
+                if (!isMultiOrder) {
+                    const orderId = loadedOrders[0].id;
+                    // Calculate total refund amount
+                    const totalRefundAmount = selectedLines.reduce((sum, l) => sum + (l.paidPerUnit * l.returnQty), 0);
+                    
+                    res = await authFetch(`/pos-sales/orders/${orderId}/refund`, {
+                        method: "POST",
+                        body: {
+                            refundAmount: totalRefundAmount,
+                            reason: notes || undefined,
+                        },
+                    });
+                } else {
+                    // Multi-order refund: process each order separately
+                    let totalRefund = 0;
+                    let allOk = true;
+                    for (const order of loadedOrders) {
+                        const orderLines = selectedLines.filter(l => l.orderId === order.id);
+                        if (orderLines.length === 0) continue;
+                        const refundAmount = orderLines.reduce((sum, l) => sum + (l.paidPerUnit * l.returnQty), 0);
+                        
+                        const r = await authFetch(`/pos-sales/orders/${order.id}/refund`, {
+                            method: "POST",
+                            body: {
+                                refundAmount,
+                                reason: notes || undefined,
+                            },
+                        });
+                        if (r.ok && r.data?.status) { totalRefund += refundAmount; }
+                        else { toast.error(`Failed for ${order.orderNumber}: ${r.data?.message}`); allOk = false; }
+                    }
+                    if (allOk) toast.success(`Cash refunds processed across ${loadedOrders.length} orders. Total: ${formatCurrency(totalRefund)}`);
+                    router.push("/pos/sales/history"); return;
+                }
             } else {
                 // Claim — only single order supported
                 res = await authFetch("/pos-claims", {
@@ -327,6 +363,12 @@ export default function ReturnsPage() {
                         itemRefundDetails: res.data.itemRefundDetails,
                         exchangeVoucher: res.data.exchangeVoucher || null,
                     });
+                } else if (mode === "refund") {
+                    const refundVoucherMsg = res.data.refundVoucher 
+                        ? ` Refund Voucher: ${res.data.refundVoucher.code} (Record only)` 
+                        : '';
+                    toast.success(`Cash refunded: ${formatCurrency(res.data.refundAmount ?? refundTotal)}.${refundVoucherMsg}`);
+                    router.push("/pos/sales/history");
                 } else if (mode === "exchange") {
                     const d = res.data.data?.difference ?? diff;
                     toast.success(d > 0 ? `Exchange done. Customer pays ${formatCurrency(d)} extra` : d < 0 ? `Exchange done. Refund ${formatCurrency(Math.abs(d))}` : "Exchange done. No balance");
@@ -405,13 +447,21 @@ export default function ReturnsPage() {
                 <>
                     {/* Mode tabs — hide Claim for multi-order */}
                     <Tabs value={mode} onValueChange={(v: any) => setMode(v)}>
-                        <TabsList className={`grid w-full max-w-md ${isMultiOrder ? "grid-cols-2" : "grid-cols-3"}`}>
+                        <TabsList className={`grid w-full max-w-md ${isMultiOrder ? "grid-cols-3" : "grid-cols-4"}`}>
                             {canReturn && <TabsTrigger value="return" className="gap-1.5"><RotateCcw className="h-3.5 w-3.5" />Return</TabsTrigger>}
                             {canExchange && <TabsTrigger value="exchange" className="gap-1.5"><ArrowLeftRight className="h-3.5 w-3.5" />Exchange</TabsTrigger>}
+                            {canReturn && <TabsTrigger value="refund" className="gap-1.5"><Receipt className="h-3.5 w-3.5" />Refund</TabsTrigger>}
                             {!isMultiOrder && canClaim && <TabsTrigger value="claim" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Claim</TabsTrigger>}
                         </TabsList>
 
                         {isMultiOrder && mode === "claim" && setMode("return") as any}
+
+                        {mode === "refund" && (
+                            <div className="mt-3 flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20 px-3 py-2 text-xs text-green-700">
+                                <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                <span>Cash refund at original price. Refund voucher generated for record keeping only.</span>
+                            </div>
+                        )}
 
                         {mode === "claim" && (
                             <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-700">
@@ -711,16 +761,19 @@ export default function ReturnsPage() {
                                                 (mode === "exchange" && newLines.length === 0) ||
                                                 (mode === "return" && !canReturn) ||
                                                 (mode === "exchange" && !canExchange) ||
+                                                (mode === "refund" && !canReturn) ||
                                                 (mode === "claim" && !canClaim)
                                             }>
                                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" />
                                                 : mode === "return" ? <RotateCcw className="h-4 w-4" />
                                                     : mode === "exchange" ? <ArrowLeftRight className="h-4 w-4" />
-                                                        : <Send className="h-4 w-4" />}
+                                                        : mode === "refund" ? <Receipt className="h-4 w-4" />
+                                                            : <Send className="h-4 w-4" />}
                                             {isSubmitting ? "Processing..."
                                                 : mode === "return" ? `Process Return${isMultiOrder ? ` (${loadedOrders.length} receipts)` : ""}`
                                                     : mode === "exchange" ? `Process Exchange${isMultiOrder ? ` (${loadedOrders.length} receipts)` : ""}`
-                                                        : "Submit Claim to ERP"}
+                                                        : mode === "refund" ? `Process Cash Refund${isMultiOrder ? ` (${loadedOrders.length} receipts)` : ""}`
+                                                            : "Submit Claim to ERP"}
                                         </Button>
                                     </div>
                                 </div>
