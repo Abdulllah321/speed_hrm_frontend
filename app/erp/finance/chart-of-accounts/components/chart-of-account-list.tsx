@@ -2,17 +2,18 @@
 
 import * as React from "react";
 import { ChartOfAccount, deleteChartOfAccount, queueChartOfAccountsExport } from "@/lib/actions/chart-of-account";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Folder, FileText, Upload, Loader2, Plus, MoreHorizontal, Pencil, Trash2, ShieldAlert, Download } from "lucide-react";
+import { Folder, FileText, Upload, Loader2, Plus, MoreHorizontal, Pencil, Trash2, ShieldAlert, Download, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CoaBulkUploadModal } from "@/components/finance/coa-bulk-upload-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import Link from "next/link";
+import DataTable from "@/components/common/data-table";
+import { ColumnDef } from "@tanstack/react-table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { verifyPassword } from "@/lib/actions/users";
 
@@ -41,9 +43,24 @@ const pkrFormatter = new Intl.NumberFormat("en-PK", {
   currency: "PKR",
 });
 
-// ---------------------------------------------------------------------------
-// Build tree once from flat list
-// ---------------------------------------------------------------------------
+// Flatten the tree structure for DataTable with visibility tracking
+function flattenTree(
+  nodes: ChartOfAccount[], 
+  depth = 0, 
+  result: Array<ChartOfAccount & { depth: number; parentPath: string[] }> = [],
+  parentPath: string[] = []
+): Array<ChartOfAccount & { depth: number; parentPath: string[] }> {
+  for (const node of nodes) {
+    const currentPath = [...parentPath, node.id];
+    result.push({ ...node, depth, parentPath });
+    if (node.children?.length) {
+      flattenTree(node.children, depth + 1, result, currentPath);
+    }
+  }
+  return result;
+}
+
+// Build tree from flat list
 function buildTree(flat: ChartOfAccount[]): ChartOfAccount[] {
   const map = new Map<string, ChartOfAccount>();
   const roots: ChartOfAccount[] = [];
@@ -62,211 +79,6 @@ function buildTree(flat: ChartOfAccount[]): ChartOfAccount[] {
   return roots;
 }
 
-// ---------------------------------------------------------------------------
-// Flatten visible rows based on expanded set
-// ---------------------------------------------------------------------------
-function flattenVisible(
-  nodes: ChartOfAccount[],
-  expandedIds: Set<string>,
-  depth = 0,
-  result: Array<{ node: ChartOfAccount; depth: number }> = []
-): Array<{ node: ChartOfAccount; depth: number }> {
-  for (const node of nodes) {
-    result.push({ node, depth });
-    if (node.children?.length && expandedIds.has(node.id)) {
-      flattenVisible(node.children, expandedIds, depth + 1, result);
-    }
-  }
-  return result;
-}
-
-// ---------------------------------------------------------------------------
-// Collect IDs of every node that has children in the built tree —
-// used for "expand all" default so every level is open regardless of isGroup
-// ---------------------------------------------------------------------------
-function collectAllNodeIdsWithChildren(
-  nodes: ChartOfAccount[],
-  out = new Set<string>(),
-): Set<string> {
-  for (const node of nodes) {
-    if (node.children?.length) {
-      out.add(node.id);
-      collectAllNodeIdsWithChildren(node.children, out);
-    }
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------------
-// Row — memoized
-// ---------------------------------------------------------------------------
-const AccountRow = React.memo(
-  ({
-    node,
-    depth,
-    isExpanded,
-    hasChildren,
-    onToggle,
-    canEdit,
-    canDelete,
-    onEdit,
-    onDelete,
-  }: {
-    node: ChartOfAccount;
-    depth: number;
-    isExpanded: boolean;
-    hasChildren: boolean;
-    onToggle: (id: string) => void;
-    canEdit: boolean;
-    canDelete: boolean;
-    onEdit: (node: ChartOfAccount) => void;
-    onDelete: (node: ChartOfAccount) => void;
-  }) => {
-    const indentSize = 24;
-
-    return (
-      <tr
-        className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
-        onClick={() => hasChildren && onToggle(node.id)}
-      >
-        {/* Name cell */}
-        <td className="p-0 relative">
-          <div className="flex items-center h-full w-full py-2 pr-4 relative">
-            {/* Vertical guide lines */}
-            {Array.from({ length: depth }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0 w-px bg-border/40"
-                style={{ left: `${i * indentSize + 12}px` }}
-              />
-            ))}
-
-            <div
-              className="flex items-center"
-              style={{ paddingLeft: `${depth * indentSize}px` }}
-            >
-              {/* L-shape connector */}
-              {depth > 0 && (
-                <div
-                  className="absolute w-3 h-px bg-border/40"
-                  style={{ left: `${(depth - 1) * indentSize + 12}px` }}
-                />
-              )}
-
-              {hasChildren ? (
-                <span
-                  className="mr-1 p-0.5 rounded-sm hover:bg-muted z-10 inline-flex"
-                  style={{
-                    transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
-                    transition: "transform 150ms ease",
-                  }}
-                >
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </span>
-              ) : (
-                <span className="w-5 mr-1" />
-              )}
-
-              {node.isGroup ? (
-                <Folder className="mr-2 h-4 w-4 shrink-0 text-blue-500 fill-blue-500/20" />
-              ) : (
-                <FileText className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
-              )}
-
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-muted-foreground/70">
-                  {node.code}
-                </span>
-                <span
-                  className={cn(
-                    "truncate",
-                    node.isGroup
-                      ? "font-semibold text-foreground"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {node.name}
-                </span>
-              </div>
-            </div>
-          </div>
-        </td>
-
-        {/* Type */}
-        <td className="py-2 px-4">
-          <Badge variant="outline" className="font-normal">
-            {node.type}
-          </Badge>
-        </td>
-
-        {/* Group */}
-        <td className="py-2 px-4">
-          <Checkbox checked={node.isGroup} disabled className="opacity-70" />
-        </td>
-
-        {/* Active */}
-        <td className="py-2 px-4">
-          <Badge
-            variant={node.isActive ? "default" : "secondary"}
-            className="rounded-full"
-          >
-            {node.isActive ? "Active" : "Inactive"}
-          </Badge>
-        </td>
-
-        {/* Debit */}
-        <td className="py-2 px-4 text-right font-medium font-mono">
-          {node.debit > 0 ? pkrFormatter.format(node.debit).replace("PKR", "Rs.") : "-"}
-        </td>
-
-        {/* Credit */}
-        <td className="py-2 px-4 text-right font-medium font-mono">
-          {node.credit > 0 ? pkrFormatter.format(node.credit).replace("PKR", "Rs.") : "-"}
-        </td>
-
-        {/* Actions */}
-        {(canEdit || canDelete) && (
-          <td
-            className="py-2 px-4 text-right"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {canEdit && (
-                  <DropdownMenuItem onClick={() => onEdit(node)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </DropdownMenuItem>
-                )}
-                {canEdit && canDelete && <DropdownMenuSeparator />}
-                {canDelete && (
-                  <DropdownMenuItem
-                    onClick={() => onDelete(node)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </td>
-        )}
-      </tr>
-    );
-  }
-);
-AccountRow.displayName = "AccountRow";
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
 export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
   const router = useRouter();
   const { hasPermission, isAdmin } = useAuth();
@@ -276,12 +88,32 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
   const canDelete = hasPermission("erp.finance.chart-of-account.delete");
   const userIsAdmin = isAdmin();
 
-  const tree = React.useMemo(() => buildTree(initialData), [initialData]);
+  // Collapse/expand state
+  const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(new Set());
 
-  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(
-    () => collectAllNodeIdsWithChildren(buildTree(initialData))
-  );
-  const [filter, setFilter] = React.useState("");
+  const toggleCollapse = React.useCallback((id: string) => {
+    setCollapsedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // Build tree and flatten for DataTable
+  const tree = React.useMemo(() => buildTree(initialData), [initialData]);
+  const allFlatData = React.useMemo(() => flattenTree(tree), [tree]);
+
+  // Filter out collapsed children
+  const flatData = React.useMemo(() => {
+    return allFlatData.filter(item => {
+      // Check if any parent in the path is collapsed
+      return !item.parentPath.some(parentId => collapsedIds.has(parentId));
+    });
+  }, [allFlatData, collapsedIds]);
 
   // ── Delete dialog state ──────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = React.useState<ChartOfAccount | null>(null);
@@ -320,7 +152,6 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     setPasswordError("");
 
     try {
-      // Step 1: verify admin password
       const verify = await verifyPassword(adminPassword);
       if (!verify.status) {
         setPasswordError("Incorrect password. Only admins can delete accounts.");
@@ -328,7 +159,6 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         return;
       }
 
-      // Step 2: delete the account
       const result = await deleteChartOfAccount(deleteTarget.id);
       if (result.status) {
         toast.success(result.message || "Account deleted successfully");
@@ -356,9 +186,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     if (isExporting) return;
     setIsExporting(true);
     try {
-      const result = await queueChartOfAccountsExport(
-        filter.trim() || undefined,
-      );
+      const result = await queueChartOfAccountsExport();
       if (result.status) {
         toast.success("Export queued — you'll get a notification when your file is ready.", {
           duration: 6000,
@@ -371,13 +199,12 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     } finally {
       setIsExporting(false);
     }
-  }, [isExporting, filter]);
+  }, [isExporting]);
 
   // ── Bulk upload state ────────────────────────────────────────────────────
   const [isBulkUploadOpen, setIsBulkUploadOpen] = React.useState(false);
   const [activeUploadId, setActiveUploadId] = React.useState<string | null>(null);
 
-  // Persist upload ID across page navigations
   React.useEffect(() => {
     const stored = localStorage.getItem("active_coa_upload_id");
     if (stored) setActiveUploadId(stored);
@@ -394,45 +221,142 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
 
   const { data: uploadProgress } = useUploadProgress(activeUploadId, "coa");
 
-  // Refresh tree when import completes
   React.useEffect(() => {
     if (uploadProgress?.status === "completed") {
       router.refresh();
     }
   }, [uploadProgress?.status, router]);
 
-  // ── Tree interaction ─────────────────────────────────────────────────────
-  const toggle = React.useCallback((id: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  // ── DataTable columns ────────────────────────────────────────────────────
+  const columns: ColumnDef<ChartOfAccount & { depth: number; parentPath: string[] }>[] = React.useMemo(() => [
+    {
+      accessorKey: "name",
+      header: "Account Name",
+      // Add accessorFn to make search work properly
+      accessorFn: (row) => `${row.code} ${row.name}`,
+      cell: ({ row }) => {
+        const account = row.original;
+        const indentSize = 24;
+        const depth = account.depth || 0;
+        const isCollapsed = collapsedIds.has(account.id);
+        const hasChildren = account.children && account.children.length > 0;
 
-  const visibleRows = React.useMemo(() => {
-    if (!filter.trim()) {
-      return flattenVisible(tree, expandedIds);
-    }
+        return (
+          <div className="flex items-center" style={{ paddingLeft: `${depth * indentSize}px` }}>
+            {/* Collapse/Expand chevron - show for all accounts */}
+            {hasChildren ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCollapse(account.id);
+                }}
+                className="mr-1 p-0.5 hover:bg-accent rounded transition-colors"
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+            ) : (
+              <span className="w-5 mr-1" /> // Spacer for alignment when no children
+            )}
 
-    const q = filter.toLowerCase();
-    const matched: Array<{ node: ChartOfAccount; depth: number }> = [];
-
-    function search(nodes: ChartOfAccount[], depth: number) {
-      for (const node of nodes) {
-        if (
-          node.name.toLowerCase().includes(q) ||
-          node.code.toLowerCase().includes(q)
-        ) {
-          matched.push({ node, depth: 0 });
-        }
-        if (node.children?.length) search(node.children, depth + 1);
-      }
-    }
-    search(tree, 0);
-    return matched;
-  }, [tree, expandedIds, filter]);
+            {account.isGroup ? (
+              <Folder className="mr-2 h-4 w-4 shrink-0 text-blue-500 fill-blue-500/20" />
+            ) : (
+              <FileText className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
+            )}
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-muted-foreground/70">
+                {account.code}
+              </span>
+              <span
+                className={cn(
+                  "truncate",
+                  account.isGroup
+                    ? "font-semibold text-foreground"
+                    : "text-muted-foreground"
+                )}
+              >
+                {account.name}
+              </span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      accessorKey: "code",
+      header: "Code",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.getValue("code")}</span>
+      ),
+    },
+    {
+      accessorKey: "type",
+      header: "Type",
+      cell: ({ row }) => (
+        <Badge variant="outline" className="font-normal">
+          {row.getValue("type")}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "isGroup",
+      header: "Group",
+      cell: ({ row }) => (
+        <Checkbox checked={row.getValue("isGroup")} disabled className="opacity-70" />
+      ),
+    },
+    {
+      accessorKey: "isActive",
+      header: "Active",
+      cell: ({ row }) => (
+        <Badge
+          variant={row.getValue("isActive") ? "default" : "secondary"}
+          className="rounded-full"
+        >
+          {row.getValue("isActive") ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const account = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canEdit && (
+                <DropdownMenuItem onClick={() => handleEditClick(account)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {canEdit && canDelete && <DropdownMenuSeparator />}
+              {canDelete && (
+                <DropdownMenuItem
+                  onClick={() => openDeleteDialog(account)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ], [canEdit, canDelete, handleEditClick, openDeleteDialog, collapsedIds, toggleCollapse]);
 
   // ── Upload progress button label ─────────────────────────────────────────
   const progressLabel = React.useMemo(() => {
@@ -448,8 +372,6 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     uploadProgress?.status === "validating" ||
     uploadProgress?.status === "processing" ||
     uploadProgress?.status === "pending";
-
-  const showActionsColumn = canEdit || canDelete;
 
   return (
     <div className="space-y-4">
@@ -489,95 +411,48 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         )}
       </div>
 
-      {/* ── Toolbar ── */}
-      <div className="flex items-center justify-between gap-3">
-        <Input
-          placeholder="Filter by name or code..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="max-w-sm"
-        />
+      {/* Background progress pill */}
+      {activeUploadId && !isBulkUploadOpen && (
+        <Button
+          variant={
+            uploadProgress?.status === "failed"
+              ? "destructive"
+              : uploadProgress?.status === "completed"
+              ? "default"
+              : "outline"
+          }
+          className={cn(
+            "relative overflow-hidden min-w-48 border-primary text-primary",
+            uploadProgress?.status === "failed" &&
+              "border-destructive! text-destructive-foreground! bg-destructive!",
+            uploadProgress?.status === "completed" &&
+              "text-primary-foreground! bg-primary!"
+          )}
+          onClick={() => setIsBulkUploadOpen(true)}
+        >
+          <div
+            className="absolute inset-0 bg-primary/10 transition-all duration-500"
+            style={{ width: `${uploadProgress?.progress ?? 0}%` }}
+          />
+          <div className="relative flex items-center gap-2">
+            {isInProgress && <Loader2 className="h-4 w-4 animate-spin" />}
+            <span className="font-bold">{progressLabel}</span>
+          </div>
+        </Button>
+      )}
 
-        {/* Background progress pill — visible when modal is closed but job is running */}
-        {activeUploadId && !isBulkUploadOpen && (
-          <Button
-            variant={
-              uploadProgress?.status === "failed"
-                ? "destructive"
-                : uploadProgress?.status === "completed"
-                ? "default"
-                : "outline"
-            }
-            className={cn(
-              "relative overflow-hidden min-w-48 border-primary text-primary",
-              uploadProgress?.status === "failed" &&
-                "border-destructive! text-destructive-foreground! bg-destructive!",
-              uploadProgress?.status === "completed" &&
-                "text-primary-foreground! bg-primary!"
-            )}
-            onClick={() => setIsBulkUploadOpen(true)}
-          >
-            {/* Animated fill bar */}
-            <div
-              className="absolute inset-0 bg-primary/10 transition-all duration-500"
-              style={{ width: `${uploadProgress?.progress ?? 0}%` }}
-            />
-            <div className="relative flex items-center gap-2">
-              {isInProgress && <Loader2 className="h-4 w-4 animate-spin" />}
-              <span className="font-bold">{progressLabel}</span>
-            </div>
-          </Button>
-        )}
-      </div>
-
-      {/* ── Table ── */}
-      <div className="rounded-md border">
-        <table className="w-full caption-bottom text-sm">
-          <thead className="[&_tr]:border-b">
-            <tr className="border-b transition-colors hover:bg-muted/50">
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Type</th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Group</th>
-              <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Active</th>
-              <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Debit</th>
-              <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Credit</th>
-              {showActionsColumn && (
-                <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground w-16">Actions</th>
-              )}
-            </tr>
-          </thead>
-          <tbody className="[&_tr:last-child]:border-0">
-            {visibleRows.length ? (
-              visibleRows.map(({ node, depth }) => (
-                <AccountRow
-                  key={node.id}
-                  node={node}
-                  depth={depth}
-                  isExpanded={expandedIds.has(node.id)}
-                  hasChildren={!!node.children?.length}
-                  onToggle={toggle}
-                  canEdit={canEdit}
-                  canDelete={canDelete}
-                  onEdit={handleEditClick}
-                  onDelete={openDeleteDialog}
-                />
-              ))
-            ) : (
-              <tr>
-                <td colSpan={showActionsColumn ? 7 : 6} className="h-24 text-center text-muted-foreground">
-                  No results.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center py-2">
-        <span className="text-sm text-muted-foreground">
-          {visibleRows.length} row(s)
-        </span>
-      </div>
+      {/* DataTable */}
+      <DataTable
+        data={flatData}
+        columns={columns}
+        searchFields={[
+          { key: "name", label: "Name or Code" },
+        ]}
+        canBulkEdit={false}
+        canBulkDelete={false}
+        canRowEdit={false}
+        canRowDelete={false}
+      />
 
       {/* ── Bulk Upload Modal ── */}
       <CoaBulkUploadModal

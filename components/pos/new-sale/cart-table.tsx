@@ -27,8 +27,9 @@ export interface CartItem {
     color: string;
     quantity: number;
     price: number;
-    discountPercent: number;
+    discountPercent: number; // Original/default discount
     discountAmount: number;
+    overrideDiscountPercent?: number; // Manager override discount (for record)
     taxPercent: number;
     taxAmount: number;
     total: number;
@@ -60,8 +61,63 @@ export function CartTable({
         itemId: string;
         newDiscount: number;
     } | null>(null);
+    
+    // Track editing state for each item
+    const [editingDiscounts, setEditingDiscounts] = useState<Record<string, string>>({});
 
-    const handleDiscountInputChange = (itemId: string, newDiscount: number) => {
+    const handleDiscountInputChange = (itemId: string, value: string) => {
+        // Allow typing without immediate validation
+        setEditingDiscounts(prev => ({ ...prev, [itemId]: value }));
+    };
+
+    const handleDiscountBlur = (itemId: string) => {
+        const value = editingDiscounts[itemId];
+        if (value === undefined || value === '') {
+            // Clear editing state if empty
+            setEditingDiscounts(prev => {
+                const next = { ...prev };
+                delete next[itemId];
+                return next;
+            });
+            return;
+        }
+
+        const newDiscount = Number(value);
+        const item = items.find(i => i.id === itemId);
+        if (!item) return;
+
+        const currentDiscount = item.overrideDiscountPercent ?? item.discountPercent;
+        const maxAllowedDiscount = 50;
+
+        // Validation: Cannot decrease current discount
+        if (newDiscount < currentDiscount) {
+            alert(`Cannot decrease discount from ${currentDiscount}% to ${newDiscount}%. Discount can only be increased.`);
+            setEditingDiscounts(prev => {
+                const next = { ...prev };
+                delete next[itemId];
+                return next;
+            });
+            return;
+        }
+
+        // Validation: Cannot exceed maximum limit
+        if (newDiscount > maxAllowedDiscount) {
+            alert(`Cannot set discount above ${maxAllowedDiscount}%. Maximum limit reached.`);
+            setEditingDiscounts(prev => {
+                const next = { ...prev };
+                delete next[itemId];
+                return next;
+            });
+            return;
+        }
+
+        // Clear editing state
+        setEditingDiscounts(prev => {
+            const next = { ...prev };
+            delete next[itemId];
+            return next;
+        });
+
         // If user is manager/admin, allow direct change
         if (isManager) {
             onDiscountChange?.(itemId, newDiscount);
@@ -289,24 +345,37 @@ export function CartTable({
 
                                 {/* Discount % */}
                                 <TableCell>
-                                    <div className="flex items-center justify-center gap-1">
-                                        <Input
-                                            type="number"
-                                            min={0}
-                                            max={100}
-                                            value={item.discountPercent}
-                                            disabled={!onDiscountChange}
-                                            onChange={(e) =>
-                                                handleDiscountInputChange(
-                                                    item.id,
-                                                    Number(e.target.value)
-                                                )
-                                            }
-                                            className="w-14 h-7 text-center text-sm p-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:opacity-40 disabled:cursor-not-allowed"
-                                        />
-                                        <span className="text-xs text-muted-foreground">
-                                            %
-                                        </span>
+                                    <div className="flex flex-col items-center gap-0.5">
+                                        <div className="flex items-center justify-center gap-1">
+                                            <Input
+                                                type="number"
+                                                min={item.overrideDiscountPercent ?? item.discountPercent}
+                                                max={50}
+                                                value={editingDiscounts[item.id] ?? (item.overrideDiscountPercent ?? item.discountPercent)}
+                                                disabled={!onDiscountChange}
+                                                onChange={(e) =>
+                                                    handleDiscountInputChange(
+                                                        item.id,
+                                                        e.target.value
+                                                    )
+                                                }
+                                                onBlur={() => handleDiscountBlur(item.id)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.currentTarget.blur();
+                                                    }
+                                                }}
+                                                className="w-14 h-7 text-center text-sm p-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none disabled:opacity-40 disabled:cursor-not-allowed"
+                                            />
+                                            <span className="text-xs text-muted-foreground">
+                                                %
+                                            </span>
+                                        </div>
+                                        {item.overrideDiscountPercent != null && (
+                                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                                Override: {item.discountPercent}% → {item.overrideDiscountPercent}%
+                                            </span>
+                                        )}
                                     </div>
                                 </TableCell>
 

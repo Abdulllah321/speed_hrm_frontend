@@ -557,6 +557,7 @@ export default function CheckoutPage() {
                 quantity: item.quantity,
                 unitPrice: item.price,
                 discountPercent: item.discountPercent,
+                overrideDiscountPercent: item.overrideDiscountPercent,
                 taxPercent: item.taxPercent,
                 promoDiscountAmount: (discountMode === "promo" && selectedPromo && !promoScopeAll && promoScopedItems.has(item.id))
                     ? Math.round(calcPromoDiscount(selectedPromo, item.total) / (promoScopedItems.size || 1))
@@ -628,6 +629,7 @@ export default function CheckoutPage() {
                 quantity: item.quantity,
                 unitPrice: item.price,
                 discountPercent: item.discountPercent,
+                overrideDiscountPercent: item.overrideDiscountPercent,
                 taxPercent: item.taxPercent,
                 promoDiscountAmount: (discountMode === "promo" && selectedPromo && !promoScopeAll && promoScopedItems.has(item.id))
                     ? Math.round(calcPromoDiscount(selectedPromo, item.total) / (promoScopedItems.size || 1))
@@ -1510,16 +1512,18 @@ export default function CheckoutPage() {
                                     </div>
                                 )}
 
-                                {/* Balance due */}
-                                <div className={cn(
-                                    "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold",
-                                    balanceDue <= 0 ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"
-                                )}>
-                                    <span>{balanceDue <= 0 ? (changeAmount > 0 ? "Change" : "Balance Paid ✓") : "Balance Due"}</span>
-                                    <span className="font-mono">
-                                        {balanceDue <= 0 && changeAmount > 0 ? fmtCurrency(changeAmount) : fmtCurrency(balanceDue)}
-                                    </span>
-                                </div>
+                                {/* Balance due - hide when fully paid with no change */}
+                                {!(balanceDue <= 0 && changeAmount === 0) && (
+                                    <div className={cn(
+                                        "flex items-center justify-between rounded-lg px-3 py-2 text-sm font-semibold",
+                                        balanceDue <= 0 ? "bg-green-500/10 text-green-600" : "bg-destructive/10 text-destructive"
+                                    )}>
+                                        <span>{balanceDue <= 0 ? (changeAmount > 0 ? "Change" : "Balance Paid ✓") : "Balance Due"}</span>
+                                        <span className="font-mono">
+                                            {balanceDue <= 0 && changeAmount > 0 ? fmtCurrency(changeAmount) : fmtCurrency(balanceDue)}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

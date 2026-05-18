@@ -345,17 +345,38 @@ export default function NewSalePage() {
         );
     }, []);
 
-    const handleDiscountChange = useCallback((id: string, discountPercent: number) => {
-        const clamped = Math.min(100, Math.max(0, discountPercent));
+    const handleDiscountChange = useCallback((id: string, newDiscountPercent: number) => {
+        const clamped = Math.min(100, Math.max(0, newDiscountPercent));
         setCartItems((prev) =>
             prev.map((item) => {
                 if (item.id !== id) return item;
+                
+                const originalDiscount = item.discountPercent;
+                
+                // Determine if this is an override
+                let overrideDiscountPercent = item.overrideDiscountPercent;
+                
+                if (clamped !== originalDiscount) {
+                    // New discount is different from original, set override
+                    overrideDiscountPercent = clamped;
+                } else {
+                    // New discount matches original, clear override
+                    overrideDiscountPercent = null;
+                }
+                
                 const subtotal = item.price * item.quantity;
                 const discountAmount = Math.round(subtotal * (clamped / 100) * 100) / 100;
                 const afterDiscount = subtotal - discountAmount;
                 const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100) * 100) / 100;
                 const total = afterDiscount + taxAmount;
-                return { ...item, discountPercent: clamped, discountAmount, taxAmount, total };
+                
+                return { 
+                    ...item, 
+                    overrideDiscountPercent,
+                    discountAmount, 
+                    taxAmount, 
+                    total 
+                };
             })
         );
     }, []);
