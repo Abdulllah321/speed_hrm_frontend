@@ -9,17 +9,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Autocomplete } from "@/components/ui/autocomplete";
+import { ChartOfAccountSelect } from "@/components/ui/chart-of-account-select";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createJournalVoucher, type JournalVoucher } from "@/lib/actions/journal-voucher";
-import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { cn } from "@/lib/utils";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 
-export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] }) {
+export function JournalVoucherForm() {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
 
@@ -138,11 +137,7 @@ export function JournalVoucherForm({ accounts }: { accounts: ChartOfAccount[] })
                                                     control={form.control}
                                                     name={`details.${index}.accountId`}
                                                     render={({ field }) => (
-                                                        <Autocomplete
-                                                            options={accounts.map((acc) => ({
-                                                                value: acc.id,
-                                                                label: `${acc.code} - ${acc.name}`,
-                                                            }))}
+                                                        <ChartOfAccountSelect
                                                             value={field.value}
                                                             onValueChange={field.onChange}
                                                             placeholder="Select Account"

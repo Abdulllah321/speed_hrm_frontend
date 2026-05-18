@@ -30,13 +30,16 @@ export type MenuItem = {
   children?: MenuItem[];
   permissions?: string[];
   requireAllPermissions?: boolean;
-  environment?: "HR" | "ERP" | "BOTH" | "ADMIN" | "POS";
+  environment?: "HR" | "ERP" | "BOTH" | "ADMIN" | "POS" | "MASTER";
+  /** Which product module this master item belongs to — used for the badge in MASTER view */
+  module?: "HR" | "ERP" | "POS";
 };
 
 export const masterMenuData: MenuItem[] = [
+  // ── ERP ──────────────────────────────────────────────────────────────────────
   {
     title: "Brand",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.brand.read", "master.brand.create"],
     children: [
       { title: "Add", href: "/master/brand/add" },
@@ -45,7 +48,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Division",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.division.read", "master.division.create"],
     children: [
       { title: "Add", href: "/master/division/add" },
@@ -54,7 +57,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Gender",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.gender.read", "master.gender.create"],
     children: [
       { title: "Add", href: "/master/gender/add" },
@@ -63,7 +66,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Size",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.size.read", "master.size.create"],
     children: [
       { title: "Add", href: "/master/size/add" },
@@ -72,7 +75,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Silhouette",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.silhouette.read", "master.silhouette.create"],
     children: [
       { title: "Add", href: "/master/silhouette/add" },
@@ -81,7 +84,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Segment",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.segment.read", "master.segment.create"],
     children: [
       { title: "Add", href: "/master/segment/add" },
@@ -90,7 +93,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Item Class",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.item-class.read", "master.item-class.create"],
     children: [
       { title: "Add", href: "/master/class/add" },
@@ -99,7 +102,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Item Subclass",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.item-subclass.read", "master.item-subclass.create"],
     children: [
       { title: "Add", href: "/master/subclass/add" },
@@ -108,18 +111,16 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "HS Code",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.hs-code.read", "master.hs-code.create"],
-
     children: [
       { title: "Add", href: "/master/hs-code/add" },
       { title: "View", href: "/master/hs-code/list" },
     ],
   },
   {
-
     title: "Season",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.season.read", "master.season.create"],
     children: [
       { title: "Add", href: "/master/season/add" },
@@ -127,9 +128,8 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-
     title: "Old Season",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.old-season.read", "master.old-season.create"],
     children: [
       { title: "Add", href: "/master/old-season/add" },
@@ -137,9 +137,8 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-
     title: "Channel Class",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.channel-class.read", "master.channel-class.create"],
     children: [
       { title: "Add", href: "/master/channel-class/add" },
@@ -148,7 +147,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Color",
-    environment: "ERP",
+    environment: "MASTER", module: "ERP",
     permissions: ["master.color.read", "master.color.create"],
     children: [
       { title: "Add", href: "/master/color/add" },
@@ -156,8 +155,106 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
+    title: "Category",
+    environment: "MASTER", module: "ERP",
+    permissions: ["master.category.read", "master.category.create"],
+    children: [
+      { title: "Add", href: "/master/category/add" },
+      { title: "View", href: "/master/category/list" },
+    ],
+  },
+  {
+    title: "Sub Category",
+    environment: "MASTER", module: "ERP",
+    permissions: ["master.sub-category.read", "master.sub-category.create"],
+    children: [
+      { title: "Add", href: "/master/sub-category/add" },
+      { title: "View", href: "/master/sub-category/list" },
+    ],
+  },
+  {
+    title: "Unit Of Measurement",
+    environment: "MASTER", module: "ERP",
+    permissions: [
+      "master.unit-of-measurement.read",
+      "master.unit-of-measurement.create",
+    ],
+    children: [
+      { title: "Add", href: "/master/unit-of-measurement/add" },
+      { title: "View", href: "/master/unit-of-measurement/list" },
+    ],
+  },
+  {
+    title: "Demand Type",
+    environment: "MASTER", module: "ERP",
+    permissions: ["master.demand-type.read", "master.demand-type.create"],
+    children: [
+      { title: "Add", href: "/master/demand-type/add" },
+      { title: "View", href: "/master/demand-type/list" },
+    ],
+  },
+  {
+    title: "Warehouse",
+    environment: "MASTER", module: "ERP",
+    permissions: ["master.warehouse.read", "master.warehouse.create"],
+    children: [
+      { title: "Add", href: "/master/warehouse/add" },
+      { title: "View", href: "/master/warehouse/list" },
+    ],
+  },
+  {
+    title: "Salesman",
+    environment: "MASTER", module: "ERP",
+    permissions: ["master.salesman.read", "master.salesman.create"],
+    children: [
+      { title: "Add", href: "/master/salesman/add" },
+      { title: "View", href: "/master/salesman/list" },
+    ],
+  },
+  {
+    title: "Cluster",
+    environment: "MASTER", module: "ERP",
+    permissions: ["master.cluster.read", "master.cluster.create"],
+    children: [
+      { title: "Add", href: "/master/cluster/add" },
+      { title: "View", href: "/master/cluster/list" },
+    ],
+  },
+  {
+    title: "Opening Inventory",
+    environment: "MASTER", module: "ERP",
+    permissions: [
+      "master.opening-inventory.read",
+      "master.opening-inventory.create",
+    ],
+    children: [
+      { title: "Add", href: "/master/opening-inventory/add" },
+      { title: "View", href: "/master/opening-inventory/list" },
+    ],
+  },
+  {
+    title: "Vendor Opening",
+    environment: "MASTER", module: "ERP",
+    permissions: ["master.vendor-opening.read", "master.vendor-opening.create"],
+    children: [
+      { title: "Add", href: "/master/vendor-opening/add" },
+      { title: "View", href: "/master/vendor-opening/list" },
+    ],
+  },
+  {
+    title: "Tax Rate",
+    environment: "MASTER", module: "ERP",
+    permissions: ["master.tax-rate.read", "master.tax-rate.create"],
+    children: [
+      { title: "Add", href: "/master/tax-rate/add" },
+      { title: "View", href: "/master/tax-rate/list" },
+    ],
+  },
+
+  // ── HR ───────────────────────────────────────────────────────────────────────
+  {
     title: "Department",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.department.read", "master.department.create"],
     children: [
       { title: "Add", href: "/master/department/add" },
@@ -166,7 +263,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Sub Department",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.sub-department.read", "master.sub-department.create"],
     children: [
       { title: "Add", href: "/master/sub-department/add" },
@@ -175,7 +272,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Institute",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.institute.read", "master.institute.create"],
     children: [
       { title: "Add", href: "/master/institute/add" },
@@ -184,7 +281,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Designation",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.designation.read", "master.designation.create"],
     children: [
       { title: "Add", href: "/master/designation/add" },
@@ -193,7 +290,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Job Type",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.job-type.read", "master.job-type.create"],
     children: [
       { title: "Add", href: "/master/job-type/add" },
@@ -202,7 +299,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Marital Status",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.marital-status.read", "master.marital-status.create"],
     children: [
       { title: "Add", href: "/master/marital-status/add" },
@@ -211,7 +308,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Employee Grade",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.employee-grade.read", "master.employee-grade.create"],
     children: [
       { title: "Add", href: "/master/employee-grade/add" },
@@ -219,8 +316,8 @@ export const masterMenuData: MenuItem[] = [
     ],
   },
   {
-    title: "Employement Status",
-    environment: "HR",
+    title: "Employment Status",
+    environment: "MASTER", module: "HR",
     permissions: [
       "master.employee-status.read",
       "master.employee-status.create",
@@ -232,7 +329,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Qualification",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.qualification.read", "master.qualification.create"],
     children: [
       { title: "Add", href: "/master/qualification/add" },
@@ -241,7 +338,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "City",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.city.read", "master.city.create"],
     children: [
       { title: "Add", href: "/master/city/add" },
@@ -250,42 +347,16 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Location",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.location.read", "master.location.create"],
     children: [
       { title: "Add", href: "/master/location/add" },
       { title: "View", href: "/master/location/list" },
     ],
   },
-  // {
-  //   title: "POS Config",
-  //   environment: "HR",
-  //   permissions: ["master.location.read"],
-  //   children: [
-  //     { title: "Manage", href: "/master/pos-config" },
-  //   ],
-  // },
-  {
-    title: "Region",
-    environment: "HR",
-    permissions: ["master.region.read", "master.region.create"],
-    children: [
-      { title: "Add", href: "/master/region/add" },
-      { title: "View", href: "/master/region/list" },
-    ],
-  },
-  {
-    title: "Contact",
-    environment: "HR",
-    permissions: ["master.contact.read", "master.contact.create"],
-    children: [
-      { title: "Add", href: "/master/contact/add" },
-      { title: "View", href: "/master/contact/list" },
-    ],
-  },
   {
     title: "Allocation",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.allocation.read", "master.allocation.create"],
     children: [
       { title: "Add", href: "/master/allocation/add" },
@@ -294,7 +365,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Loan Types",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.loan-type.read", "master.loan-type.create"],
     children: [
       { title: "Add", href: "/master/loan-types/add" },
@@ -303,7 +374,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Leave Types",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
     permissions: ["master.leave-type.read", "master.leave-type.create"],
     children: [
       { title: "Add", href: "/master/leave-types/add" },
@@ -312,7 +383,404 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Leaves Policy",
-    environment: "HR",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.leaves-policy.read", "master.leaves-policy.create"],
+    children: [
+      { title: "Add", href: "/master/leaves-policy/add" },
+      { title: "View", href: "/master/leaves-policy/list" },
+      { title: "Add Manual Leaves", href: "/master/leaves-policy/manual-leaves" },
+    ],
+  },
+  {
+    title: "Equipment",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.equipment.read", "master.equipment.create"],
+    children: [
+      { title: "Add", href: "/master/equipment/add" },
+      { title: "View", href: "/master/equipment/list" },
+    ],
+  },
+  {
+    title: "Salary Breakup",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.salary-breakup.read", "master.salary-breakup.create"],
+    children: [
+      { title: "Add", href: "/master/salary-breakup/add" },
+      { title: "View", href: "/master/salary-breakup/list" },
+    ],
+  },
+  {
+    title: "EOBI",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.eobi.read", "master.eobi.create"],
+    children: [
+      { title: "Add", href: "/master/eobi/add" },
+      { title: "View", href: "/master/eobi/list" },
+    ],
+  },
+  {
+    title: "Social Security",
+    environment: "MASTER", module: "HR",
+    permissions: [
+      "master.social-security.read",
+      "master.social-security.create",
+    ],
+    children: [
+      { title: "Add", href: "/master/social-security/add" },
+      { title: "View", href: "/master/social-security/list" },
+    ],
+  },
+  {
+    title: "Tax Slabs",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.tax-slab.read", "master.tax-slab.create"],
+    children: [
+      { title: "Add", href: "/master/tax-slabs/add" },
+      { title: "View", href: "/master/tax-slabs/list" },
+    ],
+  },
+  {
+    title: "Provident Fund",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.provident-fund.read", "master.provident-fund.create"],
+    children: [
+      { title: "Add", href: "/master/provident-fund/add" },
+      { title: "View", href: "/master/provident-fund/list" },
+    ],
+  },
+  {
+    title: "Bonus Types",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.bonus-type.read", "master.bonus-type.create"],
+    children: [
+      { title: "Add", href: "/master/bonus-types/add" },
+      { title: "View", href: "/master/bonus-types/list" },
+    ],
+  },
+  {
+    title: "Allowance",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.allowance-head.read", "master.allowance-head.create"],
+    children: [
+      { title: "Add", href: "/master/allowance-head/add" },
+      { title: "View", href: "/master/allowance-head/list" },
+    ],
+  },
+  {
+    title: "Deduction",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.deduction-head.read", "master.deduction-head.create"],
+    children: [
+      { title: "Add", href: "/master/deduction-head/add" },
+      { title: "View", href: "/master/deduction-head/list" },
+    ],
+  },
+  {
+    title: "Bank",
+    environment: "MASTER", module: "HR",
+    permissions: ["master.bank.read", "master.bank.create"],
+    children: [
+      { title: "Add", href: "/master/banks/add" },
+      { title: "View", href: "/master/banks/list" },
+    ],
+  },
+
+  // ── POS ──────────────────────────────────────────────────────────────────────
+  {
+    title: "Promo Campaigns",
+    environment: "MASTER", module: "POS",
+    permissions: ["master.promo.read", "master.promo.create"],
+    children: [
+      { title: "Create", href: "/master/pos-config/promos/new", permissions: ["master.promo.create"] },
+      { title: "List", href: "/master/pos-config/promos", permissions: ["master.promo.read"] },
+    ],
+  },
+  {
+    title: "Coupon Codes",
+    environment: "MASTER", module: "POS",
+    permissions: ["master.coupon.read", "master.coupon.create"],
+    children: [
+      { title: "Create", href: "/master/pos-config/coupons/new", permissions: ["master.coupon.create"] },
+      { title: "List", href: "/master/pos-config/coupons", permissions: ["master.coupon.read"] },
+    ],
+  },
+  {
+    title: "Alliance Discounts",
+    environment: "MASTER", module: "POS",
+    permissions: ["master.alliance.read", "master.alliance.create"],
+    children: [
+      { title: "Create", href: "/master/pos-config/alliances/new", permissions: ["master.alliance.create"] },
+      { title: "List", href: "/master/pos-config/alliances", permissions: ["master.alliance.read"] },
+    ],
+  },
+  {
+    title: "Vouchers",
+    environment: "MASTER", module: "POS",
+    permissions: ["pos.voucher.view", "pos.voucher.create"],
+    children: [
+      { title: "Issue", href: "/master/pos-config/vouchers/new", permissions: ["pos.voucher.create"] },
+      { title: "List", href: "/master/pos-config/vouchers", permissions: ["pos.voucher.view"] },
+    ],
+  },
+
+  {
+    title: "Division",
+    environment: "MASTER",
+    permissions: ["master.division.read", "master.division.create"],
+    children: [
+      { title: "Add", href: "/master/division/add" },
+      { title: "View", href: "/master/division/list" },
+    ],
+  },
+  {
+    title: "Gender",
+    environment: "MASTER",
+    permissions: ["master.gender.read", "master.gender.create"],
+    children: [
+      { title: "Add", href: "/master/gender/add" },
+      { title: "View", href: "/master/gender/list" },
+    ],
+  },
+  {
+    title: "Size",
+    environment: "MASTER",
+    permissions: ["master.size.read", "master.size.create"],
+    children: [
+      { title: "Add", href: "/master/size/add" },
+      { title: "View", href: "/master/size/list" },
+    ],
+  },
+  {
+    title: "Silhouette",
+    environment: "MASTER",
+    permissions: ["master.silhouette.read", "master.silhouette.create"],
+    children: [
+      { title: "Add", href: "/master/silhouette/add" },
+      { title: "View", href: "/master/silhouette/list" },
+    ],
+  },
+  {
+    title: "Segment",
+    environment: "MASTER",
+    permissions: ["master.segment.read", "master.segment.create"],
+    children: [
+      { title: "Add", href: "/master/segment/add" },
+      { title: "View", href: "/master/segment/list" },
+    ],
+  },
+  {
+    title: "Item Class",
+    environment: "MASTER",
+    permissions: ["master.item-class.read", "master.item-class.create"],
+    children: [
+      { title: "Add", href: "/master/class/add" },
+      { title: "View", href: "/master/class/list" },
+    ],
+  },
+  {
+    title: "Item Subclass",
+    environment: "MASTER",
+    permissions: ["master.item-subclass.read", "master.item-subclass.create"],
+    children: [
+      { title: "Add", href: "/master/subclass/add" },
+      { title: "View", href: "/master/subclass/list" },
+    ],
+  },
+  {
+    title: "HS Code",
+    environment: "MASTER",
+    permissions: ["master.hs-code.read", "master.hs-code.create"],
+    children: [
+      { title: "Add", href: "/master/hs-code/add" },
+      { title: "View", href: "/master/hs-code/list" },
+    ],
+  },
+  {
+    title: "Season",
+    environment: "MASTER",
+    permissions: ["master.season.read", "master.season.create"],
+    children: [
+      { title: "Add", href: "/master/season/add" },
+      { title: "View", href: "/master/season/list" },
+    ],
+  },
+  {
+    title: "Old Season",
+    environment: "MASTER",
+    permissions: ["master.old-season.read", "master.old-season.create"],
+    children: [
+      { title: "Add", href: "/master/old-season/add" },
+      { title: "View", href: "/master/old-season/list" },
+    ],
+  },
+  {
+    title: "Channel Class",
+    environment: "MASTER",
+    permissions: ["master.channel-class.read", "master.channel-class.create"],
+    children: [
+      { title: "Add", href: "/master/channel-class/add" },
+      { title: "View", href: "/master/channel-class/list" },
+    ],
+  },
+  {
+    title: "Color",
+    environment: "MASTER",
+    permissions: ["master.color.read", "master.color.create"],
+    children: [
+      { title: "Add", href: "/master/color/add" },
+      { title: "View", href: "/master/color/list" },
+    ],
+  },
+  {
+    title: "Department",
+    environment: "MASTER",
+    permissions: ["master.department.read", "master.department.create"],
+    children: [
+      { title: "Add", href: "/master/department/add" },
+      { title: "View", href: "/master/department/list" },
+    ],
+  },
+  {
+    title: "Sub Department",
+    environment: "MASTER",
+    permissions: ["master.sub-department.read", "master.sub-department.create"],
+    children: [
+      { title: "Add", href: "/master/sub-department/add" },
+      { title: "View", href: "/master/sub-department/list" },
+    ],
+  },
+  {
+    title: "Institute",
+    environment: "MASTER",
+    permissions: ["master.institute.read", "master.institute.create"],
+    children: [
+      { title: "Add", href: "/master/institute/add" },
+      { title: "View", href: "/master/institute/list" },
+    ],
+  },
+  {
+    title: "Designation",
+    environment: "MASTER",
+    permissions: ["master.designation.read", "master.designation.create"],
+    children: [
+      { title: "Add", href: "/master/designation/add" },
+      { title: "View", href: "/master/designation/list" },
+    ],
+  },
+  {
+    title: "Job Type",
+    environment: "MASTER",
+    permissions: ["master.job-type.read", "master.job-type.create"],
+    children: [
+      { title: "Add", href: "/master/job-type/add" },
+      { title: "View", href: "/master/job-type/list" },
+    ],
+  },
+  {
+    title: "Marital Status",
+    environment: "MASTER",
+    permissions: ["master.marital-status.read", "master.marital-status.create"],
+    children: [
+      { title: "Add", href: "/master/marital-status/add" },
+      { title: "View", href: "/master/marital-status/list" },
+    ],
+  },
+  {
+    title: "Employee Grade",
+    environment: "MASTER",
+    permissions: ["master.employee-grade.read", "master.employee-grade.create"],
+    children: [
+      { title: "Add", href: "/master/employee-grade/add" },
+      { title: "View", href: "/master/employee-grade/list" },
+    ],
+  },
+  {
+    title: "Employment Status",
+    environment: "MASTER",
+    permissions: [
+      "master.employee-status.read",
+      "master.employee-status.create",
+    ],
+    children: [
+      { title: "Add", href: "/master/employee-status/add" },
+      { title: "View", href: "/master/employee-status/list" },
+    ],
+  },
+  {
+    title: "Qualification",
+    environment: "MASTER",
+    permissions: ["master.qualification.read", "master.qualification.create"],
+    children: [
+      { title: "Add", href: "/master/qualification/add" },
+      { title: "View", href: "/master/qualification/list" },
+    ],
+  },
+  {
+    title: "City",
+    environment: "MASTER",
+    permissions: ["master.city.read", "master.city.create"],
+    children: [
+      { title: "Add", href: "/master/city/add" },
+      { title: "View", href: "/master/city/list" },
+    ],
+  },
+  {
+    title: "Location",
+    environment: "MASTER",
+    permissions: ["master.location.read", "master.location.create"],
+    children: [
+      { title: "Add", href: "/master/location/add" },
+      { title: "View", href: "/master/location/list" },
+    ],
+  },
+  // {
+  //   title: "Region",
+  //   environment: "MASTER",
+  //   permissions: ["master.region.read", "master.region.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/region/add" },
+  //     { title: "View", href: "/master/region/list" },
+  //   ],
+  // },
+  // {
+  //   title: "Contact",
+  //   environment: "MASTER",
+  //   permissions: ["master.contact.read", "master.contact.create"],
+  //   children: [
+  //     { title: "Add", href: "/master/contact/add" },
+  //     { title: "View", href: "/master/contact/list" },
+  //   ],
+  // },
+  {
+    title: "Allocation",
+    environment: "MASTER",
+    permissions: ["master.allocation.read", "master.allocation.create"],
+    children: [
+      { title: "Add", href: "/master/allocation/add" },
+      { title: "View", href: "/master/allocation/list" },
+    ],
+  },
+  {
+    title: "Loan Types",
+    environment: "MASTER",
+    permissions: ["master.loan-type.read", "master.loan-type.create"],
+    children: [
+      { title: "Add", href: "/master/loan-types/add" },
+      { title: "View", href: "/master/loan-types/list" },
+    ],
+  },
+  {
+    title: "Leave Types",
+    environment: "MASTER",
+    permissions: ["master.leave-type.read", "master.leave-type.create"],
+    children: [
+      { title: "Add", href: "/master/leave-types/add" },
+      { title: "View", href: "/master/leave-types/list" },
+    ],
+  },
+  {
+    title: "Leaves Policy",
+    environment: "MASTER",
     permissions: ["master.leaves-policy.read", "master.leaves-policy.create"],
     children: [
       { title: "Add", href: "/master/leaves-policy/add" },
@@ -325,7 +793,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Equipment",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.equipment.read", "master.equipment.create"],
     children: [
       { title: "Add", href: "/master/equipment/add" },
@@ -334,7 +802,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Salary Breakup",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.salary-breakup.read", "master.salary-breakup.create"],
     children: [
       { title: "Add", href: "/master/salary-breakup/add" },
@@ -343,7 +811,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "EOBI",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.eobi.read", "master.eobi.create"],
     children: [
       { title: "Add", href: "/master/eobi/add" },
@@ -352,7 +820,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Social Security",
-    environment: "HR",
+    environment: "MASTER",
     permissions: [
       "master.social-security.read",
       "master.social-security.create",
@@ -364,7 +832,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Tax Slabs",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.tax-slab.read", "master.tax-slab.create"],
     children: [
       { title: "Add", href: "/master/tax-slabs/add" },
@@ -373,7 +841,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Provident Fund",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.provident-fund.read", "master.provident-fund.create"],
     children: [
       { title: "Add", href: "/master/provident-fund/add" },
@@ -382,7 +850,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Bonus Types",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.bonus-type.read", "master.bonus-type.create"],
     children: [
       { title: "Add", href: "/master/bonus-types/add" },
@@ -391,7 +859,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Allowance",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.allowance-head.read", "master.allowance-head.create"],
     children: [
       { title: "Add", href: "/master/allowance-head/add" },
@@ -400,7 +868,7 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Deduction",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.deduction-head.read", "master.deduction-head.create"],
     children: [
       { title: "Add", href: "/master/deduction-head/add" },
@@ -409,34 +877,16 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Bank",
-    environment: "HR",
+    environment: "MASTER",
     permissions: ["master.bank.read", "master.bank.create"],
     children: [
       { title: "Add", href: "/master/banks/add" },
       { title: "View", href: "/master/banks/list" },
     ],
   },
-  // {
-  //   title: "Purchase Pool",
-  //   environment: "ERP",
-  //   permissions: ["master.purchase-pool.read", "master.purchase-pool.create"],
-  //   children: [
-  //     { title: "Add", href: "/master/purchase-pool/add" },
-  //     { title: "View", href: "/master/purchase-pool/list" },
-  //   ],
-  // },
-  // {
-  //   title: "Supplier",
-  //   environment: "ERP",
-  //   permissions: ["master.supplier.read", "master.supplier.create"],
-  //   children: [
-  //     { title: "Add", href: "/master/supplier/add" },
-  //     { title: "View", href: "/master/supplier/list" },
-  //   ],
-  // },
   {
     title: "Category",
-    environment: "ERP",
+    environment: "MASTER",
     permissions: ["master.category.read", "master.category.create"],
     children: [
       { title: "Add", href: "/master/category/add" },
@@ -445,26 +895,16 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Sub Category",
-    environment: "ERP",
+    environment: "MASTER",
     permissions: ["master.sub-category.read", "master.sub-category.create"],
     children: [
       { title: "Add", href: "/master/sub-category/add" },
       { title: "View", href: "/master/sub-category/list" },
     ],
   },
-  // {
-  //   title: "Sub Item",
-  //   environment: "ERP",
-  //   permissions: ["master.sub-item.read", "master.sub-item.create"],
-  //   children: [
-  //     { title: "Add", href: "/master/sub-item/add" },
-  //     { title: "View", href: "/master/sub-item/list" },
-  //   ],
-  // },
   {
-
-    title: "Unit Of Measurment",
-    environment: "ERP",
+    title: "Unit Of Measurement",
+    environment: "MASTER",
     permissions: [
       "master.unit-of-measurement.read",
       "master.unit-of-measurement.create",
@@ -474,10 +914,9 @@ export const masterMenuData: MenuItem[] = [
       { title: "View", href: "/master/unit-of-measurement/list" },
     ],
   },
-
   {
     title: "Demand Type",
-    environment: "ERP",
+    environment: "MASTER",
     permissions: ["master.demand-type.read", "master.demand-type.create"],
     children: [
       { title: "Add", href: "/master/demand-type/add" },
@@ -486,115 +925,23 @@ export const masterMenuData: MenuItem[] = [
   },
   {
     title: "Warehouse",
-    environment: "ERP",
+    environment: "MASTER",
     permissions: ["master.warehouse.read", "master.warehouse.create"],
     children: [
-      { title: "Add", href: "/master/warehouse/add" },
+      // { title: "Add", href: "/master/warehouse/add" },
       { title: "View", href: "/master/warehouse/list" },
     ],
   },
+ 
   {
-    title: "Salesman",
-    environment: "ERP",
-    permissions: ["master.salesman.read", "master.salesman.create"],
-    children: [
-      { title: "Add", href: "/master/salesman/add" },
-      { title: "View", href: "/master/salesman/list" },
-    ],
-  },
-  {
-    title: "Cluster",
-    environment: "ERP",
-    permissions: ["master.cluster.read", "master.cluster.create"],
-    children: [
-      { title: "Add", href: "/master/cluster/add" },
-      { title: "View", href: "/master/cluster/list" },
-    ],
-  },
-  {
-    title: "Opening Inventory",
-    environment: "ERP",
-    permissions: [
-      "master.opening-inventory.read",
-      "master.opening-inventory.create",
-    ],
-    children: [
-      { title: "Add", href: "/master/opening-inventory/add" },
-      { title: "View", href: "/master/opening-inventory/list" },
-    ],
-  },
-  {
-    title: "Vendor Opening",
-    environment: "ERP",
-    permissions: ["master.vendor-opening.read", "master.vendor-opening.create"],
-    children: [
-      { title: "Add", href: "/master/vendor-opening/add" },
-      { title: "View", href: "/master/vendor-opening/list" },
-    ],
-  },
-  {
-    title: "Tax Rate 1",
-    environment: "ERP",
+    title: "Tax Rate",
+    environment: "MASTER",
     permissions: ["master.tax-rate.read", "master.tax-rate.create"],
     children: [
       { title: "Add", href: "/master/tax-rate/add" },
       { title: "View", href: "/master/tax-rate/list" },
     ],
   },
-  // {
-  //   title: "Warehouse",
-  //   environment: "ERP",
-  //   permissions: ["master.warehouse.read", "master.warehouse.create"],
-  //   children: [
-  //     { title: "Add", href: "/master/warehouse/add" },
-  //     { title: "View", href: "/master/warehouse/list" },
-  //   ],
-  // },
-
-
-  {
-    title: "Manage Outlets",
-    href: "/master/location/list",
-    permissions: ["master.location.read"],
-    environment: "POS",
-  },
-  {
-    title: "Promo Campaigns",
-    environment: "POS",
-    permissions: ["master.promo.read", "master.promo.create"],
-    children: [
-      { title: "Create", href: "/master/pos-config/promos/new", permissions: ["master.promo.create"] },
-      { title: "List", href: "/master/pos-config/promos", permissions: ["master.promo.read"] },
-    ],
-  },
-  {
-    title: "Coupon Codes",
-    environment: "POS",
-    permissions: ["master.coupon.read", "master.coupon.create"],
-    children: [
-      { title: "Create", href: "/master/pos-config/coupons/new", permissions: ["master.coupon.create"] },
-      { title: "List", href: "/master/pos-config/coupons", permissions: ["master.coupon.read"] },
-    ],
-  },
-  {
-    title: "Alliance Discounts",
-    environment: "POS",
-    permissions: ["master.alliance.read", "master.alliance.create"],
-    children: [
-      { title: "Create", href: "/master/pos-config/alliances/new", permissions: ["master.alliance.create"] },
-      { title: "List", href: "/master/pos-config/alliances", permissions: ["master.alliance.read"] },
-    ],
-  },
-  {
-    title: "Vouchers",
-    environment: "POS",
-    permissions: ["pos.voucher.view", "pos.voucher.create"],
-    children: [
-      { title: "Issue", href: "/master/pos-config/vouchers/new", permissions: ["pos.voucher.create"] },
-      { title: "List", href: "/master/pos-config/vouchers", permissions: ["pos.voucher.view"] },
-    ],
-  },
-
 ];
 
 export const menuData: MenuItem[] = [
