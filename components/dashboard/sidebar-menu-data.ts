@@ -1706,6 +1706,32 @@ export const menuData: MenuItem[] = [
         ],
       },
       {
+        title: "EOBI for Employee",
+        permissions: ["hr.eobi.read", "hr.eobi.create"],
+        children: [
+          {
+            title: "View EOBI",
+            href: "/hr/payroll-setup/eobi-employee/view",
+            permissions: ["hr.eobi.read"],
+          },
+          {
+            title: "Create Withdraw",
+            href: "/hr/payroll-setup/eobi-employee/withdraw-create",
+            permissions: ["hr.eobi.create"],
+          },
+          {
+            title: "View Withdraw",
+            href: "/hr/payroll-setup/eobi-employee/withdraw-view",
+            permissions: ["hr.eobi.read"],
+          },
+          { 
+            title: "View Report", 
+            href: "/hr/payroll-setup/eobi-employee/report", 
+            permissions: ["hr.eobi.read"] 
+          },
+        ],
+      },
+      {
         title: "Social Security",
         permissions: ["hr.social-security.read"],
         children: [
