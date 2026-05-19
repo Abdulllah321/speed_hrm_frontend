@@ -1123,76 +1123,115 @@ export const menuData: MenuItem[] = [
     title: "Procurement",
     icon: ShoppingCart,
     environment: "ERP",
-    permissions: ["procurement.read"],
+    permissions: ["erp.procurement.vendor.read", "erp.procurement.pr.read", "erp.procurement.rfq.read", "erp.procurement.vq.create", "erp.procurement.po.create", "erp.procurement.grn.read", "erp.procurement.landed-cost.create", "erp.procurement.pi.read", "erp.procurement.pret.read"],
     children: [
-      { title: "Vendors", href: "/erp/procurement/vendors" },
+      {
+        title: "Vendors",
+        href: "/erp/procurement/vendors",
+        permissions: ["erp.procurement.vendor.read"],
+      },
       {
         title: "Requisition & Quotation",
         children: [
           {
             title: "Purchase Requisition",
             href: "/erp/procurement/purchase-requisition",
+            permissions: ["erp.procurement.pr.read"],
           },
-          { title: "RFQ", href: "/erp/procurement/rfq" },
+          {
+            title: "RFQ",
+            href: "/erp/procurement/rfq",
+            permissions: ["erp.procurement.rfq.read"],
+          },
           {
             title: "Create Vendor Quotation",
             href: "/erp/procurement/vendor-quotation/create",
+            permissions: ["erp.procurement.vq.create"],
           },
           {
             title: "Vendor Quotation List",
             href: "/erp/procurement/vendor-quotation/list",
+            permissions: ["erp.procurement.vq.create"],
           },
         ],
       },
       {
         title: "Orders & Receiving",
         children: [
-          { title: "Purchase Order", href: "/erp/procurement/purchase-order" },
-          { title: "Goods Receipt Note", href: "/erp/procurement/grn" },
+          {
+            title: "Purchase Order",
+            href: "/erp/procurement/purchase-order",
+            permissions: ["erp.procurement.po.create"],
+          },
+          {
+            title: "Goods Receipt Note",
+            href: "/erp/procurement/grn",
+            permissions: ["erp.procurement.grn.create"],
+          },
         ],
       },
       {
         title: "Landed Cost",
         children: [
-          { title: "Landed Cost", href: "/erp/procurement/landed-cost" },
-          { title: "Setup", href: "/erp/procurement/landed-cost/setup" },
-          { title: "Report", href: "/erp/procurement/landed-cost/report" },
+          {
+            title: "Landed Cost",
+            href: "/erp/procurement/landed-cost",
+            permissions: ["erp.procurement.landed-cost.create"],
+          },
+          {
+            title: "Setup",
+            href: "/erp/procurement/landed-cost/setup",
+            permissions: ["erp.procurement.landed-cost.create"],
+          },
+          {
+            title: "Report",
+            href: "/erp/procurement/landed-cost/report",
+            permissions: ["erp.procurement.landed-cost.create"],
+          },
         ],
       },
-      { title: "Purchase Invoice", href: "/erp/procurement/purchase-invoice" },
-      { title: "Purchase Returns", href: "/erp/procurement/purchase-returns" },
+      {
+        title: "Purchase Invoice",
+        href: "/erp/procurement/purchase-invoice",
+        permissions: ["erp.procurement.pi.read"],
+      },
+      {
+        title: "Purchase Returns",
+        href: "/erp/procurement/purchase-returns",
+        permissions: ["erp.procurement.pret.read"],
+      },
     ],
   },
   {
     title: "Sales",
     icon: TrendingUp,
     environment: "ERP",
-    permissions: ["sales.read"],
+    permissions: ["erp.sales.customer.read", "erp.sales.order.read", "erp.sales.dc.read", "erp.sales.invoice.read", "erp.claims.read"],
     children: [
       {
         title: "Customers",
         href: "/erp/sales/customers",
-        permissions: ["sales.customer.read"],
+        permissions: ["erp.sales.customer.read"],
       },
       {
         title: "Sales Orders",
         href: "/erp/sales/orders",
-        permissions: ["sales.order.read"],
+        permissions: ["erp.sales.order.read"],
       },
       {
         title: "Warehouse Verification",
         href: "/erp/sales/orders/verification",
-        permissions: ["sales.order.read"],
+        permissions: ["erp.sales.order.read"],
       },
       {
         title: "Delivery Challans",
         href: "/erp/sales/delivery-challans",
-        permissions: ["sales.challan.read"],
+        permissions: ["erp.sales.dc.read"],
       },
       {
         title: "Sales Invoices",
         href: "/erp/sales/invoices",
-        permissions: ["sales.invoice.read"],
+        permissions: ["erp.sales.invoice.read"],
       },
       {
         title: "Reports",
@@ -1211,7 +1250,7 @@ export const menuData: MenuItem[] = [
       {
         title: "Return Claims",
         href: "/erp/claims",
-        permissions: ["sales.returns.claims"],
+        permissions: ["erp.claims.read"],
       },
     ],
   },
