@@ -1,11 +1,11 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { PFWithdrawal } from "@/lib/actions/pf-withdrawal";
+import { EOBIWithdrawal } from "@/lib/actions/eobi-withdrawal";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 
-export const columns: ColumnDef<PFWithdrawal>[] = [
+export const columns: ColumnDef<EOBIWithdrawal>[] = [
     {
         id: "serialNumber",
         header: "S.No",
@@ -48,12 +48,8 @@ export const columns: ColumnDef<PFWithdrawal>[] = [
         accessorKey: "monthYear",
         header: "Month/Year",
         cell: ({ row }) => {
-            const [year, month] = row.getValue<string>("monthYear").split("-");
-            const monthNames = [
-                "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-            ];
-            return `${monthNames[parseInt(month) - 1]} ${year}`;
+            const monthYear = row.getValue<string>("monthYear");
+            return monthYear;
         },
     },
     {

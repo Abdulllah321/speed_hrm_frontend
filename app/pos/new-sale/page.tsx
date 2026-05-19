@@ -27,12 +27,23 @@ function computeLineItem(
     isStockInTransit = false,
     defaultTaxPercent = 0,
 ): CartItem {
+    // Step 1: Retail price is the unit price
     const price = Number(product.unitPrice) || 0;
-    const subtotal = price * quantity;
-    const discountAmount = Math.round(subtotal * (discountPercent / 100) * 100) / 100;
-    const afterDiscount = subtotal - discountAmount;
+    
+    // Step 2: Calculate WOST (Value Without Sales Tax)
     const taxPercent = Number(product.taxRate1) || defaultTaxPercent;
-    const taxAmount = Math.round(afterDiscount * (taxPercent / 100) * 100) / 100;
+    const taxDivisor = 1 + (taxPercent / 100);
+    const wostPerUnit = price / taxDivisor;
+    const totalWost = wostPerUnit * quantity;
+    
+    // Step 3: Apply discount on WOST
+    const discountAmount = Math.round(totalWost * (discountPercent / 100));
+    const afterDiscount = totalWost - discountAmount;
+    
+    // Step 4: Calculate tax on discounted amount
+    const taxAmount = Math.round(afterDiscount * (taxPercent / 100));
+    
+    // Step 5: Total = discounted WOST + tax
     const total = afterDiscount + taxAmount;
 
     return {
@@ -347,11 +358,25 @@ export default function NewSalePage() {
                     toast.error(`Only ${item.stockQty} units available in stock`);
                     return item;
                 }
-                const subtotal = item.price * quantity;
-                const discountAmount = Math.round(subtotal * (item.discountPercent / 100) * 100) / 100;
-                const afterDiscount = subtotal - discountAmount;
-                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100) * 100) / 100;
+                
+                // Step 1: Retail price is item.price
+                const retailPrice = item.price;
+                
+                // Step 2: Calculate WOST (Value Without Sales Tax)
+                const taxDivisor = 1 + (item.taxPercent / 100);
+                const wostPerUnit = retailPrice / taxDivisor;
+                const totalWost = wostPerUnit * quantity;
+                
+                // Step 3: Apply discount on WOST
+                const discountAmount = Math.round(totalWost * (item.discountPercent / 100));
+                const afterDiscount = totalWost - discountAmount;
+                
+                // Step 4: Calculate tax on discounted amount
+                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
+                
+                // Step 5: Total = discounted WOST + tax
                 const total = afterDiscount + taxAmount;
+                
                 return { ...item, quantity, discountAmount, taxAmount, total };
             })
         );
@@ -376,10 +401,22 @@ export default function NewSalePage() {
                     overrideDiscountPercent = null;
                 }
                 
-                const subtotal = item.price * item.quantity;
-                const discountAmount = Math.round(subtotal * (clamped / 100) * 100) / 100;
-                const afterDiscount = subtotal - discountAmount;
-                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100) * 100) / 100;
+                // Step 1: Retail price is item.price
+                const retailPrice = item.price;
+                
+                // Step 2: Calculate WOST (Value Without Sales Tax)
+                const taxDivisor = 1 + (item.taxPercent / 100);
+                const wostPerUnit = retailPrice / taxDivisor;
+                const totalWost = wostPerUnit * item.quantity;
+                
+                // Step 3: Apply discount on WOST
+                const discountAmount = Math.round(totalWost * (clamped / 100));
+                const afterDiscount = totalWost - discountAmount;
+                
+                // Step 4: Calculate tax on discounted amount
+                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
+                
+                // Step 5: Total = discounted WOST + tax
                 const total = afterDiscount + taxAmount;
                 
                 return { 
