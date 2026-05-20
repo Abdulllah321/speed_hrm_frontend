@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Folder, FileText, Upload, Loader2, Plus, MoreHorizontal, Pencil, Trash2, ShieldAlert, Download, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CoaBulkUploadModal } from "@/components/finance/coa-bulk-upload-modal";
+import { AddSubAccountsModal } from "./add-subaccounts-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -90,6 +91,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
 
   // Collapse/expand state
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(new Set());
+  const [activeParentForSubAccounts, setActiveParentForSubAccounts] = React.useState<ChartOfAccount | null>(null);
 
   const toggleCollapse = React.useCallback((id: string) => {
     setCollapsedIds(prev => {
@@ -341,7 +343,13 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
                   Edit
                 </DropdownMenuItem>
               )}
-              {canEdit && canDelete && <DropdownMenuSeparator />}
+              {canEdit && canCreate && (
+                <DropdownMenuItem onClick={() => setActiveParentForSubAccounts(account)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Sub-accounts
+                </DropdownMenuItem>
+              )}
+              {(canEdit || canCreate) && canDelete && <DropdownMenuSeparator />}
               {canDelete && (
                 <DropdownMenuItem
                   onClick={() => openDeleteDialog(account)}
@@ -356,7 +364,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         );
       },
     },
-  ], [canEdit, canDelete, handleEditClick, openDeleteDialog, collapsedIds, toggleCollapse]);
+  ], [canEdit, canCreate, canDelete, handleEditClick, openDeleteDialog, collapsedIds, toggleCollapse, setActiveParentForSubAccounts]);
 
   // ── Upload progress button label ─────────────────────────────────────────
   const progressLabel = React.useMemo(() => {
@@ -582,6 +590,14 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ── Add Sub-accounts Modal ── */}
+      <AddSubAccountsModal
+        open={!!activeParentForSubAccounts}
+        onOpenChange={(open) => !open && setActiveParentForSubAccounts(null)}
+        parentAccount={activeParentForSubAccounts}
+        onSuccess={() => router.refresh()}
+      />
     </div>
   );
 }
