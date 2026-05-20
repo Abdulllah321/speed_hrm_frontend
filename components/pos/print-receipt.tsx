@@ -165,9 +165,10 @@ export function PrintReceipt({
         (user ? `${user.firstName} ${user.lastName}`.trim() : "");
 
     // ── Normalise items ───────────────────────────────────────────────
-    const items: any[] = propCartItems?.length
-        ? propCartItems
-        : (order?.items ?? []).map((oi: any) => ({
+    // Always prefer order.items (from database) over propCartItems (from cart)
+    // because order.items has the final calculated values after all discounts
+    const items: any[] = (order?.items && order.items.length > 0)
+        ? (order.items).map((oi: any) => ({
             id:              oi.id,
             name:            oi.item?.description || oi.item?.sku || "Item",
             sku:             oi.item?.sku   || "",
@@ -179,7 +180,8 @@ export function PrintReceipt({
             discountAmount:  Number(oi.discountAmount  ?? 0),
             taxPercent:      Number(oi.taxPercent  ?? 0),
             taxAmount:       Number(oi.taxAmount   ?? 0),
-        }));
+        }))
+        : (propCartItems ?? []);
 
     // ── Totals ────────────────────────────────────────────────────────
     // Subtotal should be sum of WOST (not retail price × quantity)
@@ -189,7 +191,12 @@ export function PrintReceipt({
         const wostPerUnit = i.price / taxDivisor;
         return s + (wostPerUnit * i.quantity);
     }, 0);
-    const totalTax = Number(order?.taxAmount ?? 0) || items.reduce((s, i) => s + (i.taxAmount ?? 0), 0);
+    
+    // Always calculate totalTax from items (don't trust backend taxAmount)
+    const totalTax = items.reduce((s, i) => {
+        const itemTax = Number(i.taxAmount ?? 0);
+        return s + itemTax;
+    }, 0);
 
     const itemDiscountsRaw = items.reduce((s, i) => s + (i.discountAmount ?? 0), 0);
     const orderDiscount    = Number(order?.globalDiscountAmount ?? 0);
@@ -393,7 +400,7 @@ function ReceiptBody({
             {!isGiftReceipt ? (
                 <div className="text-center space-y-0.5">
                     <p className="font-bold text-sm tracking-widest uppercase">Sales Tax Invoice</p>
-                    <p className="font-black text-2xl tracking-wider">*{fmt(finalGrandTotal)}*</p>
+                    <p className="font-black text-2xl tracking-wider">*{order?.orderNumber ?? ""}*</p>
                 </div>
             ) : (
                 <div className="text-center">

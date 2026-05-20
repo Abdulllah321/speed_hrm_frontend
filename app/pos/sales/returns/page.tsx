@@ -228,7 +228,7 @@ export default function ReturnsPage() {
     const isMultiOrder = loadedOrders.length > 1;
 
     // ── Submit ────────────────────────────────────────────────────────
-    const handleSubmit = useCallback(async () => {
+    const handleSubmit = useCallback(async (managerUserId?: string) => {
         if (loadedOrders.length === 0) { toast.error("Add at least one order"); return; }
         if (selectedLines.length === 0) { toast.error("Select at least one item to return"); return; }
         if (mode === "exchange" && newLines.length === 0) { toast.error("Add new items for exchange"); return; }
@@ -312,6 +312,7 @@ export default function ReturnsPage() {
                         body: {
                             refundAmount: totalRefundAmount,
                             reason: notes || undefined,
+                            managerUserId,
                         },
                     });
                 } else {
@@ -328,6 +329,7 @@ export default function ReturnsPage() {
                             body: {
                                 refundAmount,
                                 reason: notes || undefined,
+                                managerUserId,
                             },
                         });
                         if (r.ok && r.data?.status) { totalRefund += refundAmount; }
@@ -754,7 +756,7 @@ export default function ReturnsPage() {
                                                 mode === "exchange" ? "bg-blue-600 hover:bg-blue-700"
                                                     : mode === "claim" ? "bg-amber-600 hover:bg-amber-700"
                                                         : "bg-destructive hover:bg-destructive/90")}
-                                            onClick={mode === "claim" ? () => setShowVerify(true) : handleSubmit}
+                                            onClick={(mode === "claim" || mode === "refund") ? () => setShowVerify(true) : () => handleSubmit()}
                                             disabled={
                                                 isSubmitting ||
                                                 selectedLines.length === 0 ||
@@ -836,8 +838,10 @@ export default function ReturnsPage() {
                 open={showVerify}
                 onOpenChange={setShowVerify}
                 onVerified={handleSubmit}
-                title="Manager Verification Required"
-                description="Submitting a claim to ERP requires manager authorisation. Enter your password to proceed."
+                title={mode === "refund" ? "Manager Verification for Refund Voucher" : "Manager Verification Required"}
+                description={mode === "refund" 
+                    ? "Preparing a refund voucher requires manager authorization. Enter manager credentials to proceed." 
+                    : "Submitting a claim to ERP requires manager authorisation. Enter manager credentials to proceed."}
             />
         </>
     );

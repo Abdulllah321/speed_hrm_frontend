@@ -129,7 +129,7 @@ export function CartTable({
         setShowManagerVerification(true);
     };
 
-    const handleManagerVerified = () => {
+    const handleManagerVerified = (_managerUserId?: string) => {
         if (pendingDiscountChange) {
             onDiscountChange?.(
                 pendingDiscountChange.itemId,

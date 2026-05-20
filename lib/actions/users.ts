@@ -120,3 +120,19 @@ export async function verifyPassword(password: string): Promise<{ status: boolea
     return { status: false, message: "Failed to verify password" };
   }
 }
+
+export async function verifyManager(emailOrId: string, password: string): Promise<{ status: boolean; message: string; data?: { userId: string; email: string } }> {
+  try {
+    const res = await authFetch(`/auth/verify-manager`, {
+      method: "POST",
+      body: JSON.stringify({ emailOrId, password }),
+    });
+    if (!res.ok) {
+      const error = res.data;
+      return { status: false, message: error?.message || "Failed to verify manager credentials" };
+    }
+    return res.data;
+  } catch (error) {
+    return { status: false, message: "Failed to verify manager credentials" };
+  }
+}
