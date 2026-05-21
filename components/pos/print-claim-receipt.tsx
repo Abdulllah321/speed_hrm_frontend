@@ -172,6 +172,9 @@ export function PrintClaimReceipt({
         }))
         : (claimedLinesProp || []);
 
+    // Extract voucher details if claim is approved
+    const voucher = claim?.voucher;
+
     useEffect(() => {
         if (!isLoading && settings.receiptAutoPrint) {
             const timer = setTimeout(() => window.print(), 400);
@@ -196,6 +199,7 @@ export function PrintClaimReceipt({
         reasonCode, reasonNotes, reviewNotes,
         claimedLines, claimedAmount, approvedAmount,
         submittedAt, reviewedAt, settings,
+        voucher, // Pass voucher data
     };
 
     return (
@@ -291,6 +295,7 @@ interface ClaimBodyProps {
     submittedAt?: string;
     reviewedAt?: string;
     settings: PosSettings;
+    voucher?: any; // Voucher details
 }
 
 function ClaimBody({
@@ -299,6 +304,7 @@ function ClaimBody({
     reasonCode, reasonNotes, reviewNotes,
     claimedLines, claimedAmount, approvedAmount,
     submittedAt, reviewedAt, settings,
+    voucher, // Voucher data
 }: ClaimBodyProps) {
 
     const Row = ({ label, value, bold = false }: {
@@ -461,6 +467,20 @@ function ClaimBody({
                     <>
                         <p className="font-bold text-center" style={{ color: statusColor }}>✓ CLAIM APPROVED ✓</p>
                         <p className="text-center">Please present this receipt to collect your refund.</p>
+                        
+                        {/* ── Exchange Voucher Details ── */}
+                        {voucher && voucher.voucherType === 'EXCHANGE' && (
+                            <div className="mt-2 pt-2 border-t border-dashed space-y-1" style={{ borderColor: statusColor }}>
+                                <p className="font-bold text-center" style={{ color: "#10b981" }}>🎫 EXCHANGE VOUCHER ISSUED 🎫</p>
+                                <div className="space-y-0.5 text-[10px] bg-green-50 dark:bg-green-950/20 p-2 rounded">
+                                    <Row label="Voucher Code" value={voucher.code} bold />
+                                    <Row label="Voucher Amount" value={`Rs. ${fmt(Number(voucher.faceValue))}`} bold />
+                                    <Row label="Valid Until" value={fmtDate(voucher.expiresAt)} />
+                                    <Row label="Status" value={voucher.isRedeemed ? "USED" : "ACTIVE"} />
+                                </div>
+                                <p className="text-center text-[10px] mt-1">Use this voucher code for your next purchase!</p>
+                            </div>
+                        )}
                     </>
                 )}
                 {isRejected && (
