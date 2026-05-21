@@ -131,7 +131,6 @@ export async function verifyPassword(password: string): Promise<{ status: boolea
   }
 }
 
-<<<<<<< HEAD
 export async function resetUserPassword(userId: string, newPassword: string) {
   try {
     const res = await authFetch(`/auth/users/reset-password`, {
@@ -177,7 +176,6 @@ export async function updateUserPermissionsAndRoleExpiry(
     return { status: false, message: "Failed to update permissions" };
   }
 }
-=======
 export async function verifyManager(emailOrId: string, password: string): Promise<{ status: boolean; message: string; data?: { userId: string; email: string } }> {
   try {
     const res = await authFetch(`/auth/verify-manager`, {
@@ -193,4 +191,3 @@ export async function verifyManager(emailOrId: string, password: string): Promis
     return { status: false, message: "Failed to verify manager credentials" };
   }
 }
->>>>>>> f02ac4f22e5662cc730895d2b1b0768b4341ef97
