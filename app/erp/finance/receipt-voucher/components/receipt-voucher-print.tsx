@@ -62,7 +62,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
              <span className="font-bold">Voucher Number:</span>
              <span className="font-bold">{voucher.rvNo}</span>
            </div>
-           <div className="flex justify-between mb-2">
+           <div className="flex justify-between">
              <div className="flex gap-2">
                <span className="font-bold">Date:</span>
                <span>{voucher.rvDate ? format(new Date(voucher.rvDate), "dd/MM/yyyy") : ""}</span>
@@ -73,7 +73,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
              </div>
            </div>
            {isBank && (
-             <div className="flex gap-2">
+             <div className="flex gap-2 mt-2">
                <span className="font-bold">Cheque #:</span>
                <span className="uppercase">{voucher.chequeNo || "—"}</span>
              </div>
@@ -200,6 +200,7 @@ export function ReceiptVoucherPrint({ voucher }: { voucher: ReceiptVoucher }) {
       {/* Remarks */}
       <div className="mt-4 mb-8">
         <div className="font-bold text-xs sm:text-[14px]">Remarks</div>
+        <p className="text-xs sm:text-[13px] mt-1 text-gray-700">{voucher.description}</p>
       </div>
 
       {/* Signatures */}

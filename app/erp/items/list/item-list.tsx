@@ -299,7 +299,8 @@ function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canD
                                     </Link>
                                 </DropdownMenuItem>
                             )}
-                            {canDelete && (
+                            {/* DISABLED: Items cannot be deleted to maintain data integrity */}
+                            {/* {canDelete && (
                                 <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
@@ -309,7 +310,7 @@ function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canD
                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                                     </DropdownMenuItem>
                                 </>
-                            )}
+                            )} */}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 );
@@ -342,7 +343,8 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
 
     const canCreate = hasPermission("erp.item.create");
     const canUpdate = hasPermission("erp.item.update");
-    const canDelete = hasPermission("erp.item.delete");
+    // DISABLED: Items cannot be deleted to maintain data integrity
+    const canDelete = false; // hasPermission("erp.item.delete");
     const canBulkUpload = hasPermission("erp.item.bulk-upload");
 
     // ── State ──────────────────────────────────────────────────────────────
@@ -471,23 +473,27 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     }, [search, sortColumn, sortDir, appliedFilters]);
 
     // ── Delete handler ─────────────────────────────────────────────────────
-    const handleDelete = useCallback(
-        async (id: string) => {
-            if (!confirm("Are you sure you want to delete this item?")) return;
-            try {
-                const result = await deleteItem(id);
-                if (result.status) {
-                    toast.success("Item deleted successfully");
-                    queryClient.invalidateQueries({ queryKey: ["items"] });
-                } else {
-                    toast.error(result.message || "Failed to delete item");
-                }
-            } catch {
-                toast.error("An unexpected error occurred");
-            }
-        },
-        [queryClient],
-    );
+    // DISABLED: Items cannot be deleted to maintain data integrity
+    // const handleDelete = useCallback(
+    //     async (id: string) => {
+    //         if (!confirm("Are you sure you want to delete this item?")) return;
+    //         try {
+    //             const result = await deleteItem(id);
+    //             if (result.status) {
+    //                 toast.success("Item deleted successfully");
+    //                 queryClient.invalidateQueries({ queryKey: ["items"] });
+    //             } else {
+    //                 toast.error(result.message || "Failed to delete item");
+    //             }
+    //         } catch {
+    //             toast.error("An unexpected error occurred");
+    //         }
+    //     },
+    //     [queryClient],
+    // );
+    const handleDelete = useCallback(() => {
+        // Delete functionality disabled
+    }, []);
 
     // ── Filter handlers ────────────────────────────────────────────────────
     const handleApplyFilters = (filters: AppliedFilters) => {
