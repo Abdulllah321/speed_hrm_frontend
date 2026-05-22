@@ -35,7 +35,7 @@ export interface UploadStatusResponse {
     completedAt: string | null;
 }
 
-export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'hscode' | 'employee' | 'attendance' | 'coa' | 'alliance' | 'sales-history' | 'stock' | 'merchant' = 'item') {
+export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 'item-update' | 'hscode' | 'employee' | 'attendance' | 'coa' | 'alliance' | 'sales-history' | 'stock' | 'merchant' = 'item') {
     const [data, setData] = useState<UploadStatusResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -62,6 +62,9 @@ export function useUploadProgress(uploadId: string | null, uploadType: 'item' | 
 
     const getApiEndpoint = useCallback((endpoint: string) => {
         const baseUrl = getApiBaseUrl();
+        if (uploadType === 'item-update') {
+            return `${baseUrl}/items/bulk-update-prices/${endpoint}`;
+        }
         if (uploadType === 'hscode') {
             return `${baseUrl}/master/hs-codes/bulk-upload/${endpoint}`;
         }

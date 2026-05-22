@@ -102,8 +102,10 @@ export function ShiftGuard({ children }: { children: React.ReactNode }) {
         );
     }
 
-    // 2. Super Admins/Managers bypass shift float requirements
-    if (isAdmin()) {
+    // 2. Super Admins/Managers bypass shift float requirements on non-transactional routes,
+    // but MUST open a shift to access transactional views (new-sale, checkout, pos dashboard)
+    const isTransactionalPath = pathname === "/pos" || pathname === "/pos/new-sale" || pathname === "/pos/checkout";
+    if (isAdmin() && !isTransactionalPath) {
         return <>{children}</>;
     }
 

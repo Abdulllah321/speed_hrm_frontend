@@ -44,7 +44,7 @@ export interface GenericBulkUploadModalProps {
     onUploadIdChange?: (id: string | null) => void;
 
     // Entity Customizations
-    uploadType: 'item' | 'hscode' | 'alliance' | 'merchant' | 'employee' | 'attendance' | 'coa' | 'sales-history' | 'stock';
+    uploadType: 'item' | 'item-update' | 'hscode' | 'alliance' | 'merchant' | 'employee' | 'attendance' | 'coa' | 'sales-history' | 'stock';
     apiBasePath: string;        // e.g. 'pos-config/alliances/bulk-upload' or 'master/erp/hs-code/bulk-upload'
     title: string;              // e.g. 'Alliance Discount Bulk Import'
     description: string;        // e.g. 'Upload bank alliance discounts...'

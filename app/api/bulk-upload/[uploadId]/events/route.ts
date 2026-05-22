@@ -21,7 +21,9 @@ export async function GET(
         const uploadType = req.nextUrl.searchParams.get("type") || "item";
         let backendPath: string;
 
-        if (uploadType === "hscode") {
+        if (uploadType === "item-update") {
+            backendPath = `${API_URL}/items/bulk-update-prices/${uploadId}/events`;
+        } else if (uploadType === "hscode") {
             backendPath = `${API_URL}/master/hs-codes/bulk-upload/${uploadId}/events`;
         } else if (uploadType === "alliance") {
             backendPath = `${API_URL}/pos-config/alliances/bulk-upload/${uploadId}/events`;

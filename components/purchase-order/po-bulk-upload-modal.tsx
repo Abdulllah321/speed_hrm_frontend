@@ -20,9 +20,14 @@ interface Props {
     onSuccess?: () => void;
     uploadId?: string | null;
     onUploadIdChange?: (id: string | null) => void;
+    vendorId?: string;
+    orderType?: string;
+    goodsType?: string;
+    expectedDeliveryDate?: string;
+    notes?: string;
 }
 
-export function PoBulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUploadIdChange }: Props) {
+export function PoBulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onUploadIdChange, vendorId, orderType, goodsType, expectedDeliveryDate, notes }: Props) {
     const [file, setFile] = useState<File | null>(null);
     const [internalUploadId, setInternalUploadId] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -60,8 +65,18 @@ export function PoBulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onU
         setInternalUploadId(null);
         const formData = new FormData();
         formData.append('file', file);
+
+        const params = new URLSearchParams();
+        if (vendorId) params.append('vendorId', vendorId);
+        if (orderType) params.append('orderType', orderType);
+        if (goodsType) params.append('goodsType', goodsType);
+        if (expectedDeliveryDate) params.append('expectedDeliveryDate', expectedDeliveryDate);
+        if (notes) params.append('notes', notes);
+        const queryStr = params.toString();
+        const url = queryStr ? `${BASE()}?${queryStr}` : BASE();
+
         try {
-            const res = await fetch(BASE(), { method: 'POST', body: formData, credentials: 'include' });
+            const res = await fetch(url, { method: 'POST', body: formData, credentials: 'include' });
             const result = await res.json();
             if (result.status && result.data?.uploadId) {
                 setInternalUploadId(result.data.uploadId);
@@ -80,8 +95,18 @@ export function PoBulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onU
     const handleConfirm = async () => {
         if (!activeId || isConfirming) return;
         setIsConfirming(true);
+
+        const params = new URLSearchParams();
+        if (vendorId) params.append('vendorId', vendorId);
+        if (orderType) params.append('orderType', orderType);
+        if (goodsType) params.append('goodsType', goodsType);
+        if (expectedDeliveryDate) params.append('expectedDeliveryDate', expectedDeliveryDate);
+        if (notes) params.append('notes', notes);
+        const queryStr = params.toString();
+        const url = queryStr ? `${BASE()}/${activeId}/confirm?${queryStr}` : `${BASE()}/${activeId}/confirm`;
+
         try {
-            const res = await fetch(`${BASE()}/${activeId}/confirm`, { method: 'POST', credentials: 'include' });
+            const res = await fetch(url, { method: 'POST', credentials: 'include' });
             const result = await res.json();
             if (result.status) {
                 toast.success('PO import started');
@@ -141,7 +166,7 @@ export function PoBulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onU
                         {data?.status && <Badge variant="outline" className="ml-2 capitalize">{data.status}</Badge>}
                     </DialogTitle>
                     <DialogDescription className="text-sm">
-                        Upload a CSV/Excel with rows per item. One vendor, one order type, one goods type per file.
+                        Upload a CSV/Excel containing BarCode and Quantity. Item details will be resolved automatically from the selected vendor and master data.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -180,7 +205,7 @@ export function PoBulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onU
                                             <div className="text-center space-y-2">
                                                 <p className="font-bold text-xl">Upload PO items list</p>
                                                 <p className="text-sm text-muted-foreground max-w-xs">
-                                                    One row per item. Single vendor, single order type (LOCAL/IMPORT), single goods type per file.
+                                                    One row per item. The file should only contain BarCode and Quantity columns.
                                                 </p>
                                             </div>
                                             <div className="flex gap-2 mt-2">
@@ -198,7 +223,7 @@ export function PoBulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onU
                                         </div>
                                         <div>
                                             <p className="font-bold text-sm">Download Template</p>
-                                            <p className="text-xs text-muted-foreground">Vendor Code, Item ID, Qty, Unit Price, Order Type (LOCAL/IMPORT), Goods Type (CONSUMABLE/FRESH)</p>
+                                            <p className="text-xs text-muted-foreground">BarCode, Quantity</p>
                                         </div>
                                     </div>
                                     <Button variant="secondary" size="sm" onClick={() => window.open(`${BASE()}/template/download`, '_blank')} className="font-semibold shadow-sm">
@@ -267,7 +292,7 @@ export function PoBulkUploadModal({ open, onOpenChange, onSuccess, uploadId, onU
                                                 <h4 className="font-black text-lg">Validation Complete</h4>
                                                 <p className="text-sm text-muted-foreground">
                                                     {data?.failedRecords === 0
-                                                        ? 'All rows valid. POs will be grouped by Vendor Code on import.'
+                                                        ? 'All rows valid. PO will be imported using the selected Vendor and options.'
                                                         : `${data?.failedRecords} rows have issues and will be skipped.`}
                                                 </p>
                                             </div>

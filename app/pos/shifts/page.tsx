@@ -339,8 +339,14 @@ export default function ShiftsPage() {
                                 <p className="font-semibold text-lg">Shift not started</p>
                                 <p className="text-sm text-muted-foreground">Open the shift to start accepting cash sales</p>
                             </div>
-                            <Button onClick={() => { setFloatAmount(""); setFloatNote(""); setShowOpenModal(true); }}
-                                className="rounded-full px-8" disabled={!canOpen}>
+                            <Button onClick={() => {
+                                if (!canOpen) {
+                                    toast.error("You do not have permission to open a shift. Please contact your manager.");
+                                    return;
+                                }
+                                setFloatAmount(""); setFloatNote(""); setShowOpenModal(true);
+                            }}
+                                className="rounded-full px-8">
                                 Open Shift
                             </Button>
                         </div>
@@ -375,8 +381,14 @@ export default function ShiftsPage() {
                                 <Button variant="outline" onClick={() => router.push("/pos/new-sale")} className="rounded-full px-6">
                                     Continue Selling
                                 </Button>
-                                <Button onClick={() => { setActualCash(""); setCloseNote(""); setShowCloseModal(true); }}
-                                    className="rounded-full px-8 bg-slate-800 hover:bg-slate-900 text-white" disabled={!canClose}>
+                                <Button onClick={() => {
+                                    if (!canClose) {
+                                        toast.error("You do not have permission to close a shift. Please contact your manager.");
+                                        return;
+                                    }
+                                    setActualCash(""); setCloseNote(""); setShowCloseModal(true);
+                                }}
+                                    className="rounded-full px-8 bg-slate-800 hover:bg-slate-900 text-white">
                                     Close Shift
                                 </Button>
                             </div>
