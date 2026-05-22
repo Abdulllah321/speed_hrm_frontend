@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
@@ -22,10 +22,12 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Loader2, Plus, Pencil, Trash2, Search, Building2, RefreshCw, X,
+  Loader2, Plus, Pencil, Trash2, Search, Building2, RefreshCw, X, Upload, Download,
 } from "lucide-react";
 import { authFetch } from "@/lib/auth";
 import { formatCurrency } from "@/lib/utils";
+import { queueMerchantsExport } from "@/lib/actions/pos-config";
+import { MerchantBulkUploadModal } from "@/components/master/merchant-bulk-upload-modal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Location { id: string; name: string; code: string; }
@@ -80,6 +82,10 @@ export default function MerchantsPage() {
   const [search, setSearch] = useState("");
   const [filterBank, setFilterBank] = useState("all");
   const [filterActive, setFilterActive] = useState("all");
+
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadId, setUploadId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Dialog state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -215,6 +221,27 @@ export default function MerchantsPage() {
     }));
   };
 
+  // ── Handle Export ────────────────────────────────────────────────────────────
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const res = await queueMerchantsExport({
+        search: search || undefined,
+        bankName: filterBank === "all" ? undefined : filterBank,
+        isActive: filterActive === "all" ? undefined : filterActive === "active",
+      });
+      if (res.status) {
+        toast.success(res.message || "Export started in background. You will be notified when download is ready.");
+      } else {
+        toast.error(res.message || "Failed to queue export job.");
+      }
+    } catch {
+      toast.error("Failed to queue export job.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // ── Unique banks for filter ──────────────────────────────────────────────────
   const uniqueBanks = [...new Set(merchants.map(m => m.bankName))].sort();
 
@@ -231,9 +258,18 @@ export default function MerchantsPage() {
             Per-location bank acquirer commission rates for card payment processing
           </p>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> Add Merchant
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setUploadModalOpen(true)} className="gap-2">
+            <Upload className="h-4 w-4" /> Bulk Import
+          </Button>
+          <Button variant="outline" onClick={handleExport} disabled={isExporting} className="gap-2">
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export Excel
+          </Button>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="h-4 w-4" /> Add Merchant
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -563,6 +599,14 @@ export default function MerchantsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <MerchantBulkUploadModal
+        open={uploadModalOpen}
+        onOpenChange={setUploadModalOpen}
+        onSuccess={loadMerchants}
+        uploadId={uploadId}
+        onUploadIdChange={setUploadId}
+      />
     </div>
   );
 }

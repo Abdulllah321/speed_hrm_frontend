@@ -25,6 +25,8 @@ export async function GET(
             backendPath = `${API_URL}/master/hs-codes/bulk-upload/${uploadId}/events`;
         } else if (uploadType === "alliance") {
             backendPath = `${API_URL}/pos-config/alliances/bulk-upload/${uploadId}/events`;
+        } else if (uploadType === "merchant") {
+            backendPath = `${API_URL}/pos-config/merchants/bulk-upload/${uploadId}/events`;
         } else if (uploadType === "employee") {
             backendPath = `${API_URL}/employees/bulk-upload/${uploadId}/events`;
         } else if (uploadType === "attendance") {

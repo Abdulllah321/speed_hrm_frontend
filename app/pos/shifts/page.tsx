@@ -18,10 +18,12 @@ import {
 import {
     ArrowLeft, Clock, Wallet, TrendingUp, Banknote, CreditCard,
     CheckCircle2, ChevronLeft, ChevronRight, ShoppingCart, AlertTriangle,
+    Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
+import { PrintReconciliation } from "@/components/pos/print-reconciliation";
 
 function fmt(val: number) {
     return val.toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -47,8 +49,8 @@ function duration(openedAt: string, closedAt?: string | null) {
 }
 
 // ─── Shift Detail Modal ───────────────────────────────────────────────────────
-function ShiftDetailModal({ shift, open, onOpenChange }: {
-    shift: any; open: boolean; onOpenChange: (v: boolean) => void;
+function ShiftDetailModal({ shift, open, onOpenChange, onPrint }: {
+    shift: any; open: boolean; onOpenChange: (v: boolean) => void; onPrint: (id: string) => void;
 }) {
     if (!shift) return null;
     const variance = shift.difference;
@@ -135,9 +137,20 @@ function ShiftDetailModal({ shift, open, onOpenChange }: {
                     )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="flex items-center justify-between gap-2 border-t border-border pt-4 mt-2">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-full">
                         Close
+                    </Button>
+                    <Button
+                        variant="outline"
+                        onClick={() => {
+                            onOpenChange(false);
+                            onPrint(shift.id);
+                        }}
+                        className="rounded-full gap-1.5 px-5"
+                    >
+                        <Printer className="w-4 h-4" />
+                        Print Reconciliation
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -169,6 +182,8 @@ export default function ShiftsPage() {
     const [showSummaryModal, setShowSummaryModal] = useState(false);
     const [selectedShift, setSelectedShift] = useState<any>(null);
     const [showDetailModal, setShowDetailModal] = useState(false);
+    const [printSessionId, setPrintSessionId] = useState<string | null>(null);
+    const [showPrintModal, setShowPrintModal] = useState(false);
 
     // Form state
     const [floatAmount, setFloatAmount] = useState<number | "">("");
@@ -209,6 +224,15 @@ export default function ShiftsPage() {
     useEffect(() => { fetchSession(); }, [fetchSession]);
     useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
+    useEffect(() => {
+        const handleSync = () => {
+            fetchSession();
+            fetchHistory();
+        };
+        window.addEventListener("shift-session-updated", handleSync);
+        return () => window.removeEventListener("shift-session-updated", handleSync);
+    }, [fetchSession, fetchHistory]);
+
     const handleOpenShift = async () => {
         if (floatAmount === "" || Number(floatAmount) < 0) {
             toast.error("Enter a valid opening float amount");
@@ -225,6 +249,7 @@ export default function ShiftsPage() {
                 setShowOpenModal(false);
                 setFloatAmount(""); setFloatNote("");
                 fetchSession(); fetchHistory();
+                window.dispatchEvent(new Event("shift-session-updated"));
             } else {
                 toast.error(res.data?.message || "Failed to open shift");
             }
@@ -245,6 +270,7 @@ export default function ShiftsPage() {
             });
             if (res.ok) {
                 setCloseSummary({
+                    id: res.data?.session?.id || sessionData?.id,
                     expected: sessionData?.metrics?.expectedCash ?? 0,
                     actual: Number(actualCash),
                     variance: res.data?.variance ?? 0,
@@ -252,6 +278,7 @@ export default function ShiftsPage() {
                 setShowCloseModal(false);
                 setShowSummaryModal(true);
                 fetchSession(); fetchHistory();
+                window.dispatchEvent(new Event("shift-session-updated"));
             } else {
                 toast.error(res.data?.message || "Failed to close shift");
             }
@@ -334,6 +361,17 @@ export default function ShiftsPage() {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3 pt-4 border-t border-border">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setPrintSessionId(sessionData?.id);
+                                        setShowPrintModal(true);
+                                    }}
+                                    className="rounded-full px-6 gap-1.5"
+                                >
+                                    <Printer className="w-4 h-4" />
+                                    Print X-Report
+                                </Button>
                                 <Button variant="outline" onClick={() => router.push("/pos/new-sale")} className="rounded-full px-6">
                                     Continue Selling
                                 </Button>
@@ -383,7 +421,7 @@ export default function ShiftsPage() {
                                                 <TableRow
                                                     key={shift.id}
                                                     className="cursor-pointer hover:bg-muted/30 transition-colors"
-                                                    onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}
+                                                    onClick={() => router.push(`/pos/session/${shift.id}`)}
                                                 >
                                                     <TableCell className="font-medium">{fmtDate(shift.openedAt)}</TableCell>
                                                     <TableCell className="text-muted-foreground">{fmtTime(shift.openedAt)}</TableCell>
@@ -546,6 +584,18 @@ export default function ShiftsPage() {
                             Done
                         </Button>
                         <Button
+                            variant="outline"
+                            onClick={() => {
+                                setShowSummaryModal(false);
+                                setPrintSessionId(closeSummary?.id);
+                                setShowPrintModal(true);
+                            }}
+                            className="w-full rounded-full h-11 mt-2 gap-1.5"
+                        >
+                            <Printer className="w-4 h-4" />
+                            Print Z-Report
+                        </Button>
+                        <Button
                             variant="ghost"
                             onClick={() => { setShowSummaryModal(false); router.push("/pos/login"); }}
                             className="w-full rounded-full h-11 mt-2 text-muted-foreground"
@@ -561,6 +611,17 @@ export default function ShiftsPage() {
                 shift={selectedShift}
                 open={showDetailModal}
                 onOpenChange={setShowDetailModal}
+                onPrint={(id) => {
+                    setPrintSessionId(id);
+                    setShowPrintModal(true);
+                }}
+            />
+
+            {/* PRINT RECONCILIATION MODAL */}
+            <PrintReconciliation
+                sessionId={printSessionId}
+                open={showPrintModal}
+                onOpenChange={setShowPrintModal}
             />
         </div>
     );
