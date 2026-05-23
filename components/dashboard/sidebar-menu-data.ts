@@ -642,12 +642,8 @@ export const menuData: MenuItem[] = [
             href: "/erp/finance/reports/general-ledger",
           },
           {
-            title: "Trial Balance (6-Col)",
+            title: "Trial Balance",
             href: "/erp/finance/reports/trial-balance",
-          },
-          {
-            title: "Trial Balance (5-Col)",
-            href: "/erp/finance/reports/trial-balance-5col",
           },
           {
             title: "Balance Sheet",
