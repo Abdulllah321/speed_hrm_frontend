@@ -486,13 +486,49 @@ function ClaimBody({
                 {isRejected && (
                     <>
                         <p className="font-bold text-center" style={{ color: statusColor }}>✗ CLAIM REJECTED ✗</p>
-                        <p className="text-center">This claim has been reviewed and rejected.</p>
+                        <p className="text-center text-[10px] leading-tight">This claim has been reviewed and rejected.</p>
+                        
+                        {/* ── Rejection Details ── */}
+                        {reviewNotes && (
+                            <div className="mt-2 pt-2 border-t border-dashed space-y-1" style={{ borderColor: statusColor }}>
+                                <p className="font-bold text-center text-[10px]">REJECTION REASON:</p>
+                                <p className="text-center text-[9px] leading-tight px-1">{reviewNotes}</p>
+                            </div>
+                        )}
+                        
+                        {/* ── Product Return Instructions ── */}
+                        <div className="mt-2 pt-2 border-t border-dashed space-y-1" style={{ borderColor: statusColor }}>
+                            <p className="font-bold text-center text-[10px]">📦 PRODUCT RETURN 📦</p>
+                            <p className="text-center text-[9px] leading-tight">
+                                Your product is ready for pickup at our store.
+                            </p>
+                            <p className="text-center text-[9px] leading-tight mt-1">
+                                Please collect within 7 days with this receipt.
+                            </p>
+                            <p className="text-center text-[9px] leading-tight mt-1 font-bold">
+                                For queries, contact: {storePhone || "+92-XXX-XXXXXXX"}
+                            </p>
+                        </div>
                     </>
                 )}
                 {isPending && (
                     <>
                         <p className="font-bold text-center" style={{ color: statusColor }}>⏳ CLAIM UNDER PROCESS ⏳</p>
                         <p className="text-center">Your claim is being reviewed. Please check back later.</p>
+                        
+                        {/* ── Important Disclaimer ── */}
+                        <div className="mt-2 pt-2 border-t border-dashed space-y-1" style={{ borderColor: statusColor }}>
+                            <p className="font-bold text-center text-[10px]">⚠️ IMPORTANT DISCLAIMER ⚠️</p>
+                            <p className="text-center text-[9px] leading-tight">
+                                This receipt does NOT guarantee claim acceptance. 
+                                The final decision rests with Product Line Management. 
+                                Your product has been sent for inspection.
+                            </p>
+                            <p className="text-center text-[9px] leading-tight mt-1">
+                                Acceptance/rejection of this claim will be at the 
+                                sole discretion of Product Line.
+                            </p>
+                        </div>
                     </>
                 )}
             </div>
