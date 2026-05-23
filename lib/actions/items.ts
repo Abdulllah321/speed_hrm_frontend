@@ -311,6 +311,19 @@ export async function bulkUpdateSalePrice(payload: BulkSalePricePayload) {
 
 // ─── Export Items ─────────────────────────────────────────────────────────────
 
+export async function bulkSearchItems(barcodes: string[]) {
+    try {
+        const response = await authFetch("/finance/items/bulk-search", {
+            method: "POST",
+            body: JSON.stringify({ barcodes }),
+        });
+        return response.data ?? { status: false, data: [] };
+    } catch (error) {
+        console.error("Bulk search items error:", error);
+        return { status: false, data: [] };
+    }
+}
+
 export async function queueItemsExport(
     search?: string,
     sortBy?: string,
