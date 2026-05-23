@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { deleteItem, getItems, queueItemsExport } from "@/lib/actions/items";
 import { BulkUploadModal } from "@/components/items/bulk-upload-modal";
+import { ItemUpdateBulkUploadModal } from "@/components/items/item-update-bulk-upload-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import DataTable from "@/components/common/data-table";
@@ -356,6 +357,8 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     const [search, setSearch] = useState("");
     const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
     const [activeUploadId, setActiveUploadId] = useState<string | null>(null);
+    const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
+    const [activeUpdateUploadId, setActiveUpdateUploadId] = useState<string | null>(null);
     const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
 
@@ -381,6 +384,8 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     useEffect(() => {
         const stored = localStorage.getItem("active_item_upload_id");
         if (stored) setActiveUploadId(stored);
+        const storedUpdate = localStorage.getItem("active_item_update_upload_id");
+        if (storedUpdate) setActiveUpdateUploadId(storedUpdate);
     }, []);
 
     // ── Load master data for filters ───────────────────────────────────────
@@ -407,7 +412,17 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
         }
     };
 
+    const handleUpdateUploadIdChange = (id: string | null) => {
+        setActiveUpdateUploadId(id);
+        if (id) {
+            localStorage.setItem("active_item_update_upload_id", id);
+        } else {
+            localStorage.removeItem("active_item_update_upload_id");
+        }
+    };
+
     const { data: uploadProgress } = useUploadProgress(activeUploadId);
+    const { data: updateProgress } = useUploadProgress(activeUpdateUploadId, 'item-update');
 
     // Note: don't auto-clear on error — a transient network failure shouldn't
     // wipe the active upload ID. The user can manually dismiss via the modal.
@@ -595,6 +610,36 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    {/* Background update upload progress button */}
+                    {activeUpdateUploadId && !isBulkUpdateOpen && (
+                        <Button
+                            variant={updateProgress?.status === 'failed' ? 'destructive' : updateProgress?.status === 'completed' ? 'default' : 'outline'}
+                            className={`border-primary text-primary relative overflow-hidden min-w-[180px] ${updateProgress?.status === 'failed' ? 'text-primary-foreground! bg-destructive!' : updateProgress?.status === 'completed' ? 'text-primary-foreground! bg-primary!' : ''}`}
+                            onClick={() => setIsBulkUpdateOpen(true)}
+                        >
+                            <div
+                                className={`absolute inset-0 bg-primary/10 transition-all duration-500`}
+                                style={{ width: `${updateProgress?.progress ?? 0}%` }}
+                            />
+                            <div className="relative flex items-center gap-2">
+                                {(updateProgress?.status === "validating" || updateProgress?.status === "processing" || updateProgress?.status === "pending") && (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                )}
+                                <span className="font-bold">
+                                    {updateProgress?.status === "failed"
+                                        ? "Update Failed"
+                                        : updateProgress?.status === "completed"
+                                            ? "Update Complete"
+                                            : updateProgress?.status === "validated"
+                                                ? "Val. Complete"
+                                                : updateProgress?.status === "validating"
+                                                    ? "Validating"
+                                                    : "Updating"}
+                                    {["failed", "completed", "validated"].includes(updateProgress?.status || "") ? "" : ` ${updateProgress?.progress ?? 0}%`}
+                                </span>
+                            </div>
+                        </Button>
+                    )}
                     {/* Background upload progress button */}
                     {activeUploadId && !isBulkUploadOpen && (
                         <Button
@@ -649,6 +694,11 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     {canBulkUpload && (
                         <Button variant="outline" onClick={() => setIsBulkUploadOpen(true)}>
                             <Upload className="mr-2 h-4 w-4" /> Bulk Upload
+                        </Button>
+                    )}
+                    {canUpdate && (
+                        <Button variant="outline" onClick={() => setIsBulkUpdateOpen(true)}>
+                            <Upload className="mr-2 h-4 w-4" /> Bulk Update Prices
                         </Button>
                     )}
                     <Button variant="outline" onClick={() => setIsBarcodeModalOpen(true)} disabled={items.length === 0}>
@@ -711,6 +761,18 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     queryClient.invalidateQueries({ queryKey: ["items"] });
                     toast.success("Item list refreshed");
                     handleUploadIdChange(null);
+                }}
+            />
+
+            <ItemUpdateBulkUploadModal
+                open={isBulkUpdateOpen}
+                onOpenChange={setIsBulkUpdateOpen}
+                uploadId={activeUpdateUploadId}
+                onUploadIdChange={handleUpdateUploadIdChange}
+                onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ["items"] });
+                    toast.success("Item list refreshed");
+                    handleUpdateUploadIdChange(null);
                 }}
             />
 

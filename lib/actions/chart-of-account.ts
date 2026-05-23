@@ -125,3 +125,54 @@ export async function queueChartOfAccountsExport(
     return { status: false, message: 'Failed to connect to server' };
   }
 }
+
+export async function getSuppliers(): Promise<{ status: boolean; data: any[]; message?: string }> {
+  try {
+    const res = await authFetch(`/finance/suppliers`, {});
+    const data = res.data;
+    if (data && Array.isArray(data.data)) {
+      return { status: true, data: data.data };
+    }
+    if (Array.isArray(data)) {
+      return { status: true, data };
+    }
+    return { status: false, data: [], message: data?.message || "Failed to fetch suppliers" };
+  } catch (error) {
+    console.error("Failed to fetch suppliers:", error);
+    return { status: false, data: [], message: "Failed to fetch suppliers" };
+  }
+}
+
+export async function createBulkSubAccounts(
+  parentId: string,
+  items: Array<{ name: string; code: string; type: 'SUPPLIER' | 'CUSTOMER' | 'LOCATION'; referenceId: string }>
+): Promise<{
+  status: boolean;
+  message: string;
+  createdCount: number;
+  skippedCount: number;
+  created: any[];
+  skipped: any[];
+}> {
+  try {
+    const res = await authFetch(`/finance/chart-of-accounts/bulk-subaccounts`, {
+      method: "POST",
+      body: JSON.stringify({ parentId, items }),
+    });
+    const result = res.data;
+    if (result.status) {
+      revalidatePath("/finance/chart-of-accounts");
+    }
+    return result;
+  } catch (error) {
+    console.error("Failed to create sub-accounts in bulk:", error);
+    return {
+      status: false,
+      message: "Failed to create sub-accounts",
+      createdCount: 0,
+      skippedCount: 0,
+      created: [],
+      skipped: [],
+    };
+  }
+}
