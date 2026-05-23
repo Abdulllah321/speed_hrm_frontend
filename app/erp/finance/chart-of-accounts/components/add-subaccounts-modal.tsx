@@ -384,7 +384,7 @@ export function AddSubAccountsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col p-6 overflow-hidden bg-background border border-border shadow-2xl rounded-xl">
+      <DialogContent className="sm:max-w-4xl max-h-[85vh]">
         <DialogHeader className="pb-2 border-b border-muted">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
@@ -551,7 +551,7 @@ export function AddSubAccountsModal({
               </Tabs>
             </div>
 
-            <DialogFooter className="pt-4 border-t border-muted gap-2 sm:gap-0">
+            <DialogFooter className="pt-4 pb-10 border-t border-muted gap-2 sm:gap-0">
               <div className="flex flex-col sm:flex-row items-center justify-between w-full">
                 <div className="text-xs text-muted-foreground flex items-center gap-1.5 mb-3 sm:mb-0">
                   <Info className="h-3.5 w-3.5 shrink-0 text-muted-foreground/80" />

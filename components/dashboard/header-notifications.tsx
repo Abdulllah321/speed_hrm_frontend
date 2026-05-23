@@ -302,6 +302,26 @@ export function HeaderNotifications() {
       return;
     }
 
+    // trial-balance-export.ready
+    if (n.actionType === "trial-balance-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/finance/reports/trial-balance/export/${jobId}/download`,
+            `trial-balance-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Trial Balance export download failed:", e);
+      }
+      return;
+    }
+
     const route = getActionRoute(n);
     if (route) router.push(route);
   }, [handleMarkRead, getActionRoute, router]);

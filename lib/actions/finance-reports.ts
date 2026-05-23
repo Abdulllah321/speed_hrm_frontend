@@ -15,7 +15,9 @@ export interface TrialBalanceRow {
   transactionCredit: number;
   closingDebit: number;
   closingCredit: number;
-  parent?: { code: string; name: string } | null;
+  isTagAccount?: boolean;
+  parentId?: string | null;
+  level?: number;
 }
 
 export interface TrialBalanceResult {
@@ -104,9 +106,32 @@ function buildQuery(params: Record<string, string | undefined>) {
   return q ? `?${q}` : "";
 }
 
-export async function getTrialBalance(from?: string, to?: string): Promise<{ status: boolean; data?: TrialBalanceResult; message?: string }> {
+export async function getTrialBalance(from?: string, to?: string, includeTagAccounts?: boolean): Promise<{ status: boolean; data?: TrialBalanceResult; message?: string }> {
   try {
-    const res = await authFetch(`/finance/reports/trial-balance${buildQuery({ from, to })}`, {});
+    const res = await authFetch(`/finance/reports/trial-balance${buildQuery({ from, to, includeTagAccounts: includeTagAccounts ? 'true' : undefined })}`, {});
+    return res.data;
+  } catch (e: any) {
+    return { status: false, message: e.message };
+  }
+}
+
+export async function queueTrialBalanceExport(params?: {
+  from?: string;
+  to?: string;
+  includeTagAccounts?: boolean;
+  reportType?: 'OPENING' | 'CLOSING' | 'DETAILED';
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+  try {
+    const { from, to, includeTagAccounts, reportType } = params ?? {};
+    const res = await authFetch(
+      `/finance/reports/trial-balance/export/queue${buildQuery({
+        from,
+        to,
+        includeTagAccounts: includeTagAccounts ? 'true' : undefined,
+        reportType,
+      })}`,
+      { method: 'POST' }
+    );
     return res.data;
   } catch (e: any) {
     return { status: false, message: e.message };
