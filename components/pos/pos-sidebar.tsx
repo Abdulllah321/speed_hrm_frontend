@@ -31,7 +31,7 @@ import {
     PauseCircle,
     BookOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, COMPANY_NAME } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
 
 const posMenuGroups = [
@@ -93,7 +93,7 @@ export function PosSidebar() {
                         </div>
                         <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
                             <span className="font-bold text-base leading-tight text-sidebar-foreground">
-                                Speed Pvt. Ltd
+                                {COMPANY_NAME}
                             </span>
                             <span className="text-xs text-sidebar-foreground/60 font-medium">
                                 POS Terminal

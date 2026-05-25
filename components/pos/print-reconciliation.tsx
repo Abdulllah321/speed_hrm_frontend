@@ -58,7 +58,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto rounded-3xl p-6 md:p-8 font-inter">
+            <DialogContent className="!w-full !max-w-4xl">
                 <DialogHeader className="border-b border-border pb-4 mb-4">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">

@@ -23,7 +23,7 @@ import {
   Loader2, AlertCircle, Eye, EyeOff, Monitor, ShieldCheck,
   Wifi, WifiOff, Building2, ArrowLeft, Store, CheckCircle2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, COMPANY_NAME } from "@/lib/utils";
 import { buildSubdomainUrl } from "@/lib/navigation";
 import { posLoginClient, getGlobalPosContext, adminFetchLocationsClient } from "@/lib/client-auth";
 import { setPosTerminalAction } from "@/lib/actions/pos";
@@ -300,7 +300,7 @@ export default function DesktopLoginPage() {
         </div>
       </div>
       <div className="text-center space-y-1">
-        <p className="font-semibold text-foreground">Speed Pvt. Limited POS</p>
+        <p className="font-semibold text-foreground">{COMPANY_NAME} POS</p>
         <p className="text-sm text-muted-foreground">Verifying your session...</p>
       </div>
     </div>

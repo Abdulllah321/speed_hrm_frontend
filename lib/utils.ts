@@ -89,3 +89,5 @@ export function formatDate(date: string | Date): string {
     day: 'numeric',
   }).format(d);
 }
+
+export const COMPANY_NAME = "Demo Company";

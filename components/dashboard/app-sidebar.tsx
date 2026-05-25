@@ -30,7 +30,7 @@ import {
   masterMenuData,
   filterMenuByPermissions,
 } from "./sidebar-menu-data";
-import { cn } from "@/lib/utils";
+import { cn, COMPANY_NAME } from "@/lib/utils";
 import { getCurrentSubdomain } from "@/lib/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useEnvironment } from "@/components/providers/environment-provider";
@@ -668,7 +668,7 @@ export function AppSidebar({
           <div className="flex items-center gap-3 px-2 justify-center group-data-[collapsible=icon]:justify-center">
             <div className="flex items-center justify-center size-10 aspect-square rounded-xl bg-white text-primary shadow-sm group-data-[collapsible=icon]:rounded-lg transition-all duration-200">
               <Image
-                src={"/image.png"}
+                src={"/logo.png"}
                 alt="Logo"
                 width={30}
                 height={30}
@@ -677,7 +677,7 @@ export function AppSidebar({
               </div>
             <div className="flex flex-col group-data-[collapsible=icon]:hidden transition-opacity duration-200">
               <span className="font-bold text-base leading-tight text-sidebar-foreground">
-                Speed Pvt. Limited
+                {COMPANY_NAME}
               </span>
               <span className="text-xs text-sidebar-foreground/60 font-medium">
                 {logoLabel}
