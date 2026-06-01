@@ -14,6 +14,38 @@ import { Printer, ArrowLeft, Building2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 
+export function numberToWords(amount: number): string {
+    const a = [
+        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", 
+        "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const b = [
+        "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"
+    ];
+
+    const inWords = (num: number): string => {
+        let n = Math.floor(num);
+        if (n === 0) return "Zero";
+        
+        const convert = (n: number): string => {
+            if (n < 20) return a[n];
+            if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? "-" + a[n % 10] : "");
+            if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " " + convert(n % 100) : "");
+            if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 !== 0 ? " " + convert(n % 1000) : "");
+            if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 !== 0 ? " " + convert(n % 100000) : "");
+            return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 !== 0 ? " " + convert(n % 10000000) : "");
+        };
+        
+        return convert(n) + " Only";
+    };
+
+    return `Rs. ${inWords(amount)}.`;
+}
+
+function fmt(n: number) {
+  return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const [order, setOrder] = useState<PurchaseOrder | null>(null);
@@ -56,16 +88,16 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                         visibility: hidden;
                     }
 
-                    /* Make the print section visible and position it fixed to cover everything */
+                    /* Make the print section visible and position it absolute to allow scrolling/multiple pages */
                     #print-section {
                         visibility: visible;
-                        position: fixed;
+                        position: absolute;
                         top: 0;
                         left: 0;
-                        width: 100vw;
-                        height: 100vh;
+                        width: 100%;
+                        height: auto;
                         margin: 0;
-                        padding: 20px;
+                        padding: 0;
                         background: white;
                         z-index: 9999;
                     }
@@ -214,131 +246,135 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
 
             {/* Professional Print View - Hidden on Screen */}
             <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
-                <div className="max-w-4xl mx-auto border-none shadow-none">
+                <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-8 print:max-w-none box-border">
+                    {/* Header */}
+                    <div className="flex justify-between mb-6 gap-4 items-start">
+                        {/* Logo */}
+                        <div className="w-[20%] flex flex-col items-start justify-center">
+                           <img src="/image.png" alt="Logo" className="w-32 object-contain" />
+                        </div>
+                        
+                        {/* Title */}
+                        <div className="w-[35%] flex flex-col justify-center">
+                          <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+                            Purchase Order
+                          </div>
+                        </div>
 
-                    {/* Header Section */}
-                    <div className="p-8 border-b">
-                        <div className="flex justify-between items-start">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-primary font-bold text-2xl mb-2">
-                                    <Building2 className="h-8 w-8" />
-                                    <span>Speed Limit ERP</span>
-                                </div>
-                                <p className="text-sm text-muted-foreground">123 Business Avenue</p>
-                                <p className="text-sm text-muted-foreground">Karachi, Pakistan</p>
-                                <p className="text-sm text-muted-foreground">Phone: +92 300 1234567</p>
-                                <p className="text-sm text-muted-foreground">Email: procurement@speedlimit.com</p>
-                            </div>
-                            <div className="text-right">
-                                <h1 className="text-3xl font-bold text-gray-900 mb-2">PURCHASE ORDER</h1>
-                                <div className="space-y-1">
-                                    <p className="text-sm"><span className="font-semibold">PO Number:</span> {order.poNumber}</p>
-                                    <p className="text-sm"><span className="font-semibold">Date:</span> {new Date(order.orderDate).toLocaleDateString()}</p>
-                                    <div className="mt-2">
-                                        <Badge variant={order.status === 'OPEN' ? 'default' : 'secondary'} className="text-sm px-3 py-0.5 print:border print:border-gray-300 print:text-black">
-                                            {order.status}
-                                        </Badge>
-                                    </div>
-                                </div>
-                            </div>
+                        {/* Details Box */}
+                        <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
+                           <div className="flex justify-between mb-2">
+                             <span className="font-bold">PO Number:</span>
+                             <span className="font-bold">{order.poNumber}</span>
+                           </div>
+                           <div className="flex justify-between">
+                             <div className="flex gap-2">
+                               <span className="font-bold">Date:</span>
+                               <span>{new Date(order.orderDate).toLocaleDateString('en-GB')}</span>
+                             </div>
+                           </div>
                         </div>
                     </div>
 
-                    {/* Vendor & Ship To Section */}
-                    <div className="grid grid-cols-2 gap-8 p-8 border-b">
-                        <div>
-                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Vendor</h3>
-                            <div className="text-sm space-y-1">
-                                <p className="font-bold text-gray-900 text-lg">{order.vendor?.name}</p>
-                                <p className="text-muted-foreground">Code: {order.vendor?.code}</p>
-                                <p className="text-muted-foreground">{order.vendor?.email || 'No Email Provided'}</p>
-                                <p className="text-muted-foreground">{order.vendor?.contactNo || 'No Phone Provided'}</p>
-                            </div>
+                    {/* Vendor / Ship To Box */}
+                    <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
+                        <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                            <div className="font-bold border-b border-gray-300 mb-2 pb-1">Vendor Details</div>
+                            <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{order.vendor?.name}</span></div>
+                            <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Code:</span> <span>{order.vendor?.code}</span></div>
+                            <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Email:</span> <span>{order.vendor?.email || 'N/A'}</span></div>
+                            <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Contact:</span> <span>{order.vendor?.contactNo || 'N/A'}</span></div>
                         </div>
-                        <div>
-                            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Ship To</h3>
-                            <div className="text-sm space-y-1">
-                                <p className="font-bold text-gray-900">Speed Limit Warehouse</p>
-                                <p className="text-muted-foreground">Main Warehouse, Plot #45</p>
-                                <p className="text-muted-foreground">Industrial Area</p>
-                                <p className="text-muted-foreground">Karachi, Pakistan</p>
-                            </div>
+                        <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                            <div className="font-bold border-b border-gray-300 mb-2 pb-1">Ship To</div>
+                            <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit Warehouse</span></div>
+                            <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Main Warehouse, Plot #45, Industrial Area, Karachi, Pakistan</span></div>
                         </div>
                     </div>
 
-                    {/* Items Table */}
-                    <div className="p-8">
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-gray-50 border-t border-b border-gray-200">
-                                    <TableHead className="font-bold text-gray-900">Item Details</TableHead>
-                                    <TableHead className="text-right font-bold text-gray-900">Qty</TableHead>
-                                    <TableHead className="text-right font-bold text-gray-900">Unit Price</TableHead>
-                                    <TableHead className="text-right font-bold text-gray-900">Tax</TableHead>
-                                    <TableHead className="text-right font-bold text-gray-900">Total</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {order.items && order.items.length > 0 ? (
-                                    order.items.map((item) => (
-                                        <TableRow key={item.id} className="hover:bg-transparent">
-                                            <TableCell>
-                                                <div className="font-medium text-gray-900">{item.item?.itemId || item.itemId}</div>
-                                                <div className="text-sm text-muted-foreground">{item.description || '-'}</div>
-                                            </TableCell>
-                                            <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
-                                            <TableCell className="text-right font-mono">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
-                                            <TableCell className="text-right font-mono">{item.taxPercent}%</TableCell>
-                                            <TableCell className="text-right font-mono font-medium">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                                            No items found for this purchase order
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                    {/* Table */}
+                    <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
+                        <thead>
+                          <tr className="border-y-2 border-black">
+                            <th className="py-2 pr-2 text-left font-bold w-[40%]">Item Details</th>
+                            <th className="py-2 pr-2 text-right font-bold w-[15%]">Qty</th>
+                            <th className="py-2 pr-2 text-right font-bold w-[15%]">Unit Price</th>
+                            <th className="py-2 pr-2 text-right font-bold w-[10%]">Tax %</th>
+                            <th className="py-2 text-right font-bold w-[20%]">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {order.items && order.items.length > 0 ? (
+                            order.items.map((item, i) => (
+                              <tr key={item.id || i} className="border-b border-gray-300 align-top">
+                                <td className="py-2 pr-2 overflow-hidden text-ellipsis">
+                                  <div className="font-medium">{item.item?.itemId || item.itemId}</div>
+                                  <div className="text-gray-700">{item.description || '-'}</div>
+                                </td>
+                                <td className="py-2 pr-2 text-right tabular-nums">
+                                  {parseFloat(item.quantity).toFixed(2)}
+                                </td>
+                                <td className="py-2 pr-2 text-right tabular-nums">
+                                  {fmt(Number(item.unitPrice))}
+                                </td>
+                                <td className="py-2 pr-2 text-right tabular-nums">
+                                  {item.taxPercent}%
+                                </td>
+                                <td className="py-2 text-right tabular-nums">
+                                  {fmt(Number(item.lineTotal))}
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                                <td colSpan={5} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                                    No items found for this purchase order
+                                </td>
+                            </tr>
+                          )}
+                        </tbody>
+                    </table>
 
                     {/* Totals Section */}
-                    <div className="p-8 bg-gray-50 print:bg-transparent">
-                        <div className="flex justify-end">
-                            <div className="w-64 space-y-3">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Subtotal:</span>
-                                    <span className="font-mono font-medium">{parseFloat(order.subtotal || '0').toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Tax Total:</span>
-                                    <span className="font-mono font-medium">{parseFloat(order.taxAmount || '0').toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-muted-foreground">Discount:</span>
-                                    <span className="font-mono font-medium text-green-600">-{parseFloat(order.discountAmount || '0').toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between border-t border-gray-300 pt-3 mt-3">
-                                    <span className="font-bold text-lg">Total:</span>
-                                    <span className="font-bold text-lg font-mono">{parseFloat(order.totalAmount || '0').toFixed(2)}</span>
-                                </div>
+                    <div className="flex border-b border-black pb-2 items-end">
+                        <div className="w-[55%] pt-4">
+                            <div className="flex gap-2 font-bold text-xs sm:text-[13px]">
+                                <span className="whitespace-nowrap">In Words</span>
+                                <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(order.totalAmount || 0))}</span>
+                            </div>
+                        </div>
+                        <div className="w-[25%] pr-2 text-right">
+                            <div className="text-xs sm:text-[13px] text-gray-700">Subtotal:</div>
+                            <div className="text-xs sm:text-[13px] text-gray-700">Tax:</div>
+                            <div className="text-xs sm:text-[13px] text-gray-700">Discount:</div>
+                            <div className="font-bold text-xs sm:text-[13px] mt-1">Total:</div>
+                        </div>
+                        <div className="w-[20%] text-right">
+                            <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">{fmt(Number(order.subtotal || 0))}</div>
+                            <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">{fmt(Number(order.taxAmount || 0))}</div>
+                            <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">-{fmt(Number(order.discountAmount || 0))}</div>
+                            <div className="ml-auto border-t border-black pb-0.5 mt-1" style={{ borderBottom: '3px double black' }}>
+                                <span className="tabular-nums font-bold text-xs sm:text-[13px] block pt-0.5">{fmt(Number(order.totalAmount || 0))}</span>
                             </div>
                         </div>
                     </div>
 
-                    {/* Footer / Notes / Signature */}
-                    <div className="p-8 border-t grid grid-cols-2 gap-8">
-                        <div className="space-y-2">
-                            <h4 className="font-semibold text-sm">Notes & Instructions:</h4>
-                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                                {order.notes || "1. Please quote PO number on all correspondence.\n2. Goods must be delivered within 7 days.\n3. Payment terms: Net 30 days."}
-                            </p>
+                    {/* Remarks */}
+                    <div className="mt-4 mb-8">
+                        <div className="font-bold text-xs sm:text-[14px]">Notes & Instructions</div>
+                        <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{order.notes || "1. Please quote PO number on all correspondence.\n2. Goods must be delivered within 7 days.\n3. Payment terms: Net 30 days."}</p>
+                    </div>
+
+                    {/* Signatures */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
+                            <span className="text-[10px] sm:text-[11px] font-bold text-center">PREPARED BY</span>
                         </div>
-                        <div className="pt-8 md:pt-0">
-                            <div className="h-16 border-b border-black mb-2"></div>
-                            <p className="text-center text-sm font-medium">Authorized Signature</p>
-                            <p className="text-center text-xs text-muted-foreground mt-1">Innovative Network Pvt Ltd</p>
+                        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
+                            <span className="text-[10px] sm:text-[11px] font-bold text-center">CHECKED BY</span>
+                        </div>
+                        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
+                            <span className="text-[10px] sm:text-[11px] font-bold text-center">APPROVED BY</span>
                         </div>
                     </div>
                 </div>
