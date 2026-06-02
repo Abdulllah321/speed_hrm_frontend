@@ -306,6 +306,292 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
         return num.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
+    const renderThermalContent = (isPrint: boolean = false) => {
+        const totalIssuedSubtotal = issuedExchangeSubtotal + issuedCreditSubtotal + issuedGiftSubtotal;
+
+        const textSizeClass = isPrint ? "text-[8px]" : "text-[9px]";
+        const headerTitleSize = isPrint ? "text-[10px]" : "text-[11px]";
+        const documentTitleSize = isPrint ? "text-[11px]" : "text-[12px]";
+
+        return (
+            <div className={cn("text-black uppercase leading-relaxed", isPrint ? "font-mono" : "font-mono")}>
+                {/* Header */}
+                <div className="text-center space-y-1 mb-4">
+                    <h3 className="text-xs font-bold tracking-tight">{activeReport.companyName}</h3>
+                    <p className={textSizeClass}>{activeReport.locationName}</p>
+                    <div className="border-y border-dashed border-black/40 py-1 my-1">
+                        <p className={cn("font-bold tracking-widest", documentTitleSize)}>DETAILED RECONCILIATION</p>
+                        <p className={textSizeClass}>{activeReport.dateRange}</p>
+                    </div>
+                    <div className="flex justify-between text-[7.5px] font-bold tracking-tight">
+                        <span>DOC ID: #{activeReport.documentNumber}</span>
+                        <span>DATE: {new Date().toLocaleDateString('en-GB')}</span>
+                    </div>
+                </div>
+
+                {/* Session metadata */}
+                <div className={cn("space-y-0.5 border-b border-dashed border-black/20 pb-2 mb-2", textSizeClass)}>
+                    <p><strong>TERMINAL:</strong> {useSample ? "T-01 (NIKE DOLMEN)" : `${data?.session?.terminal?.terminalCode} (${data?.session?.terminal?.name})`}</p>
+                    <p><strong>CASHIER:</strong> {useSample ? "SUFYAN AHMED" : data?.session?.cashier?.fullName}</p>
+                    {data?.session?.openedAt && (
+                        <p><strong>OPENED:</strong> {new Date(data.session.openedAt).toLocaleString()}</p>
+                    )}
+                    {data?.session?.closedAt && (
+                        <p><strong>CLOSED:</strong> {new Date(data.session.closedAt).toLocaleString()}</p>
+                    )}
+                </div>
+
+                {/* Section: Credit | Debit Cards */}
+                <div className="mb-3">
+                    <div className={cn("font-bold border-b border-dashed border-black/30 pb-0.5 mb-1", headerTitleSize)}>
+                        CREDIT | DEBIT CARDS
+                    </div>
+                    <div className={cn("flex font-bold border-b border-dashed border-black/10 pb-0.5 mb-1", textSizeClass)}>
+                        <span className="w-[45%] text-left">BANK</span>
+                        <span className="w-[22%] text-right">AMOUNT</span>
+                        <span className="w-[13%] text-right">RATE%</span>
+                        <span className="w-[20%] text-right">COMM</span>
+                    </div>
+                    <div className={cn("space-y-0.5", textSizeClass)}>
+                        {activeReport.cardPayments.map((p, i) => (
+                            <div key={`c-pay-${i}`} className="flex justify-between">
+                                <span className="w-[45%] truncate text-left">{p.bank}</span>
+                                <span className="w-[22%] text-right">{formatVal(p.amount)}</span>
+                                <span className="w-[13%] text-right">{formatVal(p.rate, true)}</span>
+                                <span className="w-[20%] text-right">{formatVal(p.commission)}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className={cn("flex justify-between border-t border-dashed border-black/20 pt-1 mt-1 font-bold", textSizeClass)}>
+                        <span className="w-[45%] text-left">SUBTOTAL:</span>
+                        <span className="w-[22%] text-right">{formatVal(cardPaymentsAmountSum)}</span>
+                        <span className="w-[13%] text-right"></span>
+                        <span className="w-[20%] text-right">{formatVal(cardPaymentsCommSum)}</span>
+                    </div>
+                </div>
+
+                {/* Section: Credit Card - Gift Vouchers Issued */}
+                <div className="mb-3">
+                    <div className={cn("font-bold border-b border-dashed border-black/30 pb-0.5 mb-1", headerTitleSize)}>
+                        CARDS - GIFT VOUCHERS
+                    </div>
+                    {activeReport.cardGiftVouchers.length > 0 ? (
+                        <>
+                            <div className={cn("flex font-bold border-b border-dashed border-black/10 pb-0.5 mb-1", textSizeClass)}>
+                                <span className="w-[45%] text-left">BANK</span>
+                                <span className="w-[22%] text-right">AMOUNT</span>
+                                <span className="w-[13%] text-right">RATE%</span>
+                                <span className="w-[20%] text-right">COMM</span>
+                            </div>
+                            <div className={cn("space-y-0.5", textSizeClass)}>
+                                {activeReport.cardGiftVouchers.map((p, i) => (
+                                    <div key={`c-gv-${i}`} className="flex justify-between">
+                                        <span className="w-[45%] truncate text-left">{p.bank}</span>
+                                        <span className="w-[22%] text-right">{formatVal(p.amount)}</span>
+                                        <span className="w-[13%] text-right">{formatVal(p.rate, true)}</span>
+                                        <span className="w-[20%] text-right">{formatVal(p.commission)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className={cn("flex justify-between border-t border-dashed border-black/20 pt-1 mt-1 font-bold", textSizeClass)}>
+                                <span className="w-[45%] text-left">SUBTOTAL:</span>
+                                <span className="w-[22%] text-right">{formatVal(cardGiftVouchersAmountSum)}</span>
+                                <span className="w-[13%] text-right"></span>
+                                <span className="w-[20%] text-right">{formatVal(cardGiftVouchersCommSum)}</span>
+                            </div>
+                        </>
+                    ) : (
+                        <div className={cn("italic text-gray-500", textSizeClass)}>NO VOUCHERS ISSUED ON CARDS</div>
+                    )}
+                </div>
+
+                {/* Total Cards Section Row */}
+                <div className={cn("flex justify-between font-black border-y border-black py-1 my-2", headerTitleSize)}>
+                    <span>TOTAL CARDS:</span>
+                    <span>{formatVal(totalCardsAmount)}</span>
+                </div>
+
+                {/* Section: Received */}
+                <div className="mb-3">
+                    <div className={cn("font-bold border-b border-dashed border-black/30 pb-0.5 mb-1", headerTitleSize)}>
+                        RECEIVED PAYMENTS
+                    </div>
+                    <div className={cn("space-y-1.5", textSizeClass)}>
+                        {activeReport.receivedVouchers.map((v, i) => (
+                            <div key={`rec-v-${i}`} className="flex justify-between items-start">
+                                <div className="flex flex-col w-[65%]">
+                                    <span className="font-semibold">{v.type}</span>
+                                    {v.from && <span className="text-[7.5px] text-gray-600 font-mono font-bold">FROM: {v.from}</span>}
+                                </div>
+                                <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className={cn("flex justify-between border-t border-dashed border-black/20 pt-1 mt-1.5 font-bold", textSizeClass)}>
+                        <span>RECEIVED SUBTOTAL:</span>
+                        <span>{formatVal(receivedSubtotal)}</span>
+                    </div>
+                </div>
+
+                {/* Section: Receivable */}
+                <div className="mb-3">
+                    <div className={cn("font-bold border-b border-dashed border-black/30 pb-0.5 mb-1", headerTitleSize)}>
+                        RECEIVABLES
+                    </div>
+                    <div className={cn("space-y-1.5", textSizeClass)}>
+                        {activeReport.receivables.map((r, i) => (
+                            <div key={`receiv-${i}`} className="flex justify-between items-start">
+                                <span className="font-semibold">{r.description}</span>
+                                <span className="font-bold">{formatVal(r.amount)}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className={cn("flex justify-between border-t border-dashed border-black/20 pt-1 mt-1.5 font-bold", textSizeClass)}>
+                        <span>RECEIVABLE SUBTOTAL:</span>
+                        <span>{formatVal(receivablesSubtotal)}</span>
+                    </div>
+                </div>
+
+                {/* Section: Issued */}
+                <div className="mb-3">
+                    <div className={cn("font-bold border-b border-dashed border-black/30 pb-0.5 mb-1", headerTitleSize)}>
+                        ISSUED VOUCHERS
+                    </div>
+                    {totalIssuedSubtotal > 0 ? (
+                        <>
+                            <div className={cn("space-y-1.5", textSizeClass)}>
+                                {/* Exchange & Claims */}
+                                {activeReport.issuedVouchers.exchangeAndClaims.map((v, i) => (
+                                    <div key={`iss-ec-${i}`} className="flex justify-between items-start">
+                                        <div className="flex flex-col w-[65%]">
+                                            <span>{v.type}</span>
+                                            {v.from && <span className="text-[7.5px] text-gray-600 font-mono font-bold">FROM: {v.from}</span>}
+                                        </div>
+                                        <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
+                                    </div>
+                                ))}
+                                {/* Credit Vouchers */}
+                                {activeReport.issuedVouchers.creditVouchers.map((v, i) => (
+                                    <div key={`iss-cv-${i}`} className="flex justify-between items-start">
+                                        <div className="flex flex-col w-[65%]">
+                                            <span>{v.type}</span>
+                                            <span className="text-[7.5px] text-gray-600 font-mono font-bold">FROM: {v.from || "-"} / TO: {v.to || "-"}</span>
+                                        </div>
+                                        <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
+                                    </div>
+                                ))}
+                                {/* Gift Vouchers */}
+                                {activeReport.issuedVouchers.giftVouchers.map((v, i) => (
+                                    <div key={`iss-gv-${i}`} className="flex justify-between items-start">
+                                        <span className="w-[65%]">{v.type}</span>
+                                        <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className={cn("flex justify-between border-t border-dashed border-black/20 pt-1 mt-1.5 font-bold", textSizeClass)}>
+                                <span>ISSUED SUBTOTAL:</span>
+                                <span>{formatVal(totalIssuedSubtotal)}</span>
+                            </div>
+                        </>
+                    ) : (
+                        <div className={cn("italic text-gray-500", textSizeClass)}>NO VOUCHERS ISSUED</div>
+                    )}
+                </div>
+
+                {/* Section: FBR POS Service Charges */}
+                <div className="mb-3">
+                    <div className={cn("font-bold border-b border-dashed border-black/30 pb-0.5 mb-1", headerTitleSize)}>
+                        FBR POS SERVICE CHARGES
+                    </div>
+                    <div className={cn("space-y-0.5", textSizeClass)}>
+                        {activeReport.fbrCharges.map((f, i) => (
+                            <div key={`fbr-ch-${i}`} className="flex justify-between">
+                                <span>{f.type}</span>
+                                <span className="font-semibold">{formatVal(f.amount)}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className={cn("flex justify-between border-t border-dashed border-black/20 pt-1 mt-1 font-bold", textSizeClass)}>
+                        <span>FBR SUBTOTAL:</span>
+                        <span>{formatVal(fbrSubtotal)}</span>
+                    </div>
+                </div>
+
+                {/* Financial Summary */}
+                <div className="border-t border-dashed border-black/30 my-3" />
+                <div className="space-y-1">
+                    <div className={cn("flex justify-between font-bold", textSizeClass)}>
+                        <span>GROSS REVENUE:</span>
+                        <span>{formatVal(activeReport.financials.sale)}</span>
+                    </div>
+                    <div className={cn("flex justify-between text-red-600 font-bold", textSizeClass)}>
+                        <span>RETURNS / CLAIMS:</span>
+                        <span>-{formatVal(activeReport.financials.salesReturn)}</span>
+                    </div>
+                    <div className={cn("flex justify-between font-extrabold border-y border-dashed border-black/50 py-1 text-black", headerTitleSize)}>
+                        <span>NET SALES:</span>
+                        <span>{formatVal(activeReport.financials.netSales)}</span>
+                    </div>
+                </div>
+
+                {/* Cash Breakdown & Expected Drawer */}
+                <div className="border-t border-dashed border-black/30 my-3" />
+                <div className="space-y-1">
+                    <div className={cn("font-bold mb-1", headerTitleSize)}>CASH FLOW DETAILS</div>
+                    <div className={cn("flex justify-between pl-2", textSizeClass)}>
+                        <span>STARTING FLOAT:</span>
+                        <span>{useSample ? "5,000.00" : formatCurrency(data?.session?.openingFloat)}</span>
+                    </div>
+                    <div className={cn("flex justify-between pl-2", textSizeClass)}>
+                        <span>NET CASH SALES:</span>
+                        <span>{formatVal(activeReport.cashBreakdown.sale)}</span>
+                    </div>
+                    <div className={cn("flex justify-between pl-2", textSizeClass)}>
+                        <span>CASH GIFT VOUCHERS:</span>
+                        <span>{formatVal(activeReport.cashBreakdown.giftVouchers)}</span>
+                    </div>
+                    <div className={cn("flex justify-between pl-2 font-bold border-t border-dashed border-black/10 pt-0.5", textSizeClass)}>
+                        <span>TOTAL CASH FLOW:</span>
+                        <span>{formatVal(activeReport.cashBreakdown.total)}</span>
+                    </div>
+                    <div className={cn("flex justify-between font-extrabold border-t border-dashed border-black/40 pt-1 text-black mt-1", headerTitleSize)}>
+                        <span>EXPECTED CASH IN DRAWER:</span>
+                        <span>{useSample ? "126,512.00" : formatCurrency((data?.session?.openingFloat || 0) + activeReport.cashBreakdown.total)}</span>
+                    </div>
+                </div>
+
+                {/* Card Breakdown */}
+                <div className="border-t border-dashed border-black/30 my-3" />
+                <div className="space-y-1">
+                    <div className={cn("font-bold mb-1", headerTitleSize)}>CARD SALES DETAILS</div>
+                    <div className={cn("flex justify-between pl-2", textSizeClass)}>
+                        <span>NET CARD SALES:</span>
+                        <span>{formatVal(activeReport.cardBreakdown.sale)}</span>
+                    </div>
+                    <div className={cn("flex justify-between pl-2", textSizeClass)}>
+                        <span>CARD GIFT VOUCHERS:</span>
+                        <span>{formatVal(activeReport.cardBreakdown.giftVouchers)}</span>
+                    </div>
+                    <div className={cn("flex justify-between pl-2 font-bold border-t border-dashed border-black/10 pt-0.5", textSizeClass)}>
+                        <span>TOTAL CARD PAYMENTS:</span>
+                        <span>{formatVal(activeReport.cardBreakdown.total)}</span>
+                    </div>
+                </div>
+
+                {/* Sign-off signatures */}
+                <div className="border-t border-dashed border-black/30 my-4" />
+                <div className="text-center font-bold space-y-6 mt-4">
+                    <div className="border-t border-black/30 pt-1 w-3/4 mx-auto text-[8px]">
+                        CASHIER SIGNATURE
+                    </div>
+                    <div className="border-t border-black/30 pt-1 w-3/4 mx-auto text-[8px]">
+                        MANAGER SIGNATURE
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     if (!sessionId) return null;
 
     return (
@@ -400,68 +686,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                             {layout === "thermal" ? (
                                 /* Thermal Receipt Preview Style */
                                 <div className="bg-white text-black p-5 font-mono text-[10px] shadow-2xl border border-gray-200/60 leading-relaxed rounded-md select-none">
-                                    <div className="text-center space-y-1 mb-4 uppercase">
-                                        <h3 className="text-xs font-bold tracking-tight">{activeReport.companyName}</h3>
-                                        <p className="text-[9px]">{activeReport.locationName}</p>
-                                        <div className="border-y border-dashed border-black/40 py-1 my-1">
-                                            <p className="font-bold tracking-widest">SALES RECONCILIATION</p>
-                                            <p className="text-[8px] tracking-normal mt-0.5">{activeReport.dateRange}</p>
-                                        </div>
-                                        <p className="text-[8px] text-right">Doc: #{activeReport.documentNumber}</p>
-                                    </div>
-
-                                    <div className="space-y-0.5 border-b border-dashed border-black/20 pb-2 mb-2 text-[9px]">
-                                        <p><strong>Terminal:</strong> {useSample ? "T-01 (Nike Dolmen)" : `${data?.session?.terminal?.terminalCode} (${data?.session?.terminal?.name})`}</p>
-                                        <p><strong>Cashier:</strong> {useSample ? "Sufyan Ahmed" : data?.session?.cashier?.fullName}</p>
-                                    </div>
-
-                                    {/* Standard simplified thermal layout representation */}
-                                    <div className="space-y-1 font-bold text-[9px] uppercase">
-                                        <div className="flex justify-between">
-                                            <span>Starting Float:</span>
-                                            <span>{useSample ? "5,000.00" : formatCurrency(data?.session?.openingFloat)}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Net Cash Sales:</span>
-                                            <span>{formatCurrency(activeReport.cashBreakdown.total)}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Net Card Sales:</span>
-                                            <span>{formatCurrency(activeReport.cardBreakdown.total)}</span>
-                                        </div>
-                                        <div className="flex justify-between border-t border-dashed border-black/20 pt-1 text-[10px]">
-                                            <span>Expected Drawer:</span>
-                                            <span>{useSample ? "126,512.00" : formatCurrency((data?.session?.openingFloat || 0) + activeReport.cashBreakdown.total)}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="border-t border-dashed border-black/20 my-3" />
-
-                                    <div className="space-y-1 text-[9px]">
-                                        <div className="flex justify-between font-bold">
-                                            <span>GROSS REVENUE:</span>
-                                            <span>{formatVal(activeReport.financials.sale)}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>RETURNS / CLAIMS:</span>
-                                            <span>-{formatVal(activeReport.financials.salesReturn)}</span>
-                                        </div>
-                                        <div className="flex justify-between font-extrabold border-t border-dashed border-black/40 pt-0.5">
-                                            <span>NET SALES:</span>
-                                            <span>{formatVal(activeReport.financials.netSales)}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="border-t border-dashed border-black/20 my-4" />
-
-                                    <div className="text-center font-bold space-y-6 mt-4 uppercase">
-                                        <div className="border-t border-black/30 pt-1 w-3/4 mx-auto text-[8px]">
-                                            Cashier Signature
-                                        </div>
-                                        <div className="border-t border-black/30 pt-1 w-3/4 mx-auto text-[8px]">
-                                            Manager Signature
-                                        </div>
-                                    </div>
+                                    {renderThermalContent(false)}
                                 </div>
                             ) : (
                                 /* High-Fidelity 3D Page Shadow A4 Ledger */
@@ -840,65 +1065,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                 <div id="reconciliation-print-container" className="hidden">
                     {/* Print Layout: Thermal */}
                     <div className="print-layout-thermal font-mono text-[9px] text-black">
-                        <div className="text-center space-y-0.5 mb-3 uppercase">
-                            <h3 className="text-xs font-bold tracking-tight">{activeReport.companyName}</h3>
-                            <p className="text-[8px]">{activeReport.locationName}</p>
-                            <p className="text-[9px] border-y border-dashed border-black/40 py-0.5 my-1 font-bold">
-                                RECONCILIATION SUMMARY
-                            </p>
-                            <p className="text-[8px]">{activeReport.dateRange}</p>
-                        </div>
-
-                        <div className="space-y-0.5 border-b border-dashed border-black/20 pb-2 mb-2 text-[8px]">
-                            <p>TERMINAL: {useSample ? "T-01" : `${data?.session?.terminal?.terminalCode} (${data?.session?.terminal?.name})`}</p>
-                            <p>CASHIER: {useSample ? "Sufyan Ahmed" : data?.session?.cashier?.fullName}</p>
-                            <p>DOC ID: {activeReport.documentNumber}</p>
-                        </div>
-
-                        <div className="space-y-0.5 font-bold uppercase text-[8px]">
-                            <div className="flex justify-between">
-                                <span>Starting Float:</span>
-                                <span>{useSample ? "5,000.00" : formatCurrency(data?.session?.openingFloat)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Cash Sales:</span>
-                                <span>{formatCurrency(activeReport.cashBreakdown.total)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Card Sales:</span>
-                                <span>{formatCurrency(activeReport.cardBreakdown.total)}</span>
-                            </div>
-                            <div className="flex justify-between border-t border-dashed border-black/20 pt-0.5 text-[9px]">
-                                <span>Expected Cash:</span>
-                                <span>{useSample ? "126,512.00" : formatCurrency((data?.session?.openingFloat || 0) + activeReport.cashBreakdown.total)}</span>
-                            </div>
-                        </div>
-
-                        <div className="border-t border-dashed border-black/20 my-2" />
-
-                        <div className="space-y-0.5 text-[8px]">
-                            <div className="flex justify-between font-bold">
-                                <span>GROSS SALES:</span>
-                                <span>{formatVal(activeReport.financials.sale)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>RETURNS:</span>
-                                <span>-{formatVal(activeReport.financials.salesReturn)}</span>
-                            </div>
-                            <div className="flex justify-between font-extrabold border-t border-dashed border-black/30 pt-0.5">
-                                <span>NET SALES:</span>
-                                <span>{formatVal(activeReport.financials.netSales)}</span>
-                            </div>
-                        </div>
-
-                        <div className="text-center font-bold space-y-5 mt-6 uppercase">
-                            <div className="border-t border-black/45 pt-0.5 w-3/4 mx-auto text-[7px]">
-                                Cashier Signature
-                            </div>
-                            <div className="border-t border-black/45 pt-0.5 w-3/4 mx-auto text-[7px]">
-                                Manager Signature
-                            </div>
-                        </div>
+                        {renderThermalContent(true)}
                     </div>
 
                     {/* Print Layout: Desktop (High Fidelity A4 Ledger) */}
