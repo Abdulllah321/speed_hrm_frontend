@@ -121,7 +121,11 @@ export function LocationList({
         actionText={showAddAction ? "Add Location" : undefined}
         toggleAction={showAddAction ? handleToggle : undefined}
         newItemId={newItemId}
-        searchFields={[{ key: "name", label: "Name" }]}
+        searchFields={[
+          { key: "name", label: "Name" },
+          { key: "code", label: "Code" },
+          { key: "city.name", label: "City" }
+        ]}
         onMultiDelete={handleMultiDelete}
         onBulkEdit={handleBulkEdit}
         canBulkEdit={canBulkEdit}
