@@ -42,7 +42,7 @@ import { EllipsisIcon, Loader2, Pencil, Trash2, Monitor } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Location, updateLocations, deleteLocation } from "@/lib/actions/location";
+import { Location, updateLocations, deleteLocation, updateLocationOtherInfo } from "@/lib/actions/location";
 import { getCities, City } from "@/lib/actions/city";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ManagePosModal } from "./pos-management-modal";
@@ -175,6 +175,7 @@ function RowActions({ row }: RowActionsProps) {
   // Local state for toggles to handle UI conditionally
   const [geoFenceEnabled, setGeoFenceEnabled] = useState(location.geoFenceEnabled || false);
   const [ipWhitelistEnabled, setIpWhitelistEnabled] = useState(location.ipWhitelistEnabled || false);
+  const [fbrEnabled, setFbrEnabled] = useState(location.fbrEnabled || false);
 
   const canEdit = hasPermission("master.location.update");
   const canDelete = hasPermission("master.location.delete");
@@ -195,6 +196,7 @@ function RowActions({ row }: RowActionsProps) {
     fetchCities();
     setGeoFenceEnabled(location.geoFenceEnabled || false);
     setIpWhitelistEnabled(location.ipWhitelistEnabled || false);
+    setFbrEnabled(location.fbrEnabled || false);
     setEditDialog(true);
   };
 
@@ -203,23 +205,44 @@ function RowActions({ row }: RowActionsProps) {
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
-      const result = await updateLocations([{
+      const resGeneral = await updateLocations([{
         id: location.id,
         name: formData.get("name") as string,
         code: formData.get("code") as string,
         address: formData.get("address") as string,
         cityId: formData.get("cityId") as string,
-        geoFenceEnabled: geoFenceEnabled,
-        geoFenceRadius: geoFenceEnabled ? Number(formData.get("geoFenceRadius")) : undefined,
-        ipWhitelistEnabled: ipWhitelistEnabled,
-        ipWhitelist: ipWhitelistEnabled ? formData.get("ipWhitelist") as string : undefined,
       }]);
-      if (result.status) {
-        toast.success(result.message);
+
+      if (!resGeneral.status) {
+        toast.error(resGeneral.message || "Failed to update general info");
+        return;
+      }
+
+      const latVal = formData.get("latitude") ? Number(formData.get("latitude")) : undefined;
+      const lngVal = formData.get("longitude") ? Number(formData.get("longitude")) : undefined;
+      const radiusVal = formData.get("geoFenceRadius") ? Number(formData.get("geoFenceRadius")) : undefined;
+
+      const resOther = await updateLocationOtherInfo(location.id, {
+        phone: formData.get("phone") as string,
+        latitude: latVal,
+        longitude: lngVal,
+        geoFenceEnabled,
+        geoFenceRadius: radiusVal,
+        ipWhitelistEnabled,
+        ipWhitelist: formData.get("ipWhitelist") as string,
+        fbrEnabled,
+        fbrBposId: formData.get("fbrBposId") as string,
+        fbrNtn: formData.get("fbrNtn") as string,
+        fbrSellerName: formData.get("fbrSellerName") as string,
+        fbrBearerToken: formData.get("fbrBearerToken") as string,
+      });
+
+      if (resOther.status) {
+        toast.success("Location details updated successfully");
         setEditDialog(false);
         router.refresh();
       } else {
-        toast.error(result.message);
+        toast.error(resOther.message || "Failed to update additional details");
       }
     });
   };
@@ -287,9 +310,10 @@ function RowActions({ row }: RowActionsProps) {
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <Tabs defaultValue="general" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="general">General Info</TabsTrigger>
                 <TabsTrigger value="security">Security & Access</TabsTrigger>
+                <TabsTrigger value="fbr">FBR Integration</TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="space-y-4 py-4">
@@ -303,28 +327,64 @@ function RowActions({ row }: RowActionsProps) {
                     <Input id="edit-code" name="code" defaultValue={location.code} disabled={isPending} required />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-city">City</Label>
+                    <Select name="cityId" defaultValue={location.cityId || ""} disabled={isPending}>
+                      <SelectTrigger id="edit-city">
+                        <SelectValue placeholder="Select City" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cities.map((city) => (
+                          <SelectItem key={city.id} value={city.id}>
+                            {city.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-phone">Phone</Label>
+                    <Input id="edit-phone" name="phone" defaultValue={location.phone || ""} disabled={isPending} placeholder="e.g. +92 300 1234567" />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-address">Address</Label>
                   <Input id="edit-address" name="address" defaultValue={location.address || ""} disabled={isPending} />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-city">City</Label>
-                  <Select name="cityId" defaultValue={location.cityId || ""} disabled={isPending}>
-                    <SelectTrigger id="edit-city">
-                      <SelectValue placeholder="Select City" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((city) => (
-                        <SelectItem key={city.id} value={city.id}>
-                          {city.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </TabsContent>
 
               <TabsContent value="security" className="space-y-6 py-4">
+                <div className="space-y-4 border rounded-lg p-4">
+                  <Label className="text-base block">Coordinates</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-latitude">Latitude</Label>
+                      <Input
+                        id="edit-latitude"
+                        name="latitude"
+                        type="number"
+                        step="any"
+                        defaultValue={location.latitude !== null ? Number(location.latitude) : ""}
+                        placeholder="e.g. 34.0151"
+                        disabled={isPending}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-longitude">Longitude</Label>
+                      <Input
+                        id="edit-longitude"
+                        name="longitude"
+                        type="number"
+                        step="any"
+                        defaultValue={location.longitude !== null ? Number(location.longitude) : ""}
+                        placeholder="e.g. 71.5249"
+                        disabled={isPending}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-4 border rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
@@ -349,9 +409,6 @@ function RowActions({ row }: RowActionsProps) {
                         min={10}
                         className="mt-1.5 max-w-[200px]"
                       />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Requires Latitude/Longitude to be set in DB (currently backend-only).
-                      </p>
                     </div>
                   )}
                 </div>
@@ -379,6 +436,69 @@ function RowActions({ row }: RowActionsProps) {
                         placeholder="192.168.1.1, 10.0.0.1"
                         className="mt-1.5"
                       />
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="fbr" className="space-y-4 py-4">
+                <div className="space-y-4 border rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-base">FBR POS Integration</Label>
+                      <p className="text-sm text-muted-foreground">Enable FBR real-time sales reporting for this location</p>
+                    </div>
+                    <Switch
+                      checked={fbrEnabled}
+                      onCheckedChange={setFbrEnabled}
+                      disabled={isPending}
+                    />
+                  </div>
+                  {fbrEnabled && (
+                    <div className="space-y-4 pt-2 pl-2 border-l-2 border-primary/20 ml-1">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-fbr-bpos">FBR BPOS ID</Label>
+                          <Input
+                            id="edit-fbr-bpos"
+                            name="fbrBposId"
+                            defaultValue={location.fbrBposId || ""}
+                            disabled={isPending}
+                            placeholder="e.g. 123456"
+                            required={fbrEnabled}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-fbr-ntn">FBR NTN</Label>
+                          <Input
+                            id="edit-fbr-ntn"
+                            name="fbrNtn"
+                            defaultValue={location.fbrNtn || ""}
+                            disabled={isPending}
+                            placeholder="e.g. 1234567-8"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-fbr-seller">Seller Name</Label>
+                        <Input
+                          id="edit-fbr-seller"
+                          name="fbrSellerName"
+                          defaultValue={location.fbrSellerName || ""}
+                          disabled={isPending}
+                          placeholder="e.g. Speed Limit Retail"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-fbr-token">FBR Bearer Token</Label>
+                        <Input
+                          id="edit-fbr-token"
+                          name="fbrBearerToken"
+                          defaultValue={location.fbrBearerToken || ""}
+                          disabled={isPending}
+                          placeholder="FBR Bearer Token for authorization"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>

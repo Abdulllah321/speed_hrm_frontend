@@ -14,6 +14,14 @@ export interface Location {
     geoFenceRadius: number;
     ipWhitelist: string | null;
     ipWhitelistEnabled: boolean;
+    phone: string | null;
+    latitude: number | string | null;
+    longitude: number | string | null;
+    fbrBposId: string | null;
+    fbrBearerToken: string | null;
+    fbrNtn: string | null;
+    fbrSellerName: string | null;
+    fbrEnabled: boolean;
     city?: {
         id: string;
         name: string;
@@ -116,6 +124,40 @@ export async function updateLocations(
         return data;
     } catch (error) {
         return { status: false, message: "Failed to update locations" };
+    }
+}
+
+// Update location other details (IP, Coordinates, FBR credentials, etc.)
+export async function updateLocationOtherInfo(
+    id: string,
+    data: {
+        phone?: string;
+        latitude?: number;
+        longitude?: number;
+        geoFenceEnabled?: boolean;
+        geoFenceRadius?: number;
+        ipWhitelist?: string;
+        ipWhitelistEnabled?: boolean;
+        fbrBposId?: string;
+        fbrBearerToken?: string;
+        fbrNtn?: string;
+        fbrSellerName?: string;
+        fbrEnabled?: boolean;
+    }
+): Promise<{ status: boolean; message: string; data?: Location }> {
+    try {
+        const res = await authFetch(`/locations/${id}/other-info`, {
+            method: "PUT",
+            body: JSON.stringify(data),
+        });
+        const resData = res.data;
+        if (resData.status) {
+            revalidatePath("/master/location");
+        }
+        return resData;
+    } catch (error) {
+        console.error('Error updating location other info:', error);
+        return { status: false, message: "Failed to update location details" };
     }
 }
 
