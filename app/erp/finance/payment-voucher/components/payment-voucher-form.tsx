@@ -139,8 +139,8 @@ export function PaymentVoucherForm() {
             isTaxApplicable: false,
             description: "",
             details: [
-                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
-                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
+                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 },
+                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 },
             ],
         },
     });
@@ -254,7 +254,7 @@ export function PaymentVoucherForm() {
                             form.setValue(`details.${i}.debit`, 0);
                             form.setValue(`details.${i}.credit`, 0);
                         } else {
-                            append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false });
+                            append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 });
                         }
                     });
                 }
@@ -314,6 +314,7 @@ export function PaymentVoucherForm() {
             form.setValue(`details.${targetIndex}.narration`, fromRow.narration || "", { shouldValidate: true });
             form.setValue(`details.${targetIndex}.refBillNo`, fromRow.refBillNo || "", { shouldValidate: true });
             form.setValue(`details.${targetIndex}.isTaxApplicable`, fromRow.isTaxApplicable ?? false, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.taxableValue`, fromRow.taxableValue ?? 0, { shouldValidate: true });
             if (fromRow.accountId) {
                 form.setValue(`details.${targetIndex}.accountId`, fromRow.accountId, { shouldValidate: true });
             }
@@ -329,7 +330,8 @@ export function PaymentVoucherForm() {
                 credit: debitVal,
                 narration: fromRow.narration || "",
                 refBillNo: fromRow.refBillNo || "",
-                isTaxApplicable: fromRow.isTaxApplicable ?? false
+                isTaxApplicable: fromRow.isTaxApplicable ?? false,
+                taxableValue: fromRow.taxableValue ?? 0
             });
             toast.success(`Duplicated Row ${fromIndex + 1} to a new Credit Row.`);
         }
@@ -355,6 +357,15 @@ export function PaymentVoucherForm() {
                 ...values,
                 creditAccountId: mainCreditAccountId || values.creditAccountId,
                 creditAmount: totalCredit || values.creditAmount,
+                details: values.details.map(detail => ({
+                    accountId: detail.accountId,
+                    tagAccountId: detail.tagAccountId || undefined,
+                    debit: Number(detail.debit) || 0,
+                    credit: Number(detail.credit) || 0,
+                    narration: detail.narration || undefined,
+                    refBillNo: detail.refBillNo || undefined,
+                    isTaxApplicable: detail.isTaxApplicable ?? false,
+                })),
                 invoices: selectedInvoices.length > 0
                     ? selectedInvoices.map(i => ({ purchaseInvoiceId: i.purchaseInvoiceId, paidAmount: i.payingNow }))
                     : undefined,
@@ -378,31 +389,34 @@ export function PaymentVoucherForm() {
     };
 
     // Watch for changes in detail rows to auto-balance and calculate taxes
-    const watchDetailsString = watchDetails.map(d => `${d.debit}-${d.credit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}`).join(",");
+    const watchDetailsString = watchDetails.map(d => `${d.debit}-${d.credit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}-${d.taxableValue}`).join(",");
     useEffect(() => {
-        // Calculate total taxable amount
-        const taxableAmount = watchDetails.reduce((sum, detail) => {
-            return sum + (detail.isTaxApplicable ? (Number(detail.debit) || 0) : 0);
-        }, 0);
-
         let totalTaxAmount = 0;
 
         // Auto-calculate taxes for any recognized tax rows
-        if (taxableAmount > 0 && tree.length > 0) {
+        if (tree.length > 0) {
             watchDetails.forEach((detail, index) => {
                 if (detail.accountId && detail.tagAccountId) {
                     const accountNode = findInTree(tree, detail.accountId);
                     const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
 
                     if (accountNode?.code && tagNode?.code) {
-                        const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, taxableAmount);
-                        if (calculatedTax !== null) {
-                            const currentCredit = Number(detail.credit) || 0;
-                            if (currentCredit !== calculatedTax) {
-                                form.setValue(`details.${index}.credit`, calculatedTax, { shouldValidate: true });
-                                form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                        const rowTaxableValue = Number(detail.taxableValue) || 0;
+                        if (rowTaxableValue > 0) {
+                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, rowTaxableValue);
+                            if (calculatedTax !== null) {
+                                const currentCredit = Number(detail.credit) || 0;
+                                if (currentCredit !== calculatedTax) {
+                                    form.setValue(`details.${index}.credit`, calculatedTax, { shouldValidate: true });
+                                    form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                }
+                                totalTaxAmount += calculatedTax;
                             }
-                            totalTaxAmount += calculatedTax;
+                        } else {
+                            const currentCredit = Number(detail.credit) || 0;
+                            if (currentCredit !== 0) {
+                                form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                            }
                         }
                     }
                 }
@@ -828,7 +842,7 @@ export function PaymentVoucherForm() {
                                     type="button"
                                     variant="secondary"
                                     size="sm"
-                                    onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false })}
+                                    onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 })}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add More PV Rows
@@ -873,19 +887,35 @@ export function PaymentVoucherForm() {
                                                     </p>
                                                 )}
                                                 {(rowChildren[index]?.length ?? 0) > 0 && (
-                                                    <div className="mt-1.5">
-                                                        <Controller
-                                                            control={form.control}
-                                                            name={`details.${index}.tagAccountId`}
-                                                            render={({ field }) => (
-                                                                <TagAccountSelect
-                                                                    children={rowChildren[index]}
-                                                                    value={field.value ?? ""}
-                                                                    onValueChange={field.onChange}
+                                                    <div className="mt-1.5 flex gap-2">
+                                                        <div className="flex-1">
+                                                            <Controller
+                                                                control={form.control}
+                                                                name={`details.${index}.tagAccountId`}
+                                                                render={({ field }) => (
+                                                                    <TagAccountSelect
+                                                                        children={rowChildren[index]}
+                                                                        value={field.value ?? ""}
+                                                                        onValueChange={field.onChange}
+                                                                        disabled={isPending}
+                                                                    />
+                                                                )}
+                                                            />
+                                                        </div>
+                                                        {watchDetails[index]?.tagAccountId && (
+                                                            <div className="w-[120px] shrink-0">
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    placeholder="Taxable Value"
+                                                                    {...form.register(`details.${index}.taxableValue`, {
+                                                                        valueAsNumber: true,
+                                                                    })}
                                                                     disabled={isPending}
+                                                                    className="h-8 text-xs border-gray-300 dark:border-input"
                                                                 />
-                                                            )}
-                                                        />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                                 <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-12 gap-2 border-t pt-2 border-gray-100 dark:border-muted/20">

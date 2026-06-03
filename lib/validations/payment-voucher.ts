@@ -8,6 +8,7 @@ export const paymentVoucherDetailSchema = z.object({
     narration:       z.string().optional(),   // per-line narration
     refBillNo:       z.string().optional(),   // per-line bill ref
     isTaxApplicable: z.boolean().optional(),  // per-line tax flag
+    taxableValue:    z.coerce.number().optional().default(0), // base value for calculation
 });
 
 export const paymentVoucherInvoiceSchema = z.object({
