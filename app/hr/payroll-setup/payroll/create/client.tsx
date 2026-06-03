@@ -200,9 +200,11 @@ export function GeneratePayrollClient({
         const salaryBreakupTotal = row.salaryBreakup && row.salaryBreakup.length > 0
             ? row.salaryBreakup.reduce((sum: number, component: any) => sum + (component.amount || 0), 0)
             : (row.basicSalary || 0);
-        row.grossSalary = salaryBreakupTotal + row.totalAllowances + calculatedOvertimeAmount + calculatedBonusAmount;
+        // Gross is calculated after attendance deduction
+        row.grossSalary = salaryBreakupTotal - row.attendanceDeduction + row.totalAllowances + calculatedOvertimeAmount + calculatedBonusAmount;
 
-        const totalDed = row.totalDeductions + row.taxDeduction + row.attendanceDeduction + row.loanDeduction + row.advanceSalaryDeduction + row.providentFundDeduction;
+        // Attendance is omitted here since it's already deducted from gross
+        const totalDed = row.totalDeductions + row.taxDeduction + row.loanDeduction + row.advanceSalaryDeduction + row.providentFundDeduction;
         row.netSalary = row.grossSalary - totalDed;
 
         setPreviewData(updatedData);
@@ -219,12 +221,17 @@ export function GeneratePayrollClient({
             const halfDayAmount = row.attendanceBreakup.halfDay.amount || 0;
             const shortDayAmount = row.attendanceBreakup.shortDay.amount || 0;
             
-            // Update attendance deduction
+            // Attendance deduction is handled in handleRecalculate or handleSandwichToggle
             row.attendanceDeduction = regularAmount + sandwichAmount + lateAmount + halfDayAmount + shortDayAmount;
             
-            // Recalculate net salary
+            // Recalculate gross salary
+            const salaryBreakupTotal = row.salaryBreakup && row.salaryBreakup.length > 0
+                ? row.salaryBreakup.reduce((sum: number, component: any) => sum + (component.amount || 0), 0)
+                : (row.basicSalary || 0);
+            row.grossSalary = salaryBreakupTotal - row.attendanceDeduction + row.totalAllowances + row.overtimeAmount + row.bonusAmount;
+
+            // Recalculate net salary (attendance is excluded from totalDed)
             const totalDed = 
-                row.attendanceDeduction +
                 row.totalDeductions + 
                 row.taxDeduction + 
                 row.loanDeduction + 
@@ -451,7 +458,7 @@ export function GeneratePayrollClient({
                                                 ? row.salaryBreakup.reduce((sum: number, component: any) => sum + (component.amount || 0), 0)
                                                 : (row.basicSalary || 0);
                                             const deductionBreakupTotal = (row.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
-                                            const annualTax = (row.taxBreakup?.monthlyTax || 0) * 12;
+                                            const annualTax = (row.taxBreakup?.fixedAmountTax || 0) + (row.taxBreakup?.percentageTax || 0);
 
                                             return (
                                                 <TableRow key={row.employeeId}>
@@ -600,7 +607,7 @@ export function GeneratePayrollClient({
                                                             {/* Attendance Deduction with Sandwich Control */}
                                                             <div className="space-y-1">
                                                                 <div className="flex justify-between items-center gap-2">
-                                                                    <span className="font-bold shrink-0">Attendance:</span>
+                                                                    <span className="font-bold shrink-0">Attendance <span className="text-[8px] text-gray-500 font-normal">(cut from Gross)</span>:</span>
                                                                     <span className="text-right">{Math.round(Number(row.attendanceDeduction || 0)).toLocaleString()}</span>
                                                                 </div>
                                                                 
@@ -654,7 +661,6 @@ export function GeneratePayrollClient({
                                                                 <span className="shrink-0">Total:</span>
                                                                 <span className="text-right">
                                                                     {Math.round(
-                                                                        Number(row.attendanceDeduction || 0) +
                                                                         Number(row.loanDeduction || 0) +
                                                                         Number(row.advanceSalaryDeduction || 0) +
                                                                         Number(row.providentFundDeduction || 0) +
