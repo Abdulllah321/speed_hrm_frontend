@@ -184,11 +184,11 @@ export function PrintReturnReceipt({
                     #return-print-root * { visibility: visible !important; }
 
                     #return-print-root {
-                        position: fixed !important;
+                        position: absolute !important;
                         left: 0 !important;
                         top: 0 !important;
-                        width: 80mm !important;
-                        padding: 4mm 3mm !important;
+                        width: 72.1mm !important;
+                        padding: 2mm 1mm !important;
                         background: #fff !important;
                         color: #000 !important;
                         font-family: 'Courier New', Courier, monospace !important;
@@ -196,7 +196,7 @@ export function PrintReturnReceipt({
                         line-height: 1.35 !important;
                     }
 
-                    @page { margin: 0; size: 80mm auto; }
+                    @page { margin: 0; size: 80mm 297mm; }
                     #return-print-root > div > * { page-break-inside: avoid; break-inside: avoid; }
                 }
             `}</style>
@@ -237,7 +237,7 @@ export function PrintReturnReceipt({
             {!isLoading && (
                 <div
                     id="return-print-root"
-                    style={{ position: "fixed", left: "-9999px", top: 0, width: "80mm", pointerEvents: "none" }}
+                    style={{ position: "fixed", left: "-9999px", top: 0, width: "72.1mm", pointerEvents: "none" }}
                     aria-hidden="true"
                 >
                     <ReturnBody {...bodyProps} />
@@ -291,7 +291,7 @@ function ReturnBody({
     const totalUnits = returnedLines.reduce((s, l) => s + l.returnQty, 0);
 
     return (
-        <div className="font-mono text-xs w-full max-w-95 mx-auto space-y-2">
+        <div className="font-mono text-xs w-full max-w-[72.1mm] mx-auto space-y-2">
 
             {/* ── Store Header ── */}
             <div className="text-center space-y-0.5">
