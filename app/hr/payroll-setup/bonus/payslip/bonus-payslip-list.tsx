@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Printer, Search, Gift, Calendar, User } from "lucide-react";
 import { type Bonus } from "@/lib/actions/bonus";
-import { type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Label } from "@/components/ui/label";
@@ -17,12 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Autocomplete } from "@/components/ui/autocomplete";
+import { EmployeeSelect } from "@/components/employees/employee-select";
 import { COMPANY_NAME } from "@/lib/utils";
 
 interface BonusPayslipListProps {
   initialBonuses?: Bonus[];
-  employees?: EmployeeDropdownOption[];
 }
 
 interface BonusPayslipData {
@@ -52,13 +50,10 @@ const formatMonthYear = (monthYear: string) => {
   return `${monthNames[monthIndex] || month} ${year}`;
 };
 
-export function BonusPayslipList({ initialBonuses = [], employees = [] }: BonusPayslipListProps) {
+export function BonusPayslipList({ initialBonuses = [] }: BonusPayslipListProps) {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const [monthYear, setMonthYear] = useState<string>("");
   const [showPayslip, setShowPayslip] = useState(false);
-
-  // Get selected employee
-  const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId);
 
   // Generate payslip data
   const payslipData = useMemo(() => {
@@ -453,14 +448,7 @@ export function BonusPayslipList({ initialBonuses = [], employees = [] }: BonusP
                   <User className="h-4 w-4" />
                   Select Employee <span className="text-destructive">*</span>
                 </Label>
-                <Autocomplete
-                  options={[
-                    { value: "", label: "Select Employee" },
-                    ...employees.map((emp) => ({
-                      value: emp.id,
-                      label: `${emp.employeeName} (${emp.employeeId})`,
-                    })),
-                  ]}
+                <EmployeeSelect
                   value={selectedEmployeeId}
                   onValueChange={(value) => {
                     setSelectedEmployeeId(value || "");

@@ -6,7 +6,6 @@ import { columns, type BonusRow } from "./columns";
 import { BonusFilters } from "./bonus-filters";
 import { Button } from "@/components/ui/button";
 import { Printer, Download, Plus, Gift } from "lucide-react";
-import { getEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { getDepartments, getSubDepartmentsByDepartment, type Department, type SubDepartment } from "@/lib/actions/department";
 import { getBonusTypes, type BonusType } from "@/lib/actions/bonus-type";
 import { type Bonus } from "@/lib/actions/bonus";
@@ -33,7 +32,6 @@ const formatMonthYear = (month: string, year: string) => {
 export function BonusList({ initialData = [] }: BonusListProps) {
   const { hasPermission } = useAuth();
   const canCreate = hasPermission("hr.bonus.create");
-  const [employees, setEmployees] = useState<EmployeeDropdownOption[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
   const [bonusTypes, setBonusTypes] = useState<BonusType[]>([]);
@@ -155,25 +153,6 @@ export function BonusList({ initialData = [] }: BonusListProps) {
       }
     };
     fetchData();
-  }, []);
-
-  // Fetch employees on mount
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const result = await getEmployeesForDropdown();
-        if (result.status && result.data) {
-          setEmployees(result.data);
-        } else {
-          setEmployees([]);
-        }
-      } catch (error) {
-        console.error("Error:", error);
-        setEmployees([]);
-      }
-    };
-
-    fetchEmployees();
   }, []);
 
   // Fetch sub-departments when department changes
@@ -668,7 +647,6 @@ export function BonusList({ initialData = [] }: BonusListProps) {
       <BonusFilters
         departments={departments}
         subDepartments={subDepartments}
-        employees={employees}
         bonusTypes={bonusTypes}
         loading={loading}
         loadingSubDepartments={loadingSubDepartments}

@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { getPayrollReport } from "@/lib/actions/payroll";
 import { Department, SubDepartment, getSubDepartmentsByDepartment } from "@/lib/actions/department";
-import { EmployeeDropdownOption } from "@/lib/actions/employee";
+import { EmployeeSelect } from "@/components/employees/employee-select";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter } from "next/navigation";
@@ -21,10 +21,9 @@ import { useEffect } from "react";
 
 interface ReportContentProps {
     initialDepartments: Department[];
-    initialEmployees: EmployeeDropdownOption[];
 }
 
-export function ReportContent({ initialDepartments, initialEmployees }: ReportContentProps) {
+export function ReportContent({ initialDepartments }: ReportContentProps) {
     const { user, isAdmin, hasPermission } = useAuth();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -48,23 +47,6 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
         monthYear: format(new Date(), "yyyy-MM"),
         employeeId: "all",
     });
-
-    const filteredEmployees = useMemo(() => {
-        let result = initialEmployees;
-        
-        // Strict filtering for non-privileged users
-        if (!canViewAll && user?.employeeId) {
-            return result.filter(e => e.id === user.employeeId);
-        }
-
-        if (filters.departmentId !== "all") {
-            result = result.filter(e => e.departmentId === filters.departmentId);
-        }
-        if (filters.subDepartmentId !== "all") {
-            result = result.filter(e => e.subDepartmentId === filters.subDepartmentId);
-        }
-        return result;
-    }, [filters.departmentId, filters.subDepartmentId, initialEmployees, user, canViewAll]);
 
     const handleDepartmentChange = async (val: string) => {
         setFilters(prev => ({ ...prev, departmentId: val, subDepartmentId: "all", employeeId: "all" }));
@@ -449,10 +431,12 @@ export function ReportContent({ initialDepartments, initialEmployees }: ReportCo
 
                                 <div className="space-y-2">
                                     <Label>Employee</Label>
-                                    <Autocomplete
-                                        options={filteredEmployees.map(e => ({ value: e.id, label: `(${e.employeeId}) ${e.employeeName}` }))}
+                                    <EmployeeSelect
                                         value={filters.employeeId}
                                         onValueChange={(val) => setFilters(p => ({ ...p, employeeId: val || "all" }))}
+                                        departmentId={filters.departmentId}
+                                        subDepartmentId={filters.subDepartmentId}
+                                        includeAllOption
                                         placeholder="All Employees"
                                         searchPlaceholder="Search employee..."
                                     />

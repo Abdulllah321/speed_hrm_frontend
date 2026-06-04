@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
-import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { PolicyTimeline } from "@/components/ui/policy-timeline";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2, Play, CheckCircle, Undo, Search } from "lucide-react";
@@ -39,23 +39,22 @@ import {
     type SubDepartment,
 } from "@/lib/actions/department";
 import { previewPayroll, confirmPayroll } from "@/lib/actions/payroll";
-import { type EmployeeDropdownOption } from "@/lib/actions/employee";
+import { getAllEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
+import { useEmployeeDropdown } from "@/hooks/use-employee-dropdown";
 
 interface GeneratePayrollClientProps {
     initialDepartments: Department[];
-    initialEmployees: EmployeeDropdownOption[];
+    initialEmployees?: EmployeeDropdownOption[];
     currentUserId: string;
 }
 
 export function GeneratePayrollClient({
     initialDepartments,
-    initialEmployees,
     currentUserId,
 }: GeneratePayrollClientProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [departments] = useState<Department[]>(initialDepartments);
-    const [employees] = useState<EmployeeDropdownOption[]>(initialEmployees);
     // ...
     const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
     const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
@@ -72,6 +71,12 @@ export function GeneratePayrollClient({
     });
 
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+
+    const { totalCount, isInitialLoading, multiSelectProps } = useEmployeeDropdown({
+        departmentId: formData.department,
+        subDepartmentId: formData.subDepartment,
+        selectedIds: selectedEmployeeIds,
+    });
 
     // Fetch sub-departments when department changes
     useEffect(() => {
@@ -112,26 +117,11 @@ export function GeneratePayrollClient({
         }
     }, [previewData]);
 
-    // Filter employees
-    const filteredEmployees = employees.filter((emp) => {
-        if (formData.department && formData.department !== "all") {
-            if (emp.departmentId !== formData.department) return false;
-        }
-        if (formData.subDepartment && formData.subDepartment !== "all") {
-            if (emp.subDepartmentId !== formData.subDepartment) return false;
-        }
-        return true;
-    });
+    // Filter employees count is handled server-side via useEmployeeDropdown
 
     const handleEmployeeSelectionChange = (selectedIds: string[]) => {
         setSelectedEmployeeIds(selectedIds);
     };
-
-    const employeeOptions: MultiSelectOption[] = filteredEmployees.map((emp) => ({
-        value: emp.id,
-        label: emp.employeeName,
-        description: `${emp.employeeId}${emp.departmentName ? ` • ${emp.departmentName}` : ""}`,
-    }));
 
     const handlePreview = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -145,7 +135,11 @@ export function GeneratePayrollClient({
         if (selectedEmployeeIds.length > 0) {
             idsPayload = selectedEmployeeIds;
         } else if (formData.department !== 'all') {
-            idsPayload = filteredEmployees.map(e => e.id);
+            const allEmployeesResult = await getAllEmployeesForDropdown({
+                departmentId: formData.department !== "all" ? formData.department : undefined,
+                subDepartmentId: formData.subDepartment !== "all" ? formData.subDepartment : undefined,
+            });
+            idsPayload = allEmployeesResult.data?.map((e) => e.id) ?? [];
             if (idsPayload.length === 0) {
                 toast.error("No employees found in selected department");
                 return;
@@ -363,17 +357,28 @@ export function GeneratePayrollClient({
                                 <Label htmlFor="employee">
                                     Select Employees (Optional)
                                 </Label>
-                                <MultiSelect
-                                    options={employeeOptions}
-                                    value={selectedEmployeeIds}
-                                    onValueChange={handleEmployeeSelectionChange}
-                                    placeholder="Select specific employees..."
-                                    disabled={isPending}
-                                />
+                                {isInitialLoading ? (
+                                    <div className="h-10 bg-muted rounded-md animate-pulse" />
+                                ) : (
+                                    <MultiSelect
+                                        options={multiSelectProps.options}
+                                        value={selectedEmployeeIds}
+                                        onValueChange={handleEmployeeSelectionChange}
+                                        onSearch={multiSelectProps.onSearch}
+                                        onLoadMore={multiSelectProps.onLoadMore}
+                                        hasMore={multiSelectProps.hasMore}
+                                        isLoading={multiSelectProps.isLoading}
+                                        placeholder="Select specific employees..."
+                                        searchPlaceholder="Search by name or employee ID..."
+                                        emptyMessage={multiSelectProps.isLoading ? "Loading employees..." : "No employees found"}
+                                        disabled={isPending}
+                                        showSelectAll={false}
+                                    />
+                                )}
                                 <p className="text-sm text-muted-foreground">
                                     {selectedEmployeeIds.length > 0
                                         ? `${selectedEmployeeIds.length} employees selected`
-                                        : `All ${filteredEmployees.length} employees in filter`}
+                                        : `All ${totalCount} employees in filter`}
                                 </p>
                             </div>
 
