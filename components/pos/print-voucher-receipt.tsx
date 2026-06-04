@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Printer, Gift, Loader2 } from "lucide-react";
 import { useAuth } from "@/components/providers/auth-provider";
+import { usePosSettings } from "@/hooks/use-pos-settings";
+import { printThermal } from "@/lib/utils/print";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -100,13 +102,14 @@ export function PrintVoucherReceipt({
     onClose,
 }: PrintVoucherReceiptProps) {
     const { user } = useAuth();
+    const { settings } = usePosSettings();
 
     useEffect(() => {
         if (!isLoading && autoPrint) {
-            const timer = setTimeout(() => window.print(), 400);
+            const timer = setTimeout(() => printThermal("voucher-receipt-print-root", settings), 400);
             return () => clearTimeout(timer);
         }
-    }, [isLoading, autoPrint]);
+    }, [isLoading, autoPrint, settings]);
 
     // ── Store info ────────────────────────────────────────────────────
     const storeName =
@@ -131,9 +134,17 @@ export function PrintVoucherReceipt({
         <>
             <style>{`
                 @media print {
-                    body * { visibility: hidden !important; }
+                    body *:not(#voucher-receipt-print-root):not(#voucher-receipt-print-root *) {
+                        visibility: hidden !important;
+                        height: 0 !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        border: none !important;
+                    }
                     #voucher-receipt-print-root,
-                    #voucher-receipt-print-root * { visibility: visible !important; }
+                    #voucher-receipt-print-root * {
+                        visibility: visible !important;
+                    }
                     #voucher-receipt-print-root {
                         position: absolute !important;
                         left: 0 !important;
@@ -146,7 +157,7 @@ export function PrintVoucherReceipt({
                         font-size: 9pt !important;
                         line-height: 1.35 !important;
                     }
-                    @page { margin: 0; size: 80mm 297mm; }
+                    @page { margin: 0; size: 80mm auto; }
                     #voucher-receipt-print-root > div > * { page-break-inside: avoid; break-inside: avoid; }
                 }
             `}</style>
@@ -171,7 +182,7 @@ export function PrintVoucherReceipt({
                     <DialogFooter className="px-5 py-3 border-t shrink-0 gap-2">
                         <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
                         <Button
-                            onClick={() => window.print()}
+                            onClick={() => printThermal("voucher-receipt-print-root", settings)}
                             className="flex-1 gap-2"
                             disabled={isLoading}
                         >

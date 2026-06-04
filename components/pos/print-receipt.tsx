@@ -13,6 +13,7 @@ import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import type { PosSettings } from "@/hooks/use-pos-settings";
 import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
 import { useAuth } from "@/components/providers/auth-provider";
+import { printThermal } from "@/lib/utils/print";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -139,10 +140,10 @@ export function PrintReceipt({
 
     useEffect(() => {
         if (!isLoading && settings.receiptAutoPrint) {
-            const timer = setTimeout(() => window.print(), 400);
+            const timer = setTimeout(() => printThermal("receipt-print-root", settings), 400);
             return () => clearTimeout(timer);
         }
-    }, [isLoading, settings.receiptAutoPrint]);
+    }, [isLoading, settings.receiptAutoPrint, settings]);
 
     // ── Store info ────────────────────────────────────────────────────
     const storeName =
@@ -263,7 +264,7 @@ export function PrintReceipt({
         <>
             <style>{`
                 @media print {
-                    body * { visibility: hidden !important; }
+                    // body * { visibility: hidden !important; }
                     #receipt-print-root,
                     #receipt-print-root * { visibility: visible !important; }
                     #receipt-print-root {
@@ -303,7 +304,7 @@ export function PrintReceipt({
                     <DialogFooter className="px-5 py-3 border-t shrink-0 gap-2">
                         <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
                         <Button
-                            onClick={() => window.print()}
+                            onClick={() => printThermal("receipt-print-root", settings)}
                             className="flex-1 gap-2"
                             disabled={isLoading}
                         >

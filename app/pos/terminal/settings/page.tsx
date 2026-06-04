@@ -29,6 +29,7 @@ interface PosSettings {
     receiptShowTax: boolean;
     receiptAutoPrint: boolean;
     receiptShowCashier: boolean;
+    receiptPrinterName: string;
     // Sale defaults
     defaultPaymentMethod: string;
     requireCustomer: boolean;
@@ -43,6 +44,7 @@ const DEFAULTS: PosSettings = {
     receiptShowTax: true,
     receiptAutoPrint: false,
     receiptShowCashier: true,
+    receiptPrinterName: "",
     defaultPaymentMethod: "cash",
     requireCustomer: false,
     defaultTaxPercent: "0",
@@ -110,6 +112,23 @@ export default function TerminalSettingsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [terminalCtx, setTerminalCtx] = useState<any>(null);
+
+    // Printer list for Electron
+    const [printers, setPrinters] = useState<string[]>([]);
+    const isElectron = typeof window !== "undefined" && !!window.posDesktop;
+
+    useEffect(() => {
+        if (isElectron && window.posDesktop) {
+            window.posDesktop.getPrinters()
+                .then((list) => {
+                    const printerNames = list.map((p: any) => p.name);
+                    setPrinters(printerNames);
+                })
+                .catch((err) => {
+                    console.error("Failed to load local printers:", err);
+                });
+        }
+    }, [isElectron]);
 
     // Terminal PIN states
     const [newPin, setNewPin] = useState("");
@@ -272,6 +291,27 @@ export default function TerminalSettingsPage() {
                             className="rounded-xl bg-muted/30 border-transparent focus-visible:ring-primary"
                         />
                     </div>
+
+                    {isElectron && (
+                        <div className="space-y-2 mt-4">
+                            <Label>Receipt Printer (Silent Printing)</Label>
+                            <Select
+                                value={settings.receiptPrinterName || ""}
+                                onValueChange={v => set("receiptPrinterName", v)}
+                            >
+                                <SelectTrigger className="rounded-xl bg-muted/30 border-transparent focus:ring-primary">
+                                    <SelectValue placeholder="Select printer for silent printing" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="_default_">System Default Printer</SelectItem>
+                                    {printers.map(name => (
+                                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">Select the thermal receipt printer for direct silent printing without dialog popups.</p>
+                        </div>
+                    )}
 
                     <Separator />
 
