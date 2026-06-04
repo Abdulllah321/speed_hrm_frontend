@@ -306,11 +306,13 @@ export default function ReturnsPage() {
                     const orderId = loadedOrders[0].id;
                     // Calculate total refund amount
                     const totalRefundAmount = selectedLines.reduce((sum, l) => sum + (l.paidPerUnit * l.returnQty), 0);
+                    const items = selectedLines.map(l => ({ orderItemId: l.orderItemId, itemId: l.itemId, quantity: l.returnQty }));
                     
                     res = await authFetch(`/pos-sales/orders/${orderId}/refund`, {
                         method: "POST",
                         body: {
                             refundAmount: totalRefundAmount,
+                            items,
                             reason: notes || undefined,
                             managerUserId,
                         },
@@ -323,11 +325,13 @@ export default function ReturnsPage() {
                         const orderLines = selectedLines.filter(l => l.orderId === order.id);
                         if (orderLines.length === 0) continue;
                         const refundAmount = orderLines.reduce((sum, l) => sum + (l.paidPerUnit * l.returnQty), 0);
+                        const items = orderLines.map(l => ({ orderItemId: l.orderItemId, itemId: l.itemId, quantity: l.returnQty }));
                         
                         const r = await authFetch(`/pos-sales/orders/${order.id}/refund`, {
                             method: "POST",
                             body: {
                                 refundAmount,
+                                items,
                                 reason: notes || undefined,
                                 managerUserId,
                             },

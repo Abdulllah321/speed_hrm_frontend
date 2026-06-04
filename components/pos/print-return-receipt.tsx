@@ -63,6 +63,7 @@ export interface ReturnReceiptLine {
 
 export interface PrintReturnReceiptProps {
     returnRef: string;
+    isRefund?: boolean;
     originalOrders: { orderNumber: string; grandTotal: number }[];
     returnedLines: ReturnReceiptLine[];
     refundTotal: number;
@@ -127,6 +128,7 @@ function ReturnReceiptSkeleton() {
 
 export function PrintReturnReceipt({
     returnRef,
+    isRefund,
     originalOrders,
     returnedLines,
     refundTotal,
@@ -166,7 +168,7 @@ export function PrintReturnReceipt({
     const cashierName = user ? `${user.firstName} ${user.lastName}`.trim() : "";
 
     const bodyProps: ReturnBodyProps = {
-        storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
+        isRefund, storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
         cashierName, returnRef, originalOrders, returnedLines, refundTotal,
         notes, discountNotes, returnedAt, paymentMethod, settings, exchangeVoucher,
     };
@@ -208,10 +210,10 @@ export function PrintReturnReceipt({
                                 ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                 : <RotateCcw className="h-4 w-4 text-destructive" />
                             }
-                            Return Receipt
+                            {isRefund ? "Refund Receipt" : "Return Receipt"}
                         </DialogTitle>
                         <p className="text-sm text-muted-foreground">
-                            {isLoading ? "Loading return details…" : "Review before printing."}
+                            {isLoading ? `Loading ${isRefund ? 'refund' : 'return'} details…` : "Review before printing."}
                         </p>
                     </DialogHeader>
 
@@ -248,6 +250,7 @@ export function PrintReturnReceipt({
 // ── ReturnBody ────────────────────────────────────────────────────────────────
 
 interface ReturnBodyProps {
+    isRefund?: boolean;
     storeName: string;
     storeAddress: string;
     storePhone: string;
@@ -268,7 +271,7 @@ interface ReturnBodyProps {
 }
 
 function ReturnBody({
-    storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
+    isRefund, storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
     cashierName, returnRef, originalOrders, returnedLines, refundTotal,
     notes, discountNotes, returnedAt, paymentMethod, settings, exchangeVoucher,
 }: ReturnBodyProps) {
@@ -304,7 +307,7 @@ function ReturnBody({
 
             {/* ── Return Invoice Title ── */}
             <div className="text-center space-y-0.5">
-                <p className="font-bold text-sm tracking-widest uppercase">Return Invoice</p>
+                <p className="font-bold text-sm tracking-widest uppercase">{isRefund ? "Refund Invoice" : "Return Invoice"}</p>
                 <p className="font-black text-2xl tracking-wider">*{fmt(refundTotal)}*</p>
             </div>
 
@@ -312,7 +315,7 @@ function ReturnBody({
 
             {/* ── Receipt meta ── */}
             <div className="space-y-0.5 text-[11px]">
-                <Row label="Return Ref."  value={returnRef} bold />
+                <Row label={isRefund ? "Refund Ref." : "Return Ref."}  value={returnRef} bold />
                 <Row label="Date"         value={fmtDate(returnedAt)} />
                 {cashierName  && <Row label="Processed By" value={cashierName}  />}
                 {terminalName && <Row label="Terminal"     value={terminalName} />}
