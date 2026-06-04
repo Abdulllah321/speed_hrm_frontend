@@ -487,7 +487,7 @@ function ReceiptBody({
                 if (suppressItemDiscounts) {
                     // Proportional discount: (orderDiscount × itemWOST) / totalWOST
                     displayDisc = calculateProportionalDiscount(totalWost, totalWostValue, orderDiscount);
-                    displayDiscPct = totalWost > 0 ? Math.round((displayDisc / totalWost) * 100 * 100) / 100 : 0;
+                    displayDiscPct = totalWost > 0 ? Math.round((displayDisc / totalWost) * 100) : 0;
                 }
 
                 // Step 4: Amount after Discount

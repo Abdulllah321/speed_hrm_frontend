@@ -289,7 +289,7 @@ export default function CheckoutPage() {
             const discountAmount = Math.round(totalWost * (discountPercent / 100));
             const afterDiscount = totalWost - discountAmount;
             const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
-            const total = afterDiscount + taxAmount;
+            const total = Math.round(afterDiscount + taxAmount);
             return { ...item, discountAmount, taxAmount, total };
         });
 
@@ -429,7 +429,7 @@ export default function CheckoutPage() {
     }
 
     // Grand total includes FBR POS Fee
-    const grandTotal = Math.max(0, subtotal - totalDiscount + itemTax) + FBR_POS_FEE;
+    const grandTotal = Math.round(Math.max(0, subtotal - totalDiscount + itemTax) + FBR_POS_FEE);
     const totalPaid = tenders.reduce((a, t) => a + t.amount, 0);
     const balanceDue = Math.max(0, grandTotal - totalPaid);
     const changeAmount = Math.max(0, totalPaid - grandTotal);
@@ -649,7 +649,7 @@ export default function CheckoutPage() {
             toast.error("Please select a customer for credit sale.");
             return;
         }
-        if (!confirm(`Confirm credit sale of ${formatCurrency(grandTotal)} to ${selectedCustomer.name}?\n\nBalance will be added to customer ledger.`)) return;
+        if (!confirm(`Confirm credit sale of ${fmtCurrency(grandTotal)} to ${selectedCustomer.name}?\n\nBalance will be added to customer ledger.`)) return;
 
         setIsSubmitting(true);
         try {
