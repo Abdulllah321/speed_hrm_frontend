@@ -169,17 +169,18 @@ export function PrintReceipt({
     // because order.items has the final calculated values after all discounts
     const items: any[] = (order?.items && order.items.length > 0)
         ? (order.items).map((oi: any) => ({
-            id:              oi.id,
-            name:            oi.item?.description || oi.item?.sku || "Item",
-            sku:             oi.item?.sku   || "",
-            upc:             oi.item?.upc   || oi.upc  || "",
-            size:            oi.item?.size  || oi.size || "",
-            price:           Number(oi.unitPrice),
-            quantity:        Number(oi.quantity),
-            discountPercent: Number(oi.discountPercent ?? 0),
-            discountAmount:  Number(oi.discountAmount  ?? 0),
-            taxPercent:      Number(oi.taxPercent  ?? 0),
-            taxAmount:       Number(oi.taxAmount   ?? 0),
+            id:                      oi.id,
+            name:                    oi.item?.description || oi.item?.sku || "Item",
+            sku:                     oi.item?.sku   || "",
+            upc:                     oi.item?.upc   || oi.upc  || "",
+            size:                    oi.item?.size  || oi.size || "",
+            price:                   Number(oi.unitPrice),
+            quantity:                Number(oi.quantity),
+            discountPercent:         Number(oi.discountPercent ?? 0),
+            overrideDiscountPercent: oi.overrideDiscountPercent != null ? Number(oi.overrideDiscountPercent) : undefined,
+            discountAmount:          Number(oi.discountAmount  ?? 0),
+            taxPercent:              Number(oi.taxPercent  ?? 0),
+            taxAmount:               Number(oi.taxAmount   ?? 0),
         }))
         : (propCartItems ?? []);
 
@@ -191,12 +192,6 @@ export function PrintReceipt({
         const wostPerUnit = i.price / taxDivisor;
         return s + (wostPerUnit * i.quantity);
     }, 0);
-    
-    // Always calculate totalTax from items (don't trust backend taxAmount)
-    const totalTax = items.reduce((s, i) => {
-        const itemTax = Number(i.taxAmount ?? 0);
-        return s + itemTax;
-    }, 0);
 
     const itemDiscountsRaw = items.reduce((s, i) => s + (i.discountAmount ?? 0), 0);
     const orderDiscount    = Number(order?.globalDiscountAmount ?? 0);
@@ -204,6 +199,29 @@ export function PrintReceipt({
     // Alliance suppression logic: if alliance is active and >= item discounts, item discounts are zeroed
     const isAlliance = (discountMode === "alliance" || !!order?.alliance || !!order?.allianceId);
     const suppressItemDiscounts = isAlliance && orderDiscount >= itemDiscountsRaw && orderDiscount > 0;
+
+    // Always calculate totalTax from items (don't trust backend taxAmount)
+    // using the exact same logic as printed per-item sales tax
+    const totalTax = items.reduce((s, i) => {
+        const taxPct = i.taxPercent ?? 0;
+        const taxDivisor = 1 + (taxPct / 100);
+        const wostPerUnit = i.price / taxDivisor;
+        const totalWost = wostPerUnit * i.quantity;
+
+        const itemDiscPct = i.overrideDiscountPercent ?? i.discountPercent ?? 0;
+        const rawDisc = Math.round(totalWost * (itemDiscPct / 100));
+
+        const disc = suppressItemDiscounts ? 0 : rawDisc;
+        let displayDisc = disc;
+
+        if (suppressItemDiscounts && subtotal > 0) {
+            displayDisc = Math.min(Math.round((orderDiscount * totalWost) / subtotal), totalWost);
+        }
+
+        const amtAfterDisc = totalWost - (suppressItemDiscounts ? displayDisc : disc);
+        const tax = Math.round(amtAfterDisc * (taxPct / 100));
+        return s + tax;
+    }, 0);
 
     const totalDiscount   = (suppressItemDiscounts ? 0 : itemDiscountsRaw) + orderDiscount;
     const valueForSales   = subtotal - totalDiscount;

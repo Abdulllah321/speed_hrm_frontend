@@ -97,3 +97,24 @@ export async function voidVoucher(
         return { status: false, message: 'Failed to void voucher' };
     }
 }
+
+export async function updateVoucherExpiry(
+    id: string,
+    expiresAt: string | null,
+): Promise<{ status: boolean; message?: string }> {
+    try {
+        const res = await authFetch(`/pos-config/vouchers/${id}/expiry`, {
+            method: 'PUT',
+            body: JSON.stringify({ expiresAt }),
+        });
+        const result = res.data;
+        if (result.status) {
+            revalidatePath('/pos/vouchers');
+            revalidatePath('/master/pos-config');
+        }
+        return result;
+    } catch {
+        return { status: false, message: 'Failed to update voucher expiry' };
+    }
+}
+
