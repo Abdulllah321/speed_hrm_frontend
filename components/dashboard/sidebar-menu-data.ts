@@ -812,6 +812,10 @@ export const menuData: MenuItem[] = [
             href: "/erp/inventory/transactions/stock-received",
           },
           {
+            title: "Stock Adjustment",
+            href: "/erp/inventory/transactions/stock-adjustment",
+          },
+          {
             title: "Delivery Note",
             href: "/erp/inventory/transactions/delivery-note",
           },
