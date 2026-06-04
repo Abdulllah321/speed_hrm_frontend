@@ -390,6 +390,7 @@ export default function DataTable<TData extends DataTableRow>({
       onSortingChangeProp?.(next);
     },
     enableSortingRemoval: false,
+    enableRowSelection: !!(onMultiDelete || onBulkEdit),
     getPaginationRowModel: getPaginationRowModel(),
     onPaginationChange: (updater) => {
       const next =
