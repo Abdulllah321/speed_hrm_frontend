@@ -157,7 +157,7 @@ export function PrintVoucherReceipt({
                     <DialogHeader className="px-5 pt-4 pb-3 border-b shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                            Gift Voucher Receipt
+                            <span className="capitalize">{(voucher?.voucherType ? `${voucher.voucherType.replace(/_/g, ' ')} Voucher` : 'Gift Voucher').toLowerCase()} Receipt</span>
                         </DialogTitle>
                         <p className="text-sm text-muted-foreground">
                             {isLoading ? "Loading voucher data…" : "Review before printing."}
@@ -261,9 +261,8 @@ function VoucherReceiptBody({
             <div className="text-center space-y-2 py-2">
                 <div className="flex items-center justify-center gap-2">
                     <Gift className="h-6 w-6 text-primary" />
-                    <p className="font-bold text-base tracking-widest uppercase">Gift Voucher</p>
+                    <p className="font-bold text-base tracking-widest uppercase">{voucherTypeLabel} Voucher</p>
                 </div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{voucherTypeLabel}</p>
             </div>
 
             <Separator />

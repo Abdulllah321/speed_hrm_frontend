@@ -513,10 +513,10 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                                         <Printer className="h-3.5 w-3.5" />
                                     </Button>
                                 )}
-                                {(order.status === "returned" || order.status === "partially_returned") && (
+                                {(order.status === "returned" || order.status === "partially_returned" || order.status === "refunded") && (
                                     <Button variant="ghost" size="icon"
                                         className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
-                                        title="Print return slip"
+                                        title={order.status === "refunded" ? "Print refund slip" : "Print return slip"}
                                         onClick={() => openPrintDialog(order, "return")}>
                                         <RotateCcw className="h-3.5 w-3.5" />
                                     </Button>
