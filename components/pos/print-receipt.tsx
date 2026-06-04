@@ -179,9 +179,6 @@ export function PrintReceipt({
   // ── Store info ────────────────────────────────────────────────────
   const storeName =
     settings.receiptStoreName ||
-    (typeof user?.terminal?.location?.fbrSellerName === "string"
-      ? user.terminal.location.fbrSellerName
-      : "") ||
     (typeof user?.terminal?.location?.name === "string"
       ? user.terminal.location.name
       : "") ||
@@ -228,7 +225,7 @@ export function PrintReceipt({
           name: oi.item?.description || oi.item?.sku || "Item",
           sku: oi.item?.sku || "",
           upc: oi.item?.upc || oi.upc || "",
-          size: oi.item?.size || oi.size || "",
+          size: typeof oi.item?.size === "object" ? oi.item?.size?.name : (oi.item?.size || oi.size || ""),
           price: Number(oi.unitPrice),
           quantity: Number(oi.quantity),
           discountPercent: Number(oi.discountPercent ?? 0),
