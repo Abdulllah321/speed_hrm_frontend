@@ -7,7 +7,6 @@ import { PermissionGuard } from "@/components/auth/permission-guard";
 import { usePathname, useRouter } from "next/navigation";
 import { getRoutePermissions } from "@/lib/route-permissions";
 import { useAuth } from "@/components/providers/auth-provider";
-import { PosSwitchUser } from "@/components/pos/pos-switch-user";
 import { LocationGuard } from "@/components/pos/location-guard";
 import { ShiftGuard } from "@/components/pos/shift-guard";
 import { PageTransition } from "@/components/layouts/page-transition";
@@ -41,9 +40,15 @@ export default function PosLayoutClient({
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [router]);
 
-    // If POS needs user authentication, show the switch-user overlay
+    // If POS needs user authentication, redirect to main login page
+    useEffect(() => {
+        if (posNeedsUserAuth) {
+            window.location.href = `/auth/login?callbackUrl=${encodeURIComponent(pathname)}&subdomain=pos`;
+        }
+    }, [posNeedsUserAuth, pathname]);
+
     if (posNeedsUserAuth) {
-        return <PosSwitchUser />;
+        return null;
     }
 
     // Super admin bypasses all permission checks

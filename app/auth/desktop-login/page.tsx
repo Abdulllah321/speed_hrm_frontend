@@ -351,9 +351,9 @@ export default function DesktopLoginPage() {
       )}
 
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-sm font-semibold">Email Address</Label>
+        <Label htmlFor="email" className="text-sm font-semibold">Email Address or Employee ID</Label>
         <Input
-          id="email" type="email" placeholder="name@company.com" required autoFocus
+          id="email" type="text" placeholder="name@company.com or EMP-001" required autoFocus
           disabled={loginPending} value={email} onChange={(e) => setEmail(e.target.value)}
           className="h-11 border-primary/10 focus-visible:ring-primary/20"
         />
