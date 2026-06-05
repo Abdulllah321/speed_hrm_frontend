@@ -10,6 +10,7 @@ export interface Voucher {
     code: string;
     voucherType: VoucherType;
     faceValue: number;
+    discount?: number;
     description?: string;
     customerId?: string;
     companyName?: string;
@@ -29,6 +30,7 @@ export interface VoucherValidation {
     code: string;
     voucherType: VoucherType;
     faceValue: number;
+    discount?: number;
     description?: string;
     customerId?: string;
     requireCustomerMatch: boolean;
@@ -55,6 +57,7 @@ export async function getVouchers(filters?: {
 export async function issueVoucher(data: {
     voucherType: VoucherType;
     faceValue: number;
+    discount?: number;
     description?: string;
     customerId?: string;
     companyName?: string;

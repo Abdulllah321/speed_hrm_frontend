@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle, Wallet, ArrowRight, Loader2, Lock } from "lucide-react";
+import { AlertTriangle, Wallet, ArrowRight, Loader2, Lock, X, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export function ShiftGuard({ children }: { children: React.ReactNode }) {
-    const { user, isAdmin } = useAuth();
+    const { user, isAdmin, hasPermission, logout } = useAuth();
     const pathname = usePathname();
     const router = useRouter();
 
@@ -22,9 +22,66 @@ export function ShiftGuard({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Form inputs
+    // Form inputs for opening shift
     const [floatAmount, setFloatAmount] = useState<number | "">("");
     const [floatNote, setFloatNote] = useState("");
+
+    // Real-time clock for countdown
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    // Dismissal states for reminder banner
+    const [isDismissed, setIsDismissed] = useState(false);
+    const [dismissedUntil, setDismissedUntil] = useState<number | null>(null);
+    const [prevUrgencyLevel, setPrevUrgencyLevel] = useState<string>("quiet");
+
+    // Start clock interval
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Helper to calculate local midnight deadline relative to openedAt date
+    const getDeadline = (openedAtVal: string) => {
+        const openedDate = new Date(openedAtVal);
+        const deadlineDate = new Date(openedDate);
+        deadlineDate.setHours(24, 0, 0, 0); // Midnight of the next day (end of openedAt day) in local time
+        return deadlineDate;
+    };
+
+    const openedAtStr = sessionData?.session?.openedAt;
+    const deadline = openedAtStr ? getDeadline(openedAtStr) : null;
+    const msDiff = deadline ? deadline.getTime() - currentTime.getTime() : 0;
+    const isPastDeadline = deadline ? msDiff <= 0 : false;
+
+    // Remaining time calculations
+    const absMs = Math.abs(msDiff);
+    const remainingHours = Math.floor(absMs / (1000 * 60 * 60));
+    const remainingMinutes = Math.floor((absMs % (1000 * 60 * 60)) / (1000 * 60));
+    const remainingSeconds = Math.floor((absMs % (1000 * 60)) / 1000);
+
+    // Determine urgency level
+    const getUrgencyLevel = (diff: number) => {
+        if (diff <= 0) return "overdue";
+        if (diff <= 1 * 60 * 60 * 1000) return "high"; // <= 1 hour
+        if (diff <= 2 * 60 * 60 * 1000) return "medium"; // <= 2 hours
+        if (diff <= 3 * 60 * 60 * 1000) return "low"; // <= 3 hours
+        return "quiet";
+    };
+
+    const urgencyLevel = deadline ? getUrgencyLevel(msDiff) : "quiet";
+
+    // Track escalation to reset user dismissals
+    useEffect(() => {
+        if (urgencyLevel !== prevUrgencyLevel) {
+            setIsDismissed(false);
+            setDismissedUntil(null);
+            setPrevUrgencyLevel(urgencyLevel);
+        }
+    }, [urgencyLevel, prevUrgencyLevel]);
+
+    const isCurrentlyDismissed = isDismissed && dismissedUntil !== null && Date.now() < dismissedUntil;
 
     const fetchSession = useCallback(async () => {
         try {
@@ -117,9 +174,83 @@ export function ShiftGuard({ children }: { children: React.ReactNode }) {
     const isDrawerOpen = sessionData?.isDrawerOpen;
     const hasSession = !!sessionData;
 
-    // 4. If the drawer/shift is already open, grant immediate seamless access
+    // 4. If the drawer/shift is already open, check if a warning/reconciliation banner is needed
     if (hasSession && isDrawerOpen) {
-        return <>{children}</>;
+        // RENDER POS VIEW WRAPPED WITH REMINDER BANNER IF TIME-NEARING OR OVERDUE
+        return (
+            <div className="flex flex-col h-full w-full">
+                {/* Reconciliation Banner */}
+                {deadline && urgencyLevel !== "quiet" && !isCurrentlyDismissed && (
+                    <div className={cn(
+                        "w-full px-6 py-3 border-b flex items-center justify-between transition-all duration-300 shadow-xs",
+                        urgencyLevel === "low" && "bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400",
+                        urgencyLevel === "medium" && "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400",
+                        urgencyLevel === "high" && "bg-destructive/15 border-destructive/25 text-destructive animate-pulse",
+                        urgencyLevel === "overdue" && "bg-destructive/20 border-destructive/30 text-destructive font-bold animate-pulse"
+                    )}>
+                        <div className="flex items-center gap-3">
+                            {(urgencyLevel === "high" || urgencyLevel === "overdue") ? (
+                                <AlertTriangle className="h-5 w-5 animate-bounce shrink-0 text-destructive" />
+                            ) : (
+                                <Clock className="h-5 w-5 shrink-0 text-current" />
+                            )}
+                            <div className="text-sm font-medium">
+                                {urgencyLevel === "low" && (
+                                    <span>Upcoming Shift Reconciliation: Please reconcile and close the shift before 12:00 AM (Midnight).</span>
+                                )}
+                                {urgencyLevel === "medium" && (
+                                    <span>
+                                        Reconciliation due in <span className="font-bold">{remainingHours}h {remainingMinutes}m</span> (Deadline: 12:00 AM).
+                                    </span>
+                                )}
+                                {urgencyLevel === "high" && (
+                                    <span className="font-bold">
+                                        URGENT: Reconcile shift before midnight! Countdown: {remainingMinutes.toString().padStart(2, "0")}:{remainingSeconds.toString().padStart(2, "0")} remaining.
+                                    </span>
+                                )}
+                                {urgencyLevel === "overdue" && (
+                                    <span>
+                                        SHIFT RECONCILIATION OVERDUE: The 12:00 AM deadline has passed. Please reconcile and close this shift as soon as possible.
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <Button
+                                size="sm"
+                                variant={(urgencyLevel === "high" || urgencyLevel === "overdue") ? "destructive" : "outline"}
+                                className={cn(
+                                    "rounded-full text-xs font-bold px-4 h-8 transition-all shadow-xs",
+                                    urgencyLevel === "low" && "border-blue-500/30 hover:bg-blue-500/10 text-blue-700 dark:text-blue-400",
+                                    urgencyLevel === "medium" && "border-amber-500/30 hover:bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                )}
+                                onClick={() => router.push("/pos/shifts")}
+                            >
+                                Reconcile & Close Shift
+                            </Button>
+                            {urgencyLevel !== "high" && urgencyLevel !== "overdue" && (
+                                <button
+                                    onClick={() => {
+                                        setIsDismissed(true);
+                                        // Dismiss for 1 hour for low urgency, 15 mins for medium urgency
+                                        const delay = urgencyLevel === "low" ? 60 * 60 * 1000 : 15 * 60 * 1000;
+                                        setDismissedUntil(Date.now() + delay);
+                                    }}
+                                    className="p-1.5 hover:bg-black/5 rounded-full transition-colors"
+                                    title="Dismiss reminder"
+                                >
+                                    <X className="h-4 w-4 text-current" />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+                <div className="flex-1 w-full h-full">
+                    {children}
+                </div>
+            </div>
+        );
     }
 
     // 5. Enforce blocking overlay for all standard cashiers when shift is closed/not started

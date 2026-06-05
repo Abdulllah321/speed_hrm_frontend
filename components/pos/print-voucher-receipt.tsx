@@ -43,6 +43,7 @@ interface PrintVoucherReceiptProps {
         code: string;
         voucherType: string;
         faceValue: number;
+        discount?: number;
         description?: string;
         companyName?: string;
         expiresAt?: string | null;
@@ -97,6 +98,7 @@ function VoucherSkeleton() {
 
 export function PrintVoucherReceipt({
     voucher,
+    vouchers,
     isLoading = false,
     autoPrint = false,
     onClose,
@@ -104,12 +106,15 @@ export function PrintVoucherReceipt({
     const { user } = useAuth();
     const { settings } = usePosSettings();
 
+    const isBulk = vouchers !== undefined && vouchers.length > 0;
+    const voucherList = isBulk ? vouchers! : voucher ? [voucher] : [];
+
     useEffect(() => {
-        if (!isLoading && autoPrint) {
+        if (!isLoading && autoPrint && voucherList.length > 0) {
             const timer = setTimeout(() => printThermal("voucher-receipt-print-root", settings), 400);
             return () => clearTimeout(timer);
         }
-    }, [isLoading, autoPrint, settings]);
+    }, [isLoading, autoPrint, settings, voucherList.length]);
 
     // ── Store info ────────────────────────────────────────────────────
     const storeName =
@@ -122,13 +127,9 @@ export function PrintVoucherReceipt({
     const storePhone   = (typeof user?.terminal?.location?.phone   === "string" ? user.terminal.location.phone   : "") || "";
     const terminalName = (typeof user?.terminal?.name === "string" ? user.terminal.name : "") || (typeof user?.terminal?.code === "string" ? user.terminal.code : "") || "";
 
-    const bodyProps: VoucherReceiptBodyProps = {
-        storeName,
-        storeAddress,
-        storePhone,
-        terminalName,
-        voucher,
-    };
+    const title = isBulk 
+        ? `Print Vouchers (${voucherList.length})` 
+        : `${(voucherList[0]?.voucherType ? `${voucherList[0].voucherType.replace(/_/g, ' ')} Voucher` : 'Gift Voucher')} Receipt`;
 
     return (
         <>
@@ -158,7 +159,7 @@ export function PrintVoucherReceipt({
                         line-height: 1.35 !important;
                     }
                     @page { margin: 0; size: 80mm auto; }
-                    #voucher-receipt-print-root > div > * { page-break-inside: avoid; break-inside: avoid; }
+                    #voucher-receipt-print-root > div { page-break-inside: avoid; break-inside: avoid; }
                 }
             `}</style>
 
@@ -168,15 +169,48 @@ export function PrintVoucherReceipt({
                     <DialogHeader className="px-5 pt-4 pb-3 border-b shrink-0">
                         <DialogTitle className="flex items-center gap-2">
                             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-                            <span className="capitalize">{(voucher?.voucherType ? `${voucher.voucherType.replace(/_/g, ' ')} Voucher` : 'Gift Voucher').toLowerCase()} Receipt</span>
+                            <span className="capitalize">{title.toLowerCase()}</span>
                         </DialogTitle>
                         <p className="text-sm text-muted-foreground">
                             {isLoading ? "Loading voucher data…" : "Review before printing."}
                         </p>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto px-4 py-3">
-                        {isLoading ? <VoucherSkeleton /> : <VoucherReceiptBody {...bodyProps} />}
+                    <div className="flex-1 overflow-y-auto px-4 py-3 bg-muted/10">
+                        {isLoading ? (
+                            <VoucherSkeleton />
+                        ) : isBulk ? (
+                            <div className="space-y-6 max-w-[420px] mx-auto py-2">
+                                {voucherList.map((v, idx) => (
+                                    <div key={v.code} className="bg-background border rounded-xl p-6 shadow-sm relative">
+                                        <div className="absolute top-3 left-3 bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded">
+                                            #{idx + 1} of {voucherList.length}
+                                        </div>
+                                        <div className="pt-2">
+                                            <VoucherReceiptBody
+                                                storeName={storeName}
+                                                storeAddress={storeAddress}
+                                                storePhone={storePhone}
+                                                terminalName={terminalName}
+                                                voucher={v}
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : voucherList.length > 0 ? (
+                            <div className="bg-background border rounded-xl p-6 shadow-sm max-w-[420px] mx-auto my-2">
+                                <VoucherReceiptBody
+                                    storeName={storeName}
+                                    storeAddress={storeAddress}
+                                    storePhone={storePhone}
+                                    terminalName={terminalName}
+                                    voucher={voucherList[0]}
+                                />
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 text-muted-foreground">No voucher details available.</div>
+                        )}
                     </div>
 
                     <DialogFooter className="px-5 py-3 border-t shrink-0 gap-2">
@@ -184,11 +218,11 @@ export function PrintVoucherReceipt({
                         <Button
                             onClick={() => printThermal("voucher-receipt-print-root", settings)}
                             className="flex-1 gap-2"
-                            disabled={isLoading}
+                            disabled={isLoading || voucherList.length === 0}
                         >
                             {isLoading
                                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>
-                                : <><Printer className="h-4 w-4" /> Print Voucher</>
+                                : <><Printer className="h-4 w-4" /> {isBulk ? `Print ${voucherList.length} Vouchers` : "Print Voucher"}</>
                             }
                         </Button>
                     </DialogFooter>
@@ -196,13 +230,31 @@ export function PrintVoucherReceipt({
             </Dialog>
 
             {/* ── Print target — off-screen but rendered, visible only on print ── */}
-            {!isLoading && (
+            {!isLoading && voucherList.length > 0 && (
                 <div
                     id="voucher-receipt-print-root"
                     style={{ position: "fixed", left: "-9999px", top: 0, width: "72.1mm", pointerEvents: "none" }}
                     aria-hidden="true"
                 >
-                    <VoucherReceiptBody {...bodyProps} />
+                    {voucherList.map((v, index) => (
+                        <div
+                            key={v.code}
+                            style={{
+                                pageBreakAfter: index < voucherList.length - 1 ? "always" : "auto",
+                                breakAfter: index < voucherList.length - 1 ? "page" : "auto",
+                            }}
+                        >
+                            <VoucherReceiptBody
+                                storeName={storeName}
+                                storeAddress={storeAddress}
+                                storePhone={storePhone}
+                                terminalName={terminalName}
+                                voucher={v}
+                            />
+                            {/* Spacing for thermal printer cutter */}
+                            {index < voucherList.length - 1 && <div className="h-8" />}
+                        </div>
+                    ))}
                 </div>
             )}
         </>
@@ -220,6 +272,7 @@ interface VoucherReceiptBodyProps {
         code: string;
         voucherType: string;
         faceValue: number;
+        discount?: number;
         description?: string;
         companyName?: string;
         expiresAt?: string | null;
@@ -301,6 +354,13 @@ function VoucherReceiptBody({
             <div className="text-center space-y-1 py-3 bg-muted/20 rounded-lg">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Voucher Value</p>
                 <p className="font-black text-4xl tracking-wider">Rs. {fmt(Number(voucher.faceValue))}</p>
+                {voucher.discount !== undefined && Number(voucher.discount) > 0 && (
+                    <div className="text-[10px] text-muted-foreground mt-1 flex justify-center gap-2 font-bold">
+                        <span>Disc: Rs. {fmt(Number(voucher.discount))}</span>
+                        <span>•</span>
+                        <span>Paid: Rs. {fmt(Number(voucher.faceValue) - Number(voucher.discount))}</span>
+                    </div>
+                )}
             </div>
 
             <Separator />

@@ -204,8 +204,17 @@ export function PrintReturnReceipt({
             {/* ── Print styles — identical strategy to sales receipt ── */}
             <style>{`
                 @media print {
-                    body > *:not(#return-print-root) {
-                        display: none !important;
+                    body *:not(#return-print-root):not(#return-print-root *) {
+                        visibility: hidden !important;
+                        height: 0 !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        border: none !important;
+                    }
+
+                    #return-print-root,
+                    #return-print-root * {
+                        visibility: visible !important;
                     }
 
                     #return-print-root {
@@ -219,6 +228,12 @@ export function PrintReturnReceipt({
                         font-family: 'Courier New', Courier, monospace !important;
                         font-size: 9pt !important;
                         line-height: 1.35 !important;
+                        -webkit-print-color-adjust: exact !important;
+                        print-color-adjust: exact !important;
+                    }
+
+                    #return-print-root div[style*="gridTemplateColumns"] span:not(:first-child) {
+                        white-space: nowrap !important;
                     }
 
                     @page { margin: 0; size: 80mm auto; }
@@ -596,7 +611,7 @@ function ReturnBody({
             >
                 <div style={{ flexShrink: 0 }}>
                     <Image
-                        src="/fbr_logo.png"
+                        src={typeof window !== "undefined" ? `${window.location.origin}/fbr_logo.png` : "/fbr_logo.png"}
                         alt="FBR POS Invoicing System"
                         width={48}
                         height={48}

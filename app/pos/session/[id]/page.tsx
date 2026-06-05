@@ -30,7 +30,26 @@ export default function SessionSummaryPage() {
         const fetchDetails = async () => {
             setLoading(true);
             try {
-                const res = await authFetch(`/pos-session/${sessionId}/reconciliation`);
+                let resolvedId = sessionId;
+                if (sessionId === "current") {
+                    const currentRes = await authFetch("/pos-session/current");
+                    if (currentRes.ok && currentRes.data) {
+                        const id = currentRes.data.session?.id || currentRes.data.id;
+                        if (id) {
+                            resolvedId = id;
+                        } else {
+                            toast.error("No active POS session found");
+                            router.replace("/pos/shifts");
+                            return;
+                        }
+                    } else {
+                        toast.error("No active POS session found");
+                        router.replace("/pos/shifts");
+                        return;
+                    }
+                }
+
+                const res = await authFetch(`/pos-session/${resolvedId}/reconciliation`);
                 if (res.ok) {
                     setData(res.data);
                 } else {
@@ -44,7 +63,7 @@ export default function SessionSummaryPage() {
         };
 
         fetchDetails();
-    }, [sessionId]);
+    }, [sessionId, router]);
 
     if (loading) {
         return (
