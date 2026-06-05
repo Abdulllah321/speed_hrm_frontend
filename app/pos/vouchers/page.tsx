@@ -558,7 +558,7 @@ export default function PosVouchersPage() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label>Merchant Slip / Ref #</Label>
+                                                <Label>AUTH ID / Approval Code</Label>
                                                 <Input value={singleSlipNo} onChange={e => setSingleSlipNo(e.target.value)} placeholder="Slip or reference number" />
                                             </div>
                                         </div>
@@ -726,7 +726,7 @@ export default function PosVouchersPage() {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label>Merchant Slip / Ref #</Label>
+                                                <Label>AUTH ID / Approval Code</Label>
                                                 <Input value={bulkSlipNo} onChange={e => setBulkSlipNo(e.target.value)} placeholder="Slip or reference number" />
                                             </div>
                                         </div>

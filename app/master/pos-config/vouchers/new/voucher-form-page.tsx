@@ -195,7 +195,7 @@ export function VoucherFormPage({ locations }: Props) {
                                             </div>
 
                                             <div className="space-y-2">
-                                                <Label>Merchant Slip / Ref #</Label>
+                                                <Label>AUTH ID / Approval Code</Label>
                                                 <Input value={slipNo} onChange={e => setSlipNo(e.target.value)} placeholder="Slip or reference number" />
                                             </div>
                                         </div>

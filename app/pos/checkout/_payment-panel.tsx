@@ -253,7 +253,7 @@ export function PaymentPanel({
                                         onChange={(e) => onTenderCardLast4Change(e.target.value.replace(/\D/, ""))} />
                                 </div>
                                 <div>
-                                    <Label className="text-xs text-muted-foreground">Merchant Slip / Ref #</Label>
+                                    <Label className="text-xs text-muted-foreground">AUTH ID / Approval Code</Label>
                                     <Input className="mt-1 h-8 text-xs" placeholder="Slip or ref"
                                         value={tenderSlip}
                                         onChange={(e) => onTenderSlipChange(e.target.value)} />
