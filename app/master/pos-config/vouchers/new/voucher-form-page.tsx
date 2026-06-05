@@ -28,6 +28,7 @@ export function VoucherFormPage({ locations }: Props) {
     const [isPending, startTransition] = useTransition();
     const [voucherType, setVoucherType] = useState<VoucherType>("GIFT");
     const [faceValue, setFaceValue] = useState<number | "">("");
+    const [discount, setDiscount] = useState<number | "">("");
     const [description, setDescription] = useState("");
     const [companyName, setCompanyName] = useState("");
     const [expiresAt, setExpiresAt] = useState("");
@@ -46,10 +47,15 @@ export function VoucherFormPage({ locations }: Props) {
             toast.error("Enter a valid amount");
             return;
         }
+        if (discount && (Number(discount) < 0 || Number(discount) >= Number(faceValue))) {
+            toast.error("Discount must be positive and less than the face value");
+            return;
+        }
         startTransition(async () => {
             const result = await issueVoucher({
                 voucherType,
                 faceValue: Number(faceValue),
+                discount: discount ? Number(discount) : 0,
                 description: description || undefined,
                 companyName: companyName || undefined,
                 expiresAt: expiresAt || undefined,
@@ -103,6 +109,18 @@ export function VoucherFormPage({ locations }: Props) {
                                 />
                             </div>
                         </div>
+
+                        {voucherType === "GIFT" && (
+                            <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                <Label>Discount (Rs.)</Label>
+                                <Input
+                                    type="number" min="0"
+                                    value={discount}
+                                    onChange={(e) => setDiscount(e.target.value ? Number(e.target.value) : "")}
+                                    placeholder="e.g. 100"
+                                />
+                            </div>
+                        )}
 
                         {voucherType === "CORPORATE" && (
                             <div className="space-y-2">

@@ -143,8 +143,13 @@ export function VouchersListPage({ vouchers }: Props) {
                                     <TableCell className="text-sm text-muted-foreground max-w-[160px] truncate">
                                         {v.description || v.companyName || "—"}
                                     </TableCell>
-                                    <TableCell className="text-right font-semibold font-mono">
-                                        {formatCurrency(Number(v.faceValue))}
+                                    <TableCell className="text-right font-mono">
+                                        <div className="font-semibold">{formatCurrency(Number(v.faceValue))}</div>
+                                        {v.discount !== undefined && Number(v.discount) > 0 && (
+                                            <div className="text-[10px] text-muted-foreground">
+                                                Disc: {formatCurrency(Number(v.discount))}
+                                            </div>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-wrap gap-1">

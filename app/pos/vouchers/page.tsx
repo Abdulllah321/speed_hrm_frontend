@@ -84,6 +84,7 @@ export default function PosVouchersPage() {
     const [showSingle,   setShowSingle]   = useState(false);
     const [singleType,   setSingleType]   = useState<VoucherType>("GIFT");
     const [singleAmount, setSingleAmount] = useState<number | "">("");
+    const [singleDiscount, setSingleDiscount] = useState<number | "">("");
     const [singleDesc,   setSingleDesc]   = useState("");
     const [singleCo,     setSingleCo]     = useState("");
     const [singleExp,    setSingleExp]    = useState("");
@@ -96,6 +97,7 @@ export default function PosVouchersPage() {
     const [bulkType,    setBulkType]    = useState<VoucherType>("GIFT");
     const [bulkAmount,  setBulkAmount]  = useState<number | "">("");
     const [bulkQty,     setBulkQty]     = useState<number | "">(10);
+    const [bulkDiscount, setBulkDiscount] = useState<number | "">("");
     const [bulkDesc,    setBulkDesc]    = useState("");
     const [bulkCo,      setBulkCo]      = useState("");
     const [bulkExp,     setBulkExp]     = useState("");
@@ -107,7 +109,7 @@ export default function PosVouchersPage() {
     const [voidId, setVoidId] = useState<string | null>(null);
 
     // ── Print voucher receipt ────────────────────────────────────
-    const [printVoucher, setPrintVoucher] = useState<Voucher | null>(null);
+    const [vouchersToPrint, setVouchersToPrint] = useState<Voucher[] | null>(null);
 
     // ── Data ─────────────────────────────────────────────────────
     const fetchVouchers = useCallback(async () => {
@@ -133,6 +135,10 @@ export default function PosVouchersPage() {
     // ── Handlers ─────────────────────────────────────────────────
     const handleSingleIssue = async () => {
         if (!singleAmount || Number(singleAmount) <= 0) { toast.error("Enter a valid amount"); return; }
+        if (singleDiscount && (Number(singleDiscount) < 0 || Number(singleDiscount) >= Number(singleAmount))) {
+            toast.error("Discount must be positive and less than the face value");
+            return;
+        }
         setIssuingSingle(true);
         try {
             const res = await authFetch("/pos-config/vouchers", {
@@ -140,6 +146,7 @@ export default function PosVouchersPage() {
                 body: {
                     voucherType: singleType,
                     faceValue: Number(singleAmount),
+                    discount: singleDiscount ? Number(singleDiscount) : 0,
                     description: singleDesc || undefined,
                     companyName: singleCo || undefined,
                     expiresAt: singleExp || undefined,
@@ -149,7 +156,7 @@ export default function PosVouchersPage() {
             if (res.ok && res.data?.status) {
                 setIssuedVoucher(res.data.data);
                 setShowSingle(false);
-                setSingleAmount(""); setSingleDesc(""); setSingleCo(""); setSingleExp(""); setSingleLocationIds([]);
+                setSingleAmount(""); setSingleDiscount(""); setSingleDesc(""); setSingleCo(""); setSingleExp(""); setSingleLocationIds([]);
                 fetchVouchers();
             } else {
                 toast.error(res.data?.message || "Failed to issue voucher");
@@ -162,6 +169,10 @@ export default function PosVouchersPage() {
         if (!bulkAmount || Number(bulkAmount) <= 0) { toast.error("Enter a valid amount"); return; }
         if (!bulkQty   || Number(bulkQty)   <= 0)  { toast.error("Enter a valid quantity"); return; }
         if (Number(bulkQty) > 500) { toast.error("Maximum 500 vouchers per batch"); return; }
+        if (bulkDiscount && (Number(bulkDiscount) < 0 || Number(bulkDiscount) >= Number(bulkAmount))) {
+            toast.error("Discount must be positive and less than the amount per voucher");
+            return;
+        }
         setIssuingBulk(true);
         try {
             const res = await authFetch("/pos-config/vouchers/bulk", {
@@ -170,6 +181,7 @@ export default function PosVouchersPage() {
                     voucherType: bulkType,
                     faceValue: Number(bulkAmount),
                     quantity: Number(bulkQty),
+                    discount: bulkDiscount ? Number(bulkDiscount) : 0,
                     description: bulkDesc || undefined,
                     companyName: bulkCo || undefined,
                     expiresAt: bulkExp || undefined,
@@ -179,13 +191,50 @@ export default function PosVouchersPage() {
             if (res.ok && res.data?.status) {
                 setBulkResult(res.data.data);
                 setShowBulk(false);
-                setBulkAmount(""); setBulkQty(10); setBulkDesc(""); setBulkCo(""); setBulkExp(""); setBulkLocationIds([]);
                 fetchVouchers();
             } else {
                 toast.error(res.data?.message || "Failed to issue vouchers");
             }
         } catch { toast.error("Failed to issue vouchers"); }
         finally { setIssuingBulk(false); }
+    };
+
+    const resetBulkForm = () => {
+        setBulkAmount("");
+        setBulkQty(10);
+        setBulkDiscount("");
+        setBulkDesc("");
+        setBulkCo("");
+        setBulkExp("");
+        setBulkLocationIds([]);
+    };
+
+    const handlePrintBulk = () => {
+        if (!bulkResult) return;
+        const selectedLocations = locations
+            .filter(loc => bulkLocationIds.includes(loc.id))
+            .map(loc => ({
+                id: Math.random().toString(),
+                location: { id: loc.id, name: loc.name, code: loc.code },
+            }));
+        const createdVouchers: Voucher[] = bulkResult.codes.map(code => ({
+            id: Math.random().toString(),
+            code,
+            voucherType: bulkType,
+            faceValue: Number(bulkAmount),
+            discount: Number(bulkDiscount) || 0,
+            description: bulkDesc || undefined,
+            companyName: bulkCo || undefined,
+            requireCustomerMatch: false,
+            expiresAt: bulkExp || undefined,
+            createdAt: new Date().toISOString(),
+            isActive: true,
+            isRedeemed: false,
+            locations: selectedLocations,
+        }));
+        setVouchersToPrint(createdVouchers);
+        setBulkResult(null);
+        resetBulkForm();
     };
 
     const handleVoid = async () => {
@@ -312,9 +361,14 @@ export default function PosVouchersPage() {
                                                 <TableCell className="text-sm text-muted-foreground max-w-40 truncate">
                                                     {v.description || (v as any).companyName || "—"}
                                                 </TableCell>
-                                                <TableCell className="text-right font-semibold font-mono">
-                                                    {formatCurrency(Number(v.faceValue))}
-                                                </TableCell>
+                                                 <TableCell className="text-right font-mono">
+                                                     <div className="font-semibold">{formatCurrency(Number(v.faceValue))}</div>
+                                                     {v.discount !== undefined && Number(v.discount) > 0 && (
+                                                         <div className="text-[10px] text-muted-foreground">
+                                                             Disc: {formatCurrency(Number(v.discount))}
+                                                         </div>
+                                                     )}
+                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">{fmtDate(v.expiresAt)}</TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">{fmtDate(v.createdAt)}</TableCell>
                                                 <TableCell>
@@ -324,7 +378,6 @@ export default function PosVouchersPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center gap-1">
-                                                        {/* Print button - always visible */}
                                                         <Button 
                                                             variant="ghost" 
                                                             size="icon"
@@ -389,6 +442,14 @@ export default function PosVouchersPage() {
                                         placeholder="e.g. 1000" autoFocus />
                                 </div>
                             </div>
+                            {singleType === "GIFT" && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <Label>Discount (Rs.)</Label>
+                                    <Input type="number" min="0" value={singleDiscount}
+                                        onChange={e => setSingleDiscount(e.target.value ? Number(e.target.value) : "")}
+                                        placeholder="e.g. 100" />
+                                </div>
+                            )}
                             {singleType === "CORPORATE" && (
                                 <div className="space-y-2">
                                     <Label>Company Name</Label>
@@ -474,13 +535,23 @@ export default function PosVouchersPage() {
                                         placeholder="e.g. 500" autoFocus />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label>Quantity <span className="text-destructive">*</span>
-                                    <span className="text-muted-foreground font-normal ml-1">(max 500)</span>
-                                </Label>
-                                <Input type="number" min="1" max="500" value={bulkQty}
-                                    onChange={e => setBulkQty(e.target.value ? Number(e.target.value) : "")}
-                                    placeholder="e.g. 100" />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Quantity <span className="text-destructive">*</span>
+                                        <span className="text-muted-foreground font-normal ml-1">(max 500)</span>
+                                    </Label>
+                                    <Input type="number" min="1" max="500" value={bulkQty}
+                                        onChange={e => setBulkQty(e.target.value ? Number(e.target.value) : "")}
+                                        placeholder="e.g. 100" />
+                                </div>
+                                {bulkType === "GIFT" && (
+                                    <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                        <Label>Discount per Voucher (Rs.)</Label>
+                                        <Input type="number" min="0" value={bulkDiscount}
+                                            onChange={e => setBulkDiscount(e.target.value ? Number(e.target.value) : "")}
+                                            placeholder="e.g. 50" />
+                                    </div>
+                                )}
                             </div>
                             {bulkType === "CORPORATE" && (
                                 <div className="space-y-2">
@@ -510,11 +581,29 @@ export default function PosVouchersPage() {
                                         <span>Value each</span>
                                         <span className="font-semibold text-foreground">{formatCurrency(Number(bulkAmount))}</span>
                                     </div>
+                                    {bulkType === "GIFT" && bulkDiscount && Number(bulkDiscount) > 0 && (
+                                        <>
+                                            <div className="flex justify-between text-muted-foreground">
+                                                <span>Discount each</span>
+                                                <span className="font-semibold text-destructive">-{formatCurrency(Number(bulkDiscount))}</span>
+                                            </div>
+                                            <div className="flex justify-between text-muted-foreground">
+                                                <span>Net price each</span>
+                                                <span className="font-semibold text-emerald-600">{formatCurrency(Number(bulkAmount) - Number(bulkDiscount))}</span>
+                                            </div>
+                                        </>
+                                    )}
                                     <Separator className="my-1" />
                                     <div className="flex justify-between font-semibold">
-                                        <span>Total value</span>
+                                        <span>Total face value</span>
                                         <span>{formatCurrency(Number(bulkAmount) * Number(bulkQty))}</span>
                                     </div>
+                                    {bulkType === "GIFT" && bulkDiscount && Number(bulkDiscount) > 0 && (
+                                        <div className="flex justify-between font-semibold text-emerald-600">
+                                            <span>Total amount payable</span>
+                                            <span>{formatCurrency((Number(bulkAmount) - Number(bulkDiscount)) * Number(bulkQty))}</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -577,7 +666,7 @@ export default function PosVouchersPage() {
 
             {/* ── Bulk Result Modal ───────────────────────────────────── */}
             {bulkResult && (
-                <Dialog open onOpenChange={() => setBulkResult(null)}>
+                <Dialog open onOpenChange={() => { setBulkResult(null); resetBulkForm(); }}>
                     <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
@@ -606,7 +695,10 @@ export default function PosVouchersPage() {
                             <Button variant="outline" onClick={() => downloadCodes(bulkResult.codes)} className="gap-2">
                                 <Download className="w-4 h-4" /> Download .txt
                             </Button>
-                            <Button onClick={() => setBulkResult(null)}>Done</Button>
+                            <Button onClick={handlePrintBulk} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                                <Printer className="w-4 h-4" /> Print Receipts
+                            </Button>
+                            <Button onClick={() => { setBulkResult(null); resetBulkForm(); }}>Done</Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
@@ -656,7 +748,7 @@ export default function PosVouchersPage() {
                         <DialogFooter className="gap-2">
                             <Button variant="outline" onClick={() => setIssuedVoucher(null)}>Close</Button>
                             <Button onClick={() => {
-                                setPrintVoucher(issuedVoucher);
+                                setVouchersToPrint([issuedVoucher]);
                                 setIssuedVoucher(null);
                             }} className="gap-2">
                                 <Printer className="w-4 h-4" /> Print Receipt
@@ -667,11 +759,11 @@ export default function PosVouchersPage() {
             )}
 
             {/* ── Print Voucher Receipt ───────────────────────────────── */}
-            {printVoucher && (
+            {vouchersToPrint && (
                 <PrintVoucherReceipt
-                    voucher={printVoucher}
+                    vouchers={vouchersToPrint}
                     autoPrint={false}
-                    onClose={() => setPrintVoucher(null)}
+                    onClose={() => setVouchersToPrint(null)}
                 />
             )}
         </div>

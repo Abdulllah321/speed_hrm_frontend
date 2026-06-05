@@ -274,7 +274,7 @@ export default function PosPage() {
         setError(null);
         try {
             const [dashRes, sessionRes] = await Promise.allSettled([
-                authFetch("//stats"),
+                authFetch("/pos-dashboard/stats"),
                 authFetch("/pos-session/current"),
             ]);
 

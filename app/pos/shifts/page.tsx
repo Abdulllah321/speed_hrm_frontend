@@ -270,7 +270,7 @@ export default function ShiftsPage() {
             });
             if (res.ok) {
                 setCloseSummary({
-                    id: res.data?.session?.id || sessionData?.id,
+                    id: res.data?.session?.id || sessionData?.session?.id || sessionData?.id,
                     expected: sessionData?.metrics?.expectedCash ?? 0,
                     actual: Number(actualCash),
                     variance: res.data?.variance ?? 0,
@@ -370,13 +370,13 @@ export default function ShiftsPage() {
                                 <Button
                                     variant="outline"
                                     onClick={() => {
-                                        setPrintSessionId(sessionData?.id);
+                                        setPrintSessionId(sessionData?.session?.id || sessionData?.id);
                                         setShowPrintModal(true);
                                     }}
                                     className="rounded-full px-6 gap-1.5"
                                 >
                                     <Printer className="w-4 h-4" />
-                                    Print X-Report
+                                    Reconciliation Report
                                 </Button>
                                 <Button variant="outline" onClick={() => router.push("/pos/new-sale")} className="rounded-full px-6">
                                     Continue Selling
