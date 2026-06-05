@@ -333,7 +333,7 @@ export default function CheckoutPage() {
         const wostPerUnit = i.price / taxDivisor;
         const totalWost = wostPerUnit * i.quantity;
         const discountPercent = i.overrideDiscountPercent ?? i.discountPercent;
-        return acc + Math.round(totalWost * (discountPercent / 100));
+        return acc + (totalWost * (discountPercent / 100));
     }, 0);
 
     const subtotalAfterItems = subtotal - itemDiscounts;
@@ -343,15 +343,17 @@ export default function CheckoutPage() {
 
     if (discountMode === "alliance" && selectedAlliance) {
         let allianceDiscount = 0;
-        const allianceBase = subtotalAfterItems;
+        const allianceBase = subtotal;
         if (selectedAlliance.maxDiscount) {
             allianceDiscount = Math.min(
-                Math.round(allianceBase * (Number(selectedAlliance.discountPercent) / 100)),
+                allianceBase * (Number(selectedAlliance.discountPercent) / 100),
                 Number(selectedAlliance.maxDiscount)
             );
         } else {
-            allianceDiscount = Math.round(allianceBase * (Number(selectedAlliance.discountPercent) / 100));
+            allianceDiscount = allianceBase * (Number(selectedAlliance.discountPercent) / 100);
         }
+        allianceDiscount = Math.round(allianceDiscount * 100) / 100;
+
         if (allianceDiscount >= itemDiscounts) {
             orderDiscount = allianceDiscount;
             finalItemDiscounts = 0;
@@ -368,7 +370,7 @@ export default function CheckoutPage() {
         orderDiscount = appliedCoupon.discountAmount;
     } else if (discountMode === "manual") {
         if (manualDiscountType === "percent") {
-            orderDiscount = Math.round(subtotalAfterItems * (manualDiscountValue / 100));
+            orderDiscount = Math.round(subtotalAfterItems * (manualDiscountValue / 100) * 100) / 100;
         } else {
             orderDiscount = Math.min(manualDiscountValue, subtotalAfterItems);
         }
@@ -377,30 +379,7 @@ export default function CheckoutPage() {
     const totalDiscount = finalItemDiscounts + orderDiscount;
     const isOrderDiscountApplied = (discountMode === "alliance" || discountMode === "coupon") && orderDiscount > 0;
 
-    let itemTax = 0;
-    if (isOrderDiscountApplied) {
-        const base = subtotal > 0 ? subtotal : 1;
-        cartItems.forEach((i) => {
-            const taxDivisor = 1 + (i.taxPercent / 100);
-            const wostPerUnit = i.price / taxDivisor;
-            const totalWost = wostPerUnit * i.quantity;
-            const share = Math.round(orderDiscount * totalWost / base);
-            const afterDiscount = totalWost - share;
-            itemTax += Math.round(afterDiscount * (i.taxPercent / 100));
-        });
-    } else {
-        itemTax = cartItems.reduce((acc, i) => {
-            const taxDivisor = 1 + (i.taxPercent / 100);
-            const wostPerUnit = i.price / taxDivisor;
-            const totalWost = wostPerUnit * i.quantity;
-            const discountPercent = i.overrideDiscountPercent ?? i.discountPercent;
-            const discountAmount = Math.round(totalWost * (discountPercent / 100));
-            const afterDiscount = totalWost - discountAmount;
-            return acc + Math.round(afterDiscount * (i.taxPercent / 100));
-        }, 0);
-    }
-
-    // Alliance/Coupon distribution per item
+    // Alliance/Coupon distribution per item (calculated first for use in tax)
     const allianceSharePerItem: number[] = [];
     if ((discountMode === "alliance" || discountMode === "coupon") && orderDiscount > 0 && cartItems.length > 0) {
         const base = subtotal > 0 ? subtotal : 1;
@@ -413,7 +392,7 @@ export default function CheckoutPage() {
             distributed += share;
             return share;
         });
-        let remainder = orderDiscount - distributed;
+        let remainder = Math.round(orderDiscount - distributed);
         const sortedIdx = cartItems
             .map((item, i) => {
                 const taxDivisor = 1 + (item.taxPercent / 100);
@@ -426,6 +405,28 @@ export default function CheckoutPage() {
         allianceSharePerItem.push(...rawShares);
     } else {
         cartItems.forEach(() => allianceSharePerItem.push(0));
+    }
+
+    let itemTax = 0;
+    if (isOrderDiscountApplied) {
+        cartItems.forEach((i, idx) => {
+            const taxDivisor = 1 + (i.taxPercent / 100);
+            const wostPerUnit = i.price / taxDivisor;
+            const totalWost = wostPerUnit * i.quantity;
+            const share = allianceSharePerItem[idx];
+            const afterDiscount = totalWost - share;
+            itemTax += Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100;
+        });
+    } else {
+        itemTax = cartItems.reduce((acc, i) => {
+            const taxDivisor = 1 + (i.taxPercent / 100);
+            const wostPerUnit = i.price / taxDivisor;
+            const totalWost = wostPerUnit * i.quantity;
+            const discountPercent = i.overrideDiscountPercent ?? i.discountPercent;
+            const discountAmount = totalWost * (discountPercent / 100);
+            const afterDiscount = totalWost - discountAmount;
+            return acc + (Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100);
+        }, 0);
     }
 
     // Grand total includes FBR POS Fee
@@ -829,6 +830,7 @@ export default function CheckoutPage() {
                         orderDiscount={orderDiscount}
                         itemDiscounts={itemDiscounts}
                         finalItemDiscounts={finalItemDiscounts}
+                        subtotal={subtotal}
                         subtotalAfterItems={subtotalAfterItems}
                         cartItems={cartItems}
                         promos={promos}
