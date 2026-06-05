@@ -310,7 +310,10 @@ export function PaymentPanel({
 
                     <Button
                         className="w-full gap-2"
-                        disabled={tenderMethod === "voucher" && !validatedVoucher}
+                        disabled={
+                            (tenderMethod === "voucher" && !validatedVoucher) ||
+                            ((tenderMethod === "card" || tenderMethod === "bank_transfer") && !selectedMerchant && merchants.length > 0)
+                        }
                         onClick={() => {
                             if (tenderMethod === "voucher") {
                                 onAddVoucherTender();

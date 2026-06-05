@@ -469,6 +469,11 @@ export default function CheckoutPage() {
 
     const addTender = () => {
         if (!tenderAmount || tenderAmount <= 0) return;
+        // Merchant required for card / bank_transfer payments
+        if ((tenderMethod === "card" || tenderMethod === "bank_transfer") && !selectedMerchant) {
+            toast.error("Please select a merchant / bank terminal before adding a card payment.");
+            return;
+        }
         setTenders(prev => [...prev, {
             method: tenderMethod, amount: tenderAmount,
             cardLast4: tenderCardLast4 || undefined,
@@ -580,6 +585,12 @@ export default function CheckoutPage() {
             toast.error("A customer must be selected to complete this sale.");
             return;
         }
+        // Merchant required if any card / bank_transfer tender was added
+        const hasCardTender = tenders.some(t => t.method === "card" || t.method === "bank_transfer");
+        if (hasCardTender && !selectedMerchant) {
+            toast.error("Please select a merchant / bank terminal for the card payment.");
+            return;
+        }
         setIsSubmitting(true);
         try {
             const orderItems = cartItems.map((item) => ({
@@ -647,6 +658,12 @@ export default function CheckoutPage() {
     const handleCreditSale = useCallback(async () => {
         if (!selectedCustomer) {
             toast.error("Please select a customer for credit sale.");
+            return;
+        }
+        // Merchant required if any card / bank_transfer tender was added
+        const hasCardTenderCredit = tenders.some(t => t.method === "card" || t.method === "bank_transfer");
+        if (hasCardTenderCredit && !selectedMerchant) {
+            toast.error("Please select a merchant / bank terminal for the card payment.");
             return;
         }
         if (!confirm(`Confirm credit sale of ${fmtCurrency(grandTotal)} to ${selectedCustomer.name}?\n\nBalance will be added to customer ledger.`)) return;

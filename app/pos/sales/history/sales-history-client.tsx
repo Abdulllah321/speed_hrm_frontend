@@ -669,6 +669,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
             {showReturnPrint && selectedOrder && (
                 <PrintReturnReceipt
                     returnRef={selectedOrder?.orderNumber ?? ""}
+                    isAlliance={!!selectedOrder?.alliance}
                     originalOrders={[{ orderNumber: selectedOrder?.orderNumber ?? "", grandTotal: Number(selectedOrder?.grandTotal ?? 0) }]}
                     returnedLines={
                         (returnDetails?.items ?? []).map((item: any) => ({
@@ -695,6 +696,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                     notes={returnDetails?.reason}
                     discountNotes={returnDetails?.discountNotes}
                     returnedAt={returnDetails?.returnedAt}
+                    exchangeVoucher={returnDetails?.exchangeVoucher}
                     isLoading={isLoadingReceipt}
                     onClose={() => setShowReturnPrint(false)}
                 />

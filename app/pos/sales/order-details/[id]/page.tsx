@@ -498,6 +498,7 @@ export default function OrderDetailsPage() {
             {showReturnPrint && order && (
                 <PrintReturnReceipt
                     returnRef={order.orderNumber}
+                    isAlliance={!!order.alliance}
                     originalOrders={[{ orderNumber: order.orderNumber, grandTotal: Number(order.grandTotal) }]}
                     returnedLines={(returnDetails?.items ?? []).map((item: any) => ({
                         name: item.item?.description || "Unknown Item",
