@@ -124,21 +124,31 @@ export function EmployeeUserList({
   const canCreate = isAdminRole || userPermissions.includes("user.create");
   const canUpdate = isAdminRole || userPermissions.includes("user.update");
 
-  const userByEmployeeId = new Map<string, User>();
+  // User.employeeId now stores the alphanumeric code (e.g. EMP-001), not the UUID.
+  // Build the lookup map keyed by both the alphanumeric code AND the employee UUID for max reliability.
+  const userByEmployeeCode = new Map<string, User>(); // keyed by alphanumeric employeeId code
+  const userByEmployeeUuid = new Map<string, User>(); // keyed by employee.id UUID (via employee sub-object)
   for (const u of users) {
+    // u.employeeId is the alphanumeric code stored in Master DB User.employeeId
+    if (u.employeeId) {
+      userByEmployeeCode.set(u.employeeId, u);
+    }
+    // u.employee.id is the tenant Employee UUID (returned as a joined object)
     if (u.employee?.id) {
-      userByEmployeeId.set(u.employee.id, u);
-    } else if (u.employeeId) {
-      userByEmployeeId.set(u.employeeId, u);
+      userByEmployeeUuid.set(u.employee.id, u);
     }
   }
 
   const rows: Row[] = employees.map((e) => {
-    const matchedUser = userByEmployeeId.get(e.id) || null;
+    // Match by alphanumeric code first (correct after walkthrough fix), then fall back to UUID
+    const matchedUser =
+      userByEmployeeCode.get(e.employeeId) ||
+      userByEmployeeUuid.get(e.id) ||
+      null;
     const email = matchedUser?.email || e.officialEmail || "";
     return {
-      employeeId: e.id,
-      employeeCode: e.employeeId,
+      employeeId: e.id,           // UUID — for internal keying/filtering
+      employeeCode: e.employeeId, // alphanumeric code — what User.employeeId stores
       userId: matchedUser?.id || null,
       roleId: matchedUser?.role?.id || null,
       employeeName: e.employeeName,
@@ -164,10 +174,13 @@ export function EmployeeUserList({
         toast.error("You don't have permission to create user accounts");
         return;
       }
-      if (!row.email) {
-        toast.error("Official email not set for this employee");
+      // Email is no longer required — employees can authenticate via Employee ID + password.
+      // Warn if no email, but still allow account creation so they can log in with their code.
+      if (!row.email && !row.employeeCode) {
+        toast.error("Employee has no email or Employee ID — cannot create an account");
         return;
       }
+
       const parts = row.employeeName.trim().split(" ");
       const firstName = parts[0] || row.employeeName;
       const lastName = parts.slice(1).join(" ") || "";
@@ -175,10 +188,12 @@ export function EmployeeUserList({
       setSavingForId(row.employeeId);
       startTransition(async () => {
         const result = await createUser({
-          email: row.email,
+          // Pass email only if present; employees without email log in via employeeCode
+          ...(row.email ? { email: row.email } : {}),
           firstName,
           lastName,
-          employeeId: row.employeeId,
+          // employeeId in User table must be the alphanumeric code (e.g. EMP-001), not the UUID
+          employeeId: row.employeeCode,
           roleId: newRoleId || undefined,
         });
         if (result.status) {
