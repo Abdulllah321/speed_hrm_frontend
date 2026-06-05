@@ -31,7 +31,14 @@ function paidPerUnit(oi: any, orderGrandTotal: number, orderLineTotalsSum: numbe
     console.warn(`Invalid quantity for item ${oi.itemId}:`, qty);
     return 0;
   }
+  
+  // If the order line totals sum is extremely close to grand total (within FBR fee and minor rounding),
+  // then we can just return the actual lineTotal divided by quantity to avoid distributing FBR fee/rounding.
   const lineTotal = Number(oi.lineTotal);
+  if (Math.abs(orderLineTotalsSum - orderGrandTotal) <= 5) {
+    return lineTotal / qty;
+  }
+  
   const itemShare = orderLineTotalsSum > 0 ? (lineTotal / orderLineTotalsSum) * orderGrandTotal : lineTotal;
   return itemShare / qty;
 }
@@ -54,6 +61,7 @@ interface ReturnLine {
     orderedQty: number; returnQty: number;
     paidPerUnit: number; originalUnitPrice: number; discountPercent: number;
     discountAmount?: number; taxAmount?: number; taxPercent?: number;
+    originalQty?: number;
 }
 
 interface NewLine { itemId: string; name: string; sku: string; quantity: number; unitPrice: number; discountPct: number; }
@@ -72,6 +80,7 @@ export default function ReturnsPage() {
 
     // ── Loaded orders (multi-order support) ───────────────────────────
     const [loadedOrders, setLoadedOrders] = useState<LoadedOrder[]>([]);
+    const isAllianceCase = loadedOrders.some(o => !!o.alliance);
 
     // ── Return lines (flat, tagged with orderId) ──────────────────────
     const [returnLines, setReturnLines] = useState<ReturnLine[]>([]);
@@ -154,6 +163,7 @@ export default function ReturnsPage() {
                         discountAmount: Number(oi.discountAmount ?? 0),
                         taxAmount: Number(oi.taxAmount ?? 0),
                         taxPercent: Number(oi.taxPercent ?? 0),
+                        originalQty: Number(oi.quantity),
                     };
                 });
                 setReturnLines(prev => [...prev, ...lines]);
@@ -492,7 +502,9 @@ export default function ReturnsPage() {
                                             <TableHead className="text-xs uppercase">Item</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Ordered</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Unit Price</TableHead>
-                                            <TableHead className="text-right text-xs uppercase">Disc %</TableHead>
+                                            <TableHead className="text-right text-xs uppercase">
+                                                {isAllianceCase ? "Disc Amt" : "Disc %"}
+                                            </TableHead>
                                             <TableHead className="text-right text-xs uppercase">Tax %</TableHead>
                                             <TableHead className="text-right text-xs uppercase text-emerald-700">Paid/Unit</TableHead>
                                             <TableHead className="text-center text-xs uppercase">Return Qty</TableHead>
@@ -514,9 +526,21 @@ export default function ReturnsPage() {
                                                 <TableCell className="text-right text-sm">{line.orderedQty}</TableCell>
                                                 <TableCell className="text-right text-sm font-mono">{formatCurrency(line.originalUnitPrice)}</TableCell>
                                                 <TableCell className="text-right text-sm">
-                                                    {line.discountPercent > 0
-                                                        ? <span className="text-destructive font-medium">{line.discountPercent}%</span>
-                                                        : <span className="text-muted-foreground">—</span>}
+                                                    {isAllianceCase ? (
+                                                        line.discountAmount && line.discountAmount > 0 ? (
+                                                            <span className="text-destructive font-medium">
+                                                                {formatCurrency(line.discountAmount / (line.originalQty || 1))}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">—</span>
+                                                        )
+                                                    ) : (
+                                                        line.discountPercent > 0 ? (
+                                                            <span className="text-destructive font-medium">{line.discountPercent}%</span>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">—</span>
+                                                        )
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-right text-sm">
                                                     {line.taxPercent && line.taxPercent > 0
@@ -794,6 +818,7 @@ export default function ReturnsPage() {
             {returnReceipt && (
                 <PrintReturnReceipt
                     returnRef={returnReceipt.returnRef}
+                    isAlliance={isAllianceCase}
                     originalOrders={loadedOrders.map(o => ({ orderNumber: o.orderNumber, grandTotal: o.grandTotal }))}
                     returnedLines={selectedLines.map(l => {
                         const detail = returnReceipt.itemRefundDetails?.find((d: any) => d.orderItemId === l.orderItemId);

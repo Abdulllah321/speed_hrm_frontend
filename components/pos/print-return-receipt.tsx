@@ -82,6 +82,7 @@ export interface ReturnReceiptLine {
 export interface PrintReturnReceiptProps {
     returnRef: string;
     isRefund?: boolean;
+    isAlliance?: boolean;
     originalOrders: { orderNumber: string; grandTotal: number }[];
     returnedLines: ReturnReceiptLine[];
     refundTotal: number;
@@ -147,6 +148,7 @@ function ReturnReceiptSkeleton() {
 export function PrintReturnReceipt({
     returnRef,
     isRefund,
+    isAlliance,
     originalOrders,
     returnedLines,
     refundTotal,
@@ -194,6 +196,7 @@ export function PrintReturnReceipt({
         isRefund, storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
         cashierName, returnRef, originalOrders, returnedLines, refundTotal,
         notes, discountNotes, returnedAt, paymentMethod, settings, exchangeVoucher,
+        isAlliance,
     };
 
     return (
@@ -289,6 +292,7 @@ export function PrintReturnReceipt({
 
 interface ReturnBodyProps {
     isRefund?: boolean;
+    isAlliance?: boolean;
     storeName: string;
     storeAddress: string;
     storePhone: string;
@@ -309,10 +313,11 @@ interface ReturnBodyProps {
 }
 
 function ReturnBody({
-    isRefund, storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
+    isRefund, isAlliance, storeName, storeAddress, storePhone, storeNTN, storeSTRN, terminalName,
     cashierName, returnRef, originalOrders, returnedLines, refundTotal,
     notes, discountNotes, returnedAt, paymentMethod, settings, exchangeVoucher,
 }: ReturnBodyProps) {
+    const isAllianceCase = isAlliance || discountNotes?.some(note => note.toLowerCase().includes("alliance"));
 
     const Row = ({ label, value, bold = false, indent = false }: {
         label: string; value: string; bold?: boolean; indent?: boolean;
@@ -387,26 +392,38 @@ function ReturnBody({
             {/* ── Returned item lines ── */}
             {returnedLines.map((line, idx) => {
                 const qty          = line.returnQty;
-                const unitPrice    = line.unitPrice ?? line.paidPerUnit;
                 const taxPct       = line.taxPercent ?? 0;
                 const taxDivisor   = 1 + (taxPct / 100);
-                
-                // Calculate WOST from retail price
-                const retailPrice  = unitPrice;
-                const wostPerUnit  = retailPrice / taxDivisor;
-                const totalWost    = Math.round(wostPerUnit * qty * 100) / 100;
-                
-                // Discount
-                const discPct      = line.discountPercent ?? 0;
-                const discAmt      = line.discountAmount  ?? 0;
+
+                // If price was adjusted (current price < original), use the refundPerUnit
+                // as the effective retail price for receipt display.
+                // refundPerUnit is already tax-inclusive (retail price).
+                const effectiveRetailPerUnit = (line.priceAdjusted && line.refundPerUnit)
+                    ? line.refundPerUnit
+                    : (line.unitPrice ?? line.paidPerUnit);
+
+                const originalRetailPerUnit = line.unitPrice ?? line.paidPerUnit;
+
+                // Calculate WOST from effective retail price
+                const wostPerUnit  = effectiveRetailPerUnit / taxDivisor;
+                const totalWost    = Math.round(wostPerUnit * qty);
+
+                // For price-adjusted items: no item-level discount (discount was already factored
+                // into the lower current price). For normal items: use stored discount.
+                const discPct      = line.priceAdjusted ? 0 : (line.discountPercent ?? 0);
+                const discAmt      = line.priceAdjusted
+                    ? 0
+                    : Math.round(line.discountAmount ?? 0);
                 const afterDisc    = totalWost - discAmt;
-                
-                // Tax
-                const taxAmt       = line.taxAmount ?? 0;
-                
-                // Value including tax
+
+                // Tax on discounted WOST
+                const taxAmt       = line.priceAdjusted
+                    ? Math.round(afterDisc * (taxPct / 100))
+                    : Math.round(line.taxAmount ?? 0);
+
+                // Value including tax = actual refund for this item
                 const valueIncludingTax = afterDisc + taxAmt;
-                
+
                 const uniqueNo = line.sku || "—";
 
                 return (
@@ -422,15 +439,22 @@ function ReturnBody({
                             <span className="text-muted-foreground truncate">{uniqueNo}</span>
                             <span style={{ textAlign: "center" }}>{line.size || "—"}</span>
                             <span style={{ textAlign: "center", fontWeight: "bold" }}>{qty}</span>
-                            <span style={{ textAlign: "right" }}>{fmt(retailPrice)}</span>
+                            <span style={{ textAlign: "right" }}>
+                                {line.priceAdjusted && (
+                                    <span style={{ textDecoration: "line-through", opacity: 0.5, marginRight: "2px", fontSize: "9px" }}>
+                                        {fmt(originalRetailPerUnit)}
+                                    </span>
+                                )}
+                                {fmt(effectiveRetailPerUnit)}
+                            </span>
                             <span style={{ textAlign: "right" }}>{fmt(wostPerUnit)}</span>
                             <span style={{ textAlign: "right", fontWeight: "bold" }}>{fmt(totalWost)}</span>
                         </div>
 
                         {/* FBR-style breakdown */}
                         <div className="mt-1 space-y-0.5 text-[10px]">
-                            <Row label="Discount %" value={`${discPct}%`} />
-                            <Row label="Discount Amount" value={discAmt > 0 ? fmt(discAmt) : "—"} />
+                            {!isAllianceCase && <Row label="Discount %" value={`${discPct}%`} />}
+                            <Row label={isAllianceCase ? "Alliance Disc" : "Discount Amount"} value={discAmt > 0 ? fmt(discAmt) : "—"} />
                             <Row label="Amount after Discount" value={fmt(afterDisc)} />
                             <Row label="Sales Tax Rate" value={`${taxPct}%`} />
                             <Row label="Sales Tax Amount" value={taxAmt > 0 ? fmt(taxAmt) : "—"} />
@@ -441,6 +465,11 @@ function ReturnBody({
                                 <span>Value Including Sales Tax</span>
                                 <span>{fmt(valueIncludingTax)}</span>
                             </div>
+                            {line.priceAdjusted && (
+                                <p className="text-[9px] italic opacity-60 mt-0.5">
+                                    * Price adjusted: current price lower than original
+                                </p>
+                            )}
                         </div>
 
                         {/* Show source order if multi-order return */}
@@ -461,18 +490,32 @@ function ReturnBody({
                 {(() => {
                     const subtotal = returnedLines.reduce((s, line) => {
                         const qty = line.returnQty;
-                        const unitPrice = line.unitPrice ?? line.paidPerUnit;
                         const taxPct = line.taxPercent ?? 0;
                         const taxDivisor = 1 + (taxPct / 100);
-                        const wostPerUnit = unitPrice / taxDivisor;
+                        // Use refundPerUnit for price-adjusted items
+                        const effectiveRetail = (line.priceAdjusted && line.refundPerUnit)
+                            ? line.refundPerUnit
+                            : (line.unitPrice ?? line.paidPerUnit);
+                        const wostPerUnit = effectiveRetail / taxDivisor;
                         return s + (wostPerUnit * qty);
                     }, 0);
-                    
-                    const totalDiscount = returnedLines.reduce((s, line) => s + (line.discountAmount ?? 0), 0);
+
+                    const totalDiscount = returnedLines.reduce((s, line) =>
+                        s + (line.priceAdjusted ? 0 : Math.round(line.discountAmount ?? 0)), 0);
                     const valueForSales = subtotal - totalDiscount;
-                    const totalTax = returnedLines.reduce((s, line) => s + (line.taxAmount ?? 0), 0);
+                    const totalTax = returnedLines.reduce((s, line) => {
+                        if (line.priceAdjusted) {
+                            const taxPct = line.taxPercent ?? 0;
+                            const taxDivisor = 1 + (taxPct / 100);
+                            const effectiveRetail = line.refundPerUnit ?? (line.unitPrice ?? line.paidPerUnit);
+                            const wostPerUnit = effectiveRetail / taxDivisor;
+                            const totalWost = wostPerUnit * line.returnQty;
+                            return s + Math.round(totalWost * (taxPct / 100));
+                        }
+                        return s + Math.round(line.taxAmount ?? 0);
+                    }, 0);
                     const totalValueIncludingTax = valueForSales + totalTax;
-                    
+
                     return (
                         <>
                             <Row label={`Total Value Excluding Sales Tax (${returnedLines.length})`} value={fmt(Math.round(subtotal))} />

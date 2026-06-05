@@ -1163,14 +1163,16 @@ export default function SalesHistoryPage() {
             )}
 
             {/* Print Return Receipt */}
-            {showReturnPrint && selectedOrder && returnDetails && (
+            {showReturnPrint && selectedOrder && (
                 <PrintReturnReceipt
                     returnRef={selectedOrder.orderNumber}
                     isRefund={selectedOrder.status === 'refunded' || selectedOrder.status === 'partially_returned'}
+                    isAlliance={!!selectedOrder.alliance}
                     originalOrders={[{ orderNumber: selectedOrder.orderNumber, grandTotal: Number(selectedOrder.grandTotal) }]}
-                    returnedLines={returnDetails.items.map((item: any) => ({
+                    returnedLines={(returnDetails?.items ?? []).map((item: any) => ({
                         name: item.item?.description || "Unknown Item",
                         sku: item.item?.sku || "-",
+                        size: item.item?.size?.name ?? "",
                         brand: item.item?.brand?.name,
                         returnQty: item.returnableQty || item.quantity,
                         paidPerUnit: Number(item.originalPaidPerUnit || item.unitPrice),
@@ -1181,16 +1183,18 @@ export default function SalesHistoryPage() {
                         discountPercent: Number(item.discountPercent || 0),
                         taxAmount: Number(item.taxAmount || 0),
                         taxPercent: Number(item.taxPercent || 0),
-                        refundPerUnit: Number(item.refundPerUnit || item.unitPrice),
+                        refundPerUnit: item.refundPerUnit,
                         priceAdjusted: item.priceAdjusted || false,
                         originalPaidPerUnit: Number(item.originalPaidPerUnit || item.unitPrice),
                         couponDeduction: Number(item.couponDeduction || 0),
                     }))}
-                    refundTotal={returnDetails.items.reduce((sum: number, item: any) => sum + Number(item.refundAmount || 0), 0)}
-                    notes={returnDetails.reason}
-                    discountNotes={returnDetails.discountNotes}
-                    returnedAt={returnDetails.returnedAt}
+                    refundTotal={returnDetails?.items?.reduce((sum: number, item: any) => sum + Number(item.refundAmount || 0), 0) ?? 0}
+                    notes={returnDetails?.reason}
+                    discountNotes={returnDetails?.discountNotes}
+                    returnedAt={returnDetails?.returnedAt}
+                    exchangeVoucher={returnDetails?.exchangeVoucher ?? null}
                     paymentMethod={selectedOrder.paymentMethod}
+                    isLoading={isLoadingReceipt}
                     onClose={() => setShowReturnPrint(false)}
                 />
             )}

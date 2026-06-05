@@ -239,14 +239,18 @@ export function PrintReceipt({
         }))
       : (propCartItems ?? []);
 
-  // ── Totals ────────────────────────────────────────────────────────
-  // Subtotal should be sum of WOST (not retail price × quantity)
-  // Always calculate from items, don't trust backend subtotal
-  const subtotal = items.reduce((s, i) => {
-    const taxDivisor = 1 + (i.taxPercent ?? 0) / 100;
-    const wostPerUnit = i.price / taxDivisor;
-    return s + wostPerUnit * i.quantity;
-  }, 0);
+    // ── Totals ────────────────────────────────────────────────────────
+    // Subtotal should be sum of WOST (not retail price × quantity)
+    // Always calculate from items, don't trust backend subtotal
+    const isSavedOrder = !!(order && order.id);
+
+    const subtotal = isSavedOrder
+        ? Number(order.subtotal)
+        : items.reduce((s, i) => {
+            const taxDivisor = 1 + ((i.taxPercent ?? 0) / 100);
+            const wostPerUnit = i.price / taxDivisor;
+            return s + (wostPerUnit * i.quantity);
+        }, 0);
 
   const itemDiscountsRaw = items.reduce(
     (s, i) => s + (i.discountAmount ?? 0),
@@ -254,47 +258,48 @@ export function PrintReceipt({
   );
   const orderDiscount = Number(order?.globalDiscountAmount ?? 0);
 
-  // Alliance suppression logic: if alliance is active and >= item discounts, item discounts are zeroed
-  const isAlliance =
-    discountMode === "alliance" || !!order?.alliance || !!order?.allianceId;
-  const suppressItemDiscounts =
-    isAlliance && orderDiscount >= itemDiscountsRaw && orderDiscount > 0;
+    // Alliance suppression logic: if alliance is active and >= item discounts (with rounding tolerance), item discounts are zeroed
+    const isAlliance = (discountMode === "alliance" || !!order?.alliance || !!order?.allianceId);
+    const suppressItemDiscounts = isAlliance && Math.round(orderDiscount) >= Math.round(itemDiscountsRaw) && orderDiscount > 0;
 
-  // Always calculate totalTax from items (don't trust backend taxAmount)
-  // using the exact same logic as printed per-item sales tax
-  const totalTax = items.reduce((s, i) => {
-    const taxPct = i.taxPercent ?? 0;
-    const taxDivisor = 1 + taxPct / 100;
-    const wostPerUnit = i.price / taxDivisor;
-    const totalWost = wostPerUnit * i.quantity;
+    // Always calculate totalTax from items (don't trust backend taxAmount)
+    // using the exact same logic as printed per-item sales tax
+    const totalTax = isSavedOrder
+        ? Number(order.taxAmount)
+        : items.reduce((s, i) => {
+            const taxPct = i.taxPercent ?? 0;
+            const taxDivisor = 1 + (taxPct / 100);
+            const wostPerUnit = i.price / taxDivisor;
+            const totalWost = wostPerUnit * i.quantity;
 
-    const itemDiscPct = i.overrideDiscountPercent ?? i.discountPercent ?? 0;
-    const rawDisc = Math.round(totalWost * (itemDiscPct / 100));
+            const itemDiscPct = i.overrideDiscountPercent ?? i.discountPercent ?? 0;
+            const rawDisc = Math.round(totalWost * (itemDiscPct / 100));
 
-    const disc = suppressItemDiscounts ? 0 : rawDisc;
-    let displayDisc = disc;
+            const disc = suppressItemDiscounts ? 0 : rawDisc;
+            let displayDisc = disc;
 
-    if (suppressItemDiscounts && subtotal > 0) {
-      displayDisc = Math.min(
-        Math.round((orderDiscount * totalWost) / subtotal),
-        totalWost,
-      );
-    }
+            if (suppressItemDiscounts && subtotal > 0) {
+                displayDisc = Math.min(Math.round((orderDiscount * totalWost) / subtotal), totalWost);
+            }
 
-    const amtAfterDisc =
-      totalWost - (suppressItemDiscounts ? displayDisc : disc);
-    const tax = Math.round(amtAfterDisc * (taxPct / 100));
-    return s + tax;
-  }, 0);
+            const amtAfterDisc = totalWost - (suppressItemDiscounts ? displayDisc : disc);
+            const tax = Math.round(amtAfterDisc * (taxPct / 100));
+            return s + tax;
+        }, 0);
 
-  const totalDiscount =
-    (suppressItemDiscounts ? 0 : itemDiscountsRaw) + orderDiscount;
-  const valueForSales = subtotal - totalDiscount;
-  const grandTotal = Number(order?.grandTotal ?? 0) || valueForSales + totalTax;
-  const fbrPosFee = Number(order?.fbrPosFee ?? 0) || 1; // Default to 1 if not set
-  const finalGrandTotal = grandTotal + fbrPosFee;
-  const changeAmount = Number(order?.changeAmount ?? 0);
-  const totalPaid = tenders.reduce((s, t) => s + t.amount, 0);
+    const totalDiscount   = isSavedOrder
+        ? Number(order.discountAmount)
+        : (suppressItemDiscounts ? 0 : itemDiscountsRaw) + orderDiscount;
+
+    const valueForSales   = subtotal - totalDiscount;
+    const grandTotal      = isSavedOrder
+        ? Number(order.grandTotal)
+        : (valueForSales + totalTax);
+
+    const fbrPosFee       = Number(order?.fbrPosFee ?? 0) || 1; // Default to 1 if not set
+    const finalGrandTotal = isSavedOrder ? grandTotal : (grandTotal + fbrPosFee);
+    const changeAmount    = Number(order?.changeAmount ?? 0);
+    const totalPaid       = tenders.reduce((s, t) => s + t.amount, 0);
 
   // Alliance distribution for display - proportional to item value
   const calculateProportionalDiscount = (
@@ -525,15 +530,16 @@ function ReceiptBody({
   suppressItemDiscounts,
   creditVouchers,
 }: ReceiptBodyProps) {
-  // Calculate total WOST value for proportional discount
-  const totalWostValue = items.reduce((sum, item) => {
-    const taxPct = item.taxPercent ?? 0;
-    const taxDivisor = 1 + taxPct / 100;
-    // Retail price is item.price (not adding tax)
-    const retailPrice = item.price;
-    const wostPerUnit = retailPrice / taxDivisor;
-    return sum + wostPerUnit * item.quantity;
-  }, 0);
+    const isSavedOrder = !!(order && order.id);
+
+    // Calculate total WOST value for proportional discount
+    const totalWostValue = items.reduce((sum, item) => {
+      const taxPct = item.taxPercent ?? 0;
+      const taxDivisor = 1 + taxPct / 100;
+      const retailPrice = item.price;
+      const wostPerUnit = retailPrice / taxDivisor;
+      return sum + wostPerUnit * item.quantity;
+    }, 0);
 
   // Proportional discount calculation for alliance/coupon
   const calculateProportionalDiscount = (
