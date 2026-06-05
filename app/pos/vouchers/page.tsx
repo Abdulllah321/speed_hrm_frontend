@@ -32,7 +32,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
-import type { Voucher, VoucherType } from "@/lib/actions/vouchers";
+import type { Voucher, VoucherType, MerchantConfig } from "@/lib/actions/vouchers";
 import { getLocations } from "@/lib/actions/location";
 import type { Location } from "@/lib/actions/location";
 import { LocationMultiSelect } from "@/app/master/pos-config/_components/location-multi-select";
@@ -105,6 +105,22 @@ export default function PosVouchersPage() {
     const [issuingBulk, setIssuingBulk] = useState(false);
     const [bulkResult,  setBulkResult]  = useState<{ count: number; codes: string[] } | null>(null);
 
+    // ── Payment Mode state variables ──────────────────────────────
+    const [singlePaymentMode, setSinglePaymentMode] = useState<"CASH" | "CARD">("CASH");
+    const [singleMerchantId, setSingleMerchantId] = useState<string>("");
+    const [singleCardholder, setSingleCardholder] = useState<string>("");
+    const [singleCardLast4, setSingleCardLast4] = useState<string>("");
+    const [singleSlipNo, setSingleSlipNo] = useState<string>("");
+
+    const [bulkPaymentMode, setBulkPaymentMode] = useState<"CASH" | "CARD">("CASH");
+    const [bulkMerchantId, setBulkMerchantId] = useState<string>("");
+    const [bulkCardholder, setBulkCardholder] = useState<string>("");
+    const [bulkCardLast4, setBulkCardLast4] = useState<string>("");
+    const [bulkSlipNo, setBulkSlipNo] = useState<string>("");
+
+    const [merchants, setMerchants] = useState<MerchantConfig[]>([]);
+    const [isLoadingMerchants, setIsLoadingMerchants] = useState(false);
+
     // ── Void confirm ─────────────────────────────────────────────
     const [voidId, setVoidId] = useState<string | null>(null);
 
@@ -126,6 +142,14 @@ export default function PosVouchersPage() {
         getLocations().then(res => {
             if (res.status && res.data) setLocations(res.data);
         });
+
+        setIsLoadingMerchants(true);
+        authFetch("/pos-config/merchants/for-location")
+            .then(res => {
+                if (res.ok && res.data?.status) setMerchants(res.data.data || []);
+            })
+            .catch(() => toast.error("Failed to load merchant terminals"))
+            .finally(() => setIsLoadingMerchants(false));
     }, [fetchVouchers]);
 
     const filtered = activeTab === "ALL"
@@ -135,9 +159,19 @@ export default function PosVouchersPage() {
     // ── Handlers ─────────────────────────────────────────────────
     const handleSingleIssue = async () => {
         if (!singleAmount || Number(singleAmount) <= 0) { toast.error("Enter a valid amount"); return; }
-        if (singleDiscount && (Number(singleDiscount) < 0 || Number(singleDiscount) >= Number(singleAmount))) {
-            toast.error("Discount must be positive and less than the face value");
+        if (singleDiscount && (Number(singleDiscount) < 0 || Number(singleDiscount) > 100)) {
+            toast.error("Discount percentage must be between 0 and 100");
             return;
+        }
+        if (singleType === "GIFT" && singlePaymentMode === "CARD") {
+            if (!singleMerchantId) {
+                toast.error("Merchant terminal is required for card payments");
+                return;
+            }
+            if (singleCardLast4 && !/^\d{4}$/.test(singleCardLast4)) {
+                toast.error("Card last 4 digits must be exactly 4 digits");
+                return;
+            }
         }
         setIssuingSingle(true);
         try {
@@ -146,17 +180,23 @@ export default function PosVouchersPage() {
                 body: {
                     voucherType: singleType,
                     faceValue: Number(singleAmount),
-                    discount: singleDiscount ? Number(singleDiscount) : 0,
+                    discount: singleDiscount ? Number((Number(singleAmount) * (Number(singleDiscount) / 100)).toFixed(2)) : 0,
                     description: singleDesc || undefined,
                     companyName: singleCo || undefined,
                     expiresAt: singleExp || undefined,
                     locationIds: singleLocationIds,
+                    paymentMode: singleType === "GIFT" ? singlePaymentMode : undefined,
+                    merchantId: (singleType === "GIFT" && singlePaymentMode === "CARD") ? singleMerchantId : undefined,
+                    cardholderName: (singleType === "GIFT" && singlePaymentMode === "CARD") ? singleCardholder || undefined : undefined,
+                    cardLast4: (singleType === "GIFT" && singlePaymentMode === "CARD") ? singleCardLast4 || undefined : undefined,
+                    slipNo: (singleType === "GIFT" && singlePaymentMode === "CARD") ? singleSlipNo || undefined : undefined,
                 },
             });
             if (res.ok && res.data?.status) {
                 setIssuedVoucher(res.data.data);
                 setShowSingle(false);
                 setSingleAmount(""); setSingleDiscount(""); setSingleDesc(""); setSingleCo(""); setSingleExp(""); setSingleLocationIds([]);
+                setSinglePaymentMode("CASH"); setSingleMerchantId(""); setSingleCardholder(""); setSingleCardLast4(""); setSingleSlipNo("");
                 fetchVouchers();
             } else {
                 toast.error(res.data?.message || "Failed to issue voucher");
@@ -169,9 +209,19 @@ export default function PosVouchersPage() {
         if (!bulkAmount || Number(bulkAmount) <= 0) { toast.error("Enter a valid amount"); return; }
         if (!bulkQty   || Number(bulkQty)   <= 0)  { toast.error("Enter a valid quantity"); return; }
         if (Number(bulkQty) > 500) { toast.error("Maximum 500 vouchers per batch"); return; }
-        if (bulkDiscount && (Number(bulkDiscount) < 0 || Number(bulkDiscount) >= Number(bulkAmount))) {
-            toast.error("Discount must be positive and less than the amount per voucher");
+        if (bulkDiscount && (Number(bulkDiscount) < 0 || Number(bulkDiscount) > 100)) {
+            toast.error("Discount percentage must be between 0 and 100");
             return;
+        }
+        if (bulkType === "GIFT" && bulkPaymentMode === "CARD") {
+            if (!bulkMerchantId) {
+                toast.error("Merchant terminal is required for card payments");
+                return;
+            }
+            if (bulkCardLast4 && !/^\d{4}$/.test(bulkCardLast4)) {
+                toast.error("Card last 4 digits must be exactly 4 digits");
+                return;
+            }
         }
         setIssuingBulk(true);
         try {
@@ -181,11 +231,16 @@ export default function PosVouchersPage() {
                     voucherType: bulkType,
                     faceValue: Number(bulkAmount),
                     quantity: Number(bulkQty),
-                    discount: bulkDiscount ? Number(bulkDiscount) : 0,
+                    discount: bulkDiscount ? Number((Number(bulkAmount) * (Number(bulkDiscount) / 100)).toFixed(2)) : 0,
                     description: bulkDesc || undefined,
                     companyName: bulkCo || undefined,
                     expiresAt: bulkExp || undefined,
                     locationIds: bulkLocationIds,
+                    paymentMode: bulkType === "GIFT" ? bulkPaymentMode : undefined,
+                    merchantId: (bulkType === "GIFT" && bulkPaymentMode === "CARD") ? bulkMerchantId : undefined,
+                    cardholderName: (bulkType === "GIFT" && bulkPaymentMode === "CARD") ? bulkCardholder || undefined : undefined,
+                    cardLast4: (bulkType === "GIFT" && bulkPaymentMode === "CARD") ? bulkCardLast4 || undefined : undefined,
+                    slipNo: (bulkType === "GIFT" && bulkPaymentMode === "CARD") ? bulkSlipNo || undefined : undefined,
                 },
             });
             if (res.ok && res.data?.status) {
@@ -207,6 +262,11 @@ export default function PosVouchersPage() {
         setBulkCo("");
         setBulkExp("");
         setBulkLocationIds([]);
+        setBulkPaymentMode("CASH");
+        setBulkMerchantId("");
+        setBulkCardholder("");
+        setBulkCardLast4("");
+        setBulkSlipNo("");
     };
 
     const handlePrintBulk = () => {
@@ -222,7 +282,7 @@ export default function PosVouchersPage() {
             code,
             voucherType: bulkType,
             faceValue: Number(bulkAmount),
-            discount: Number(bulkDiscount) || 0,
+            discount: bulkDiscount ? Number((Number(bulkAmount) * (Number(bulkDiscount) / 100)).toFixed(2)) : 0,
             description: bulkDesc || undefined,
             companyName: bulkCo || undefined,
             requireCustomerMatch: false,
@@ -277,6 +337,14 @@ export default function PosVouchersPage() {
         a.click();
         URL.revokeObjectURL(url);
     };
+
+    const singleDiscountAmount = (singleAmount && singleDiscount)
+        ? Number((Number(singleAmount) * (Number(singleDiscount) / 100)).toFixed(2))
+        : 0;
+
+    const bulkDiscountAmount = (bulkAmount && bulkDiscount)
+        ? Number((Number(bulkAmount) * (Number(bulkDiscount) / 100)).toFixed(2))
+        : 0;
 
     // ── Render ────────────────────────────────────────────────────
     return (
@@ -382,7 +450,7 @@ export default function PosVouchersPage() {
                                                             variant="ghost" 
                                                             size="icon"
                                                             className="h-7 w-7 rounded-full text-muted-foreground hover:text-primary"
-                                                            onClick={() => setPrintVoucher(v)}
+                                                            onClick={() => setVouchersToPrint([v])}
                                                             title="Print voucher receipt"
                                                         >
                                                             <Printer className="w-3.5 h-3.5" />
@@ -443,11 +511,67 @@ export default function PosVouchersPage() {
                                 </div>
                             </div>
                             {singleType === "GIFT" && (
+                                <div className="space-y-4 rounded-lg border p-3 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200 text-left">
+                                    <div className="space-y-2">
+                                        <Label>Payment Method <span className="text-destructive">*</span></Label>
+                                        <Select value={singlePaymentMode} onValueChange={v => setSinglePaymentMode(v as any)}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="CASH">Cash</SelectItem>
+                                                <SelectItem value="CARD">Credit Card</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {singlePaymentMode === "CARD" && (
+                                        <div className="space-y-3 pt-2 border-t">
+                                            <div className="space-y-2">
+                                                <Label>Merchant / Bank Terminal <span className="text-destructive">*</span></Label>
+                                                <Select value={singleMerchantId} onValueChange={setSingleMerchantId}>
+                                                    <SelectTrigger>
+                                                        {isLoadingMerchants ? "Loading terminals..." : <SelectValue placeholder="Select merchant terminal..." />}
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {merchants.length === 0 && (
+                                                            <div className="p-2 text-center text-xs text-muted-foreground italic">
+                                                                No merchant terminals configured
+                                                            </div>
+                                                        )}
+                                                        {merchants.map(m => (
+                                                            <SelectItem key={m.id} value={m.id}>
+                                                                {m.bankName} - {m.description} (#{m.merchantCode})
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-2">
+                                                    <Label>Cardholder Name</Label>
+                                                    <Input value={singleCardholder} onChange={e => setSingleCardholder(e.target.value)} placeholder="Name on card" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Card # (last 4)</Label>
+                                                    <Input value={singleCardLast4} maxLength={4} onChange={e => setSingleCardLast4(e.target.value.replace(/\D/g, ""))} placeholder="••••" />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Merchant Slip / Ref #</Label>
+                                                <Input value={singleSlipNo} onChange={e => setSingleSlipNo(e.target.value)} placeholder="Slip or reference number" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {singleType === "GIFT" && (
                                 <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                                    <Label>Discount (Rs.)</Label>
-                                    <Input type="number" min="0" value={singleDiscount}
+                                    <Label>Discount (%)</Label>
+                                    <Input type="number" min="0" max="100" value={singleDiscount}
                                         onChange={e => setSingleDiscount(e.target.value ? Number(e.target.value) : "")}
-                                        placeholder="e.g. 100" />
+                                        placeholder="e.g. 10" />
                                 </div>
                             )}
                             {singleType === "CORPORATE" && (
@@ -546,13 +670,69 @@ export default function PosVouchersPage() {
                                 </div>
                                 {bulkType === "GIFT" && (
                                     <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                                        <Label>Discount per Voucher (Rs.)</Label>
-                                        <Input type="number" min="0" value={bulkDiscount}
+                                        <Label>Discount per Voucher (%)</Label>
+                                        <Input type="number" min="0" max="100" value={bulkDiscount}
                                             onChange={e => setBulkDiscount(e.target.value ? Number(e.target.value) : "")}
-                                            placeholder="e.g. 50" />
+                                            placeholder="e.g. 10" />
                                     </div>
                                 )}
                             </div>
+
+                            {bulkType === "GIFT" && (
+                                <div className="space-y-4 rounded-lg border p-3 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200 text-left">
+                                    <div className="space-y-2">
+                                        <Label>Payment Method <span className="text-destructive">*</span></Label>
+                                        <Select value={bulkPaymentMode} onValueChange={v => setBulkPaymentMode(v as any)}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="CASH">Cash</SelectItem>
+                                                <SelectItem value="CARD">Credit Card</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {bulkPaymentMode === "CARD" && (
+                                        <div className="space-y-3 pt-2 border-t">
+                                            <div className="space-y-2">
+                                                <Label>Merchant / Bank Terminal <span className="text-destructive">*</span></Label>
+                                                <Select value={bulkMerchantId} onValueChange={setBulkMerchantId}>
+                                                    <SelectTrigger>
+                                                        {isLoadingMerchants ? "Loading terminals..." : <SelectValue placeholder="Select merchant terminal..." />}
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {merchants.length === 0 && (
+                                                            <div className="p-2 text-center text-xs text-muted-foreground italic">
+                                                                No merchant terminals configured
+                                                            </div>
+                                                        )}
+                                                        {merchants.map(m => (
+                                                            <SelectItem key={m.id} value={m.id}>
+                                                                {m.bankName} - {m.description} (#{m.merchantCode})
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-2">
+                                                    <Label>Cardholder Name</Label>
+                                                    <Input value={bulkCardholder} onChange={e => setBulkCardholder(e.target.value)} placeholder="Name on card" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Card # (last 4)</Label>
+                                                    <Input value={bulkCardLast4} maxLength={4} onChange={e => setBulkCardLast4(e.target.value.replace(/\D/g, ""))} placeholder="••••" />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Merchant Slip / Ref #</Label>
+                                                <Input value={bulkSlipNo} onChange={e => setBulkSlipNo(e.target.value)} placeholder="Slip or reference number" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             {bulkType === "CORPORATE" && (
                                 <div className="space-y-2">
                                     <Label>Company Name</Label>
@@ -584,12 +764,12 @@ export default function PosVouchersPage() {
                                     {bulkType === "GIFT" && bulkDiscount && Number(bulkDiscount) > 0 && (
                                         <>
                                             <div className="flex justify-between text-muted-foreground">
-                                                <span>Discount each</span>
-                                                <span className="font-semibold text-destructive">-{formatCurrency(Number(bulkDiscount))}</span>
+                                                <span>Discount each ({bulkDiscount}%)</span>
+                                                <span className="font-semibold text-destructive">-{formatCurrency(bulkDiscountAmount)}</span>
                                             </div>
                                             <div className="flex justify-between text-muted-foreground">
                                                 <span>Net price each</span>
-                                                <span className="font-semibold text-emerald-600">{formatCurrency(Number(bulkAmount) - Number(bulkDiscount))}</span>
+                                                <span className="font-semibold text-emerald-600">{formatCurrency(Number(bulkAmount) - bulkDiscountAmount)}</span>
                                             </div>
                                         </>
                                     )}
@@ -601,7 +781,7 @@ export default function PosVouchersPage() {
                                     {bulkType === "GIFT" && bulkDiscount && Number(bulkDiscount) > 0 && (
                                         <div className="flex justify-between font-semibold text-emerald-600">
                                             <span>Total amount payable</span>
-                                            <span>{formatCurrency((Number(bulkAmount) - Number(bulkDiscount)) * Number(bulkQty))}</span>
+                                            <span>{formatCurrency((Number(bulkAmount) - bulkDiscountAmount) * Number(bulkQty))}</span>
                                         </div>
                                     )}
                                 </div>

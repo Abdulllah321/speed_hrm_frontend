@@ -39,7 +39,7 @@ function fmtDate(dateStr?: string | null): string {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface PrintVoucherReceiptProps {
-    voucher: {
+    voucher?: {
         code: string;
         voucherType: string;
         faceValue: number;
@@ -50,6 +50,17 @@ interface PrintVoucherReceiptProps {
         createdAt?: string;
         locations?: Array<{ location: { name: string; code: string } }>;
     };
+    vouchers?: Array<{
+        code: string;
+        voucherType: string;
+        faceValue: number;
+        discount?: number;
+        description?: string;
+        companyName?: string;
+        expiresAt?: string | null;
+        createdAt?: string;
+        locations?: Array<{ location: { name: string; code: string } }>;
+    }>;
     isLoading?: boolean;
     autoPrint?: boolean;
     onClose: () => void;

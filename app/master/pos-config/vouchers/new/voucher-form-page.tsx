@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition, useState } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Loader2, ArrowLeft, Gift, Copy, CheckCircle2, MapPin } from "lucide-react";
 import { toast } from "sonner";
-import { issueVoucher, Voucher, VoucherType } from "@/lib/actions/vouchers";
+import { issueVoucher, Voucher, VoucherType, getMerchants, MerchantConfig } from "@/lib/actions/vouchers";
 import { Location } from "@/lib/actions/location";
 import { LocationMultiSelect } from "../../_components/location-multi-select";
 import { formatCurrency } from "@/lib/utils";
@@ -35,6 +35,27 @@ export function VoucherFormPage({ locations }: Props) {
     const [locationIds, setLocationIds] = useState<string[]>([]);
     const [issuedVoucher, setIssuedVoucher] = useState<Voucher | null>(null);
 
+    // ── Payment Mode state variables ──────────────────────────────
+    const [paymentMode, setPaymentMode] = useState<"CASH" | "CARD">("CASH");
+    const [merchantId, setMerchantId] = useState<string>("");
+    const [cardholderName, setCardholderName] = useState<string>("");
+    const [cardLast4, setCardLast4] = useState<string>("");
+    const [slipNo, setSlipNo] = useState<string>("");
+
+    const [merchants, setMerchants] = useState<MerchantConfig[]>([]);
+    const [isLoadingMerchants, setIsLoadingMerchants] = useState(false);
+
+    useEffect(() => {
+        setIsLoadingMerchants(true);
+        // Admin gets all active merchants, potentially filtered if we want
+        getMerchants()
+            .then(res => {
+                if (res.status && res.data) setMerchants(res.data);
+            })
+            .catch(() => toast.error("Failed to load merchant terminals"))
+            .finally(() => setIsLoadingMerchants(false));
+    }, []);
+
     const goBack = () => {
         startTransition(() => {
             router.push("/master/pos-config/vouchers");
@@ -51,6 +72,16 @@ export function VoucherFormPage({ locations }: Props) {
             toast.error("Discount must be positive and less than the face value");
             return;
         }
+        if (voucherType === "GIFT" && paymentMode === "CARD") {
+            if (!merchantId) {
+                toast.error("Merchant terminal is required for card payments");
+                return;
+            }
+            if (cardLast4 && !/^\d{4}$/.test(cardLast4)) {
+                toast.error("Card last 4 digits must be exactly 4 digits");
+                return;
+            }
+        }
         startTransition(async () => {
             const result = await issueVoucher({
                 voucherType,
@@ -60,6 +91,11 @@ export function VoucherFormPage({ locations }: Props) {
                 companyName: companyName || undefined,
                 expiresAt: expiresAt || undefined,
                 locationIds,
+                paymentMode: voucherType === "GIFT" ? paymentMode : undefined,
+                merchantId: (voucherType === "GIFT" && paymentMode === "CARD") ? merchantId : undefined,
+                cardholderName: (voucherType === "GIFT" && paymentMode === "CARD") ? cardholderName || undefined : undefined,
+                cardLast4: (voucherType === "GIFT" && paymentMode === "CARD") ? cardLast4 || undefined : undefined,
+                slipNo: (voucherType === "GIFT" && paymentMode === "CARD") ? slipNo || undefined : undefined,
             });
             if (result.status && result.data) {
                 setIssuedVoucher(result.data);
@@ -111,15 +147,71 @@ export function VoucherFormPage({ locations }: Props) {
                         </div>
 
                         {voucherType === "GIFT" && (
-                            <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                                <Label>Discount (Rs.)</Label>
-                                <Input
-                                    type="number" min="0"
-                                    value={discount}
-                                    onChange={(e) => setDiscount(e.target.value ? Number(e.target.value) : "")}
-                                    placeholder="e.g. 100"
-                                />
-                            </div>
+                            <>
+                                <div className="space-y-4 rounded-lg border p-4 bg-muted/20 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <div className="space-y-2">
+                                        <Label>Payment Method *</Label>
+                                        <Select value={paymentMode} onValueChange={(v) => setPaymentMode(v as any)}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="CASH">Cash</SelectItem>
+                                                <SelectItem value="CARD">Credit Card</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {paymentMode === "CARD" && (
+                                        <div className="space-y-3 pt-2 border-t">
+                                            <div className="space-y-2">
+                                                <Label>Merchant / Bank Terminal *</Label>
+                                                <Select value={merchantId} onValueChange={setMerchantId}>
+                                                    <SelectTrigger>
+                                                        {isLoadingMerchants ? "Loading terminals..." : <SelectValue placeholder="Select merchant terminal..." />}
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {merchants.length === 0 && (
+                                                            <div className="p-2 text-center text-xs text-muted-foreground italic">
+                                                                No merchant terminals configured
+                                                            </div>
+                                                        )}
+                                                        {merchants.map(m => (
+                                                            <SelectItem key={m.id} value={m.id}>
+                                                                {m.bankName} - {m.description} (#{m.merchantCode})
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="space-y-2">
+                                                    <Label>Cardholder Name</Label>
+                                                    <Input value={cardholderName} onChange={e => setCardholderName(e.target.value)} placeholder="Name on card" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Card # (last 4)</Label>
+                                                    <Input value={cardLast4} maxLength={4} onChange={e => setCardLast4(e.target.value.replace(/\D/g, ""))} placeholder="••••" />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Merchant Slip / Ref #</Label>
+                                                <Input value={slipNo} onChange={e => setSlipNo(e.target.value)} placeholder="Slip or reference number" />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                    <Label>Discount (Rs.)</Label>
+                                    <Input
+                                        type="number" min="0"
+                                        value={discount}
+                                        onChange={(e) => setDiscount(e.target.value ? Number(e.target.value) : "")}
+                                        placeholder="e.g. 100"
+                                    />
+                                </div>
+                            </>
                         )}
 
                         {voucherType === "CORPORATE" && (

@@ -23,6 +23,33 @@ export interface Voucher {
     createdAt: string;
     locations: { id: string; location: { id: string; name: string; code: string } }[];
     redemptions?: { amountUsed: number; orderId: string }[];
+    paymentMode?: string;
+    cardholderName?: string;
+    cardLast4?: string;
+    slipNo?: string;
+    merchantId?: string;
+}
+
+export interface MerchantConfig {
+    id: string;
+    description: string;
+    bankName: string;
+    merchantCode: number;
+    commissionRate: number | string;
+    tagId: string;
+    costCentreTag: string;
+    bankGlCode: string;
+}
+
+export async function getMerchants(filters?: { locationId?: string }): Promise<{ status: boolean; data?: MerchantConfig[]; message?: string }> {
+    try {
+        const params = new URLSearchParams();
+        if (filters?.locationId) params.set('locationId', filters.locationId);
+        const res = await authFetch(`/pos-config/merchants?${params.toString()}`, {});
+        return res.data;
+    } catch {
+        return { status: false, message: 'Failed to fetch merchants' };
+    }
 }
 
 export interface VoucherValidation {
@@ -64,6 +91,11 @@ export async function issueVoucher(data: {
     requireCustomerMatch?: boolean;
     expiresAt?: string;
     locationIds?: string[];
+    paymentMode?: string;
+    cardholderName?: string;
+    cardLast4?: string;
+    slipNo?: string;
+    merchantId?: string;
 }): Promise<{ status: boolean; data?: Voucher; message?: string }> {
     try {
         const res = await authFetch('/pos-config/vouchers', {
