@@ -38,6 +38,13 @@ function fmt(val: number) {
   });
 }
 
+function fmtDec(val: number) {
+  return Math.round(val).toLocaleString("en-PK", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 function fmtDate(dateStr?: string | null): string {
   const d = dateStr ? new Date(dateStr) : new Date();
   return [
@@ -270,17 +277,17 @@ export function PrintReceipt({
             const totalWost = wostPerUnit * i.quantity;
 
             const itemDiscPct = i.overrideDiscountPercent ?? i.discountPercent ?? 0;
-            const rawDisc = Math.round(totalWost * (itemDiscPct / 100));
+            const rawDisc = totalWost * (itemDiscPct / 100);
 
             const disc = suppressItemDiscounts ? 0 : rawDisc;
             let displayDisc = disc;
 
             if (suppressItemDiscounts && subtotal > 0) {
-                displayDisc = Math.min(Math.round((orderDiscount * totalWost) / subtotal), totalWost);
+                displayDisc = Math.min((orderDiscount * totalWost) / subtotal, totalWost);
             }
 
             const amtAfterDisc = totalWost - (suppressItemDiscounts ? displayDisc : disc);
-            const tax = Math.round(amtAfterDisc * (taxPct / 100));
+            const tax = amtAfterDisc * (taxPct / 100);
             return s + tax;
         }, 0);
 
@@ -684,7 +691,7 @@ function ReceiptBody({
               // Step 3: Discount % from item (use override if present)
               const itemDiscPct  = item.overrideDiscountPercent ?? item.discountPercent ?? 0;
               // Discount Amount = Total WOST × Discount %
-              const rawDisc      = Math.round(totalWost * (itemDiscPct / 100));
+              const rawDisc      = totalWost * (itemDiscPct / 100);
               
               // If alliance/coupon suppressed item discount, calculate proportional discount
               let disc = suppressItemDiscounts ? 0 : rawDisc;
@@ -694,14 +701,14 @@ function ReceiptBody({
               if (suppressItemDiscounts) {
                   // Proportional discount: (orderDiscount × itemWOST) / totalWOST
                   displayDisc = calculateProportionalDiscount(totalWost, totalWostValue, orderDiscount);
-                  displayDiscPct = totalWost > 0 ? Math.round((displayDisc / totalWost) * 100) : 0;
+                  displayDiscPct = totalWost > 0 ? Math.round((displayDisc / totalWost) * 100 * 100) / 100 : 0;
               }
 
               // Step 4: Amount after Discount
               amtAfterDisc = totalWost - (suppressItemDiscounts ? displayDisc : disc);
               
               // Step 5: Tax = Amount after Discount × tax%
-              tax = Math.round(amtAfterDisc * (taxPct / 100));
+              tax = amtAfterDisc * (taxPct / 100);
               
               // Step 6: Value Including Tax
               valueIncludingTax = amtAfterDisc + tax;
@@ -721,9 +728,9 @@ function ReceiptBody({
                           <span className="text-muted-foreground truncate">{uniqueNo}</span>
                           <span style={{ textAlign: "center" }}>{item.size || "—"}</span>
                           <span style={{ textAlign: "center", fontWeight: "bold" }}>{item.quantity}</span>
-                          <span style={{ textAlign: "right" }}>{fmt(retailPrice)}</span>
-                          <span style={{ textAlign: "right" }}>{fmt(wostPerUnit)}</span>
-                          <span style={{ textAlign: "right", fontWeight: "bold" }}>{fmt(totalWost)}</span>
+                          <span style={{ textAlign: "right" }}>{fmtDec(retailPrice)}</span>
+                          <span style={{ textAlign: "right" }}>{fmtDec(wostPerUnit)}</span>
+                          <span style={{ textAlign: "right", fontWeight: "bold" }}>{fmtDec(totalWost)}</span>
                       </div>
                   ) : (
                       <div
@@ -739,16 +746,16 @@ function ReceiptBody({
                   {!isGiftReceipt && (
                       <div className="mt-1 space-y-0.5 text-[10px]">
                           {!suppressItemDiscounts && <Row label="Discount %" value={`${displayDiscPct}%`} />}
-                          <Row label={suppressItemDiscounts ? "Alliance Disc" : "Discount Amount"} value={displayDisc > 0 ? fmt(displayDisc) : "—"} />
-                          <Row label="Amount after Discount"  value={fmt(amtAfterDisc)} />
+                          <Row label={suppressItemDiscounts ? "Alliance Disc" : "Discount Amount"} value={displayDisc > 0 ? fmtDec(displayDisc) : "—"} />
+                          <Row label="Amount after Discount"  value={fmtDec(amtAfterDisc)} />
                           <Row label="Sales Tax Rate"         value={`${taxPct}%`} />
-                          <Row label="Sales Tax Amount"       value={tax > 0 ? fmt(tax) : "—"} />
+                          <Row label="Sales Tax Amount"       value={tax > 0 ? fmtDec(tax) : "—"} />
                           <div
                               className="rpt-fbr-row flex justify-between font-bold text-[10px] border-t border-dashed pt-0.5 mt-0.5"
                               style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}
                           >
                               <span>Value Including Sales Tax</span>
-                              <span>{fmt(valueIncludingTax)}</span>
+                              <span>{fmtDec(valueIncludingTax)}</span>
                           </div>
                       </div>
                   )}
@@ -761,26 +768,26 @@ function ReceiptBody({
       {/* ── Summary totals ── */}
       {!isGiftReceipt ? (
           <div className="space-y-0.5 text-[11px]">
-              <Row label={`Total Value Excluding Sales Tax (${items.length})`} value={fmt(subtotal)} />
-              <Row label="Total Discount"  value={totalDiscount > 0 ? fmt(totalDiscount) : "—"} />
-              <Row label="Value for Sales" value={fmt(valueForSales)} />
+              <Row label={`Total Value Excluding Sales Tax (${items.length})`} value={fmt(Math.round(subtotal))} />
+              <Row label="Total Discount"  value={totalDiscount > 0 ? fmt(Math.round(totalDiscount)) : "—"} />
+              <Row label="Value for Sales" value={fmt(Math.round(valueForSales))} />
               {settings.receiptShowTax && (
-                  <Row label="Total Sales Tax" value={fmt(totalTax)} />
+                  <Row label="Total Sales Tax" value={fmt(Math.round(totalTax))} />
               )}
               <div
                   className="rpt-flex flex justify-between font-bold text-[11px] border-t pt-0.5 mt-0.5"
                   style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}
               >
                   <span>Total Value Including Sales Tax</span>
-                  <span>{fmt(finalGrandTotal - fbrPosFee)}</span>
+                  <span>{fmt(Math.round(finalGrandTotal - fbrPosFee))}</span>
               </div>
-              <Row label="FBR POS Fee" value={fmt(fbrPosFee)} />
+              <Row label="FBR POS Fee" value={fmt(Math.round(fbrPosFee))} />
               <div
                   className="rpt-flex flex justify-between font-black text-sm border-t pt-0.5 mt-0.5"
                   style={{ display: "flex", justifyContent: "space-between", fontWeight: "900" }}
               >
                   <span>Grand Total</span>
-                  <span>{fmt(finalGrandTotal)}</span>
+                  <span>{fmt(Math.round(finalGrandTotal))}</span>
               </div>
           </div>
       ) : (

@@ -28,6 +28,7 @@ interface DiscountPanelProps {
     orderDiscount: number;
     itemDiscounts: number;
     finalItemDiscounts: number;
+    subtotal: number;
     subtotalAfterItems: number;
     cartItems: CartItem[];
     // Promos
@@ -70,7 +71,7 @@ interface DiscountPanelProps {
 
 export function DiscountPanel({
     discountMode, isLoadingConfig, canPromo, canCoupon, canAlliance, canManualDiscount,
-    orderDiscount, itemDiscounts, finalItemDiscounts, subtotalAfterItems, cartItems,
+    orderDiscount, itemDiscounts, finalItemDiscounts, subtotal, subtotalAfterItems, cartItems,
     promos, selectedPromo, promoScopeAll, promoScopedItems, showPromoScope,
     onSelectPromo, onSetPromoScopeAll, onSetPromoScopedItems, onTogglePromoScope,
     couponInput, couponError, isValidatingCoupon, appliedCoupon, couponInputRef,
@@ -319,14 +320,14 @@ export function DiscountPanel({
                                         )}
                                         {filteredAlliances.map((a) => {
                                             let disc = 0;
-                                            const allianceBase = subtotalAfterItems;
+                                            const allianceBase = subtotal;
                                             if (a.maxDiscount) {
                                                 disc = Math.min(
-                                                    Math.round(allianceBase * (Number(a.discountPercent) / 100)),
+                                                    Math.round(allianceBase * (Number(a.discountPercent) / 100) * 100) / 100,
                                                     Number(a.maxDiscount)
                                                 );
                                             } else {
-                                                disc = Math.round(allianceBase * (Number(a.discountPercent) / 100));
+                                                disc = Math.round(allianceBase * (Number(a.discountPercent) / 100) * 100) / 100;
                                             }
                                             const isSelected = selectedAlliance?.id === a.id && discountMode === "alliance";
                                             const disabled = discountMode !== "none" && !isSelected;
