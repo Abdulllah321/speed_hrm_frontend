@@ -10,6 +10,7 @@ import { Printer, FileText, Loader2 } from "lucide-react";
 import type { PosSettings } from "@/hooks/use-pos-settings";
 import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
 import { useAuth } from "@/components/providers/auth-provider";
+import { printThermal } from "@/lib/utils/print";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -177,10 +178,10 @@ export function PrintClaimReceipt({
 
     useEffect(() => {
         if (!isLoading && settings.receiptAutoPrint) {
-            const timer = setTimeout(() => window.print(), 400);
+            const timer = setTimeout(() => printThermal("claim-print-root", settings), 400);
             return () => clearTimeout(timer);
         }
-    }, [isLoading, settings.receiptAutoPrint]);
+    }, [isLoading, settings.receiptAutoPrint, settings]);
 
     // ── Store info ───────────────────────
     const storeName =
@@ -207,10 +208,18 @@ export function PrintClaimReceipt({
             {/* ── Print styles ── */}
             <style>{`
                 @media print {
-                    body * { visibility: hidden !important; }
+                    body *:not(#claim-print-root):not(#claim-print-root *) {
+                        visibility: hidden !important;
+                        height: 0 !important;
+                        padding: 0 !important;
+                        margin: 0 !important;
+                        border: none !important;
+                    }
 
                     #claim-print-root,
-                    #claim-print-root * { visibility: visible !important; }
+                    #claim-print-root * {
+                        visibility: visible !important;
+                    }
 
                     #claim-print-root {
                         position: absolute !important;
@@ -225,7 +234,7 @@ export function PrintClaimReceipt({
                         line-height: 1.35 !important;
                     }
 
-                    @page { margin: 0; size: 80mm 297mm; }
+                    @page { margin: 0; size: 80mm auto; }
                     #claim-print-root > div > * { page-break-inside: avoid; break-inside: avoid; }
                 }
             `}</style>
@@ -252,7 +261,7 @@ export function PrintClaimReceipt({
 
                     <DialogFooter className="px-5 py-3 border-t shrink-0 gap-2">
                         <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
-                        <Button onClick={() => window.print()} className="flex-1 gap-2 bg-amber-600 hover:bg-amber-700" disabled={isLoading}>
+                        <Button onClick={() => printThermal("claim-print-root", settings)} className="flex-1 gap-2 bg-amber-600 hover:bg-amber-700" disabled={isLoading}>
                             {isLoading
                                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>
                                 : <><Printer className="h-4 w-4" /> Print Claim Receipt</>

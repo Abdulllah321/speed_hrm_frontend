@@ -50,56 +50,61 @@ export function ActionButtons({
                 </div>
             </div>
 
-            {/* Action buttons row */}
-            <div className="flex gap-2">
-                {canHold && (
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className="h-14 font-bold gap-2 rounded-xl border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
-                        onClick={onHold}
-                        disabled={isSubmitting || isHolding || cartItemCount === 0}
-                    >
-                        {isHolding
-                            ? <><Loader2 className="h-5 w-5 animate-spin" /> Holding...</>
-                            : <><PauseCircle className="h-5 w-5" /> Hold</>
-                        }
-                    </Button>
-                )}
+            {/* Action buttons layout */}
+            <div className="flex flex-col gap-2">
+                {/* Secondary Actions (Hold, Preview, Credit) */}
+                {(canHold || (selectedCustomer && balanceDue > 0) || (balanceDue === 0 && cartItemCount > 0)) && (
+                    <div className="flex gap-2 w-full">
+                        {canHold && (
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="h-12 flex-1 font-bold gap-2 rounded-xl border-amber-300 text-amber-600 hover:bg-amber-50 hover:text-amber-700"
+                                onClick={onHold}
+                                disabled={isSubmitting || isHolding || cartItemCount === 0}
+                            >
+                                {isHolding
+                                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Holding...</>
+                                    : <><PauseCircle className="h-4 w-4" /> Hold</>
+                                }
+                            </Button>
+                        )}
 
-                {/* Credit Sale — only when customer selected and balance due */}
-                {selectedCustomer && balanceDue > 0 && (
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className="h-14 font-bold gap-2 rounded-xl border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
-                        onClick={onCreditSale}
-                        disabled={isSubmitting || cartItemCount === 0}
-                    >
-                        {isSubmitting
-                            ? <><Loader2 className="h-5 w-5 animate-spin" /> Processing...</>
-                            : <><BookOpen className="h-5 w-5" /> Credit Sale</>
-                        }
-                    </Button>
-                )}
+                        {/* Credit Sale — only when customer selected and balance due */}
+                        {selectedCustomer && balanceDue > 0 && (
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="h-12 flex-1 font-bold gap-2 rounded-xl border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                                onClick={onCreditSale}
+                                disabled={isSubmitting || cartItemCount === 0}
+                            >
+                                {isSubmitting
+                                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
+                                    : <><BookOpen className="h-4 w-4" /> Credit Sale</>
+                                }
+                            </Button>
+                        )}
 
-                {/* Preview Receipt — only when fully paid */}
-                {balanceDue === 0 && cartItemCount > 0 && (
-                    <Button
-                        variant="outline"
-                        size="lg"
-                        className="h-14 font-bold gap-2 rounded-xl border-purple-300 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
-                        onClick={onPreviewReceipt}
-                        disabled={isSubmitting}
-                    >
-                        <Receipt className="h-5 w-5" /> Preview Receipt
-                    </Button>
+                        {/* Preview Receipt — only when fully paid */}
+                        {balanceDue === 0 && cartItemCount > 0 && (
+                            <Button
+                                variant="outline"
+                                size="lg"
+                                className="h-12 flex-1 font-bold gap-2 rounded-xl border-purple-300 text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                                onClick={onPreviewReceipt}
+                                disabled={isSubmitting}
+                            >
+                                <Receipt className="h-4 w-4" /> Preview Receipt
+                            </Button>
+                        )}
+                    </div>
                 )}
 
                 {/* Complete Sale */}
                 <Button
                     size="lg"
-                    className="h-14 flex-1 text-base font-bold gap-2 rounded-xl"
+                    className="h-14 w-full text-base font-bold gap-2 rounded-xl"
                     onClick={onConfirm}
                     disabled={isSubmitting || cartItemCount === 0 || balanceDue > 0}
                 >

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -11,6 +12,7 @@ import { Printer, RotateCcw, Loader2 } from "lucide-react";
 import type { PosSettings } from "@/hooks/use-pos-settings";
 import { POS_SETTINGS_DEFAULTS } from "@/hooks/use-pos-settings";
 import { useAuth } from "@/components/providers/auth-provider";
+import { printThermal } from "@/lib/utils/print";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,22 @@ function fmtDate(dateStr?: string | null): string {
         String(d.getMonth() + 1).padStart(2, "0"),
         d.getFullYear(),
     ].join("-");
+}
+
+function fmtExpiryDate(dateStr?: string | Date | null): string {
+    if (!dateStr) return "";
+    try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return "";
+        try {
+            return d.toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
+        } catch {
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            return `${String(d.getDate()).padStart(2, "0")}-${months[d.getMonth()]}-${d.getFullYear()}`;
+        }
+    } catch {
+        return "";
+    }
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -145,13 +163,18 @@ export function PrintReturnReceipt({
 }: PrintReturnReceiptProps) {
     const settings: PosSettings = { ...POS_SETTINGS_DEFAULTS, ...settingsOverride };
     const { user } = useAuth();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         if (!isLoading && settings.receiptAutoPrint) {
-            const timer = setTimeout(() => window.print(), 400);
+            const timer = setTimeout(() => printThermal("return-print-root", settings), 400);
             return () => clearTimeout(timer);
         }
-    }, [isLoading, settings.receiptAutoPrint]);
+    }, [isLoading, settings.receiptAutoPrint, settings]);
 
     // ── Store info (same priority as sales receipt) ───────────────────
     const storeName =
@@ -181,10 +204,9 @@ export function PrintReturnReceipt({
             {/* ── Print styles — identical strategy to sales receipt ── */}
             <style>{`
                 @media print {
-                    body * { visibility: hidden !important; }
-
-                    #return-print-root,
-                    #return-print-root * { visibility: visible !important; }
+                    body > *:not(#return-print-root) {
+                        display: none !important;
+                    }
 
                     #return-print-root {
                         position: absolute !important;
@@ -199,7 +221,7 @@ export function PrintReturnReceipt({
                         line-height: 1.35 !important;
                     }
 
-                    @page { margin: 0; size: 80mm 297mm; }
+                    @page { margin: 0; size: 80mm auto; }
                     #return-print-root > div > * { page-break-inside: avoid; break-inside: avoid; }
                 }
             `}</style>
@@ -226,7 +248,7 @@ export function PrintReturnReceipt({
 
                     <DialogFooter className="px-5 py-3 border-t shrink-0 gap-2">
                         <Button variant="outline" onClick={onClose} className="flex-1">Close</Button>
-                        <Button onClick={() => window.print()} className="flex-1 gap-2" disabled={isLoading}>
+                        <Button onClick={() => printThermal("return-print-root", settings)} className="flex-1 gap-2" disabled={isLoading}>
                             {isLoading
                                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>
                                 : <><Printer className="h-4 w-4" /> Print Return Receipt</>
@@ -237,14 +259,15 @@ export function PrintReturnReceipt({
             </Dialog>
 
             {/* ── Print target — off-screen, always rendered ── */}
-            {!isLoading && (
+            {!isLoading && mounted && createPortal(
                 <div
                     id="return-print-root"
                     style={{ position: "fixed", left: "-9999px", top: 0, width: "72.1mm", pointerEvents: "none" }}
                     aria-hidden="true"
                 >
                     <ReturnBody {...bodyProps} />
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );
@@ -524,13 +547,11 @@ function ReturnBody({
                         </div>
                         <div className="text-[10px] space-y-0.5 pt-1">
                             <p className="font-semibold">Value: <span className="font-black text-base">Rs. {fmt(Number(exchangeVoucher.faceValue))}</span></p>
-                            <p className="text-muted-foreground">
-                                Expires: {new Date(exchangeVoucher.expiresAt).toLocaleDateString('en-PK', { 
-                                    day: '2-digit', 
-                                    month: 'short', 
-                                    year: 'numeric' 
-                                })}
-                            </p>
+                            {exchangeVoucher.expiresAt && fmtExpiryDate(exchangeVoucher.expiresAt) && (
+                                <p className="text-muted-foreground">
+                                    Expires: {fmtExpiryDate(exchangeVoucher.expiresAt)}
+                                </p>
+                            )}
                         </div>
                         <p className="text-[9px] text-muted-foreground pt-1 border-t border-dashed">
                             Present this voucher for your next purchase

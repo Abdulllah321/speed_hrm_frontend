@@ -767,8 +767,6 @@ export default function CheckoutPage() {
     // ════════════════════════════════════════════════════════════════════
     return (
         <>
-            {/* Print-only styles */}
-            <style>{`@media print { body > * { display: none; } #receipt-content, #receipt-content * { display: block !important; } }`}</style>
 
             <div className="flex flex-col h-full gap-4">
 
