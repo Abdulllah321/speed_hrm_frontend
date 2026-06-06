@@ -75,8 +75,8 @@ const SAMPLE_DATA = {
             { type: "Credit Vouchers", amount: 5999.00, from: "95", to: "95" },
         ],
         giftVouchers: [
-            { type: "Gift Vouchers", amount: 20000.00 },
-            { type: "Gift Vouchers", amount: 10000.00 },
+            { type: "Gift Vouchers", amount: 20000.00, from: "-", to: "-" },
+            { type: "Gift Vouchers", amount: 10000.00, from: "-", to: "-" },
         ]
     },
     
@@ -284,8 +284,8 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
         ] : [];
 
         const giftVouchers = returnAmount > 0 ? [
-            { type: "Gift Vouchers", amount: 20000.00 * issuedVoucherScale },
-            { type: "Gift Vouchers", amount: 10000.00 * issuedVoucherScale }
+            { type: "Gift Vouchers", amount: 20000.00 * issuedVoucherScale, from: "-", to: "-" },
+            { type: "Gift Vouchers", amount: 10000.00 * issuedVoucherScale, from: "-", to: "-" }
         ] : [];
 
         // FBR POS Service Charges (1 Rupee per invoice/order)
@@ -541,7 +541,10 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                 {/* Gift Vouchers */}
                                 {activeReport.issuedVouchers.giftVouchers.map((v, i) => (
                                     <div key={`iss-gv-${i}`} className="flex justify-between items-start">
-                                        <span className="w-[65%]">{v.type}</span>
+                                        <div className="flex flex-col w-[65%]">
+                                            <span>{v.type}</span>
+                                            <span className="text-[7.5px] text-gray-600 font-mono font-bold">FROM: {v.from || "-"} / TO: {v.to || "-"}</span>
+                                        </div>
                                         <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
                                     </div>
                                 ))}
@@ -982,8 +985,8 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                         <td className="py-1 px-1 text-right">{formatVal(v.amount)}</td>
                                                         <td className="py-1 px-1 text-right">-</td>
                                                         <td className="py-1 px-1 text-right">-</td>
-                                                        <td className="py-1 px-1 text-center">-</td>
-                                                        <td className="py-1 px-1 text-center">-</td>
+                                                        <td className="py-1 px-1 text-center font-mono">{v.from || "-"}</td>
+                                                        <td className="py-1 px-1 text-center font-mono">{v.to || "-"}</td>
                                                     </tr>
                                                 ))}
                                                 {/* Gift Vouchers Issued Subtotal */}
@@ -1491,8 +1494,8 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                         <td className="py-1 px-0.5 text-right">{formatVal(v.amount)}</td>
                                         <td className="py-1 px-0.5 text-right">-</td>
                                         <td className="py-1 px-0.5 text-right">-</td>
-                                        <td className="py-1 px-0.5 text-center">-</td>
-                                        <td className="py-1 px-0.5 text-center">-</td>
+                                        <td className="py-1 px-0.5 text-center font-mono">{v.from || "-"}</td>
+                                        <td className="py-1 px-0.5 text-center font-mono">{v.to || "-"}</td>
                                     </tr>
                                 ))}
                                 {activeReport.issuedVouchers.giftVouchers.length > 0 && (
