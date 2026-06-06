@@ -38,11 +38,11 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EllipsisIcon, Loader2, Pencil, Trash2, Monitor } from "lucide-react";
+import { EllipsisIcon, Loader2, Pencil, Trash2, Monitor, Wifi, WifiOff } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Location, updateLocations, deleteLocation, updateLocationOtherInfo } from "@/lib/actions/location";
+import { Location, updateLocations, deleteLocation, updateLocationOtherInfo, updateLocationOnlineStatus } from "@/lib/actions/location";
 import { getCities, City } from "@/lib/actions/city";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ManagePosModal } from "./pos-management-modal";
@@ -135,6 +135,27 @@ export const columns: ColumnDef<LocationRow>[] = [
         {row.original.status}
       </Badge>
     ),
+    enableSorting: true,
+  },
+  {
+    header: "Online",
+    accessorKey: "isOnline",
+    size: 100,
+    cell: ({ row }) => {
+      const online = row.original.isOnline;
+      return (
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`h-2 w-2 rounded-full flex-shrink-0 ${
+              online ? "bg-green-500 shadow-[0_0_4px_1px_rgba(34,197,94,0.5)]" : "bg-gray-400"
+            }`}
+          />
+          <span className={`text-xs font-medium ${online ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+            {online ? "Online" : "Offline"}
+          </span>
+        </div>
+      );
+    },
     enableSorting: true,
   },
   {
@@ -275,6 +296,25 @@ function RowActions({ row }: RowActionsProps) {
             <DropdownMenuItem onClick={handleEditOpen}>
               <Pencil className="h-4 w-4 mr-2" />
               Edit
+            </DropdownMenuItem>
+          )}
+          {canEdit && (
+            <DropdownMenuItem
+              onClick={async () => {
+                const res = await updateLocationOnlineStatus(location.id, !location.isOnline);
+                if (res.status) {
+                  toast.success(`Marked as ${!location.isOnline ? 'Online' : 'Offline'}`);
+                  router.refresh();
+                } else {
+                  toast.error(res.message || 'Failed to update online status');
+                }
+              }}
+            >
+              {location.isOnline ? (
+                <><WifiOff className="h-4 w-4 mr-2" />Mark Offline</>
+              ) : (
+                <><Wifi className="h-4 w-4 mr-2" />Mark Online</>
+              )}
             </DropdownMenuItem>
           )}
           {canManagePos && (

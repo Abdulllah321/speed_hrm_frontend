@@ -635,7 +635,37 @@ export function AppSidebar({
       return item.environment === environment;
     });
 
-    return { filteredMenu: envFiltered, hasHRAccess, hasERPAccess };
+    const isChildTerminal = user?.terminal && !user.terminal.isParent;
+    let finalFiltered = envFiltered;
+    
+    if (environment === "POS" && isChildTerminal && !isAdmin()) {
+      const restrictedRoutes = [
+        "/pos/reports",
+        "/pos/session",
+        "/pos/shifts",
+        "/pos/inventory/returns",
+        "/pos/inventory/outbound",
+        "/pos/inventory/inbound",
+        "/pos/inventory/receiving"
+      ];
+      
+      finalFiltered = envFiltered.map(item => {
+        if (item.children) {
+          const filteredChildren = item.children.filter(child => {
+            return !restrictedRoutes.includes(child.href || "");
+          });
+          return { ...item, children: filteredChildren };
+        }
+        return item;
+      }).filter(item => {
+        if (item.children && item.children.length === 0 && !item.href) {
+          return false;
+        }
+        return !restrictedRoutes.includes(item.href || "");
+      });
+    }
+
+    return { filteredMenu: finalFiltered, hasHRAccess, hasERPAccess };
   }, [hasAnyPermission, hasAllPermissions, isAdmin, user, environment]);
 
   React.useEffect(() => {

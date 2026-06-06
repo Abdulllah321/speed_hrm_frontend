@@ -162,15 +162,24 @@ export function PrintVoucherReceipt({
                         left: 0 !important;
                         top: 0 !important;
                         width: 72.1mm !important;
-                        padding: 2mm 1mm !important;
+                        padding: 0 !important;
                         background: #fff !important;
                         color: #000 !important;
                         font-family: 'Courier New', Courier, monospace !important;
                         font-size: 9pt !important;
                         line-height: 1.35 !important;
                     }
+                    /* Each voucher wrapper — page-break triggers thermal cutter */
+                    #voucher-receipt-print-root .voucher-print-page {
+                        page-break-inside: avoid !important;
+                        break-inside: avoid !important;
+                        padding: 2mm 1mm !important;
+                    }
+                    #voucher-receipt-print-root .voucher-print-page.voucher-cut {
+                        page-break-after: always !important;
+                        break-after: page !important;
+                    }
                     @page { margin: 0; size: 80mm auto; }
-                    #voucher-receipt-print-root > div { page-break-inside: avoid; break-inside: avoid; }
                 }
             `}</style>
 
@@ -247,25 +256,31 @@ export function PrintVoucherReceipt({
                     style={{ position: "fixed", left: "-9999px", top: 0, width: "72.1mm", pointerEvents: "none" }}
                     aria-hidden="true"
                 >
-                    {voucherList.map((v, index) => (
-                        <div
-                            key={v.code}
-                            style={{
-                                pageBreakAfter: index < voucherList.length - 1 ? "always" : "auto",
-                                breakAfter: index < voucherList.length - 1 ? "page" : "auto",
-                            }}
-                        >
-                            <VoucherReceiptBody
-                                storeName={storeName}
-                                storeAddress={storeAddress}
-                                storePhone={storePhone}
-                                terminalName={terminalName}
-                                voucher={v}
-                            />
-                            {/* Spacing for thermal printer cutter */}
-                            {index < voucherList.length - 1 && <div className="h-8" />}
-                        </div>
-                    ))}
+                    {voucherList.map((v, index) => {
+                        const isLast = index === voucherList.length - 1;
+                        return (
+                            <div
+                                key={v.code}
+                                className={`voucher-print-page${!isLast ? " voucher-cut" : ""}`}
+                                style={{
+                                    // Inline styles as a fallback for Electron / silent print paths
+                                    pageBreakAfter: !isLast ? "always" : "auto",
+                                    breakAfter: !isLast ? "page" : "auto",
+                                    pageBreakInside: "avoid",
+                                    breakInside: "avoid",
+                                    padding: "2mm 1mm",
+                                }}
+                            >
+                                <VoucherReceiptBody
+                                    storeName={storeName}
+                                    storeAddress={storeAddress}
+                                    storePhone={storePhone}
+                                    terminalName={terminalName}
+                                    voucher={v}
+                                />
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </>
@@ -313,9 +328,13 @@ function VoucherReceiptBody({
     );
 
     const voucherTypeLabel = voucher.voucherType.replace(/_/g, " ");
-    const locationNames = voucher.locations && voucher.locations.length > 0
-        ? voucher.locations.map(l => l.location.name).join(", ")
-        : "All Locations";
+
+    // Always show the exact locations the voucher is valid at.
+    // "All Locations" only when zero restrictions are set — never collapse
+    // a restricted list, as that causes customer disputes at non-valid outlets.
+    const locationList = voucher.locations ?? [];
+    const isUnrestricted = locationList.length === 0;
+    const locationNames  = locationList.map(l => l.location.name);
 
     return (
         <div className="font-mono text-xs w-full max-w-[72.1mm] mx-auto space-y-2">
@@ -394,8 +413,24 @@ function VoucherReceiptBody({
 
             {/* ── Redemption Locations ── */}
             <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Valid At</p>
-                <p className="text-[11px] font-semibold">{locationNames}</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                    Valid At {!isUnrestricted && <span className="normal-case">({locationNames.length} outlets)</span>}
+                </p>
+                {isUnrestricted ? (
+                    <p className="text-[11px] font-semibold">All Locations</p>
+                ) : (
+                    <ul className="space-y-0" style={{ columns: locationNames.length > 10 ? 2 : 1, columnGap: "4px" }}>
+                        {locationNames.map(name => (
+                            <li
+                                key={name}
+                                className="font-semibold leading-snug break-inside-avoid"
+                                style={{ fontSize: "9px" }}
+                            >
+                                • {name}
+                            </li>
+                        ))}
+                    </ul>
+                )}
             </div>
 
             <Separator />

@@ -817,33 +817,6 @@ export default function PosVouchersPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* ── Single Issued Confirmation ──────────────────────────── */}
-            {issuedVoucher && (
-                <Dialog open onOpenChange={() => setIssuedVoucher(null)}>
-                    <DialogContent className="sm:max-w-90" showCloseButton={false}>
-                        <div className="pt-4 pb-2 text-center">
-                            <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
-                            <h2 className="text-xl font-bold mb-1">Voucher Issued</h2>
-                            <p className="text-muted-foreground text-sm mb-5">Share this code with the customer</p>
-                            <div className="bg-muted/50 rounded-xl p-5 border mb-5">
-                                <p className="text-2xl font-black font-mono tracking-widest text-primary">
-                                    {issuedVoucher.code}
-                                </p>
-                                <p className="text-sm text-muted-foreground mt-2">
-                                    {formatCurrency(Number(issuedVoucher.faceValue))} · {issuedVoucher.voucherType}
-                                </p>
-                            </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" onClick={() => copyCode(issuedVoucher.code)} className="flex-1 gap-2">
-                                    <Copy className="w-4 h-4" /> Copy
-                                </Button>
-                                <Button onClick={() => setIssuedVoucher(null)} className="flex-1">Done</Button>
-                            </div>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            )}
-
             {/* ── Bulk Result Modal ───────────────────────────────────── */}
             {bulkResult && (
                 <Dialog open onOpenChange={() => { setBulkResult(null); resetBulkForm(); }}>

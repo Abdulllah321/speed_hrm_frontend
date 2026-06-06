@@ -11,6 +11,7 @@ import { LocationGuard } from "@/components/pos/location-guard";
 import { ShiftGuard } from "@/components/pos/shift-guard";
 import { PageTransition } from "@/components/layouts/page-transition";
 import { TitleUpdater } from "@/components/common/title-updater";
+import { toast } from "sonner";
 
 export default function PosLayoutClient({
     children,
@@ -20,7 +21,7 @@ export default function PosLayoutClient({
     const pathname = usePathname();
     const router = useRouter();
     const requiredPermissions = getRoutePermissions(pathname);
-    const { isAdmin, posNeedsUserAuth } = useAuth();
+    const { user, isAdmin, posNeedsUserAuth } = useAuth();
 
     const vt = (content: React.ReactNode) => (
         <PageTransition>
@@ -46,6 +47,30 @@ export default function PosLayoutClient({
             window.location.href = `/auth/login?callbackUrl=${encodeURIComponent(pathname)}&subdomain=pos`;
         }
     }, [posNeedsUserAuth, pathname]);
+
+    // If POS is a child terminal and trying to access parent-only routes, redirect
+    useEffect(() => {
+        const isChildTerminal = user?.terminal && !user.terminal.isParent;
+        const restrictedRoutes = [
+            "/pos/reports",
+            "/pos/session",
+            "/pos/shifts",
+            "/pos/inventory/returns",
+            "/pos/inventory/outbound",
+            "/pos/inventory/inbound",
+            "/pos/inventory/receiving"
+        ];
+        const isRestrictedRoute = restrictedRoutes.some(
+            route => pathname === route || pathname.startsWith(route + "/")
+        );
+
+        if (isChildTerminal && isRestrictedRoute && !isAdmin()) {
+            toast.error("Access Denied", {
+                description: "This page is only accessible on the parent terminal.",
+            });
+            router.push("/pos/new-sale");
+        }
+    }, [user, pathname, isAdmin, router]);
 
     if (posNeedsUserAuth) {
         return null;

@@ -22,6 +22,10 @@ export interface Location {
     fbrNtn: string | null;
     fbrSellerName: string | null;
     fbrEnabled: boolean;
+    /// Whether this outlet is currently online.
+    isOnline: boolean;
+    /// Timestamp of the last known online time.
+    lastOnlineAt: string | null;
     city?: {
         id: string;
         name: string;
@@ -194,3 +198,23 @@ export async function deleteLocation(id: string): Promise<{ status: boolean; mes
         return { status: false, message: 'Failed to delete location' };
     }
 }
+
+/// Toggle the online/offline status for an outlet.
+export async function updateLocationOnlineStatus(
+    id: string,
+    isOnline: boolean,
+): Promise<{ status: boolean; message?: string; data?: Location }> {
+    try {
+        const res = await authFetch(`/locations/${id}/online-status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isOnline }),
+        });
+        const data = res.data;
+        if (data.status) {
+            revalidatePath('/master/location');
+        }
+        return data;
+    } catch (error) {
+        return { status: false, message: 'Failed to update online status' };
+    }
+}

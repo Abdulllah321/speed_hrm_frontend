@@ -61,7 +61,6 @@ export async function printThermal(elementId: string, settings?: PrintSettings):
                                 left: auto !important;
                                 top: auto !important;
                                 width: 72.1mm !important;
-                                padding: 2mm 1mm !important;
                                 display: block !important;
                                 visibility: visible !important;
                                 background: #fff !important;
@@ -70,6 +69,18 @@ export async function printThermal(elementId: string, settings?: PrintSettings):
                                 font-size: 9pt !important;
                                 line-height: 1.35 !important;
                             }
+                            /* Per-voucher page wrapper — padding lives here, not on the root */
+                            .voucher-print-page {
+                                padding: 2mm 1mm !important;
+                                page-break-inside: avoid !important;
+                                break-inside: avoid !important;
+                            }
+                            /* The cut class triggers the thermal cutter between vouchers */
+                            .voucher-print-page.voucher-cut {
+                                page-break-after: always !important;
+                                break-after: page !important;
+                            }
+                            @page { margin: 0; size: 80mm auto; }
                             /* Prevent margin overlap */
                             * {
                                 box-sizing: border-box;
