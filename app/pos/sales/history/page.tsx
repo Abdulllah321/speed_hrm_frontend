@@ -1137,6 +1137,7 @@ export default function SalesHistoryPage() {
                 <PrintReceipt
                     order={{ ...selectedOrder, isGiftReceipt: false }}
                     tenders={selectedOrder.tenders || []}
+                    creditVouchers={selectedOrder.creditVouchers}
                     isLoading={isLoadingReceipt}
                     onClose={() => { setShowPrint(false); setIsLoadingReceipt(false); }}
                 />
@@ -1147,6 +1148,7 @@ export default function SalesHistoryPage() {
                 <PrintReceipt
                     order={{ ...selectedOrder, isGiftReceipt: true }}
                     tenders={selectedOrder.tenders || []}
+                    creditVouchers={selectedOrder.creditVouchers}
                     isLoading={isLoadingReceipt}
                     onClose={() => { setShowGiftPrint(false); setIsLoadingReceipt(false); }}
                 />

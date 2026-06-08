@@ -293,7 +293,14 @@ export default function OrderDetailsPage() {
                                                 <TableCell className="px-4 py-3">
                                                     <div className="flex items-start gap-2">
                                                         <div className="flex-1">
-                                                            <p className="font-bold text-sm">{item.item?.description}</p>
+                                                            <p className="font-bold text-sm">
+                                                                {item.item?.description}
+                                                                {item.item?.size?.name && (
+                                                                    <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                        Size: {item.item.size.name}
+                                                                    </span>
+                                                                )}
+                                                            </p>
                                                             <p className="text-xs text-muted-foreground font-mono">{item.item?.sku}</p>
                                                         </div>
                                                         {isPartiallyReturned && (
@@ -483,6 +490,7 @@ export default function OrderDetailsPage() {
                 <PrintReceipt
                     order={{ ...order, isGiftReceipt: false }}
                     tenders={order.tenders || []}
+                    creditVouchers={order.creditVouchers}
                     onClose={() => setShowPrint(false)}
                 />
             )}
@@ -491,6 +499,7 @@ export default function OrderDetailsPage() {
                 <PrintReceipt
                     order={{ ...order, isGiftReceipt: true }}
                     tenders={order.tenders || []}
+                    creditVouchers={order.creditVouchers}
                     onClose={() => setShowGiftPrint(false)}
                 />
             )}
