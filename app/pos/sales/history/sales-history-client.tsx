@@ -650,6 +650,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                 <PrintReceipt
                     order={selectedOrder}
                     tenders={selectedOrder?.tenders ?? []}
+                    creditVouchers={selectedOrder.creditVouchers}
                     isLoading={isLoadingReceipt}
                     onClose={() => setShowPrint(false)}
                 />
@@ -660,6 +661,7 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                 <PrintReceipt
                     order={selectedOrder}
                     tenders={selectedOrder?.tenders ?? []}
+                    creditVouchers={selectedOrder.creditVouchers}
                     isLoading={isLoadingReceipt}
                     onClose={() => setShowGiftPrint(false)}
                 />

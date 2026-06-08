@@ -57,14 +57,14 @@ type Mode = "return" | "exchange" | "claim" | "refund";
 interface ReturnLine {
     orderId: string; orderNumber: string;
     orderItemId: string; itemId: string;
-    name: string; sku: string; brand?: string;
+    name: string; sku: string; brand?: string; size?: string;
     orderedQty: number; returnQty: number;
     paidPerUnit: number; originalUnitPrice: number; discountPercent: number;
     discountAmount?: number; taxAmount?: number; taxPercent?: number;
     originalQty?: number;
 }
 
-interface NewLine { itemId: string; name: string; sku: string; quantity: number; unitPrice: number; discountPct: number; }
+interface NewLine { itemId: string; name: string; sku: string; size?: string; quantity: number; unitPrice: number; discountPct: number; }
 interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; createdAt: string; items: any[]; coupon?: string; promo?: string; alliance?: string; }
 
 export default function ReturnsPage() {
@@ -156,6 +156,7 @@ export default function ReturnsPage() {
                         name: oi.item?.description || oi.itemId,
                         sku: oi.item?.sku || "",
                         brand: oi.item?.brand || oi.item?.brandName || "",
+                        size: oi.item?.size?.name || "",
                         orderedQty: remainingQty, returnQty: 0,
                         paidPerUnit: paidPerUnit(oi, orderGrandTotal, lineTotalsSum),
                         originalUnitPrice: Number(oi.unitPrice),
@@ -201,7 +202,7 @@ export default function ReturnsPage() {
         setNewLines(prev => {
             const ex = prev.find(l => l.itemId === p.id);
             if (ex) return prev.map(l => l.itemId === p.id ? { ...l, quantity: l.quantity + 1 } : l);
-            return [...prev, { itemId: p.id, name: p.description, sku: p.sku, quantity: 1, unitPrice: Number(p.unitPrice), discountPct: 0 }];
+            return [...prev, { itemId: p.id, name: p.description, sku: p.sku, size: typeof p.size === "object" ? p.size?.name : (p.size || ""), quantity: 1, unitPrice: Number(p.unitPrice), discountPct: 0 }];
         });
         setNewItemSearch(""); setNewItemResults([]);
     };
@@ -520,7 +521,14 @@ export default function ReturnsPage() {
                                                     </TableCell>
                                                 )}
                                                 <TableCell>
-                                                    <p className="font-medium text-sm">{line.name}</p>
+                                                    <p className="font-medium text-sm">
+                                                        {line.name}
+                                                        {line.size && (
+                                                            <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                Size: {line.size}
+                                                            </span>
+                                                        )}
+                                                    </p>
                                                     <p className="text-xs text-muted-foreground font-mono">{line.sku}</p>
                                                 </TableCell>
                                                 <TableCell className="text-right text-sm">{line.orderedQty}</TableCell>
@@ -593,7 +601,14 @@ export default function ReturnsPage() {
                                                         <button key={p.id} onClick={() => addNewItem(p)}
                                                             className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-muted text-sm border-b last:border-0">
                                                             <div className="text-left">
-                                                                <p className="font-medium">{p.description}</p>
+                                                                <p className="font-medium">
+                                                                    {p.description}
+                                                                    {(typeof p.size === "object" ? p.size?.name : p.size) && (
+                                                                        <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                            Size: {typeof p.size === "object" ? p.size?.name : p.size}
+                                                                        </span>
+                                                                    )}
+                                                                </p>
                                                                 <p className="text-xs text-muted-foreground font-mono">{p.sku}</p>
                                                             </div>
                                                             <span className="font-bold font-mono">{formatCurrency(p.unitPrice)}</span>
@@ -617,7 +632,14 @@ export default function ReturnsPage() {
                                                     {newLinesNet.map(line => (
                                                         <TableRow key={line.itemId}>
                                                             <TableCell>
-                                                                <p className="font-medium text-sm">{line.name}</p>
+                                                                <p className="font-medium text-sm">
+                                                                    {line.name}
+                                                                    {line.size && (
+                                                                        <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                            Size: {line.size}
+                                                                        </span>
+                                                                    )}
+                                                                </p>
                                                                 <p className="text-xs text-muted-foreground font-mono">{line.sku}</p>
                                                             </TableCell>
                                                             <TableCell className="text-right font-mono text-sm">{formatCurrency(line.unitPrice)}</TableCell>
