@@ -247,7 +247,9 @@ export function PaymentPanel({
                                     />
                                 </div>
                                 <div>
-                                    <Label className="text-xs text-muted-foreground">Card # (last 4)</Label>
+                                    <Label className="text-xs text-muted-foreground">
+                                        Card # (last 4){discountMode === "alliance" && selectedAlliance && <span className="text-destructive font-bold ml-0.5">*</span>}
+                                    </Label>
                                     <Input className="mt-1 h-8 text-xs font-mono" maxLength={4} placeholder="••••"
                                         value={tenderCardLast4}
                                         onChange={(e) => onTenderCardLast4Change(e.target.value.replace(/\D/, ""))} />

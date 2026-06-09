@@ -377,11 +377,11 @@ export default function CheckoutPage() {
     }
 
     const totalDiscount = finalItemDiscounts + orderDiscount;
-    const isOrderDiscountApplied = (discountMode === "alliance" || discountMode === "coupon") && orderDiscount > 0;
+    const isOrderDiscountApplied = (discountMode === "alliance" || discountMode === "coupon" || discountMode === "manual") && orderDiscount > 0;
 
-    // Alliance/Coupon distribution per item (calculated first for use in tax)
+    // Alliance/Coupon/Manual distribution per item (calculated first for use in tax)
     const allianceSharePerItem: number[] = [];
-    if ((discountMode === "alliance" || discountMode === "coupon") && orderDiscount > 0 && cartItems.length > 0) {
+    if (isOrderDiscountApplied && cartItems.length > 0) {
         const base = subtotal > 0 ? subtotal : 1;
         let distributed = 0;
         const rawShares = cartItems.map(item => {
@@ -470,6 +470,18 @@ export default function CheckoutPage() {
 
     const addTender = () => {
         if (!tenderAmount || tenderAmount <= 0) return;
+        
+        if (discountMode === "alliance" && selectedAlliance) {
+            if (tenderMethod === "cash") {
+                toast.error("Cash payment is not allowed when Alliance is selected.");
+                return;
+            }
+            if (!tenderCardLast4 || tenderCardLast4.trim().length !== 4) {
+                toast.error("Card number (last 4 digits) is mandatory when Alliance is selected.");
+                return;
+            }
+        }
+
         // Merchant required for card / bank_transfer payments
         if ((tenderMethod === "card" || tenderMethod === "bank_transfer") && !selectedMerchant) {
             toast.error("Please select a merchant / bank terminal before adding a card payment.");
@@ -586,6 +598,29 @@ export default function CheckoutPage() {
             toast.error("A customer must be selected to complete this sale.");
             return;
         }
+
+        if (discountMode === "alliance" && selectedAlliance) {
+            const hasCash = tenders.some(t => t.method === "cash");
+            if (hasCash) {
+                toast.error("Alliance discount cannot be applied when cash payment is selected.");
+                return;
+            }
+            const activeCardLast4 = tenderCardLast4 || allianceMeta.cardLast4;
+            if (!activeCardLast4 || activeCardLast4.trim().length !== 4) {
+                toast.error("Card number (last 4 digits) is mandatory when Alliance is selected.");
+                return;
+            }
+            const cardTender = tenders.find(t => t.method === "card");
+            if (!cardTender) {
+                toast.error("Please add the card payment to the payment list.");
+                return;
+            }
+            if (!cardTender.cardLast4 || cardTender.cardLast4.trim().length !== 4) {
+                toast.error("Card number (last 4 digits) is mandatory for card payments when Alliance is selected.");
+                return;
+            }
+        }
+
         // Merchant required if any card / bank_transfer tender was added
         const hasCardTender = tenders.some(t => t.method === "card" || t.method === "bank_transfer");
         if (hasCardTender && !selectedMerchant) {
@@ -625,9 +660,11 @@ export default function CheckoutPage() {
             if (discountMode === "coupon" && appliedCoupon) body.couponId = appliedCoupon.id;
             if (discountMode === "alliance" && selectedAlliance) {
                 body.allianceId = selectedAlliance.id;
-                if (allianceMeta.cardholderName || allianceMeta.cardLast4 || allianceMeta.merchantSlip) {
-                    body.allianceMeta = allianceMeta;
-                }
+                body.allianceMeta = {
+                    cardholderName: tenderCardholderName || allianceMeta.cardholderName,
+                    cardLast4: tenderCardLast4 || allianceMeta.cardLast4,
+                    merchantSlip: tenderSlip || allianceMeta.merchantSlip,
+                };
             }
             if (discountMode === "manual" && orderDiscount > 0) {
                 if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
@@ -661,6 +698,20 @@ export default function CheckoutPage() {
             toast.error("Please select a customer for credit sale.");
             return;
         }
+
+        if (discountMode === "alliance" && selectedAlliance) {
+            const hasCash = tenders.some(t => t.method === "cash");
+            if (hasCash) {
+                toast.error("Alliance discount cannot be applied when cash payment is selected.");
+                return;
+            }
+            const activeCardLast4 = tenderCardLast4 || allianceMeta.cardLast4;
+            if (!activeCardLast4 || activeCardLast4.trim().length !== 4) {
+                toast.error("Card number (last 4 digits) is mandatory when Alliance is selected.");
+                return;
+            }
+        }
+
         // Merchant required if any card / bank_transfer tender was added
         const hasCardTenderCredit = tenders.some(t => t.method === "card" || t.method === "bank_transfer");
         if (hasCardTenderCredit && !selectedMerchant) {
@@ -702,9 +753,11 @@ export default function CheckoutPage() {
             if (discountMode === "coupon" && appliedCoupon) body.couponId = appliedCoupon.id;
             if (discountMode === "alliance" && selectedAlliance) {
                 body.allianceId = selectedAlliance.id;
-                if (allianceMeta.cardholderName || allianceMeta.cardLast4 || allianceMeta.merchantSlip) {
-                    body.allianceMeta = allianceMeta;
-                }
+                body.allianceMeta = {
+                    cardholderName: tenderCardholderName || allianceMeta.cardholderName,
+                    cardLast4: tenderCardLast4 || allianceMeta.cardLast4,
+                    merchantSlip: tenderSlip || allianceMeta.merchantSlip,
+                };
             }
             if (discountMode === "manual" && orderDiscount > 0) {
                 if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
@@ -827,6 +880,7 @@ export default function CheckoutPage() {
                         canCoupon={canCoupon}
                         canAlliance={canAlliance}
                         canManualDiscount={canManualDiscount}
+                        tenders={tenders}
                         orderDiscount={orderDiscount}
                         itemDiscounts={itemDiscounts}
                         finalItemDiscounts={finalItemDiscounts}
@@ -862,6 +916,10 @@ export default function CheckoutPage() {
                         allianceSearchRef={allianceSearchRef}
                         onAllianceSearch={setAllianceSearch}
                         onSelectAlliance={(a) => {
+                            if (tenders.some(t => t.method === "cash")) {
+                                toast.error("Alliance discount cannot be applied when cash payment is added.");
+                                return;
+                            }
                             clearDiscount();
                             setSelectedAlliance(a);
                             setDiscountMode("alliance");

@@ -265,6 +265,8 @@ export default function OrderDetailsPage() {
                                 <TableHeader className="bg-muted/40">
                                     <TableRow>
                                         <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4">Item</TableHead>
+                                        <TableHead className="text-center text-xs font-bold uppercase text-muted-foreground w-24">Size</TableHead>
+                                        <TableHead className="text-center text-xs font-bold uppercase text-muted-foreground w-24">Color</TableHead>
                                         <TableHead className="text-center text-xs font-bold uppercase text-muted-foreground w-20">Qty</TableHead>
                                         {(order.status === 'returned' || order.status === 'partially_returned') && (
                                             <>
@@ -295,11 +297,6 @@ export default function OrderDetailsPage() {
                                                         <div className="flex-1">
                                                             <p className="font-bold text-sm">
                                                                 {item.item?.description}
-                                                                {item.item?.size?.name && (
-                                                                    <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
-                                                                        Size: {item.item.size.name}
-                                                                    </span>
-                                                                )}
                                                             </p>
                                                             <p className="text-xs text-muted-foreground font-mono">{item.item?.sku}</p>
                                                         </div>
@@ -314,6 +311,12 @@ export default function OrderDetailsPage() {
                                                             </Badge>
                                                         )}
                                                     </div>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <span className="inline-block px-2 py-0.5 rounded text-sm font-bold bg-muted/50">{item.item?.size?.name || "—"}</span>
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    <span className="inline-block px-2 py-0.5 rounded text-sm font-bold bg-muted/50">{item.item?.color?.name || "—"}</span>
                                                 </TableCell>
                                                 <TableCell className="text-center">
                                                     <span className="inline-block px-2 py-0.5 rounded text-sm font-bold bg-muted/50">{orderedQty}</span>

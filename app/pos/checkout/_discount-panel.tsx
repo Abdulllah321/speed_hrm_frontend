@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { CartItem } from "@/components/pos/new-sale/cart-table";
 import { cn } from "@/lib/utils";
-import type { PromoConfig, AllianceConfig, AppliedCoupon, DiscountMode } from "./page";
+import type { PromoConfig, AllianceConfig, AppliedCoupon, DiscountMode, Tender } from "./page";
 
 interface DiscountPanelProps {
     // Modes & data
@@ -24,6 +24,7 @@ interface DiscountPanelProps {
     canCoupon: boolean;
     canAlliance: boolean;
     canManualDiscount: boolean;
+    tenders?: Tender[];
     // Computed
     orderDiscount: number;
     itemDiscounts: number;
@@ -71,6 +72,7 @@ interface DiscountPanelProps {
 
 export function DiscountPanel({
     discountMode, isLoadingConfig, canPromo, canCoupon, canAlliance, canManualDiscount,
+    tenders = [],
     orderDiscount, itemDiscounts, finalItemDiscounts, subtotal, subtotalAfterItems, cartItems,
     promos, selectedPromo, promoScopeAll, promoScopedItems, showPromoScope,
     onSelectPromo, onSetPromoScopeAll, onSetPromoScopedItems, onTogglePromoScope,
@@ -83,6 +85,8 @@ export function DiscountPanel({
     onManualDiscountTypeChange, onManualDiscountValueChange,
     onClearDiscount, fmtCurrency, calcPromoDiscount,
 }: DiscountPanelProps) {
+
+    const hasCashTender = tenders.some((t) => t.method === "cash");
 
     const filteredAlliances = alliances.filter(
         (a) =>
@@ -286,14 +290,19 @@ export function DiscountPanel({
                 {canAlliance && (
                     <details
                         ref={allianceDetailsRef}
-                        className={cn(discountMode !== "none" && discountMode !== "alliance" && "opacity-50 pointer-events-none")}
-                        open
+                        className={cn(
+                            (discountMode !== "none" && discountMode !== "alliance") && "opacity-50 pointer-events-none",
+                            hasCashTender && "opacity-50 pointer-events-none"
+                        )}
+                        open={hasCashTender ? false : undefined}
                     >
                         <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer select-none bg-muted/30 hover:bg-muted/50 transition-colors">
                             <Handshake className="h-4 w-4 text-muted-foreground" />
                             <span className="font-semibold text-sm flex-1">Alliance / Bank Card</span>
                             {selectedAlliance && <Badge variant="secondary" className="text-xs">{selectedAlliance.code}</Badge>}
-                            {discountMode !== "none" && discountMode !== "alliance" && (
+                            {hasCashTender ? (
+                                <Badge variant="destructive" className="text-[10px]">Disabled (Cash added)</Badge>
+                            ) : discountMode !== "none" && discountMode !== "alliance" && (
                                 <Badge variant="outline" className="text-[10px]">Disabled</Badge>
                             )}
                         </summary>

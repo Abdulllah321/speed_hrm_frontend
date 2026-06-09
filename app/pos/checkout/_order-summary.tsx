@@ -164,7 +164,7 @@ export function OrderSummary({
                 <div className="divide-y">
                     {cartItems.map((item, idx) => {
                         const isOrderDiscountApplied =
-                            (discountMode === "alliance" || discountMode === "coupon") && orderDiscount > 0;
+                            (discountMode === "alliance" || discountMode === "coupon" || discountMode === "manual") && orderDiscount > 0;
                         const orderDiscountShare = isOrderDiscountApplied ? allianceSharePerItem[idx] : 0;
 
                         const retailPrice = item.price;
@@ -204,7 +204,7 @@ export function OrderSummary({
                                             <div className="flex justify-between text-destructive">
                                                 <span>
                                                     Discount {isOrderDiscountApplied
-                                                        ? `(${discountMode === "alliance" ? "Alliance" : "Coupon"})`
+                                                        ? `(${discountMode === "alliance" ? "Alliance" : discountMode === "coupon" ? "Coupon" : "Manual"})`
                                                         : `${discountPercent}%`
                                                     }:
                                                 </span>

@@ -262,9 +262,12 @@ export function PrintReceipt({
   );
   const orderDiscount = Number(order?.globalDiscountAmount ?? 0);
 
-    // Alliance suppression logic: if alliance is active and >= item discounts (with rounding tolerance), item discounts are zeroed
+    // Order-level discount suppression logic: if alliance OR manual discount is active and >= item discounts, item discounts are zeroed
+    // and the order discount is distributed proportionally across items
     const isAlliance = (discountMode === "alliance" || !!order?.alliance || !!order?.allianceId);
-    const suppressItemDiscounts = isAlliance && Math.round(orderDiscount) >= Math.round(itemDiscountsRaw) && orderDiscount > 0;
+    const isManualDiscount = (discountMode === "manual" || (!isAlliance && !order?.promo && !order?.coupon && orderDiscount > 0));
+    const suppressItemDiscounts = (isAlliance || isManualDiscount) && Math.round(orderDiscount) >= Math.round(itemDiscountsRaw) && orderDiscount > 0;
+    const suppressLabel = isAlliance ? "Alliance Disc" : "Manual Disc";
 
     // Always calculate totalTax from items (don't trust backend taxAmount)
     // using the exact same logic as printed per-item sales tax
@@ -359,6 +362,7 @@ export function PrintReceipt({
     fbrVerifyUrl,
     settings,
     suppressItemDiscounts,
+    suppressLabel,
     creditVouchers,
   };
 
@@ -499,6 +503,7 @@ interface ReceiptBodyProps {
   fbrVerifyUrl: string;
   settings: PosSettings;
   suppressItemDiscounts: boolean;
+  suppressLabel?: string;
   creditVouchers?: {
     code: string;
     faceValue: number;
@@ -532,6 +537,7 @@ function ReceiptBody({
   fbrVerifyUrl,
   settings,
   suppressItemDiscounts,
+  suppressLabel = "Alliance Disc",
   creditVouchers,
 }: ReceiptBodyProps) {
   const isSavedOrder = !!(order && order.id);
@@ -746,7 +752,7 @@ function ReceiptBody({
                   {!isGiftReceipt && (
                       <div className="mt-1 space-y-0.5 text-[10px]">
                           {!suppressItemDiscounts && <Row label="Discount %" value={`${displayDiscPct}%`} />}
-                          <Row label={suppressItemDiscounts ? "Alliance Disc" : "Discount Amount"} value={displayDisc > 0 ? fmtDec(displayDisc) : "—"} />
+                          <Row label={suppressItemDiscounts ? suppressLabel : "Discount Amount"} value={displayDisc > 0 ? fmtDec(displayDisc) : "—"} />
                           <Row label="Amount after Discount"  value={fmtDec(amtAfterDisc)} />
                           <Row label="Sales Tax Rate"         value={`${taxPct}%`} />
                           <Row label="Sales Tax Amount"       value={tax > 0 ? fmtDec(tax) : "—"} />

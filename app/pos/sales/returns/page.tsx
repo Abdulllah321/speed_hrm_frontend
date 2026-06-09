@@ -57,14 +57,14 @@ type Mode = "return" | "exchange" | "claim" | "refund";
 interface ReturnLine {
     orderId: string; orderNumber: string;
     orderItemId: string; itemId: string;
-    name: string; sku: string; brand?: string; size?: string;
+    name: string; sku: string; brand?: string; size?: string; color?: string;
     orderedQty: number; returnQty: number;
     paidPerUnit: number; originalUnitPrice: number; discountPercent: number;
     discountAmount?: number; taxAmount?: number; taxPercent?: number;
     originalQty?: number;
 }
 
-interface NewLine { itemId: string; name: string; sku: string; size?: string; quantity: number; unitPrice: number; discountPct: number; }
+interface NewLine { itemId: string; name: string; sku: string; size?: string; color?: string; quantity: number; unitPrice: number; discountPct: number; }
 interface LoadedOrder { id: string; orderNumber: string; grandTotal: number; createdAt: string; items: any[]; coupon?: string; promo?: string; alliance?: string; }
 
 export default function ReturnsPage() {
@@ -157,6 +157,7 @@ export default function ReturnsPage() {
                         sku: oi.item?.sku || "",
                         brand: oi.item?.brand || oi.item?.brandName || "",
                         size: oi.item?.size?.name || "",
+                        color: oi.item?.color?.name || "",
                         orderedQty: remainingQty, returnQty: 0,
                         paidPerUnit: paidPerUnit(oi, orderGrandTotal, lineTotalsSum),
                         originalUnitPrice: Number(oi.unitPrice),
@@ -202,7 +203,7 @@ export default function ReturnsPage() {
         setNewLines(prev => {
             const ex = prev.find(l => l.itemId === p.id);
             if (ex) return prev.map(l => l.itemId === p.id ? { ...l, quantity: l.quantity + 1 } : l);
-            return [...prev, { itemId: p.id, name: p.description, sku: p.sku, size: typeof p.size === "object" ? p.size?.name : (p.size || ""), quantity: 1, unitPrice: Number(p.unitPrice), discountPct: 0 }];
+            return [...prev, { itemId: p.id, name: p.description, sku: p.sku, size: typeof p.size === "object" ? p.size?.name : (p.size || ""), color: typeof p.color === "object" ? p.color?.name : (p.color || ""), quantity: 1, unitPrice: Number(p.unitPrice), discountPct: 0 }];
         });
         setNewItemSearch(""); setNewItemResults([]);
     };
@@ -464,9 +465,8 @@ export default function ReturnsPage() {
                 <>
                     {/* Mode tabs — hide Claim for multi-order */}
                     <Tabs value={mode} onValueChange={(v: any) => setMode(v)}>
-                        <TabsList className={`grid w-full max-w-md ${isMultiOrder ? "grid-cols-3" : "grid-cols-4"}`}>
+                        <TabsList className={`grid w-full max-w-md ${isMultiOrder ? "grid-cols-2" : "grid-cols-3"}`}>
                             {canReturn && <TabsTrigger value="return" className="gap-1.5"><RotateCcw className="h-3.5 w-3.5" />Return</TabsTrigger>}
-                            {canExchange && <TabsTrigger value="exchange" className="gap-1.5"><ArrowLeftRight className="h-3.5 w-3.5" />Exchange</TabsTrigger>}
                             {canReturn && <TabsTrigger value="refund" className="gap-1.5"><Receipt className="h-3.5 w-3.5" />Refund</TabsTrigger>}
                             {!isMultiOrder && canClaim && <TabsTrigger value="claim" className="gap-1.5"><FileText className="h-3.5 w-3.5" />Claim</TabsTrigger>}
                         </TabsList>
@@ -501,6 +501,8 @@ export default function ReturnsPage() {
                                         <TableRow className="hover:bg-transparent bg-muted/20">
                                             {isMultiOrder && <TableHead className="text-xs uppercase text-muted-foreground">Receipt</TableHead>}
                                             <TableHead className="text-xs uppercase">Item</TableHead>
+                                            <TableHead className="text-center text-xs uppercase">Size</TableHead>
+                                            <TableHead className="text-center text-xs uppercase">Color</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Ordered</TableHead>
                                             <TableHead className="text-right text-xs uppercase">Unit Price</TableHead>
                                             <TableHead className="text-right text-xs uppercase">
@@ -523,14 +525,11 @@ export default function ReturnsPage() {
                                                 <TableCell>
                                                     <p className="font-medium text-sm">
                                                         {line.name}
-                                                        {line.size && (
-                                                            <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
-                                                                Size: {line.size}
-                                                            </span>
-                                                        )}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground font-mono">{line.sku}</p>
                                                 </TableCell>
+                                                <TableCell className="text-center text-sm font-semibold">{line.size || "—"}</TableCell>
+                                                <TableCell className="text-center text-sm font-semibold">{line.color || "—"}</TableCell>
                                                 <TableCell className="text-right text-sm">{line.orderedQty}</TableCell>
                                                 <TableCell className="text-right text-sm font-mono">{formatCurrency(line.originalUnitPrice)}</TableCell>
                                                 <TableCell className="text-right text-sm">
@@ -608,6 +607,11 @@ export default function ReturnsPage() {
                                                                             Size: {typeof p.size === "object" ? p.size?.name : p.size}
                                                                         </span>
                                                                     )}
+                                                                    {(typeof p.color === "object" ? p.color?.name : p.color) && (
+                                                                        <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                            Color: {typeof p.color === "object" ? p.color?.name : p.color}
+                                                                        </span>
+                                                                    )}
                                                                 </p>
                                                                 <p className="text-xs text-muted-foreground font-mono">{p.sku}</p>
                                                             </div>
@@ -622,6 +626,8 @@ export default function ReturnsPage() {
                                                 <TableHeader>
                                                     <TableRow className="hover:bg-transparent bg-muted/20">
                                                         <TableHead className="text-xs uppercase">Item</TableHead>
+                                                         <TableHead className="text-center text-xs uppercase">Size</TableHead>
+                                                         <TableHead className="text-center text-xs uppercase">Color</TableHead>
                                                         <TableHead className="text-right text-xs uppercase">Price</TableHead>
                                                         <TableHead className="text-center text-xs uppercase">Qty</TableHead>
                                                         <TableHead className="text-center text-xs uppercase text-primary">Disc %</TableHead>
@@ -637,6 +643,11 @@ export default function ReturnsPage() {
                                                                     {line.size && (
                                                                         <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
                                                                             Size: {line.size}
+                                                                        </span>
+                                                                    )}
+                                                                    {line.color && (
+                                                                        <span className="ml-2 text-[10px] font-normal text-muted-foreground bg-muted border border-border px-1.5 py-0.5 rounded">
+                                                                            Color: {line.color}
                                                                         </span>
                                                                     )}
                                                                 </p>
@@ -848,6 +859,8 @@ export default function ReturnsPage() {
                         return {
                             name: l.name,
                             sku: l.sku,
+                            size: l.size,
+                            color: l.color,
                             brand: l.brand,
                             returnQty: l.returnQty,
                             paidPerUnit: l.paidPerUnit,
