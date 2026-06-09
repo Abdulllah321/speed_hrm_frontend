@@ -589,7 +589,7 @@ export default function DataTable<TData extends DataTableRow>({
                   <button
                     className="absolute inset-y-0 end-0 flex w-9 items-center justify-center text-muted-foreground"
                     onClick={() => {
-                      setSearch("");
+                      handleSearchChange("");
                       inputRef.current?.focus();
                     }}
                     aria-label="Clear filter"
