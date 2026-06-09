@@ -973,7 +973,7 @@ function ReceiptBody({
             win exciting prizes in draw.
           </p>
           <div
-            className="flex items-center gap-3"
+            className="flex items-center gap-3 justify-between"
             style={{ display: "flex", alignItems: "center", gap: "12px" }}
           >
             <div className="rpt-img shrink-0" style={{ flexShrink: 0 }}>

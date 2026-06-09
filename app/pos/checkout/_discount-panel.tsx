@@ -47,15 +47,15 @@ interface DiscountPanelProps {
     couponError: string;
     isValidatingCoupon: boolean;
     appliedCoupon: AppliedCoupon | null;
-    couponInputRef: React.RefObject<HTMLInputElement>;
+    couponInputRef: React.RefObject<HTMLInputElement | null>;
     onCouponInputChange: (val: string) => void;
     onValidateCoupon: () => void;
     // Alliance
     alliances: AllianceConfig[];
     selectedAlliance: AllianceConfig | null;
     allianceSearch: string;
-    allianceDetailsRef: React.RefObject<HTMLDetailsElement>;
-    allianceSearchRef: React.RefObject<HTMLInputElement>;
+    allianceDetailsRef: React.RefObject<HTMLDetailsElement | null>;
+    allianceSearchRef: React.RefObject<HTMLInputElement | null>;
     onAllianceSearch: (val: string) => void;
     onSelectAlliance: (a: AllianceConfig) => void;
     // Manual discount

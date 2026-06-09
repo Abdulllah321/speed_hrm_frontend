@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Loader2, CreditCard, Wallet, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createReceiptVoucher, getAllCustomers, getPendingInvoicesByCustomer } from "@/lib/actions/receipt-voucher";
+import { createReceiptVoucher, updateReceiptVoucher, getAllCustomers, getPendingInvoicesByCustomer, type ReceiptVoucher } from "@/lib/actions/receipt-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { ChartOfAccountSelect, getSharedTree } from "@/components/ui/chart-of-account-select";
 import { cn } from "@/lib/utils";
@@ -98,7 +98,7 @@ type InvoiceReceiptEntry = {
     receivingNow: number;
 };
 
-export function ReceiptVoucherForm() {
+export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
     const [customers, setCustomers] = useState<any[]>([]);
@@ -110,22 +110,32 @@ export function ReceiptVoucherForm() {
     const form = useForm<ReceiptVoucherFormValues>({
         resolver: zodResolver(receiptVoucherSchema) as any,
         defaultValues: {
-            type: "bank",
-            rvNo: "",
-            rvDate: new Date(),
-            refBillNo: "",
-            billDate: undefined,
-            chequeNo: "",
-            chequeDate: undefined,
-            description: "",
-            customerId: "",
-            isAdvance: false,
-            isTaxApplicable: false,
-            invoices: [],
-            details: [
-                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
-                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
-            ],
+            type: initialData?.type || "bank",
+            rvNo: initialData?.rvNo || "",
+            rvDate: initialData?.rvDate ? new Date(initialData.rvDate) : new Date(),
+            refBillNo: initialData?.refBillNo || "",
+            billDate: initialData?.billDate ? new Date(initialData.billDate) : undefined,
+            chequeNo: initialData?.chequeNo || "",
+            chequeDate: initialData?.chequeDate ? new Date(initialData.chequeDate) : undefined,
+            description: initialData?.description || "",
+            customerId: initialData?.customerId || "",
+            isAdvance: initialData?.isAdvance ?? false,
+            isTaxApplicable: initialData?.isTaxApplicable ?? false,
+            invoices: initialData?.invoices || [],
+            details: initialData?.details
+                ? initialData.details.map((d: any) => ({
+                      accountId: d.accountId,
+                      tagAccountId: d.tagAccountId || "",
+                      debit: Number(d.debit) || 0,
+                      credit: Number(d.credit) || 0,
+                      narration: d.narration || "",
+                      refBillNo: d.refBillNo || "",
+                      isTaxApplicable: d.isTaxApplicable ?? false,
+                  }))
+                : [
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
+                  ],
         },
     });
 
@@ -170,10 +180,11 @@ export function ReceiptVoucherForm() {
     }, [watchDetails.map((d: any) => d.accountId).join(","), tree]);
 
     useEffect(() => {
+        if (initialData) return;
         const prefix = voucherType === "bank" ? "BRV" : "CRV";
         const datePart = `${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}`;
         form.setValue("rvNo", `${prefix}${datePart}${Math.floor(1000 + Math.random() * 9000)}`);
-    }, [voucherType, form]);
+    }, [voucherType, form, initialData]);
 
     useEffect(() => {
         getAllCustomers().then(r => {
@@ -182,18 +193,50 @@ export function ReceiptVoucherForm() {
         });
     }, []);
 
+    // Load selected invoices from initialData
+    useEffect(() => {
+        if (initialData && initialData.invoices && Array.isArray(initialData.invoices)) {
+            const mappedInvoices = initialData.invoices.map((inv: any) => {
+                const si = inv.salesInvoice || {};
+                return {
+                    salesInvoiceId: inv.salesInvoiceId,
+                    invoiceNo: si.invoiceNo || "",
+                    grandTotal: Number(si.grandTotal) || 0,
+                    paidAmount: Number(si.paidAmount) || 0,
+                    balanceAmount: Number(si.balanceAmount) || 0,
+                    receivingNow: Number(inv.receivedAmount) || 0,
+                };
+            });
+            setSelectedInvoices(mappedInvoices);
+        }
+    }, [initialData]);
+
     const selectedCustomerId = form.watch("customerId");
     useEffect(() => {
         if (selectedCustomerId) {
             getPendingInvoicesByCustomer(selectedCustomerId).then(r => {
-                const invoicesWithBalance = (r.status ? r.data : []).filter((inv: any) => Number(inv.balanceAmount) > 0);
-                setPendingInvoices(invoicesWithBalance);
+                let list = (r.status ? r.data : []).filter((inv: any) => Number(inv.balanceAmount) > 0);
+                if (initialData?.invoices && Array.isArray(initialData.invoices)) {
+                    initialData.invoices.forEach((inv: any) => {
+                        if (!list.find((x: any) => x.id === inv.salesInvoiceId)) {
+                            const si = inv.salesInvoice || {};
+                            list.push({
+                                id: inv.salesInvoiceId,
+                                invoiceNo: si.invoiceNo || "",
+                                grandTotal: Number(si.grandTotal) || 0,
+                                paidAmount: Number(si.paidAmount) || 0,
+                                balanceAmount: Number(si.balanceAmount) || 0,
+                            });
+                        }
+                    });
+                }
+                setPendingInvoices(list);
             });
         } else {
             setPendingInvoices([]);
             setSelectedInvoices([]);
         }
-    }, [selectedCustomerId]);
+    }, [selectedCustomerId, initialData]);
 
     const toggleInvoice = (invoice: any) => {
         setSelectedInvoices(prev => {
@@ -350,7 +393,9 @@ export function ReceiptVoucherForm() {
 
             console.log('Final data being sent:', finalData);
 
-            const result = await createReceiptVoucher(finalData);
+            const result = initialData
+                ? await updateReceiptVoucher(initialData.id, finalData)
+                : await createReceiptVoucher(finalData);
             
             console.log('API result:', result);
 
@@ -371,7 +416,7 @@ export function ReceiptVoucherForm() {
     return (
         <Card className="w-full">
             <CardHeader className="border-b flex flex-row items-center justify-between">
-                <CardTitle>Create {voucherType === "bank" ? "Bank" : "Cash"} Receipt Voucher</CardTitle>
+                <CardTitle>{initialData ? "Edit Receipt Voucher" : `Create ${voucherType === "bank" ? "Bank" : "Cash"} Receipt Voucher`}</CardTitle>
                 <Tabs value={voucherType} onValueChange={(val) => form.setValue("type", val as "bank" | "cash")} className="w-[300px]">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="bank" className="flex items-center gap-2">
@@ -798,7 +843,7 @@ export function ReceiptVoucherForm() {
                     <div className="flex justify-center pt-6 border-t">
                         <Button type="submit" disabled={isPending || !isBalanced}>
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Receipt Voucher
+                            {initialData ? "Update Receipt Voucher" : "Create Receipt Voucher"}
                         </Button>
                     </div>
                 </form>

@@ -14,7 +14,7 @@ import { Plus, Trash2, Loader2, Tag, CheckIcon, ChevronDownIcon, Copy } from "lu
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createJournalVoucher } from "@/lib/actions/journal-voucher";
+import { createJournalVoucher, updateJournalVoucher, type JournalVoucher } from "@/lib/actions/journal-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -128,7 +128,7 @@ function TagAccountSelect({ children, value, onValueChange, disabled }: TagAccou
 }
 
 // ─── Main form ────────────────────────────────────────────────────────────────
-export function JournalVoucherForm() {
+export function JournalVoucherForm({ initialData }: { initialData?: JournalVoucher }) {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
     // Shared tree — populated once the ChartOfAccountSelect loads it
@@ -137,13 +137,23 @@ export function JournalVoucherForm() {
     const form = useForm<JournalVoucherFormValues>({
         resolver: zodResolver(journalVoucherSchema) as any,
         defaultValues: {
-            jvNo: `JV${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, "0")}${Math.floor(1000 + Math.random() * 9000)}`,
-            jvDate: new Date(),
-            description: "",
-            details: [
-                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
-                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
-            ],
+            jvNo: initialData?.jvNo || `JV${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, "0")}${Math.floor(1000 + Math.random() * 9000)}`,
+            jvDate: initialData?.jvDate ? new Date(initialData.jvDate) : new Date(),
+            description: initialData?.description || "",
+            details: initialData?.details
+                ? initialData.details.map((d) => ({
+                      accountId: d.accountId,
+                      tagAccountId: d.tagAccountId || "",
+                      debit: Number(d.debit) || 0,
+                      credit: Number(d.credit) || 0,
+                      narration: d.narration || "",
+                      refBillNo: d.refBillNo || "",
+                      isTaxApplicable: d.isTaxApplicable ?? false,
+                  }))
+                : [
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
+                  ],
         },
     });
 
@@ -197,12 +207,14 @@ export function JournalVoucherForm() {
                     tagAccountId: d.tagAccountId || undefined,
                 })),
             };
-            const result = await createJournalVoucher(payload);
+            const result = initialData
+                ? await updateJournalVoucher(initialData.id, payload)
+                : await createJournalVoucher(payload);
             if (result.status) {
-                toast.success("Journal Voucher created successfully");
+                toast.success(initialData ? "Journal Voucher updated successfully" : "Journal Voucher created successfully");
                 router.push("/finance/journal-voucher/list");
             } else {
-                toast.error(result.message || "Failed to create Journal Voucher");
+                toast.error(result.message || (initialData ? "Failed to update Journal Voucher" : "Failed to create Journal Voucher"));
             }
         } catch {
             toast.error("An unexpected error occurred");
@@ -300,7 +312,7 @@ export function JournalVoucherForm() {
     return (
         <Card className="w-full">
             <CardHeader className="border-b">
-                <CardTitle>Create Journal Voucher Form</CardTitle>
+                <CardTitle>{initialData ? "Edit Journal Voucher" : "Create Journal Voucher Form"}</CardTitle>
             </CardHeader>
             <CardContent className="pt-6">
                 <form onSubmit={form.handleSubmit(onSubmit as any)} className="space-y-8">
@@ -571,7 +583,7 @@ export function JournalVoucherForm() {
                             disabled={isPending || !isBalanced || totalDebit === 0}
                         >
                             {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                            Create Journal Voucher
+                            {initialData ? "Update Journal Voucher" : "Create Journal Voucher"}
                         </Button>
                     </div>
                 </form>
