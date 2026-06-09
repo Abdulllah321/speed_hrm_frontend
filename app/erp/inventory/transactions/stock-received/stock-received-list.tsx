@@ -3,6 +3,7 @@
 import { useState, useCallback, useTransition, useEffect, useMemo } from "react";
 import { StockLedgerEntry, MovementType } from "@/lib/api";
 import { getStockLedger, queueStockLedgerExport } from "@/lib/actions/stock-ledger";
+import { getLocations } from "@/lib/actions/location";
 import { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { toast } from "sonner";
 import DataTable from "@/components/common/data-table";
@@ -87,7 +88,7 @@ const MOVEMENT_META: Record<
 };
 
 // ─── Columns ──────────────────────────────────────────────────────────
-const columns: ColumnDef<StockLedgerEntry>[] = [
+export const columns: ColumnDef<StockLedgerEntry>[] = [
     {
         accessorKey: "createdAt",
         header: "Date",
@@ -404,8 +405,20 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
 
     const [activeMovementType, setActiveMovementType] = useState<string>("");
     const [activeReferenceType, setActiveReferenceType] = useState<string>("");
+    const [activeLocationId, setActiveLocationId] = useState<string>("");
+    const [locations, setLocations] = useState<{ label: string; value: string }[]>([]);
     const [search, setSearch] = useState("");
     const [isExporting, setIsExporting] = useState(false);
+
+    useEffect(() => {
+        async function loadLocations() {
+            const res = await getLocations();
+            if (res.status && res.data) {
+                setLocations(res.data.map(loc => ({ label: loc.name, value: loc.id })));
+            }
+        }
+        loadLocations();
+    }, []);
 
     const handleExport = async () => {
         if (isExporting) return;
@@ -414,6 +427,7 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
             const filters = {
                 movementType: activeMovementType && activeMovementType !== "all" ? (activeMovementType as any) : undefined,
                 referenceType: activeReferenceType && activeReferenceType !== "all" ? activeReferenceType : undefined,
+                locationId: activeLocationId && activeLocationId !== "all" ? activeLocationId : undefined,
                 search: search || undefined,
             };
             const result = await queueStockLedgerExport(filters);
@@ -461,7 +475,7 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
 
     // ── Ledger fetch ──────────────────────────────────────────────────
     const fetchPage = useCallback(
-        (pagination: PaginationState, movementType?: string, referenceType?: string, searchStr?: string) => {
+        (pagination: PaginationState, movementType?: string, referenceType?: string, locationId?: string, searchStr?: string) => {
             startTransition(async () => {
                 const result = await getStockLedger({
                     page: pagination.pageIndex + 1,
@@ -472,6 +486,8 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
                             : undefined,
                     referenceType:
                         referenceType && referenceType !== "all" ? referenceType : undefined,
+                    locationId:
+                        locationId && locationId !== "all" ? locationId : undefined,
                     search: searchStr || undefined,
                 });
                 if (result?.status !== false) {
@@ -486,30 +502,32 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
 
     const handlePaginationChange = useCallback(
         (pagination: PaginationState) => {
-            fetchPage(pagination, activeMovementType, activeReferenceType, search);
+            fetchPage(pagination, activeMovementType, activeReferenceType, activeLocationId, search);
         },
-        [activeMovementType, activeReferenceType, search, fetchPage]
+        [activeMovementType, activeReferenceType, activeLocationId, search, fetchPage]
     );
 
     const handleFilterChange = useCallback(
         (key: string, value: string) => {
             const newMovement = key === "movementType" ? value : activeMovementType;
             const newRefType  = key === "referenceType" ? value : activeReferenceType;
+            const newLocation = key === "locationId" ? value : activeLocationId;
 
             if (key === "movementType") setActiveMovementType(value);
             if (key === "referenceType") setActiveReferenceType(value);
+            if (key === "locationId") setActiveLocationId(value);
 
-            fetchPage({ pageIndex: 0, pageSize: meta.limit }, newMovement, newRefType, search);
+            fetchPage({ pageIndex: 0, pageSize: meta.limit }, newMovement, newRefType, newLocation, search);
         },
-        [activeMovementType, activeReferenceType, meta.limit, search, fetchPage]
+        [activeMovementType, activeReferenceType, activeLocationId, meta.limit, search, fetchPage]
     );
 
     const handleSearchChange = useCallback(
         (value: string) => {
             setSearch(value);
-            fetchPage({ pageIndex: 0, pageSize: meta.limit }, activeMovementType, activeReferenceType, value);
+            fetchPage({ pageIndex: 0, pageSize: meta.limit }, activeMovementType, activeReferenceType, activeLocationId, value);
         },
-        [activeMovementType, activeReferenceType, meta.limit, fetchPage]
+        [activeMovementType, activeReferenceType, activeLocationId, meta.limit, fetchPage]
     );
 
     // ── Toolbar slot injected into DataTable ──────────────────────────
@@ -637,6 +655,11 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
                         label: "Source",
                         options: REFERENCE_TYPE_OPTIONS,
                     },
+                    {
+                        key: "locationId",
+                        label: "Outlet Location",
+                        options: locations,
+                    },
                 ]}
                 filterSlot={toolbarSlot}
                 onFilterChange={handleFilterChange}
@@ -659,6 +682,7 @@ export function StockReceivedList({ initialEntries, initialMeta }: StockReceived
                         { pageIndex: 0, pageSize: meta.limit },
                         activeMovementType,
                         activeReferenceType,
+                        activeLocationId,
                         search,
                     );
                     handleUploadIdChange(null);
