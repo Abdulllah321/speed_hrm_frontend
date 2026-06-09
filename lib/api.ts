@@ -438,6 +438,14 @@ export interface PurchaseOrder {
     contactNo?: string;
   };
   vendorQuotation?: VendorQuotation;
+  creatorName?: string | null;
+  checkerName?: string | null;
+  authorizerName?: string | null;
+  createdById?: string | null;
+  checkedById?: string | null;
+  checkedAt?: string | null;
+  authorizedById?: string | null;
+  authorizedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
