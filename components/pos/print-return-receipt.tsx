@@ -63,6 +63,7 @@ export interface ReturnReceiptLine {
     name: string;
     sku: string;
     size?: string;
+    color?: string;
     brand?: string;
     returnQty: number;
     paidPerUnit: number;
@@ -355,7 +356,7 @@ function ReturnBody({
             {/* ── Return Invoice Title ── */}
             <div className="text-center space-y-0.5">
                 <p className="font-bold text-sm tracking-widest uppercase">{isRefund ? "Refund Invoice" : "Return Invoice"}</p>
-                <p className="font-black text-2xl tracking-wider">*{fmt(refundTotal)}*</p>
+                <p className="font-black text-2xl tracking-wider">*{returnRef}*</p>
             </div>
 
             <Separator />
@@ -423,7 +424,10 @@ function ReturnBody({
                 return (
                     <div key={idx} className="pb-2 border-b border-dashed last:border-0">
                         {/* Item name — full width bold */}
-                        <p className="font-bold text-[11px] leading-tight mb-0.5">{line.name}</p>
+                        <p className="font-bold text-[11px] leading-tight mb-0.5">
+                            {line.name}
+                            {line.color && ` (Color: ${line.color})`}
+                        </p>
 
                         {/* Data row */}
                         <div
