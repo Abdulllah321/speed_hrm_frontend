@@ -42,6 +42,8 @@ export default function StockTransferPage() {
         id: string;
         sku: string;
         description: string;
+        color?: string;
+        size?: string;
         quantity: number;
         notes: string;
         availableStock: number;
@@ -219,6 +221,8 @@ export default function StockTransferPage() {
                 id: matchedItem.id,
                 sku: matchedItem.sku ?? matchedItem.itemId ?? '',
                 description: matchedItem.description ?? matchedItem.name ?? '',
+                color: matchedItem.color?.name,
+                size: matchedItem.size?.name,
                 availableStock: availableStock,
             };
 
@@ -252,6 +256,8 @@ export default function StockTransferPage() {
                     id: itemData.id,
                     sku: itemData.sku,
                     description: itemData.description,
+                    color: itemData.color,
+                    size: itemData.size,
                     quantity: bulkQty,
                     notes: '',
                     availableStock: itemData.availableStock,
@@ -457,6 +463,8 @@ export default function StockTransferPage() {
                 id: itemData.id,
                 sku: itemData.sku,
                 description: itemData.description,
+                color: itemData.color?.name,
+                size: itemData.size?.name,
                 quantity: bulkQty,
                 notes: '',
                 availableStock: itemData.availableStock
@@ -1237,11 +1245,21 @@ export default function StockTransferPage() {
                                                                                                     {item.description}
                                                                                                 </span>
                                                                                             </div>
-                                                                                            <div className="flex items-center gap-3">
+                                                                                            <div className="flex items-center gap-3 flex-wrap">
                                                                                                 <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                                                                                                     <WarehouseIcon className="h-3 w-3" />
                                                                                                     Stock: <span className={cn("font-bold", item.availableStock > 0 ? "text-foreground" : "text-destructive")}>{item.availableStock}</span>
                                                                                                 </span>
+                                                                                                {item.color?.name && (
+                                                                                                    <span className="text-[11px] text-muted-foreground">
+                                                                                                        • Color: <span className="font-semibold text-foreground">{item.color.name}</span>
+                                                                                                    </span>
+                                                                                                )}
+                                                                                                {item.size?.name && (
+                                                                                                    <span className="text-[11px] text-muted-foreground">
+                                                                                                        • Size: <span className="font-semibold text-foreground">{item.size.name}</span>
+                                                                                                    </span>
+                                                                                                )}
                                                                                                 {isSelected && (
                                                                                                     <Badge variant="outline" className="h-4 text-[9px] px-1 bg-primary/5 text-primary border-primary/20">Added</Badge>
                                                                                                 )}
@@ -1286,6 +1304,8 @@ export default function StockTransferPage() {
                                     <TableRow className="bg-muted/50">
                                         <TableHead className="w-[150px]">SKU</TableHead>
                                         <TableHead>Description</TableHead>
+                                        <TableHead className="w-[120px]">Color</TableHead>
+                                        <TableHead className="w-[80px]">Size</TableHead>
                                         <TableHead className="w-[100px] text-center">In Stock</TableHead>
                                         <TableHead className="w-[120px]">Transfer Qty</TableHead>
                                         <TableHead>Item Notes</TableHead>
@@ -1295,7 +1315,7 @@ export default function StockTransferPage() {
                                 <TableBody>
                                     {selectedItems.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">
+                                            <TableCell colSpan={8} className="h-32 text-center text-muted-foreground italic">
                                                 No items added yet. Search and add items above.
                                             </TableCell>
                                         </TableRow>
@@ -1305,6 +1325,12 @@ export default function StockTransferPage() {
                                                 <TableCell className="font-mono text-xs font-semibold">{item.sku}</TableCell>
                                                 <TableCell>
                                                     <span className="text-sm font-medium">{item.description}</span>
+                                                </TableCell>
+                                                <TableCell className="text-xs text-muted-foreground font-semibold">
+                                                    {item.color || <span className="text-muted-foreground/30">—</span>}
+                                                </TableCell>
+                                                <TableCell className="text-xs text-muted-foreground font-semibold">
+                                                    {item.size || <span className="text-muted-foreground/30">—</span>}
                                                 </TableCell>
                                                 <TableCell className="text-center font-bold text-primary">{item.availableStock}</TableCell>
                                                 <TableCell>
