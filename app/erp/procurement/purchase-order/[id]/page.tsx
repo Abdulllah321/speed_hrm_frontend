@@ -199,6 +199,8 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Item ID</TableHead>
+                                    <TableHead>Size</TableHead>
+                                    <TableHead>Color</TableHead>
                                     <TableHead>Description</TableHead>
                                     <TableHead className="text-right">Ordered</TableHead>
                                     <TableHead className="text-right">Received</TableHead>
@@ -212,6 +214,8 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                     order.items.map((item) => (
                                         <TableRow key={item.id}>
                                             <TableCell className="font-medium">{item.item?.itemId || item.itemId}</TableCell>
+                                            <TableCell>{item.item?.size?.name || '-'}</TableCell>
+                                            <TableCell>{item.item?.color?.name || '-'}</TableCell>
                                             <TableCell>{item.description || 'No description'}</TableCell>
                                             <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
                                             <TableCell className="text-right font-mono text-blue-600">{parseFloat(item.receivedQty || '0').toFixed(2)}</TableCell>
@@ -222,7 +226,7 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                                        <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                                             No items found for this purchase order
                                         </TableCell>
                                     </TableRow>
@@ -296,11 +300,13 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                     <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
                         <thead>
                           <tr className="border-y-2 border-black">
-                            <th className="py-2 pr-2 text-left font-bold w-[40%]">Item Details</th>
-                            <th className="py-2 pr-2 text-right font-bold w-[15%]">Qty</th>
+                            <th className="py-2 pr-2 text-left font-bold w-[30%]">Item Details</th>
+                            <th className="py-2 pr-2 text-left font-bold w-[10%]">Size</th>
+                            <th className="py-2 pr-2 text-left font-bold w-[10%]">Color</th>
+                            <th className="py-2 pr-2 text-right font-bold w-[10%]">Qty</th>
                             <th className="py-2 pr-2 text-right font-bold w-[15%]">Unit Price</th>
                             <th className="py-2 pr-2 text-right font-bold w-[10%]">Tax %</th>
-                            <th className="py-2 text-right font-bold w-[20%]">Total</th>
+                            <th className="py-2 text-right font-bold w-[15%]">Total</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -310,6 +316,12 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                 <td className="py-2 pr-2 overflow-hidden text-ellipsis">
                                   <div className="font-medium">{item.item?.itemId || item.itemId}</div>
                                   <div className="text-gray-700">{item.description || '-'}</div>
+                                </td>
+                                <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                  {item.item?.size?.name || '-'}
+                                </td>
+                                <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                  {item.item?.color?.name || '-'}
                                 </td>
                                 <td className="py-2 pr-2 text-right tabular-nums">
                                   {parseFloat(item.quantity).toFixed(2)}
