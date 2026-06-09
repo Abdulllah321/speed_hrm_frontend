@@ -1648,6 +1648,11 @@ export const menuData: MenuItem[] = [
         href: "/pos/inventory/returns",
         permissions: ["pos.inventory.returns.view"],
       },
+      {
+        title: "Stock Ledger",
+        href: "/pos/inventory/ledger",
+        permissions: ["pos.inventory.view"],
+      },
     ],
   },
 

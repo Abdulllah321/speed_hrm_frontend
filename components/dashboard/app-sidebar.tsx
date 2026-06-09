@@ -638,7 +638,14 @@ export function AppSidebar({
     const isChildTerminal = user?.terminal && !user.terminal.isParent;
     let finalFiltered = envFiltered;
     
-    if (environment === "POS" && isChildTerminal && !isAdmin()) {
+    const roleName = (user?.role?.name || "").toLowerCase().trim();
+    const isCurrentUserManager =
+      roleName.includes("manager") ||
+      roleName.includes("admin") ||
+      user?.permissions?.includes("pos.return.create") ||
+      user?.permissions?.includes("*");
+
+    if (environment === "POS" && isChildTerminal && !isAdmin() && !isCurrentUserManager) {
       const restrictedRoutes = [
         "/pos/reports",
         "/pos/session",
@@ -646,7 +653,8 @@ export function AppSidebar({
         "/pos/inventory/returns",
         "/pos/inventory/outbound",
         "/pos/inventory/inbound",
-        "/pos/inventory/receiving"
+        "/pos/inventory/receiving",
+        "/pos/inventory/ledger"
       ];
       
       finalFiltered = envFiltered.map(item => {

@@ -6,6 +6,7 @@ import { MovementType } from "@/lib/api";
 
 export async function getStockLedger(filters?: {
     warehouseId?: string;
+    locationId?: string;
     movementType?: MovementType;
     itemId?: string;
     referenceType?: string;
@@ -16,6 +17,7 @@ export async function getStockLedger(filters?: {
     try {
         const queryParams = new URLSearchParams();
         if (filters?.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
+        if (filters?.locationId) queryParams.append("locationId", filters.locationId);
         if (filters?.movementType) queryParams.append("movementType", filters.movementType);
         if (filters?.itemId) queryParams.append("itemId", filters.itemId);
         if (filters?.referenceType) queryParams.append("referenceType", filters.referenceType);
@@ -42,6 +44,7 @@ export async function getStockLedger(filters?: {
 
 export async function queueStockLedgerExport(filters?: {
     warehouseId?: string;
+    locationId?: string;
     movementType?: MovementType;
     itemId?: string;
     referenceType?: string;
@@ -50,6 +53,7 @@ export async function queueStockLedgerExport(filters?: {
     try {
         const queryParams = new URLSearchParams();
         if (filters?.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
+        if (filters?.locationId) queryParams.append("locationId", filters.locationId);
         if (filters?.movementType) queryParams.append("movementType", filters.movementType);
         if (filters?.itemId) queryParams.append("itemId", filters.itemId);
         if (filters?.referenceType) queryParams.append("referenceType", filters.referenceType);
