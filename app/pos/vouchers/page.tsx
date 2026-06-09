@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -37,6 +38,8 @@ import { getLocations } from "@/lib/actions/location";
 import type { Location } from "@/lib/actions/location";
 import { LocationMultiSelect } from "@/app/master/pos-config/_components/location-multi-select";
 import { PrintVoucherReceipt } from "@/components/pos/print-voucher-receipt";
+import { getCustomers } from "@/lib/actions/customer";
+import type { Customer } from "@/lib/actions/customer";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -54,8 +57,9 @@ const ISSUABLE_TYPES = VOUCHER_TYPES.filter(t => t.value !== "EXCHANGE" && t.val
 
 function voucherStatus(v: Voucher) {
     if (v.voucherType === "REFUND") return { label: "Cash Refunded", cls: "bg-red-500/10 text-red-700 border-red-300" };
-    if (!v.isActive)  return { label: "Voided",   cls: "bg-muted text-muted-foreground border-border" };
+    if (v.isDeleted) return { label: "Voided", cls: "bg-muted text-muted-foreground border-border" };
     if (v.isRedeemed) return { label: "Redeemed", cls: "bg-blue-500/10 text-blue-700 border-blue-300" };
+    if (!v.isActive)  return { label: "Voided",   cls: "bg-muted text-muted-foreground border-border" };
     if (v.expiresAt && new Date(v.expiresAt) < new Date())
         return { label: "Expired", cls: "bg-amber-500/10 text-amber-700 border-amber-300" };
     return { label: "Active", cls: "bg-emerald-500/10 text-emerald-700 border-emerald-300" };
@@ -84,6 +88,8 @@ export default function PosVouchersPage() {
     const [vouchers,   setVouchers]   = useState<Voucher[]>([]);
     const [isLoading,  setIsLoading]  = useState(true);
     const [activeTab,  setActiveTab]  = useState<string>("ALL");
+    const [showVoided, setShowVoided] = useState(false);
+    const [restoreId,  setRestoreId]  = useState<string | null>(null);
 
     // ── Locations ────────────────────────────────────────────────
     const [locations, setLocations] = useState<Location[]>([]);
@@ -95,6 +101,7 @@ export default function PosVouchersPage() {
     const [singleDiscount, setSingleDiscount] = useState<number | "">("");
     const [singleDesc,   setSingleDesc]   = useState("");
     const [singleCo,     setSingleCo]     = useState("");
+    const [singleCoGl,   setSingleCoGl]   = useState("");
     const [singleExp,    setSingleExp]    = useState("");
     const [singleLocationIds, setSingleLocationIds] = useState<string[]>([]);
     const [issuingSingle, setIssuingSingle] = useState(false);
@@ -108,10 +115,12 @@ export default function PosVouchersPage() {
     const [bulkDiscount, setBulkDiscount] = useState<number | "">("");
     const [bulkDesc,    setBulkDesc]    = useState("");
     const [bulkCo,      setBulkCo]      = useState("");
+    const [bulkCoGl,    setBulkCoGl]    = useState("");
     const [bulkExp,     setBulkExp]     = useState("");
     const [bulkLocationIds, setBulkLocationIds] = useState<string[]>([]);
     const [issuingBulk, setIssuingBulk] = useState(false);
     const [bulkResult,  setBulkResult]  = useState<{ count: number; codes: string[] } | null>(null);
+    const [customers,   setCustomers]   = useState<Customer[]>([]);
 
     // ── Payment Mode state variables ──────────────────────────────
     const [singlePaymentMode, setSinglePaymentMode] = useState<"CASH" | "CARD">("CASH");
@@ -139,16 +148,26 @@ export default function PosVouchersPage() {
     const fetchVouchers = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await authFetch("/pos-config/vouchers");
+            const query = new URLSearchParams();
+            if (showVoided) {
+                query.append("includeVoided", "true");
+            }
+            const res = await authFetch(`/pos-config/vouchers?${query.toString()}`);
             if (res.ok && res.data?.status) setVouchers(res.data.data || []);
         } catch { toast.error("Failed to load vouchers"); }
         finally { setIsLoading(false); }
-    }, []);
+    }, [showVoided]);
 
     useEffect(() => {
         fetchVouchers();
+    }, [fetchVouchers]);
+
+    useEffect(() => {
         getLocations().then(res => {
             if (res.status && res.data) setLocations(res.data);
+        });
+        getCustomers().then(data => {
+            setCustomers(data);
         });
 
         setIsLoadingMerchants(true);
@@ -158,7 +177,7 @@ export default function PosVouchersPage() {
             })
             .catch(() => toast.error("Failed to load merchant terminals"))
             .finally(() => setIsLoadingMerchants(false));
-    }, [fetchVouchers]);
+    }, []);
 
     const filtered = activeTab === "ALL"
         ? vouchers
@@ -181,6 +200,10 @@ export default function PosVouchersPage() {
                 return;
             }
         }
+        if (singleType === "CORPORATE" && !singleCoGl) {
+            toast.error("Please select a company/customer");
+            return;
+        }
         setIssuingSingle(true);
         try {
             const res = await authFetch("/pos-config/vouchers", {
@@ -190,7 +213,8 @@ export default function PosVouchersPage() {
                     faceValue: Number(singleAmount),
                     discount: singleDiscount ? Number((Number(singleAmount) * (Number(singleDiscount) / 100)).toFixed(2)) : 0,
                     description: singleDesc || undefined,
-                    companyName: singleCo || undefined,
+                    companyName: singleType === "CORPORATE" ? singleCo || undefined : undefined,
+                    companyGlCode: singleType === "CORPORATE" ? singleCoGl || undefined : undefined,
                     expiresAt: singleExp || undefined,
                     locationIds: singleLocationIds,
                     paymentMode: singleType === "GIFT" ? singlePaymentMode : undefined,
@@ -203,7 +227,7 @@ export default function PosVouchersPage() {
             if (res.ok && res.data?.status) {
                 setIssuedVoucher(res.data.data);
                 setShowSingle(false);
-                setSingleAmount(""); setSingleDiscount(""); setSingleDesc(""); setSingleCo(""); setSingleExp(""); setSingleLocationIds(currentLocationId ? [currentLocationId] : []);
+                setSingleAmount(""); setSingleDiscount(""); setSingleDesc(""); setSingleCo(""); setSingleCoGl(""); setSingleExp(""); setSingleLocationIds(currentLocationId ? [currentLocationId] : []);
                 setSinglePaymentMode("CASH"); setSingleMerchantId(""); setSingleCardholder(""); setSingleCardLast4(""); setSingleSlipNo("");
                 fetchVouchers();
             } else {
@@ -231,6 +255,10 @@ export default function PosVouchersPage() {
                 return;
             }
         }
+        if (bulkType === "CORPORATE" && !bulkCoGl) {
+            toast.error("Please select a company/customer");
+            return;
+        }
         setIssuingBulk(true);
         try {
             const res = await authFetch("/pos-config/vouchers/bulk", {
@@ -241,7 +269,8 @@ export default function PosVouchersPage() {
                     quantity: Number(bulkQty),
                     discount: bulkDiscount ? Number((Number(bulkAmount) * (Number(bulkDiscount) / 100)).toFixed(2)) : 0,
                     description: bulkDesc || undefined,
-                    companyName: bulkCo || undefined,
+                    companyName: bulkType === "CORPORATE" ? bulkCo || undefined : undefined,
+                    companyGlCode: bulkType === "CORPORATE" ? bulkCoGl || undefined : undefined,
                     expiresAt: bulkExp || undefined,
                     locationIds: bulkLocationIds,
                     paymentMode: bulkType === "GIFT" ? bulkPaymentMode : undefined,
@@ -268,6 +297,7 @@ export default function PosVouchersPage() {
         setBulkDiscount("");
         setBulkDesc("");
         setBulkCo("");
+        setBulkCoGl("");
         setBulkExp("");
         setBulkLocationIds(currentLocationId ? [currentLocationId] : []);
         setBulkPaymentMode("CASH");
@@ -293,6 +323,7 @@ export default function PosVouchersPage() {
             discount: bulkDiscount ? Number((Number(bulkAmount) * (Number(bulkDiscount) / 100)).toFixed(2)) : 0,
             description: bulkDesc || undefined,
             companyName: bulkCo || undefined,
+            companyGlCode: bulkCoGl || undefined,
             requireCustomerMatch: false,
             expiresAt: bulkExp || undefined,
             createdAt: new Date().toISOString(),
@@ -317,6 +348,20 @@ export default function PosVouchersPage() {
                 toast.error(res.data?.message || "Failed to void");
             }
         } catch { toast.error("Failed to void voucher"); }
+    };
+
+    const handleRestore = async () => {
+        if (!restoreId) return;
+        try {
+            const res = await authFetch(`/pos-config/vouchers/${restoreId}/restore`, { method: "PUT", body: {} });
+            if (res.ok && res.data?.status) {
+                toast.success("Voucher restored");
+                setRestoreId(null);
+                fetchVouchers();
+            } else {
+                toast.error(res.data?.message || "Failed to restore");
+            }
+        } catch { toast.error("Failed to restore voucher"); }
     };
 
     const copyCode = (code: string) => {
@@ -379,17 +424,30 @@ export default function PosVouchersPage() {
             </div>
 
             {/* Tabs + table */}
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
-                    <TabsTrigger value="ALL">All ({vouchers.length})</TabsTrigger>
-                    {VOUCHER_TYPES.map(({ value, label }) => (
-                        <TabsTrigger key={value} value={value}>
-                            {label} ({vouchers.filter(v => v.voucherType === value).length})
-                        </TabsTrigger>
-                    ))}
-                </TabsList>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-3">
+                    <TabsList className="w-full md:w-auto flex flex-wrap h-auto">
+                        <TabsTrigger value="ALL">All ({vouchers.length})</TabsTrigger>
+                        {VOUCHER_TYPES.map(({ value, label }) => (
+                            <TabsTrigger key={value} value={value}>
+                                {label} ({vouchers.filter(v => v.voucherType === value).length})
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                    
+                    <div className="flex items-center gap-2 self-end md:self-auto px-1">
+                        <Switch
+                            id="show-voided"
+                            checked={showVoided}
+                            onCheckedChange={setShowVoided}
+                        />
+                        <Label htmlFor="show-voided" className="text-sm cursor-pointer select-none font-medium">
+                            Show Voided Vouchers
+                        </Label>
+                    </div>
+                </div>
 
-                <TabsContent value={activeTab} className="mt-3">
+                <TabsContent value={activeTab} className="mt-0">
                     <div className="bg-card rounded-xl border overflow-hidden">
                         {isLoading ? (
                             <p className="text-center text-muted-foreground py-12 text-sm">Loading...</p>
@@ -435,7 +493,7 @@ export default function PosVouchersPage() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground max-w-40 truncate">
-                                                    {v.description || (v as any).companyName || "—"}
+                                                    {v.description ? v.description : v.companyName ? `${v.companyName}${v.companyGlCode ? ` (${v.companyGlCode})` : ""}` : "—"}
                                                 </TableCell>
                                                  <TableCell className="text-right font-mono">
                                                      <div className="font-semibold">{formatCurrency(Number(v.faceValue))}</div>
@@ -464,13 +522,23 @@ export default function PosVouchersPage() {
                                                             <Printer className="w-3.5 h-3.5" />
                                                         </Button>
                                                         
-                                                        {/* Void button - only for active vouchers */}
-                                                        {v.isActive && !v.isRedeemed && canVoid && (
+                                                        {/* Void button - only for active, non-voided vouchers */}
+                                                        {v.isActive && !v.isDeleted && !v.isRedeemed && canVoid && (
                                                             <Button variant="ghost" size="icon"
                                                                 className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive"
                                                                 onClick={() => setVoidId(v.id)}
                                                                 title="Void voucher">
                                                                 <XCircle className="w-3.5 h-3.5" />
+                                                            </Button>
+                                                        )}
+
+                                                        {/* Restore button - for voided/deleted vouchers */}
+                                                        {v.isDeleted && !v.isRedeemed && canVoid && (
+                                                            <Button variant="ghost" size="icon"
+                                                                className="h-7 w-7 rounded-full text-muted-foreground hover:text-emerald-600"
+                                                                onClick={() => setRestoreId(v.id)}
+                                                                title="Restore voucher">
+                                                                <RefreshCw className="w-3.5 h-3.5" />
                                                             </Button>
                                                         )}
                                                     </div>
@@ -584,8 +652,35 @@ export default function PosVouchersPage() {
                             )}
                             {singleType === "CORPORATE" && (
                                 <div className="space-y-2">
-                                    <Label>Company Name</Label>
-                                    <Input value={singleCo} onChange={e => setSingleCo(e.target.value)} placeholder="e.g. Acme Corp" />
+                                    <Label>Company / ERP Customer <span className="text-destructive">*</span></Label>
+                                    <Select 
+                                        value={singleCoGl} 
+                                        onValueChange={val => {
+                                            setSingleCoGl(val);
+                                            const cust = customers.find(c => c.code === val);
+                                            if (cust) {
+                                                setSingleCo(cust.name);
+                                            } else {
+                                                setSingleCo("");
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select ERP customer..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {customers.length === 0 && (
+                                                <div className="p-2 text-center text-xs text-muted-foreground italic">
+                                                    No ERP customers found
+                                                </div>
+                                            )}
+                                            {customers.map(c => (
+                                                <SelectItem key={c.id} value={c.code}>
+                                                    {c.name} ({c.code})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             )}
                             <div className="space-y-2">
@@ -743,8 +838,35 @@ export default function PosVouchersPage() {
                             )}
                             {bulkType === "CORPORATE" && (
                                 <div className="space-y-2">
-                                    <Label>Company Name</Label>
-                                    <Input value={bulkCo} onChange={e => setBulkCo(e.target.value)} placeholder="e.g. Acme Corp" />
+                                    <Label>Company / ERP Customer <span className="text-destructive">*</span></Label>
+                                    <Select 
+                                        value={bulkCoGl} 
+                                        onValueChange={val => {
+                                            setBulkCoGl(val);
+                                            const cust = customers.find(c => c.code === val);
+                                            if (cust) {
+                                                setBulkCo(cust.name);
+                                            } else {
+                                                setBulkCo("");
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select ERP customer..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {customers.length === 0 && (
+                                                <div className="p-2 text-center text-xs text-muted-foreground italic">
+                                                    No ERP customers found
+                                                </div>
+                                            )}
+                                            {customers.map(c => (
+                                                <SelectItem key={c.id} value={c.code}>
+                                                    {c.name} ({c.code})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             )}
                             <div className="space-y-2">
@@ -878,6 +1000,24 @@ export default function PosVouchersPage() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction onClick={handleVoid} className="bg-destructive hover:bg-destructive/90">
                             Void
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ── Restore Confirm ────────────────────────────────────────── */}
+            <AlertDialog open={!!restoreId} onOpenChange={() => setRestoreId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Restore Voucher?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will reactivate the voucher. It will be usable again.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRestore} className="bg-emerald-600 hover:bg-emerald-600/90 text-white">
+                            Restore
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -24,6 +24,8 @@ export interface Location {
     fbrEnabled: boolean;
     /// Whether this outlet is currently online.
     isOnline: boolean;
+    /// Cash GL Account Code
+    cashGLCode: string | null;
     /// Timestamp of the last known online time.
     lastOnlineAt: string | null;
     city?: {
@@ -112,6 +114,7 @@ export async function updateLocations(
         geoFenceRadius?: number;
         ipWhitelist?: string;
         ipWhitelistEnabled?: boolean;
+        cashGLCode?: string | null;
     }[]): Promise<{ status: boolean; message: string }> {
     if (!items.length) {
         return { status: false, message: "No items to update" };
