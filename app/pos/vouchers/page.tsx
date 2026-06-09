@@ -69,9 +69,17 @@ function fmtDate(d?: string) {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function PosVouchersPage() {
-    const { hasPermission } = useAuth();
+    const { hasPermission, user } = useAuth();
     const canCreate = hasPermission("pos.voucher.create");
     const canVoid   = hasPermission("pos.voucher.void");
+    const currentLocationId = user?.locationId || user?.terminal?.location?.id;
+
+    useEffect(() => {
+        if (currentLocationId) {
+            setSingleLocationIds(prev => prev.length === 0 ? [currentLocationId] : prev);
+            setBulkLocationIds(prev => prev.length === 0 ? [currentLocationId] : prev);
+        }
+    }, [currentLocationId]);
 
     const [vouchers,   setVouchers]   = useState<Voucher[]>([]);
     const [isLoading,  setIsLoading]  = useState(true);
@@ -195,7 +203,7 @@ export default function PosVouchersPage() {
             if (res.ok && res.data?.status) {
                 setIssuedVoucher(res.data.data);
                 setShowSingle(false);
-                setSingleAmount(""); setSingleDiscount(""); setSingleDesc(""); setSingleCo(""); setSingleExp(""); setSingleLocationIds([]);
+                setSingleAmount(""); setSingleDiscount(""); setSingleDesc(""); setSingleCo(""); setSingleExp(""); setSingleLocationIds(currentLocationId ? [currentLocationId] : []);
                 setSinglePaymentMode("CASH"); setSingleMerchantId(""); setSingleCardholder(""); setSingleCardLast4(""); setSingleSlipNo("");
                 fetchVouchers();
             } else {
@@ -261,7 +269,7 @@ export default function PosVouchersPage() {
         setBulkDesc("");
         setBulkCo("");
         setBulkExp("");
-        setBulkLocationIds([]);
+        setBulkLocationIds(currentLocationId ? [currentLocationId] : []);
         setBulkPaymentMode("CASH");
         setBulkMerchantId("");
         setBulkCardholder("");
@@ -478,7 +486,7 @@ export default function PosVouchersPage() {
             </Tabs>
 
             {/* ── Single Issue Modal ──────────────────────────────────── */}
-            <Dialog open={showSingle} onOpenChange={open => { setShowSingle(open); if (!open) setSingleLocationIds([]); }}>
+            <Dialog open={showSingle} onOpenChange={open => { setShowSingle(open); if (!open) setSingleLocationIds(currentLocationId ? [currentLocationId] : []); }}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
@@ -625,7 +633,7 @@ export default function PosVouchersPage() {
             </Dialog>
 
             {/* ── Bulk Issue Modal ────────────────────────────────────── */}
-            <Dialog open={showBulk} onOpenChange={open => { setShowBulk(open); if (!open) setBulkLocationIds([]); }}>
+            <Dialog open={showBulk} onOpenChange={open => { setShowBulk(open); if (!open) setBulkLocationIds(currentLocationId ? [currentLocationId] : []); }}>
                 <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">

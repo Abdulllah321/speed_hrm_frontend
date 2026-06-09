@@ -384,13 +384,13 @@ function VoucherReceiptBody({
             <div className="text-center space-y-1 py-3 bg-muted/20 rounded-lg">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Voucher Value</p>
                 <p className="font-black text-4xl tracking-wider">Rs. {fmt(Number(voucher.faceValue))}</p>
-                {voucher.discount !== undefined && Number(voucher.discount) > 0 && (
+                {/* {voucher.discount !== undefined && Number(voucher.discount) > 0 && (
                     <div className="text-[10px] text-muted-foreground mt-1 flex justify-center gap-2 font-bold">
                         <span>Disc: Rs. {fmt(Number(voucher.discount))}</span>
                         <span>•</span>
                         <span>Paid: Rs. {fmt(Number(voucher.faceValue) - Number(voucher.discount))}</span>
                     </div>
-                )}
+                )} */}
             </div>
 
             <Separator />
