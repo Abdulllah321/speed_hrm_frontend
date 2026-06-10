@@ -312,7 +312,8 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
             issuedVouchers: {
                 exchangeAndClaims,
                 creditVouchers,
-                giftVouchers
+                giftVouchers,
+                refundVouchers: apiData.issuedVouchers?.refundVouchers || []
             },
             fbrCharges,
             financials: {
@@ -348,9 +349,12 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
     const receivedSubtotal = activeReport.receivedVouchers.reduce((acc, v) => acc + v.amount, 0);
     const receivablesSubtotal = activeReport.receivables.reduce((acc, r) => acc + r.amount, 0);
 
-    const issuedExchangeSubtotal = activeReport.issuedVouchers.exchangeAndClaims.reduce((acc, v) => acc + v.amount, 0);
-    const issuedCreditSubtotal = activeReport.issuedVouchers.creditVouchers.reduce((acc, v) => acc + v.amount, 0);
-    const issuedGiftSubtotal = activeReport.issuedVouchers.giftVouchers.reduce((acc, v) => acc + v.amount, 0);
+    const issuedExchangeSubtotal = activeReport.issuedVouchers.exchangeAndClaims?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
+    const issuedCreditSubtotal = activeReport.issuedVouchers.creditVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
+    const issuedGiftSubtotal = activeReport.issuedVouchers.giftVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
+    const issuedRefundSubtotal = activeReport.issuedVouchers.refundVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
+
+    const totalIssuedSubtotal = issuedExchangeSubtotal + issuedGiftSubtotal + issuedRefundSubtotal;
 
     const fbrSubtotal = activeReport.fbrCharges.reduce((acc, f) => acc + f.amount, 0);
 
@@ -365,8 +369,6 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
     };
 
     const renderThermalContent = (isPrint: boolean = false) => {
-        const totalIssuedSubtotal = issuedExchangeSubtotal + issuedCreditSubtotal + issuedGiftSubtotal;
-
         const textSizeClass = isPrint ? "text-[8px]" : "text-[9px]";
         const headerTitleSize = isPrint ? "text-[10px]" : "text-[11px]";
         const documentTitleSize = isPrint ? "text-[11px]" : "text-[12px]";
@@ -515,7 +517,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                     <div className={cn("font-bold border-b border-dashed border-black/30 pb-0.5 mb-1", headerTitleSize)}>
                         ISSUED VOUCHERS
                     </div>
-                    {totalIssuedSubtotal > 0 ? (
+                    {(totalIssuedSubtotal + issuedCreditSubtotal) > 0 ? (
                         <>
                             <div className={cn("space-y-1.5", textSizeClass)}>
                                 {/* Exchange & Claims */}
@@ -538,12 +540,28 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                         <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
                                     </div>
                                 ))}
+                                {activeReport.issuedVouchers.creditVouchers.length > 0 && (
+                                    <div className="flex justify-between border-t border-dashed border-black/10 pt-0.5 mt-0.5 font-bold text-gray-700">
+                                        <span className="pl-2">CREDIT SUBTOTAL:</span>
+                                        <span>{formatVal(issuedCreditSubtotal)}</span>
+                                    </div>
+                                )}
                                 {/* Gift Vouchers */}
                                 {activeReport.issuedVouchers.giftVouchers.map((v, i) => (
                                     <div key={`iss-gv-${i}`} className="flex justify-between items-start">
                                         <div className="flex flex-col w-[65%]">
                                             <span>{v.type}</span>
                                             <span className="text-[7.5px] text-gray-600 font-mono font-bold">FROM: {v.from || "-"} / TO: {v.to || "-"}</span>
+                                        </div>
+                                        <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
+                                    </div>
+                                ))}
+                                {/* Refund Vouchers */}
+                                {activeReport.issuedVouchers.refundVouchers?.map((v, i) => (
+                                    <div key={`iss-rv-${i}`} className="flex justify-between items-start">
+                                        <div className="flex flex-col w-[65%]">
+                                            <span>{v.type}</span>
+                                            {v.from && <span className="text-[7.5px] text-gray-600 font-mono font-bold">FROM: {v.from}</span>}
                                         </div>
                                         <span className="w-[35%] text-right font-bold">{formatVal(v.amount)}</span>
                                     </div>
@@ -585,6 +603,18 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                         <span>GROSS REVENUE:</span>
                         <span>{formatVal(activeReport.financials.sale)}</span>
                     </div>
+                    {issuedRefundSubtotal > 0 && (
+                        <div className={cn("flex justify-between text-red-600 font-bold", textSizeClass)}>
+                            <span>LESS REFUND VOUCHERS:</span>
+                            <span>-{formatVal(issuedRefundSubtotal)}</span>
+                        </div>
+                    )}
+                    {issuedCreditSubtotal > 0 && (
+                        <div className={cn("flex justify-between text-red-600 font-bold", textSizeClass)}>
+                            <span>LESS CREDIT VOUCHERS:</span>
+                            <span>-{formatVal(issuedCreditSubtotal)}</span>
+                        </div>
+                    )}
                     <div className={cn("flex justify-between text-red-600 font-bold", textSizeClass)}>
                         <span>RETURNS / CLAIMS:</span>
                         <span>-{formatVal(activeReport.financials.salesReturn)}</span>
@@ -943,17 +973,6 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                         <td className="py-1 px-1 text-center">-</td>
                                                     </tr>
                                                 ))}
-                                                {/* Exchange & Claims Issued Subtotal */}
-                                                {activeReport.issuedVouchers.exchangeAndClaims.length > 0 && (
-                                                    <tr className="font-bold border-b border-gray-200">
-                                                        <td className="py-1 px-1 text-left pl-4"></td>
-                                                        <td className="py-1 px-1 text-right border-t border-dashed border-black/60">{formatVal(issuedExchangeSubtotal)}</td>
-                                                        <td className="py-1 px-1 text-right"></td>
-                                                        <td className="py-1 px-1 text-right"></td>
-                                                        <td className="py-1 px-1 text-center"></td>
-                                                        <td className="py-1 px-1 text-center"></td>
-                                                    </tr>
-                                                )}
 
                                                 {/* Issued sub-category 2: Credit Vouchers */}
                                                 {activeReport.issuedVouchers.creditVouchers.map((v, i) => (
@@ -989,17 +1008,28 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                         <td className="py-1 px-1 text-center font-mono">{v.to || "-"}</td>
                                                     </tr>
                                                 ))}
-                                                {/* Gift Vouchers Issued Subtotal */}
-                                                {activeReport.issuedVouchers.giftVouchers.length > 0 && (
-                                                    <tr className="font-bold border-b border-gray-200">
-                                                        <td className="py-1 px-1 text-left pl-4"></td>
-                                                        <td className="py-1 px-1 text-right border-t border-dashed border-black/60">{formatVal(issuedGiftSubtotal)}</td>
-                                                        <td className="py-1 px-1 text-right"></td>
-                                                        <td className="py-1 px-1 text-right"></td>
-                                                        <td className="py-1 px-1 text-center"></td>
-                                                        <td className="py-1 px-1 text-center"></td>
+
+                                                {/* Issued sub-category 4: Refund Vouchers */}
+                                                {activeReport.issuedVouchers.refundVouchers?.map((v, i) => (
+                                                    <tr key={`iss-rv-${i}`} className="border-b border-gray-100 text-gray-700 hover:bg-gray-50/50">
+                                                        <td className="py-1 px-1 text-left pl-4 font-medium">{v.type}</td>
+                                                        <td className="py-1 px-1 text-right">{formatVal(v.amount)}</td>
+                                                        <td className="py-1 px-1 text-right">-</td>
+                                                        <td className="py-1 px-1 text-right">-</td>
+                                                        <td className="py-1 px-1 text-center font-mono">{v.from || "-"}</td>
+                                                        <td className="py-1 px-1 text-center">-</td>
                                                     </tr>
-                                                )}
+                                                ))}
+
+                                                {/* Total Issued Section Row */}
+                                                <tr className="font-black border-y-2 border-black text-gray-900 bg-gray-50">
+                                                    <td className="py-1.5 px-1 text-left">Total Issued</td>
+                                                    <td className="py-1.5 px-1 text-right">{formatVal(totalIssuedSubtotal)}</td>
+                                                    <td className="py-1.5 px-1 text-right"></td>
+                                                    <td className="py-1.5 px-1 text-right"></td>
+                                                    <td className="py-1.5 px-1 text-center"></td>
+                                                    <td className="py-1.5 px-1 text-center"></td>
+                                                </tr>
 
                                                 {/* Spacer row */}
                                                 <tr className="h-2"></tr>
@@ -1040,6 +1070,26 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                     <td className="py-1 px-1 text-center"></td>
                                                     <td className="py-1 px-1 text-center"></td>
                                                 </tr>
+                                                {issuedRefundSubtotal > 0 && (
+                                                    <tr className="font-semibold text-red-600">
+                                                        <td className="py-1 px-1 text-left">Less Refund Vouchers Amount</td>
+                                                        <td className="py-1 px-1 text-right font-bold">({formatVal(issuedRefundSubtotal)})</td>
+                                                        <td className="py-1 px-1 text-right">-</td>
+                                                        <td className="py-1 px-1 text-right">-</td>
+                                                        <td className="py-1 px-1 text-center"></td>
+                                                        <td className="py-1 px-1 text-center"></td>
+                                                    </tr>
+                                                )}
+                                                {issuedCreditSubtotal > 0 && (
+                                                    <tr className="font-semibold text-red-600">
+                                                        <td className="py-1 px-1 text-left">Less Credit Vouchers Issued</td>
+                                                        <td className="py-1 px-1 text-right font-bold">({formatVal(issuedCreditSubtotal)})</td>
+                                                        <td className="py-1 px-1 text-right">-</td>
+                                                        <td className="py-1 px-1 text-right">-</td>
+                                                        <td className="py-1 px-1 text-center"></td>
+                                                        <td className="py-1 px-1 text-center"></td>
+                                                    </tr>
+                                                )}
                                                 <tr className="font-semibold text-gray-900">
                                                     <td className="py-1 px-1 text-left">Sales Return</td>
                                                     <td className="py-1 px-1 text-right text-red-600 font-bold">({formatVal(activeReport.financials.salesReturn)})</td>
