@@ -187,6 +187,8 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         });
     }, [watchDetails.map((d: any) => d.accountId).join(",")]);
 
+    const prevDetailsRef = useRef<Array<{ accountId: string; tagAccountId: string; taxableValue: number }>>([]);
+
     // Derive child accounts for each row from the cached tree
     function findInTree(nodes: ChartOfAccount[], id: string): ChartOfAccount | undefined {
         for (const node of nodes) {
@@ -469,38 +471,61 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     };
 
     // Watch for changes in detail rows to auto-balance and calculate taxes
-    const watchDetailsString = watchDetails.map(d => `${d.debit}-${d.credit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}-${d.taxableValue}`).join(",");
+    const watchDetailsString = watchDetails.map(d => `${d.debit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}-${d.taxableValue}`).join(",");
     useEffect(() => {
         let totalTaxAmount = 0;
 
         // Auto-calculate taxes for any recognized tax rows
         if (tree.length > 0) {
             watchDetails.forEach((detail, index) => {
+                const prev = prevDetailsRef.current[index] || { accountId: "", tagAccountId: "", taxableValue: 0 };
+                const currentTaxableValue = Number(detail.taxableValue) || 0;
+                
+                // Check if trigger fields changed for this row
+                const triggerChanged = 
+                    detail.accountId !== prev.accountId || 
+                    detail.tagAccountId !== prev.tagAccountId || 
+                    currentTaxableValue !== prev.taxableValue;
+
                 if (detail.accountId && detail.tagAccountId) {
                     const accountNode = findInTree(tree, detail.accountId);
                     const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
 
                     if (accountNode?.code && tagNode?.code) {
-                        const rowTaxableValue = Number(detail.taxableValue) || 0;
-                        if (rowTaxableValue > 0) {
-                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, rowTaxableValue);
+                        if (currentTaxableValue > 0) {
+                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, currentTaxableValue);
                             if (calculatedTax !== null) {
-                                const currentCredit = Number(detail.credit) || 0;
-                                if (currentCredit !== calculatedTax) {
+                                if (triggerChanged) {
                                     form.setValue(`details.${index}.credit`, calculatedTax, { shouldValidate: true });
                                     form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                    totalTaxAmount += calculatedTax;
+                                } else {
+                                    // Use user's manual entry (subtracting any debit to get net credit impact)
+                                    totalTaxAmount += (Number(detail.credit) || 0) - (Number(detail.debit) || 0);
                                 }
-                                totalTaxAmount += calculatedTax;
                             }
                         } else {
-                            const currentCredit = Number(detail.credit) || 0;
-                            if (currentCredit !== 0) {
+                            if (triggerChanged) {
                                 form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                            } else {
+                                totalTaxAmount += (Number(detail.credit) || 0) - (Number(detail.debit) || 0);
                             }
                         }
                     }
                 }
+
+                // Update the ref for this row
+                prevDetailsRef.current[index] = {
+                    accountId: detail.accountId || "",
+                    tagAccountId: detail.tagAccountId || "",
+                    taxableValue: currentTaxableValue,
+                };
             });
+
+            // Clean up extra rows in the ref if any were deleted
+            if (prevDetailsRef.current.length > watchDetails.length) {
+                prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
+            }
         }
 
         // Find the first row with debit amount (supplier row)

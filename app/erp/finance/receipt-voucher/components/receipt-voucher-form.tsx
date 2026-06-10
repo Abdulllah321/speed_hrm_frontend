@@ -166,6 +166,9 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
         });
     }, [watchDetails.map((d: any) => d.accountId).join(",")]);
 
+    const prevDetailsRef = useRef<Array<{ accountId: string; tagAccountId: string }>>([]);
+    const prevTaxableAmountRef = useRef<number>(0);
+
     function findInTree(nodes: ChartOfAccount[], id: string): ChartOfAccount | undefined {
         for (const node of nodes) {
             if (node.id === id) return node;
@@ -294,7 +297,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     };
 
     // Watch for changes in detail rows to auto-balance and calculate taxes
-    const watchDetailsString = watchDetails.map((d: any) => `${d.debit}-${d.credit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}`).join(",");
+    const watchDetailsString = watchDetails.map((d: any) => `${d.credit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}`).join(",");
     useEffect(() => {
         // Calculate total taxable amount (based on credits for RV)
         const taxableAmount = watchDetails.reduce((sum: number, detail: any) => {
@@ -303,26 +306,59 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
 
         let totalTaxAmount = 0;
 
+        const prevTaxableAmount = prevTaxableAmountRef.current;
+        const prevDetails = prevDetailsRef.current;
+        const taxableAmountChanged = taxableAmount !== prevTaxableAmount;
+
         // Auto-calculate taxes for any recognized tax rows
-        if (taxableAmount > 0 && tree.length > 0) {
+        if (tree.length > 0) {
             watchDetails.forEach((detail: any, index: number) => {
+                const prev = prevDetails[index] || { accountId: "", tagAccountId: "" };
+                const triggerChanged = 
+                    detail.accountId !== prev.accountId || 
+                    detail.tagAccountId !== prev.tagAccountId ||
+                    taxableAmountChanged;
+
                 if (detail.accountId && detail.tagAccountId) {
                     const accountNode = findInTree(tree, detail.accountId);
                     const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
 
                     if (accountNode?.code && tagNode?.code) {
-                        const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, taxableAmount);
-                        if (calculatedTax !== null) {
-                            const currentDebit = Number(detail.debit) || 0;
-                            if (currentDebit !== calculatedTax) {
-                                form.setValue(`details.${index}.debit`, calculatedTax, { shouldValidate: true });
-                                form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                        if (taxableAmount > 0) {
+                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, taxableAmount);
+                            if (calculatedTax !== null) {
+                                if (triggerChanged) {
+                                    form.setValue(`details.${index}.debit`, calculatedTax, { shouldValidate: true });
+                                    form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                                    totalTaxAmount += calculatedTax;
+                                } else {
+                                    // Use user's manual entry (subtracting any credit to get net debit impact)
+                                    totalTaxAmount += (Number(detail.debit) || 0) - (Number(detail.credit) || 0);
+                                }
                             }
-                            totalTaxAmount += calculatedTax;
+                        } else {
+                            if (triggerChanged) {
+                                form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                            } else {
+                                totalTaxAmount += (Number(detail.debit) || 0) - (Number(detail.credit) || 0);
+                            }
                         }
                     }
                 }
+
+                // Update the ref for this row
+                prevDetails[index] = {
+                    accountId: detail.accountId || "",
+                    tagAccountId: detail.tagAccountId || "",
+                };
             });
+
+            // Clean up extra rows in the ref if any were deleted
+            if (prevDetailsRef.current.length > watchDetails.length) {
+                prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
+            }
+            // Update the global taxable amount ref
+            prevTaxableAmountRef.current = taxableAmount;
         }
 
         // Find the first row with credit amount (customer row)
