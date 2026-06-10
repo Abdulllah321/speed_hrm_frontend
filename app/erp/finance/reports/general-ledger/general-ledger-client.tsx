@@ -508,7 +508,12 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
 
                             {/* Narration */}
                             <td className="px-4 py-3 border-r dark:border-border/40 max-w-[240px] truncate text-muted-foreground/90">
-                              {row.narration || row.description || "—"}
+                              <div className="font-medium truncate">{row.narration || row.description || "—"}</div>
+                              {row.tagAccount && (
+                                <span className="inline-block mt-1 text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-950/40">
+                                  Tag: {row.tagAccount.code} - {row.tagAccount.name}
+                                </span>
+                              )}
                             </td>
 
                             {/* Debit */}
@@ -759,7 +764,12 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
                     {SOURCE_LABELS[row.sourceType] ?? row.sourceType}
                   </td>
                   <td className="py-2 pr-1 text-[11px] leading-snug break-words">
-                    {row.narration || row.description || "—"}
+                    <div>{row.narration || row.description || "—"}</div>
+                    {row.tagAccount && (
+                      <div className="text-[9px] text-indigo-700 font-semibold mt-0.5">
+                        Tag: {row.tagAccount.code} - {row.tagAccount.name}
+                      </div>
+                    )}
                   </td>
                   <td className="py-2 pr-1 text-right font-mono text-[11px]">
                     {row.debit > 0 ? fmt(row.debit) : ""}
