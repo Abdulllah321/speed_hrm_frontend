@@ -16,6 +16,7 @@ import {
   Calendar,
   ExternalLink,
   Info,
+  Tag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { getGeneralLedger, GeneralLedgerResult, queueGeneralLedgerExport } from "@/lib/actions/finance-reports";
 import { numberToWords } from "../../journal-voucher/components/journal-voucher-print";
@@ -76,6 +78,7 @@ const getSourceLink = (sourceType: string, sourceId: string) => {
 
 export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }) {
   const [accountId, setAccountId] = React.useState("");
+  const [tagAccountId, setTagAccountId] = React.useState("");
   const [fromDate, setFromDate] = React.useState<Date | undefined>(
     new Date(new Date().getFullYear(), 0, 1)
   );
@@ -86,14 +89,33 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
   const [isPending, startTransition] = React.useTransition();
   const [isExporting, setIsExporting] = React.useState(false);
 
+  // Find selected account in the tree to check for children (sub-accounts)
+  const selectedAccountInTree = React.useMemo(() => {
+    if (!accountId || accounts.length === 0) return null;
+    const findInTree = (nodes: ChartOfAccount[], id: string): ChartOfAccount | undefined => {
+      for (const node of nodes) {
+        if (node.id === id) return node;
+        if (node.children?.length) {
+          const found = findInTree(node.children, id);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+    return findInTree(accounts, accountId);
+  }, [accountId, accounts]);
+
+  const subAccounts = selectedAccountInTree?.children ?? [];
+
   // Pagination states
   const [page, setPage] = React.useState(1);
   const [limit, setLimit] = React.useState(50);
 
   const load = (targetPage = page, targetLimit = limit) => {
-    if (!accountId) return;
+    const targetAccountId = tagAccountId || accountId;
+    if (!targetAccountId) return;
     startTransition(async () => {
-      const res = await getGeneralLedger(accountId, {
+      const res = await getGeneralLedger(targetAccountId, {
         from: fromDate ? format(fromDate, "yyyy-MM-dd") : undefined,
         to: toDate ? format(toDate, "yyyy-MM-dd") : undefined,
         page: targetPage,
@@ -175,11 +197,12 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
 
   // Dispatch Background Excel queue export
   const handleQueueExport = () => {
-    if (!accountId) return;
+    const targetAccountId = tagAccountId || accountId;
+    if (!targetAccountId) return;
     setIsExporting(true);
 
     toast.promise(
-      queueGeneralLedgerExport(accountId, {
+      queueGeneralLedgerExport(targetAccountId, {
         from: fromDate ? format(fromDate, "yyyy-MM-dd") : undefined,
         to: toDate ? format(toDate, "yyyy-MM-dd") : undefined,
         sourceType: sourceType === "all" ? undefined : sourceType,
@@ -262,21 +285,46 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
           <CardContent className="pt-6 space-y-6">
             {/* Filters Bar */}
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end p-5 rounded-xl border border-border bg-muted/10 dark:bg-muted/5 shadow-sm">
-              <div className="space-y-2 md:col-span-4">
+              <div className={cn("space-y-2", subAccounts.length > 0 ? "md:col-span-3" : "md:col-span-4")}>
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <BookOpen className="h-3 w-3 text-primary/70" /> Chart of Account
                 </Label>
                 <ChartOfAccountSelect
                   accounts={accounts}
                   value={accountId}
-                  onValueChange={setAccountId}
+                  onValueChange={(val) => {
+                    setAccountId(val);
+                    setTagAccountId(""); // Reset sub-account when main account changes
+                  }}
                   placeholder="Select Account..."
-                  allowGroups={false}
+                  allowGroups={true}
                   className="h-10 text-sm shadow-sm"
                 />
               </div>
+
+              {subAccounts.length > 0 && (
+                <div className="space-y-2 md:col-span-3">
+                  <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Tag className="h-3 w-3 text-primary/70" /> Sub-account / Tag
+                  </Label>
+                  <Autocomplete
+                    options={[
+                      { value: "all", label: "All Sub-accounts" },
+                      ...subAccounts.map((child) => ({
+                        value: child.id,
+                        label: `${child.code} - ${child.name}`,
+                      })),
+                    ]}
+                    value={tagAccountId || "all"}
+                    onValueChange={(value) => setTagAccountId(value === "all" ? "" : value)}
+                    placeholder="Select Sub-account..."
+                    searchPlaceholder="Search sub-account..."
+                    className="h-10 text-sm shadow-sm"
+                  />
+                </div>
+              )}
               
-              <div className="space-y-2 md:col-span-3">
+              <div className={cn("space-y-2", subAccounts.length > 0 ? "md:col-span-2" : "md:col-span-3")}>
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Calendar className="h-3 w-3 text-primary/70" /> Date Range
                 </Label>
@@ -294,7 +342,7 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-3">
+              <div className={cn("space-y-2", subAccounts.length > 0 ? "md:col-span-2" : "md:col-span-3")}>
                 <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Filter className="h-3 w-3 text-primary/70" /> Document Type
                 </Label>

@@ -117,13 +117,16 @@ function getAccountTags(account: ChartOfAccount, allAccounts: ChartOfAccount[]):
     if (
       selfName.includes("DEBTOR") ||
       selfName.includes("RECEIVABLE") ||
-      selfName.includes("CUSTOMER")
+      selfName.includes("CUSTOMER") ||
+      selfName.includes("A/R PARTIES")
     ) {
       tags.push("Customer Control");
     } else if (
       selfName.includes("CREDITOR") ||
       selfName.includes("PAYABLE") ||
-      selfName.includes("SUPPLIER")
+      selfName.includes("SUPPLIER") ||
+      selfName.includes("A/P PARTIES") ||
+      selfCode.startsWith("12030001")
     ) {
       tags.push("Supplier Control");
     } else if (
@@ -160,9 +163,22 @@ function getAccountTags(account: ChartOfAccount, allAccounts: ChartOfAccount[]):
       );
     };
 
-    if (belongsTo("DEBTOR") || belongsTo("RECEIVABLE") || belongsTo("CUSTOMER") || selfCode.startsWith("3102")) {
+    if (
+      belongsTo("DEBTOR") ||
+      belongsTo("RECEIVABLE") ||
+      belongsTo("CUSTOMER") ||
+      belongsTo("A/R PARTIES") ||
+      selfCode.startsWith("3102")
+    ) {
       tags.push("Customer");
-    } else if (belongsTo("CREDITOR") || belongsTo("PAYABLE") || belongsTo("SUPPLIER") || selfCode.startsWith("1201")) {
+    } else if (
+      belongsTo("CREDITOR") ||
+      belongsTo("PAYABLE") ||
+      belongsTo("SUPPLIER") ||
+      belongsTo("A/P PARTIES") ||
+      selfCode.startsWith("1201") ||
+      selfCode.startsWith("12030001")
+    ) {
       tags.push("Supplier");
     } else if (belongsTo("BANK") || selfCode.startsWith("3104") || selfCode.startsWith("3105")) {
       tags.push("Bank");
@@ -190,6 +206,19 @@ function getAccountTags(account: ChartOfAccount, allAccounts: ChartOfAccount[]):
 export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
   const router = useRouter();
   const { hasPermission, isAdmin } = useAuth();
+
+  React.useEffect(() => {
+    console.log("INITIAL DATA TOTAL:", initialData.length);
+    const apParties = initialData.find(a => a.code === "12030001");
+    if (apParties) {
+      const children = initialData.filter(a => a.parentId === apParties.id);
+      console.log("AP PARTIES FOUND:", apParties);
+      console.log("AP PARTIES CHILDREN COUNT:", children.length);
+      console.log("AP PARTIES CHILDREN:", children.map(c => `${c.code} - ${c.name}`));
+    } else {
+      console.log("AP PARTIES NOT FOUND IN INITIAL DATA!");
+    }
+  }, [initialData]);
 
   const canCreate = hasPermission("erp.finance.chart-of-account.create");
   const canEdit   = hasPermission("erp.finance.chart-of-account.update");
@@ -287,10 +316,18 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
       }
     });
 
+    // 1.5 Include all descendant accounts of any matched node
+    const finalMatchedIds = new Set<string>(matchedIds);
+    allFlatData.forEach(item => {
+      if (item.parentPath.some(parentId => matchedIds.has(parentId))) {
+        finalMatchedIds.add(item.id);
+      }
+    });
+
     // 2. Identify all node IDs that should be visible (matches + their ancestors)
     const visibleIds = new Set<string>();
     allFlatData.forEach(item => {
-      if (matchedIds.has(item.id)) {
+      if (finalMatchedIds.has(item.id)) {
         visibleIds.add(item.id);
         item.parentPath.forEach(parentId => {
           visibleIds.add(parentId);
@@ -691,6 +728,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         canBulkDelete={false}
         canRowEdit={false}
         canRowDelete={false}
+        initialPageSize={1000}
       />
 
       {/* ── Bulk Upload Modal ── */}
