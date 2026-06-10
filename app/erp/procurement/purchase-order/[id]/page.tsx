@@ -8,9 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { PurchaseOrder } from '@/lib/api';
-import { getPurchaseOrder } from '@/lib/actions/purchase-order';
+import { getPurchaseOrder, updatePurchaseOrderStatus } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
-import { Printer, ArrowLeft, Building2 } from 'lucide-react';
+import { Printer, ArrowLeft, Building2, CheckCircle2, Clock, XCircle, ThumbsUp, Check, X } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 
@@ -53,10 +53,28 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
     const router = useRouter();
     const { hasPermission } = useAuth();
     const canCreateGrn = hasPermission('erp.procurement.grn.create');
+    const canCheck = hasPermission('erp.procurement.po.check');
+    const canAuthorize = hasPermission('erp.procurement.po.authorize');
+    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         fetchOrder();
     }, [id]);
+
+    const handleAction = async (newStatus: string) => {
+        try {
+            setSubmitting(true);
+            const actionText = newStatus === 'REJECTED' ? 'reject' : 'approve';
+            await updatePurchaseOrderStatus(id, newStatus);
+            toast.success(`Purchase Order ${actionText}ed successfully!`);
+            fetchOrder(); // Reload data
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error?.message || `Failed to update status`);
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const fetchOrder = async () => {
         try {
@@ -144,6 +162,144 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                     </div>
                 </div>
 
+                {/* Visual Approval Stepper */}
+                <Card className="bg-gradient-to-r from-slate-900/90 to-slate-950/95 text-white border-slate-800 shadow-xl overflow-hidden relative backdrop-blur-md">
+                    <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
+                    <CardHeader className="relative pb-2">
+                        <CardTitle className="text-lg font-medium text-slate-300">Approval Workflow Progress</CardTitle>
+                    </CardHeader>
+                    <CardContent className="relative py-4">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
+                            {/* Connector Line (Only for larger screens) */}
+                            <div className="hidden md:block absolute left-[16.6%] right-[16.6%] top-[24px] h-0.5 bg-slate-800 z-0" />
+                            
+                            {/* Step 1: Prepared */}
+                            <div className="flex items-start md:flex-col gap-4 md:text-center w-full md:w-1/3 z-10">
+                                <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20 md:mx-auto animate-none">
+                                    <CheckCircle2 className="h-6 w-6" />
+                                </div>
+                                <div className="flex flex-col md:items-center">
+                                    <span className="font-semibold text-slate-100 text-sm">1. Prepared (Maker)</span>
+                                    <span className="text-xs text-slate-400 mt-0.5">{order.creatorName || 'Prepared'}</span>
+                                    <span className="text-[10px] text-slate-500 mt-0.5">{new Date(order.orderDate).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+
+                            {/* Step 2: Checked */}
+                            <div className="flex items-start md:flex-col gap-4 md:text-center w-full md:w-1/3 z-10">
+                                <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 md:mx-auto transition-all duration-300 ${
+                                    order.status === 'PENDING_CHECKER'
+                                        ? 'bg-amber-500 border-amber-400 text-white animate-pulse shadow-lg shadow-amber-500/20'
+                                        : order.status === 'REJECTED' && !order.checkedById
+                                        ? 'bg-rose-500 border-rose-400 text-white shadow-lg shadow-rose-500/20'
+                                        : order.checkedById
+                                        ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20'
+                                        : 'bg-slate-900 border-slate-700 text-slate-500'
+                                }`}>
+                                    {order.checkedById ? (
+                                        <CheckCircle2 className="h-6 w-6" />
+                                    ) : order.status === 'PENDING_CHECKER' ? (
+                                        <Clock className="h-6 w-6" />
+                                    ) : order.status === 'REJECTED' && !order.checkedById ? (
+                                        <XCircle className="h-6 w-6" />
+                                    ) : (
+                                        <div className="h-2.5 w-2.5 rounded-full bg-slate-700" />
+                                    )}
+                                </div>
+                                <div className="flex flex-col md:items-center">
+                                    <span className="font-semibold text-slate-100 text-sm">2. Checked (Checker)</span>
+                                    {order.checkedById ? (
+                                        <>
+                                            <span className="text-xs text-slate-400 mt-0.5">{order.checkerName}</span>
+                                            <span className="text-[10px] text-slate-500 mt-0.5">{order.checkedAt ? new Date(order.checkedAt).toLocaleDateString() : ''}</span>
+                                        </>
+                                    ) : order.status === 'PENDING_CHECKER' ? (
+                                        <span className="text-xs text-amber-400 font-medium animate-pulse mt-0.5">Awaiting Verification</span>
+                                    ) : (
+                                        <span className="text-xs text-slate-500 mt-0.5">Pending</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Step 3: Authorized */}
+                            <div className="flex items-start md:flex-col gap-4 md:text-center w-full md:w-1/3 z-10">
+                                <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 md:mx-auto transition-all duration-300 ${
+                                    order.status === 'OPEN' || order.status === 'CLOSED' || order.status === 'PARTIALLY_RECEIVED' || order.status === 'RECEIVED'
+                                        ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20'
+                                        : order.status === 'PENDING_AUTHORIZER'
+                                        ? 'bg-blue-500 border-blue-400 text-white animate-pulse shadow-lg shadow-blue-500/20'
+                                        : order.status === 'REJECTED' && order.checkedById
+                                        ? 'bg-rose-500 border-rose-400 text-white shadow-lg shadow-rose-500/20'
+                                        : 'bg-slate-900 border-slate-700 text-slate-500'
+                                }`}>
+                                    {order.status === 'OPEN' || order.status === 'CLOSED' || order.status === 'PARTIALLY_RECEIVED' || order.status === 'RECEIVED' ? (
+                                        <CheckCircle2 className="h-6 w-6" />
+                                    ) : order.status === 'PENDING_AUTHORIZER' ? (
+                                        <Clock className="h-6 w-6" />
+                                    ) : order.status === 'REJECTED' && order.checkedById ? (
+                                        <XCircle className="h-6 w-6" />
+                                    ) : (
+                                        <div className="h-2.5 w-2.5 rounded-full bg-slate-700" />
+                                    )}
+                                </div>
+                                <div className="flex flex-col md:items-center">
+                                    <span className="font-semibold text-slate-100 text-sm">3. Approved (Authorizer)</span>
+                                    {order.authorizedById ? (
+                                        <>
+                                            <span className="text-xs text-slate-400 mt-0.5">{order.authorizerName}</span>
+                                            <span className="text-[10px] text-slate-500 mt-0.5">{order.authorizedAt ? new Date(order.authorizedAt).toLocaleDateString() : ''}</span>
+                                        </>
+                                    ) : order.status === 'PENDING_AUTHORIZER' ? (
+                                        <span className="text-xs text-blue-400 font-medium animate-pulse mt-0.5">Awaiting Authorization</span>
+                                    ) : order.status === 'REJECTED' && order.checkedById ? (
+                                        <span className="text-xs text-rose-400 font-medium mt-0.5">Rejected</span>
+                                    ) : (
+                                        <span className="text-xs text-slate-500 mt-0.5">Pending</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Approval Actions Panel (Only visible for users with correct role and when pending) */}
+                {((order.status === 'PENDING_CHECKER' && canCheck) || 
+                  (order.status === 'PENDING_AUTHORIZER' && canAuthorize)) && (
+                    <Card className="bg-gradient-to-r from-blue-50/50 to-indigo-50/50 dark:from-slate-900/40 dark:to-slate-900/20 border-blue-200/60 dark:border-slate-800 shadow-md">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-blue-900 dark:text-blue-400 flex items-center gap-2 text-lg">
+                                <ThumbsUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                Pending Approval Action Required
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-blue-700 dark:text-slate-300">
+                                This Purchase Order is currently in <strong>{order.status === 'PENDING_CHECKER' ? 'Pending Checker Verification' : 'Pending Authorizer Release'}</strong>. 
+                                As an authorized user, you can either approve/verify this order to forward it to the next step, or reject it.
+                            </p>
+                            <div className="flex gap-4">
+                                <Button 
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
+                                    onClick={() => handleAction(order.status === 'PENDING_CHECKER' ? 'PENDING_AUTHORIZER' : 'OPEN')}
+                                    disabled={submitting}
+                                >
+                                    <Check className="mr-2 h-4 w-4" />
+                                    {order.status === 'PENDING_CHECKER' ? 'Verify & Forward' : 'Authorize & Release PO'}
+                                </Button>
+                                <Button 
+                                    variant="destructive"
+                                    className="bg-rose-600 hover:bg-rose-700 text-white font-medium shadow-md hover:shadow-lg transition-all"
+                                    onClick={() => handleAction('REJECTED')}
+                                    disabled={submitting}
+                                >
+                                    <X className="mr-2 h-4 w-4" />
+                                    Reject Purchase Order
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <Card className="md:col-span-2">
                         <CardHeader>
@@ -159,8 +315,59 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                 <p className="text-lg">{order.vendor?.code}</p>
                             </div>
                             <div>
-                                <p className="text-sm font-medium text-muted-foreground">Status</p>
-                                <Badge variant={order.status === 'OPEN' ? 'default' : 'secondary'}>{order.status}</Badge>
+                                <p className="text-sm font-medium text-muted-foreground mb-1">Status</p>
+                                {(() => {
+                                    switch (order.status) {
+                                        case 'PENDING_CHECKER':
+                                            return (
+                                                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 font-medium dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900">
+                                                    Pending Checker
+                                                </Badge>
+                                            );
+                                        case 'PENDING_AUTHORIZER':
+                                            return (
+                                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-medium dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900">
+                                                    Pending Authorizer
+                                                </Badge>
+                                            );
+                                        case 'OPEN':
+                                            return (
+                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 font-medium dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900">
+                                                    Open
+                                                </Badge>
+                                            );
+                                        case 'REJECTED':
+                                            return (
+                                                <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 font-medium dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900">
+                                                    Rejected
+                                                </Badge>
+                                            );
+                                        case 'CLOSED':
+                                            return (
+                                                <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 font-medium dark:bg-slate-950/30 dark:text-slate-400 dark:border-slate-900">
+                                                    Closed
+                                                </Badge>
+                                            );
+                                        case 'PARTIALLY_RECEIVED':
+                                            return (
+                                                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 font-medium dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-900">
+                                                    Partially Received
+                                                </Badge>
+                                            );
+                                        case 'RECEIVED':
+                                            return (
+                                                <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 font-medium dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900">
+                                                    Received
+                                                </Badge>
+                                            );
+                                        default:
+                                            return (
+                                                <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 font-medium">
+                                                    {order.status}
+                                                </Badge>
+                                            );
+                                    }
+                                })()}
                             </div>
                         </CardContent>
                     </Card>
@@ -379,14 +586,36 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
 
                     {/* Signatures */}
                     <div className="grid grid-cols-3 gap-3">
-                        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-center">PREPARED BY</span>
+                        <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                            <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">PREPARED BY (MAKER)</span>
+                            {order.creatorName && (
+                                <div className="text-center">
+                                    <p className="text-[11px] font-semibold">{order.creatorName}</p>
+                                    <p className="text-[9px] text-gray-600">{new Date(order.orderDate).toLocaleDateString('en-GB')}</p>
+                                </div>
+                            )}
                         </div>
-                        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-center">CHECKED BY</span>
+                        <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                            <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">CHECKED BY (CHECKER)</span>
+                            {order.checkerName ? (
+                                <div className="text-center">
+                                    <p className="text-[11px] font-semibold">{order.checkerName}</p>
+                                    <p className="text-[9px] text-gray-600">{order.checkedAt ? new Date(order.checkedAt).toLocaleDateString('en-GB') : ''}</p>
+                                </div>
+                            ) : (
+                                <span className="text-[10px] text-gray-400 italic">Pending Verification</span>
+                            )}
                         </div>
-                        <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-center">APPROVED BY</span>
+                        <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                            <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">APPROVED BY (AUTHORIZER)</span>
+                            {order.authorizerName ? (
+                                <div className="text-center">
+                                    <p className="text-[11px] font-semibold">{order.authorizerName}</p>
+                                    <p className="text-[9px] text-gray-600">{order.authorizedAt ? new Date(order.authorizedAt).toLocaleDateString('en-GB') : ''}</p>
+                                </div>
+                            ) : (
+                                <span className="text-[10px] text-gray-400 italic">Pending Approval</span>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -46,6 +46,8 @@ import { Location, updateLocations, deleteLocation, updateLocationOtherInfo, upd
 import { getCities, City } from "@/lib/actions/city";
 import { useAuth } from "@/components/providers/auth-provider";
 import { ManagePosModal } from "./pos-management-modal";
+import { ChartOfAccountSelect } from "@/components/ui/chart-of-account-select";
+import { getChartOfAccountsTree } from "@/lib/actions/chart-of-account";
 
 export type LocationRow = Location & {
   id: string;
@@ -127,6 +129,12 @@ export const columns: ColumnDef<LocationRow>[] = [
     cell: ({ row }) => <span className="truncate max-w-[240px] block">{row.original.address || <span className="text-muted-foreground italic">No address</span>}</span>,
   },
   {
+    header: "Cash GL Code",
+    accessorKey: "cashGLCode",
+    size: 130,
+    cell: ({ row }) => row.original.cashGLCode || <span className="text-muted-foreground italic">None</span>,
+  },
+  {
     header: "Status",
     accessorKey: "status",
     size: 100,
@@ -193,6 +201,15 @@ function RowActions({ row }: RowActionsProps) {
   const [posModal, setPosModal] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
 
+  // Local state for Cash GL Account selection
+  const [accountsTree, setAccountsTree] = useState<any[]>([]);
+  const [flatAccounts, setFlatAccounts] = useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState("");
+
+  const handleAccountChange = (val: string) => {
+    setSelectedAccountId(val);
+  };
+
   // Local state for toggles to handle UI conditionally
   const [geoFenceEnabled, setGeoFenceEnabled] = useState(location.geoFenceEnabled || false);
   const [ipWhitelistEnabled, setIpWhitelistEnabled] = useState(location.ipWhitelistEnabled || false);
@@ -215,6 +232,31 @@ function RowActions({ row }: RowActionsProps) {
 
   const handleEditOpen = () => {
     fetchCities();
+    getChartOfAccountsTree().then((res) => {
+      if (res.status && res.data) {
+        setAccountsTree(res.data);
+        const flat: any[] = [];
+        const walk = (list: any[]) => {
+          for (const node of list) {
+            flat.push(node);
+            if (node.children?.length) walk(node.children);
+          }
+        };
+        walk(res.data);
+        setFlatAccounts(flat);
+
+        if (location.cashGLCode) {
+          const acc = flat.find((a) => a.code === location.cashGLCode);
+          if (acc) {
+            setSelectedAccountId(acc.id);
+          } else {
+            setSelectedAccountId("");
+          }
+        } else {
+          setSelectedAccountId("");
+        }
+      }
+    });
     setGeoFenceEnabled(location.geoFenceEnabled || false);
     setIpWhitelistEnabled(location.ipWhitelistEnabled || false);
     setFbrEnabled(location.fbrEnabled || false);
@@ -225,6 +267,9 @@ function RowActions({ row }: RowActionsProps) {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
+    const selectedAccount = flatAccounts.find((a) => a.id === selectedAccountId);
+    const cashGLCode = selectedAccount ? selectedAccount.code : null;
+
     startTransition(async () => {
       const resGeneral = await updateLocations([{
         id: location.id,
@@ -232,6 +277,7 @@ function RowActions({ row }: RowActionsProps) {
         code: formData.get("code") as string,
         address: formData.get("address") as string,
         cityId: formData.get("cityId") as string,
+        cashGLCode,
       }]);
 
       if (!resGeneral.status) {
@@ -388,9 +434,26 @@ function RowActions({ row }: RowActionsProps) {
                     <Input id="edit-phone" name="phone" defaultValue={location.phone || ""} disabled={isPending} placeholder="e.g. +92 300 1234567" />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="edit-address">Address</Label>
-                  <Input id="edit-address" name="address" defaultValue={location.address || ""} disabled={isPending} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-address">Address</Label>
+                    <Input id="edit-address" name="address" defaultValue={location.address || ""} disabled={isPending} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cash GL Account</Label>
+                    <ChartOfAccountSelect
+                      accounts={accountsTree}
+                      value={selectedAccountId}
+                      onValueChange={handleAccountChange}
+                      placeholder="Select Cash GL Account"
+                      disabled={isPending}
+                    />
+                    {location.cashGLCode && !selectedAccountId && (
+                      <p className="text-[10px] text-muted-foreground font-mono">
+                        Current GL Code: {location.cashGLCode}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </TabsContent>
 

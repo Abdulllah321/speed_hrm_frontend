@@ -13,7 +13,7 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Plus, Trash2, Loader2, CreditCard, Wallet, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { createPaymentVoucher, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts, getAdvancesBySupplier, getSupplierSummary } from "@/lib/actions/payment-voucher";
+import { createPaymentVoucher, updatePaymentVoucher, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts, getAdvancesBySupplier, getSupplierSummary, type PaymentVoucher } from "@/lib/actions/payment-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { ChartOfAccountSelect, getSharedTree } from "@/components/ui/chart-of-account-select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -108,7 +108,7 @@ type AdvanceEntry = {
     applyingNow: number;
 };
 
-export function PaymentVoucherForm() {
+export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const router = useRouter();
     const [isPending, setIsPending] = useState(false);
     const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -124,24 +124,35 @@ export function PaymentVoucherForm() {
     const form = useForm<PaymentVoucherFormValues>({
         resolver: zodResolver(paymentVoucherSchema) as any,
         defaultValues: {
-            type: "bank",
-            isAdvance: false,
-            pvNo: "",
-            pvDate: new Date(),
-            refBillNo: "",
-            billDate: undefined,
-            chequeNo: "",
-            chequeDate: undefined,
-            creditAccountId: "",
-            creditAmount: 0,
-            supplierId: "",
-            invoices: [],
-            isTaxApplicable: false,
-            description: "",
-            details: [
-                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 },
-                { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 },
-            ],
+            type: initialData?.type || "bank",
+            isAdvance: initialData?.isAdvance ?? false,
+            pvNo: initialData?.pvNo || "",
+            pvDate: initialData?.pvDate ? new Date(initialData.pvDate) : new Date(),
+            refBillNo: initialData?.refBillNo || "",
+            billDate: initialData?.billDate ? new Date(initialData.billDate) : undefined,
+            chequeNo: initialData?.chequeNo || "",
+            chequeDate: initialData?.chequeDate ? new Date(initialData.chequeDate) : undefined,
+            creditAccountId: initialData?.creditAccountId || "",
+            creditAmount: Number(initialData?.creditAmount) || 0,
+            supplierId: initialData?.supplierId || "",
+            invoices: initialData?.invoices || [],
+            isTaxApplicable: initialData?.isTaxApplicable ?? false,
+            description: initialData?.description || "",
+            details: initialData?.details
+                ? initialData.details.map((d: any) => ({
+                      accountId: d.accountId,
+                      tagAccountId: d.tagAccountId || "",
+                      debit: Number(d.debit) || 0,
+                      credit: Number(d.credit) || 0,
+                      narration: d.narration || "",
+                      refBillNo: d.refBillNo || "",
+                      isTaxApplicable: d.isTaxApplicable ?? false,
+                      taxableValue: Number(d.taxableValue) || 0,
+                  }))
+                : [
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 },
+                  ],
         },
     });
 
@@ -176,6 +187,8 @@ export function PaymentVoucherForm() {
         });
     }, [watchDetails.map((d: any) => d.accountId).join(",")]);
 
+    const prevDetailsRef = useRef<Array<{ accountId: string; tagAccountId: string; taxableValue: number }>>([]);
+
     // Derive child accounts for each row from the cached tree
     function findInTree(nodes: ChartOfAccount[], id: string): ChartOfAccount | undefined {
         for (const node of nodes) {
@@ -207,23 +220,89 @@ export function PaymentVoucherForm() {
         loadSuppliers();
     }, []);
 
+    // Load selected invoices/advances from initialData
+    useEffect(() => {
+        if (initialData) {
+            if (initialData.invoices && Array.isArray(initialData.invoices)) {
+                const mappedInvoices = initialData.invoices.map((inv: any) => {
+                    const pi = inv.purchaseInvoice || {};
+                    return {
+                        purchaseInvoiceId: inv.purchaseInvoiceId,
+                        invoiceNumber: pi.invoiceNumber || "",
+                        totalAmount: Number(pi.totalAmount) || 0,
+                        paidAmount: Number(pi.paidAmount) || 0,
+                        remainingAmount: Number(pi.remainingAmount) || 0,
+                        payingNow: Number(inv.paidAmount) || 0,
+                    };
+                });
+                setSelectedInvoices(mappedInvoices);
+            }
+
+            if (initialData.advanceApplications && Array.isArray(initialData.advanceApplications)) {
+                const mappedAdvances = initialData.advanceApplications.map((app: any) => {
+                    const sa = app.sourceAdvance || {};
+                    return {
+                        pvId: app.sourceAdvanceId,
+                        pvNo: sa.pvNo || "",
+                        pvDate: sa.pvDate || "",
+                        totalAmount: Number(sa.creditAmount) || 0,
+                        availableAmount: Number(sa.creditAmount) - Number(sa.advanceApplied) + Number(app.appliedAmount),
+                        applyingNow: Number(app.appliedAmount) || 0,
+                    };
+                });
+                setSelectedAdvances(mappedAdvances);
+            }
+        }
+    }, [initialData]);
+
     // Auto-generate PV No based on type
     useEffect(() => {
+        if (initialData) return;
         const prefix = voucherType === "bank" ? "BPV" : "CPV";
         const datePart = `${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}`;
         const randomPart = Math.floor(1000 + Math.random() * 9000);
         form.setValue("pvNo", `${prefix}${datePart}${randomPart}`);
-    }, [voucherType, form]);
+    }, [voucherType, form, initialData]);
 
     // Load pending invoices + available advances when supplier changes
     const selectedSupplierId = form.watch("supplierId");
     useEffect(() => {
         if (selectedSupplierId) {
             getPendingInvoicesBySupplier(selectedSupplierId).then(result => {
-                setPendingInvoices(result.status ? result.data : []);
+                let list = result.status ? result.data : [];
+                if (initialData?.invoices && Array.isArray(initialData.invoices)) {
+                    initialData.invoices.forEach((inv: any) => {
+                        if (!list.find((x: any) => x.id === inv.purchaseInvoiceId)) {
+                            const pi = inv.purchaseInvoice || {};
+                            list.push({
+                                id: inv.purchaseInvoiceId,
+                                invoiceNumber: pi.invoiceNumber || "",
+                                totalAmount: Number(pi.totalAmount) || 0,
+                                paidAmount: Number(pi.paidAmount) || 0,
+                                remainingAmount: Number(pi.remainingAmount) || 0,
+                            });
+                        }
+                    });
+                }
+                setPendingInvoices(list);
             });
             getAdvancesBySupplier(selectedSupplierId).then(result => {
-                setAvailableAdvances(result.status ? result.data : []);
+                let list = result.status ? result.data : [];
+                if (initialData?.advanceApplications && Array.isArray(initialData.advanceApplications)) {
+                    initialData.advanceApplications.forEach((app: any) => {
+                        if (!list.find((x: any) => x.pvId === app.sourceAdvanceId)) {
+                            const sa = app.sourceAdvance || {};
+                            list.push({
+                                pvId: app.sourceAdvanceId,
+                                pvNo: sa.pvNo || "",
+                                pvDate: sa.pvDate || "",
+                                totalAmount: Number(sa.creditAmount) || 0,
+                                availableAmount: Number(sa.creditAmount) - Number(sa.advanceApplied),
+                            });
+                        }
+                    });
+                }
+                setAvailableAdvances(list);
             });
             getSupplierSummary(selectedSupplierId).then(result => {
                 setSupplierSummary(result.status ? result.data : null);
@@ -236,10 +315,11 @@ export function PaymentVoucherForm() {
             setSupplierSummary(null);
             form.setValue("creditAmount", 0);
         }
-    }, [selectedSupplierId, form]);
+    }, [selectedSupplierId, form, initialData]);
 
     // When supplier changes, fetch their linked chart of accounts and pre-fill debit rows
     useEffect(() => {
+        if (initialData) return;
         if (!selectedSupplierId) return;
         getVendorWithAccounts(selectedSupplierId).then(res => {
             if (res.status && res.data?.chartOfAccounts?.length > 0) {
@@ -260,7 +340,7 @@ export function PaymentVoucherForm() {
                 }
             }
         });
-    }, [selectedSupplierId, form, append]);
+    }, [selectedSupplierId, form, append, initialData]);
 
     // Toggle an invoice in/out of the selected list
     const toggleInvoice = (invoice: any) => {
@@ -374,7 +454,9 @@ export function PaymentVoucherForm() {
                     : undefined,
             };
 
-            const result = await createPaymentVoucher(finalSubmitData);
+            const result = initialData
+                ? await updatePaymentVoucher(initialData.id, finalSubmitData)
+                : await createPaymentVoucher(finalSubmitData);
             if (result.status) {
                 toast.success(result.message);
                 router.push("/finance/payment-voucher/list");
@@ -389,38 +471,61 @@ export function PaymentVoucherForm() {
     };
 
     // Watch for changes in detail rows to auto-balance and calculate taxes
-    const watchDetailsString = watchDetails.map(d => `${d.debit}-${d.credit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}-${d.taxableValue}`).join(",");
+    const watchDetailsString = watchDetails.map(d => `${d.debit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}-${d.taxableValue}`).join(",");
     useEffect(() => {
         let totalTaxAmount = 0;
 
         // Auto-calculate taxes for any recognized tax rows
         if (tree.length > 0) {
             watchDetails.forEach((detail, index) => {
+                const prev = prevDetailsRef.current[index] || { accountId: "", tagAccountId: "", taxableValue: 0 };
+                const currentTaxableValue = Number(detail.taxableValue) || 0;
+                
+                // Check if trigger fields changed for this row
+                const triggerChanged = 
+                    detail.accountId !== prev.accountId || 
+                    detail.tagAccountId !== prev.tagAccountId || 
+                    currentTaxableValue !== prev.taxableValue;
+
                 if (detail.accountId && detail.tagAccountId) {
                     const accountNode = findInTree(tree, detail.accountId);
                     const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
 
                     if (accountNode?.code && tagNode?.code) {
-                        const rowTaxableValue = Number(detail.taxableValue) || 0;
-                        if (rowTaxableValue > 0) {
-                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, rowTaxableValue);
+                        if (currentTaxableValue > 0) {
+                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, currentTaxableValue);
                             if (calculatedTax !== null) {
-                                const currentCredit = Number(detail.credit) || 0;
-                                if (currentCredit !== calculatedTax) {
+                                if (triggerChanged) {
                                     form.setValue(`details.${index}.credit`, calculatedTax, { shouldValidate: true });
                                     form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                    totalTaxAmount += calculatedTax;
+                                } else {
+                                    // Use user's manual entry (subtracting any debit to get net credit impact)
+                                    totalTaxAmount += (Number(detail.credit) || 0) - (Number(detail.debit) || 0);
                                 }
-                                totalTaxAmount += calculatedTax;
                             }
                         } else {
-                            const currentCredit = Number(detail.credit) || 0;
-                            if (currentCredit !== 0) {
+                            if (triggerChanged) {
                                 form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                            } else {
+                                totalTaxAmount += (Number(detail.credit) || 0) - (Number(detail.debit) || 0);
                             }
                         }
                     }
                 }
+
+                // Update the ref for this row
+                prevDetailsRef.current[index] = {
+                    accountId: detail.accountId || "",
+                    tagAccountId: detail.tagAccountId || "",
+                    taxableValue: currentTaxableValue,
+                };
             });
+
+            // Clean up extra rows in the ref if any were deleted
+            if (prevDetailsRef.current.length > watchDetails.length) {
+                prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
+            }
         }
 
         // Find the first row with debit amount (supplier row)
@@ -456,7 +561,7 @@ export function PaymentVoucherForm() {
     return (
         <Card className="w-full">
             <CardHeader className="border-b flex flex-row items-center justify-between">
-                <CardTitle>{voucherType === "bank" ? "Create Bank Payment Voucher Form" : "Create Cash Payment Voucher Form"}</CardTitle>
+                <CardTitle>{initialData ? "Edit Payment Voucher" : (voucherType === "bank" ? "Create Bank Payment Voucher Form" : "Create Cash Payment Voucher Form")}</CardTitle>
                 <Tabs value={voucherType} onValueChange={(val) => form.setValue("type", val as "bank" | "cash")} className="w-[300px]">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="bank" className="flex items-center gap-2">
@@ -1086,7 +1191,7 @@ export function PaymentVoucherForm() {
                             disabled={isPending || !isBalanced}
                         >
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Create Payment Voucher
+                            {initialData ? "Update Payment Voucher" : "Create Payment Voucher"}
                         </Button>
                     </div>
                 </form>

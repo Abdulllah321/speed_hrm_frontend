@@ -231,7 +231,7 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
                                             {t.slipNo && <span className="font-mono text-xs text-muted-foreground ml-1">#{t.slipNo}</span>}
                                         </span>
                                         <span className="font-mono font-semibold">{formatCurrency(t.amount)}</span>
-                                        <button onClick={() => setTenders(prev => prev.filter((_, j) => j !== i))}
+                                        <button onClick={() => removeTender(i)}
                                             className="text-muted-foreground hover:text-destructive transition-colors ml-1">
                                             <Trash2 className="h-3.5 w-3.5" />
                                         </button>

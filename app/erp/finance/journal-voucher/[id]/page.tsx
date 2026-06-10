@@ -163,6 +163,11 @@ export default function JournalVoucherDetailPage({
             </Button>
             {voucher.status === "pending" && (
               <>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/erp/finance/journal-voucher/${voucher.id}/edit`}>
+                    Edit Voucher
+                  </Link>
+                </Button>
                 <Button
                   onClick={() => handleUpdateStatus("approved")}
                   size="sm"

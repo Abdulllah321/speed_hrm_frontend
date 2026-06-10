@@ -19,12 +19,12 @@ const nextConfig: NextConfig = {
       "pos.localtest.me",
       "localhost",
       "127.0.0.1"] : [
-      "hr.spl2.inplsoftwares.com",
-      "admin.spl2.inplsoftwares.com",
-      "master.spl2.inplsoftwares.com",
-      "auth.spl2.inplsoftwares.com",
-      "erp.spl2.inplsoftwares.com",
-      "pos.spl2.inplsoftwares.com",
+      "hr.spl.inplsoftwares.com",
+      "admin.spl.inplsoftwares.com",
+      "master.spl.inplsoftwares.com",
+      "auth.spl.inplsoftwares.com",
+      "erp.spl.inplsoftwares.com",
+      "pos.spl.inplsoftwares.com",
     ]),
   ],
   experimental: {

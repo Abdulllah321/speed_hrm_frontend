@@ -44,7 +44,7 @@ export interface AppliedCoupon {
     id: string; code: string; discountType: string;
     discountValue: number; discountAmount: number; description?: string;
 }
-export interface Tender { method: string; amount: number; cardLast4?: string; slipNo?: string; }
+export interface Tender { method: string; amount: number; cardLast4?: string; slipNo?: string; voucherId?: string; }
 export interface Customer { id: string; name: string; code: string; contactNo?: string; address?: string; }
 export type DiscountMode = "none" | "promo" | "coupon" | "alliance" | "manual";
 
@@ -558,10 +558,18 @@ export default function CheckoutPage() {
         }
         const amount = Math.min(tenderAmount, validatedVoucher.faceValue);
         setAppliedVouchers(prev => [...prev, { voucherId: validatedVoucher.id, code: validatedVoucher.code, amount }]);
-        setTenders(prev => [...prev, { method: "voucher", amount, slipNo: validatedVoucher.code }]);
+        setTenders(prev => [...prev, { method: "voucher", amount, slipNo: validatedVoucher.code, voucherId: validatedVoucher.id }]);
         setVoucherCode("");
         setValidatedVoucher(null);
         setTenderAmount(0);
+    };
+
+    const removeTender = (i: number) => {
+        const removed = tenders[i];
+        if (removed.method === "voucher") {
+            setAppliedVouchers(prev => prev.filter(v => v.code !== removed.slipNo && v.voucherId !== removed.voucherId));
+        }
+        setTenders(prev => prev.filter((_, j) => j !== i));
     };
 
     // ── Hold ───────────────────────────────────────────────────────────
@@ -986,7 +994,7 @@ export default function CheckoutPage() {
                             onTenderSlipChange={setTenderSlip}
                             onAddTender={addTender}
                             onAddVoucherTender={addVoucherTender}
-                            onRemoveTender={(i) => setTenders(prev => prev.filter((_, j) => j !== i))}
+                            onRemoveTender={removeTender}
                             onVoucherCodeChange={handleVoucherCodeChange}
                             onVoucherValidate={validateVoucherCode}
                             fmtCurrency={fmtCurrency}

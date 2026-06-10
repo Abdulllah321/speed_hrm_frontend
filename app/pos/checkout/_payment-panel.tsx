@@ -67,7 +67,7 @@ interface PaymentPanelProps {
     voucherError: string | null;
     voucherValidating: boolean;
     // Refs
-    tenderAmountRef: React.RefObject<HTMLInputElement>;
+    tenderAmountRef: React.RefObject<HTMLInputElement | null>;
     // Handlers
     onTenderMethodChange: (method: string) => void;
     onTenderAmountChange: (amount: number) => void;

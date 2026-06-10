@@ -14,11 +14,13 @@ export interface Voucher {
     description?: string;
     customerId?: string;
     companyName?: string;
+    companyGlCode?: string;
     requireCustomerMatch: boolean;
     issuedByLocationId?: string;
     sourceOrderId?: string;
     isActive: boolean;
     isRedeemed: boolean;
+    isDeleted?: boolean;
     expiresAt?: string;
     createdAt: string;
     locations: { id: string; location: { id: string; name: string; code: string } }[];
@@ -88,6 +90,7 @@ export async function issueVoucher(data: {
     description?: string;
     customerId?: string;
     companyName?: string;
+    companyGlCode?: string;
     requireCustomerMatch?: boolean;
     expiresAt?: string;
     locationIds?: string[];
