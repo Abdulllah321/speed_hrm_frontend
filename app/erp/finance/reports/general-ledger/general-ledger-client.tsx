@@ -41,6 +41,18 @@ import { toast } from "sonner";
 const fmt = (n: number) =>
   n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+const getLocalStartOfDayISO = (d: Date) => {
+  const start = new Date(d);
+  start.setHours(0, 0, 0, 0);
+  return start.toISOString();
+};
+
+const getLocalEndOfDayISO = (d: Date) => {
+  const end = new Date(d);
+  end.setHours(23, 59, 59, 999);
+  return end.toISOString();
+};
+
 const SOURCE_LABELS: Record<string, string> = {
   PURCHASE_INVOICE: "Purchase Invoice",
   PAYMENT_VOUCHER: "Payment Voucher",
@@ -116,8 +128,8 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
     if (!targetAccountId) return;
     startTransition(async () => {
       const res = await getGeneralLedger(targetAccountId, {
-        from: fromDate ? format(fromDate, "yyyy-MM-dd") : undefined,
-        to: toDate ? format(toDate, "yyyy-MM-dd") : undefined,
+        from: fromDate ? getLocalStartOfDayISO(fromDate) : undefined,
+        to: toDate ? getLocalEndOfDayISO(toDate) : undefined,
         page: targetPage,
         limit: targetLimit,
         sourceType: sourceType === "all" ? undefined : sourceType,
@@ -203,8 +215,8 @@ export function GeneralLedgerClient({ accounts }: { accounts: ChartOfAccount[] }
 
     toast.promise(
       queueGeneralLedgerExport(targetAccountId, {
-        from: fromDate ? format(fromDate, "yyyy-MM-dd") : undefined,
-        to: toDate ? format(toDate, "yyyy-MM-dd") : undefined,
+        from: fromDate ? getLocalStartOfDayISO(fromDate) : undefined,
+        to: toDate ? getLocalEndOfDayISO(toDate) : undefined,
         sourceType: sourceType === "all" ? undefined : sourceType,
       }),
       {

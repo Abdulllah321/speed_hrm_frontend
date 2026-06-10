@@ -144,8 +144,8 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                 ? initialData.details.map((d) => ({
                       accountId: d.accountId,
                       tagAccountId: d.tagAccountId || "",
-                      debit: Number(d.debit) || 0,
-                      credit: Number(d.credit) || 0,
+                      debit: Math.round(Number(d.debit) || 0),
+                      credit: Math.round(Number(d.credit) || 0),
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
                       isTaxApplicable: d.isTaxApplicable ?? false,
@@ -204,6 +204,8 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                 ...values,
                 details: values.details.map((d) => ({
                     ...d,
+                    debit: Math.round(Number(d.debit) || 0),
+                    credit: Math.round(Number(d.credit) || 0),
                     tagAccountId: d.tagAccountId || undefined,
                 })),
             };
@@ -228,11 +230,11 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
     useEffect(() => {
         // Calculate total taxable amount (based on debits and credits where isTaxApplicable is true)
         const taxableDebitAmount = watchDetails.reduce((sum: number, detail: any) => {
-            return sum + (detail.isTaxApplicable ? (Number(detail.debit) || 0) : 0);
+            return sum + (detail.isTaxApplicable ? Math.round(Number(detail.debit) || 0) : 0);
         }, 0);
         
         const taxableCreditAmount = watchDetails.reduce((sum: number, detail: any) => {
-            return sum + (detail.isTaxApplicable ? (Number(detail.credit) || 0) : 0);
+            return sum + (detail.isTaxApplicable ? Math.round(Number(detail.credit) || 0) : 0);
         }, 0);
         
         const taxableAmount = Math.max(taxableDebitAmount, taxableCreditAmount);
@@ -247,8 +249,9 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                     if (accountNode?.code && tagNode?.code) {
                         const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, taxableAmount);
                         if (calculatedTax !== null) {
-                            const currentDebit = Number(detail.debit) || 0;
-                            const currentCredit = Number(detail.credit) || 0;
+                            const roundedTax = Math.round(calculatedTax);
+                            const currentDebit = Math.round(Number(detail.debit) || 0);
+                            const currentCredit = Math.round(Number(detail.credit) || 0);
                             
                             // Determine which side to place the tax
                             // If taxableAmount comes from Debits, tax is a Credit liability
@@ -256,13 +259,13 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                             const isLiability = taxableDebitAmount > 0;
                             
                             if (isLiability) {
-                                if (currentCredit !== calculatedTax) {
-                                    form.setValue(`details.${index}.credit`, calculatedTax, { shouldValidate: true });
+                                if (currentCredit !== roundedTax) {
+                                    form.setValue(`details.${index}.credit`, roundedTax, { shouldValidate: true });
                                     form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
                                 }
                             } else {
-                                if (currentDebit !== calculatedTax) {
-                                    form.setValue(`details.${index}.debit`, calculatedTax, { shouldValidate: true });
+                                if (currentDebit !== roundedTax) {
+                                    form.setValue(`details.${index}.debit`, roundedTax, { shouldValidate: true });
                                     form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
                                 }
                             }
@@ -279,10 +282,10 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
 
     const duplicateRowToOpposite = (fromIndex: number) => {
         const fromRow = form.getValues(`details.${fromIndex}`);
-        const debitVal = Number(fromRow.debit) || 0;
-        const creditVal = Number(fromRow.credit) || 0;
+        const debitVal = Math.round(Number(fromRow.debit) || 0);
+        const creditVal = Math.round(Number(fromRow.credit) || 0);
         
-        const val = debitVal || creditVal;
+        const val = Math.round(debitVal || creditVal);
         const isFromDebit = debitVal > 0;
         
         const targetIndex = fromIndex + 1;
@@ -469,12 +472,17 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                 <td className="px-4 py-3">
                                                     <Input
                                                         type="number"
-                                                        step="0.01"
+                                                        step="1"
                                                         placeholder="Debit"
                                                         {...form.register(`details.${index}.debit`, {
                                                             valueAsNumber: true,
                                                             onChange: (e) => {
-                                                                if (Number(e.target.value) > 0) {
+                                                                const rawVal = Number(e.target.value) || 0;
+                                                                const roundedVal = Math.round(rawVal);
+                                                                if (rawVal !== roundedVal) {
+                                                                    form.setValue(`details.${index}.debit`, roundedVal, { shouldValidate: true });
+                                                                }
+                                                                if (roundedVal > 0) {
                                                                     form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
                                                                 }
                                                             },
@@ -486,12 +494,17 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                 <td className="px-4 py-3">
                                                     <Input
                                                         type="number"
-                                                        step="0.01"
+                                                        step="1"
                                                         placeholder="Credit"
                                                         {...form.register(`details.${index}.credit`, {
                                                             valueAsNumber: true,
                                                             onChange: (e) => {
-                                                                if (Number(e.target.value) > 0) {
+                                                                const rawVal = Number(e.target.value) || 0;
+                                                                const roundedVal = Math.round(rawVal);
+                                                                if (rawVal !== roundedVal) {
+                                                                    form.setValue(`details.${index}.credit`, roundedVal, { shouldValidate: true });
+                                                                }
+                                                                if (roundedVal > 0) {
                                                                     form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
                                                                 }
                                                             },

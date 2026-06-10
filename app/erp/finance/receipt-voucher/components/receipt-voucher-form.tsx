@@ -126,8 +126,8 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                 ? initialData.details.map((d: any) => ({
                       accountId: d.accountId,
                       tagAccountId: d.tagAccountId || "",
-                      debit: Number(d.debit) || 0,
-                      credit: Number(d.credit) || 0,
+                      debit: Math.round(Number(d.debit) || 0),
+                      credit: Math.round(Number(d.credit) || 0),
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
                       isTaxApplicable: d.isTaxApplicable ?? false,
@@ -264,7 +264,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
 
     const duplicateToDebit = (fromIndex: number) => {
         const fromRow = form.getValues(`details.${fromIndex}`);
-        const creditVal = Number(fromRow.credit) || 0;
+        const creditVal = Math.round(Number(fromRow.credit) || 0);
         
         const targetIndex = fromIndex + 1;
         const currentDetails = form.getValues("details") || [];
@@ -301,7 +301,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     useEffect(() => {
         // Calculate total taxable amount (based on credits for RV)
         const taxableAmount = watchDetails.reduce((sum: number, detail: any) => {
-            return sum + (detail.isTaxApplicable ? (Number(detail.credit) || 0) : 0);
+            return sum + (detail.isTaxApplicable ? Math.round(Number(detail.credit) || 0) : 0);
         }, 0);
 
         let totalTaxAmount = 0;
@@ -327,20 +327,21 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                         if (taxableAmount > 0) {
                             const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, taxableAmount);
                             if (calculatedTax !== null) {
+                                const roundedTax = Math.round(calculatedTax);
                                 if (triggerChanged) {
-                                    form.setValue(`details.${index}.debit`, calculatedTax, { shouldValidate: true });
+                                    form.setValue(`details.${index}.debit`, roundedTax, { shouldValidate: true });
                                     form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
-                                    totalTaxAmount += calculatedTax;
+                                    totalTaxAmount += roundedTax;
                                 } else {
                                     // Use user's manual entry (subtracting any credit to get net debit impact)
-                                    totalTaxAmount += (Number(detail.debit) || 0) - (Number(detail.credit) || 0);
+                                    totalTaxAmount += Math.round(Number(detail.debit) || 0) - Math.round(Number(detail.credit) || 0);
                                 }
                             }
                         } else {
                             if (triggerChanged) {
                                 form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
                             } else {
-                                totalTaxAmount += (Number(detail.debit) || 0) - (Number(detail.credit) || 0);
+                                totalTaxAmount += Math.round(Number(detail.debit) || 0) - Math.round(Number(detail.credit) || 0);
                             }
                         }
                     }
@@ -362,22 +363,22 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
         }
 
         // Find the first row with credit amount (customer row)
-        const customerRowIndex = watchDetails.findIndex((detail: any) => Number(detail.credit) > 0);
+        const customerRowIndex = watchDetails.findIndex((detail: any) => Math.round(Number(detail.credit) || 0) > 0);
         
         // Find the second row with account selected but no credit and no tag (bank/company row)
         const bankRowIndex = watchDetails.findIndex((detail: any, index: number) => 
             index !== customerRowIndex && 
             detail.accountId && 
-            Number(detail.credit) === 0 &&
+            Math.round(Number(detail.credit) || 0) === 0 &&
             !detail.tagAccountId
         );
         
         // Auto-fill debit
         if (customerRowIndex >= 0 && bankRowIndex >= 1) {
-            const customerCreditAmount = Number(watchDetails[customerRowIndex].credit);
-            const currentBankDebit = Number(watchDetails[bankRowIndex].debit) || 0;
+            const customerCreditAmount = Math.round(Number(watchDetails[customerRowIndex].credit) || 0);
+            const currentBankDebit = Math.round(Number(watchDetails[bankRowIndex].debit) || 0);
             
-            const expectedBankDebit = Math.max(0, customerCreditAmount - totalTaxAmount);
+            const expectedBankDebit = Math.round(Math.max(0, customerCreditAmount - totalTaxAmount));
             
             if (customerCreditAmount > 0 && currentBankDebit !== expectedBankDebit) {
                 // Auto-fill the debit amount in the bank row
@@ -412,12 +413,12 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                 debitAccountId: mainDebitAccountId || values.debitAccountId,
                 debitAmount: totalDebit || values.debitAmount,
                 details: watchDetails
-                    .filter(detail => Number(detail.debit) > 0 || Number(detail.credit) > 0)
+                    .filter(detail => Math.round(Number(detail.debit) || 0) > 0 || Math.round(Number(detail.credit) || 0) > 0)
                     .map(detail => ({
                         accountId: detail.accountId,
                         tagAccountId: detail.tagAccountId || undefined,
-                        debit: Number(detail.debit) || 0,
-                        credit: Number(detail.credit) || 0,
+                        debit: Math.round(Number(detail.debit) || 0),
+                        credit: Math.round(Number(detail.credit) || 0),
                         narration: detail.narration || undefined,
                         refBillNo: detail.refBillNo || undefined,
                         isTaxApplicable: detail.isTaxApplicable ?? false,
@@ -776,12 +777,17 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                             <td className="px-4 py-3">
                                                 <Input
                                                     type="number"
-                                                    step="0.01"
+                                                    step="1"
                                                     placeholder="0"
                                                     {...form.register(`details.${index}.debit`, {
                                                         valueAsNumber: true,
                                                         onChange: (e) => {
-                                                            if (Number(e.target.value) > 0) {
+                                                            const rawVal = Number(e.target.value) || 0;
+                                                            const roundedVal = Math.round(rawVal);
+                                                            if (rawVal !== roundedVal) {
+                                                                form.setValue(`details.${index}.debit`, roundedVal, { shouldValidate: true });
+                                                            }
+                                                            if (roundedVal > 0) {
                                                                 form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
                                                             }
                                                         }
@@ -793,12 +799,17 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                             <td className="px-4 py-3">
                                                 <Input
                                                     type="number"
-                                                    step="0.01"
+                                                    step="1"
                                                     placeholder="0"
                                                     {...form.register(`details.${index}.credit`, {
                                                         valueAsNumber: true,
                                                         onChange: (e) => {
-                                                            if (Number(e.target.value) > 0) {
+                                                            const rawVal = Number(e.target.value) || 0;
+                                                            const roundedVal = Math.round(rawVal);
+                                                            if (rawVal !== roundedVal) {
+                                                                form.setValue(`details.${index}.credit`, roundedVal, { shouldValidate: true });
+                                                            }
+                                                            if (roundedVal > 0) {
                                                                 form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
                                                             }
                                                         }
