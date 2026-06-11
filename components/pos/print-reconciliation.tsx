@@ -1100,7 +1100,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                     <td className="py-1 px-1 text-center"></td>
                                                     <td className="py-1 px-1 text-center"></td>
                                                 </tr>
-                                                {issuedRefundSubtotal > 0 && (
+                                                {/* {issuedRefundSubtotal > 0 && (
                                                     <tr className="font-semibold text-red-600">
                                                         <td className="py-1 px-1 text-left">Less Refund Vouchers Amount</td>
                                                         <td className="py-1 px-1 text-right font-bold">({formatVal(issuedRefundSubtotal)})</td>
@@ -1109,7 +1109,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                         <td className="py-1 px-1 text-center"></td>
                                                         <td className="py-1 px-1 text-center"></td>
                                                     </tr>
-                                                )}
+                                                )} */}
 
                                                 <tr className="font-semibold text-gray-900">
                                                     <td className="py-1 px-1 text-left">Sales Return</td>
