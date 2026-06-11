@@ -354,7 +354,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
     const issuedGiftSubtotal = activeReport.issuedVouchers.giftVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
     const issuedRefundSubtotal = activeReport.issuedVouchers.refundVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
 
-    const totalIssuedSubtotal = issuedExchangeSubtotal + issuedCreditSubtotal + issuedGiftSubtotal + issuedRefundSubtotal;
+    const totalIssuedSubtotal = issuedExchangeSubtotal + issuedGiftSubtotal + issuedRefundSubtotal;
 
     const fbrSubtotal = activeReport.fbrCharges.reduce((acc, f) => acc + f.amount, 0);
 
