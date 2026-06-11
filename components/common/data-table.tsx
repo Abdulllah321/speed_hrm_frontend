@@ -181,6 +181,8 @@ type DataTableProps<TData extends DataTableRow> = {
   rowClassName?: (row: TData) => string;
   /** Optional slot rendered inline after the search input (e.g. a filter trigger button) */
   filterSlot?: React.ReactNode;
+  /** Optional initial page size (defaults to 25) */
+  initialPageSize?: number;
 };
 
 export default function DataTable<TData extends DataTableRow>({
@@ -215,6 +217,7 @@ export default function DataTable<TData extends DataTableRow>({
   isLoading = false,
   rowClassName,
   filterSlot,
+  initialPageSize,
 }: DataTableProps<TData>) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -222,7 +225,7 @@ export default function DataTable<TData extends DataTableRow>({
   const [sorting, setSorting] = useState<SortingState>(sortingColumns);
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: 25,
+    pageSize: initialPageSize ?? 25,
   });
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 

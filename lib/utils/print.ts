@@ -55,6 +55,7 @@ export async function printThermal(elementId: string, settings?: PrintSettings):
                             #receipt-print-root,
                             #return-print-root,
                             #voucher-print-root,
+                            #voucher-receipt-print-root,
                             #claim-print-root,
                             .receipt-print-container {
                                 position: static !important;
@@ -68,6 +69,15 @@ export async function printThermal(elementId: string, settings?: PrintSettings):
                                 font-family: 'Courier New', Courier, monospace !important;
                                 font-size: 9pt !important;
                                 line-height: 1.35 !important;
+                            }
+                            #receipt-print-root *,
+                            #return-print-root *,
+                            #voucher-print-root *,
+                            #voucher-receipt-print-root *,
+                            #claim-print-root *,
+                            .receipt-print-container * {
+                                color: #000 !important;
+                                border-color: #000 !important;
                             }
                             /* Per-voucher page wrapper — padding lives here, not on the root */
                             .voucher-print-page {

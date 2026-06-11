@@ -208,6 +208,13 @@ export function PrintReturnReceipt({
         <>
             {/* ── Print styles — identical strategy to sales receipt ── */}
             <style>{`
+                /* Ensure print root and its descendants are rendered in solid black and white for standard/PDF rendering */
+                #return-print-root,
+                #return-print-root * {
+                    color: #000 !important;
+                    border-color: #000 !important;
+                }
+
                 @media print {
                     body *:not(#return-print-root):not(#return-print-root *) {
                         visibility: hidden !important;
@@ -220,6 +227,8 @@ export function PrintReturnReceipt({
                     #return-print-root,
                     #return-print-root * {
                         visibility: visible !important;
+                        color: #000 !important;
+                        border-color: #000 !important;
                     }
 
                     #return-print-root {
@@ -434,7 +443,7 @@ function ReturnBody({
                             className="text-[11px]"
                             style={{ display: "grid", gridTemplateColumns: "2fr 0.5fr 0.5fr 0.8fr 0.8fr 0.8fr", gap: "0 4px" }}
                         >
-                            <span className="text-muted-foreground truncate">{uniqueNo}</span>
+                            <span className="text-zinc-955 truncate">{uniqueNo}</span>
                             <span style={{ textAlign: "center" }}>{line.size || "—"}</span>
                             <span style={{ textAlign: "center", fontWeight: "bold" }}>{qty}</span>
                             <span style={{ textAlign: "right" }}>
@@ -472,7 +481,7 @@ function ReturnBody({
 
                         {/* Show source order if multi-order return */}
                         {originalOrders.length > 1 && (
-                            <p className="text-[10px] mt-0.5 text-muted-foreground">
+                            <p className="text-[10px] mt-0.5 text-zinc-950">
                                 From: {line.orderNumber}
                             </p>
                         )}
@@ -539,20 +548,20 @@ function ReturnBody({
             {exchangeVoucher && (
                 <>
                     <Separator />
-                    <div className="text-center space-y-1 border-2 border-dashed border-primary rounded-lg px-3 py-3 bg-primary/5">
-                        <p className="font-bold text-xs uppercase tracking-wide text-primary">Exchange Voucher Issued</p>
-                        <div className="bg-white border-2 border-primary rounded px-2 py-2">
-                            <p className="font-black text-2xl tracking-widest text-primary">{exchangeVoucher.code}</p>
+                    <div className="text-center space-y-1 border-2 border-dashed border-zinc-950 rounded-lg px-3 py-3 bg-zinc-50">
+                        <p className="font-bold text-xs uppercase tracking-wide text-zinc-900">Exchange Voucher Issued</p>
+                        <div className="bg-white border-2 border-zinc-955 rounded px-2 py-2">
+                            <p className="font-black text-2xl tracking-widest text-zinc-955">{exchangeVoucher.code}</p>
                         </div>
                         <div className="text-[10px] space-y-0.5 pt-1">
-                            <p className="font-semibold">Value: <span className="font-black text-base">Rs. {fmt(Number(exchangeVoucher.faceValue))}</span></p>
+                            <p className="font-semibold text-zinc-900">Value: <span className="font-black text-base text-zinc-955">Rs. {fmt(Number(exchangeVoucher.faceValue))}</span></p>
                             {exchangeVoucher.expiresAt && fmtExpiryDate(exchangeVoucher.expiresAt) && (
-                                <p className="text-muted-foreground">
+                                <p className="text-zinc-800">
                                     Expires: {fmtExpiryDate(exchangeVoucher.expiresAt)}
                                 </p>
                             )}
                         </div>
-                        <p className="text-[9px] text-muted-foreground pt-1 border-t border-dashed">
+                        <p className="text-[9px] text-zinc-800 pt-1 border-t border-dashed">
                             Present this voucher for your next purchase
                         </p>
                     </div>
@@ -568,7 +577,7 @@ function ReturnBody({
                         {discountNotes.map((note, i) => (
                             <p key={i} style={{ paddingLeft: "8px" }}>{note}</p>
                         ))}
-                        <p style={{ color: "gray", marginTop: "2px" }}>
+                        <p style={{ color: "black", marginTop: "2px" }}>
                             * Code restored and can be reused.
                         </p>
                     </div>
