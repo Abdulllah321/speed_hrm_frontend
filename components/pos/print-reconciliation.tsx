@@ -603,12 +603,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                         <span>GROSS REVENUE:</span>
                         <span>{formatVal(activeReport.financials.sale)}</span>
                     </div>
-                    {issuedRefundSubtotal > 0 && (
-                        <div className={cn("flex justify-between text-red-600 font-bold", textSizeClass)}>
-                            <span>LESS REFUND VOUCHERS:</span>
-                            <span>-{formatVal(issuedRefundSubtotal)}</span>
-                        </div>
-                    )}
+
 
                     <div className={cn("flex justify-between text-red-600 font-bold", textSizeClass)}>
                         <span>RETURNS / CLAIMS:</span>
@@ -1065,16 +1060,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                     <td className="py-1 px-1 text-center"></td>
                                                     <td className="py-1 px-1 text-center"></td>
                                                 </tr>
-                                                {issuedRefundSubtotal > 0 && (
-                                                    <tr className="font-semibold text-red-600">
-                                                        <td className="py-1 px-1 text-left">Less Refund Vouchers Amount</td>
-                                                        <td className="py-1 px-1 text-right font-bold">({formatVal(issuedRefundSubtotal)})</td>
-                                                        <td className="py-1 px-1 text-right">-</td>
-                                                        <td className="py-1 px-1 text-right">-</td>
-                                                        <td className="py-1 px-1 text-center"></td>
-                                                        <td className="py-1 px-1 text-center"></td>
-                                                    </tr>
-                                                )}
+
 
                                                 <tr className="font-semibold text-gray-900">
                                                     <td className="py-1 px-1 text-left">Sales Return</td>
