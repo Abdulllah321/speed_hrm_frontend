@@ -367,7 +367,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
     const issuedGiftSubtotal = activeReport.issuedVouchers.giftVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
     const issuedRefundSubtotal = activeReport.issuedVouchers.refundVouchers?.reduce((acc: number, v: any) => acc + v.amount, 0) ?? 0;
 
-    const totalIssuedSubtotal = issuedExchangeSubtotal + issuedGiftSubtotal + issuedRefundSubtotal;
+    const totalIssuedSubtotal = issuedExchangeSubtotal + issuedCreditSubtotal + issuedGiftSubtotal + issuedRefundSubtotal;
 
     const fbrSubtotal = activeReport.fbrCharges.reduce((acc, f) => acc + f.amount, 0);
 
@@ -622,12 +622,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                             <span>-{formatVal(issuedRefundSubtotal)}</span>
                         </div>
                     )}
-                    {issuedCreditSubtotal > 0 && (
-                        <div className={cn("flex justify-between text-red-600 font-bold", textSizeClass)}>
-                            <span>LESS CREDIT VOUCHERS:</span>
-                            <span>-{formatVal(issuedCreditSubtotal)}</span>
-                        </div>
-                    )}
+
                     <div className={cn("flex justify-between text-red-600 font-bold", textSizeClass)}>
                         <span>RETURNS / CLAIMS:</span>
                         <span>-{formatVal(activeReport.financials.salesReturn)}</span>
@@ -1116,16 +1111,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                         <td className="py-1 px-1 text-center"></td>
                                                     </tr>
                                                 )}
-                                                {issuedCreditSubtotal > 0 && (
-                                                    <tr className="font-semibold text-red-600">
-                                                        <td className="py-1 px-1 text-left">Less Credit Vouchers Issued</td>
-                                                        <td className="py-1 px-1 text-right font-bold">({formatVal(issuedCreditSubtotal)})</td>
-                                                        <td className="py-1 px-1 text-right">-</td>
-                                                        <td className="py-1 px-1 text-right">-</td>
-                                                        <td className="py-1 px-1 text-center"></td>
-                                                        <td className="py-1 px-1 text-center"></td>
-                                                    </tr>
-                                                )}
+
                                                 <tr className="font-semibold text-gray-900">
                                                     <td className="py-1 px-1 text-left">Sales Return</td>
                                                     <td className="py-1 px-1 text-right text-red-600 font-bold">({formatVal(activeReport.financials.salesReturn)})</td>
