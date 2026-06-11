@@ -207,6 +207,28 @@ export function PrintClaimReceipt({
         <>
             {/* ── Print styles ── */}
             <style>{`
+                /* Ensure print root and its descendants are rendered in solid black and white for standard/PDF rendering */
+                #claim-print-root,
+                #claim-print-root * {
+                    color: #000 !important;
+                    border-color: #000 !important;
+                    background-color: transparent !important;
+                    background: none !important;
+                }
+
+                #claim-print-root [role="separator"],
+                #claim-print-root hr {
+                    background-color: #000 !important;
+                    height: 1px !important;
+                }
+
+                /* Badges/statuses: instead of colored background, show black text with a black border */
+                #claim-print-root [style*="background-color"] {
+                    background-color: transparent !important;
+                    color: #000 !important;
+                    border: 1px solid #000 !important;
+                }
+
                 @media print {
                     body *:not(#claim-print-root):not(#claim-print-root *) {
                         visibility: hidden !important;
@@ -219,6 +241,10 @@ export function PrintClaimReceipt({
                     #claim-print-root,
                     #claim-print-root * {
                         visibility: visible !important;
+                        color: #000 !important;
+                        border-color: #000 !important;
+                        background-color: transparent !important;
+                        background: none !important;
                     }
 
                     #claim-print-root {

@@ -150,6 +150,14 @@ export function PrintVoucherReceipt({
                 #voucher-receipt-print-root * {
                     color: #000 !important;
                     border-color: #000 !important;
+                    background-color: transparent !important;
+                    background: none !important;
+                }
+
+                #voucher-receipt-print-root [role="separator"],
+                #voucher-receipt-print-root hr {
+                    background-color: #000 !important;
+                    height: 1px !important;
                 }
 
                 @media print {
@@ -165,6 +173,8 @@ export function PrintVoucherReceipt({
                         visibility: visible !important;
                         color: #000 !important;
                         border-color: #000 !important;
+                        background-color: transparent !important;
+                        background: none !important;
                     }
                     #voucher-receipt-print-root {
                         position: absolute !important;
