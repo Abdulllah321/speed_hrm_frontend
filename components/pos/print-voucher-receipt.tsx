@@ -145,6 +145,13 @@ export function PrintVoucherReceipt({
     return (
         <>
             <style>{`
+                /* Ensure print root and its descendants are rendered in solid black and white for standard/PDF rendering */
+                #voucher-receipt-print-root,
+                #voucher-receipt-print-root * {
+                    color: #000 !important;
+                    border-color: #000 !important;
+                }
+
                 @media print {
                     body *:not(#voucher-receipt-print-root):not(#voucher-receipt-print-root *) {
                         visibility: hidden !important;
@@ -156,6 +163,8 @@ export function PrintVoucherReceipt({
                     #voucher-receipt-print-root,
                     #voucher-receipt-print-root * {
                         visibility: visible !important;
+                        color: #000 !important;
+                        border-color: #000 !important;
                     }
                     #voucher-receipt-print-root {
                         position: absolute !important;
@@ -354,7 +363,7 @@ function VoucherReceiptBody({
             {/* ── Voucher Title ── */}
             <div className="text-center space-y-2 py-2">
                 <div className="flex items-center justify-center gap-2">
-                    <Gift className="h-6 w-6 text-primary" />
+                    <Gift className="h-6 w-6 text-zinc-950" />
                     <p className="font-bold text-base tracking-widest uppercase">{voucherTypeLabel} Voucher</p>
                 </div>
             </div>
@@ -362,9 +371,9 @@ function VoucherReceiptBody({
             <Separator />
 
             {/* ── Voucher Code (Large & Prominent) ── */}
-            <div className="text-center space-y-3 py-4 border-2 border-dashed border-primary rounded-lg bg-primary/5">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Voucher Code</p>
-                <p className="font-black text-3xl tracking-widest">{voucher.code}</p>
+            <div className="text-center space-y-3 py-4 border-2 border-dashed border-zinc-950 rounded-lg bg-zinc-50">
+                <p className="text-[10px] text-zinc-800 uppercase tracking-wide">Voucher Code</p>
+                <p className="font-black text-3xl tracking-widest text-zinc-950">{voucher.code}</p>
                 
                 {/* QR Code for easy scanning */}
                 <div className="flex justify-center pt-2">
@@ -375,15 +384,15 @@ function VoucherReceiptBody({
                         includeMargin={false}
                     />
                 </div>
-                <p className="text-[9px] text-muted-foreground">Scan or enter code at checkout</p>
+                <p className="text-[9px] text-zinc-800">Scan or enter code at checkout</p>
             </div>
 
             <Separator />
 
             {/* ── Voucher Value ── */}
-            <div className="text-center space-y-1 py-3 bg-muted/20 rounded-lg">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Voucher Value</p>
-                <p className="font-black text-4xl tracking-wider">Rs. {fmt(Number(voucher.faceValue))}</p>
+            <div className="text-center space-y-1 py-3 bg-zinc-100 rounded-lg border border-zinc-200">
+                <p className="text-[10px] text-zinc-800 uppercase tracking-wide">Voucher Value</p>
+                <p className="font-black text-4xl tracking-wider text-zinc-950">Rs. {fmt(Number(voucher.faceValue))}</p>
                 {/* {voucher.discount !== undefined && Number(voucher.discount) > 0 && (
                     <div className="text-[10px] text-muted-foreground mt-1 flex justify-center gap-2 font-bold">
                         <span>Disc: Rs. {fmt(Number(voucher.discount))}</span>
@@ -403,7 +412,7 @@ function VoucherReceiptBody({
                 {voucher.companyName && <Row label="Company" value={voucher.companyName} />}
                 {voucher.description && (
                     <div className="pt-1">
-                        <p className="text-[10px] text-muted-foreground">Note:</p>
+                        <p className="text-[10px] text-zinc-800">Note:</p>
                         <p className="text-[11px] leading-snug">{voucher.description}</p>
                     </div>
                 )}
@@ -413,7 +422,7 @@ function VoucherReceiptBody({
 
             {/* ── Redemption Locations ── */}
             <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                <p className="text-[10px] text-zinc-800 uppercase tracking-wide">
                     Valid At {!isUnrestricted && <span className="normal-case">({locationNames.length} outlets)</span>}
                 </p>
                 {isUnrestricted ? (
@@ -436,7 +445,7 @@ function VoucherReceiptBody({
             <Separator />
 
             {/* ── Terms & Conditions ── */}
-            <div className="space-y-1 text-[9px] text-muted-foreground leading-snug">
+            <div className="space-y-1 text-[9px] text-zinc-800 leading-snug">
                 <p className="font-bold text-[10px] text-foreground uppercase tracking-wide">Terms & Conditions</p>
                 <ul className="list-disc list-inside space-y-0.5 pl-1">
                     {voucher.voucherType === "REFUND" ? (
@@ -471,13 +480,13 @@ function VoucherReceiptBody({
             {/* ── Footer Message ── */}
             <div className="text-center space-y-1 pt-2">
                 <p className="text-[11px] font-semibold">Thank you for choosing us!</p>
-                <p className="text-[9px] text-muted-foreground">
+                <p className="text-[9px] text-zinc-800">
                     For assistance, please contact the store
                 </p>
             </div>
 
             {/* ── Decorative border ── */}
-            <div className="text-center text-[10px] text-muted-foreground pt-2">
+            <div className="text-center text-[10px] text-zinc-800 pt-2">
                 ═══════════════════════════════
             </div>
         </div>

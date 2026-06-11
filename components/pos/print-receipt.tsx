@@ -454,6 +454,13 @@ export function PrintReceipt({
   return (
     <>
       <style>{`
+                /* Ensure print root and its descendants are rendered in solid black and white for standard/PDF rendering */
+                #receipt-print-root,
+                #receipt-print-root * {
+                    color: #000 !important;
+                    border-color: #000 !important;
+                }
+
                 @media print {
                     body *:not(#receipt-print-root):not(#receipt-print-root *) {
                         visibility: hidden !important;
@@ -466,6 +473,8 @@ export function PrintReceipt({
                     #receipt-print-root,
                     #receipt-print-root * {
                         visibility: visible !important;
+                        color: #000 !important;
+                        border-color: #000 !important;
                     }
 
                     #receipt-print-root {
@@ -911,7 +920,7 @@ function ReceiptBody({
                   gap: "0 4px",
                 }}
               >
-                <span className="text-muted-foreground truncate">
+                <span className="text-zinc-955 truncate">
                   {uniqueNo}
                 </span>
                 <span style={{ textAlign: "center" }}>{item.size || "—"}</span>
@@ -937,7 +946,7 @@ function ReceiptBody({
                   gap: "0 4px",
                 }}
               >
-                <span className="text-muted-foreground truncate">
+                <span className="text-zinc-955 truncate">
                   {uniqueNo}
                 </span>
                 <span style={{ textAlign: "center" }}>{item.size || "—"}</span>
@@ -1067,26 +1076,26 @@ function ReceiptBody({
       {creditVouchers && creditVouchers.length > 0 && (
         <>
           <Separator />
-          <div className="text-center space-y-2 border-2 border-dashed border-green-600 rounded-lg px-3 py-3 bg-green-50">
-            <p className="font-bold text-xs uppercase tracking-wide text-green-700">
+          <div className="text-center space-y-2 border-2 border-dashed border-zinc-950 rounded-lg px-3 py-3 bg-zinc-50">
+            <p className="font-bold text-xs uppercase tracking-wide text-zinc-950">
               Credit Voucher Issued
             </p>
             {creditVouchers.map((voucher, idx) => (
               <div
                 key={idx}
-                className="bg-white border-2 border-green-600 rounded px-2 py-2 space-y-1"
+                className="bg-white border-2 border-zinc-950 rounded px-2 py-2 space-y-1"
               >
-                <p className="font-black text-xl tracking-widest text-green-700">
+                <p className="font-black text-xl tracking-widest text-zinc-950">
                   {voucher.code}
                 </p>
-                <p className="font-semibold text-sm">
+                <p className="font-semibold text-sm text-zinc-900">
                   Value:{" "}
-                  <span className="font-black text-base">
+                  <span className="font-black text-base text-zinc-950">
                     Rs. {fmt(Number(voucher.faceValue))}
                   </span>
                 </p>
                 {voucher.expiresAt && (
-                  <p className="text-[9px] text-muted-foreground">
+                  <p className="text-[9px] text-zinc-800">
                     Expires:{" "}
                     {new Date(voucher.expiresAt).toLocaleDateString("en-PK", {
                       day: "2-digit",
@@ -1097,7 +1106,7 @@ function ReceiptBody({
                 )}
               </div>
             ))}
-            <p className="text-[9px] text-muted-foreground pt-1 border-t border-dashed">
+            <p className="text-[9px] text-zinc-800 pt-1 border-t border-dashed">
               Unused voucher balance - Use on next purchase
             </p>
           </div>

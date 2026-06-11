@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 export function ShiftGuard({ children }: { children: React.ReactNode }) {
     const { user, isAdmin, hasPermission, logout } = useAuth();
+    const isParentTerminal = user?.terminal ? user.terminal.isParent : true;
     const pathname = usePathname();
     const router = useRouter();
 
@@ -279,58 +280,77 @@ export function ShiftGuard({ children }: { children: React.ReactNode }) {
                     </CardHeader>
 
                     <CardContent className="space-y-4 px-6 pb-8">
-                        <form onSubmit={handleOpenShift} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="float-amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Starting Float (PKR)
-                                </Label>
-                                <div className="relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">Rs.</span>
-                                    <Input
-                                        id="float-amount"
-                                        type="number"
-                                        min="0"
-                                        required
-                                        value={floatAmount}
-                                        onChange={(e) => setFloatAmount(e.target.value ? Number(e.target.value) : "")}
-                                        className="pl-12 h-12 rounded-2xl text-lg font-bold bg-muted/40 border-transparent focus-visible:ring-primary focus-visible:bg-background"
-                                        placeholder="0"
+                        {!isParentTerminal ? (
+                            <div className="space-y-4 text-center py-2">
+                                <p className="text-sm text-muted-foreground font-medium">
+                                    Shifts can only be opened and managed from the Parent Terminal. Please ask your manager to open the shift.
+                                </p>
+                                <Button
+                                    type="button"
+                                    onClick={() => {
+                                        setLoading(true);
+                                        fetchSession();
+                                    }}
+                                    className="w-full h-12 rounded-full font-bold text-base bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-lg shadow-primary/20"
+                                >
+                                    <Clock className="w-5 h-5 shrink-0" />
+                                    Check Shift Status
+                                </Button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleOpenShift} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="float-amount" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        Starting Float (PKR)
+                                    </Label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-muted-foreground text-sm">Rs.</span>
+                                        <Input
+                                            id="float-amount"
+                                            type="number"
+                                            min="0"
+                                            required
+                                            value={floatAmount}
+                                            onChange={(e) => setFloatAmount(e.target.value ? Number(e.target.value) : "")}
+                                            className="pl-12 h-12 rounded-2xl text-lg font-bold bg-muted/40 border-transparent focus-visible:ring-primary focus-visible:bg-background"
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="float-note" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                                        Opening Note (Optional)
+                                    </Label>
+                                    <Textarea
+                                        id="float-note"
+                                        value={floatNote}
+                                        onChange={(e) => setFloatNote(e.target.value)}
+                                        className="rounded-2xl bg-muted/40 border-transparent focus-visible:ring-primary focus-visible:bg-background resize-none"
+                                        placeholder="E.g. Morning Shift Cashier A"
+                                        rows={2}
                                     />
                                 </div>
-                            </div>
 
-                            <div className="space-y-2">
-                                <Label htmlFor="float-note" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                    Opening Note (Optional)
-                                </Label>
-                                <Textarea
-                                    id="float-note"
-                                    value={floatNote}
-                                    onChange={(e) => setFloatNote(e.target.value)}
-                                    className="rounded-2xl bg-muted/40 border-transparent focus-visible:ring-primary focus-visible:bg-background resize-none"
-                                    placeholder="E.g. Morning Shift Cashier A"
-                                    rows={2}
-                                />
-                            </div>
-
-                            <Button
-                                type="submit"
-                                disabled={isSubmitting}
-                                className="w-full h-12 rounded-full font-bold text-base bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-lg shadow-primary/20"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        Registering Float...
-                                    </>
-                                ) : (
-                                    <>
-                                        Open Shift & Unlock POS
-                                        <ArrowRight className="w-4 h-4" />
-                                    </>
-                                )}
-                            </Button>
-                        </form>
+                                <Button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full h-12 rounded-full font-bold text-base bg-primary hover:bg-primary/90 text-primary-foreground gap-1.5 shadow-lg shadow-primary/20"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Registering Float...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Open Shift & Unlock POS
+                                            <ArrowRight className="w-4 h-4" />
+                                        </>
+                                    )}
+                                </Button>
+                            </form>
+                        )}
 
                         <div className="h-px bg-border w-full my-4" />
 

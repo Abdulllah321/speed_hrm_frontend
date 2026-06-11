@@ -7,6 +7,7 @@ export interface Location {
     id: string;
     name: string;
     code: string;
+    shortCode: string | null;
     address: string | null;
     cityId: string | null;
     companyId: string | null;
@@ -82,7 +83,7 @@ export async function getLocationById(id: string): Promise<{ status: boolean; da
 }
 
 // Create locations bulk
-export async function createLocations(items: { name: string; code: string; address?: string; cityId?: string; companyId?: string }[]): Promise<{ status: boolean; message: string; data?: Location[] }> {
+export async function createLocations(items: { name: string; code: string; address?: string; cityId?: string; companyId?: string; shortCode?: string }[]): Promise<{ status: boolean; message: string; data?: Location[] }> {
     if (!items.length) {
         return { status: false, message: "At least one location is required" };
     }
@@ -115,6 +116,7 @@ export async function updateLocations(
         ipWhitelist?: string;
         ipWhitelistEnabled?: boolean;
         cashGLCode?: string | null;
+        shortCode?: string | null;
     }[]): Promise<{ status: boolean; message: string }> {
     if (!items.length) {
         return { status: false, message: "No items to update" };

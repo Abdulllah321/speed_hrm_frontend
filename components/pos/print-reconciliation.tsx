@@ -77,7 +77,8 @@ const SAMPLE_DATA = {
         giftVouchers: [
             { type: "Gift Vouchers", amount: 20000.00, from: "-", to: "-" },
             { type: "Gift Vouchers", amount: 10000.00, from: "-", to: "-" },
-        ]
+        ],
+        refundVouchers: [] as Array<{ type: string; amount: number; from?: string }>
     },
     
     fbrCharges: [
@@ -112,10 +113,18 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
     const [layout, setLayout] = useState<"thermal" | "desktop">("desktop");
     const [isDownloading, setIsDownloading] = useState(false);
     const reportRef = useRef<HTMLDivElement>(null);
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
     useEffect(() => {
         setMounted(true);
     }, []);
+
+    useEffect(() => {
+        if (!open) {
+            setSelectedDate(null);
+            setData(null);
+        }
+    }, [open]);
 
     useEffect(() => {
         if (!sessionId || !open) return;
@@ -123,9 +132,13 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
         const fetchDetails = async () => {
             setLoading(true);
             try {
-                const res = await authFetch(`/pos-session/${sessionId}/reconciliation`);
+                const url = `/pos-session/${sessionId}/reconciliation${selectedDate ? `?date=${selectedDate}` : ""}`;
+                const res = await authFetch(url);
                 if (res.ok) {
                     setData(res.data);
+                    if (res.data.selectedDate && !selectedDate) {
+                        setSelectedDate(res.data.selectedDate);
+                    }
                 } else {
                     toast.error(res.data?.message || "Failed to load reconciliation details");
                 }
@@ -137,7 +150,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
         };
 
         fetchDetails();
-    }, [sessionId, open]);
+    }, [sessionId, open, selectedDate]);
 
     const handlePrint = () => {
         if (!data) return;
@@ -352,7 +365,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
     const issuedExchangeSubtotal = activeReport.issuedVouchers.exchangeAndClaims?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
     const issuedCreditSubtotal = activeReport.issuedVouchers.creditVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
     const issuedGiftSubtotal = activeReport.issuedVouchers.giftVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
-    const issuedRefundSubtotal = activeReport.issuedVouchers.refundVouchers?.reduce((acc, v) => acc + v.amount, 0) ?? 0;
+    const issuedRefundSubtotal = activeReport.issuedVouchers.refundVouchers?.reduce((acc: number, v: any) => acc + v.amount, 0) ?? 0;
 
     const totalIssuedSubtotal = issuedExchangeSubtotal + issuedGiftSubtotal + issuedRefundSubtotal;
 
@@ -557,7 +570,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                     </div>
                                 ))}
                                 {/* Refund Vouchers */}
-                                {activeReport.issuedVouchers.refundVouchers?.map((v, i) => (
+                                {activeReport.issuedVouchers.refundVouchers?.map((v: any, i: number) => (
                                     <div key={`iss-rv-${i}`} className="flex justify-between items-start">
                                         <div className="flex flex-col w-[65%]">
                                             <span>{v.type}</span>
@@ -772,7 +785,30 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                 </DialogHeader>
 
                 {/* Main Scrollable Preview Area */}
-                <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-muted/30 dark:bg-zinc-950/20 flex justify-center shadow-inner">
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-muted/30 dark:bg-zinc-950/20 flex flex-col items-center justify-start shadow-inner gap-4">
+                    {data?.availableDates && data.availableDates.length > 1 && (
+                        <div className="flex items-center gap-1.5 bg-muted/80 p-1 rounded-full border border-border">
+                            {data.availableDates.map((d: string) => {
+                                const formatted = new Date(d).toLocaleDateString("en-PK", {
+                                    day: "2-digit", month: "short", year: "numeric"
+                                });
+                                return (
+                                    <Button
+                                        key={d}
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setSelectedDate(d)}
+                                        className={cn(
+                                            "rounded-full h-7 px-3.5 text-xs font-bold transition-all",
+                                            data.selectedDate === d ? "bg-background shadow text-foreground" : "text-muted-foreground hover:bg-muted"
+                                        )}
+                                    >
+                                        {formatted}
+                                    </Button>
+                                );
+                            })}
+                        </div>
+                    )}
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
                             <Loader2 className="w-8 h-8 text-primary animate-spin" />
@@ -1010,7 +1046,7 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                 ))}
 
                                                 {/* Issued sub-category 4: Refund Vouchers */}
-                                                {activeReport.issuedVouchers.refundVouchers?.map((v, i) => (
+                                                {activeReport.issuedVouchers.refundVouchers?.map((v: any, i: number) => (
                                                     <tr key={`iss-rv-${i}`} className="border-b border-gray-100 text-gray-700 hover:bg-gray-50/50">
                                                         <td className="py-1 px-1 text-left pl-4 font-medium">{v.type}</td>
                                                         <td className="py-1 px-1 text-right">{formatVal(v.amount)}</td>

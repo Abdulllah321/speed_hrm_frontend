@@ -98,6 +98,13 @@ export const columns: ColumnDef<LocationRow>[] = [
     cell: ({ row }) => <HighlightText text={row.original.code} />,
   },
   {
+    header: "Short Code",
+    accessorKey: "shortCode",
+    size: 150,
+    enableSorting: true,
+    cell: ({ row }) => row.original.shortCode || <span className="text-muted-foreground italic">N/A</span>,
+  },
+  {
     header: "City",
     accessorKey: "city.name",
     size: 150,
@@ -275,6 +282,7 @@ function RowActions({ row }: RowActionsProps) {
         id: location.id,
         name: formData.get("name") as string,
         code: formData.get("code") as string,
+        shortCode: formData.get("shortCode") as string || null,
         address: formData.get("address") as string,
         cityId: formData.get("cityId") as string,
         cashGLCode,
@@ -403,7 +411,7 @@ function RowActions({ row }: RowActionsProps) {
               </TabsList>
 
               <TabsContent value="general" className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="edit-name">Name</Label>
                     <Input id="edit-name" name="name" defaultValue={location.name} disabled={isPending} required />
@@ -411,6 +419,10 @@ function RowActions({ row }: RowActionsProps) {
                   <div className="space-y-2">
                     <Label htmlFor="edit-code">Location Code</Label>
                     <Input id="edit-code" name="code" defaultValue={location.code} disabled={isPending} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-short-code">Short Code (Optional)</Label>
+                    <Input id="edit-short-code" name="shortCode" defaultValue={location.shortCode || ""} disabled={isPending} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
