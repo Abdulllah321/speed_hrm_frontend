@@ -273,9 +273,8 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
         }
 
         // Receivable On Credit
-        const creditReceivable = netSales > 100000 ? 8000 : 0;
-        const receivables = [
-            { description: "On Credit", amount: creditReceivable }
+        const receivables = apiData.receivables || [
+            { description: "On Credit", amount: netSales > 100000 ? 8000 : 0 }
         ];
 
         // Issued returns and claims
