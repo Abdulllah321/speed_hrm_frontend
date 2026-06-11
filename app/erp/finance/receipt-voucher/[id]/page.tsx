@@ -121,18 +121,36 @@ export default function ReceiptVoucherDetailPage({
       {/* ── Print styles ── */}
       <style jsx global>{`
         @media print {
-          body { visibility: hidden; }
-          #rv-print-section {
+          body {
+            visibility: hidden;
+            background: white;
+          }
+          #rv-print-section, #rv-print-section * {
             visibility: visible;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100vw;
-            margin: 0; padding: 0;
+          }
+          #rv-print-section {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
             background: white;
             z-index: 9999;
           }
-          #rv-print-section * { visibility: visible; }
-          @page { margin: 0; size: A4 portrait; }
+          tr {
+            page-break-inside: avoid;
+          }
+          thead {
+            display: table-header-group;
+          }
+          tfoot {
+            display: table-footer-group;
+          }
+          @page {
+            margin: 10mm;
+            size: A4 portrait;
+          }
           header, nav, footer, aside { display: none !important; }
         }
       `}</style>
