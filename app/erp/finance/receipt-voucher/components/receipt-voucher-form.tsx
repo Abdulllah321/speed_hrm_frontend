@@ -392,6 +392,107 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const totalCredit = watchDetails.reduce((sum: number, detail: any) => sum + (Number(detail.credit) || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 
+    // Auto-save draft logic (multiple drafts keyed by rvNo)
+    const watchAllFields = form.watch();
+    const voucherNo = watchAllFields.rvNo;
+    useEffect(() => {
+        if (initialData || !voucherNo) return;
+        const draftData = {
+            formValues: watchAllFields,
+            selectedInvoices,
+        };
+        const timeout = setTimeout(() => {
+            const draftsJson = localStorage.getItem("receipt-voucher-drafts") || "{}";
+            try {
+                const drafts = JSON.parse(draftsJson);
+                drafts[voucherNo] = {
+                    voucherNo,
+                    updatedAt: new Date().toISOString(),
+                    ...draftData,
+                };
+                localStorage.setItem("receipt-voucher-drafts", JSON.stringify(drafts));
+            } catch (e) {
+                console.error("Error saving draft", e);
+            }
+        }, 1000);
+        return () => clearTimeout(timeout);
+    }, [watchAllFields, voucherNo, selectedInvoices, initialData]);
+
+    // Restore draft logic
+    useEffect(() => {
+        if (initialData) return;
+
+        // Check if there's a specific draftId query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlDraftId = urlParams.get("draftId");
+
+        const draftsJson = localStorage.getItem("receipt-voucher-drafts");
+        if (!draftsJson) return;
+
+        try {
+            const drafts = JSON.parse(draftsJson);
+
+            if (urlDraftId) {
+                const draft = drafts[urlDraftId];
+                if (draft && draft.formValues) {
+                    if (draft.formValues.rvDate) draft.formValues.rvDate = new Date(draft.formValues.rvDate);
+                    if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
+                    if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
+                    form.reset(draft.formValues);
+                    if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                    toast.success(`Restored draft: ${urlDraftId}`);
+                }
+            } else {
+                const draftKeys = Object.keys(drafts);
+                if (draftKeys.length === 1) {
+                    const singleKey = draftKeys[0];
+                    const draft = drafts[singleKey];
+                    const hasFormDetails = draft.formValues?.details?.some((d: { accountId?: string; debit?: number; credit?: number }) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0);
+                    const hasInvoices = draft.selectedInvoices?.length > 0;
+                    const hasDescriptionOrCustomer = draft.formValues?.description || draft.formValues?.customerId;
+
+                    if (hasFormDetails || hasInvoices || hasDescriptionOrCustomer) {
+                        toast(`You have an unsaved draft (${singleKey}).`, {
+                            action: {
+                                label: "Restore",
+                                onClick: () => {
+                                    if (draft.formValues) {
+                                        if (draft.formValues.rvDate) draft.formValues.rvDate = new Date(draft.formValues.rvDate);
+                                        if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
+                                        if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
+                                        form.reset(draft.formValues);
+                                    }
+                                    if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                                    toast.success("Draft restored!");
+                                }
+                            },
+                            cancel: {
+                                label: "Discard",
+                                onClick: () => {
+                                    delete drafts[singleKey];
+                                    localStorage.setItem("receipt-voucher-drafts", JSON.stringify(drafts));
+                                }
+                            },
+                            duration: 15000,
+                        });
+                    }
+                } else if (draftKeys.length > 1) {
+                    toast(`You have ${draftKeys.length} pending drafts.`, {
+                        action: {
+                            label: "View Drafts",
+                            onClick: () => {
+                                router.push("/erp/finance/receipt-voucher/list");
+                            }
+                        },
+                        duration: 15000,
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse drafts", e);
+        }
+    }, [initialData, form, router]);
+
     const onSubmit: SubmitHandler<ReceiptVoucherFormValues> = async (values) => {
         try {
             setIsPending(true);
@@ -437,6 +538,16 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             console.log('API result:', result);
 
             if (result.status) {
+                if (!initialData && voucherNo) {
+                    const draftsJson = localStorage.getItem("receipt-voucher-drafts");
+                    if (draftsJson) {
+                        try {
+                            const drafts = JSON.parse(draftsJson);
+                            delete drafts[voucherNo];
+                            localStorage.setItem("receipt-voucher-drafts", JSON.stringify(drafts));
+                        } catch {}
+                    }
+                }
                 toast.success(result.message);
                 router.push("/erp/finance/receipt-voucher/list");
             } else {

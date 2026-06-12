@@ -110,6 +110,7 @@ type AdvanceEntry = {
 
 export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const router = useRouter();
+    const isRestoring = useRef(false);
     const [isPending, setIsPending] = useState(false);
     const [suppliers, setSuppliers] = useState<any[]>([]);
     const [pendingInvoices, setPendingInvoices] = useState<any[]>([]);
@@ -321,6 +322,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     useEffect(() => {
         if (initialData) return;
         if (!selectedSupplierId) return;
+        if (isRestoring.current) return;
         getVendorWithAccounts(selectedSupplierId).then(res => {
             if (res.status && res.data?.chartOfAccounts?.length > 0) {
                 const linkedAccounts: { id: string }[] = res.data.chartOfAccounts;
@@ -417,6 +419,120 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         }
     };
 
+    // Auto-save draft logic (multiple drafts keyed by pvNo)
+    const watchAllFields = form.watch();
+    const voucherNo = watchAllFields.pvNo;
+    useEffect(() => {
+        if (initialData || !voucherNo) return;
+        const draftData = {
+            formValues: watchAllFields,
+            selectedInvoices,
+            selectedAdvances,
+        };
+        const timeout = setTimeout(() => {
+            const draftsJson = localStorage.getItem("payment-voucher-drafts") || "{}";
+            try {
+                const drafts = JSON.parse(draftsJson);
+                drafts[voucherNo] = {
+                    voucherNo,
+                    updatedAt: new Date().toISOString(),
+                    ...draftData,
+                };
+                localStorage.setItem("payment-voucher-drafts", JSON.stringify(drafts));
+            } catch (e) {
+                console.error("Error saving draft", e);
+            }
+        }, 1000);
+        return () => clearTimeout(timeout);
+    }, [watchAllFields, voucherNo, selectedInvoices, selectedAdvances, initialData]);
+
+    // Restore draft logic
+    useEffect(() => {
+        if (initialData) return;
+
+        // Check if there's a specific draftId query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlDraftId = urlParams.get("draftId");
+
+        const draftsJson = localStorage.getItem("payment-voucher-drafts");
+        if (!draftsJson) return;
+
+        try {
+            const drafts = JSON.parse(draftsJson);
+
+            if (urlDraftId) {
+                const draft = drafts[urlDraftId];
+                if (draft && draft.formValues) {
+                    isRestoring.current = true;
+                    if (draft.formValues.pvDate) draft.formValues.pvDate = new Date(draft.formValues.pvDate);
+                    if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
+                    if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
+                    form.reset(draft.formValues);
+                    if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                    if (draft.selectedAdvances) setSelectedAdvances(draft.selectedAdvances);
+                    
+                    setTimeout(() => {
+                        isRestoring.current = false;
+                    }, 300);
+                    toast.success(`Restored draft: ${urlDraftId}`);
+                }
+            } else {
+                const draftKeys = Object.keys(drafts);
+                if (draftKeys.length === 1) {
+                    const singleKey = draftKeys[0];
+                    const draft = drafts[singleKey];
+                    const hasFormDetails = draft.formValues?.details?.some((d: { accountId?: string; debit?: number; credit?: number }) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0);
+                    const hasInvoicesOrAdvances = draft.selectedInvoices?.length > 0 || draft.selectedAdvances?.length > 0;
+                    const hasDescriptionOrSupplier = draft.formValues?.description || draft.formValues?.supplierId;
+
+                    if (hasFormDetails || hasInvoicesOrAdvances || hasDescriptionOrSupplier) {
+                        toast(`You have an unsaved draft (${singleKey}).`, {
+                            action: {
+                                label: "Restore",
+                                onClick: () => {
+                                    isRestoring.current = true;
+                                    if (draft.formValues) {
+                                        if (draft.formValues.pvDate) draft.formValues.pvDate = new Date(draft.formValues.pvDate);
+                                        if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
+                                        if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
+                                        form.reset(draft.formValues);
+                                    }
+                                    if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                                    if (draft.selectedAdvances) setSelectedAdvances(draft.selectedAdvances);
+                                    
+                                    setTimeout(() => {
+                                        isRestoring.current = false;
+                                    }, 300);
+                                    toast.success("Draft restored!");
+                                }
+                            },
+                            cancel: {
+                                label: "Discard",
+                                onClick: () => {
+                                    delete drafts[singleKey];
+                                    localStorage.setItem("payment-voucher-drafts", JSON.stringify(drafts));
+                                }
+                            },
+                            duration: 15000,
+                        });
+                    }
+                } else if (draftKeys.length > 1) {
+                    toast(`You have ${draftKeys.length} pending drafts.`, {
+                        action: {
+                            label: "View Drafts",
+                            onClick: () => {
+                                router.push("/finance/payment-voucher/list");
+                            }
+                        },
+                        duration: 15000,
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse drafts", e);
+        }
+    }, [initialData, form, router]);
+
     const onSubmit: SubmitHandler<PaymentVoucherFormValues> = async (values) => {
         try {
             setIsPending(true);
@@ -458,6 +574,16 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                 ? await updatePaymentVoucher(initialData.id, finalSubmitData)
                 : await createPaymentVoucher(finalSubmitData);
             if (result.status) {
+                if (!initialData && voucherNo) {
+                    const draftsJson = localStorage.getItem("payment-voucher-drafts");
+                    if (draftsJson) {
+                        try {
+                            const drafts = JSON.parse(draftsJson);
+                            delete drafts[voucherNo];
+                            localStorage.setItem("payment-voucher-drafts", JSON.stringify(drafts));
+                        } catch {}
+                    }
+                }
                 toast.success(result.message);
                 router.push("/finance/payment-voucher/list");
             } else {

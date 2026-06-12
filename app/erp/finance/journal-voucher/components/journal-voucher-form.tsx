@@ -197,6 +197,98 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         });
     }, [watchDetails.map((d) => d.accountId).join(","), tree]);
 
+    // Auto-save draft logic (multiple drafts keyed by jvNo)
+    const watchAllFields = form.watch();
+    const voucherNo = watchAllFields.jvNo;
+    useEffect(() => {
+        if (initialData || !voucherNo) return;
+        const timeout = setTimeout(() => {
+            const draftsJson = localStorage.getItem("journal-voucher-drafts") || "{}";
+            try {
+                const drafts = JSON.parse(draftsJson);
+                drafts[voucherNo] = {
+                    voucherNo,
+                    updatedAt: new Date().toISOString(),
+                    formValues: watchAllFields,
+                };
+                localStorage.setItem("journal-voucher-drafts", JSON.stringify(drafts));
+            } catch (e) {
+                console.error("Error saving draft", e);
+            }
+        }, 1000);
+        return () => clearTimeout(timeout);
+    }, [watchAllFields, voucherNo, initialData]);
+
+    // Restore draft logic
+    useEffect(() => {
+        if (initialData) return;
+        
+        // 1. Check if there's a specific draftId query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlDraftId = urlParams.get("draftId");
+        
+        const draftsJson = localStorage.getItem("journal-voucher-drafts");
+        if (!draftsJson) return;
+        
+        try {
+            const drafts = JSON.parse(draftsJson);
+            
+            if (urlDraftId) {
+                const draft = drafts[urlDraftId];
+                if (draft && draft.formValues) {
+                    if (draft.formValues.jvDate) {
+                        draft.formValues.jvDate = new Date(draft.formValues.jvDate);
+                    }
+                    form.reset(draft.formValues);
+                    toast.success(`Restored draft: ${urlDraftId}`);
+                }
+            } else {
+                // Check if any drafts exist
+                const draftKeys = Object.keys(drafts);
+                if (draftKeys.length === 1) {
+                    const singleKey = draftKeys[0];
+                    const draft = drafts[singleKey];
+                    const hasDetails = draft.formValues?.details?.some((d: { accountId?: string; debit?: number; credit?: number }) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0);
+                    const hasDescription = draft.formValues?.description;
+                    if (hasDetails || hasDescription) {
+                        toast(`You have an unsaved draft (${singleKey}).`, {
+                            action: {
+                                label: "Restore",
+                                onClick: () => {
+                                    if (draft.formValues.jvDate) {
+                                        draft.formValues.jvDate = new Date(draft.formValues.jvDate);
+                                    }
+                                    form.reset(draft.formValues);
+                                    toast.success("Draft restored!");
+                                }
+                            },
+                            cancel: {
+                                label: "Discard",
+                                onClick: () => {
+                                    delete drafts[singleKey];
+                                    localStorage.setItem("journal-voucher-drafts", JSON.stringify(drafts));
+                                }
+                            },
+                            duration: 15000,
+                        });
+                    }
+                } else if (draftKeys.length > 1) {
+                    toast(`You have ${draftKeys.length} pending drafts.`, {
+                        action: {
+                            label: "View Drafts",
+                            onClick: () => {
+                                router.push("/finance/journal-voucher/list");
+                            }
+                        },
+                        duration: 15000,
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse drafts", e);
+        }
+    }, [initialData, form, router]);
+
     const onSubmit: SubmitHandler<JournalVoucherFormValues> = async (values) => {
         try {
             setIsPending(true);
@@ -213,6 +305,16 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                 ? await updateJournalVoucher(initialData.id, payload)
                 : await createJournalVoucher(payload);
             if (result.status) {
+                if (!initialData && voucherNo) {
+                    const draftsJson = localStorage.getItem("journal-voucher-drafts");
+                    if (draftsJson) {
+                        try {
+                            const drafts = JSON.parse(draftsJson);
+                            delete drafts[voucherNo];
+                            localStorage.setItem("journal-voucher-drafts", JSON.stringify(drafts));
+                        } catch {}
+                    }
+                }
                 toast.success(initialData ? "Journal Voucher updated successfully" : "Journal Voucher created successfully");
                 router.push("/finance/journal-voucher/list");
             } else {
