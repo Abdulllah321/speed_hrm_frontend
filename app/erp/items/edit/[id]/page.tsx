@@ -38,6 +38,7 @@ import { getItemSubclasses } from "@/lib/actions/item-subclass";
 import { getSeasons } from "@/lib/actions/season";
 import { getSizes } from "@/lib/actions/size";
 import { getSegments } from "@/lib/actions/segment";
+import { getHsCodes } from "@/lib/actions/hs-code";
 import { updateItem, getItemById } from "@/lib/actions/items";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -53,7 +54,7 @@ const itemFormSchema = z.object({
     sku: z.string().min(1, "SKU is required"),
     itemId: z.string().min(1, "Item ID is required"),
     barCode: z.string().nullable().optional(),
-    hsCode: z.string().nullable().optional(),
+    hsCodeId: z.string().nullable().optional(),
     isActive: z.boolean(),
     segmentId: z.string().nullable().optional(),
 
@@ -112,6 +113,7 @@ export default function ItemEditPage() {
         // uoms removed
         sizes: any[];
         segments: any[];
+        hsCodes: any[];
     }>({
         brands: [],
         divisions: [],
@@ -126,6 +128,7 @@ export default function ItemEditPage() {
         // uoms removed
         sizes: [],
         segments: [],
+        hsCodes: [],
     });
 
     const [loading, setLoading] = useState(true);
@@ -140,7 +143,7 @@ export default function ItemEditPage() {
             sku: "",
             itemId: "",
             barCode: "",
-            hsCode: "",
+            hsCodeId: "",
             isActive: true,
             unitPrice: 0,
             taxRate1: 0,
@@ -182,11 +185,11 @@ export default function ItemEditPage() {
                 const [
                     brands, divisions, categories, genders, colors,
                     silhouettes, channelClasses, itemClasses, itemSubclasses,
-                    seasons, sizes, segments
+                    seasons, sizes, segments, hsCodes
                 ] = await Promise.all([
                     getBrands(), getDivisions(), getCategories(), getGenders(), getColors(),
                     getSilhouettes(), getChannelClasses(), getItemClasses(), getItemSubclasses(),
-                    getSeasons(), getSizes(), getSegments()
+                    getSeasons(), getSizes(), getSegments(), getHsCodes()
                 ]);
 
                 setMasters({
@@ -203,6 +206,7 @@ export default function ItemEditPage() {
                     // uoms removed
                     sizes: sizes.data || [],
                     segments: segments.data || [],
+                    hsCodes: hsCodes.data || [],
                 });
             } catch (error) {
                 console.error("Failed to fetch masters:", error);
@@ -233,7 +237,7 @@ export default function ItemEditPage() {
                         sku: item.sku || "",
                         itemId: item.itemId || "",
                         barCode: item.barCode || "",
-                        hsCode: item.hsCode || "",
+                        hsCodeId: item.hsCodeId || "",
                         isActive: item.isActive,
                         segmentId: item.segmentId || "",
                         divisionId: item.divisionId || "",
@@ -315,7 +319,7 @@ export default function ItemEditPage() {
     const getFieldsForStep = (step: number): (keyof ItemFormValues)[] => {
         switch (step) {
             case 0:
-                return ["brandId", "segmentId", "sku", "itemId", "barCode", "hsCode", "isActive", "description"];
+                return ["brandId", "segmentId", "sku", "itemId", "barCode", "hsCodeId", "isActive", "description"];
             case 1:
                 return ["divisionId", "categoryId", "subCategoryId", "itemClassId", "itemSubclassId", "channelClassId", "genderId", "seasonId"];
             case 2:
@@ -447,15 +451,13 @@ export default function ItemEditPage() {
                                         />
                                         <FormField
                                             control={form.control}
-                                            name="hsCode"
-                                            render={({ field }: { field: any }) => (
-                                                <FormItem>
-                                                    <FormLabel>HS Code</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Harmonized System Code" {...field} value={field.value ?? ""} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
+                                            name="hsCodeId"
+                                            render={({ field }) => (
+                                                <MasterSelect
+                                                    label="HS Code"
+                                                    field={field}
+                                                    options={masters.hsCodes.map(h => ({ id: h.id, name: h.hsCode }))}
+                                                />
                                             )}
                                         />
                                         <FormField

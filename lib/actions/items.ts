@@ -20,6 +20,7 @@ function sanitizeItemData(data: any) {
         "sizeId",
         "colorId",
         "silhouetteId",
+        "hsCodeId",
     ];
 
     for (const key of keysToCheck) {
@@ -38,6 +39,9 @@ function sanitizeItemData(data: any) {
     if (sanitized.movementType === "") sanitized.movementType = undefined;
     if (sanitized.heelHeight === "") sanitized.heelHeight = undefined;
     if (sanitized.width === "") sanitized.width = undefined;
+
+    // itemId is read-only and not allowed in backend update DTO
+    delete sanitized.itemId;
 
     return sanitized;
 }
