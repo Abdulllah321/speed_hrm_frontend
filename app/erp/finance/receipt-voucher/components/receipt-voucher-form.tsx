@@ -347,20 +347,23 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                     }
                 }
 
-                // Update the ref for this row
-                prevDetails[index] = {
-                    accountId: detail.accountId || "",
-                    tagAccountId: detail.tagAccountId || "",
-                };
             });
-
-            // Clean up extra rows in the ref if any were deleted
-            if (prevDetailsRef.current.length > watchDetails.length) {
-                prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
-            }
-            // Update the global taxable amount ref
-            prevTaxableAmountRef.current = taxableAmount;
         }
+
+        // ALWAYS sync the ref to current watchDetails, whether tree is loaded or not!
+        watchDetails.forEach((detail: any, index: number) => {
+            prevDetails[index] = {
+                accountId: detail.accountId || "",
+                tagAccountId: detail.tagAccountId || "",
+            };
+        });
+
+        // Clean up extra rows in the ref if any were deleted
+        if (prevDetailsRef.current.length > watchDetails.length) {
+            prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
+        }
+        // Update the global taxable amount ref
+        prevTaxableAmountRef.current = taxableAmount;
 
         // Find the first row with credit amount (customer row)
         const customerRowIndex = watchDetails.findIndex((detail: any) => Math.round(Number(detail.credit) || 0) > 0);

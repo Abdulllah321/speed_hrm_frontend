@@ -296,20 +296,20 @@ export function ChartOfAccountSelect({
     const [search, setSearch] = React.useState("");
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
 
-    // Lazy-fetch on first open
+    // Lazy-fetch on first open OR if value is set (e.g. during edit)
     React.useEffect(() => {
         if (accountsProp) {
             setTree(accountsProp);
             return;
         }
-        if (!open || tree.length > 0) return;
+        if ((!open && !value) || tree.length > 0) return;
 
         setIsLoading(true);
         fetchTree().then((data) => {
             setTree(data);
             setIsLoading(false);
         });
-    }, [open, accountsProp, tree.length]);
+    }, [open, value, accountsProp, tree.length]);
 
     // Sync prop changes
     React.useEffect(() => {

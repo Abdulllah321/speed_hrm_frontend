@@ -641,18 +641,22 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                     }
                 }
 
-                // Update the ref for this row
-                prevDetailsRef.current[index] = {
-                    accountId: detail.accountId || "",
-                    tagAccountId: detail.tagAccountId || "",
-                    taxableValue: currentTaxableValue,
-                };
             });
+        }
 
-            // Clean up extra rows in the ref if any were deleted
-            if (prevDetailsRef.current.length > watchDetails.length) {
-                prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
-            }
+        // ALWAYS sync the ref to current watchDetails, whether tree is loaded or not!
+        watchDetails.forEach((detail, index) => {
+            const currentTaxableValue = Math.round(Number(detail.taxableValue) || 0);
+            prevDetailsRef.current[index] = {
+                accountId: detail.accountId || "",
+                tagAccountId: detail.tagAccountId || "",
+                taxableValue: currentTaxableValue,
+            };
+        });
+
+        // Clean up extra rows in the ref if any were deleted
+        if (prevDetailsRef.current.length > watchDetails.length) {
+            prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
         }
 
         // Find the first row with debit amount (supplier row)
