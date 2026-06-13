@@ -405,35 +405,42 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Item ID</TableHead>
+                                    <TableHead>SKU</TableHead>
                                     <TableHead>Size</TableHead>
                                     <TableHead>Color</TableHead>
                                     <TableHead>Description</TableHead>
                                     <TableHead className="text-right">Ordered</TableHead>
                                     <TableHead className="text-right">Received</TableHead>
                                     <TableHead className="text-right">Unit Price</TableHead>
-                                    <TableHead className="text-right">Tax %</TableHead>
                                     <TableHead className="text-right">Line Total</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {order.items && order.items.length > 0 ? (
-                                    order.items.map((item) => (
-                                        <TableRow key={item.id}>
-                                            <TableCell className="font-medium">{item.item?.itemId || item.itemId}</TableCell>
-                                            <TableCell>{item.item?.size?.name || '-'}</TableCell>
-                                            <TableCell>{item.item?.color?.name || '-'}</TableCell>
-                                            <TableCell>{item.description || 'No description'}</TableCell>
-                                            <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
-                                            <TableCell className="text-right font-mono text-blue-600">{parseFloat(item.receivedQty || '0').toFixed(2)}</TableCell>
-                                            <TableCell className="text-right">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
-                                            <TableCell className="text-right">{item.taxPercent}%</TableCell>
-                                            <TableCell className="text-right font-semibold">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                                    <>
+                                        {order.items.map((item) => (
+                                            <TableRow key={item.id}>
+                                                <TableCell className="font-medium">{item.item?.sku || '-'}</TableCell>
+                                                <TableCell>{item.item?.size?.name || '-'}</TableCell>
+                                                <TableCell>{item.item?.color?.name || '-'}</TableCell>
+                                                <TableCell>{item.description || 'No description'}</TableCell>
+                                                <TableCell className="text-right font-mono">{parseFloat(item.quantity).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right font-mono text-blue-600">{parseFloat(item.receivedQty || '0').toFixed(2)}</TableCell>
+                                                <TableCell className="text-right">{parseFloat(item.unitPrice).toFixed(2)}</TableCell>
+                                                <TableCell className="text-right font-semibold">{parseFloat(item.lineTotal).toFixed(2)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                        <TableRow className="border-t-2 font-semibold bg-muted/30">
+                                            <TableCell colSpan={4} className="text-right text-sm text-muted-foreground">Total Ordered Quantity:</TableCell>
+                                            <TableCell className="text-right font-bold">
+                                                {order.items.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(2)}
+                                            </TableCell>
+                                            <TableCell colSpan={3} />
                                         </TableRow>
-                                    ))
+                                    </>
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                                             No items found for this purchase order
                                         </TableCell>
                                     </TableRow>
@@ -507,46 +514,54 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                     <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
                         <thead>
                           <tr className="border-y-2 border-black">
-                            <th className="py-2 pr-2 text-left font-bold w-[30%]">Item Details</th>
+                            <th className="py-2 pr-2 text-left font-bold w-[15%]">SKU</th>
+                            <th className="py-2 pr-2 text-left font-bold w-[25%]">Description</th>
                             <th className="py-2 pr-2 text-left font-bold w-[10%]">Size</th>
                             <th className="py-2 pr-2 text-left font-bold w-[10%]">Color</th>
                             <th className="py-2 pr-2 text-right font-bold w-[10%]">Qty</th>
                             <th className="py-2 pr-2 text-right font-bold w-[15%]">Unit Price</th>
-                            <th className="py-2 pr-2 text-right font-bold w-[10%]">Tax %</th>
                             <th className="py-2 text-right font-bold w-[15%]">Total</th>
                           </tr>
                         </thead>
                         <tbody>
                           {order.items && order.items.length > 0 ? (
-                            order.items.map((item, i) => (
-                              <tr key={item.id || i} className="border-b border-gray-300 align-top">
-                                <td className="py-2 pr-2 overflow-hidden text-ellipsis">
-                                  <div className="font-medium">{item.item?.itemId || item.itemId}</div>
-                                  <div className="text-gray-700">{item.description || '-'}</div>
+                            <>
+                              {order.items.map((item, i) => (
+                                <tr key={item.id || i} className="border-b border-gray-300 align-top">
+                                  <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
+                                    {item.item?.sku || '-'}
+                                  </td>
+                                  <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
+                                    {item.description || '-'}
+                                  </td>
+                                  <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                    {item.item?.size?.name || '-'}
+                                  </td>
+                                  <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                    {item.item?.color?.name || '-'}
+                                  </td>
+                                  <td className="py-2 pr-2 text-right tabular-nums">
+                                    {parseFloat(item.quantity).toFixed(2)}
+                                  </td>
+                                  <td className="py-2 pr-2 text-right tabular-nums">
+                                    {fmt(Number(item.unitPrice))}
+                                  </td>
+                                  <td className="py-2 text-right tabular-nums">
+                                    {fmt(Number(item.lineTotal))}
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr className="border-t-2 border-black">
+                                <td colSpan={4} className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]">Total Ordered Qty:</td>
+                                <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                                  {order.items.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(2)}
                                 </td>
-                                <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                                  {item.item?.size?.name || '-'}
-                                </td>
-                                <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                                  {item.item?.color?.name || '-'}
-                                </td>
-                                <td className="py-2 pr-2 text-right tabular-nums">
-                                  {parseFloat(item.quantity).toFixed(2)}
-                                </td>
-                                <td className="py-2 pr-2 text-right tabular-nums">
-                                  {fmt(Number(item.unitPrice))}
-                                </td>
-                                <td className="py-2 pr-2 text-right tabular-nums">
-                                  {item.taxPercent}%
-                                </td>
-                                <td className="py-2 text-right tabular-nums">
-                                  {fmt(Number(item.lineTotal))}
-                                </td>
+                                <td colSpan={2} />
                               </tr>
-                            ))
+                            </>
                           ) : (
                             <tr>
-                                <td colSpan={5} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                                <td colSpan={7} className="py-4 text-center text-muted-foreground border-b border-gray-300">
                                     No items found for this purchase order
                                 </td>
                             </tr>

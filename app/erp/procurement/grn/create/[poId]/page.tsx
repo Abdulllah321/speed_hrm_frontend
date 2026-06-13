@@ -123,7 +123,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Item Code</TableHead>
+                                    <TableHead>SKU</TableHead>
                                     <TableHead className="text-right">Ordered</TableHead>
                                     <TableHead className="text-right">Remaining</TableHead>
                                     <TableHead className="text-right w-32">Receiving</TableHead>
@@ -137,7 +137,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                                         <TableRow key={item.id}>
                                             <TableCell>
                                                 <div className="font-medium">
-                                                    {itemData ? itemData.itemId : 'Item data unavailable'}
+                                                    {itemData ? itemData.sku : 'Item data unavailable'}
                                                 </div>
                                                 <div className="text-xs text-muted-foreground">
                                                     {itemData ? itemData.description : '-'}

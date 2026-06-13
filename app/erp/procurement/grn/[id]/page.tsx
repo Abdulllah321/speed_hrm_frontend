@@ -292,7 +292,7 @@ export default function GrnDetailPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Item</TableHead>
+                  <TableHead>SKU</TableHead>
                   <TableHead>Size</TableHead>
                   <TableHead>Color</TableHead>
                   <TableHead>Description</TableHead>
@@ -307,7 +307,7 @@ export default function GrnDetailPage() {
                 ) : (
                   grn.items.map((it) => (
                     <TableRow key={it.id}>
-                      <TableCell className="font-mono text-sm">{it.item?.itemId || it.itemId}</TableCell>
+                      <TableCell className="font-mono text-sm">{it.item?.sku || '-'}</TableCell>
                       <TableCell>{it.item?.size?.name || '-'}</TableCell>
                       <TableCell>{it.item?.color?.name || '-'}</TableCell>
                       <TableCell>{it.description || '-'}</TableCell>
@@ -375,7 +375,8 @@ export default function GrnDetailPage() {
               <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
                   <thead>
                     <tr className="border-y-2 border-black">
-                      <th className="py-2 pr-2 text-left font-bold w-[40%]">Item Details</th>
+                      <th className="py-2 pr-2 text-left font-bold w-[15%]">SKU</th>
+                      <th className="py-2 pr-2 text-left font-bold w-[25%]">Description</th>
                       <th className="py-2 pr-2 text-left font-bold w-[15%]">Size</th>
                       <th className="py-2 pr-2 text-left font-bold w-[15%]">Color</th>
                       <th className="py-2 pr-2 text-right font-bold w-[30%]">Received Qty</th>
@@ -385,9 +386,11 @@ export default function GrnDetailPage() {
                     {grn.items && grn.items.length > 0 ? (
                       grn.items.map((item, i) => (
                         <tr key={item.id || i} className="border-b border-gray-300 align-top">
-                          <td className="py-2 pr-2 overflow-hidden text-ellipsis">
-                            <div className="font-medium">{item.item?.itemId || item.itemId}</div>
-                            <div className="text-gray-700">{item.description || '-'}</div>
+                          <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
+                            {item.item?.sku || '-'}
+                          </td>
+                          <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
+                            {item.description || '-'}
                           </td>
                           <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
                             {item.item?.size?.name || '-'}
@@ -402,7 +405,7 @@ export default function GrnDetailPage() {
                       ))
                     ) : (
                       <tr>
-                          <td colSpan={4} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                          <td colSpan={5} className="py-4 text-center text-muted-foreground border-b border-gray-300">
                               No items found for this GRN
                           </td>
                       </tr>
