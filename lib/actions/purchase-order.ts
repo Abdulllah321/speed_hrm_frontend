@@ -119,3 +119,26 @@ export async function updatePurchaseOrderStatus(id: string, status: string) {
         throw error;
     }
 }
+
+export async function updatePurchaseOrder(id: string, data: {
+    vendorId?: string;
+    items?: { itemId: string; description?: string; quantity: number; unitPrice: number }[];
+    notes?: string;
+    expectedDeliveryDate?: string;
+    orderType?: string;
+    goodsType?: string;
+}) {
+    try {
+        const response = await authFetch(`/purchase-order/${id}`, {
+            method: "PATCH",
+            body: JSON.stringify(data),
+        });
+        const result = response.data;
+        revalidatePath("/erp/procurement/purchase-order");
+        revalidatePath(`/erp/procurement/purchase-order/${id}`);
+        return result;
+    } catch (error) {
+        console.error("Update PO error:", error);
+        throw error;
+    }
+}

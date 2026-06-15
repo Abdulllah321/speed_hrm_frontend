@@ -10,7 +10,7 @@ import Link from 'next/link';
 import { PurchaseOrder } from '@/lib/api';
 import { getPurchaseOrder, updatePurchaseOrderStatus } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
-import { Printer, ArrowLeft, Building2, CheckCircle2, Clock, XCircle, ThumbsUp, Check, X } from 'lucide-react';
+import { Printer, ArrowLeft, Building2, CheckCircle2, Clock, XCircle, ThumbsUp, Check, X, Pencil } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 
@@ -151,6 +151,14 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
                                 Back
                             </Link>
                         </Button>
+                        {(order.status === 'PENDING_CHECKER' || order.status === 'PENDING_AUTHORIZER') && (
+                            <Button variant="outline" asChild>
+                                <Link href={`/erp/procurement/purchase-order/${order.id}/edit`} transitionTypes={['nav-forward']}>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Edit PO
+                                </Link>
+                            </Button>
+                        )}
                         {(order.status === 'OPEN' || order.status === 'PARTIALLY_RECEIVED') && canCreateGrn && (
                             <Button variant="default" className="bg-blue-600 hover:bg-blue-700" asChild>
                                 <Link href={`/erp/procurement/grn/create/${order.id}`} transitionTypes={["nav-forward"]}>
