@@ -154,6 +154,7 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                                                     value={receivedQtys[item.itemId]}
                                                     onChange={(e) => handleQtyChange(item.itemId, e.target.value)}
                                                     className="text-right font-mono"
+                                                    disabled={true}
                                                 />
                                             </TableCell>
                                         </TableRow>
