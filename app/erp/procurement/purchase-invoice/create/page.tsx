@@ -84,6 +84,7 @@ interface InvoiceItem {
   unitPrice: number;
   taxRate: number;
   discountRate: number;
+  sku?: string;
 }
 
 export default function CreatePurchaseInvoicePage() {
@@ -101,6 +102,7 @@ export default function CreatePurchaseInvoicePage() {
     grnId: "",
     landedCostId: "",
     discountAmount: 0,
+    advanceTaxRate: 0.5,
     notes: "",
     isApproved: false,
   });
@@ -196,11 +198,12 @@ export default function CreatePurchaseInvoicePage() {
       const grnItems: InvoiceItem[] = grn.items.map((item) => ({
         itemId: item.itemId,
         grnItemId: item.id,
-        description: item.description,
+        description: item.description || "",
         quantity: item.availableQty,
         unitPrice: item.unitPrice || 0, // Use unit price from GRN/PO
-        taxRate: 0,
+        taxRate: (item as any).item?.taxRate1 || 0,
         discountRate: 0,
+        sku: (item as any).item?.sku || "",
       }));
       console.log("Mapped GRN Items:", grnItems);
       setItems(grnItems);
@@ -229,11 +232,12 @@ export default function CreatePurchaseInvoicePage() {
       const lcItems: InvoiceItem[] = landedCost.items.map((item) => ({
         itemId: item.itemId,
         landedCostItemId: item.id,
-        description: item.description,
+        description: item.description || "",
         quantity: item.availableQty,
         unitPrice: item.unitCostPKR,
-        taxRate: 0,
+        taxRate: (item as any).item?.taxRate1 || 0,
         discountRate: 0,
+        sku: (item as any).item?.sku || "",
       }));
       console.log("Mapped Landed Cost Items:", lcItems);
       setItems(lcItems);
@@ -278,9 +282,11 @@ export default function CreatePurchaseInvoicePage() {
       return sum + discountedAmount * (item.taxRate / 100);
     }, 0);
 
-    const totalAmount = subtotal + taxAmount - formData.discountAmount;
+    const baseTotal = subtotal + taxAmount - formData.discountAmount;
+    const advanceTaxAmount = baseTotal * (formData.advanceTaxRate / 100);
+    const totalAmount = baseTotal + advanceTaxAmount;
 
-    return { subtotal, taxAmount, totalAmount };
+    return { subtotal, taxAmount, advanceTaxAmount, totalAmount };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -338,7 +344,7 @@ export default function CreatePurchaseInvoicePage() {
     }
   };
 
-  const { subtotal, taxAmount, totalAmount } = calculateTotals();
+  const { subtotal, taxAmount, advanceTaxAmount, totalAmount } = calculateTotals();
 
   return (
     <PermissionGuard permissions="erp.procurement.pi.create">
@@ -357,7 +363,7 @@ export default function CreatePurchaseInvoicePage() {
             <CardTitle>Invoice Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="invoiceNumber">Invoice Number *</Label>
                 <Input
@@ -387,6 +393,19 @@ export default function CreatePurchaseInvoicePage() {
                     setFormData((prev) => ({ ...prev, dueDate: date }))
                   }
                   placeholder="Select Due Date"
+                />
+              </div>
+              <div>
+                <Label htmlFor="advanceTaxRate">Advance Sales Tax Rate (%)</Label>
+                <Input
+                  id="advanceTaxRate"
+                  type="number"
+                  step="0.01"
+                  value={formData.advanceTaxRate}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, advanceTaxRate: parseFloat(e.target.value) || 0 }))
+                  }
+                  placeholder="0.5"
                 />
               </div>
             </div>
@@ -471,7 +490,15 @@ export default function CreatePurchaseInvoicePage() {
             <div className="space-y-4">
               {items.map((item, index) => (
                 <div key={index} className="border p-4 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                    <div>
+                      <Label>SKU</Label>
+                      <Input
+                        value={item.sku || ""}
+                        placeholder="SKU"
+                        disabled={true}
+                      />
+                    </div>
                     <div className="md:col-span-2">
                       <Label>Description</Label>
                       <Input
@@ -571,6 +598,10 @@ export default function CreatePurchaseInvoicePage() {
                 <div className="flex justify-between">
                   <span>Invoice Discount:</span>
                   <span>-{formData.discountAmount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground text-sm">
+                  <span>Advance Sales Tax ({formData.advanceTaxRate}%):</span>
+                  <span>{advanceTaxAmount.toLocaleString()}</span>
                 </div>
                 <hr />
                 <div className="flex justify-between font-bold text-lg">
