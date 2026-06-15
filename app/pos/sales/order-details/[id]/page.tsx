@@ -509,7 +509,11 @@ export default function OrderDetailsPage() {
 
             {showReturnPrint && order && (
                 <PrintReturnReceipt
-                    returnRef={order.orderNumber}
+                    returnRef={
+                        (order.status === 'refunded')
+                            ? (order.refundNumber || returnDetails?.refundNumber || order.orderNumber)
+                            : (order.returnNumber || returnDetails?.returnNumber || order.orderNumber)
+                    }
                     isAlliance={!!order.alliance}
                     originalOrders={[{ orderNumber: order.orderNumber, grandTotal: Number(order.grandTotal) }]}
                     returnedLines={(returnDetails?.items ?? []).map((item: any) => ({

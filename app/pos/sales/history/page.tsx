@@ -1167,7 +1167,11 @@ export default function SalesHistoryPage() {
             {/* Print Return Receipt */}
             {showReturnPrint && selectedOrder && (
                 <PrintReturnReceipt
-                    returnRef={selectedOrder.orderNumber}
+                    returnRef={
+                        (selectedOrder.status === 'refunded')
+                            ? (selectedOrder.refundNumber || returnDetails?.refundNumber || selectedOrder.orderNumber)
+                            : (selectedOrder.returnNumber || returnDetails?.returnNumber || selectedOrder.orderNumber)
+                    }
                     isRefund={selectedOrder.status === 'refunded' || selectedOrder.status === 'partially_returned'}
                     isAlliance={!!selectedOrder.alliance}
                     originalOrders={[{ orderNumber: selectedOrder.orderNumber, grandTotal: Number(selectedOrder.grandTotal) }]}
