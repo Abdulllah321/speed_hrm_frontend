@@ -396,7 +396,7 @@ export default function CreatePurchaseInvoicePage() {
                 />
               </div>
               <div>
-                <Label htmlFor="advanceTaxRate">Advance Sales Tax Rate (%)</Label>
+                <Label htmlFor="advanceTaxRate">Advance Tax Rate (%)</Label>
                 <Input
                   id="advanceTaxRate"
                   type="number"
@@ -600,7 +600,7 @@ export default function CreatePurchaseInvoicePage() {
                   <span>-{formData.discountAmount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground text-sm">
-                  <span>Advance Sales Tax ({formData.advanceTaxRate}%):</span>
+                  <span>Advance Tax ({formData.advanceTaxRate}%):</span>
                   <span>{advanceTaxAmount.toLocaleString()}</span>
                 </div>
                 <hr />

@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Edit, DollarSign, FileText, CheckCircle, XCircle, Printer, Building2 } from 'lucide-react';
+import { ArrowLeft, Edit, DollarSign, FileText, CheckCircle, XCircle, Printer, Building2, Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { getPurchaseInvoice, approvePurchaseInvoice, cancelPurchaseInvoice } from '@/lib/actions/purchase-invoice';
 import { PurchaseInvoice as ApiPurchaseInvoice } from '@/lib/api';
 import { toast } from 'sonner';
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import * as XLSX from 'xlsx';
 
 export function numberToWords(amount: number): string {
     const a = [
@@ -54,8 +55,14 @@ interface PaymentVoucherInvoice {
   };
 }
 
-interface PurchaseInvoice extends ApiPurchaseInvoice {
+interface PurchaseInvoice extends Omit<ApiPurchaseInvoice, 'subtotal' | 'advanceTaxRate' | 'advanceTaxAmount' | 'totalAmount' | 'paidAmount' | 'remainingAmount'> {
   paymentVouchers?: PaymentVoucherInvoice[];
+  subtotal?: number;
+  advanceTaxRate?: number;
+  advanceTaxAmount?: number;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
 }
 
 interface InvoiceItem {
@@ -82,6 +89,117 @@ export default function PurchaseInvoiceDetailPage() {
   const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const handleExportXLSX = () => {
+    if (!invoice) return;
+    try {
+      const invoiceData = [
+        ["Purchase Invoice Detail"],
+        [],
+        ["Invoice Number:", invoice.invoiceNumber],
+        ["Invoice Date:", new Date(invoice.invoiceDate).toLocaleDateString()],
+        ["Supplier:", `${invoice.supplier?.name} (${invoice.supplier?.code})`],
+        ["Status:", invoice.status],
+        ["Payment Status:", invoice.paymentStatus],
+        [],
+        ["Invoice Summary"],
+        ["Subtotal:", Number(invoice.subtotal || 0)],
+        ["Tax Amount (Sales Tax):", Number(invoice.taxAmount || 0)],
+        [`Advance Tax (${Number(invoice.advanceTaxRate || 0.5)}%):`, Number(invoice.advanceTaxAmount || 0)],
+        ["Discount Amount:", Number(invoice.discountAmount || 0)],
+        ["Total Amount:", Number(invoice.totalAmount || 0)],
+        ["Paid Amount:", Number(invoice.paidAmount || 0)],
+        ["Remaining Amount:", Number(invoice.remainingAmount || 0)],
+        [],
+        ["Item Details"],
+        ["SKU", "Description", "Quantity", "Unit Price", "Tax Rate (%)", "Tax Amount", "Discount Rate (%)", "Discount Amount", "Line Total"]
+      ];
+
+      const itemRows = (invoice.items || []).map((item: any) => [
+        item.item?.sku || item.sku || "-",
+        item.item?.description || item.description || "-",
+        Number(item.quantity || 0),
+        Number(item.unitPrice || 0),
+        Number(item.taxRate || 0),
+        Number(item.taxAmount || 0),
+        Number(item.discountRate || 0),
+        Number(item.discountAmount || 0),
+        Number(item.lineTotal || 0)
+      ]);
+
+      const finalData = [...invoiceData, ...itemRows];
+      const worksheet = XLSX.utils.aoa_to_sheet(finalData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Invoice Detail");
+
+      const maxLens = finalData[18]?.map((_, colIdx) => {
+        return Math.max(
+          ...finalData.map((row) => String(row[colIdx] ?? "").length)
+        );
+      }) || [];
+      worksheet["!cols"] = maxLens.map((w) => ({ wch: Math.max(w + 2, 10) }));
+
+      XLSX.writeFile(workbook, `purchase-invoice-${invoice.invoiceNumber}.xlsx`);
+      toast.success("Excel exported successfully");
+    } catch (error) {
+      console.error("Export Excel error:", error);
+      toast.error("Failed to export Excel");
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!invoice) return;
+    try {
+      const lines = [
+        ["Purchase Invoice Detail"],
+        ["Invoice Number", invoice.invoiceNumber],
+        ["Invoice Date", new Date(invoice.invoiceDate).toLocaleDateString()],
+        ["Supplier", `${invoice.supplier?.name} (${invoice.supplier?.code})`],
+        ["Status", invoice.status],
+        ["Payment Status", invoice.paymentStatus],
+        [],
+        ["Invoice Summary"],
+        ["Subtotal", Number(invoice.subtotal || 0)],
+        ["Tax Amount", Number(invoice.taxAmount || 0)],
+        [`Advance Tax (${Number(invoice.advanceTaxRate || 0.5)}%)`, Number(invoice.advanceTaxAmount || 0)],
+        ["Discount Amount", Number(invoice.discountAmount || 0)],
+        ["Total Amount", Number(invoice.totalAmount || 0)],
+        ["Paid Amount", Number(invoice.paidAmount || 0)],
+        ["Remaining Amount", Number(invoice.remainingAmount || 0)],
+        [],
+        ["Item Details"],
+        ["SKU", "Description", "Quantity", "Unit Price", "Tax Rate (%)", "Tax Amount", "Discount Rate (%)", "Discount Amount", "Line Total"]
+      ];
+
+      (invoice.items || []).forEach((item: any) => {
+        lines.push([
+          item.item?.sku || item.sku || "-",
+          item.item?.description || item.description || "-",
+          Number(item.quantity || 0),
+          Number(item.unitPrice || 0),
+          Number(item.taxRate || 0),
+          Number(item.taxAmount || 0),
+          Number(item.discountRate || 0),
+          Number(item.discountAmount || 0),
+          Number(item.lineTotal || 0)
+        ]);
+      });
+
+      const csvContent = lines.map((r) => r.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `purchase-invoice-${invoice.invoiceNumber}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("CSV exported successfully");
+    } catch (error) {
+      console.error("Export CSV error:", error);
+      toast.error("Failed to export CSV");
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -301,6 +419,12 @@ export default function PurchaseInvoiceDetailPage() {
                   </Button>
                 </PermissionGuard>
               )}
+              <Button onClick={handleExportXLSX} variant="outline" className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30 gap-2">
+                  <Download className="h-4 w-4" /> Export Excel
+              </Button>
+              <Button onClick={handleExportCSV} variant="outline" className="gap-2">
+                  <Download className="h-4 w-4" /> Export CSV
+              </Button>
               <Button onClick={() => window.print()} variant="outline" className="gap-2">
                   <Printer className="h-4 w-4" /> Print Invoice
               </Button>
@@ -361,22 +485,32 @@ export default function PurchaseInvoiceDetailPage() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left p-3">Item</th>
+                        <th className="text-left p-3">SKU</th>
+                        <th className="text-left p-3">Item Details</th>
                         <th className="text-right p-3">Quantity</th>
-                        <th className="text-right p-3">Price</th>
+                        <th className="text-right p-3">Unit Price</th>
+                        <th className="text-right p-3">Tax Rate (%)</th>
+                        <th className="text-right p-3">Tax Amount</th>
+                        <th className="text-right p-3">Discount (%)</th>
+                        <th className="text-right p-3">Discount Amount</th>
                         <th className="text-right p-3">Line Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {invoice.items?.map((item: any) => (
                         <tr key={item.id} className="border-b">
+                          <td className="p-3 font-mono text-sm">{item.item?.sku || item.sku || "-"}</td>
                           <td className="p-3">
                             <div className="font-medium">{item.item?.description || item.description}</div>
                             <div className="text-sm text-gray-500">{item.item?.itemId || item.itemId}</div>
                           </td>
-                          <td className="p-3 text-right">{item.quantity}</td>
-                          <td className="p-3 text-right">{item.unitPrice.toLocaleString()}</td>
-                          <td className="p-3 text-right">{item.lineTotal.toLocaleString()}</td>
+                          <td className="p-3 text-right">{Number(item.quantity).toLocaleString()}</td>
+                          <td className="p-3 text-right">{Number(item.unitPrice).toLocaleString()}</td>
+                          <td className="p-3 text-right">{Number(item.taxRate || 0)}%</td>
+                          <td className="p-3 text-right">{Number(item.taxAmount || 0).toLocaleString()}</td>
+                          <td className="p-3 text-right">{Number(item.discountRate || 0)}%</td>
+                          <td className="p-3 text-right">{Number(item.discountAmount || 0).toLocaleString()}</td>
+                          <td className="p-3 text-right font-medium">{Number(item.lineTotal).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -433,17 +567,34 @@ export default function PurchaseInvoiceDetailPage() {
                 <CardTitle>Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Subtotal</span>
+                  <span className="font-medium">{Number(invoice.subtotal || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Sales Tax</span>
+                  <span className="font-medium">{Number(invoice.taxAmount || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Invoice Discount</span>
+                  <span className="font-medium">-{Number(invoice.discountAmount || 0).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Advance Tax ({Number(invoice.advanceTaxRate || 0.5)}%)</span>
+                  <span className="font-medium">{Number(invoice.advanceTaxAmount || 0).toLocaleString()}</span>
+                </div>
+                <hr className="my-2" />
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Total Amount</span>
-                  <span className="font-medium">{invoice.totalAmount.toLocaleString()}</span>
+                  <span className="text-gray-500 font-semibold">Total Amount</span>
+                  <span className="font-semibold">{Number(invoice.totalAmount || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Paid Amount</span>
-                  <span className="font-medium text-green-600">{invoice.paidAmount.toLocaleString()}</span>
+                  <span className="font-medium text-green-600">{Number(invoice.paidAmount || 0).toLocaleString()}</span>
                 </div>
                 <div className="border-t pt-4 flex justify-between">
                   <span className="text-lg font-bold">Remaining</span>
-                  <span className="text-lg font-bold text-red-600">{invoice.remainingAmount.toLocaleString()}</span>
+                  <span className="text-lg font-bold text-red-600">{Number(invoice.remainingAmount || 0).toLocaleString()}</span>
                 </div>
               </CardContent>
             </Card>
@@ -513,7 +664,8 @@ export default function PurchaseInvoiceDetailPage() {
                       invoice.items.map((item: any, i: number) => (
                         <tr key={item.id || i} className="border-b border-gray-300 align-top">
                           <td className="py-2 pr-2 overflow-hidden text-ellipsis">
-                            <div className="font-medium">{item.item?.itemId || item.itemId}</div>
+                            <div className="font-bold font-mono">{item.item?.sku || item.sku || '-'}</div>
+                            <div className="text-sm font-medium text-gray-500">{item.item?.itemId || item.itemId}</div>
                             <div className="text-gray-700">{item.item?.description || item.description || '-'}</div>
                           </td>
                           <td className="py-2 pr-2 text-right tabular-nums">
@@ -541,22 +693,36 @@ export default function PurchaseInvoiceDetailPage() {
               </table>
 
               {/* Totals Section */}
-              <div className="flex border-b border-black pb-2 items-end">
-                  <div className="w-[55%] pt-4">
-                      <div className="flex gap-2 font-bold text-xs sm:text-[13px]">
-                          <span className="whitespace-nowrap">In Words</span>
-                          <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(invoice.totalAmount || 0))}</span>
-                      </div>
-                  </div>
-                  <div className="w-[25%] pr-2 text-right">
-                      <div className="font-bold text-xs sm:text-[13px] mt-1">Total:</div>
-                  </div>
-                  <div className="w-[20%] text-right">
-                      <div className="ml-auto border-t border-black pb-0.5 mt-1" style={{ borderBottom: '3px double black' }}>
-                          <span className="tabular-nums font-bold text-xs sm:text-[13px] block pt-0.5">{fmt(Number(invoice.totalAmount || 0))}</span>
-                      </div>
-                  </div>
-              </div>
+              <div className="flex border-b border-black pb-4 text-xs sm:text-[13px] justify-between">
+                   <div className="w-[50%] pt-4 flex flex-col justify-end">
+                       <div className="flex gap-2 font-bold mb-1">
+                           <span className="whitespace-nowrap">In Words:</span>
+                           <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(invoice.totalAmount || 0))}</span>
+                       </div>
+                   </div>
+                   <div className="w-[45%] flex flex-col space-y-1 text-right">
+                       <div className="flex justify-between">
+                           <span className="text-gray-600">Subtotal:</span>
+                           <span className="tabular-nums font-medium">{fmt(Number(invoice.subtotal || 0))}</span>
+                       </div>
+                       <div className="flex justify-between">
+                           <span className="text-gray-600">Sales Tax:</span>
+                           <span className="tabular-nums font-medium">{fmt(Number(invoice.taxAmount || 0))}</span>
+                       </div>
+                       <div className="flex justify-between">
+                           <span className="text-gray-600">Discount:</span>
+                           <span className="tabular-nums font-medium">-{fmt(Number(invoice.discountAmount || 0))}</span>
+                       </div>
+                       <div className="flex justify-between">
+                           <span className="text-gray-600">Advance Tax ({Number(invoice.advanceTaxRate || 0.5)}%):</span>
+                           <span className="tabular-nums font-medium">{fmt(Number(invoice.advanceTaxAmount || 0))}</span>
+                       </div>
+                       <div className="flex justify-between border-t border-black pt-1 font-bold">
+                           <span>Total Amount:</span>
+                           <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmt(Number(invoice.totalAmount || 0))}</span>
+                       </div>
+                   </div>
+               </div>
 
               {/* Signatures */}
               <div className="grid grid-cols-3 gap-3 mt-8">
