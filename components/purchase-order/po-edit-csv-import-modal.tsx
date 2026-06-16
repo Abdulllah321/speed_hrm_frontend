@@ -203,16 +203,28 @@ export function PoEditCsvImportModal({ open, onOpenChange, onImportComplete }: P
             try {
                 const res = await inventoryApi.search(row.barCode);
                 if (res.status && res.data && res.data.length > 0) {
-                    // Pick best match: exact barcode match preferred
-                    const item = res.data[0];
-                    results[i] = {
-                        ...results[i],
-                        status: 'found',
-                        itemId: item.id,
-                        itemName: item.sku,
-                        description: item.description || '',
-                        unitPrice: Number(item.unitPrice ?? 0),
-                    };
+                    // Prefer exact barCode match (case-insensitive); fall back to first result
+                    const exactMatch = res.data.find(
+                        (i: any) => i.barCode?.trim().toLowerCase() === row.barCode.trim().toLowerCase()
+                    );
+                    const item = exactMatch ?? null;
+
+                    if (!item) {
+                        results[i] = {
+                            ...results[i],
+                            status: 'not_found',
+                            reason: 'No exact barcode match found',
+                        };
+                    } else {
+                        results[i] = {
+                            ...results[i],
+                            status: 'found',
+                            itemId: item.id,
+                            itemName: item.sku,
+                            description: item.description || '',
+                            unitPrice: Number(item.unitPrice ?? 0),
+                        };
+                    }
                 } else {
                     results[i] = {
                         ...results[i],
