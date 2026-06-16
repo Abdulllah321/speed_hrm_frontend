@@ -12,7 +12,7 @@ import { inventoryApi } from '@/lib/api';
 import { getVendors } from '@/lib/actions/procurement';
 import { getPurchaseOrder, updatePurchaseOrder } from '@/lib/actions/purchase-order';
 import { toast } from 'sonner';
-import { ArrowLeft, Search, CheckCircle2, Loader2, Plus, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, Search, CheckCircle2, Loader2, Plus, Trash2, Save, FileSpreadsheet } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandGroup, CommandItem, CommandList } from '@/components/ui/command';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +21,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Autocomplete } from '@/components/ui/autocomplete';
 import { cn, formatCurrency } from '@/lib/utils';
 import { PermissionGuard } from '@/components/auth/permission-guard';
+import { PoEditCsvImportModal, ImportedOrderItem } from '@/components/purchase-order/po-edit-csv-import-modal';
 
 interface OrderItem {
     itemId: string;
@@ -37,6 +38,7 @@ export default function EditPurchaseOrder({ params }: { params: Promise<{ id: st
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [vendors, setVendors] = useState<any[]>([]);
+    const [csvImportOpen, setCsvImportOpen] = useState(false);
 
     // Form State
     const [selectedVendorId, setSelectedVendorId] = useState('');
@@ -186,6 +188,12 @@ export default function EditPurchaseOrder({ params }: { params: Promise<{ id: st
         }
     };
 
+    // ── CSV Import handler ──────────────────────────────────────────────────
+    const handleCsvImportComplete = useCallback((items: ImportedOrderItem[]) => {
+        setOrderItems(items);
+        toast.success(`${items.length} item(s) imported from CSV. Review and save.`);
+    }, []);
+
     if (loading) return <div className="p-6 text-center">Loading...</div>;
 
     return (
@@ -201,10 +209,16 @@ export default function EditPurchaseOrder({ params }: { params: Promise<{ id: st
                         <p className="text-muted-foreground text-sm">{poNumber} · <span className="font-semibold text-amber-600">{status.replace('_', ' ')}</span></p>
                     </div>
                 </div>
-                <Button onClick={handleSave} disabled={saving || orderItems.length === 0} className="gap-2">
-                    <Save className="h-4 w-4" />
-                    {saving ? 'Saving…' : 'Save Changes'}
-                </Button>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setCsvImportOpen(true)} className="gap-2">
+                        <FileSpreadsheet className="h-4 w-4" />
+                        Import Items CSV
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving || orderItems.length === 0} className="gap-2">
+                        <Save className="h-4 w-4" />
+                        {saving ? 'Saving…' : 'Save Changes'}
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -410,6 +424,12 @@ export default function EditPurchaseOrder({ params }: { params: Promise<{ id: st
                 </Card>
             </div>
         </div>
+
+        <PoEditCsvImportModal
+            open={csvImportOpen}
+            onOpenChange={setCsvImportOpen}
+            onImportComplete={handleCsvImportComplete}
+        />
         </PermissionGuard>
     );
 }

@@ -324,21 +324,30 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         if (!selectedSupplierId) return;
         if (isRestoring.current) return;
         getVendorWithAccounts(selectedSupplierId).then(res => {
-            if (res.status && res.data?.chartOfAccounts?.length > 0) {
-                const linkedAccounts: { id: string }[] = res.data.chartOfAccounts;
-                const currentRows = form.getValues("details").length;
-                if (linkedAccounts.length === 1) {
-                    form.setValue("details.0.accountId", linkedAccounts[0].id);
-                } else {
-                    linkedAccounts.forEach((acc, i) => {
-                        if (i < currentRows) {
-                            form.setValue(`details.${i}.accountId`, acc.id);
-                            form.setValue(`details.${i}.debit`, 0);
-                            form.setValue(`details.${i}.credit`, 0);
-                        } else {
-                            append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 });
-                        }
-                    });
+            if (res.status && res.data) {
+                const supplierData = res.data;
+                // If backend resolved the AP_PARTIES account and the supplier's specific tag account, use them!
+                if (supplierData.apPartiesAccountId && supplierData.tagAccountId) {
+                    form.setValue("details.0.accountId", supplierData.apPartiesAccountId);
+                    form.setValue("details.0.tagAccountId", supplierData.tagAccountId);
+                    form.setValue("details.0.debit", 0);
+                    form.setValue("details.0.credit", 0);
+                } else if (supplierData.chartOfAccounts?.length > 0) {
+                    const linkedAccounts: { id: string }[] = supplierData.chartOfAccounts;
+                    const currentRows = form.getValues("details").length;
+                    if (linkedAccounts.length === 1) {
+                        form.setValue("details.0.accountId", linkedAccounts[0].id);
+                    } else {
+                        linkedAccounts.forEach((acc, i) => {
+                            if (i < currentRows) {
+                                form.setValue(`details.${i}.accountId`, acc.id);
+                                form.setValue(`details.${i}.debit`, 0);
+                                form.setValue(`details.${i}.credit`, 0);
+                            } else {
+                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 });
+                            }
+                        });
+                    }
                 }
             }
         });
