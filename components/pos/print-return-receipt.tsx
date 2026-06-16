@@ -280,7 +280,7 @@ export function PrintReturnReceipt({
                         <Button onClick={() => printThermal("return-print-root", settings)} className="flex-1 gap-2" disabled={isLoading}>
                             {isLoading
                                 ? <><Loader2 className="h-4 w-4 animate-spin" /> Preparing…</>
-                                : <><Printer className="h-4 w-4" /> Print Return Receipt</>
+                                : <><Printer className="h-4 w-4" /> {isRefund ? "Print Refund Receipt" : "Print Return Receipt"}</>
                             }
                         </Button>
                     </DialogFooter>
@@ -545,7 +545,7 @@ function ReturnBody({
             </div>
 
             {/* ── Exchange Voucher ── */}
-            {exchangeVoucher && (
+            {exchangeVoucher && !isRefund && (
                 <>
                     <Separator />
                     <div className="text-center space-y-1 border-2 border-dashed border-zinc-950 rounded-lg px-3 py-3 bg-zinc-50">
