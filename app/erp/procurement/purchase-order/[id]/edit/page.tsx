@@ -30,6 +30,7 @@ interface OrderItem {
     unitPrice: number;
     itemName?: string;
     lineTotal?: number;
+    size?: string;
 }
 
 export default function EditPurchaseOrder({ params }: { params: Promise<{ id: string }> }) {
@@ -89,6 +90,7 @@ export default function EditPurchaseOrder({ params }: { params: Promise<{ id: st
                     quantity: parseFloat(item.quantity),
                     unitPrice: parseFloat(item.unitPrice),
                     lineTotal: parseFloat(item.lineTotal),
+                    size: item.item?.size?.name || '',
                 })));
             }
         } catch {
@@ -140,6 +142,7 @@ export default function EditPurchaseOrder({ params }: { params: Promise<{ id: st
                 quantity,
                 unitPrice,
                 lineTotal: quantity * unitPrice,
+                size: item.size?.name || '',
             }]);
             toast.success(`Added ${item.description}`);
         }
@@ -369,6 +372,7 @@ export default function EditPurchaseOrder({ params }: { params: Promise<{ id: st
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Item SKU</TableHead>
+                                        <TableHead>Size</TableHead>
                                         <TableHead className="text-right">Qty</TableHead>
                                         <TableHead className="text-right">Unit Price</TableHead>
                                         <TableHead className="text-right">Total</TableHead>
@@ -378,13 +382,20 @@ export default function EditPurchaseOrder({ params }: { params: Promise<{ id: st
                                 <TableBody>
                                     {orderItems.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={5} className="text-center text-muted-foreground h-24">No items added yet</TableCell>
+                                            <TableCell colSpan={6} className="text-center text-muted-foreground h-24">No items added yet</TableCell>
                                         </TableRow>
                                     ) : orderItems.map((item, index) => (
                                         <TableRow key={`${item.itemId}-${index}`}>
                                             <TableCell>
                                                 <div className="font-medium">{item.itemName || item.itemId}</div>
                                                 <div className="text-sm text-muted-foreground">{item.description}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {item.size ? (
+                                                    <Badge variant="secondary" className="font-mono text-xs">{item.size}</Badge>
+                                                ) : (
+                                                    <span className="text-muted-foreground text-xs">—</span>
+                                                )}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Input

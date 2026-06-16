@@ -53,6 +53,7 @@ export interface ImportedOrderItem {
     quantity: number;
     unitPrice: number;
     lineTotal: number;
+    size?: string;
 }
 
 type RowStatus = 'pending' | 'searching' | 'found' | 'not_found' | 'error';
@@ -67,6 +68,7 @@ interface RowResult {
     itemName?: string;
     description?: string;
     unitPrice?: number;
+    size?: string;
     /** Error / reason when not found */
     reason?: string;
 }
@@ -223,6 +225,7 @@ export function PoEditCsvImportModal({ open, onOpenChange, onImportComplete }: P
                             itemName: item.sku,
                             description: item.description || '',
                             unitPrice: Number(item.unitPrice ?? 0),
+                            size: item.size?.name || '',
                         };
                     }
                 } else {
@@ -285,6 +288,7 @@ export function PoEditCsvImportModal({ open, onOpenChange, onImportComplete }: P
             quantity: r.quantity,
             unitPrice: r.unitPrice ?? 0,
             lineTotal: r.quantity * (r.unitPrice ?? 0),
+            size: r.size || '',
         }));
 
         onImportComplete(items);
