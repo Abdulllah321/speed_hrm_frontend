@@ -45,6 +45,10 @@ function fmt(n: number) {
   return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtInt(n: number) {
+  return Math.round(n).toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
 function getGroupedItems(items: any[]) {
   const groups: { [sku: string]: any } = {};
   
@@ -729,7 +733,7 @@ export default function PurchaseInvoiceDetailPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Total Amount</label>
-                    <p className="font-medium">{invoice.totalAmount.toLocaleString()}</p>
+                    <p className="font-medium">{Math.round(invoice.totalAmount).toLocaleString()}</p>
                   </div>
                 </div>
               </CardContent>
@@ -864,40 +868,40 @@ export default function PurchaseInvoiceDetailPage() {
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Subtotal (Gross)</span>
-                        <span className="font-medium tabular-nums">{fmt(subtotal)}</span>
+                        <span className="font-medium tabular-nums">{fmtInt(subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Invoice Discount</span>
-                        <span className="font-medium tabular-nums text-red-600">-{fmt(discount)}</span>
+                        <span className="font-medium tabular-nums text-red-600">-{fmtInt(discount)}</span>
                       </div>
                       <div className="flex justify-between text-sm border-t pt-2">
                         <span className="text-gray-700 font-medium">Value Excl. Sales Tax</span>
-                        <span className="font-semibold tabular-nums">{fmt(valExcl)}</span>
+                        <span className="font-semibold tabular-nums">{fmtInt(valExcl)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Sale Tax Amount</span>
-                        <span className="font-medium tabular-nums">{fmt(salesTax)}</span>
+                        <span className="font-medium tabular-nums">{fmtInt(salesTax)}</span>
                       </div>
                       <div className="flex justify-between text-sm border-t pt-2">
                         <span className="text-gray-700 font-medium">Value Incl. Sales Tax</span>
-                        <span className="font-semibold tabular-nums">{fmt(valIncl)}</span>
+                        <span className="font-semibold tabular-nums">{fmtInt(valIncl)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Advance Tax ({advRate}%)</span>
-                        <span className="font-medium tabular-nums text-orange-600">{fmt(advTax)}</span>
+                        <span className="font-medium tabular-nums text-orange-600">{fmtInt(advTax)}</span>
                       </div>
                       <hr />
                       <div className="flex justify-between font-semibold">
                         <span>Total Amount</span>
-                        <span className="tabular-nums">{fmt(total)}</span>
+                        <span className="tabular-nums">{fmtInt(total)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Paid Amount</span>
-                        <span className="font-medium tabular-nums text-green-600">{fmt(paid)}</span>
+                        <span className="font-medium tabular-nums text-green-600">{fmtInt(paid)}</span>
                       </div>
                       <div className="border-t pt-3 flex justify-between">
                         <span className="text-lg font-bold">Remaining</span>
-                        <span className="text-lg font-bold tabular-nums text-red-600">{fmt(remaining)}</span>
+                        <span className="text-lg font-bold tabular-nums text-red-600">{fmtInt(remaining)}</span>
                       </div>
                     </>
                   );
@@ -1036,33 +1040,33 @@ export default function PurchaseInvoiceDetailPage() {
                            <>
                              <div className="flex justify-between">
                                <span className="text-gray-600">Subtotal (Gross):</span>
-                               <span className="tabular-nums font-medium">{fmt(subtotal)}</span>
+                               <span className="tabular-nums font-medium">{fmtInt(subtotal)}</span>
                              </div>
                              {discount > 0 && (
                                <div className="flex justify-between">
                                  <span className="text-gray-600">Discount:</span>
-                                 <span className="tabular-nums font-medium">-{fmt(discount)}</span>
+                                 <span className="tabular-nums font-medium">-{fmtInt(discount)}</span>
                                </div>
                              )}
                              <div className="flex justify-between border-t border-gray-400 pt-1">
                                <span className="font-semibold">Value Excl. Sales Tax:</span>
-                               <span className="tabular-nums font-semibold">{fmt(valExcl)}</span>
+                               <span className="tabular-nums font-semibold">{fmtInt(valExcl)}</span>
                              </div>
                              <div className="flex justify-between">
                                <span className="text-gray-600">Sale Tax Amount:</span>
-                               <span className="tabular-nums font-medium">{fmt(salesTax)}</span>
+                               <span className="tabular-nums font-medium">{fmtInt(salesTax)}</span>
                              </div>
                              <div className="flex justify-between border-t border-gray-400 pt-1">
                                <span className="font-semibold">Value Incl. Sales Tax:</span>
-                               <span className="tabular-nums font-semibold">{fmt(valIncl)}</span>
+                               <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
                              </div>
                              <div className="flex justify-between">
                                <span className="text-gray-600">Advance Tax ({advRate}%):</span>
-                               <span className="tabular-nums font-medium">{fmt(advTax)}</span>
+                               <span className="tabular-nums font-medium">{fmtInt(advTax)}</span>
                              </div>
                              <div className="flex justify-between border-t border-black pt-1 font-bold">
                                <span>Total Amount:</span>
-                               <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmt(total)}</span>
+                               <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(total)}</span>
                              </div>
                            </>
                          );
