@@ -812,7 +812,7 @@ export default function PurchaseInvoiceDetailPage() {
                         <span className="font-semibold tabular-nums">{fmt(valExcl)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">Sales Tax</span>
+                        <span className="text-gray-500">Sale Tax Amount</span>
                         <span className="font-medium tabular-nums">{fmt(salesTax)}</span>
                       </div>
                       <div className="flex justify-between text-sm border-t pt-2">
@@ -982,7 +982,7 @@ export default function PurchaseInvoiceDetailPage() {
                                <span className="tabular-nums font-semibold">{fmt(valExcl)}</span>
                              </div>
                              <div className="flex justify-between">
-                               <span className="text-gray-600">Sales Tax:</span>
+                               <span className="text-gray-600">Sale Tax Amount:</span>
                                <span className="tabular-nums font-medium">{fmt(salesTax)}</span>
                              </div>
                              <div className="flex justify-between border-t border-gray-400 pt-1">

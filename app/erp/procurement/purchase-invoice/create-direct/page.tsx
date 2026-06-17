@@ -551,7 +551,7 @@ export default function CreateDirectPurchaseInvoicePage() {
                                 <span>{subtotal.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div className="flex justify-between text-muted-foreground">
-                                <span>Tax</span>
+                                <span>Sale Tax Amount</span>
                                 <span>{taxAmount.toLocaleString('en-PK', { minimumFractionDigits: 2 })}</span>
                             </div>
                             <div className="flex justify-between items-center">
