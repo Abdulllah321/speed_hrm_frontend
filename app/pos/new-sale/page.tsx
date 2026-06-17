@@ -211,6 +211,8 @@ export default function NewSalePage() {
                     price: Number(oi.unitPrice),
                     discountPercent: Number(oi.discountPercent),
                     discountAmount: Number(oi.discountAmount),
+                    overrideDiscountPercent: oi.overrideDiscountPercent ? Number(oi.overrideDiscountPercent) : undefined,
+                    overrideDiscountNote: oi.overrideDiscountNote || undefined,
                     taxPercent: Number(oi.taxPercent),
                     taxAmount: Number(oi.taxAmount),
                     total: Number(oi.lineTotal),
@@ -351,7 +353,7 @@ export default function NewSalePage() {
         );
     }, []);
 
-    const handleDiscountChange = useCallback((id: string, newDiscountPercent: number) => {
+    const handleDiscountChange = useCallback((id: string, newDiscountPercent: number, note?: string) => {
         const clamped = Math.min(100, Math.max(0, newDiscountPercent));
         setCartItems((prev) =>
             prev.map((item) => {
@@ -361,13 +363,16 @@ export default function NewSalePage() {
                 
                 // Determine if this is an override
                 let overrideDiscountPercent = item.overrideDiscountPercent;
+                let overrideDiscountNote = item.overrideDiscountNote;
                 
                 if (clamped !== originalDiscount) {
                     // New discount is different from original, set override
                     overrideDiscountPercent = clamped;
+                    overrideDiscountNote = note;
                 } else {
                     // New discount matches original, clear override
                     overrideDiscountPercent = undefined;
+                    overrideDiscountNote = undefined;
                 }
                 
                 // Step 1: Retail price is item.price
@@ -391,6 +396,7 @@ export default function NewSalePage() {
                 return { 
                     ...item, 
                     overrideDiscountPercent,
+                    overrideDiscountNote,
                     discountAmount, 
                     taxAmount, 
                     total 

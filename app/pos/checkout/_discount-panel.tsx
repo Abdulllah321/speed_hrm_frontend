@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +63,8 @@ interface DiscountPanelProps {
     manualDiscountValue: number;
     onManualDiscountTypeChange: (t: "percent" | "flat") => void;
     onManualDiscountValueChange: (v: number) => void;
+    managerVerified?: boolean;
+    grandTotalBeforeManual?: number;
     // Clear
     onClearDiscount: () => void;
     // Helpers
@@ -83,9 +85,15 @@ export function DiscountPanel({
     onAllianceSearch, onSelectAlliance,
     manualDiscountType, manualDiscountValue,
     onManualDiscountTypeChange, onManualDiscountValueChange,
+    managerVerified, grandTotalBeforeManual,
     onClearDiscount, fmtCurrency, calcPromoDiscount,
 }: DiscountPanelProps) {
     const [activeAllianceIndex, setActiveAllianceIndex] = React.useState(-1);
+    const [tempManualDiscountValue, setTempManualDiscountValue] = useState<string>("");
+
+    useEffect(() => {
+        setTempManualDiscountValue(manualDiscountValue ? String(manualDiscountValue) : "");
+    }, [manualDiscountValue]);
 
     const filteredAlliances = alliances.filter(
         (a) =>
@@ -430,6 +438,11 @@ export function DiscountPanel({
                             )}
                         </summary>
                         <div className="p-3 space-y-3">
+                            {!managerVerified && (
+                                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                    🔒 Manager / Admin verification required
+                                </p>
+                            )}
                             <RadioGroup
                                 value={manualDiscountType}
                                 onValueChange={(v: any) => onManualDiscountTypeChange(v)}
@@ -439,7 +452,7 @@ export function DiscountPanel({
                                 <div className="flex items-center gap-1.5">
                                     <RadioGroupItem value="percent" id="disc-pct" />
                                     <Label htmlFor="disc-pct" className="text-sm flex items-center gap-1">
-                                        <Percent className="h-3 w-3" /> Percentage
+                                        <Percent className="h-3 w-3" /> Percentage (max 50%)
                                     </Label>
                                 </div>
                                 <div className="flex items-center gap-1.5">
@@ -447,26 +460,66 @@ export function DiscountPanel({
                                     <Label htmlFor="disc-flat" className="text-sm">Flat PKR</Label>
                                 </div>
                             </RadioGroup>
-                            <div className="flex gap-2">
-                                <Input
-                                    type="number"
-                                    min={0}
-                                    max={manualDiscountType === "percent" ? 100 : undefined}
-                                    className="font-mono"
-                                    placeholder={manualDiscountType === "percent" ? "0 – 100" : "Amount"}
-                                    value={manualDiscountValue || ""}
-                                    onChange={(e) => onManualDiscountValueChange(parseFloat(e.target.value) || 0)}
-                                    disabled={discountMode !== "none" && discountMode !== "manual"}
-                                />
-                                {discountMode === "manual" && (
-                                    <Button variant="ghost" size="icon" onClick={onClearDiscount}>
-                                        <XCircle className="h-4 w-4 text-muted-foreground" />
-                                    </Button>
-                                )}
-                            </div>
-                            {discountMode === "manual" && orderDiscount > 0 && (
-                                <p className="text-xs text-primary font-semibold">Discount: −{fmtCurrency(orderDiscount)}</p>
-                            )}
+                            {(() => {
+                                 const typedVal = parseFloat(tempManualDiscountValue) || 0;
+                                 const maxAllowedFlat = Math.round((grandTotalBeforeManual || 0) * 0.5);
+                                 const isOverLimit = manualDiscountType === "percent"
+                                     ? typedVal > 50
+                                     : typedVal > maxAllowedFlat;
+                                 
+                                 const limitErrorMessage = manualDiscountType === "percent"
+                                     ? "Manual discount cannot exceed 50%"
+                                     : `Manual discount cannot exceed ${fmtCurrency(maxAllowedFlat)} (50% of Grand Total)`;
+
+                                 return (
+                                     <>
+                                         <div className="flex gap-2">
+                                             <Input
+                                                 type="number"
+                                                 className={cn("font-mono", isOverLimit && "border-destructive focus-visible:ring-destructive")}
+                                                 placeholder={manualDiscountType === "percent" ? "0 – 50" : `Max ${fmtCurrency(maxAllowedFlat)}`}
+                                                 value={tempManualDiscountValue}
+                                                 onChange={(e) => {
+                                                     setTempManualDiscountValue(e.target.value);
+                                                 }}
+                                                 onKeyDown={(e) => {
+                                                     if (e.key === "Enter" && !isOverLimit) {
+                                                         onManualDiscountValueChange(typedVal);
+                                                     }
+                                                 }}
+                                                 disabled={discountMode !== "none" && discountMode !== "manual"}
+                                             />
+                                             {tempManualDiscountValue !== "" && typedVal !== manualDiscountValue && (
+                                                 <Button
+                                                     size="sm"
+                                                     disabled={isOverLimit}
+                                                     onClick={() => {
+                                                         onManualDiscountValueChange(typedVal);
+                                                     }}
+                                                 >
+                                                     Apply
+                                                 </Button>
+                                             )}
+                                             {discountMode === "manual" && (
+                                                 <Button variant="ghost" size="icon" onClick={() => {
+                                                     setTempManualDiscountValue("");
+                                                     onClearDiscount();
+                                                 }}>
+                                                     <XCircle className="h-4 w-4 text-muted-foreground" />
+                                                 </Button>
+                                             )}
+                                         </div>
+                                         {isOverLimit && (
+                                             <p className="text-xs text-destructive font-medium flex items-center gap-1 mt-1">
+                                                 ⚠️ {limitErrorMessage}
+                                             </p>
+                                         )}
+                                     </>
+                                 );
+                             })()}
+                             {discountMode === "manual" && orderDiscount > 0 && (
+                                 <p className="text-xs text-primary font-semibold">Discount: −{fmtCurrency(orderDiscount)}</p>
+                             )}
                         </div>
                     </details>
                 )}
