@@ -8,6 +8,7 @@ import { getCookie } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 import { PrintReceipt } from "@/components/pos/print-receipt";
+import { ManagerVerificationDialog } from "@/components/auth/manager-verification-dialog";
 import { usePosSettings } from "@/hooks/use-pos-settings";
 import { useAuth } from "@/components/providers/auth-provider";
 import { Button } from "@/components/ui/button";
@@ -215,6 +216,12 @@ export default function CheckoutPage() {
     const [manualDiscountType, setManualDiscountType] = useState<"percent" | "flat">("percent");
     const [manualDiscountValue, setManualDiscountValue] = useState<number>(0);
 
+    // ── Manager verification for manual discount ──────────────────────
+    const [showManagerVerify, setShowManagerVerify] = useState(false);
+    const [managerVerified, setManagerVerified] = useState(false);
+    const [pendingManualDiscountValue, setPendingManualDiscountValue] = useState<number>(0);
+    const [manualDiscountNote, setManualDiscountNote] = useState<string>("");
+
     // ── Payment state ──────────────────────────────────────────────────
     const [tenders, setTenders] = useState<Tender[]>([]);
     const [tenderMethod, setTenderMethod] = useState("cash");
@@ -337,6 +344,18 @@ export default function CheckoutPage() {
     }, 0);
 
     const subtotalAfterItems = subtotal - itemDiscounts;
+    
+    const defaultItemTax = cartItems.reduce((acc, i) => {
+        const taxDivisor = 1 + (i.taxPercent / 100);
+        const wostPerUnit = i.price / taxDivisor;
+        const totalWost = wostPerUnit * i.quantity;
+        const discountPercent = i.overrideDiscountPercent ?? i.discountPercent;
+        const discountAmount = totalWost * (discountPercent / 100);
+        const afterDiscount = totalWost - discountAmount;
+        return acc + (Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100);
+    }, 0);
+
+    const grandTotalBeforeManual = Math.round(subtotal - itemDiscounts + defaultItemTax + FBR_POS_FEE);
 
     let orderDiscount = 0;
     let finalItemDiscounts = itemDiscounts;
@@ -370,10 +389,16 @@ export default function CheckoutPage() {
         orderDiscount = appliedCoupon.discountAmount;
     } else if (discountMode === "manual") {
         if (manualDiscountType === "percent") {
-            orderDiscount = Math.round(subtotalAfterItems * (manualDiscountValue / 100) * 100) / 100;
+            // Cap at 50%
+            const cappedPct = Math.min(manualDiscountValue, 50);
+            orderDiscount = Math.round(subtotal * (cappedPct / 100) * 100) / 100;
         } else {
-            orderDiscount = Math.min(manualDiscountValue, subtotalAfterItems);
+            // Flat amount capped at 50% of grand total before manual discount
+            const maxFlat = Math.round(grandTotalBeforeManual * 0.5 * 100) / 100;
+            orderDiscount = Math.min(manualDiscountValue, maxFlat);
         }
+        // Manual discount replaces item-level discounts
+        finalItemDiscounts = 0;
     }
 
     const totalDiscount = finalItemDiscounts + orderDiscount;
@@ -418,15 +443,7 @@ export default function CheckoutPage() {
             itemTax += Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100;
         });
     } else {
-        itemTax = cartItems.reduce((acc, i) => {
-            const taxDivisor = 1 + (i.taxPercent / 100);
-            const wostPerUnit = i.price / taxDivisor;
-            const totalWost = wostPerUnit * i.quantity;
-            const discountPercent = i.overrideDiscountPercent ?? i.discountPercent;
-            const discountAmount = totalWost * (discountPercent / 100);
-            const afterDiscount = totalWost - discountAmount;
-            return acc + (Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100);
-        }, 0);
+        itemTax = defaultItemTax;
     }
 
     // Grand total includes FBR POS Fee
@@ -445,7 +462,9 @@ export default function CheckoutPage() {
         setCouponInput("");
         setCouponError("");
         setManualDiscountValue(0);
+        setManualDiscountNote("");
         setShowPromoScope(false);
+        setManagerVerified(false);
     }, []);
 
     const handleValidateCoupon = useCallback(async () => {
@@ -641,6 +660,7 @@ export default function CheckoutPage() {
                 itemId: item.id, quantity: item.quantity, unitPrice: item.price,
                 discountPercent: item.discountPercent,
                 overrideDiscountPercent: item.overrideDiscountPercent,
+                overrideDiscountNote: item.overrideDiscountNote,
                 taxPercent: item.taxPercent,
                 promoDiscountAmount:
                     (discountMode === "promo" && selectedPromo && !promoScopeAll && promoScopedItems.has(item.id))
@@ -677,6 +697,7 @@ export default function CheckoutPage() {
             if (discountMode === "manual" && orderDiscount > 0) {
                 if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
                 else body.globalDiscountAmount = orderDiscount;
+                body.manualDiscountNote = manualDiscountNote;
             }
             // Merchant (bank terminal) for card payments
             if (selectedMerchant && (tenders.some(t => t.method === "card" || t.method === "bank_transfer"))) {
@@ -696,7 +717,7 @@ export default function CheckoutPage() {
     }, [
         cartItems, tenders, discountMode, selectedPromo, promoScopeAll, promoScopedItems,
         appliedCoupon, selectedAlliance, allianceMeta, manualDiscountType, manualDiscountValue,
-        orderDiscount, grandTotal, balanceDue, selectedCustomer, selectedCashierId,
+        manualDiscountNote, orderDiscount, grandTotal, balanceDue, selectedCustomer, selectedCashierId,
         isGiftReceipt, appliedVouchers, holdOrderId, settings.requireCustomer, selectedMerchant,
     ]);
 
@@ -734,6 +755,7 @@ export default function CheckoutPage() {
                 itemId: item.id, quantity: item.quantity, unitPrice: item.price,
                 discountPercent: item.discountPercent,
                 overrideDiscountPercent: item.overrideDiscountPercent,
+                overrideDiscountNote: item.overrideDiscountNote,
                 taxPercent: item.taxPercent,
                 promoDiscountAmount:
                     (discountMode === "promo" && selectedPromo && !promoScopeAll && promoScopedItems.has(item.id))
@@ -770,6 +792,7 @@ export default function CheckoutPage() {
             if (discountMode === "manual" && orderDiscount > 0) {
                 if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
                 else body.globalDiscountAmount = orderDiscount;
+                body.manualDiscountNote = manualDiscountNote;
             }
             // Merchant (bank terminal) for card payments
             if (selectedMerchant && (tenders.some(t => t.method === "card" || t.method === "bank_transfer"))) {
@@ -790,7 +813,7 @@ export default function CheckoutPage() {
     }, [
         cartItems, tenders, discountMode, selectedPromo, promoScopeAll, promoScopedItems,
         appliedCoupon, selectedAlliance, allianceMeta, manualDiscountType, manualDiscountValue,
-        orderDiscount, grandTotal, balanceDue, selectedCustomer, holdOrderId, isGiftReceipt,
+        manualDiscountNote, orderDiscount, grandTotal, balanceDue, selectedCustomer, holdOrderId, isGiftReceipt,
         selectedMerchant,
     ]);
 
@@ -936,10 +959,29 @@ export default function CheckoutPage() {
                         manualDiscountValue={manualDiscountValue}
                         onManualDiscountTypeChange={setManualDiscountType}
                         onManualDiscountValueChange={(v) => {
-                            setManualDiscountValue(v);
-                            if (v > 0) setDiscountMode("manual");
-                            else if (discountMode === "manual") setDiscountMode("none");
+                            // Enforce caps in UI
+                            let capped = v;
+                            if (manualDiscountType === "percent") {
+                                capped = Math.min(v, 50);
+                            } else {
+                                const maxFlat = Math.round(grandTotalBeforeManual * 0.5 * 100) / 100;
+                                capped = Math.min(v, maxFlat);
+                            }
+                            // If value > 0 and not yet verified by manager, show dialog
+                            if (capped > 0 && !managerVerified) {
+                                setPendingManualDiscountValue(capped);
+                                setShowManagerVerify(true);
+                                return;
+                            }
+                            setManualDiscountValue(capped);
+                            if (capped > 0) setDiscountMode("manual");
+                            else if (discountMode === "manual") {
+                                setDiscountMode("none");
+                                setManagerVerified(false); // Reset verification when cleared
+                            }
                         }}
+                        managerVerified={managerVerified}
+                        grandTotalBeforeManual={grandTotalBeforeManual}
                         onClearDiscount={clearDiscount}
                         fmtCurrency={fmtCurrency}
                         calcPromoDiscount={calcPromoDiscount}
@@ -1092,6 +1134,26 @@ export default function CheckoutPage() {
                     }}
                 />
             )}
+
+            {/* Manager Verification for Manual Discount */}
+            <ManagerVerificationDialog
+                open={showManagerVerify}
+                onOpenChange={(o) => {
+                    setShowManagerVerify(o);
+                    if (!o) setPendingManualDiscountValue(0);
+                }}
+                onVerified={(managerUserId, note) => {
+                    setManagerVerified(true);
+                    setManualDiscountValue(pendingManualDiscountValue);
+                    setManualDiscountNote(note || "");
+                    setDiscountMode("manual");
+                    setPendingManualDiscountValue(0);
+                }}
+                requireNote={true}
+                notePlaceholder="Enter reason/note for manual discount (required)..."
+                title="Manager Approval Required"
+                description="Manual discount requires manager or admin credentials and a mandatory justification note."
+            />
 
             {/* Hold Order Modal */}
             <HoldOrderModal
