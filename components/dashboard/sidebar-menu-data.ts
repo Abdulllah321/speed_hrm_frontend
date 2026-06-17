@@ -828,7 +828,7 @@ export const menuData: MenuItem[] = [
             href: "/erp/inventory/transactions/plm-claims",
             permissions: [
               "erp.inventory.claims.acknowledge",
-              "erp.inventory.warehouse.view",
+
             ],
           },
         ],
@@ -845,6 +845,7 @@ export const menuData: MenuItem[] = [
       "erp.procurement.rfq.read",
       "erp.procurement.vq.create",
       "erp.procurement.po.create",
+      "erp.procurement.po.read",
       "erp.procurement.grn.read",
       "erp.procurement.landed-cost.create",
       "erp.procurement.pi.read",
@@ -887,7 +888,7 @@ export const menuData: MenuItem[] = [
           {
             title: "Purchase Order",
             href: "/erp/procurement/purchase-order",
-            permissions: ["erp.procurement.po.create"],
+            permissions: ["erp.procurement.po.create","erp.procurement.po.read"],
           },
           {
             title: "Goods Receipt Note",
