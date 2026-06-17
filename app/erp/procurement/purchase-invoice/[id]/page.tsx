@@ -45,6 +45,44 @@ function fmt(n: number) {
   return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function getGroupedItems(items: any[]) {
+  const groups: { [sku: string]: any } = {};
+  
+  items.forEach(item => {
+    const sku = item.item?.sku || item.sku || '—';
+    if (!groups[sku]) {
+      groups[sku] = {
+        id: item.id,
+        sku: sku,
+        hsCodeStr: item.item?.hsCodeStr || '—',
+        description: item.item?.description || item.description || '—',
+        quantity: 0,
+        unitPrice: Number(item.unitPrice || 0),
+        taxRate: Number(item.taxRate || 0),
+        discountRate: Number(item.discountRate || 0),
+        discountAmount: 0,
+        taxAmount: 0,
+        lineTotal: 0,
+        item: item.item,
+      };
+    }
+    
+    const qty = Number(item.quantity || 0);
+    const unitCost = Number(item.unitPrice || 0);
+    const discRate = Number(item.discountRate || 0);
+    const discAmt = Number(item.discountAmount || (qty * unitCost * discRate / 100));
+    const taxRate = Number(item.taxRate || 0);
+    const taxAmt = Number(item.taxAmount || ((qty * unitCost - discAmt) * taxRate / 100));
+    
+    groups[sku].quantity += qty;
+    groups[sku].discountAmount += discAmt;
+    groups[sku].taxAmount += taxAmt;
+    groups[sku].lineTotal += Number(item.lineTotal || 0);
+  });
+  
+  return Object.values(groups);
+}
+
 interface PaymentVoucherInvoice {
   id: string;
   paidAmount: number;
@@ -96,7 +134,7 @@ export default function PurchaseInvoiceDetailPage() {
     if (!invoice) return;
     try {
       const wb   = XLSX.utils.book_new();
-      const items = (invoice.items || []) as any[];
+      const items = getGroupedItems(invoice.items || []);
 
       const advRate    = Number(invoice.advanceTaxRate || 0.5);
       const subtotal   = Number(invoice.subtotal       || 0);
@@ -258,7 +296,7 @@ export default function PurchaseInvoiceDetailPage() {
   const handleExportCSV = () => {
     if (!invoice) return;
     try {
-      const items    = (invoice.items || []) as any[];
+      const items    = getGroupedItems(invoice.items || []);
       const advRate  = Number(invoice.advanceTaxRate || 0.5);
       const subtotal = Number(invoice.subtotal       || 0);
       const salesTax = Number(invoice.taxAmount      || 0);
@@ -701,7 +739,7 @@ export default function PurchaseInvoiceDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(invoice.items || []).map((item: any) => {
+                      {getGroupedItems(invoice.items || []).map((item: any) => {
                         const advRate  = Number((invoice as any).advanceTaxRate || 0.5);
                         const qty      = Number(item.quantity      || 0);
                         const unitCost = Number(item.unitPrice     || 0);
@@ -910,7 +948,7 @@ export default function PurchaseInvoiceDetailPage() {
                   </thead>
                   <tbody>
                     {invoice.items && invoice.items.length > 0 ? (
-                      invoice.items.map((item: any, i: number) => {
+                      getGroupedItems(invoice.items).map((item: any, i: number) => {
                         const advRate  = Number((invoice as any).advanceTaxRate || 0.5);
                         const qty      = Number(item.quantity    || 0);
                         const unitCost = Number(item.unitPrice   || 0);
