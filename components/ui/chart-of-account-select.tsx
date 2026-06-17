@@ -10,11 +10,39 @@ import {
     BookOpen,
     FolderOpen,
     Folder,
+    Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+    Command,
+    CommandInput,
+    CommandList,
+    CommandEmpty,
+    CommandGroup,
+    CommandItem,
+} from "@/components/ui/command";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { authFetch } from "@/lib/auth";
-import { ChartOfAccount } from "@/lib/actions/chart-of-account";
+import { ChartOfAccount, createChartOfAccount } from "@/lib/actions/chart-of-account";
+import { toast } from "sonner";
 
 // ─── Module-level cache ───────────────────────────────────────────────────────
 let _cachedTree: ChartOfAccount[] | null = null;
@@ -23,6 +51,12 @@ let _fetchPromise: Promise<ChartOfAccount[]> | null = null;
 /** Expose the cached tree so consumers can read children without extra fetches. */
 export function getSharedTree(): ChartOfAccount[] {
     return _cachedTree ?? [];
+}
+
+/** Invalidate the cached tree so that the next select fetch reloads the database. */
+export function invalidateCachedTree() {
+    _cachedTree = null;
+    _fetchPromise = null;
 }
 
 async function fetchTree(): Promise<ChartOfAccount[]> {
@@ -75,6 +109,38 @@ function findById(nodes: ChartOfAccount[], id: string): ChartOfAccount | undefin
     return undefined;
 }
 
+/** Auto-generate sequential next code under a parent group. */
+function generateNextCode(parent: ChartOfAccount, allAccounts: ChartOfAccount[]): string {
+    const parentCode = parent.code;
+    
+    // Find direct children of this parent
+    const siblings = allAccounts.filter(acc => acc.parentId === parent.id);
+    const codes = siblings.map(s => s.code);
+    
+    if (codes.length === 0) {
+        return parentCode + "0001";
+    }
+    
+    // Extract numeric suffixes
+    const numericSuffixes = codes
+        .filter(c => c.startsWith(parentCode))
+        .map(c => {
+            const suffix = c.substring(parentCode.length);
+            return { suffix, num: parseInt(suffix, 10) };
+        })
+        .filter(x => !isNaN(x.num));
+        
+    if (numericSuffixes.length === 0) {
+        return parentCode + "0001";
+    }
+    
+    const maxVal = Math.max(...numericSuffixes.map(x => x.num));
+    const nextVal = maxVal + 1;
+    
+    const padLen = Math.max(...numericSuffixes.map(x => x.suffix.length));
+    return parentCode + String(nextVal).padStart(padLen, '0');
+}
+
 // ─── Type badge config ────────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<string, { label: string; className: string }> = {
     ASSET:     { label: "Asset",     className: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -97,7 +163,6 @@ function filterTreeExclude(nodes: ChartOfAccount[], excludeId?: string): ChartOf
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface ChartOfAccountSelectProps {
-    /** Pre-loaded tree (optional). If omitted, the component fetches lazily. */
     accounts?: ChartOfAccount[];
     value?: string;
     onValueChange?: (value: string) => void;
@@ -107,6 +172,7 @@ export interface ChartOfAccountSelectProps {
     allowGroups?: boolean;
     groupsOnly?: boolean;
     excludeAccountId?: string;
+    id?: string;
 }
 
 // ─── Tree row ─────────────────────────────────────────────────────────────────
@@ -142,26 +208,20 @@ function TreeRow({
 
     return (
         <>
-            <div
-                role="option"
-                aria-selected={isSelected}
-                aria-expanded={hasChildren ? isExpanded : undefined}
-                onClick={() => {
+            <CommandItem
+                value={node.id}
+                onSelect={() => {
                     if (isSelectable) {
                         onSelect(node.id);
-                        if (hasChildren) onToggle(node.id);
                     } else if (node.isGroup) {
                         onToggle(node.id);
                     }
                 }}
+                disabled={!isInteractive}
                 style={{ paddingLeft: `${8 + depth * 16}px` }}
                 className={cn(
-                    "flex items-center gap-2 py-1.5 pr-3 rounded-md select-none text-sm",
-                    isInteractive
-                        ? "cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
-                        : "cursor-default opacity-50",
-                    isSelected && "bg-accent font-medium",
-                    node.isGroup && "text-muted-foreground"
+                    "flex items-center gap-2 py-1.5 pr-3 rounded-md select-none text-sm cursor-pointer",
+                    node.isGroup && "text-muted-foreground font-semibold"
                 )}
             >
                 {/* Expand / collapse chevron */}
@@ -202,9 +262,9 @@ function TreeRow({
                 <span className="flex-1 min-w-0 truncate">{node.name}</span>
 
                 {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-primary ml-auto" />}
-            </div>
+            </CommandItem>
 
-            {/* Children — rendered when expanded (works for both group and non-group parents) */}
+            {/* Children — rendered when expanded */}
             {isExpanded && node.children?.map((child) => (
                 <TreeRow
                     key={child.id}
@@ -219,43 +279,6 @@ function TreeRow({
                 />
             ))}
         </>
-    );
-}
-
-// ─── Search result row ────────────────────────────────────────────────────────
-interface SearchRowProps {
-    account: ChartOfAccount;
-    selectedId?: string;
-    onSelect: (id: string) => void;
-    /** Breadcrumb path from root to this node */
-    breadcrumb: string;
-}
-
-function SearchRow({ account, selectedId, onSelect, breadcrumb }: SearchRowProps) {
-    const isSelected = selectedId === account.id;
-    return (
-        <div
-            role="option"
-            aria-selected={isSelected}
-            onClick={() => onSelect(account.id)}
-            className={cn(
-                "flex items-start gap-2 px-3 py-2 rounded-md cursor-pointer select-none",
-                "hover:bg-accent hover:text-accent-foreground transition-colors",
-                isSelected && "bg-accent"
-            )}
-        >
-            <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
-            <div className="flex flex-col flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-[11px] font-mono text-muted-foreground shrink-0">{account.code}</span>
-                    <span className={cn("text-sm truncate", isSelected && "font-medium")}>{account.name}</span>
-                </div>
-                {breadcrumb && (
-                    <span className="text-[10px] text-muted-foreground truncate">{breadcrumb}</span>
-                )}
-            </div>
-            {isSelected && <CheckIcon className="h-4 w-4 shrink-0 text-primary mt-0.5" />}
-        </div>
     );
 }
 
@@ -276,244 +299,426 @@ function buildBreadcrumbs(
     return map;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-export function ChartOfAccountSelect({
-    accounts: accountsProp,
-    value,
-    onValueChange,
-    placeholder = "Select Account",
-    disabled = false,
-    className,
-    allowGroups = false,
-    groupsOnly = false,
-    excludeAccountId,
-}: ChartOfAccountSelectProps) {
-    const [open, setOpen] = React.useState(false);
-    const [tree, setTree] = React.useState<ChartOfAccount[]>(
-        accountsProp ?? _cachedTree ?? []
-    );
-    const [isLoading, setIsLoading] = React.useState(false);
-    const [search, setSearch] = React.useState("");
-    const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+// ─── Inline Create Account Dialog ─────────────────────────────────────────────
+interface CreateAccountDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    allFlat: ChartOfAccount[];
+    onCreated: (newAccount: ChartOfAccount) => void;
+}
 
-    // Lazy-fetch on first open OR if value is set (e.g. during edit)
-    React.useEffect(() => {
-        if (accountsProp) {
-            setTree(accountsProp);
+function CreateAccountDialog({ open, onOpenChange, allFlat, onCreated }: CreateAccountDialogProps) {
+    const [parentId, setParentId] = React.useState<string>("");
+    const [name, setName] = React.useState<string>("");
+    const [code, setCode] = React.useState<string>("");
+    const [type, setType] = React.useState<string>("");
+    const [isGroup, setIsGroup] = React.useState<boolean>(false);
+    const [isLoading, setIsLoading] = React.useState<boolean>(false);
+
+    const groups = React.useMemo(() => allFlat.filter(a => a.isGroup), [allFlat]);
+
+    const handleParentChange = (val: string) => {
+        setParentId(val);
+        const parent = allFlat.find(a => a.id === val);
+        if (parent) {
+            setType(parent.type);
+            setCode(generateNextCode(parent, allFlat));
+        } else {
+            setType("");
+            setCode("");
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name || !code || !type) {
+            toast.error("Please fill in all required fields.");
             return;
         }
-        if ((!open && !value) || tree.length > 0) return;
 
         setIsLoading(true);
-        fetchTree().then((data) => {
-            setTree(data);
-            setIsLoading(false);
-        });
-    }, [open, value, accountsProp, tree.length]);
-
-    // Sync prop changes
-    React.useEffect(() => {
-        if (accountsProp) setTree(accountsProp);
-    }, [accountsProp]);
-
-    // Reset search + collapse on close
-    React.useEffect(() => {
-        if (!open) {
-            setSearch("");
-        }
-    }, [open]);
-
-    // ── Derived ────────────────────────────────────────────────────────────────
-    const filteredTree = React.useMemo(() => {
-        return filterTreeExclude(tree, excludeAccountId);
-    }, [tree, excludeAccountId]);
-
-    const allFlat = React.useMemo(() => flattenTree(filteredTree), [filteredTree]);
-
-    const breadcrumbMap = React.useMemo(() => buildBreadcrumbs(filteredTree), [filteredTree]);
-
-    /**
-     * Search results: filtered depending on groupsOnly/allowGroups.
-     */
-    const searchResults = React.useMemo(() => {
-        if (!search.trim()) return [];
-        const q = search.trim().toLowerCase();
-        return allFlat.filter((a) => {
-            if (groupsOnly) {
-                if (!a.isGroup) return false;
-            } else if (!allowGroups) {
-                if (a.isGroup) return false;
+        try {
+            const payload = {
+                code,
+                name,
+                type,
+                parentId: parentId || null,
+                isGroup,
+                isActive: true
+            };
+            const result = await createChartOfAccount(payload);
+            if (result.status && result.data) {
+                toast.success(result.message || "Ledger created successfully!");
+                onCreated(result.data);
+                onOpenChange(false);
+                // Reset form
+                setParentId("");
+                setName("");
+                setCode("");
+                setType("");
+                setIsGroup(false);
+            } else {
+                toast.error(result.message || "Failed to create ledger.");
             }
-            return (
-                a.code.toLowerCase().includes(q) ||
-                a.name.toLowerCase().includes(q) ||
-                a.type.toLowerCase().includes(q)
-            );
-        });
-    }, [allFlat, search, groupsOnly, allowGroups]);
-
-    const selectedAccount = React.useMemo(
-        () => (value ? findById(filteredTree, value) : undefined),
-        [filteredTree, value]
-    );
-
-    const displayLabel = selectedAccount
-        ? `${selectedAccount.code} - ${selectedAccount.name}`
-        : null;
-
-    // ── Handlers ───────────────────────────────────────────────────────────────
-    function toggleExpand(id: string) {
-        setExpanded((prev) => {
-            const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
-            return next;
-        });
-    }
-
-    function handleSelect(id: string) {
-        onValueChange?.(value === id ? "" : id);
-        setOpen(false);
-    }
-
-    const isSearching = search.trim().length > 0;
+        } catch (error) {
+            toast.error("An error occurred while creating ledger.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <button
-                    type="button"
-                    role="combobox"
-                    aria-expanded={open}
-                    aria-haspopup="listbox"
-                    disabled={disabled}
-                    className={cn(
-                        "flex items-center w-full h-9 px-3 rounded-md border border-input bg-background text-sm font-normal cursor-pointer select-none text-left",
-                        "hover:bg-accent hover:text-accent-foreground transition-colors",
-                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                        open && "ring-2 ring-ring/20",
-                        disabled && "pointer-events-none opacity-50",
-                        className
-                    )}
-                >
-                    <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mr-2" />
-                    <span className={cn("flex-1 min-w-0 truncate", !displayLabel && "text-muted-foreground")}>
-                        {displayLabel ?? placeholder}
-                    </span>
-                    {selectedAccount && (
-                        <span
-                            className={cn(
-                                "ml-2 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded",
-                                TYPE_CONFIG[selectedAccount.type]?.className ?? "bg-muted text-muted-foreground"
-                            )}
-                        >
-                            {TYPE_CONFIG[selectedAccount.type]?.label ?? selectedAccount.type}
-                        </span>
-                    )}
-                    <ChevronDownIcon
-                        className={cn(
-                            "ml-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                            open && "rotate-180"
-                        )}
-                    />
-                </button>
-            </PopoverTrigger>
-
-            <PopoverContent
-                className="w-(--radix-popover-trigger-width) min-w-80 p-0"
-                align="start"
-                sideOffset={4}
-            >
-                {/* Search bar */}
-                <div className="flex items-center border-b px-3 gap-2">
-                    <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <input
-                        className="flex h-10 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                        placeholder="Search by code or name..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        autoFocus
-                    />
-                    {search && (
-                        <button
-                            type="button"
-                            onClick={() => setSearch("")}
-                            className="text-xs text-muted-foreground hover:text-foreground shrink-0"
-                        >
-                            Clear
-                        </button>
-                    )}
-                </div>
-
-                {/* Body */}
-                <div className="max-h-80 overflow-y-auto p-1" role="listbox">
-                    {isLoading ? (
-                        <div className="flex items-center justify-center py-8 gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                            <span className="text-sm text-muted-foreground">Loading accounts...</span>
-                        </div>
-                    ) : isSearching ? (
-                        /* ── Search mode ── */
-                        searchResults.length === 0 ? (
-                            <div className="py-6 text-center text-sm text-muted-foreground">
-                                No accounts found.
-                            </div>
-                        ) : (
-                            searchResults.map((acc) => (
-                                <SearchRow
-                                    key={acc.id}
-                                    account={acc}
-                                    selectedId={value}
-                                    onSelect={handleSelect}
-                                    breadcrumb={breadcrumbMap.get(acc.id) ?? ""}
-                                />
-                            ))
-                        )
-                    ) : (
-                        /* ── Tree mode ── */
-                        filteredTree.length === 0 ? (
-                            <div className="py-6 text-center text-sm text-muted-foreground">
-                                No accounts available.
-                            </div>
-                        ) : (
-                            filteredTree.map((node) => (
-                                <TreeRow
-                                    key={node.id}
-                                    node={node}
-                                    depth={0}
-                                    expanded={expanded}
-                                    onToggle={toggleExpand}
-                                    selectedId={value}
-                                    onSelect={handleSelect}
-                                    allowGroups={allowGroups}
-                                    groupsOnly={groupsOnly}
-                                />
-                            ))
-                        )
-                    )}
-                </div>
-
-                {/* Footer */}
-                {!isLoading && allFlat.length > 0 && (
-                    <div className="border-t px-3 py-2 flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">
-                            {isSearching
-                                ? `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`
-                                : groupsOnly
-                                    ? `${allFlat.filter((a) => a.isGroup).length} groups`
-                                    : `${allFlat.filter((a) => !a.isGroup).length} accounts`}
-                        </span>
-                        {value && (
-                            <button
-                                type="button"
-                                onClick={() => { onValueChange?.(""); setOpen(false); }}
-                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                                Clear selection
-                            </button>
-                        )}
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Create New Ledger</DialogTitle>
+                    <DialogDescription>
+                        Create a new account directly in the chart of accounts.
+                    </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4 py-4">
+                    <div className="space-y-1">
+                        <Label>Parent Account Group</Label>
+                        <Select value={parentId} onValueChange={handleParentChange}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select Parent Group" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-52">
+                                {groups.map(g => (
+                                    <SelectItem key={g.id} value={g.id}>
+                                        {g.code} - {g.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
-                )}
-            </PopoverContent>
-        </Popover>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label>Account Type</Label>
+                            <Input value={type} readOnly disabled className="bg-muted font-mono" />
+                        </div>
+                        <div className="space-y-1">
+                            <Label>Account Code *</Label>
+                            <Input value={code} onChange={e => setCode(e.target.value)} required placeholder="e.g. 10010001" className="font-mono" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <Label>Account Name *</Label>
+                        <Input value={name} onChange={e => setName(e.target.value)} required placeholder="e.g. Cash in Hand" autoFocus />
+                    </div>
+
+                    <DialogFooter className="pt-4">
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading ? "Saving..." : "Create Account"}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfAccountSelectProps>(
+    function ChartOfAccountSelect(
+        {
+            accounts: accountsProp,
+            value,
+            onValueChange,
+            placeholder = "Select Account",
+            disabled = false,
+            className,
+            allowGroups = false,
+            groupsOnly = false,
+            excludeAccountId,
+            id,
+        },
+        ref
+    ) {
+        const [open, setOpen] = React.useState(false);
+        const [tree, setTree] = React.useState<ChartOfAccount[]>(
+            accountsProp ?? _cachedTree ?? []
+        );
+        const [isLoading, setIsLoading] = React.useState(false);
+        const [search, setSearch] = React.useState("");
+        const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+        const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+
+        // Lazy-fetch on first open OR if value is set
+        React.useEffect(() => {
+            if (accountsProp) {
+                setTree(accountsProp);
+                return;
+            }
+            if ((!open && !value) || tree.length > 0) return;
+
+            setIsLoading(true);
+            fetchTree().then((data) => {
+                setTree(data);
+                setIsLoading(false);
+            });
+        }, [open, value, accountsProp, tree.length]);
+
+        // Sync prop changes
+        React.useEffect(() => {
+            if (accountsProp) setTree(accountsProp);
+        }, [accountsProp]);
+
+        // Reset search + collapse on close
+        React.useEffect(() => {
+            if (!open) {
+                setSearch("");
+            }
+        }, [open]);
+
+        // Bind Alt+C keyboard shortcut when Popover is open
+        React.useEffect(() => {
+            if (!open) return;
+            const handleKeyDown = (e: KeyboardEvent) => {
+                if (e.altKey && e.key.toLowerCase() === 'c') {
+                    e.preventDefault();
+                    setIsCreateDialogOpen(true);
+                }
+            };
+            window.addEventListener("keydown", handleKeyDown);
+            return () => window.removeEventListener("keydown", handleKeyDown);
+        }, [open]);
+
+        // ── Derived ────────────────────────────────────────────────────────────────
+        const filteredTree = React.useMemo(() => {
+            return filterTreeExclude(tree, excludeAccountId);
+        }, [tree, excludeAccountId]);
+
+        const allFlat = React.useMemo(() => flattenTree(filteredTree), [filteredTree]);
+
+        const breadcrumbMap = React.useMemo(() => buildBreadcrumbs(filteredTree), [filteredTree]);
+
+        const searchResults = React.useMemo(() => {
+            if (!search.trim()) return [];
+            const q = search.trim().toLowerCase();
+            return allFlat.filter((a) => {
+                if (groupsOnly) {
+                    if (!a.isGroup) return false;
+                } else if (!allowGroups) {
+                    if (a.isGroup) return false;
+                }
+                return (
+                    a.code.toLowerCase().includes(q) ||
+                    a.name.toLowerCase().includes(q) ||
+                    a.type.toLowerCase().includes(q)
+                );
+            });
+        }, [allFlat, search, groupsOnly, allowGroups]);
+
+        const selectedAccount = React.useMemo(
+            () => (value ? findById(filteredTree, value) : undefined),
+            [filteredTree, value]
+        );
+
+        const displayLabel = selectedAccount
+            ? `${selectedAccount.code} - ${selectedAccount.name}`
+            : null;
+
+        // ── Handlers ───────────────────────────────────────────────────────────────
+        function toggleExpand(id: string) {
+            setExpanded((prev) => {
+                const next = new Set(prev);
+                next.has(id) ? next.delete(id) : next.add(id);
+                return next;
+            });
+        }
+
+        function handleSelect(id: string) {
+            onValueChange?.(value === id ? "" : id);
+            setOpen(false);
+        }
+
+        const handleCreated = async (newAcc: ChartOfAccount) => {
+            // Invalidate cache
+            invalidateCachedTree();
+            setIsLoading(true);
+            // Refetch
+            const data = await fetchTree();
+            setTree(data);
+            setIsLoading(false);
+            // Select new account
+            handleSelect(newAcc.id);
+        };
+
+        const isSearching = search.trim().length > 0;
+
+        return (
+            <>
+                <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                        <button
+                            id={id}
+                            ref={ref}
+                            type="button"
+                            role="combobox"
+                            aria-expanded={open}
+                            aria-haspopup="listbox"
+                            disabled={disabled}
+                            className={cn(
+                                "flex items-center w-full h-9 px-3 rounded-md border border-input bg-background text-sm font-normal cursor-pointer select-none text-left",
+                                "hover:bg-accent hover:text-accent-foreground transition-colors",
+                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                                open && "ring-2 ring-ring/20",
+                                disabled && "pointer-events-none opacity-50",
+                                className
+                            )}
+                        >
+                            <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mr-2" />
+                            <span className={cn("flex-1 min-w-0 truncate", !displayLabel && "text-muted-foreground")}>
+                                {displayLabel ?? placeholder}
+                            </span>
+                            {selectedAccount && (
+                                <span
+                                    className={cn(
+                                        "ml-2 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                                        TYPE_CONFIG[selectedAccount.type]?.className ?? "bg-muted text-muted-foreground"
+                                    )}
+                                >
+                                    {TYPE_CONFIG[selectedAccount.type]?.label ?? selectedAccount.type}
+                                </span>
+                            )}
+                            <ChevronDownIcon
+                                className={cn(
+                                    "ml-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                                    open && "rotate-180"
+                                )}
+                            />
+                        </button>
+                    </PopoverTrigger>
+
+                    <PopoverContent
+                        className="w-(--radix-popover-trigger-width) min-w-80 p-0"
+                        align="start"
+                        sideOffset={4}
+                    >
+                        <Command shouldFilter={false}>
+                            {/* Search bar */}
+                            <CommandInput
+                                placeholder="Search by code or name..."
+                                value={search}
+                                onValueChange={setSearch}
+                                autoFocus
+                            />
+
+                            {/* Body */}
+                            <CommandList className="max-h-80 overflow-y-auto p-1">
+                                {isLoading ? (
+                                    <div className="flex items-center justify-center py-8 gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                        <span className="text-sm text-muted-foreground">Loading accounts...</span>
+                                    </div>
+                                ) : isSearching ? (
+                                    /* ── Search mode ── */
+                                    searchResults.length === 0 ? (
+                                        <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                                            No accounts found.
+                                        </CommandEmpty>
+                                    ) : (
+                                        searchResults.map((acc) => (
+                                            <CommandItem
+                                                key={acc.id}
+                                                value={acc.id}
+                                                onSelect={() => handleSelect(acc.id)}
+                                                className="flex items-start gap-2 px-3 py-2 rounded-md cursor-pointer select-none"
+                                            >
+                                                <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                                                <div className="flex flex-col flex-1 min-w-0">
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span className="text-[11px] font-mono text-muted-foreground shrink-0">{acc.code}</span>
+                                                        <span className={cn("text-sm truncate", value === acc.id && "font-medium")}>{acc.name}</span>
+                                                    </div>
+                                                    {breadcrumbMap.get(acc.id) && (
+                                                        <span className="text-[10px] text-muted-foreground truncate">{breadcrumbMap.get(acc.id)}</span>
+                                                    )}
+                                                </div>
+                                                {value === acc.id && <CheckIcon className="h-4 w-4 shrink-0 text-primary mt-0.5" />}
+                                            </CommandItem>
+                                        ))
+                                    )
+                                ) : (
+                                    /* ── Tree mode ── */
+                                    filteredTree.length === 0 ? (
+                                        <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                                            No accounts available.
+                                        </CommandEmpty>
+                                    ) : (
+                                        filteredTree.map((node) => (
+                                            <TreeRow
+                                                key={node.id}
+                                                node={node}
+                                                depth={0}
+                                                expanded={expanded}
+                                                onToggle={toggleExpand}
+                                                selectedId={value}
+                                                onSelect={handleSelect}
+                                                allowGroups={allowGroups}
+                                                groupsOnly={groupsOnly}
+                                            />
+                                        ))
+                                    )
+                                )}
+                            </CommandList>
+
+                            {/* Create New Account Button */}
+                            {!isLoading && !groupsOnly && (
+                                <div className="border-t p-2 bg-muted/40 flex flex-col gap-1">
+                                    <button
+                                        type="button"
+                                        className="w-full text-xs flex items-center justify-center gap-1.5 h-8 border border-dashed rounded-md bg-background hover:bg-accent text-accent-foreground transition-colors cursor-pointer select-none"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setIsCreateDialogOpen(true);
+                                        }}
+                                    >
+                                        <Plus className="h-3.5 w-3.5 text-primary" />
+                                        <span>Create New Ledger</span>
+                                        <span className="text-[10px] text-muted-foreground font-mono ml-auto">Alt+C</span>
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Footer */}
+                            {!isLoading && allFlat.length > 0 && (
+                                <div className="border-t px-3 py-2 flex items-center justify-between">
+                                    <span className="text-[10px] text-muted-foreground">
+                                        {isSearching
+                                            ? `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`
+                                            : groupsOnly
+                                                ? `${allFlat.filter((a) => a.isGroup).length} groups`
+                                                : `${allFlat.filter((a) => !a.isGroup).length} accounts`}
+                                    </span>
+                                    {value && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { onValueChange?.(""); setOpen(false); }}
+                                            className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                                        >
+                                            Clear selection
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </Command>
+                    </PopoverContent>
+                </Popover>
+
+                <CreateAccountDialog
+                    open={isCreateDialogOpen}
+                    onOpenChange={setIsCreateDialogOpen}
+                    allFlat={allFlat}
+                    onCreated={handleCreated}
+                />
+            </>
+        );
+    }
+);

@@ -85,6 +85,30 @@ export function DiscountPanel({
     onManualDiscountTypeChange, onManualDiscountValueChange,
     onClearDiscount, fmtCurrency, calcPromoDiscount,
 }: DiscountPanelProps) {
+    const [activeAllianceIndex, setActiveAllianceIndex] = React.useState(-1);
+
+    React.useEffect(() => {
+        setActiveAllianceIndex(-1);
+    }, [allianceSearch, alliances]);
+
+    const handleAllianceKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (filteredAlliances.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setActiveAllianceIndex((prev) => (prev + 1) % filteredAlliances.length);
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setActiveAllianceIndex((prev) => (prev - 1 + filteredAlliances.length) % filteredAlliances.length);
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            const idx = activeAllianceIndex >= 0 ? activeAllianceIndex : 0;
+            if (idx < filteredAlliances.length) {
+                onSelectAlliance(filteredAlliances[idx]);
+                setActiveAllianceIndex(-1);
+            }
+        }
+    };
 
     const hasCashTender = tenders.some((t) => t.method === "cash");
 
@@ -315,6 +339,7 @@ export function DiscountPanel({
                                     placeholder="Search bank, card type, or BIN... (F3)"
                                     value={allianceSearch}
                                     onChange={(e) => onAllianceSearch(e.target.value)}
+                                    onKeyDown={handleAllianceKeyDown}
                                 />
                             </div>
                             {isLoadingConfig ? (
@@ -327,7 +352,7 @@ export function DiscountPanel({
                                         {filteredAlliances.length === 0 && (
                                             <p className="text-xs text-muted-foreground italic py-1">No matching alliances.</p>
                                         )}
-                                        {filteredAlliances.map((a) => {
+                                        {filteredAlliances.map((a, idx) => {
                                             let disc = 0;
                                             const allianceBase = subtotal;
                                             if (a.maxDiscount) {
@@ -351,6 +376,7 @@ export function DiscountPanel({
                                                         className={cn(
                                                             "w-full text-left rounded-lg border px-3 py-2 transition-all text-sm",
                                                             isSelected ? "border-primary bg-primary/10 ring-1 ring-primary" : "hover:border-muted-foreground",
+                                                            idx === activeAllianceIndex && "bg-primary/10 border-l-4 border-l-primary font-medium",
                                                             disabled && "opacity-40 cursor-not-allowed"
                                                         )}
                                                     >

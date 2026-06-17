@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import { getCookie } from "@/lib/utils";
 import { authFetch } from "@/lib/auth";
 import { HoldOrderModal } from "@/components/pos/hold-order-modal";
@@ -157,6 +157,7 @@ export default function CheckoutPage() {
     const [alliances, setAlliances] = useState<AllianceConfig[]>([]);
     const [allianceSearch, setAllianceSearch] = useState("");
     const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+    const [showShortcutsHelp, setShowShortcutsHelp] = useState<boolean>(false);
 
     // ── Cashier state ──────────────────────────────────────────────────
     const [cashiers, setCashiers] = useState<any[]>([]);
@@ -797,34 +798,217 @@ export default function CheckoutPage() {
     // ── Keyboard shortcuts ────────────────────────────────────────────
     useEffect(() => {
         const handler = (e: KeyboardEvent) => {
-            const tag = (e.target as HTMLElement)?.tagName;
-            const isInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+            const activeEl = document.activeElement;
+            const isInput = activeEl && (
+                activeEl.tagName === "INPUT" || 
+                activeEl.tagName === "TEXTAREA" || 
+                activeEl.tagName === "SELECT" ||
+                activeEl.getAttribute("contenteditable") === "true"
+            );
 
+            // Toggle help panel with F1 or Ctrl+/
+            if (e.key === "F1" || (e.ctrlKey && e.key === "/")) {
+                e.preventDefault();
+                setShowShortcutsHelp(prev => !prev);
+                return;
+            }
+
+            // Customer Select: F6
+            if (e.key === "F6") {
+                e.preventDefault();
+                const custInput = document.getElementById("customer-search-input");
+                if (custInput) {
+                    (custInput as HTMLInputElement).focus();
+                    (custInput as HTMLInputElement).select();
+                }
+                return;
+            }
+
+            // Cashier Select: Alt+A
+            if (e.altKey && (e.key === "a" || e.key === "A")) {
+                e.preventDefault();
+                const cashierSelect = document.getElementById("cashier-select-trigger");
+                if (cashierSelect) {
+                    (cashierSelect as HTMLButtonElement).click();
+                    (cashierSelect as HTMLButtonElement).focus();
+                }
+                return;
+            }
+
+            // Select Tender Method: Alt+1 to Alt+5 / Ctrl+1 to Ctrl+5 (only if cash payment not locked/restricted by alliance)
+            const isAlt1To5 = e.altKey && ["1", "2", "3", "4", "5"].includes(e.key);
+            const isCtrl1To5 = e.ctrlKey && ["1", "2", "3", "4", "5"].includes(e.key);
+            if (isAlt1To5 || isCtrl1To5) {
+                const keyNum = e.key;
+                e.preventDefault();
+                const methods = ["cash", "card", "bank_transfer", "voucher", "credit_account"];
+                const method = methods[parseInt(keyNum) - 1];
+
+                // If alliance discount is applied, cash is disabled
+                if (method === "cash" && discountMode === "alliance" && selectedAlliance) {
+                    toast.error("Cash payment is disabled when an Alliance discount is selected.");
+                    return;
+                }
+
+                setTenderMethod(method);
+                toast.info(`Payment method set to: ${method.replace("_", " ").toUpperCase()}`);
+
+                // Auto focus specific fields based on method
+                if (method === "voucher") {
+                    setTimeout(() => {
+                        const vInput = document.getElementById("voucher-code-input");
+                        if (vInput) (vInput as HTMLInputElement).focus();
+                    }, 50);
+                } else if (method === "card" || method === "bank_transfer") {
+                    setTimeout(() => {
+                        const mSelect = document.getElementById("merchant-terminal-select");
+                        if (mSelect) (mSelect as HTMLButtonElement).focus();
+                    }, 50);
+                } else {
+                    setTimeout(() => tenderAmountRef.current?.focus(), 50);
+                }
+                return;
+            }
+
+            // Merchant terminal selector: Alt+T
+            if (e.altKey && (e.key === "t" || e.key === "T")) {
+                e.preventDefault();
+                const mSelect = document.getElementById("merchant-terminal-select");
+                if (mSelect) {
+                    (mSelect as HTMLButtonElement).click();
+                    (mSelect as HTMLButtonElement).focus();
+                }
+                return;
+            }
+
+            // Coupon Code: F2
             if (e.key === "F2") {
                 e.preventDefault();
                 couponInputRef.current?.focus();
                 couponInputRef.current?.closest("details")?.setAttribute("open", "");
+                return;
             }
+
+            // Alliance Partner: F3
             if (e.key === "F3") {
                 e.preventDefault();
                 allianceDetailsRef.current?.setAttribute("open", "");
                 setTimeout(() => allianceSearchRef.current?.focus(), 50);
+                return;
             }
-            if (e.key === "F4") { e.preventDefault(); tenderAmountRef.current?.focus(); }
+
+            // Manual Discount: F7 or Alt+M
+            if (e.key === "F7" || (e.altKey && (e.key === "m" || e.key === "M"))) {
+                e.preventDefault();
+                const manualDiscInput = document.querySelector('details summary:has(.lucide-wallet)')?.closest('details');
+                if (manualDiscInput) {
+                    manualDiscInput.setAttribute("open", "");
+                    setTimeout(() => {
+                        const valInput = manualDiscInput.querySelector('input[type="number"]');
+                        if (valInput) {
+                            (valInput as HTMLInputElement).focus();
+                            (valInput as HTMLInputElement).select();
+                        }
+                    }, 50);
+                }
+                return;
+            }
+
+            // Promo Campaigns: Alt+P or F8
+            if (e.key === "F8" || (e.altKey && (e.key === "p" || e.key === "P"))) {
+                e.preventDefault();
+                const promoCampaigns = document.querySelector('details summary:has(.lucide-tag)')?.closest('details');
+                if (promoCampaigns) {
+                    promoCampaigns.setAttribute("open", "");
+                }
+                return;
+            }
+
+            // Focus Tender Amount: F4
+            if (e.key === "F4") {
+                e.preventDefault();
+                tenderAmountRef.current?.focus();
+                return;
+            }
+
+            // Auto-fill Balance: F5
             if (e.key === "F5") {
                 e.preventDefault();
                 setTenderAmount(balanceDue);
                 tenderAmountRef.current?.focus();
+                return;
             }
-            if (e.key === "F12") {
+
+            // Gift Receipt: Alt+G
+            if (e.altKey && (e.key === "g" || e.key === "G")) {
                 e.preventDefault();
-                if (balanceDue <= 0 && !isSubmitting) handleConfirm();
+                setIsGiftReceipt(prev => !prev);
+                toast.info(`Gift Receipt: ${!isGiftReceipt ? "ENABLED" : "DISABLED"}`);
+                return;
             }
-            if (e.key === "Escape" && !isInput) clearDiscount();
+
+            // Hold order: Alt+H
+            if (e.altKey && (e.key === "h" || e.key === "H")) {
+                e.preventDefault();
+                if (canHold && cartItems.length > 0 && !isHolding && !isSubmitting) {
+                    handleHold();
+                }
+                return;
+            }
+
+            // Credit Sale: Alt+R
+            if (e.altKey && (e.key === "r" || e.key === "R")) {
+                e.preventDefault();
+                if (selectedCustomer && balanceDue > 0 && !isSubmitting && cartItems.length > 0) {
+                    handleCreditSale();
+                } else if (!selectedCustomer) {
+                    toast.error("Please select a customer first to post a Credit Sale.");
+                }
+                return;
+            }
+
+            // Preview Receipt: Alt+V
+            if (e.altKey && (e.key === "v" || e.key === "V")) {
+                e.preventDefault();
+                if (balanceDue === 0 && cartItems.length > 0 && !isSubmitting) {
+                    setShowReceiptPreview(true);
+                }
+                return;
+            }
+
+            // Complete Sale: F12 or Ctrl+Enter
+            if (e.key === "F12" || (e.ctrlKey && e.key === "Enter")) {
+                e.preventDefault();
+                if (balanceDue <= 0 && !isSubmitting && cartItems.length > 0) {
+                    handleConfirm();
+                }
+                return;
+            }
+
+            // Escape behavior
+            if (e.key === "Escape") {
+                e.preventDefault();
+                if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
+                if (showReceiptPreview) { setShowReceiptPreview(false); return; }
+                if (showHoldModal) { setShowHoldModal(false); return; }
+
+                if (isInput) {
+                    (activeEl as HTMLElement).blur();
+                } else {
+                    // Go back to new-sale cart page
+                    router.push("/pos/new-sale");
+                }
+                return;
+            }
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
-    }, [balanceDue, isSubmitting, handleConfirm, clearDiscount]);
+    }, [
+        balanceDue, isSubmitting, handleConfirm, clearDiscount, tenderMethod, 
+        discountMode, selectedAlliance, isGiftReceipt, canHold, cartItems, 
+        isHolding, handleHold, selectedCustomer, handleCreditSale, 
+        showShortcutsHelp, showReceiptPreview, showHoldModal, router
+    ]);
 
     // ════════════════════════════════════════════════════════════════════
     return (
@@ -1101,6 +1285,78 @@ export default function CheckoutPage() {
                 isHolding={isHolding}
                 itemCount={cartItems.length}
             />
+
+            {/* Keyboard Shortcuts Floating Help HUD */}
+            <div className={cn(
+                "fixed bottom-20 right-6 z-[9999] w-80 rounded-xl border border-primary/20 bg-background/95 backdrop-blur-md shadow-2xl transition-all duration-300 transform",
+                showShortcutsHelp ? "translate-y-0 opacity-100 scale-100" : "translate-y-4 opacity-0 scale-95 pointer-events-none"
+            )}>
+                <div className="flex items-center justify-between border-b px-4 py-3 bg-primary/5 rounded-t-xl">
+                    <div className="flex items-center gap-2">
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="font-semibold text-xs uppercase tracking-wider text-foreground">Checkout Guide</span>
+                    </div>
+                    <button 
+                        onClick={() => setShowShortcutsHelp(false)}
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors font-mono"
+                    >
+                        Esc to hide
+                    </button>
+                </div>
+                <div className="p-4 space-y-3.5 max-h-[350px] overflow-y-auto text-xs">
+                    <div>
+                        <p className="font-bold text-[10px] uppercase tracking-wider text-primary mb-1.5 text-left">Navigation & Customer</p>
+                        <div className="space-y-1.5 font-medium">
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Search/Select Customer</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F6</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Select Cashier</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + A</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Add New Customer</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + N</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Go Back to Cart</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Esc</kbd></div>
+                        </div>
+                    </div>
+                    <div className="border-t pt-2.5">
+                        <p className="font-bold text-[10px] uppercase tracking-wider text-primary mb-1.5 text-left">Payment Methods</p>
+                        <div className="space-y-1.5 font-medium">
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Cash / Card / Bank</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + 1 / 2 / 3</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Voucher / Credit Account</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + 4 / 5</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Select Merchant terminal</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + T</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Focus Pay Amount</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F4</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Auto-fill Remaining Due</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F5</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Submit payment tender</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Enter</kbd></div>
+                        </div>
+                    </div>
+                    <div className="border-t pt-2.5">
+                        <p className="font-bold text-[10px] uppercase tracking-wider text-primary mb-1.5 text-left">Discounts</p>
+                        <div className="space-y-1.5 font-medium">
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Coupon Code</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F2</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Alliance / Bank Card search</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F3</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Manual Discount</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F7 / Alt + M</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Promo Campaigns Accordion</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F8 / Alt + P</kbd></div>
+                        </div>
+                    </div>
+                    <div className="border-t pt-2.5">
+                        <p className="font-bold text-[10px] uppercase tracking-wider text-primary mb-1.5 text-left">Checkout Actions</p>
+                        <div className="space-y-1.5 font-medium">
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Complete &amp; Print</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F12 / Ctrl + Enter</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Toggle Gift Receipt</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + G</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Hold Order</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + H</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Credit Sale</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + R</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Preview Receipt</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + V</kbd></div>
+                        </div>
+                    </div>
+                    <div className="border-t pt-2.5 text-[10px] text-muted-foreground text-center">
+                        Press <span className="font-bold text-foreground">F1</span> or <span className="font-bold text-foreground">Ctrl + /</span> at any time.
+                    </div>
+                </div>
+            </div>
+
+            {/* Shortcuts Toggle Trigger */}
+            <button
+                onClick={() => setShowShortcutsHelp(v => !v)}
+                className="fixed bottom-6 right-6 z-[9998] flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground text-xs font-semibold rounded-full shadow-lg hover:bg-primary/90 transition-all animate-bounce"
+            >
+                <kbd className="px-1 bg-primary-foreground/20 rounded text-[9px] font-mono">F1</kbd>
+                <span>Shortcut Guide</span>
+            </button>
         </>
     );
 }
