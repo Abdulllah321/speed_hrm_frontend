@@ -955,14 +955,18 @@ console.log(res)
               <TableRow className="border-b-2">
                 <TableHead colSpan={11} className="text-center font-bold border-r">SHIPMENT DETAILS</TableHead>
                 <TableHead colSpan={9} className="text-center font-bold border-r bg-blue-50 text-blue-800">ASSESSABLE VALUE</TableHead>
-                <TableHead colSpan={9} className="text-center font-bold border-r bg-orange-50 text-orange-900">DUTY CALCULATION</TableHead>
-                <TableHead colSpan={1} className="text-center font-bold border-r bg-purple-50 text-purple-900">EXCISE</TableHead>
-                <TableHead colSpan={4} className="text-center font-bold border-r bg-green-100 text-green-900">FREIGHT (MIS)</TableHead>
-                <TableHead colSpan={3} className="text-center font-bold border-r bg-green-100 text-green-900">DO/THC (MIS)</TableHead>
-                <TableHead colSpan={1} className="text-center font-bold border-r bg-green-100 text-green-900">BANK (MIS)</TableHead>
-                <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900">INSURANCE (MIS)</TableHead>
-                <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900">CLG/FWD (MIS)</TableHead>
-                <TableHead className="text-center font-bold bg-yellow-50 text-yellow-900 border-r">Total Other Charges</TableHead>
+                {!isLocalGrn() && (
+                  <>
+                    <TableHead colSpan={9} className="text-center font-bold border-r bg-orange-50 text-orange-900">DUTY CALCULATION</TableHead>
+                    <TableHead colSpan={1} className="text-center font-bold border-r bg-purple-50 text-purple-900">EXCISE</TableHead>
+                    <TableHead colSpan={4} className="text-center font-bold border-r bg-green-100 text-green-900">FREIGHT (MIS)</TableHead>
+                    <TableHead colSpan={3} className="text-center font-bold border-r bg-green-100 text-green-900">DO/THC (MIS)</TableHead>
+                    <TableHead colSpan={1} className="text-center font-bold border-r bg-green-100 text-green-900">BANK (MIS)</TableHead>
+                    <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900">INSURANCE (MIS)</TableHead>
+                    <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900">CLG/FWD (MIS)</TableHead>
+                    <TableHead className="text-center font-bold bg-yellow-50 text-yellow-900 border-r">Total Other Charges</TableHead>
+                  </>
+                )}
                 <TableHead colSpan={3} className="text-center font-bold bg-gray-200 dark:bg-gray-950">TOTALS</TableHead>
               </TableRow>
               {/* Secondary Detail Header */}
@@ -980,36 +984,40 @@ console.log(res)
                 <TableHead className="border-r min-w-[200px]">Description</TableHead>
                 <TableHead className="w-[120px] font-bold text-blue-800">HS Code</TableHead>
                 <TableHead>Qty</TableHead>
-                <TableHead>FOB (PKR)</TableHead>
-                <TableHead>Inv (PKR)</TableHead>
+                <TableHead>{isLocalGrn() ? 'FOB PKR' : 'FOB Foreign'}</TableHead>
+                <TableHead>{isLocalGrn() ? 'Inv PKR' : 'Inv Foreign'}</TableHead>
                 <TableHead>Freight (PKR)</TableHead>
                 <TableHead>Ex. Rate</TableHead>
                 <TableHead>Inv PKR</TableHead>
                 <TableHead>1%+1%</TableHead>
                 <TableHead className="bg-blue-50 font-bold dark:bg-blue-950/50">ASSL. VALUE</TableHead>
-                <TableHead>CD Amt</TableHead>
-                <TableHead>RD Amt</TableHead>
-                <TableHead>ACD Amt</TableHead>
-                <TableHead>val Sale Tax</TableHead>
-                <TableHead>S.T.</TableHead>
-                <TableHead>AST</TableHead>
-                <TableHead>val Inc Tax</TableHead>
-                <TableHead>I.T.</TableHead>
-                <TableHead className="font-bold border-r">Total Duty</TableHead>
-                <TableHead className="bg-purple-50 dark:bg-purple-900/50 border-r">Charges</TableHead>
-                <TableHead>PKR</TableHead>
-                <TableHead>PKR</TableHead>
-                <TableHead>Inv No.</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Charges</TableHead>
-                <TableHead>P.O. #</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Charges</TableHead>
-                <TableHead>Charges</TableHead>
-                <TableHead>Policy #</TableHead>
-                <TableHead>Charges</TableHead>
-                <TableHead className="border-r">Bill #</TableHead>
-                <TableHead className="bg-yellow-50 font-bold border-r text-yellow-950">PKR</TableHead>
+                {!isLocalGrn() && (
+                  <>
+                    <TableHead>CD Amt</TableHead>
+                    <TableHead>RD Amt</TableHead>
+                    <TableHead>ACD Amt</TableHead>
+                    <TableHead>val Sale Tax</TableHead>
+                    <TableHead>S.T.</TableHead>
+                    <TableHead>AST</TableHead>
+                    <TableHead>val Inc Tax</TableHead>
+                    <TableHead>I.T.</TableHead>
+                    <TableHead className="font-bold border-r">Total Duty</TableHead>
+                    <TableHead className="bg-purple-50 dark:bg-purple-900/50 border-r">Charges</TableHead>
+                    <TableHead>PKR</TableHead>
+                    <TableHead>PKR</TableHead>
+                    <TableHead>Inv No.</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Charges</TableHead>
+                    <TableHead>P.O. #</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Charges</TableHead>
+                    <TableHead>Charges</TableHead>
+                    <TableHead>Policy #</TableHead>
+                    <TableHead>Charges</TableHead>
+                    <TableHead className="border-r">Bill #</TableHead>
+                    <TableHead className="bg-yellow-50 font-bold border-r text-yellow-950">PKR</TableHead>
+                  </>
+                )}
                 <TableHead>Unit Cost</TableHead>
                 <TableHead className="bg-green-50 font-bold text-green-950">Total Cost</TableHead>
               </TableRow>
@@ -1062,30 +1070,34 @@ console.log(res)
                     <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.invoicePKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.insuranceCharges + item.landingCharges).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px] font-bold text-blue-600 bg-blue-50">{isLocalGrn() ? Math.round(item.assessableValue).toLocaleString() : Math.round(item.assessableValue).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.customsDutyAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.regulatoryDutyAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.additionalCustomsDutyAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.valueForSaleTax).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.salesTaxAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.additionalSalesTaxAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.valueForIncomeTax).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.incomeTaxAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px] font-bold border-r">{isLocalGrn() ? '0' : Math.round(item.totalDutyAmount).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px] bg-purple-50 border-r">{isLocalGrn() ? '0' : Math.round(item.exciseChargesAmount).toLocaleString()}</TableCell>
-                    {/* MIS Details Breakdown */}
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0.00' : item.misFreightUSD.toFixed(2)}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : Math.round(item.misFreightPKR).toLocaleString()}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misFreightInvNo}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misFreightDate}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misDoThcPKR.toFixed(2)}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misDoThcPoNo}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misDoThcDate}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misBankPKR.toFixed(2)}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misInsurancePKR.toFixed(2)}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '-' : item.misInsurancePolicyNo}</TableCell>
-                    <TableCell className="text-[10px]">{isLocalGrn() ? '0' : item.misClgFwdPKR.toFixed(2)}</TableCell>
-                    <TableCell className="text-[10px] border-r">{isLocalGrn() ? '-' : item.misClgFwdBillNo}</TableCell>
-                    <TableCell className="text-[10px] font-bold bg-yellow-50 text-black! border-r">{isLocalGrn() ? '0' : item.totalOtherCharges.toFixed(2)}</TableCell>
+                    {!isLocalGrn() && (
+                      <>
+                        <TableCell className="text-[10px]">{Math.round(item.customsDutyAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px]">{Math.round(item.regulatoryDutyAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px]">{Math.round(item.additionalCustomsDutyAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px]">{Math.round(item.valueForSaleTax).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px]">{Math.round(item.salesTaxAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px]">{Math.round(item.additionalSalesTaxAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px]">{Math.round(item.valueForIncomeTax).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px]">{Math.round(item.incomeTaxAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px] font-bold border-r">{Math.round(item.totalDutyAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px] bg-purple-50 border-r">{Math.round(item.exciseChargesAmount).toLocaleString()}</TableCell>
+                        {/* MIS Details Breakdown */}
+                        <TableCell className="text-[10px]">{item.misFreightUSD.toFixed(2)}</TableCell>
+                        <TableCell className="text-[10px]">{Math.round(item.misFreightPKR).toLocaleString()}</TableCell>
+                        <TableCell className="text-[10px]">{item.misFreightInvNo}</TableCell>
+                        <TableCell className="text-[10px]">{item.misFreightDate}</TableCell>
+                        <TableCell className="text-[10px]">{item.misDoThcPKR.toFixed(2)}</TableCell>
+                        <TableCell className="text-[10px]">{item.misDoThcPoNo}</TableCell>
+                        <TableCell className="text-[10px]">{item.misDoThcDate}</TableCell>
+                        <TableCell className="text-[10px]">{item.misBankPKR.toFixed(2)}</TableCell>
+                        <TableCell className="text-[10px]">{item.misInsurancePKR.toFixed(2)}</TableCell>
+                        <TableCell className="text-[10px]">{item.misInsurancePolicyNo}</TableCell>
+                        <TableCell className="text-[10px]">{item.misClgFwdPKR.toFixed(2)}</TableCell>
+                        <TableCell className="text-[10px] border-r">{item.misClgFwdBillNo}</TableCell>
+                        <TableCell className="text-[10px] font-bold bg-yellow-50 text-black! border-r">{item.totalOtherCharges.toFixed(2)}</TableCell>
+                      </>
+                    )}
 
                     <TableCell className="text-[10px] font-bold">{Math.round(item.unitCostPKR).toLocaleString()}</TableCell>
                     <TableCell className="text-[10px] font-bold bg-green-50">{Math.round(item.totalCostPKR).toLocaleString()}</TableCell>
@@ -1106,9 +1118,9 @@ console.log(res)
                     <TableCell className="text-[11px]">{Math.round(tableTotals.invPKR).toLocaleString()}</TableCell>
                     <TableCell></TableCell>
                     <TableCell className="text-[11px] bg-blue-50">{Math.round(tableTotals.assessableValue).toLocaleString()}</TableCell>
-                    <TableCell colSpan={9} className="border-r"></TableCell>
-                    <TableCell colSpan={13} className="text-right border-r">TOTAL COST:</TableCell>
-                    <TableCell colSpan={2} className="text-[11px] bg-green-50 text-green-800 text-center">{Math.round(tableTotals.totalCost).toLocaleString()}</TableCell>
+                    {!isLocalGrn() && <TableCell colSpan={9} className="border-r"></TableCell>}
+                    <TableCell colSpan={isLocalGrn() ? 1 : 13} className="text-right border-r">TOTAL COST:</TableCell>
+                    <TableCell colSpan={isLocalGrn() ? 1 : 2} className="text-[11px] bg-green-50 text-green-800 text-center">{Math.round(tableTotals.totalCost).toLocaleString()}</TableCell>
                   </TableRow>
 
                   <TableRow className="bg-blue-50 font-bold border-t border-blue-200">
@@ -1116,7 +1128,7 @@ console.log(res)
                     <TableCell colSpan={2}></TableCell>
                     <TableCell className="text-[11px] text-blue-900 underline decoration-double">{totalInvoiceValue.toFixed(2)}</TableCell>
                     <TableCell className="text-[11px] text-blue-900 underline decoration-double">{totalFreight.toFixed(2)}</TableCell>
-                    <TableCell colSpan={29}></TableCell>
+                    <TableCell colSpan={isLocalGrn() ? 6 : 29}></TableCell>
                   </TableRow>
                 </>
               )}

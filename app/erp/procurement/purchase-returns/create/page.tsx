@@ -30,6 +30,7 @@ interface SourceDocument {
     unitPrice?: number;
     unitCostPKR?: number;
     displayCode?: number;
+    size?: string;
   }>;
 }
 
@@ -102,6 +103,7 @@ export default function CreatePurchaseReturnPage() {
         unitPrice: sourceType === 'GRN' ? (item.unitPrice || 0) : (item.unitCostPKR || 0),
         lineTotal: 0,
         reason: '',
+        size: item.size || '',
       })),
     });
   };
@@ -139,9 +141,9 @@ export default function CreatePurchaseReturnPage() {
     try {
       setLoading(true);
       
-      // Strip displayCode from items before sending to API 
+      // Strip displayCode and size from items before sending to API 
       // (Redundant as itemId is already sent and causes 400 error due to forbidNonWhitelisted in backend)
-      const apiItems = validItems.map(({ displayCode, ...item }: any) => item);
+      const apiItems = validItems.map(({ displayCode, size, ...item }: any) => item);
 
       await purchaseReturnApi.create({
         ...formData,
@@ -264,7 +266,9 @@ export default function CreatePurchaseReturnPage() {
                           <div className="flex justify-between items-start">
                             <div>
                               <div className="font-semibold">{item.description}</div>
-                              <div className="text-sm text-gray-500">{item.displayCode}</div>
+                              <div className="text-sm text-gray-500">
+                                {item.displayCode} {(item as any).size && `| Size: ${(item as any).size}`}
+                              </div>
                             </div>
                             <Button
                               type="button"

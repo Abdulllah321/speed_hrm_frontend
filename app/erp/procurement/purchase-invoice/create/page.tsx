@@ -592,7 +592,7 @@ export default function CreatePurchaseInvoicePage() {
                   <span>{subtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Tax Amount:</span>
+                  <span>Sale Tax Amount:</span>
                   <span>{taxAmount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">

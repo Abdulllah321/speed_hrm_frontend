@@ -502,16 +502,20 @@ export default function LandedCostReportPage() {
                                 <th colSpan={9} className="text-center bg-blue-700 dark:bg-blue-900 border-r border-blue-800 dark:border-blue-950 text-[10px] tracking-wider py-1.5">
                                     ASSESSABLE VALUE
                                 </th>
-                                <th colSpan={10} className="text-center bg-amber-700 dark:bg-amber-900 border-r border-amber-800 dark:border-amber-950 text-[10px] tracking-wider py-1.5">
-                                    DUTY & TAX CALCULATION
-                                </th>
-                                <th colSpan={1} className="text-center bg-violet-700 dark:bg-violet-900 border-r border-violet-800 dark:border-violet-950 text-[10px] tracking-wider py-1.5">
-                                    FREIGHT
-                                </th>
-                                <th colSpan={12} className="text-center bg-emerald-700 dark:bg-emerald-900 border-r border-emerald-800 dark:border-emerald-950 text-[10px] tracking-wider py-1.5">
-                                    MIS BREAKDOWN (SHARES)
-                                </th>
-                                <th colSpan={3} className="text-center bg-indigo-700 dark:bg-indigo-905 text-[10px] tracking-wider py-1.5">
+                                {!isLocalPurchase && (
+                                    <>
+                                        <th colSpan={10} className="text-center bg-amber-700 dark:bg-amber-900 border-r border-amber-800 dark:border-amber-950 text-[10px] tracking-wider py-1.5">
+                                            DUTY & TAX CALCULATION
+                                        </th>
+                                        <th colSpan={1} className="text-center bg-violet-700 dark:bg-violet-900 border-r border-violet-800 dark:border-violet-950 text-[10px] tracking-wider py-1.5">
+                                            FREIGHT
+                                        </th>
+                                        <th colSpan={12} className="text-center bg-emerald-700 dark:bg-emerald-900 border-r border-emerald-800 dark:border-emerald-950 text-[10px] tracking-wider py-1.5">
+                                            MIS BREAKDOWN (SHARES)
+                                        </th>
+                                    </>
+                                )}
+                                <th colSpan={isLocalPurchase ? 2 : 3} className="text-center bg-indigo-700 dark:bg-indigo-905 text-[10px] tracking-wider py-1.5">
                                     TOTAL VALUATIONS
                                 </th>
                             </tr>
@@ -533,8 +537,8 @@ export default function LandedCostReportPage() {
 
                                 {/* AV */}
                                 <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300">Qty</th>
-                                <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300">FOB Foreign</th>
-                                <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300">Inv Foreign</th>
+                                <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300 font-medium">{isLocalPurchase ? 'FOB PKR' : 'FOB Foreign'}</th>
+                                <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300 font-medium">{isLocalPurchase ? 'Inv PKR' : 'Inv Foreign'}</th>
                                 <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300">Freight USD</th>
                                 <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300">Ex Rate</th>
                                 <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300">Invoice PKR</th>
@@ -542,36 +546,40 @@ export default function LandedCostReportPage() {
                                 <th className="px-2 text-right bg-blue-50/70 dark:bg-blue-950/40 text-blue-900 dark:text-blue-300">Landing</th>
                                 <th className="px-2 text-right bg-blue-100 dark:bg-blue-900 font-bold border-r border-blue-300 dark:border-blue-950 text-blue-955 dark:text-blue-100">AV (PKR)</th>
 
-                                {/* Duties */}
-                                <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">CD</th>
-                                <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">RD</th>
-                                <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">ACD</th>
-                                <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">vST</th>
-                                <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">ST</th>
-                                <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">AST</th>
-                                <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">vIT</th>
-                                <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">IT</th>
-                                <th className="px-2 text-right bg-orange-100/90 dark:bg-orange-955/50 text-orange-955 dark:text-orange-300 font-bold">Excise</th>
-                                <th className="px-2 text-right bg-amber-100 dark:bg-amber-900 font-bold border-r border-amber-300 dark:border-amber-950 text-amber-955 dark:text-amber-100">Total Duty</th>
+                                {!isLocalPurchase && (
+                                    <>
+                                        {/* Duties */}
+                                        <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">CD</th>
+                                        <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">RD</th>
+                                        <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">ACD</th>
+                                        <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">vST</th>
+                                        <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">ST</th>
+                                        <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">AST</th>
+                                        <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">vIT</th>
+                                        <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">IT</th>
+                                        <th className="px-2 text-right bg-orange-100/90 dark:bg-orange-955/50 text-orange-955 dark:text-orange-300 font-bold">Excise</th>
+                                        <th className="px-2 text-right bg-amber-100 dark:bg-amber-900 font-bold border-r border-amber-300 dark:border-amber-950 text-amber-955 dark:text-amber-100">Total Duty</th>
 
-                                {/* Freight (MIS) */}
-                                <th className="px-2 text-right bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border-r border-purple-300 dark:border-purple-800">Freight (MIS)</th>
+                                        {/* Freight (MIS) */}
+                                        <th className="px-2 text-right bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border-r border-purple-300 dark:border-purple-800">Freight (MIS)</th>
 
-                                {/* MIS */}
-                                <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Frg USD</th>
-                                <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Frg PKR</th>
-                                <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Inv#</th>
-                                <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Date</th>
-                                <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">DO/THC</th>
-                                <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">PO#</th>
-                                <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Date</th>
-                                <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Bank</th>
-                                <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Ins</th>
-                                <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Pol#</th>
-                                <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Clg/Fwd</th>
-                                <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300 border-r border-emerald-300 dark:border-emerald-800">Bill#</th>
+                                        {/* MIS */}
+                                        <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Frg USD</th>
+                                        <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Frg PKR</th>
+                                        <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Inv#</th>
+                                        <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Date</th>
+                                        <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">DO/THC</th>
+                                        <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">PO#</th>
+                                        <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Date</th>
+                                        <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Bank</th>
+                                        <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Ins</th>
+                                        <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Pol#</th>
+                                        <th className="px-2 text-right bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300">Clg/Fwd</th>
+                                        <th className="px-2 text-center bg-emerald-50/40 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300 border-r border-emerald-300 dark:border-emerald-800">Bill#</th>
 
-                                <th className="px-2 text-right bg-indigo-50/50 dark:bg-indigo-950/25 text-indigo-900 dark:text-indigo-300">Other Charges</th>
+                                        <th className="px-2 text-right bg-indigo-50/50 dark:bg-indigo-950/25 text-indigo-900 dark:text-indigo-300">Other Charges</th>
+                                    </>
+                                )}
                                 <th className="px-2 text-right bg-indigo-50/50 dark:bg-indigo-950/25 text-indigo-900 dark:text-indigo-300">Unit Cost</th>
                                 <th className="px-2 text-right bg-indigo-600 dark:bg-indigo-700 text-white font-bold">Final Total</th>
                             </tr>
@@ -608,47 +616,51 @@ export default function LandedCostReportPage() {
                                         <td className="px-2 py-1.5 text-right bg-blue-50/10 dark:bg-blue-950/5 text-slate-500 dark:text-slate-400">{formatCurrency(item.landingCharges)}</td>
                                         <td className="px-2 py-1.5 text-right bg-blue-50 dark:bg-blue-950/40 font-bold border-r border-blue-300 dark:border-blue-900 text-blue-900 dark:text-blue-300">{formatCurrency(item.assessableValue)}</td>
 
-                                        {/* Duties */}
-                                        <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.customsDutyAmount || 0).toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.regulatoryDutyAmount || 0).toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.additionalCustomsDutyAmount || 0).toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5 text-slate-400 dark:text-slate-500">
-                                            {(Number(item.assessableValue) + Number(item.customsDutyAmount || 0) + Number(item.regulatoryDutyAmount || 0) + Number(item.additionalCustomsDutyAmount || 0)).toLocaleString()}
-                                        </td>
-                                        <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.salesTaxAmount || 0).toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.additionalSalesTaxAmount || 0).toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5 text-slate-400 dark:text-slate-500">
-                                            {(Number(item.assessableValue) + Number(item.customsDutyAmount || 0) + Number(item.regulatoryDutyAmount || 0) + Number(item.additionalCustomsDutyAmount || 0) + Number(item.salesTaxAmount || 0) + Number(item.additionalSalesTaxAmount || 0)).toLocaleString()}
-                                        </td>
-                                        <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.incomeTaxAmount || 0).toLocaleString()}</td>
-                                        {/* Excise Charges Amount */}
-                                        <td className="px-2 py-1.5 text-right bg-orange-50 dark:bg-orange-950/30 font-semibold text-orange-900 dark:text-orange-300">{Number(item.exciseChargesAmount || 0).toLocaleString()}</td>
-                                        {/* Total Duty */}
-                                        <td className="px-2 py-1.5 text-right bg-amber-50 dark:bg-amber-950/20 font-bold border-r border-amber-300 dark:border-amber-900 text-amber-900 dark:text-amber-300">
-                                            {formatCurrency(totalDutyInclExcise)}
-                                        </td>
+                                        {!isLocalPurchase && (
+                                            <>
+                                                {/* Duties */}
+                                                <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.customsDutyAmount || 0).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.regulatoryDutyAmount || 0).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.additionalCustomsDutyAmount || 0).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5 text-slate-400 dark:text-slate-500">
+                                                    {(Number(item.assessableValue) + Number(item.customsDutyAmount || 0) + Number(item.regulatoryDutyAmount || 0) + Number(item.additionalCustomsDutyAmount || 0)).toLocaleString()}
+                                                </td>
+                                                <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.salesTaxAmount || 0).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.additionalSalesTaxAmount || 0).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5 text-slate-400 dark:text-slate-500">
+                                                    {(Number(item.assessableValue) + Number(item.customsDutyAmount || 0) + Number(item.regulatoryDutyAmount || 0) + Number(item.additionalCustomsDutyAmount || 0) + Number(item.salesTaxAmount || 0) + Number(item.additionalSalesTaxAmount || 0)).toLocaleString()}
+                                                </td>
+                                                <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.incomeTaxAmount || 0).toLocaleString()}</td>
+                                                {/* Excise Charges Amount */}
+                                                <td className="px-2 py-1.5 text-right bg-orange-50 dark:bg-orange-955/30 font-semibold text-orange-900 dark:text-orange-300">{Number(item.exciseChargesAmount || 0).toLocaleString()}</td>
+                                                {/* Total Duty */}
+                                                <td className="px-2 py-1.5 text-right bg-amber-50 dark:bg-amber-950/20 font-bold border-r border-amber-300 dark:border-amber-900 text-amber-900 dark:text-amber-300">
+                                                    {formatCurrency(totalDutyInclExcise)}
+                                                </td>
 
-                                        {/* Freight (MIS) */}
-                                        <td className="px-2 py-1.5 text-right bg-purple-50/20 dark:bg-purple-950/10 font-bold border-r border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-300">{formatCurrency(item.misFreightPKR || 0)}</td>
+                                                {/* Freight (MIS) */}
+                                                <td className="px-2 py-1.5 text-right bg-purple-50/20 dark:bg-purple-950/10 font-bold border-r border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-300">{formatCurrency(item.misFreightPKR || 0)}</td>
 
-                                        {/* MIS shares */}
-                                        <td className="px-2 py-1.5 text-right text-slate-500 dark:text-slate-400">{formatCurrency(item.misFreightUSD || 0)}</td>
-                                        <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{formatCurrency(item.misFreightPKR || 0)}</td>
-                                        <td className="px-2 py-1.5 text-center text-slate-400">{item.misFreightInvNo || '-'}</td>
-                                        <td className="px-2 py-1.5 text-center text-slate-400">{item.misFreightDate || '-'}</td>
-                                        <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{Number(item.misDoThcPKR || 0).toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-center text-slate-400">{item.misDoThcPoNo || '-'}</td>
-                                        <td className="px-2 py-1.5 text-center text-slate-400">{item.misDoThcDate || '-'}</td>
-                                        <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{Number(item.misBankPKR || 0).toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{Number(item.misInsurancePKR || 0).toLocaleString()}</td>
-                                        <td className="px-2 py-1.5 text-center text-slate-400">{item.misInsurancePolicyNo || '-'}</td>
-                                        <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{formatCurrency(item.misClgFwdPKR || 0)}</td>
-                                        <td className="px-2 py-1.5 text-center border-r border-emerald-300 dark:border-emerald-800 text-slate-400 dark:text-slate-500">{item.misClgFwdBillNo || '-'}</td>
+                                                {/* MIS shares */}
+                                                <td className="px-2 py-1.5 text-right text-slate-500 dark:text-slate-400">{formatCurrency(item.misFreightUSD || 0)}</td>
+                                                <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{formatCurrency(item.misFreightPKR || 0)}</td>
+                                                <td className="px-2 py-1.5 text-center text-slate-400">{item.misFreightInvNo || '-'}</td>
+                                                <td className="px-2 py-1.5 text-center text-slate-400">{item.misFreightDate || '-'}</td>
+                                                <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{Number(item.misDoThcPKR || 0).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-center text-slate-400">{item.misDoThcPoNo || '-'}</td>
+                                                <td className="px-2 py-1.5 text-center text-slate-400">{item.misDoThcDate || '-'}</td>
+                                                <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{Number(item.misBankPKR || 0).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{Number(item.misInsurancePKR || 0).toLocaleString()}</td>
+                                                <td className="px-2 py-1.5 text-center text-slate-400">{item.misInsurancePolicyNo || '-'}</td>
+                                                <td className="px-2 py-1.5 text-right text-slate-600 dark:text-slate-300">{formatCurrency(item.misClgFwdPKR || 0)}</td>
+                                                <td className="px-2 py-1.5 text-center border-r border-emerald-300 dark:border-emerald-800 text-slate-400 dark:text-slate-500">{item.misClgFwdBillNo || '-'}</td>
 
-                                        {/* Totals */}
-                                        <td className="px-2 py-1.5 text-right font-bold bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200">
-                                            {formatCurrency(Number(item.misFreightPKR || 0) + Number(item.misDoThcPKR || 0) + Number(item.misBankPKR || 0) + Number(item.misInsurancePKR || 0) + Number(item.misClgFwdPKR || 0))}
-                                        </td>
+                                                {/* Totals */}
+                                                <td className="px-2 py-1.5 text-right font-bold bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200">
+                                                    {formatCurrency(Number(item.misFreightPKR || 0) + Number(item.misDoThcPKR || 0) + Number(item.misBankPKR || 0) + Number(item.misInsurancePKR || 0) + Number(item.misClgFwdPKR || 0))}
+                                                </td>
+                                            </>
+                                        )}
                                         <td className="px-2 py-1.5 text-right font-bold bg-slate-50 dark:bg-slate-900/50 text-indigo-800 dark:text-indigo-300">{formatCurrency(item.unitCostPKR)}</td>
                                         <td className="px-2 py-1.5 text-right font-extrabold bg-indigo-600 dark:bg-indigo-700 text-white">{formatCurrency(item.totalCostPKR)}</td>
                                     </tr>
@@ -671,44 +683,47 @@ export default function LandedCostReportPage() {
                                 <td className="px-2 py-2 text-right bg-blue-100/50 dark:bg-blue-950/30">{formatCurrency(totals.ins)}</td>
                                 <td className="px-2 py-2 text-right bg-blue-100/50 dark:bg-blue-950/30">{formatCurrency(totals.land)}</td>
                                 <td className="px-2 py-2 text-right bg-blue-200 dark:bg-blue-900 text-blue-955 dark:text-blue-100 font-black border-r border-blue-300 dark:border-blue-950">{formatCurrency(totals.av)}</td>
+                                 {!isLocalPurchase && (
+                                     <>
+                                         {/* Duty Totals */}
+                                         <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.cd).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.rd).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.acd).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-right bg-amber-100/50 dark:bg-amber-950/30 text-slate-500 dark:text-slate-400 font-bold">
+                                             {(totals.av + totals.cd + totals.rd + totals.acd).toLocaleString()}
+                                         </td>
+                                         <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.st).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.ast).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-right bg-amber-100/50 dark:bg-amber-950/30 text-slate-500 dark:text-slate-400 font-bold">
+                                             {(totals.av + totals.cd + totals.rd + totals.acd + totals.st + totals.ast).toLocaleString()}
+                                         </td>
+                                         <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.it).toLocaleString()}</td>
+                                         {/* Excise Charges Amount Total */}
+                                         <td className="px-2 py-2 text-right bg-orange-100 dark:bg-orange-950/50 text-orange-955 dark:text-orange-200 font-black">{Number(totals.excise).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-right bg-amber-200 dark:bg-amber-900 text-amber-955 dark:text-amber-100 font-black border-r border-amber-300 dark:border-amber-950">{formatCurrency(totals.totalDuty)}</td>
 
-                                {/* Duty Totals */}
-                                <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.cd).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.rd).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.acd).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-right bg-amber-100/50 dark:bg-amber-950/30 text-slate-500 dark:text-slate-400 font-bold">
-                                    {(totals.av + totals.cd + totals.rd + totals.acd).toLocaleString()}
-                                </td>
-                                <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.st).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.ast).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-right bg-amber-100/50 dark:bg-amber-950/30 text-slate-500 dark:text-slate-400 font-bold">
-                                    {(totals.av + totals.cd + totals.rd + totals.acd + totals.st + totals.ast).toLocaleString()}
-                                </td>
-                                <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.it).toLocaleString()}</td>
-                                {/* Excise Charges Amount Total */}
-                                <td className="px-2 py-2 text-right bg-orange-100 dark:bg-orange-950/50 text-orange-955 dark:text-orange-200 font-black">{Number(totals.excise).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-right bg-amber-200 dark:bg-amber-900 text-amber-955 dark:text-amber-100 font-black border-r border-amber-300 dark:border-amber-950">{formatCurrency(totals.totalDuty)}</td>
+                                         {/* Freight MIS Total */}
+                                         <td className="px-2 py-2 text-right bg-purple-100 dark:bg-purple-950/50 text-purple-955 dark:text-purple-200 font-black border-r border-purple-300 dark:border-purple-800">{formatCurrency(totals.misFreight)}</td>
 
-                                {/* Freight MIS Total */}
-                                <td className="px-2 py-2 text-right bg-purple-100 dark:bg-purple-950/50 text-purple-955 dark:text-purple-200 font-black border-r border-purple-300 dark:border-purple-800">{formatCurrency(totals.misFreight)}</td>
+                                         {/* MIS breakdown Totals */}
+                                         <td className="px-2 py-2 text-right bg-emerald-50 dark:bg-emerald-950/10">-</td>
+                                         <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{formatCurrency(totals.misFreight)}</td>
+                                         <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
+                                         <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
+                                         <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{Number(totals.misDoThc).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
+                                         <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
+                                         <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{Number(totals.misBank).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{Number(totals.misInsurance).toLocaleString()}</td>
+                                         <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
+                                         <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/5 text-emerald-955 dark:text-emerald-200 font-black">{formatCurrency(totals.misClgFwd)}</td>
+                                         <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10 border-r border-emerald-300 dark:border-emerald-800">-</td>
 
-                                {/* MIS breakdown Totals */}
-                                <td className="px-2 py-2 text-right bg-emerald-50 dark:bg-emerald-950/10">-</td>
-                                <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{formatCurrency(totals.misFreight)}</td>
-                                <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
-                                <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
-                                <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{Number(totals.misDoThc).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
-                                <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
-                                <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{Number(totals.misBank).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{Number(totals.misInsurance).toLocaleString()}</td>
-                                <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10">-</td>
-                                <td className="px-2 py-2 text-right bg-emerald-100/80 dark:bg-emerald-950/50 text-emerald-955 dark:text-emerald-200 font-black">{formatCurrency(totals.misClgFwd)}</td>
-                                <td className="px-2 py-2 text-center bg-emerald-50 dark:bg-emerald-950/10 border-r border-emerald-300 dark:border-emerald-800">-</td>
-
-                                {/* Final Totals */}
-                                <td className="px-2 py-2 text-right bg-slate-105 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-black">{formatCurrency(totals.totalOther)}</td>
-                                <td className="px-2 py-2 text-right bg-slate-105 dark:bg-slate-900">-</td>
+                                         {/* Final Totals */}
+                                         <td className="px-2 py-2 text-right bg-slate-105 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-black">{formatCurrency(totals.totalOther)}</td>
+                                     </>
+                                 )}
+                                 <td className="px-2 py-2 text-right bg-slate-105 dark:bg-slate-900">-</td>
                                 <td className="px-2 py-2 text-right bg-indigo-600 dark:bg-indigo-700 text-white font-black text-xs">{formatCurrency(totals.totalCost)}</td>
                             </tr>
                         </tfoot>
