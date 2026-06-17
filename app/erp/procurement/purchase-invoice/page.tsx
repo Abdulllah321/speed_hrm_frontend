@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Filter, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, Search, Filter, Eye, Edit, Trash2, Download } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,6 +15,7 @@ import {
 import { toast } from "sonner";
 import { PermissionGuard } from "@/components/auth/permission-guard";
 import { Autocomplete } from "@/components/ui/autocomplete";
+import * as XLSX from "xlsx";
 
 interface PurchaseInvoice {
   id: string;
@@ -38,6 +39,84 @@ export default function PurchaseInvoiceListPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentStatusFilter, setPaymentStatusFilter] = useState("");
+
+  const handleExportXLSX = () => {
+    try {
+      if (filteredInvoices.length === 0) {
+        toast.error("No data available to export");
+        return;
+      }
+      const dataToExport = filteredInvoices.map((inv) => ({
+        "Invoice Number": inv.invoiceNumber,
+        "Invoice Date": new Date(inv.invoiceDate).toLocaleDateString(),
+        "Supplier Name": inv.supplier?.name || "",
+        "Supplier Code": inv.supplier?.code || "",
+        "Total Amount": inv.totalAmount,
+        "Paid Amount": inv.paidAmount,
+        "Remaining Amount": inv.remainingAmount,
+        "Status": inv.status,
+        "Payment Status": inv.paymentStatus,
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Purchase Invoices");
+
+      // Auto-fit column widths
+      const maxLens = Object.keys(dataToExport[0] || {}).map((key) => {
+        return Math.max(
+          key.length,
+          ...dataToExport.map((row) => String(row[key as keyof typeof row] || "").length)
+        );
+      });
+      worksheet["!cols"] = maxLens.map((w) => ({ wch: w + 2 }));
+
+      XLSX.writeFile(workbook, `purchase-invoices-export-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toast.success("Excel exported successfully");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export Excel");
+    }
+  };
+
+  const handleExportCSV = () => {
+    try {
+      if (filteredInvoices.length === 0) {
+        toast.error("No data available to export");
+        return;
+      }
+      const headers = ["Invoice Number", "Invoice Date", "Supplier Name", "Supplier Code", "Total Amount", "Paid Amount", "Remaining Amount", "Status", "Payment Status"];
+      const rows = filteredInvoices.map((inv) => [
+        inv.invoiceNumber,
+        new Date(inv.invoiceDate).toLocaleDateString(),
+        inv.supplier?.name || "",
+        inv.supplier?.code || "",
+        inv.totalAmount,
+        inv.paidAmount,
+        inv.remainingAmount,
+        inv.status,
+        inv.paymentStatus,
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map((r) => r.map((val) => `"${String(val).replace(/"/g, '""')}"`).join(",")),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `purchase-invoices-export-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("CSV exported successfully");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export CSV");
+    }
+  };
 
   // Options for autocomplete dropdowns
   const statusOptions = [
@@ -120,6 +199,14 @@ export default function PurchaseInvoiceListPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportXLSX} className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30">
+              <Download className="w-4 h-4 mr-2" />
+              Export Excel
+            </Button>
+            <Button variant="outline" onClick={handleExportCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
             <Link
               href="/erp/procurement/purchase-invoice/create-direct"
               transitionTypes={["nav-forward"]}

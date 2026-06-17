@@ -38,18 +38,19 @@ import { cn } from "@/lib/utils";
 import { calculateTaxForAccount } from "@/lib/utils/tax-calculator";
 
 // ─── Tag account selector (reused from JV form) ───────────────────────────────
-function TagAccountSelect({ children, value, onValueChange, disabled }: {
+function TagAccountSelect({ children, value, onValueChange, disabled, id }: {
     children: ChartOfAccount[];
     value?: string;
     onValueChange: (v: string) => void;
     disabled?: boolean;
+    id?: string;
 }) {
     const [open, setOpen] = useState(false);
     const selected = children.find((c) => c.id === value);
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <button type="button" disabled={disabled} className={cn(
+                <button id={id} type="button" disabled={disabled} className={cn(
                     "flex items-center w-full h-8 px-2 rounded-md border border-dashed border-input bg-background text-xs cursor-pointer select-none text-left",
                     "hover:bg-accent hover:text-accent-foreground transition-colors",
                     "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
@@ -110,6 +111,7 @@ type AdvanceEntry = {
 
 export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const router = useRouter();
+    const isRestoring = useRef(false);
     const [isPending, setIsPending] = useState(false);
     const [suppliers, setSuppliers] = useState<any[]>([]);
     const [pendingInvoices, setPendingInvoices] = useState<any[]>([]);
@@ -160,6 +162,64 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         control: form.control,
         name: "details",
     });
+
+    const moveToNextRowOrAppend = (index: number) => {
+        const isLast = index === fields.length - 1;
+        if (isLast) {
+            append({
+                accountId: "",
+                tagAccountId: "",
+                debit: 0,
+                credit: 0,
+                narration: "",
+                refBillNo: "",
+                isTaxApplicable: false,
+                taxableValue: 0
+            });
+            setTimeout(() => {
+                document.getElementById(`details-${index + 1}-accountId`)?.focus();
+            }, 50);
+        } else {
+            document.getElementById(`details-${index + 1}-accountId`)?.focus();
+        }
+    };
+
+    const handleKeyDown = (
+        e: React.KeyboardEvent<HTMLInputElement>,
+        index: number,
+        field: 'narration' | 'refBillNo' | 'taxableValue' | 'debit' | 'credit'
+    ) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (field === 'taxableValue') {
+                document.getElementById(`details-${index}-narration`)?.focus();
+            } else if (field === 'narration') {
+                document.getElementById(`details-${index}-refBillNo`)?.focus();
+            } else if (field === 'refBillNo') {
+                document.getElementById(`details-${index}-debit`)?.focus();
+            } else if (field === 'debit') {
+                const debitVal = Number(e.currentTarget.value) || 0;
+                if (debitVal > 0) {
+                    moveToNextRowOrAppend(index);
+                } else {
+                    document.getElementById(`details-${index}-credit`)?.focus();
+                }
+            } else if (field === 'credit') {
+                moveToNextRowOrAppend(index);
+            }
+        } else if (e.key === 'Tab' && !e.shiftKey && (field === 'debit' || field === 'credit')) {
+            if (field === 'debit') {
+                const debitVal = Number(e.currentTarget.value) || 0;
+                if (debitVal > 0) {
+                    e.preventDefault();
+                    moveToNextRowOrAppend(index);
+                }
+            } else if (field === 'credit') {
+                e.preventDefault();
+                moveToNextRowOrAppend(index);
+            }
+        }
+    };
 
     const voucherType = form.watch("type");
 
@@ -321,22 +381,32 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     useEffect(() => {
         if (initialData) return;
         if (!selectedSupplierId) return;
+        if (isRestoring.current) return;
         getVendorWithAccounts(selectedSupplierId).then(res => {
-            if (res.status && res.data?.chartOfAccounts?.length > 0) {
-                const linkedAccounts: { id: string }[] = res.data.chartOfAccounts;
-                const currentRows = form.getValues("details").length;
-                if (linkedAccounts.length === 1) {
-                    form.setValue("details.0.accountId", linkedAccounts[0].id);
-                } else {
-                    linkedAccounts.forEach((acc, i) => {
-                        if (i < currentRows) {
-                            form.setValue(`details.${i}.accountId`, acc.id);
-                            form.setValue(`details.${i}.debit`, 0);
-                            form.setValue(`details.${i}.credit`, 0);
-                        } else {
-                            append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 });
-                        }
-                    });
+            if (res.status && res.data) {
+                const supplierData = res.data;
+                // If backend resolved the AP_PARTIES account and the supplier's specific tag account, use them!
+                if (supplierData.apPartiesAccountId && supplierData.tagAccountId) {
+                    form.setValue("details.0.accountId", supplierData.apPartiesAccountId);
+                    form.setValue("details.0.tagAccountId", supplierData.tagAccountId);
+                    form.setValue("details.0.debit", 0);
+                    form.setValue("details.0.credit", 0);
+                } else if (supplierData.chartOfAccounts?.length > 0) {
+                    const linkedAccounts: { id: string }[] = supplierData.chartOfAccounts;
+                    const currentRows = form.getValues("details").length;
+                    if (linkedAccounts.length === 1) {
+                        form.setValue("details.0.accountId", linkedAccounts[0].id);
+                    } else {
+                        linkedAccounts.forEach((acc, i) => {
+                            if (i < currentRows) {
+                                form.setValue(`details.${i}.accountId`, acc.id);
+                                form.setValue(`details.${i}.debit`, 0);
+                                form.setValue(`details.${i}.credit`, 0);
+                            } else {
+                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false, taxableValue: 0 });
+                            }
+                        });
+                    }
                 }
             }
         });
@@ -417,6 +487,120 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         }
     };
 
+    // Auto-save draft logic (multiple drafts keyed by pvNo)
+    const watchAllFields = form.watch();
+    const voucherNo = watchAllFields.pvNo;
+    useEffect(() => {
+        if (initialData || !voucherNo) return;
+        const draftData = {
+            formValues: watchAllFields,
+            selectedInvoices,
+            selectedAdvances,
+        };
+        const timeout = setTimeout(() => {
+            const draftsJson = localStorage.getItem("payment-voucher-drafts") || "{}";
+            try {
+                const drafts = JSON.parse(draftsJson);
+                drafts[voucherNo] = {
+                    voucherNo,
+                    updatedAt: new Date().toISOString(),
+                    ...draftData,
+                };
+                localStorage.setItem("payment-voucher-drafts", JSON.stringify(drafts));
+            } catch (e) {
+                console.error("Error saving draft", e);
+            }
+        }, 1000);
+        return () => clearTimeout(timeout);
+    }, [watchAllFields, voucherNo, selectedInvoices, selectedAdvances, initialData]);
+
+    // Restore draft logic
+    useEffect(() => {
+        if (initialData) return;
+
+        // Check if there's a specific draftId query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlDraftId = urlParams.get("draftId");
+
+        const draftsJson = localStorage.getItem("payment-voucher-drafts");
+        if (!draftsJson) return;
+
+        try {
+            const drafts = JSON.parse(draftsJson);
+
+            if (urlDraftId) {
+                const draft = drafts[urlDraftId];
+                if (draft && draft.formValues) {
+                    isRestoring.current = true;
+                    if (draft.formValues.pvDate) draft.formValues.pvDate = new Date(draft.formValues.pvDate);
+                    if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
+                    if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
+                    form.reset(draft.formValues);
+                    if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                    if (draft.selectedAdvances) setSelectedAdvances(draft.selectedAdvances);
+                    
+                    setTimeout(() => {
+                        isRestoring.current = false;
+                    }, 300);
+                    toast.success(`Restored draft: ${urlDraftId}`);
+                }
+            } else {
+                const draftKeys = Object.keys(drafts);
+                if (draftKeys.length === 1) {
+                    const singleKey = draftKeys[0];
+                    const draft = drafts[singleKey];
+                    const hasFormDetails = draft.formValues?.details?.some((d: { accountId?: string; debit?: number; credit?: number }) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0);
+                    const hasInvoicesOrAdvances = draft.selectedInvoices?.length > 0 || draft.selectedAdvances?.length > 0;
+                    const hasDescriptionOrSupplier = draft.formValues?.description || draft.formValues?.supplierId;
+
+                    if (hasFormDetails || hasInvoicesOrAdvances || hasDescriptionOrSupplier) {
+                        toast(`You have an unsaved draft (${singleKey}).`, {
+                            action: {
+                                label: "Restore",
+                                onClick: () => {
+                                    isRestoring.current = true;
+                                    if (draft.formValues) {
+                                        if (draft.formValues.pvDate) draft.formValues.pvDate = new Date(draft.formValues.pvDate);
+                                        if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
+                                        if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
+                                        form.reset(draft.formValues);
+                                    }
+                                    if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                                    if (draft.selectedAdvances) setSelectedAdvances(draft.selectedAdvances);
+                                    
+                                    setTimeout(() => {
+                                        isRestoring.current = false;
+                                    }, 300);
+                                    toast.success("Draft restored!");
+                                }
+                            },
+                            cancel: {
+                                label: "Discard",
+                                onClick: () => {
+                                    delete drafts[singleKey];
+                                    localStorage.setItem("payment-voucher-drafts", JSON.stringify(drafts));
+                                }
+                            },
+                            duration: 15000,
+                        });
+                    }
+                } else if (draftKeys.length > 1) {
+                    toast(`You have ${draftKeys.length} pending drafts.`, {
+                        action: {
+                            label: "View Drafts",
+                            onClick: () => {
+                                router.push("/finance/payment-voucher/list");
+                            }
+                        },
+                        duration: 15000,
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse drafts", e);
+        }
+    }, [initialData, form, router]);
+
     const onSubmit: SubmitHandler<PaymentVoucherFormValues> = async (values) => {
         try {
             setIsPending(true);
@@ -458,6 +642,16 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                 ? await updatePaymentVoucher(initialData.id, finalSubmitData)
                 : await createPaymentVoucher(finalSubmitData);
             if (result.status) {
+                if (!initialData && voucherNo) {
+                    const draftsJson = localStorage.getItem("payment-voucher-drafts");
+                    if (draftsJson) {
+                        try {
+                            const drafts = JSON.parse(draftsJson);
+                            delete drafts[voucherNo];
+                            localStorage.setItem("payment-voucher-drafts", JSON.stringify(drafts));
+                        } catch {}
+                    }
+                }
                 toast.success(result.message);
                 router.push("/finance/payment-voucher/list");
             } else {
@@ -515,18 +709,22 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                     }
                 }
 
-                // Update the ref for this row
-                prevDetailsRef.current[index] = {
-                    accountId: detail.accountId || "",
-                    tagAccountId: detail.tagAccountId || "",
-                    taxableValue: currentTaxableValue,
-                };
             });
+        }
 
-            // Clean up extra rows in the ref if any were deleted
-            if (prevDetailsRef.current.length > watchDetails.length) {
-                prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
-            }
+        // ALWAYS sync the ref to current watchDetails, whether tree is loaded or not!
+        watchDetails.forEach((detail, index) => {
+            const currentTaxableValue = Math.round(Number(detail.taxableValue) || 0);
+            prevDetailsRef.current[index] = {
+                accountId: detail.accountId || "",
+                tagAccountId: detail.tagAccountId || "",
+                taxableValue: currentTaxableValue,
+            };
+        });
+
+        // Clean up extra rows in the ref if any were deleted
+        if (prevDetailsRef.current.length > watchDetails.length) {
+            prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
         }
 
         // Find the first row with debit amount (supplier row)
@@ -975,11 +1173,22 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                     name={`details.${index}.accountId`}
                                                     render={({ field }) => (
                                                         <ChartOfAccountSelect
+                                                            id={`details-${index}-accountId`}
                                                             value={field.value}
                                                             onValueChange={(val) => {
                                                                 field.onChange(val);
                                                                 const t = getSharedTree();
                                                                 if (t.length > 0) setTree([...t]);
+                                                                setTimeout(() => {
+                                                                    const nodes = t.length > 0 ? t : tree;
+                                                                    const node = findInTree(nodes, val);
+                                                                    const hasChildren = (node?.children?.length ?? 0) > 0;
+                                                                    if (hasChildren) {
+                                                                        document.getElementById(`details-${index}-tagAccountId`)?.focus();
+                                                                    } else {
+                                                                        document.getElementById(`details-${index}-narration`)?.focus();
+                                                                    }
+                                                                }, 50);
                                                             }}
                                                             placeholder="Select Account"
                                                             disabled={isPending}
@@ -1000,9 +1209,20 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                                 name={`details.${index}.tagAccountId`}
                                                                 render={({ field }) => (
                                                                     <TagAccountSelect
+                                                                        id={`details-${index}-tagAccountId`}
                                                                         children={rowChildren[index]}
                                                                         value={field.value ?? ""}
-                                                                        onValueChange={field.onChange}
+                                                                        onValueChange={(val) => {
+                                                                            field.onChange(val);
+                                                                            setTimeout(() => {
+                                                                                const hasTaxableValue = document.getElementById(`details-${index}-taxableValue`);
+                                                                                if (hasTaxableValue) {
+                                                                                    hasTaxableValue.focus();
+                                                                                } else {
+                                                                                    document.getElementById(`details-${index}-narration`)?.focus();
+                                                                                }
+                                                                            }, 50);
+                                                                        }}
                                                                         disabled={isPending}
                                                                     />
                                                                 )}
@@ -1011,12 +1231,14 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                         {watchDetails[index]?.tagAccountId && (
                                                             <div className="w-[120px] shrink-0">
                                                                 <Input
+                                                                    id={`details-${index}-taxableValue`}
                                                                     type="number"
                                                                     step="0.01"
                                                                     placeholder="Taxable Value"
                                                                     {...form.register(`details.${index}.taxableValue`, {
                                                                         valueAsNumber: true,
                                                                     })}
+                                                                    onKeyDown={(e) => handleKeyDown(e, index, 'taxableValue')}
                                                                     disabled={isPending}
                                                                     className="h-8 text-xs border-gray-300 dark:border-input"
                                                                 />
@@ -1027,16 +1249,20 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                 <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-12 gap-2 border-t pt-2 border-gray-100 dark:border-muted/20">
                                                     <div className="sm:col-span-6">
                                                         <Input
+                                                            id={`details-${index}-narration`}
                                                             placeholder="Line Narration (optional)"
                                                             {...form.register(`details.${index}.narration`)}
+                                                            onKeyDown={(e) => handleKeyDown(e, index, 'narration')}
                                                             disabled={isPending}
                                                             className="h-8 text-xs border-gray-300 dark:border-input"
                                                         />
                                                     </div>
                                                     <div className="sm:col-span-3">
                                                         <Input
+                                                            id={`details-${index}-refBillNo`}
                                                             placeholder="Ref / Bill#"
                                                             {...form.register(`details.${index}.refBillNo`)}
+                                                            onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo')}
                                                             disabled={isPending}
                                                             className="h-8 text-xs border-gray-300 dark:border-input"
                                                         />
@@ -1065,6 +1291,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <Input
+                                                    id={`details-${index}-debit`}
                                                     type="number"
                                                     step="1"
                                                     placeholder="0"
@@ -1081,12 +1308,14 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                             }
                                                         }
                                                     })}
+                                                    onKeyDown={(e) => handleKeyDown(e, index, 'debit')}
                                                     disabled={isPending}
                                                     className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
                                                 <Input
+                                                    id={`details-${index}-credit`}
                                                     type="number"
                                                     step="1"
                                                     placeholder="0"
@@ -1103,6 +1332,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                             }
                                                         }
                                                     })}
+                                                    onKeyDown={(e) => handleKeyDown(e, index, 'credit')}
                                                     disabled={isPending}
                                                     className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />

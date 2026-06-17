@@ -38,18 +38,19 @@ import {
 import { CheckIcon, ChevronDownIcon, Tag } from "lucide-react";
 
 // ─── Tag account selector ─────────────────────────────────────────────────────
-function TagAccountSelect({ children, value, onValueChange, disabled }: {
+function TagAccountSelect({ children, value, onValueChange, disabled, id }: {
     children: ChartOfAccount[];
     value?: string;
     onValueChange: (v: string) => void;
     disabled?: boolean;
+    id?: string;
 }) {
     const [open, setOpen] = useState(false);
     const selected = children.find((c) => c.id === value);
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <button type="button" disabled={disabled} className={cn(
+                <button id={id} type="button" disabled={disabled} className={cn(
                     "flex items-center w-full h-8 px-2 rounded-md border border-dashed border-input bg-background text-xs cursor-pointer select-none text-left",
                     "hover:bg-accent hover:text-accent-foreground transition-colors",
                     "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
@@ -141,6 +142,61 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
 
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "details" });
     const voucherType = form.watch("type");
+
+    const moveToNextRowOrAppend = (index: number) => {
+        const isLast = index === fields.length - 1;
+        if (isLast) {
+            append({
+                accountId: "",
+                tagAccountId: "",
+                debit: 0,
+                credit: 0,
+                narration: "",
+                refBillNo: "",
+                isTaxApplicable: false,
+            });
+            setTimeout(() => {
+                document.getElementById(`details-${index + 1}-accountId`)?.focus();
+            }, 50);
+        } else {
+            document.getElementById(`details-${index + 1}-accountId`)?.focus();
+        }
+    };
+
+    const handleKeyDown = (
+        e: React.KeyboardEvent<HTMLInputElement>,
+        index: number,
+        field: 'narration' | 'refBillNo' | 'debit' | 'credit'
+    ) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (field === 'narration') {
+                document.getElementById(`details-${index}-refBillNo`)?.focus();
+            } else if (field === 'refBillNo') {
+                document.getElementById(`details-${index}-debit`)?.focus();
+            } else if (field === 'debit') {
+                const debitVal = Number(e.currentTarget.value) || 0;
+                if (debitVal > 0) {
+                    moveToNextRowOrAppend(index);
+                } else {
+                    document.getElementById(`details-${index}-credit`)?.focus();
+                }
+            } else if (field === 'credit') {
+                moveToNextRowOrAppend(index);
+            }
+        } else if (e.key === 'Tab' && !e.shiftKey && (field === 'debit' || field === 'credit')) {
+            if (field === 'debit') {
+                const debitVal = Number(e.currentTarget.value) || 0;
+                if (debitVal > 0) {
+                    e.preventDefault();
+                    moveToNextRowOrAppend(index);
+                }
+            } else if (field === 'credit') {
+                e.preventDefault();
+                moveToNextRowOrAppend(index);
+            }
+        }
+    };
 
     // Poll for shared tree
     useEffect(() => {
@@ -347,20 +403,23 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                     }
                 }
 
-                // Update the ref for this row
-                prevDetails[index] = {
-                    accountId: detail.accountId || "",
-                    tagAccountId: detail.tagAccountId || "",
-                };
             });
-
-            // Clean up extra rows in the ref if any were deleted
-            if (prevDetailsRef.current.length > watchDetails.length) {
-                prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
-            }
-            // Update the global taxable amount ref
-            prevTaxableAmountRef.current = taxableAmount;
         }
+
+        // ALWAYS sync the ref to current watchDetails, whether tree is loaded or not!
+        watchDetails.forEach((detail: any, index: number) => {
+            prevDetails[index] = {
+                accountId: detail.accountId || "",
+                tagAccountId: detail.tagAccountId || "",
+            };
+        });
+
+        // Clean up extra rows in the ref if any were deleted
+        if (prevDetailsRef.current.length > watchDetails.length) {
+            prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
+        }
+        // Update the global taxable amount ref
+        prevTaxableAmountRef.current = taxableAmount;
 
         // Find the first row with credit amount (customer row)
         const customerRowIndex = watchDetails.findIndex((detail: any) => Math.round(Number(detail.credit) || 0) > 0);
@@ -391,6 +450,107 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const totalDebit = watchDetails.reduce((sum: number, detail: any) => sum + (Number(detail.debit) || 0), 0);
     const totalCredit = watchDetails.reduce((sum: number, detail: any) => sum + (Number(detail.credit) || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
+
+    // Auto-save draft logic (multiple drafts keyed by rvNo)
+    const watchAllFields = form.watch();
+    const voucherNo = watchAllFields.rvNo;
+    useEffect(() => {
+        if (initialData || !voucherNo) return;
+        const draftData = {
+            formValues: watchAllFields,
+            selectedInvoices,
+        };
+        const timeout = setTimeout(() => {
+            const draftsJson = localStorage.getItem("receipt-voucher-drafts") || "{}";
+            try {
+                const drafts = JSON.parse(draftsJson);
+                drafts[voucherNo] = {
+                    voucherNo,
+                    updatedAt: new Date().toISOString(),
+                    ...draftData,
+                };
+                localStorage.setItem("receipt-voucher-drafts", JSON.stringify(drafts));
+            } catch (e) {
+                console.error("Error saving draft", e);
+            }
+        }, 1000);
+        return () => clearTimeout(timeout);
+    }, [watchAllFields, voucherNo, selectedInvoices, initialData]);
+
+    // Restore draft logic
+    useEffect(() => {
+        if (initialData) return;
+
+        // Check if there's a specific draftId query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlDraftId = urlParams.get("draftId");
+
+        const draftsJson = localStorage.getItem("receipt-voucher-drafts");
+        if (!draftsJson) return;
+
+        try {
+            const drafts = JSON.parse(draftsJson);
+
+            if (urlDraftId) {
+                const draft = drafts[urlDraftId];
+                if (draft && draft.formValues) {
+                    if (draft.formValues.rvDate) draft.formValues.rvDate = new Date(draft.formValues.rvDate);
+                    if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
+                    if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
+                    form.reset(draft.formValues);
+                    if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                    toast.success(`Restored draft: ${urlDraftId}`);
+                }
+            } else {
+                const draftKeys = Object.keys(drafts);
+                if (draftKeys.length === 1) {
+                    const singleKey = draftKeys[0];
+                    const draft = drafts[singleKey];
+                    const hasFormDetails = draft.formValues?.details?.some((d: { accountId?: string; debit?: number; credit?: number }) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0);
+                    const hasInvoices = draft.selectedInvoices?.length > 0;
+                    const hasDescriptionOrCustomer = draft.formValues?.description || draft.formValues?.customerId;
+
+                    if (hasFormDetails || hasInvoices || hasDescriptionOrCustomer) {
+                        toast(`You have an unsaved draft (${singleKey}).`, {
+                            action: {
+                                label: "Restore",
+                                onClick: () => {
+                                    if (draft.formValues) {
+                                        if (draft.formValues.rvDate) draft.formValues.rvDate = new Date(draft.formValues.rvDate);
+                                        if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
+                                        if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
+                                        form.reset(draft.formValues);
+                                    }
+                                    if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                                    toast.success("Draft restored!");
+                                }
+                            },
+                            cancel: {
+                                label: "Discard",
+                                onClick: () => {
+                                    delete drafts[singleKey];
+                                    localStorage.setItem("receipt-voucher-drafts", JSON.stringify(drafts));
+                                }
+                            },
+                            duration: 15000,
+                        });
+                    }
+                } else if (draftKeys.length > 1) {
+                    toast(`You have ${draftKeys.length} pending drafts.`, {
+                        action: {
+                            label: "View Drafts",
+                            onClick: () => {
+                                router.push("/erp/finance/receipt-voucher/list");
+                            }
+                        },
+                        duration: 15000,
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse drafts", e);
+        }
+    }, [initialData, form, router]);
 
     const onSubmit: SubmitHandler<ReceiptVoucherFormValues> = async (values) => {
         try {
@@ -437,6 +597,16 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             console.log('API result:', result);
 
             if (result.status) {
+                if (!initialData && voucherNo) {
+                    const draftsJson = localStorage.getItem("receipt-voucher-drafts");
+                    if (draftsJson) {
+                        try {
+                            const drafts = JSON.parse(draftsJson);
+                            delete drafts[voucherNo];
+                            localStorage.setItem("receipt-voucher-drafts", JSON.stringify(drafts));
+                        } catch {}
+                    }
+                }
                 toast.success(result.message);
                 router.push("/erp/finance/receipt-voucher/list");
             } else {
@@ -702,11 +872,22 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                     name={`details.${index}.accountId`}
                                                     render={({ field }) => (
                                                         <ChartOfAccountSelect
+                                                            id={`details-${index}-accountId`}
                                                             value={field.value}
                                                             onValueChange={(val) => {
                                                                 field.onChange(val);
                                                                 const t = getSharedTree();
                                                                 if (t.length > 0) setTree([...t]);
+                                                                setTimeout(() => {
+                                                                    const nodes = t.length > 0 ? t : tree;
+                                                                    const node = findInTree(nodes, val);
+                                                                    const hasChildren = (node?.children?.length ?? 0) > 0;
+                                                                    if (hasChildren) {
+                                                                        document.getElementById(`details-${index}-tagAccountId`)?.focus();
+                                                                    } else {
+                                                                        document.getElementById(`details-${index}-narration`)?.focus();
+                                                                    }
+                                                                }, 50);
                                                             }}
                                                             placeholder="Select Account"
                                                             disabled={isPending}
@@ -726,9 +907,15 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                             name={`details.${index}.tagAccountId`}
                                                             render={({ field }) => (
                                                                 <TagAccountSelect
+                                                                    id={`details-${index}-tagAccountId`}
                                                                     children={rowChildren[index]}
                                                                     value={field.value ?? ""}
-                                                                    onValueChange={field.onChange}
+                                                                    onValueChange={(val) => {
+                                                                        field.onChange(val);
+                                                                        setTimeout(() => {
+                                                                            document.getElementById(`details-${index}-narration`)?.focus();
+                                                                        }, 50);
+                                                                    }}
                                                                     disabled={isPending}
                                                                 />
                                                             )}
@@ -738,16 +925,20 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                 <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-12 gap-2 border-t pt-2 border-gray-100 dark:border-muted/20">
                                                     <div className="sm:col-span-6">
                                                         <Input
+                                                            id={`details-${index}-narration`}
                                                             placeholder="Line Narration (optional)"
                                                             {...form.register(`details.${index}.narration`)}
+                                                            onKeyDown={(e) => handleKeyDown(e, index, 'narration')}
                                                             disabled={isPending}
                                                             className="h-8 text-xs border-gray-300 dark:border-input"
                                                         />
                                                     </div>
                                                     <div className="sm:col-span-3">
                                                         <Input
+                                                            id={`details-${index}-refBillNo`}
                                                             placeholder="Ref / Bill#"
                                                             {...form.register(`details.${index}.refBillNo`)}
+                                                            onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo')}
                                                             disabled={isPending}
                                                             className="h-8 text-xs border-gray-300 dark:border-input"
                                                         />
@@ -776,6 +967,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <Input
+                                                    id={`details-${index}-debit`}
                                                     type="number"
                                                     step="1"
                                                     placeholder="0"
@@ -792,12 +984,14 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                             }
                                                         }
                                                     })}
+                                                    onKeyDown={(e) => handleKeyDown(e, index, 'debit')}
                                                     disabled={isPending}
                                                     className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />
                                             </td>
                                             <td className="px-4 py-3">
                                                 <Input
+                                                    id={`details-${index}-credit`}
                                                     type="number"
                                                     step="1"
                                                     placeholder="0"
@@ -814,6 +1008,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                             }
                                                         }
                                                     })}
+                                                    onKeyDown={(e) => handleKeyDown(e, index, 'credit')}
                                                     disabled={isPending}
                                                     className="h-10 border-gray-300 dark:border-input font-medium"
                                                 />

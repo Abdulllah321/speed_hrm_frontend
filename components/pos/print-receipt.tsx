@@ -224,6 +224,11 @@ export function PrintReceipt({
         const dataUrl = await htmlToImage.toPng(reportRef.current, {
           backgroundColor: "#ffffff",
           pixelRatio: 2,
+          style: {
+            position: "relative",
+            left: "0",
+            top: "0",
+          },
         });
 
         const imgProps = new jsPDF().getImageProperties(dataUrl);

@@ -52,9 +52,10 @@ interface TagAccountSelectProps {
     value?: string;
     onValueChange: (value: string) => void;
     disabled?: boolean;
+    id?: string;
 }
 
-function TagAccountSelect({ children, value, onValueChange, disabled }: TagAccountSelectProps) {
+function TagAccountSelect({ children, value, onValueChange, disabled, id }: TagAccountSelectProps) {
     const [open, setOpen] = useState(false);
     const selected = children.find((c) => c.id === value);
 
@@ -62,6 +63,7 @@ function TagAccountSelect({ children, value, onValueChange, disabled }: TagAccou
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 <button
+                    id={id}
                     type="button"
                     role="combobox"
                     aria-expanded={open}
@@ -162,6 +164,74 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         name: "details",
     });
 
+    const moveToNextRowOrAppend = (index: number) => {
+        const isLast = index === fields.length - 1;
+        if (isLast) {
+            const currentDetails = form.getValues("details") || [];
+            const dSum = currentDetails.reduce((sum, d) => sum + (Number(d.debit) || 0), 0);
+            const cSum = currentDetails.reduce((sum, d) => sum + (Number(d.credit) || 0), 0);
+            const diff = dSum - cSum;
+            
+            let debitVal = 0;
+            let creditVal = 0;
+            if (diff > 0) {
+                creditVal = diff;
+            } else if (diff < 0) {
+                debitVal = Math.abs(diff);
+            }
+
+            append({
+                accountId: "",
+                tagAccountId: "",
+                debit: debitVal,
+                credit: creditVal,
+                narration: "",
+                refBillNo: "",
+                isTaxApplicable: false,
+            });
+            setTimeout(() => {
+                document.getElementById(`details-${index + 1}-accountId`)?.focus();
+            }, 50);
+        } else {
+            document.getElementById(`details-${index + 1}-accountId`)?.focus();
+        }
+    };
+
+    const handleKeyDown = (
+        e: React.KeyboardEvent<HTMLInputElement>,
+        index: number,
+        field: 'narration' | 'refBillNo' | 'debit' | 'credit'
+    ) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (field === 'narration') {
+                document.getElementById(`details-${index}-refBillNo`)?.focus();
+            } else if (field === 'refBillNo') {
+                document.getElementById(`details-${index}-debit`)?.focus();
+            } else if (field === 'debit') {
+                const debitVal = Number(e.currentTarget.value) || 0;
+                if (debitVal > 0) {
+                    moveToNextRowOrAppend(index);
+                } else {
+                    document.getElementById(`details-${index}-credit`)?.focus();
+                }
+            } else if (field === 'credit') {
+                moveToNextRowOrAppend(index);
+            }
+        } else if (e.key === 'Tab' && !e.shiftKey && (field === 'debit' || field === 'credit')) {
+            if (field === 'debit') {
+                const debitVal = Number(e.currentTarget.value) || 0;
+                if (debitVal > 0) {
+                    e.preventDefault();
+                    moveToNextRowOrAppend(index);
+                }
+            } else if (field === 'credit') {
+                e.preventDefault();
+                moveToNextRowOrAppend(index);
+            }
+        }
+    };
+
     const watchDetails = form.watch("details") || [];
 
     // Poll for the shared tree until it's available (it loads lazily on first open)
@@ -197,6 +267,98 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         });
     }, [watchDetails.map((d) => d.accountId).join(","), tree]);
 
+    // Auto-save draft logic (multiple drafts keyed by jvNo)
+    const watchAllFields = form.watch();
+    const voucherNo = watchAllFields.jvNo;
+    useEffect(() => {
+        if (initialData || !voucherNo) return;
+        const timeout = setTimeout(() => {
+            const draftsJson = localStorage.getItem("journal-voucher-drafts") || "{}";
+            try {
+                const drafts = JSON.parse(draftsJson);
+                drafts[voucherNo] = {
+                    voucherNo,
+                    updatedAt: new Date().toISOString(),
+                    formValues: watchAllFields,
+                };
+                localStorage.setItem("journal-voucher-drafts", JSON.stringify(drafts));
+            } catch (e) {
+                console.error("Error saving draft", e);
+            }
+        }, 1000);
+        return () => clearTimeout(timeout);
+    }, [watchAllFields, voucherNo, initialData]);
+
+    // Restore draft logic
+    useEffect(() => {
+        if (initialData) return;
+        
+        // 1. Check if there's a specific draftId query parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlDraftId = urlParams.get("draftId");
+        
+        const draftsJson = localStorage.getItem("journal-voucher-drafts");
+        if (!draftsJson) return;
+        
+        try {
+            const drafts = JSON.parse(draftsJson);
+            
+            if (urlDraftId) {
+                const draft = drafts[urlDraftId];
+                if (draft && draft.formValues) {
+                    if (draft.formValues.jvDate) {
+                        draft.formValues.jvDate = new Date(draft.formValues.jvDate);
+                    }
+                    form.reset(draft.formValues);
+                    toast.success(`Restored draft: ${urlDraftId}`);
+                }
+            } else {
+                // Check if any drafts exist
+                const draftKeys = Object.keys(drafts);
+                if (draftKeys.length === 1) {
+                    const singleKey = draftKeys[0];
+                    const draft = drafts[singleKey];
+                    const hasDetails = draft.formValues?.details?.some((d: { accountId?: string; debit?: number; credit?: number }) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0);
+                    const hasDescription = draft.formValues?.description;
+                    if (hasDetails || hasDescription) {
+                        toast(`You have an unsaved draft (${singleKey}).`, {
+                            action: {
+                                label: "Restore",
+                                onClick: () => {
+                                    if (draft.formValues.jvDate) {
+                                        draft.formValues.jvDate = new Date(draft.formValues.jvDate);
+                                    }
+                                    form.reset(draft.formValues);
+                                    toast.success("Draft restored!");
+                                }
+                            },
+                            cancel: {
+                                label: "Discard",
+                                onClick: () => {
+                                    delete drafts[singleKey];
+                                    localStorage.setItem("journal-voucher-drafts", JSON.stringify(drafts));
+                                }
+                            },
+                            duration: 15000,
+                        });
+                    }
+                } else if (draftKeys.length > 1) {
+                    toast(`You have ${draftKeys.length} pending drafts.`, {
+                        action: {
+                            label: "View Drafts",
+                            onClick: () => {
+                                router.push("/finance/journal-voucher/list");
+                            }
+                        },
+                        duration: 15000,
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to parse drafts", e);
+        }
+    }, [initialData, form, router]);
+
     const onSubmit: SubmitHandler<JournalVoucherFormValues> = async (values) => {
         try {
             setIsPending(true);
@@ -213,6 +375,16 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                 ? await updateJournalVoucher(initialData.id, payload)
                 : await createJournalVoucher(payload);
             if (result.status) {
+                if (!initialData && voucherNo) {
+                    const draftsJson = localStorage.getItem("journal-voucher-drafts");
+                    if (draftsJson) {
+                        try {
+                            const drafts = JSON.parse(draftsJson);
+                            delete drafts[voucherNo];
+                            localStorage.setItem("journal-voucher-drafts", JSON.stringify(drafts));
+                        } catch {}
+                    }
+                }
                 toast.success(initialData ? "Journal Voucher updated successfully" : "Journal Voucher created successfully");
                 router.push("/finance/journal-voucher/list");
             } else {
@@ -392,12 +564,23 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                         name={`details.${index}.accountId`}
                                                         render={({ field }) => (
                                                             <ChartOfAccountSelect
+                                                                id={`details-${index}-accountId`}
                                                                 value={field.value}
                                                                 onValueChange={(val) => {
                                                                     field.onChange(val);
                                                                     // Eagerly update tree ref so rowChildren recalculates
                                                                     const t = getSharedTree();
                                                                     if (t.length > 0) setTree([...t]);
+                                                                    setTimeout(() => {
+                                                                        const nodes = t.length > 0 ? t : tree;
+                                                                        const node = findInTree(nodes, val);
+                                                                        const hasChildren = (node?.children?.length ?? 0) > 0;
+                                                                        if (hasChildren) {
+                                                                            document.getElementById(`details-${index}-tagAccountId`)?.focus();
+                                                                        } else {
+                                                                            document.getElementById(`details-${index}-narration`)?.focus();
+                                                                        }
+                                                                    }, 50);
                                                                 }}
                                                                 placeholder="Select Account"
                                                                 disabled={isPending}
@@ -419,9 +602,15 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                                 name={`details.${index}.tagAccountId`}
                                                                 render={({ field }) => (
                                                                     <TagAccountSelect
+                                                                        id={`details-${index}-tagAccountId`}
                                                                         children={children}
                                                                         value={field.value ?? ""}
-                                                                        onValueChange={field.onChange}
+                                                                        onValueChange={(val) => {
+                                                                            field.onChange(val);
+                                                                            setTimeout(() => {
+                                                                                document.getElementById(`details-${index}-narration`)?.focus();
+                                                                            }, 50);
+                                                                        }}
                                                                         disabled={isPending}
                                                                     />
                                                                 )}
@@ -433,16 +622,20 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                     <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-12 gap-2 border-t pt-2 border-gray-100 dark:border-muted/20">
                                                         <div className="sm:col-span-6">
                                                             <Input
+                                                                id={`details-${index}-narration`}
                                                                 placeholder="Line Narration (optional)"
                                                                 {...form.register(`details.${index}.narration`)}
+                                                                onKeyDown={(e) => handleKeyDown(e, index, 'narration')}
                                                                 disabled={isPending}
                                                                 className="h-8 text-xs border-gray-300 dark:border-input"
                                                             />
                                                         </div>
                                                         <div className="sm:col-span-3">
                                                             <Input
+                                                                id={`details-${index}-refBillNo`}
                                                                 placeholder="Ref / Bill#"
                                                                 {...form.register(`details.${index}.refBillNo`)}
+                                                                onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo')}
                                                                 disabled={isPending}
                                                                 className="h-8 text-xs border-gray-300 dark:border-input"
                                                             />
@@ -471,6 +664,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <Input
+                                                        id={`details-${index}-debit`}
                                                         type="number"
                                                         step="1"
                                                         placeholder="Debit"
@@ -487,12 +681,14 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                                 }
                                                             },
                                                         })}
+                                                        onKeyDown={(e) => handleKeyDown(e, index, 'debit')}
                                                         disabled={isPending}
                                                         className="h-10 border-gray-300 dark:border-input font-medium"
                                                     />
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <Input
+                                                        id={`details-${index}-credit`}
                                                         type="number"
                                                         step="1"
                                                         placeholder="Credit"
@@ -509,6 +705,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                                 }
                                                             },
                                                         })}
+                                                        onKeyDown={(e) => handleKeyDown(e, index, 'credit')}
                                                         disabled={isPending}
                                                         className="h-10 border-gray-300 dark:border-input font-medium"
                                                     />

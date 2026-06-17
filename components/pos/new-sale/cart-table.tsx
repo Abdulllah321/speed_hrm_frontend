@@ -45,6 +45,7 @@ interface CartTableProps {
     onDiscountChange?: (id: string, discountPercent: number, note?: string) => void;
     onRemoveItem: (id: string) => void;
     onToggleTransit?: (id: string) => void;
+    focusedIndex?: number;
 }
 
 export function CartTable({
@@ -53,6 +54,7 @@ export function CartTable({
     onDiscountChange,
     onRemoveItem,
     onToggleTransit,
+    focusedIndex = -1,
 }: CartTableProps) {
     const { user } = useAuth();
     
@@ -207,7 +209,10 @@ export function CartTable({
                         items.map((item, index) => (
                             <TableRow
                                 key={item.id}
-                                className="group transition-colors"
+                                className={cn(
+                                    "group transition-colors relative",
+                                    index === focusedIndex && "bg-primary/5 dark:bg-primary/10 border-l-4 border-l-primary font-medium shadow-inner"
+                                )}
                             >
                                 {/* Row number */}
                                 <TableCell className="text-center text-muted-foreground font-medium">
@@ -344,6 +349,7 @@ export function CartTable({
                                     <div className="flex flex-col items-center gap-0.5">
                                         <div className="flex items-center justify-center gap-1">
                                             <Input
+                                                id={`discount-input-${index}`}
                                                 type="number"
                                                 min={item.overrideDiscountPercent ?? item.discountPercent}
                                                 max={50}

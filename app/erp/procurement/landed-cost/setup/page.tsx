@@ -217,6 +217,15 @@ export default function LandedCostSetupPage() {
       return;
     }
 
+    const isLocal = (grn as any).orderType === 'LOCAL';
+    if (isLocal) {
+      setExchangeRate(1);
+      setCurrency('PKR');
+    } else {
+      setExchangeRate(280);
+      setCurrency('USD');
+    }
+
     // Extract unique HS codes from GRN item master data
     const hsMap = new Map<string, any>();
     ((grn as any).items || []).forEach((gi: any) => {
@@ -619,8 +628,8 @@ export default function LandedCostSetupPage() {
         season,
         category,
         shippingInvoiceNo,
-        currency,
-        exchangeRate,
+        currency: isLocal ? 'PKR' : currency,
+        exchangeRate: isLocal ? 1 : exchangeRate,
         // MIS Header Fields
         freightUSD,
         freightPKR,
