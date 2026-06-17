@@ -87,6 +87,13 @@ export function DiscountPanel({
 }: DiscountPanelProps) {
     const [activeAllianceIndex, setActiveAllianceIndex] = React.useState(-1);
 
+    const filteredAlliances = alliances.filter(
+        (a) =>
+            a.partnerName.toLowerCase().includes(allianceSearch.toLowerCase()) ||
+            a.code.toLowerCase().includes(allianceSearch.toLowerCase()) ||
+            (allianceSearch.match(/^\d+/) && a.binNumbers.some((bin) => bin.startsWith(allianceSearch.trim())))
+    );
+
     React.useEffect(() => {
         setActiveAllianceIndex(-1);
     }, [allianceSearch, alliances]);
@@ -96,10 +103,10 @@ export function DiscountPanel({
 
         if (e.key === "ArrowDown") {
             e.preventDefault();
-            setActiveAllianceIndex((prev) => (prev + 1) % filteredAlliances.length);
+            setActiveAllianceIndex(idx => (idx + 1) % filteredAlliances.length);
         } else if (e.key === "ArrowUp") {
             e.preventDefault();
-            setActiveAllianceIndex((prev) => (prev - 1 + filteredAlliances.length) % filteredAlliances.length);
+            setActiveAllianceIndex(idx => (idx - 1 + filteredAlliances.length) % filteredAlliances.length);
         } else if (e.key === "Enter") {
             e.preventDefault();
             const idx = activeAllianceIndex >= 0 ? activeAllianceIndex : 0;
@@ -111,13 +118,6 @@ export function DiscountPanel({
     };
 
     const hasCashTender = tenders.some((t) => t.method === "cash");
-
-    const filteredAlliances = alliances.filter(
-        (a) =>
-            a.partnerName.toLowerCase().includes(allianceSearch.toLowerCase()) ||
-            a.code.toLowerCase().includes(allianceSearch.toLowerCase()) ||
-            (allianceSearch.match(/^\d+/) && a.binNumbers.some((bin) => bin.startsWith(allianceSearch.trim())))
-    );
 
     return (
         <div className="flex flex-col gap-3 h-full overflow-y-auto pr-0.5">

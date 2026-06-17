@@ -106,7 +106,20 @@ export default function ReturnsPage() {
         returnRef: string;
         refundTotal: number;
         returnedAt: string;
-        itemRefundDetails?: { orderItemId: string; itemId: string; quantity: number; originalPaidPerUnit: number; refundPerUnit: number; priceAdjusted: boolean }[];
+        itemRefundDetails?: {
+            orderItemId: string;
+            itemId: string;
+            quantity: number;
+            originalPaidPerUnit: number;
+            refundPerUnit: number;
+            priceAdjusted: boolean;
+            couponDeduction?: number;
+            unitPrice?: number;
+            discountPercent?: number;
+            discountAmount?: number;
+            taxAmount?: number;
+            taxPercent?: number;
+        }[];
         exchangeVoucher?: { code: string; faceValue: number; expiresAt: string } | null;
     } | null>(null);
 

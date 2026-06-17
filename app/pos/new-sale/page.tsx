@@ -230,6 +230,202 @@ export default function NewSalePage() {
         }
     }, []);
 
+    // Keyboard shortcuts moved to bottom to prevent TDZ error
+
+    // ─── Debounced Live Search ──────────────────────────────────────
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (searchQuery.trim().length >= 2) {
+                setIsSearching(true);
+                try {
+                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: searchQuery.trim() } });
+                    if (res.ok && res.data?.status && res.data.data) {
+                        setSearchResults(res.data.data);
+                    } else {
+                        setSearchResults([]);
+                    }
+                } catch {
+                    setSearchResults([]);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setSearchResults([]);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // ─── Barcode scan / Search submit ──────────────────────────────
+    const handleSearchSubmit = useCallback(async () => {
+        if (!searchQuery.trim()) return;
+        try {
+            const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
+            if (res.ok && res.data?.status && res.data.data) {
+                const product = res.data.data;
+                const defTax = parseFloat(settings.defaultTaxPercent) || 0;
+                setCartItems((prev) => {
+                    const existingIndex = prev.findIndex((i) => i.id === product.id);
+                    if (existingIndex > -1) {
+                        const existing = prev[existingIndex];
+                        if (existing.quantity + 1 > product.stockQty && !existing.isStockInTransit) {
+                            toast.error(`Only ${product.stockQty} units available in stock`);
+                            return prev;
+                        }
+                        setTimeout(() => setFocusedCartIndex(existingIndex), 0);
+                        return prev.map((i) =>
+                            i.id === product.id
+                                ? computeLineItem(product, i.quantity + 1, i.discountPercent, i.isStockInTransit, defTax)
+                                : i
+                        );
+                    }
+                    setTimeout(() => setFocusedCartIndex(prev.length), 0);
+                    return [...prev, computeLineItem(product, 1, Number(product.effectiveDiscountPercent ?? product.discountRate) || 0, false, defTax)];
+                });
+            } else {
+                toast.error(res.data?.message || "Item not found");
+            }
+        } catch {
+            toast.error("Failed to scan item. Check connection.");
+        }
+        setSearchQuery("");
+        searchInputRef.current?.focus();
+    }, [searchQuery, settings.defaultTaxPercent]);
+
+    // ─── Select from Autocomplete ───────────────────────────────────
+    const handleSelectProduct = useCallback((product: any) => {
+        const defTax = parseFloat(settings.defaultTaxPercent) || 0;
+        setCartItems((prev) => {
+            const existingIndex = prev.findIndex((i) => i.id === product.id);
+            if (existingIndex > -1) {
+                const existing = prev[existingIndex];
+                if (existing.quantity + 1 > product.stockQty && !existing.isStockInTransit) {
+                    toast.error(`Only ${product.stockQty} units available in stock`);
+                    return prev;
+                }
+                setTimeout(() => setFocusedCartIndex(existingIndex), 0);
+                return prev.map((i) =>
+                    i.id === product.id
+                        ? computeLineItem(product, i.quantity + 1, i.discountPercent, i.isStockInTransit, defTax)
+                        : i
+                );
+            }
+            setTimeout(() => setFocusedCartIndex(prev.length), 0);
+            return [...prev, computeLineItem(product, 1, Number(product.effectiveDiscountPercent ?? product.discountRate) || 0, false, defTax)];
+        });
+        setSearchQuery("");
+        setSearchResults([]);
+        searchInputRef.current?.focus();
+    }, [settings.defaultTaxPercent]);
+
+    // ─── Cart operations ────────────────────────────────────────────
+    const handleQuantityChange = useCallback((id: string, quantity: number) => {
+        setCartItems((prev) =>
+            prev.map((item) => {
+                if (item.id !== id) return item;
+                if (quantity > item.stockQty && !item.isStockInTransit) {
+                    toast.error(`Only ${item.stockQty} units available in stock`);
+                    return item;
+                }
+                
+                // Step 1: Retail price is item.price
+                const retailPrice = item.price;
+                
+                // Step 2: Calculate WOST (Value Without Sales Tax)
+                const taxDivisor = 1 + (item.taxPercent / 100);
+                const wostPerUnit = retailPrice / taxDivisor;
+                const totalWost = wostPerUnit * quantity;
+                
+                // Step 3: Apply discount on WOST
+                const discountAmount = Math.round(totalWost * (item.discountPercent / 100));
+                const afterDiscount = totalWost - discountAmount;
+                
+                // Step 4: Calculate tax on discounted amount
+                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
+                
+                // Step 5: Total = Math.round(discounted WOST + tax)
+                const total = Math.round(afterDiscount + taxAmount);
+                
+                return { ...item, quantity, discountAmount, taxAmount, total };
+            })
+        );
+    }, []);
+
+    const handleDiscountChange = useCallback((id: string, newDiscountPercent: number) => {
+        const clamped = Math.min(100, Math.max(0, newDiscountPercent));
+        setCartItems((prev) =>
+            prev.map((item) => {
+                if (item.id !== id) return item;
+                
+                const originalDiscount = item.discountPercent;
+                
+                // Determine if this is an override
+                let overrideDiscountPercent = item.overrideDiscountPercent;
+                
+                if (clamped !== originalDiscount) {
+                    // New discount is different from original, set override
+                    overrideDiscountPercent = clamped;
+                } else {
+                    // New discount matches original, clear override
+                    overrideDiscountPercent = undefined;
+                }
+                
+                // Step 1: Retail price is item.price
+                const retailPrice = item.price;
+                
+                // Step 2: Calculate WOST (Value Without Sales Tax)
+                const taxDivisor = 1 + (item.taxPercent / 100);
+                const wostPerUnit = retailPrice / taxDivisor;
+                const totalWost = wostPerUnit * item.quantity;
+                
+                // Step 3: Apply discount on WOST
+                const discountAmount = Math.round(totalWost * (clamped / 100));
+                const afterDiscount = totalWost - discountAmount;
+                
+                // Step 4: Calculate tax on discounted amount
+                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
+                
+                // Step 5: Total = Math.round(discounted WOST + tax)
+                const total = Math.round(afterDiscount + taxAmount);
+                
+                return { 
+                    ...item, 
+                    overrideDiscountPercent,
+                    discountAmount, 
+                    taxAmount, 
+                    total 
+                };
+            })
+        );
+    }, []);
+
+    const handleRemoveItem = useCallback((id: string) => {
+        setCartItems((prev) => prev.filter((item) => item.id !== id));
+    }, []);
+
+    // ─── Toggle stock-in-transit ────────────────────────────────────
+    const handleToggleTransit = useCallback((id: string) => {
+        setCartItems((prev) =>
+            prev.map((item) =>
+                item.id === id
+                    ? { ...item, isStockInTransit: !item.isStockInTransit }
+                    : item
+            )
+        );
+    }, []);
+
+    // ─── Checkout ───────────────────────────────────────────────────
+    const handleCheckout = useCallback(() => {
+        if (cartItems.length === 0) return;
+        sessionStorage.setItem("pos_cart", JSON.stringify(cartItems));
+        if (resumedHoldOrderId) {
+            sessionStorage.setItem("pos_hold_order_id", resumedHoldOrderId);
+        } else {
+            sessionStorage.removeItem("pos_hold_order_id");
+        }
+        router.push("/pos/checkout");
+    }, [cartItems, router, resumedHoldOrderId]);
+
     // ─── Keyboard shortcuts ─────────────────────────────────────────
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -374,200 +570,6 @@ export default function NewSalePage() {
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [cartItems, isProcessing, showHoldOrders, showShortcutsHelp, focusedCartIndex, handleHold, loadHoldOrders, handleQuantityChange, handleRemoveItem, handleToggleTransit, canTransit, canHold, canViewHolds]);
-
-    // ─── Debounced Live Search ──────────────────────────────────────
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (searchQuery.trim().length >= 2) {
-                setIsSearching(true);
-                try {
-                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: searchQuery.trim() } });
-                    if (res.ok && res.data?.status && res.data.data) {
-                        setSearchResults(res.data.data);
-                    } else {
-                        setSearchResults([]);
-                    }
-                } catch {
-                    setSearchResults([]);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setSearchResults([]);
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
-
-    // ─── Barcode scan / Search submit ──────────────────────────────
-    const handleSearchSubmit = useCallback(async () => {
-        if (!searchQuery.trim()) return;
-        try {
-            const res = await authFetch(`/pos-sales/scan`, { params: { barcode: searchQuery.trim() } });
-            if (res.ok && res.data?.status && res.data.data) {
-                const product = res.data.data;
-                const defTax = parseFloat(settings.defaultTaxPercent) || 0;
-                setCartItems((prev) => {
-                    const existingIndex = prev.findIndex((i) => i.id === product.id);
-                    if (existingIndex > -1) {
-                        const existing = prev[existingIndex];
-                        if (existing.quantity + 1 > product.stockQty && !existing.isStockInTransit) {
-                            toast.error(`Only ${product.stockQty} units available in stock`);
-                            return prev;
-                        }
-                        setTimeout(() => setFocusedCartIndex(existingIndex), 0);
-                        return prev.map((i) =>
-                            i.id === product.id
-                                ? computeLineItem(product, i.quantity + 1, i.discountPercent, i.isStockInTransit, defTax)
-                                : i
-                        );
-                    }
-                    setTimeout(() => setFocusedCartIndex(prev.length), 0);
-                    return [...prev, computeLineItem(product, 1, Number(product.effectiveDiscountPercent ?? product.discountRate) || 0, false, defTax)];
-                });
-            } else {
-                toast.error(res.data?.message || "Item not found");
-            }
-        } catch {
-            toast.error("Failed to scan item. Check connection.");
-        }
-        setSearchQuery("");
-        searchInputRef.current?.focus();
-    }, [searchQuery, settings.defaultTaxPercent]);
-
-    // ─── Select from Autocomplete ───────────────────────────────────
-    const handleSelectProduct = useCallback((product: any) => {
-        const defTax = parseFloat(settings.defaultTaxPercent) || 0;
-        setCartItems((prev) => {
-            const existingIndex = prev.findIndex((i) => i.id === product.id);
-            if (existingIndex > -1) {
-                const existing = prev[existingIndex];
-                if (existing.quantity + 1 > product.stockQty && !existing.isStockInTransit) {
-                    toast.error(`Only ${product.stockQty} units available in stock`);
-                    return prev;
-                }
-                setTimeout(() => setFocusedCartIndex(existingIndex), 0);
-                return prev.map((i) =>
-                    i.id === product.id
-                        ? computeLineItem(product, i.quantity + 1, i.discountPercent, i.isStockInTransit, defTax)
-                        : i
-                );
-            }
-            setTimeout(() => setFocusedCartIndex(prev.length), 0);
-            return [...prev, computeLineItem(product, 1, Number(product.effectiveDiscountPercent ?? product.discountRate) || 0, false, defTax)];
-        });
-        setSearchQuery("");
-        setSearchResults([]);
-        searchInputRef.current?.focus();
-    }, [settings.defaultTaxPercent]);
-
-    // ─── Cart operations ────────────────────────────────────────────
-    const handleQuantityChange = useCallback((id: string, quantity: number) => {
-        setCartItems((prev) =>
-            prev.map((item) => {
-                if (item.id !== id) return item;
-                if (quantity > item.stockQty && !item.isStockInTransit) {
-                    toast.error(`Only ${item.stockQty} units available in stock`);
-                    return item;
-                }
-                
-                // Step 1: Retail price is item.price
-                const retailPrice = item.price;
-                
-                // Step 2: Calculate WOST (Value Without Sales Tax)
-                const taxDivisor = 1 + (item.taxPercent / 100);
-                const wostPerUnit = retailPrice / taxDivisor;
-                const totalWost = wostPerUnit * quantity;
-                
-                // Step 3: Apply discount on WOST
-                const discountAmount = Math.round(totalWost * (item.discountPercent / 100));
-                const afterDiscount = totalWost - discountAmount;
-                
-                // Step 4: Calculate tax on discounted amount
-                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
-                
-                // Step 5: Total = Math.round(discounted WOST + tax)
-                const total = Math.round(afterDiscount + taxAmount);
-                
-                return { ...item, quantity, discountAmount, taxAmount, total };
-            })
-        );
-    }, []);
-
-    const handleDiscountChange = useCallback((id: string, newDiscountPercent: number) => {
-        const clamped = Math.min(100, Math.max(0, newDiscountPercent));
-        setCartItems((prev) =>
-            prev.map((item) => {
-                if (item.id !== id) return item;
-                
-                const originalDiscount = item.discountPercent;
-                
-                // Determine if this is an override
-                let overrideDiscountPercent = item.overrideDiscountPercent;
-                
-                if (clamped !== originalDiscount) {
-                    // New discount is different from original, set override
-                    overrideDiscountPercent = clamped;
-                } else {
-                    // New discount matches original, clear override
-                    overrideDiscountPercent = null;
-                }
-                
-                // Step 1: Retail price is item.price
-                const retailPrice = item.price;
-                
-                // Step 2: Calculate WOST (Value Without Sales Tax)
-                const taxDivisor = 1 + (item.taxPercent / 100);
-                const wostPerUnit = retailPrice / taxDivisor;
-                const totalWost = wostPerUnit * item.quantity;
-                
-                // Step 3: Apply discount on WOST
-                const discountAmount = Math.round(totalWost * (clamped / 100));
-                const afterDiscount = totalWost - discountAmount;
-                
-                // Step 4: Calculate tax on discounted amount
-                const taxAmount = Math.round(afterDiscount * (item.taxPercent / 100));
-                
-                // Step 5: Total = Math.round(discounted WOST + tax)
-                const total = Math.round(afterDiscount + taxAmount);
-                
-                return { 
-                    ...item, 
-                    overrideDiscountPercent,
-                    discountAmount, 
-                    taxAmount, 
-                    total 
-                };
-            })
-        );
-    }, []);
-
-    const handleRemoveItem = useCallback((id: string) => {
-        setCartItems((prev) => prev.filter((item) => item.id !== id));
-    }, []);
-
-    // ─── Toggle stock-in-transit ────────────────────────────────────
-    const handleToggleTransit = useCallback((id: string) => {
-        setCartItems((prev) =>
-            prev.map((item) =>
-                item.id === id
-                    ? { ...item, isStockInTransit: !item.isStockInTransit }
-                    : item
-            )
-        );
-    }, []);
-
-    // ─── Checkout ───────────────────────────────────────────────────
-    const handleCheckout = useCallback(() => {
-        if (cartItems.length === 0) return;
-        sessionStorage.setItem("pos_cart", JSON.stringify(cartItems));
-        if (resumedHoldOrderId) {
-            sessionStorage.setItem("pos_hold_order_id", resumedHoldOrderId);
-        } else {
-            sessionStorage.removeItem("pos_hold_order_id");
-        }
-        router.push("/pos/checkout");
-    }, [cartItems, router, resumedHoldOrderId]);
 
     // ─── Derived state ──────────────────────────────────────────────
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);

@@ -364,7 +364,7 @@ function ReturnBody({
 
             {/* ── Return Invoice Title ── */}
             <div className="text-center space-y-0.5">
-                <p className="font-bold text-sm tracking-widest uppercase">{isRefund ? "Refund Invoice" : "Return Invoice"}</p>
+                <p className="font-bold text-sm tracking-widest uppercase">{isRefund ? "Refund Voucher" : "Sales Return"}</p>
                 <p className="font-black text-2xl tracking-wider">*{returnRef}*</p>
             </div>
 

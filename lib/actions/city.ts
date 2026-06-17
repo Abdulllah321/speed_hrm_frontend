@@ -322,9 +322,9 @@ export async function createState(data: {
       method: "POST",
       body: JSON.stringify(data),
     });
-    const { data } = res;
-    if (data.status) revalidatePath("/master/state");
-    return data;
+    const resData = res.data;
+    if (resData?.status) revalidatePath("/master/state");
+    return resData;
   } catch (error) {
     return { status: false, message: "Failed to create state" };
   }
@@ -358,9 +358,9 @@ export async function updateState(
       method: "PUT",
       body: JSON.stringify({ ...data, id }),
     });
-    const { data } = res;
-    if (data.status) revalidatePath("/master/state");
-    return data;
+    const resData = res.data;
+    if (resData?.status) revalidatePath("/master/state");
+    return resData;
   } catch (error) {
     return { status: false, message: "Failed to update state" };
   }
