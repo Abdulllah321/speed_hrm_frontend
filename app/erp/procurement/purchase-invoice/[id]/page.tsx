@@ -50,6 +50,8 @@ function getGroupedItems(items: any[]) {
   
   items.forEach(item => {
     const sku = item.item?.sku || item.sku || '—';
+    const size = item.item?.size?.name || null;
+    const color = item.item?.color?.name || null;
     if (!groups[sku]) {
       groups[sku] = {
         id: item.id,
@@ -64,8 +66,13 @@ function getGroupedItems(items: any[]) {
         taxAmount: 0,
         lineTotal: 0,
         item: item.item,
+        sizes: new Set<string>(),
+        colors: new Set<string>(),
       };
     }
+    
+    if (size) groups[sku].sizes.add(size);
+    if (color) groups[sku].colors.add(color);
     
     const qty = Number(item.quantity || 0);
     const unitCost = Number(item.unitPrice || 0);
@@ -80,7 +87,11 @@ function getGroupedItems(items: any[]) {
     groups[sku].lineTotal += Number(item.lineTotal || 0);
   });
   
-  return Object.values(groups);
+  return Object.values(groups).map(g => ({
+    ...g,
+    size: Array.from(g.sizes).join(', ') || '—',
+    color: Array.from(g.colors).join(', ') || '—',
+  }));
 }
 
 interface PaymentVoucherInvoice {
@@ -201,6 +212,8 @@ export default function PurchaseInvoiceDetailPage() {
         "SKU",
         "HS Code",
         "Description",
+        "Size",
+        "Color",
         "Qty",
         "Unit Cost (PKR)",
         "Value Excl. Tax (PKR)",
@@ -230,6 +243,8 @@ export default function PurchaseInvoiceDetailPage() {
           item.item?.sku         || item.sku         || "—",
           item.item?.hsCodeStr   || "—",
           item.item?.description || item.description || "—",
+          item.size || "—",
+          item.color || "—",
           qty,
           unitCost,
           valExcl,
@@ -244,7 +259,7 @@ export default function PurchaseInvoiceDetailPage() {
       });
 
       const totalsRow = [
-        "", "", "", "TOTALS",
+        "", "", "", "", "", "TOTALS",
         items.reduce((s, i) => s + Number(i.quantity    || 0), 0),
         "",
         items.reduce((s, i) => {
@@ -272,6 +287,8 @@ export default function PurchaseInvoiceDetailPage() {
         { wch: 16 },  // SKU
         { wch: 14 },  // HS Code
         { wch: 34 },  // Description
+        { wch: 12 },  // Size
+        { wch: 12 },  // Color
         { wch: 8  },  // Qty
         { wch: 16 },  // Unit Cost
         { wch: 20 },  // Value Excl Tax
@@ -340,6 +357,8 @@ export default function PurchaseInvoiceDetailPage() {
           "SKU",
           "HS Code",
           "Description",
+          "Size",
+          "Color",
           "Qty",
           "Unit Cost (PKR)",
           "Value Excl. Tax (PKR)",
@@ -370,6 +389,8 @@ export default function PurchaseInvoiceDetailPage() {
           item.item?.sku         || item.sku         || "—",
           item.item?.hsCodeStr   || "—",
           item.item?.description || item.description || "—",
+          item.size || "—",
+          item.color || "—",
           qty,
           unitCost,
           valE,
@@ -385,7 +406,7 @@ export default function PurchaseInvoiceDetailPage() {
 
       // Totals
       rows.push([
-        "", "", "", "TOTALS",
+        "", "", "", "", "", "TOTALS",
         items.reduce((s, i) => s + Number(i.quantity || 0), 0),
         "",
         items.reduce((s, i) => {
@@ -726,6 +747,8 @@ export default function PurchaseInvoiceDetailPage() {
                         <th className="text-left p-3">SKU</th>
                         <th className="text-left p-3">HS Code</th>
                         <th className="text-left p-3">Description</th>
+                        <th className="text-left p-3">Size</th>
+                        <th className="text-left p-3">Color</th>
                         <th className="text-right p-3">Qty</th>
                         <th className="text-right p-3">Unit Cost</th>
                         <th className="text-right p-3">Val. Excl. Tax</th>
@@ -757,6 +780,8 @@ export default function PurchaseInvoiceDetailPage() {
                             <td className="p-3">
                               <div className="font-medium">{item.item?.description || item.description || "—"}</div>
                             </td>
+                            <td className="p-3 text-left">{item.size || "—"}</td>
+                            <td className="p-3 text-left">{item.color || "—"}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(qty)}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(unitCost)}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(valExcl)}</td>
@@ -936,7 +961,9 @@ export default function PurchaseInvoiceDetailPage() {
                       <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
                       <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
                       <th className="py-1 pr-1 text-left font-bold w-[8%]">HS Code</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[18%]">Description</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[14%]">Description</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[5%]">Size</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[5%]">Color</th>
                       <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
                       <th className="py-1 pr-1 text-right font-bold w-[9%]">Unit Cost</th>
                       <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
@@ -965,6 +992,8 @@ export default function PurchaseInvoiceDetailPage() {
                             <td className="py-1 pr-1 font-mono font-bold">{item.item?.sku || item.sku || '—'}</td>
                             <td className="py-1 pr-1 font-mono text-gray-500">{item.item?.hsCodeStr || '—'}</td>
                             <td className="py-1 pr-1 text-gray-800">{item.item?.description || item.description || '—'}</td>
+                            <td className="py-1 pr-1 text-gray-800">{item.size || '—'}</td>
+                            <td className="py-1 pr-1 text-gray-800">{item.color || '—'}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmt(unitCost)}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmt(valExcl)}</td>
@@ -977,7 +1006,7 @@ export default function PurchaseInvoiceDetailPage() {
                       })
                     ) : (
                       <tr>
-                          <td colSpan={11} className="py-4 text-center text-gray-400 border-b border-gray-300">
+                          <td colSpan={13} className="py-4 text-center text-gray-400 border-b border-gray-300">
                               No items found for this invoice
                           </td>
                       </tr>
