@@ -45,11 +45,17 @@ function fmt(n: number) {
   return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function fmtInt(n: number) {
+  return Math.round(n).toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
 function getGroupedItems(items: any[]) {
   const groups: { [sku: string]: any } = {};
   
   items.forEach(item => {
     const sku = item.item?.sku || item.sku || '—';
+    const size = item.item?.size?.name || null;
+    const color = item.item?.color?.name || null;
     if (!groups[sku]) {
       groups[sku] = {
         id: item.id,
@@ -64,8 +70,13 @@ function getGroupedItems(items: any[]) {
         taxAmount: 0,
         lineTotal: 0,
         item: item.item,
+        sizes: new Set<string>(),
+        colors: new Set<string>(),
       };
     }
+    
+    if (size) groups[sku].sizes.add(size);
+    if (color) groups[sku].colors.add(color);
     
     const qty = Number(item.quantity || 0);
     const unitCost = Number(item.unitPrice || 0);
@@ -80,7 +91,11 @@ function getGroupedItems(items: any[]) {
     groups[sku].lineTotal += Number(item.lineTotal || 0);
   });
   
-  return Object.values(groups);
+  return Object.values(groups).map(g => ({
+    ...g,
+    size: Array.from(g.sizes).join(', ') || '—',
+    color: Array.from(g.colors).join(', ') || '—',
+  }));
 }
 
 interface PaymentVoucherInvoice {
@@ -201,6 +216,8 @@ export default function PurchaseInvoiceDetailPage() {
         "SKU",
         "HS Code",
         "Description",
+        "Size",
+        "Color",
         "Qty",
         "Unit Cost (PKR)",
         "Value Excl. Tax (PKR)",
@@ -230,6 +247,8 @@ export default function PurchaseInvoiceDetailPage() {
           item.item?.sku         || item.sku         || "—",
           item.item?.hsCodeStr   || "—",
           item.item?.description || item.description || "—",
+          item.size || "—",
+          item.color || "—",
           qty,
           unitCost,
           valExcl,
@@ -244,7 +263,7 @@ export default function PurchaseInvoiceDetailPage() {
       });
 
       const totalsRow = [
-        "", "", "", "TOTALS",
+        "", "", "", "", "", "TOTALS",
         items.reduce((s, i) => s + Number(i.quantity    || 0), 0),
         "",
         items.reduce((s, i) => {
@@ -272,6 +291,8 @@ export default function PurchaseInvoiceDetailPage() {
         { wch: 16 },  // SKU
         { wch: 14 },  // HS Code
         { wch: 34 },  // Description
+        { wch: 12 },  // Size
+        { wch: 12 },  // Color
         { wch: 8  },  // Qty
         { wch: 16 },  // Unit Cost
         { wch: 20 },  // Value Excl Tax
@@ -340,6 +361,8 @@ export default function PurchaseInvoiceDetailPage() {
           "SKU",
           "HS Code",
           "Description",
+          "Size",
+          "Color",
           "Qty",
           "Unit Cost (PKR)",
           "Value Excl. Tax (PKR)",
@@ -370,6 +393,8 @@ export default function PurchaseInvoiceDetailPage() {
           item.item?.sku         || item.sku         || "—",
           item.item?.hsCodeStr   || "—",
           item.item?.description || item.description || "—",
+          item.size || "—",
+          item.color || "—",
           qty,
           unitCost,
           valE,
@@ -385,7 +410,7 @@ export default function PurchaseInvoiceDetailPage() {
 
       // Totals
       rows.push([
-        "", "", "", "TOTALS",
+        "", "", "", "", "", "TOTALS",
         items.reduce((s, i) => s + Number(i.quantity || 0), 0),
         "",
         items.reduce((s, i) => {
@@ -708,7 +733,7 @@ export default function PurchaseInvoiceDetailPage() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-500">Total Amount</label>
-                    <p className="font-medium">{invoice.totalAmount.toLocaleString()}</p>
+                    <p className="font-medium">{Math.round(invoice.totalAmount).toLocaleString()}</p>
                   </div>
                 </div>
               </CardContent>
@@ -726,6 +751,8 @@ export default function PurchaseInvoiceDetailPage() {
                         <th className="text-left p-3">SKU</th>
                         <th className="text-left p-3">HS Code</th>
                         <th className="text-left p-3">Description</th>
+                        <th className="text-left p-3">Size</th>
+                        <th className="text-left p-3">Color</th>
                         <th className="text-right p-3">Qty</th>
                         <th className="text-right p-3">Unit Cost</th>
                         <th className="text-right p-3">Val. Excl. Tax</th>
@@ -757,6 +784,8 @@ export default function PurchaseInvoiceDetailPage() {
                             <td className="p-3">
                               <div className="font-medium">{item.item?.description || item.description || "—"}</div>
                             </td>
+                            <td className="p-3 text-left">{item.size || "—"}</td>
+                            <td className="p-3 text-left">{item.color || "—"}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(qty)}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(unitCost)}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(valExcl)}</td>
@@ -839,40 +868,40 @@ export default function PurchaseInvoiceDetailPage() {
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Subtotal (Gross)</span>
-                        <span className="font-medium tabular-nums">{fmt(subtotal)}</span>
+                        <span className="font-medium tabular-nums">{fmtInt(subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Invoice Discount</span>
-                        <span className="font-medium tabular-nums text-red-600">-{fmt(discount)}</span>
+                        <span className="font-medium tabular-nums text-red-600">-{fmtInt(discount)}</span>
                       </div>
                       <div className="flex justify-between text-sm border-t pt-2">
                         <span className="text-gray-700 font-medium">Value Excl. Sales Tax</span>
-                        <span className="font-semibold tabular-nums">{fmt(valExcl)}</span>
+                        <span className="font-semibold tabular-nums">{fmtInt(valExcl)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Sale Tax Amount</span>
-                        <span className="font-medium tabular-nums">{fmt(salesTax)}</span>
+                        <span className="font-medium tabular-nums">{fmtInt(salesTax)}</span>
                       </div>
                       <div className="flex justify-between text-sm border-t pt-2">
                         <span className="text-gray-700 font-medium">Value Incl. Sales Tax</span>
-                        <span className="font-semibold tabular-nums">{fmt(valIncl)}</span>
+                        <span className="font-semibold tabular-nums">{fmtInt(valIncl)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Advance Tax ({advRate}%)</span>
-                        <span className="font-medium tabular-nums text-orange-600">{fmt(advTax)}</span>
+                        <span className="font-medium tabular-nums text-orange-600">{fmtInt(advTax)}</span>
                       </div>
                       <hr />
                       <div className="flex justify-between font-semibold">
                         <span>Total Amount</span>
-                        <span className="tabular-nums">{fmt(total)}</span>
+                        <span className="tabular-nums">{fmtInt(total)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Paid Amount</span>
-                        <span className="font-medium tabular-nums text-green-600">{fmt(paid)}</span>
+                        <span className="font-medium tabular-nums text-green-600">{fmtInt(paid)}</span>
                       </div>
                       <div className="border-t pt-3 flex justify-between">
                         <span className="text-lg font-bold">Remaining</span>
-                        <span className="text-lg font-bold tabular-nums text-red-600">{fmt(remaining)}</span>
+                        <span className="text-lg font-bold tabular-nums text-red-600">{fmtInt(remaining)}</span>
                       </div>
                     </>
                   );
@@ -936,7 +965,9 @@ export default function PurchaseInvoiceDetailPage() {
                       <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
                       <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
                       <th className="py-1 pr-1 text-left font-bold w-[8%]">HS Code</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[18%]">Description</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[14%]">Description</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[5%]">Size</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[5%]">Color</th>
                       <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
                       <th className="py-1 pr-1 text-right font-bold w-[9%]">Unit Cost</th>
                       <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
@@ -965,6 +996,8 @@ export default function PurchaseInvoiceDetailPage() {
                             <td className="py-1 pr-1 font-mono font-bold">{item.item?.sku || item.sku || '—'}</td>
                             <td className="py-1 pr-1 font-mono text-gray-500">{item.item?.hsCodeStr || '—'}</td>
                             <td className="py-1 pr-1 text-gray-800">{item.item?.description || item.description || '—'}</td>
+                            <td className="py-1 pr-1 text-gray-800">{item.size || '—'}</td>
+                            <td className="py-1 pr-1 text-gray-800">{item.color || '—'}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmt(unitCost)}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmt(valExcl)}</td>
@@ -977,7 +1010,7 @@ export default function PurchaseInvoiceDetailPage() {
                       })
                     ) : (
                       <tr>
-                          <td colSpan={11} className="py-4 text-center text-gray-400 border-b border-gray-300">
+                          <td colSpan={13} className="py-4 text-center text-gray-400 border-b border-gray-300">
                               No items found for this invoice
                           </td>
                       </tr>
@@ -1007,33 +1040,33 @@ export default function PurchaseInvoiceDetailPage() {
                            <>
                              <div className="flex justify-between">
                                <span className="text-gray-600">Subtotal (Gross):</span>
-                               <span className="tabular-nums font-medium">{fmt(subtotal)}</span>
+                               <span className="tabular-nums font-medium">{fmtInt(subtotal)}</span>
                              </div>
                              {discount > 0 && (
                                <div className="flex justify-between">
                                  <span className="text-gray-600">Discount:</span>
-                                 <span className="tabular-nums font-medium">-{fmt(discount)}</span>
+                                 <span className="tabular-nums font-medium">-{fmtInt(discount)}</span>
                                </div>
                              )}
                              <div className="flex justify-between border-t border-gray-400 pt-1">
                                <span className="font-semibold">Value Excl. Sales Tax:</span>
-                               <span className="tabular-nums font-semibold">{fmt(valExcl)}</span>
+                               <span className="tabular-nums font-semibold">{fmtInt(valExcl)}</span>
                              </div>
                              <div className="flex justify-between">
                                <span className="text-gray-600">Sale Tax Amount:</span>
-                               <span className="tabular-nums font-medium">{fmt(salesTax)}</span>
+                               <span className="tabular-nums font-medium">{fmtInt(salesTax)}</span>
                              </div>
                              <div className="flex justify-between border-t border-gray-400 pt-1">
                                <span className="font-semibold">Value Incl. Sales Tax:</span>
-                               <span className="tabular-nums font-semibold">{fmt(valIncl)}</span>
+                               <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
                              </div>
                              <div className="flex justify-between">
                                <span className="text-gray-600">Advance Tax ({advRate}%):</span>
-                               <span className="tabular-nums font-medium">{fmt(advTax)}</span>
+                               <span className="tabular-nums font-medium">{fmtInt(advTax)}</span>
                              </div>
                              <div className="flex justify-between border-t border-black pt-1 font-bold">
                                <span>Total Amount:</span>
-                               <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmt(total)}</span>
+                               <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(total)}</span>
                              </div>
                            </>
                          );
