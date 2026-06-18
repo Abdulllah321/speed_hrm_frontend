@@ -623,11 +623,20 @@ export default function PurchaseInvoiceDetailPage() {
                     visibility: visible;
                 }
                 @page {
-                    margin: 0;
-                    size: auto;
+                    margin: 15mm;
+                    size: A4;
                 }
                 header, nav, footer, aside, .banner {
                     display: none !important;
+                }
+                tr {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
+                }
+                #print-section .grid, 
+                #print-section .flex {
+                    page-break-inside: avoid;
+                    break-inside: avoid;
                 }
             }
         `}</style>
@@ -917,7 +926,7 @@ export default function PurchaseInvoiceDetailPage() {
 
       {/* Print View */}
       <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
-          <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-8 print:max-w-none box-border">
+          <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-0 print:max-w-none box-border">
               {/* Header */}
               <div className="flex justify-between mb-6 gap-4 items-start">
                   {/* Logo */}
