@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, CircleDot, Truck } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import { ManagerVerificationDialog } from "@/components/auth/manager-verification-dialog";
 import { useAuth } from "@/components/providers/auth-provider";
 

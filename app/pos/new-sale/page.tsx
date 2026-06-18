@@ -103,44 +103,6 @@ export default function NewSalePage() {
     const [showHoldModal, setShowHoldModal] = useState(false);
     const [resumedHoldOrderId, setResumedHoldOrderId] = useState<string | null>(null);
 
-    // ─── Tick timer for hold countdowns ────────────────────────────
-    useEffect(() => {
-        const interval = setInterval(() => setHoldTimerTick(t => t + 1), 10000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // ─── Auto-focus search on mount + handle resume from holds page ─
-    useEffect(() => {
-        searchInputRef.current?.focus();
-        
-        // Check if we're resuming from the holds page
-        const resumeCart = sessionStorage.getItem("pos_resume_cart");
-        if (resumeCart) {
-            try {
-                const items = JSON.parse(resumeCart);
-                setCartItems(items);
-                sessionStorage.removeItem("pos_resume_cart");
-                toast.success("Hold order resumed");
-            } catch { /* ignore */ }
-        }
-        
-        // Check if we're coming back from checkout (cart should be preserved)
-        const checkoutCart = sessionStorage.getItem("pos_cart");
-        if (checkoutCart && !resumeCart) {
-            try {
-                const items = JSON.parse(checkoutCart);
-                setCartItems(items);
-                // Don't remove pos_cart here - let checkout remove it after successful order
-            } catch { /* ignore */ }
-        }
-        
-        // Auto-open hold orders panel if navigated from history with ?showHolds=1
-        if (searchParams.get("showHolds") === "1") {
-            loadHoldOrders();
-            setShowHoldOrders(true);
-        }
-    }, []);
-
     // ─── Load hold orders ───────────────────────────────────────────
     const loadHoldOrders = useCallback(async () => {
         setIsLoadingHolds(true);
@@ -231,175 +193,6 @@ export default function NewSalePage() {
             toast.error("Failed to resume order. Check connection.");
         }
     }, []);
-
-    // ─── Keyboard shortcuts ─────────────────────────────────────────
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const activeEl = document.activeElement;
-            const isInputFocused = activeEl && (
-                activeEl.tagName === "INPUT" || 
-                activeEl.tagName === "TEXTAREA" || 
-                activeEl.tagName === "SELECT" ||
-                activeEl.getAttribute("contenteditable") === "true"
-            );
-
-            // Toggle help panel with F1 or Ctrl+/
-            if (e.key === "F1" || (e.ctrlKey && e.key === "/")) {
-                e.preventDefault();
-                setShowShortcutsHelp(prev => !prev);
-                return;
-            }
-
-            if (e.key === "F2") {
-                e.preventDefault();
-                setFocusedCartIndex(-1); // reset active cart row when searching
-                searchInputRef.current?.focus();
-                searchInputRef.current?.select();
-                return;
-            }
-
-            if (e.key === "F9" || e.key === "F4") {
-                e.preventDefault();
-                if (cartItems.length > 0 && !isProcessing) handleCheckout();
-                return;
-            }
-
-            if (e.key === "Escape") {
-                e.preventDefault();
-                if (showHoldOrders) { setShowHoldOrders(false); return; }
-                if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
-                
-                // If focused inside any input, blur it and focus/highlight the cart table/active row
-                if (isInputFocused) {
-                    (activeEl as HTMLElement).blur();
-                    if (cartItems.length > 0 && focusedCartIndex === -1) {
-                        setFocusedCartIndex(cartItems.length - 1);
-                    }
-                    return;
-                }
-
-                // If not in input, clear cart
-                if (cartItems.length > 0) {
-                    if (confirm("Are you sure you want to clear the cart?")) {
-                        setCartItems([]);
-                        setFocusedCartIndex(-1);
-                        toast.info("Cart cleared");
-                        searchInputRef.current?.focus();
-                    }
-                }
-                return;
-            }
-
-            if (e.key === "F8") {
-                e.preventDefault();
-                if (cartItems.length > 0 && canHold) {
-                    handleHold();
-                } else if (canViewHolds) {
-                    loadHoldOrders();
-                    setShowHoldOrders(true);
-                }
-                return;
-            }
-
-            // --- Cart Table Navigation and Operation Keys (only when not in input) ---
-            if (!isInputFocused && cartItems.length > 0) {
-                // Arrow keys navigation
-                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                    e.preventDefault();
-                    setFocusedCartIndex(prev => {
-                        if (prev === -1) return e.key === "ArrowDown" ? 0 : cartItems.length - 1;
-                        if (e.key === "ArrowDown") return (prev + 1) % cartItems.length;
-                        return (prev - 1 + cartItems.length) % cartItems.length;
-                    });
-                    return;
-                }
-
-                // If we have a highlighted cart item
-                if (focusedCartIndex >= 0 && focusedCartIndex < cartItems.length) {
-                    const item = cartItems[focusedCartIndex];
-
-                    // Plus / = key -> Increment quantity
-                    if (e.key === "+" || e.key === "=") {
-                        e.preventDefault();
-                        handleQuantityChange(item.id, item.quantity + 1);
-                        return;
-                    }
-
-                    // Minus key -> Decrement quantity
-                    if (e.key === "-") {
-                        e.preventDefault();
-                        if (item.quantity > 1) {
-                            handleQuantityChange(item.id, item.quantity - 1);
-                        } else {
-                            handleRemoveItem(item.id);
-                            setFocusedCartIndex(prev => prev >= cartItems.length - 1 ? cartItems.length - 2 : prev);
-                        }
-                        return;
-                    }
-
-                    // Delete / Backspace -> Remove item
-                    if (e.key === "Delete" || e.key === "Backspace") {
-                        e.preventDefault();
-                        handleRemoveItem(item.id);
-                        setFocusedCartIndex(prev => {
-                            if (cartItems.length <= 1) return -1;
-                            return Math.min(prev, cartItems.length - 2);
-                        });
-                        toast.info(`Removed ${item.name}`);
-                        return;
-                    }
-
-                    // Asterisk (*) or Ctrl+D -> Focus discount input for this row
-                    if (e.key === "*" || (e.ctrlKey && e.key === "d")) {
-                        e.preventDefault();
-                        setTimeout(() => {
-                            const discountInput = document.getElementById(`discount-input-${focusedCartIndex}`);
-                            if (discountInput) {
-                                (discountInput as HTMLInputElement).focus();
-                                (discountInput as HTMLInputElement).select();
-                            }
-                        }, 50);
-                        return;
-                    }
-
-                    // T or t -> Toggle transit flag
-                    if ((e.key === "t" || e.key === "T") && canTransit) {
-                        e.preventDefault();
-                        handleToggleTransit(item.id);
-                        toast.success(`Toggled transit for ${item.name}`);
-                        return;
-                    }
-                }
-            }
-        };
-
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [cartItems, isProcessing, showHoldOrders, showShortcutsHelp, focusedCartIndex, handleHold, loadHoldOrders, handleQuantityChange, handleRemoveItem, handleToggleTransit, canTransit, canHold, canViewHolds]);
-
-    // ─── Debounced Live Search ──────────────────────────────────────
-    useEffect(() => {
-        const timer = setTimeout(async () => {
-            if (searchQuery.trim().length >= 2) {
-                setIsSearching(true);
-                try {
-                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: searchQuery.trim() } });
-                    if (res.ok && res.data?.status && res.data.data) {
-                        setSearchResults(res.data.data);
-                    } else {
-                        setSearchResults([]);
-                    }
-                } catch {
-                    setSearchResults([]);
-                } finally {
-                    setIsSearching(false);
-                }
-            } else {
-                setSearchResults([]);
-            }
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
 
     // ─── Barcode scan / Search submit ──────────────────────────────
     const handleSearchSubmit = useCallback(async () => {
@@ -574,6 +367,213 @@ export default function NewSalePage() {
         }
         router.push("/pos/checkout");
     }, [cartItems, router, resumedHoldOrderId]);
+
+    // ─── Tick timer for hold countdowns ────────────────────────────
+    useEffect(() => {
+        const interval = setInterval(() => setHoldTimerTick(t => t + 1), 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // ─── Auto-focus search on mount + handle resume from holds page ─
+    useEffect(() => {
+        searchInputRef.current?.focus();
+        
+        // Check if we're resuming from the holds page
+        const resumeCart = sessionStorage.getItem("pos_resume_cart");
+        if (resumeCart) {
+            try {
+                const items = JSON.parse(resumeCart);
+                setCartItems(items);
+                sessionStorage.removeItem("pos_resume_cart");
+                toast.success("Hold order resumed");
+            } catch { /* ignore */ }
+        }
+        
+        // Check if we're coming back from checkout (cart should be preserved)
+        const checkoutCart = sessionStorage.getItem("pos_cart");
+        if (checkoutCart && !resumeCart) {
+            try {
+                const items = JSON.parse(checkoutCart);
+                setCartItems(items);
+                // Don't remove pos_cart here - let checkout remove it after successful order
+            } catch { /* ignore */ }
+        }
+        
+        // Auto-open hold orders panel if navigated from history with ?showHolds=1
+        if (searchParams.get("showHolds") === "1") {
+            loadHoldOrders();
+            setShowHoldOrders(true);
+        }
+    }, [searchParams, loadHoldOrders]);
+
+    // ─── Keyboard shortcuts ─────────────────────────────────────────
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const activeEl = document.activeElement;
+            const isInputFocused = activeEl && (
+                activeEl.tagName === "INPUT" || 
+                activeEl.tagName === "TEXTAREA" || 
+                activeEl.tagName === "SELECT" ||
+                activeEl.getAttribute("contenteditable") === "true"
+            );
+
+            // Toggle help panel with F1 or Ctrl+/
+            if (e.key === "F1" || (e.ctrlKey && e.key === "/")) {
+                e.preventDefault();
+                setShowShortcutsHelp(prev => !prev);
+                return;
+            }
+
+            if (e.key === "F2") {
+                e.preventDefault();
+                setFocusedCartIndex(-1); // reset active cart row when searching
+                searchInputRef.current?.focus();
+                searchInputRef.current?.select();
+                return;
+            }
+
+            if (e.key === "F9" || e.key === "F4") {
+                e.preventDefault();
+                if (cartItems.length > 0 && !isProcessing) handleCheckout();
+                return;
+            }
+
+            if (e.key === "Escape") {
+                e.preventDefault();
+                if (showHoldOrders) { setShowHoldOrders(false); return; }
+                if (showShortcutsHelp) { setShowShortcutsHelp(false); return; }
+                
+                // If focused inside any input, blur it and focus/highlight the cart table/active row
+                if (isInputFocused) {
+                    (activeEl as HTMLElement).blur();
+                    if (cartItems.length > 0 && focusedCartIndex === -1) {
+                        setFocusedCartIndex(cartItems.length - 1);
+                    }
+                    return;
+                }
+
+                // If not in input, clear cart
+                if (cartItems.length > 0) {
+                    if (confirm("Are you sure you want to clear the cart?")) {
+                        setCartItems([]);
+                        setFocusedCartIndex(-1);
+                        toast.info("Cart cleared");
+                        searchInputRef.current?.focus();
+                    }
+                }
+                return;
+            }
+
+            if (e.key === "F8") {
+                e.preventDefault();
+                if (cartItems.length > 0 && canHold) {
+                    handleHold();
+                } else if (canViewHolds) {
+                    loadHoldOrders();
+                    setShowHoldOrders(true);
+                }
+                return;
+            }
+
+            // --- Cart Table Navigation and Operation Keys (only when not in input) ---
+            if (!isInputFocused && cartItems.length > 0) {
+                // Arrow keys navigation
+                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setFocusedCartIndex(prev => {
+                        if (prev === -1) return e.key === "ArrowDown" ? 0 : cartItems.length - 1;
+                        if (e.key === "ArrowDown") return (prev + 1) % cartItems.length;
+                        return (prev - 1 + cartItems.length) % cartItems.length;
+                    });
+                    return;
+                }
+
+                // If we have a highlighted cart item
+                if (focusedCartIndex >= 0 && focusedCartIndex < cartItems.length) {
+                    const item = cartItems[focusedCartIndex];
+
+                    // Plus / = key -> Increment quantity
+                    if (e.key === "+" || e.key === "=") {
+                        e.preventDefault();
+                        handleQuantityChange(item.id, item.quantity + 1);
+                        return;
+                    }
+
+                    // Minus key -> Decrement quantity
+                    if (e.key === "-") {
+                        e.preventDefault();
+                        if (item.quantity > 1) {
+                            handleQuantityChange(item.id, item.quantity - 1);
+                        } else {
+                            handleRemoveItem(item.id);
+                            setFocusedCartIndex(prev => prev >= cartItems.length - 1 ? cartItems.length - 2 : prev);
+                        }
+                        return;
+                    }
+
+                    // Delete / Backspace -> Remove item
+                    if (e.key === "Delete" || e.key === "Backspace") {
+                        e.preventDefault();
+                        handleRemoveItem(item.id);
+                        setFocusedCartIndex(prev => {
+                            if (cartItems.length <= 1) return -1;
+                            return Math.min(prev, cartItems.length - 2);
+                        });
+                        toast.info(`Removed ${item.name}`);
+                        return;
+                    }
+
+                    // Asterisk (*) or Ctrl+D -> Focus discount input for this row
+                    if (e.key === "*" || (e.ctrlKey && e.key === "d")) {
+                        e.preventDefault();
+                        setTimeout(() => {
+                            const discountInput = document.getElementById(`discount-input-${focusedCartIndex}`);
+                            if (discountInput) {
+                                (discountInput as HTMLInputElement).focus();
+                                (discountInput as HTMLInputElement).select();
+                            }
+                        }, 50);
+                        return;
+                    }
+
+                    // T or t -> Toggle transit flag
+                    if ((e.key === "t" || e.key === "T") && canTransit) {
+                        e.preventDefault();
+                        handleToggleTransit(item.id);
+                        toast.success(`Toggled transit for ${item.name}`);
+                        return;
+                    }
+                }
+            }
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [cartItems, isProcessing, showHoldOrders, showShortcutsHelp, focusedCartIndex, handleHold, loadHoldOrders, handleQuantityChange, handleRemoveItem, handleToggleTransit, canTransit, canHold, canViewHolds, handleCheckout]);
+
+    // ─── Debounced Live Search ──────────────────────────────────────
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (searchQuery.trim().length >= 2) {
+                setIsSearching(true);
+                try {
+                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: searchQuery.trim() } });
+                    if (res.ok && res.data?.status && res.data.data) {
+                        setSearchResults(res.data.data);
+                    } else {
+                        setSearchResults([]);
+                    }
+                } catch {
+                    setSearchResults([]);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setSearchResults([]);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     // ─── Derived state ──────────────────────────────────────────────
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
