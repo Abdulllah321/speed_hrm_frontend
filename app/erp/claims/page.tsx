@@ -85,9 +85,13 @@ export default function ClaimsPage() {
             const full = res.data.data;
             setSelectedClaim(full);
             // Init approvals from existing data
-            const init: Record<string, { approvedQty: number; notes: string }> = {};
+            const init: Record<string, { approvedQty: number; notes: string; status: string }> = {};
             (full.items || []).forEach((i: any) => {
-                init[i.id] = { approvedQty: i.approvedQty ?? i.claimedQty, notes: i.reviewNotes ?? "" };
+                init[i.id] = { 
+                    approvedQty: i.approvedQty || i.claimedQty, 
+                    notes: i.reviewNotes ?? "",
+                    status: i.itemStatus || "PENDING"
+                };
             });
             setItemApprovals(init);
             setReviewNotes(full.reviewNotes ?? "");
@@ -117,6 +121,7 @@ export default function ClaimsPage() {
                 claimItemId: i.id,
                 approvedQty: itemApprovals[i.id]?.approvedQty ?? 0,
                 reviewNotes: itemApprovals[i.id]?.notes || undefined,
+                status: itemApprovals[i.id]?.status || "PENDING",
             }));
             const res = await authFetch(`/pos-claims/${selectedClaim.id}/review`, {
                 method: "POST",
@@ -159,8 +164,14 @@ export default function ClaimsPage() {
     const totalApprovedInReview = useMemo(() => {
         if (!selectedClaim) return 0;
         return (selectedClaim.items || []).reduce((s: number, i: any) => {
-            const qty = itemApprovals[i.id]?.approvedQty ?? 0;
-            return s + Number(i.unitPaidPrice) * qty;
+            const approval = itemApprovals[i.id];
+            if (approval && approval.status === 'APPROVED') {
+                return s + Number(i.unitPaidPrice) * approval.approvedQty;
+            }
+            if (i.itemStatus === 'APPROVED' || i.itemStatus === 'PARTIALLY_APPROVED') {
+                return s + Number(i.approvedAmount || 0);
+            }
+            return s;
         }, 0);
     }, [selectedClaim, itemApprovals]);
 
@@ -306,6 +317,7 @@ export default function ClaimsPage() {
                                                 <TableHead className="text-right text-xs uppercase">Claimed Qty</TableHead>
                                                 <TableHead className="text-right text-xs uppercase">Paid/Unit</TableHead>
                                                 <TableHead className="text-right text-xs uppercase">Claimed Amt</TableHead>
+                                                {canReview && <TableHead className="text-center text-xs uppercase text-indigo-700">Decision</TableHead>}
                                                 {canReview && <TableHead className="text-center text-xs uppercase text-emerald-700">Approve Qty</TableHead>}
                                                 {canReview && <TableHead className="text-right text-xs uppercase text-emerald-700">Approved Amt</TableHead>}
                                                 {!canReview && <TableHead className="text-center text-xs uppercase">Status</TableHead>}
@@ -314,7 +326,7 @@ export default function ClaimsPage() {
                                         </TableHeader>
                                         <TableBody>
                                             {selectedClaim.items?.map((item: any) => {
-                                                const approval = itemApprovals[item.id] ?? { approvedQty: item.approvedQty, notes: "" };
+                                                const approval = itemApprovals[item.id] ?? { approvedQty: item.approvedQty, notes: "", status: "PENDING" };
                                                 const approvedAmt = Number(item.unitPaidPrice) * approval.approvedQty;
                                                 const isMeta = ITEM_STATUS_META[item.itemStatus] ?? { label: item.itemStatus, cls: "" };
                                                 return (
@@ -326,22 +338,53 @@ export default function ClaimsPage() {
                                                         <TableCell className="text-right text-sm">{item.claimedQty}</TableCell>
                                                         <TableCell className="text-right font-mono text-sm">Rs. {fmt(item.unitPaidPrice)}</TableCell>
                                                         <TableCell className="text-right font-mono text-sm text-destructive">Rs. {fmt(item.claimedAmount)}</TableCell>
-                                                        {canReview ? (
+                                                        {canReview && item.itemStatus === 'PENDING' ? (
                                                             <>
+                                                                <TableCell className="text-center">
+                                                                    <Select 
+                                                                        value={approval.status} 
+                                                                        onValueChange={(val) => {
+                                                                            setItemApprovals(p => {
+                                                                                const nextQty = val === 'APPROVED' ? (p[item.id]?.approvedQty || item.claimedQty) : 0;
+                                                                                return {
+                                                                                    ...p,
+                                                                                    [item.id]: {
+                                                                                        ...p[item.id],
+                                                                                        status: val,
+                                                                                        approvedQty: nextQty
+                                                                                    }
+                                                                                };
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        <SelectTrigger className="w-32 h-8 text-xs mx-auto">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="PENDING">Review Later</SelectItem>
+                                                                            <SelectItem value="APPROVED">Approve</SelectItem>
+                                                                            <SelectItem value="REJECTED">Reject</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </TableCell>
                                                                 <TableCell>
-                                                                    <div className="flex items-center justify-center gap-1">
-                                                                        <Button variant="outline" size="icon" className="h-6 w-6"
-                                                                            onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.max(0, (p[item.id]?.approvedQty ?? item.claimedQty) - 1) } }))}>
-                                                                            <ChevronDown className="h-3 w-3" />
-                                                                        </Button>
-                                                                        <Input type="number" min={0} max={item.claimedQty} className="w-14 h-7 text-center text-xs"
-                                                                            value={approval.approvedQty}
-                                                                            onChange={e => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, Math.max(0, parseInt(e.target.value) || 0)) } }))} />
-                                                                        <Button variant="outline" size="icon" className="h-6 w-6"
-                                                                            onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, (p[item.id]?.approvedQty ?? 0) + 1) } }))}>
-                                                                            <ChevronUp className="h-3 w-3" />
-                                                                        </Button>
-                                                                    </div>
+                                                                    {approval.status === 'APPROVED' ? (
+                                                                        <div className="flex items-center justify-center gap-1">
+                                                                            <Button variant="outline" size="icon" className="h-6 w-6"
+                                                                                onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.max(1, (p[item.id]?.approvedQty ?? item.claimedQty) - 1) } }))}>
+                                                                                <ChevronDown className="h-3 w-3" />
+                                                                            </Button>
+                                                                            <Input type="number" min={1} max={item.claimedQty} className="w-14 h-7 text-center text-xs"
+                                                                                value={approval.approvedQty}
+                                                                                onChange={e => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, Math.max(1, parseInt(e.target.value) || 1)) } }))} />
+                                                                            <Button variant="outline" size="icon" className="h-6 w-6"
+                                                                                onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, (p[item.id]?.approvedQty ?? 1) + 1) } }))}>
+                                                                                <ChevronUp className="h-3 w-3" />
+                                                                            </Button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="text-center text-xs text-muted-foreground font-medium">—</div>
+                                                                    )}
                                                                 </TableCell>
                                                                 <TableCell className="text-right font-mono text-sm text-emerald-700 font-bold">
                                                                     Rs. {fmt(approvedAmt)}
@@ -349,8 +392,13 @@ export default function ClaimsPage() {
                                                             </>
                                                         ) : (
                                                             <>
+                                                                {canReview && (
+                                                                    <TableCell className="text-center">
+                                                                        <Badge className={cn("text-[10px] px-1.5", isMeta.cls)}>{isMeta.label}</Badge>
+                                                                    </TableCell>
+                                                                )}
                                                                 <TableCell className="text-center">
-                                                                    <Badge className={cn("text-[10px] px-1.5", isMeta.cls)}>{isMeta.label}</Badge>
+                                                                    <span className="text-sm font-medium">{item.approvedQty}</span>
                                                                 </TableCell>
                                                                 <TableCell className="text-right font-mono text-sm text-emerald-700 font-bold">
                                                                     {Number(item.approvedAmount) > 0 ? `Rs. ${fmt(item.approvedAmount)}` : "—"}
