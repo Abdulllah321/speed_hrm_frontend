@@ -42,7 +42,7 @@ export function numberToWords(amount: number): string {
 }
 
 function fmt(n: number) {
-  return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Math.round(n).toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function fmtInt(n: number) {
@@ -867,8 +867,13 @@ export default function PurchaseInvoiceDetailPage() {
                   const remaining= Number(invoice.remainingAmount || 0);
                   const valExcl  = subtotal - discount;
                   const valIncl  = valExcl + salesTax;
+                  const totalQty = (invoice.items || []).reduce((s: number, i: any) => s + Number(i.quantity || 0), 0);
                   return (
                     <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Total QTY</span>
+                        <span className="font-medium tabular-nums">{fmtInt(totalQty)}</span>
+                      </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Subtotal (Gross)</span>
                         <span className="font-medium tabular-nums">{fmtInt(subtotal)}</span>
@@ -1035,8 +1040,13 @@ export default function PurchaseInvoiceDetailPage() {
                          const total    = Number(invoice.totalAmount || 0);
                          const valExcl  = subtotal - discount;
                          const valIncl  = valExcl + salesTax;
+                         const totalQty = (invoice.items || []).reduce((s: number, i: any) => s + Number(i.quantity || 0), 0);
                          return (
                            <>
+                             <div className="flex justify-between">
+                               <span className="text-gray-600">Total QTY:</span>
+                               <span className="tabular-nums font-medium">{fmtInt(totalQty)}</span>
+                             </div>
                              <div className="flex justify-between">
                                <span className="text-gray-600">Subtotal (Gross):</span>
                                <span className="tabular-nums font-medium">{fmtInt(subtotal)}</span>
