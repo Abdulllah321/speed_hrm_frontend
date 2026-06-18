@@ -120,6 +120,7 @@ export default function GrnListPage() {
                                         <TableHead>Warehouse</TableHead>
                                         <TableHead>Order Type</TableHead>
                                         <TableHead>Goods Type</TableHead>
+                                        <TableHead className="text-right">Total Qty</TableHead>
                                         <TableHead>Received Date</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-right">Actions</TableHead>
@@ -128,7 +129,7 @@ export default function GrnListPage() {
                                 <TableBody>
                                     {grns.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={8} className="text-center h-24">
+                                            <TableCell colSpan={9} className="text-center h-24">
                                                 No GRNs found.
                                             </TableCell>
                                         </TableRow>
@@ -155,6 +156,9 @@ export default function GrnListPage() {
                                                     ) : (
                                                         <span className="text-muted-foreground text-xs">-</span>
                                                     )}
+                                                </TableCell>
+                                                <TableCell className="text-right font-mono text-sm font-semibold">
+                                                    {grn.items ? grn.items.reduce((sum, item) => sum + parseFloat(item.receivedQty || '0'), 0).toFixed(2) : '0.00'}
                                                 </TableCell>
                                                 <TableCell>{new Date(grn.receivedDate).toLocaleDateString()}</TableCell>
                                                 <TableCell>

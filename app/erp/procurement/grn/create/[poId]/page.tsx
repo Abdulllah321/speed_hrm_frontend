@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { warehouseApi, PurchaseOrder, Warehouse } from '@/lib/api';
@@ -101,6 +101,13 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
     if (loading) return <div className="p-6 text-center">Loading...</div>;
     if (!order) return <div className="p-6 text-center text-red-500">Purchase Order not found</div>;
 
+    const totalOrdered = order.items.reduce((sum, item) => sum + parseFloat(item.quantity || '0'), 0);
+    const totalRemaining = order.items.reduce((sum, item) => {
+        const remaining = parseFloat(item.quantity) - parseFloat(item.receivedQty || '0');
+        return sum + (remaining > 0 ? remaining : 0);
+    }, 0);
+    const totalReceiving = order.items.reduce((sum, item) => sum + (receivedQtys[item.itemId] || 0), 0);
+
     return (
         <PermissionGuard permissions="erp.procurement.grn.create">
         <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -161,6 +168,14 @@ export default function CreateGrnPage({ params }: { params: Promise<{ poId: stri
                                     );
                                 })}
                             </TableBody>
+                            <TableFooter>
+                                <TableRow>
+                                    <TableCell className="font-bold">Total</TableCell>
+                                    <TableCell className="text-right font-bold font-mono">{totalOrdered.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right font-bold font-mono text-blue-600">{totalRemaining.toFixed(2)}</TableCell>
+                                    <TableCell className="text-right font-bold font-mono pr-4">{totalReceiving.toFixed(2)}</TableCell>
+                                </TableRow>
+                            </TableFooter>
                         </Table>
                     </CardContent>
                 </Card>

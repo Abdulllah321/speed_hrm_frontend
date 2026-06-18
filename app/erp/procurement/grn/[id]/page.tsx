@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Grn } from '@/lib/api';
 import { getGrn, updateGrnStatus } from '@/lib/actions/grn';
@@ -62,6 +62,8 @@ export default function GrnDetailPage() {
 
   if (loading) return <div className="p-6 text-center">Loading GRN...</div>;
   if (!grn) return <div className="p-6 text-center text-red-500">GRN not found</div>;
+
+  const totalReceivedQty = grn.items.reduce((sum, item) => sum + parseFloat(item.receivedQty as any || '0'), 0);
 
   return (
     <PermissionGuard permissions="erp.procurement.grn.read">
@@ -316,6 +318,12 @@ export default function GrnDetailPage() {
                   ))
                 )}
               </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell colSpan={4} className="font-bold">Total</TableCell>
+                  <TableCell className="text-right font-bold font-mono">{totalReceivedQty.toFixed(2)}</TableCell>
+                </TableRow>
+              </TableFooter>
             </Table>
           </CardContent>
         </Card>
@@ -411,6 +419,14 @@ export default function GrnDetailPage() {
                       </tr>
                     )}
                   </tbody>
+                  <tfoot>
+                    <tr className="border-y-2 border-black font-bold">
+                      <td colSpan={4} className="py-2 pr-2 font-bold text-left">Total</td>
+                      <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                        {totalReceivedQty.toFixed(2)}
+                      </td>
+                    </tr>
+                  </tfoot>
               </table>
 
               {/* Remarks */}

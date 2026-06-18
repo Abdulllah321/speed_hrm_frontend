@@ -72,8 +72,8 @@ export function calculateTaxForAccount(
 
   // 12060004 - WHT Payable-Services u/s 153(1)(b)
 
-  // T00008: 153(1)(b)/29-Services (ATL) - 6%
-  if (accountCode === "12060004" && tagCode === "T00008") {
+  // T00008S / T00008: 153(1)(b)/29-Services (ATL) - 6%
+  if (accountCode === "12060004" && (tagCode === "T00008S" || tagCode === "T00008")) {
     return Math.round(taxableAmount * 0.06 * 100) / 100;
   }
 
