@@ -310,13 +310,13 @@ export default function PurchaseInvoiceListPage() {
                           </div>
                         </td>
                         <td className="p-3 text-right">
-                          {invoice.totalAmount.toLocaleString()}
+                          {Math.round(invoice.totalAmount).toLocaleString()}
                         </td>
                         <td className="p-3 text-right">
-                          {invoice.paidAmount.toLocaleString()}
+                          {Math.round(invoice.paidAmount).toLocaleString()}
                         </td>
                         <td className="p-3 text-right">
-                          {invoice.remainingAmount.toLocaleString()}
+                          {Math.round(invoice.remainingAmount).toLocaleString()}
                         </td>
                         <td className="p-3 text-center">
                           <Badge className={getStatusBadge(invoice.status)}>

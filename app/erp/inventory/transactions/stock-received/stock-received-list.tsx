@@ -252,42 +252,7 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
             );
         },
     },
-    {
-        accessorKey: "rate",
-        header: "Unit Price",
-        cell: ({ row }) => (
-            <span className="text-sm tabular-nums text-right block text-muted-foreground">
-                {row.original.rate
-                    ? Number(row.original.rate).toLocaleString("en-PK", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                    })
-                    : "—"}
-            </span>
-        ),
-    },
-    {
-        accessorKey: "totalCost",
-        header: "Total (PKR)",
-        accessorFn: (row) =>
-            row.rate && row.qty ? Number(row.rate) * Number(row.qty) : null,
-        cell: ({ row }) => {
-            const total =
-                row.original.rate && row.original.qty
-                    ? Math.abs(Number(row.original.rate) * Number(row.original.qty))
-                    : null;
-            return (
-                <span className="text-sm tabular-nums font-semibold text-right block">
-                    {total != null
-                        ? total.toLocaleString("en-PK", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                        })
-                        : "—"}
-                </span>
-            );
-        },
-    },
+
     {
         accessorKey: "referenceType",
         header: "Source",

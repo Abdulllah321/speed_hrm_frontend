@@ -95,6 +95,7 @@ const SAMPLE_DATA = {
     cashBreakdown: {
         sale: 111512.00,
         giftVouchers: 10000.00,
+        refundVouchers: 0.00,
         total: 121512.00
     },
     
@@ -336,7 +337,8 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
             cashBreakdown: {
                 sale: cashSaleAmount,
                 giftVouchers: cashGiftVouchersAmount,
-                total: cashAmount
+                refundVouchers: apiData.cashBreakdown?.refundVouchers ?? 0,
+                total: apiData.cashBreakdown?.total ?? (cashAmount - (apiData.cashBreakdown?.refundVouchers ?? 0))
             },
             cardBreakdown: {
                 sale: cardSaleAmount,
@@ -651,6 +653,10 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                     <div className={cn("flex justify-between pl-2", textSizeClass)}>
                         <span>CASH GIFT VOUCHERS:</span>
                         <span>{formatVal(activeReport.cashBreakdown.giftVouchers)}</span>
+                    </div>
+                    <div className={cn("flex justify-between pl-2 text-red-600", textSizeClass)}>
+                        <span>REFUND VOUCHERS:</span>
+                        <span>-{formatVal(activeReport.cashBreakdown.refundVouchers)}</span>
                     </div>
                     <div className={cn("flex justify-between pl-2 font-bold border-t border-dashed border-black/10 pt-0.5", textSizeClass)}>
                         <span>TOTAL CASH FLOW:</span>
@@ -1160,6 +1166,14 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                                 <tr className="border-b border-gray-100 text-gray-700 hover:bg-gray-50/50">
                                                     <td className="py-1 px-1 text-left pl-4 font-medium">Sales | Gift Vouchers</td>
                                                     <td className="py-1 px-1 text-right">{formatVal(activeReport.cashBreakdown.giftVouchers)}</td>
+                                                    <td className="py-1 px-1 text-right">-</td>
+                                                    <td className="py-1 px-1 text-right">-</td>
+                                                    <td className="py-1 px-1 text-center">-</td>
+                                                    <td className="py-1 px-1 text-center">-</td>
+                                                </tr>
+                                                <tr className="border-b border-gray-100 text-gray-700 hover:bg-gray-50/50">
+                                                    <td className="py-1 px-1 text-left pl-4 font-medium">Refund Vouchers</td>
+                                                    <td className="py-1 px-1 text-right text-red-600 font-bold">({formatVal(activeReport.cashBreakdown.refundVouchers)})</td>
                                                     <td className="py-1 px-1 text-right">-</td>
                                                     <td className="py-1 px-1 text-right">-</td>
                                                     <td className="py-1 px-1 text-center">-</td>
@@ -1701,6 +1715,14 @@ export function PrintReconciliation({ sessionId, open, onOpenChange }: PrintReco
                                 <tr className="border-b border-gray-300 text-gray-700">
                                     <td className="py-1 px-0.5 text-left pl-3">Sales | Gift Vouchers</td>
                                     <td className="py-1 px-0.5 text-right">{formatVal(activeReport.cashBreakdown.giftVouchers)}</td>
+                                    <td className="py-1 px-0.5 text-right">-</td>
+                                    <td className="py-1 px-0.5 text-right">-</td>
+                                    <td className="py-1 px-0.5 text-center">-</td>
+                                    <td className="py-1 px-0.5 text-center">-</td>
+                                </tr>
+                                <tr className="border-b border-gray-300 text-gray-700">
+                                    <td className="py-1 px-0.5 text-left pl-3">Refund Vouchers</td>
+                                    <td className="py-1 px-0.5 text-right text-red-600 font-bold">({formatVal(activeReport.cashBreakdown.refundVouchers)})</td>
                                     <td className="py-1 px-0.5 text-right">-</td>
                                     <td className="py-1 px-0.5 text-right">-</td>
                                     <td className="py-1 px-0.5 text-center">-</td>

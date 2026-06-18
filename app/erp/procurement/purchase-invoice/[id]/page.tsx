@@ -43,7 +43,7 @@ export function numberToWords(amount: number): string {
 }
 
 function fmt(n: number) {
-  return n.toLocaleString("en-PK", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return Math.round(n).toLocaleString("en-PK", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function fmtInt(n: number) {
@@ -885,8 +885,13 @@ export default function PurchaseInvoiceDetailPage() {
                   const remaining= Number(invoice.remainingAmount || 0);
                   const valExcl  = subtotal - discount;
                   const valIncl  = valExcl + salesTax;
+                  const totalQty = (invoice.items || []).reduce((s: number, i: any) => s + Number(i.quantity || 0), 0);
                   return (
                     <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Total QTY</span>
+                        <span className="font-medium tabular-nums">{fmtInt(totalQty)}</span>
+                      </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-500">Subtotal (Gross)</span>
                         <span className="font-medium tabular-nums">{fmtInt(subtotal)}</span>
@@ -1053,53 +1058,58 @@ export default function PurchaseInvoiceDetailPage() {
                                <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(invoice.totalAmount || 0))}</span>
                            </div>
                        </div>
-                       <div className="w-[45%] flex flex-col space-y-1 text-right">
-                           {(() => {
-                             const advRate  = Number((invoice as any).advanceTaxRate || 0.5);
-                             const subtotal = Number(invoice.subtotal    || 0);
-                             const salesTax = Number(invoice.taxAmount   || 0);
-                             const advTax   = Number(invoice.advanceTaxAmount || 0);
-                             const discount = Number(invoice.discountAmount  || 0);
-                             const total    = Number(invoice.totalAmount || 0);
-                             const valExcl  = subtotal - discount;
-                             const valIncl  = valExcl + salesTax;
-                             return (
-                               <>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-600">Subtotal (Gross):</span>
-                                   <span className="tabular-nums font-medium">{fmtInt(subtotal)}</span>
-                                 </div>
-                                 {discount > 0 && (
-                                   <div className="flex justify-between">
-                                     <span className="text-gray-600">Discount:</span>
-                                     <span className="tabular-nums font-medium">-{fmtInt(discount)}</span>
-                                   </div>
-                                 )}
-                                 <div className="flex justify-between border-t border-gray-400 pt-1">
-                                   <span className="font-semibold">Value Excl. Sales Tax:</span>
-                                   <span className="tabular-nums font-semibold">{fmtInt(valExcl)}</span>
-                                 </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-600">Sale Tax Amount ({taxRateStr}):</span>
-                                   <span className="tabular-nums font-medium">{fmtInt(salesTax)}</span>
-                                 </div>
-                                 <div className="flex justify-between border-t border-gray-400 pt-1">
-                                   <span className="font-semibold">Value Incl. Sales Tax:</span>
-                                   <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
-                                 </div>
-                                 <div className="flex justify-between">
-                                   <span className="text-gray-600">Advance Tax ({advRate}%):</span>
-                                   <span className="tabular-nums font-medium">{fmtInt(advTax)}</span>
-                                 </div>
-                                 <div className="flex justify-between border-t border-black pt-1 font-bold">
-                                   <span>Total Amount:</span>
-                                   <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(total)}</span>
-                                 </div>
-                               </>
-                             );
-                           })()}
-                       </div>
-                   </div>
+                        <div className="w-[45%] flex flex-col space-y-1 text-right">
+                            {(() => {
+                              const advRate  = Number((invoice as any).advanceTaxRate || 0.5);
+                              const subtotal = Number(invoice.subtotal    || 0);
+                              const salesTax = Number(invoice.taxAmount   || 0);
+                              const advTax   = Number(invoice.advanceTaxAmount || 0);
+                              const discount = Number(invoice.discountAmount  || 0);
+                              const total    = Number(invoice.totalAmount || 0);
+                              const valExcl  = subtotal - discount;
+                              const valIncl  = valExcl + salesTax;
+                              const totalQty = (invoice.items || []).reduce((s: number, i: any) => s + Number(i.quantity || 0), 0);
+                              return (
+                                <>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Total QTY:</span>
+                                    <span className="tabular-nums font-medium">{fmtInt(totalQty)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Subtotal (Gross):</span>
+                                    <span className="tabular-nums font-medium">{fmtInt(subtotal)}</span>
+                                  </div>
+                                  {discount > 0 && (
+                                    <div className="flex justify-between">
+                                      <span className="text-gray-600">Discount:</span>
+                                      <span className="tabular-nums font-medium">-{fmtInt(discount)}</span>
+                                    </div>
+                                  )}
+                                  <div className="flex justify-between border-t border-gray-400 pt-1">
+                                    <span className="font-semibold">Value Excl. Sales Tax:</span>
+                                    <span className="tabular-nums font-semibold">{fmtInt(valExcl)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Sale Tax Amount ({taxRateStr}):</span>
+                                    <span className="tabular-nums font-medium">{fmtInt(salesTax)}</span>
+                                  </div>
+                                  <div className="flex justify-between border-t border-gray-400 pt-1">
+                                    <span className="font-semibold">Value Incl. Sales Tax:</span>
+                                    <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-600">Advance Tax ({advRate}%):</span>
+                                    <span className="tabular-nums font-medium">{fmtInt(advTax)}</span>
+                                  </div>
+                                  <div className="flex justify-between border-t border-black pt-1 font-bold">
+                                    <span>Total Amount:</span>
+                                    <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(total)}</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                        </div>
+                    </div>
 
                   {/* Signatures */}
                   <div className="grid grid-cols-3 gap-3 mt-8">
