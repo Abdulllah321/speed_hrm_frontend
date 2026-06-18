@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -34,7 +34,7 @@ import {
     ArrowLeft, Filter, X, ChevronRight, Search, Tag,
     Loader2, Percent, DollarSign, CalendarRange, Square, AlertTriangle,
     Sparkles, RotateCcw, Info, MapPin, Store, CheckCircle2, History,
-    Trash2, XCircle, Globe, Download, Undo2, Zap, Upload, FileText
+    Trash2, XCircle, Globe, Download, Undo2, Zap, Upload, FileText, FileSpreadsheet
 } from 'lucide-react';
 
 // ── APIs & Actions ────────────────────────────────────────────────────────────
@@ -49,6 +49,7 @@ import {
 } from '@/lib/actions/items';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { BulkDiscountImportModal, type ImportedDiscountItem } from '@/components/items/bulk-discount-import-modal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -355,6 +356,7 @@ export default function BulkDiscountPage() {
 
     // Quick Select
     const [isQuickSelectOpen, setIsQuickSelectOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [quickSelectText, setQuickSelectText] = useState('');
     const [quickSelectLoading, setQuickSelectLoading] = useState(false);
     const [importedItems, setImportedItems] = useState<Map<string, ItemRow>>(new Map());
@@ -632,6 +634,36 @@ export default function BulkDiscountPage() {
         // Reset file input
         e.target.value = '';
     };
+
+    const handleDiscountImportComplete = useCallback((items: ImportedDiscountItem[]) => {
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            items.forEach(item => next.add(item.id));
+            return next;
+        });
+
+        setImportedItems(prev => {
+            const next = new Map(prev);
+            items.forEach(item => next.set(item.id, item.itemRow));
+            return next;
+        });
+
+        setOverrides(prev => {
+            const next = new Map(prev);
+            items.forEach(item => {
+                if (item.discountValue !== undefined) {
+                    const isPercent = campaign.discountType === 'percent';
+                    next.set(item.id, {
+                        ...(next.get(item.id) ?? {}),
+                        [isPercent ? 'discountRate' : 'discountAmount']: item.discountValue,
+                    });
+                }
+            });
+            return next;
+        });
+
+        toast.success(`Imported ${items.length} item(s) with discounts/overrides.`);
+    }, [campaign.discountType]);
 
     const handleApply = async () => {
         if (selectedIds.size === 0) return;
@@ -1031,6 +1063,11 @@ export default function BulkDiscountPage() {
                                             <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5"
                                                 onClick={() => setIsQuickSelectOpen(true)}>
                                                 <Zap className="h-3.5 w-3.5 text-primary" /> Quick Select
+                                            </Button>
+
+                                            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5"
+                                                onClick={() => setIsImportModalOpen(true)}>
+                                                <FileSpreadsheet className="h-3.5 w-3.5 text-green-600" /> Import Excel/CSV
                                             </Button>
 
                                             {/* Filter trigger */}
@@ -1736,6 +1773,13 @@ export default function BulkDiscountPage() {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                <BulkDiscountImportModal
+                    open={isImportModalOpen}
+                    onOpenChange={setIsImportModalOpen}
+                    campaignDiscountType={campaign.discountType}
+                    onImportComplete={handleDiscountImportComplete}
+                />
 
             </div>
         </PermissionGuard>

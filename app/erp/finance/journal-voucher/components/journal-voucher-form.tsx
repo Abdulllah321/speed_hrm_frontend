@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ChartOfAccountSelect, getSharedTree } from "@/components/ui/chart-of-account-select";
-import { Plus, Trash2, Loader2, Tag, CheckIcon, ChevronDownIcon, Copy } from "lucide-react";
+import { Plus, Trash2, Loader2, Tag, CheckIcon, ChevronDownIcon, Copy, Upload } from "lucide-react";
+import { VoucherImportModal } from "@/components/finance/voucher-import-modal";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -159,10 +161,27 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove, replace } = useFieldArray({
         control: form.control,
         name: "details",
     });
+
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [filterAccountId, setFilterAccountId] = useState<string>("");
+
+    const selectedAccountIds = useMemo(() => {
+        return Array.from(new Set(watchDetails.map((d: any) => d.accountId).filter(Boolean)));
+    }, [watchDetails.map((d: any) => d.accountId).join(",")]);
+
+    const filterOptions = useMemo(() => {
+        return selectedAccountIds.map(id => {
+            const node = findInTree(tree, id);
+            return {
+                value: id,
+                label: node ? `${node.code} - ${node.name}` : id
+            };
+        });
+    }, [selectedAccountIds, tree]);
 
     const moveToNextRowOrAppend = (index: number) => {
         const isLast = index === fields.length - 1;
@@ -529,16 +548,56 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                     <div className="space-y-4 pt-4">
                         <div className="flex items-center justify-between border-b pb-2">
                             <h2 className="text-xl font-bold text-gray-800 dark:text-foreground">Journal Voucher Detail</h2>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" })}
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Add More JV Rows
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsImportModalOpen(true)}
+                                    disabled={isPending}
+                                >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Import Excel/CSV
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" })}
+                                    disabled={isPending}
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add More JV Rows
+                                </Button>
+                            </div>
                         </div>
+
+                        {/* Filter Bar */}
+                        {selectedAccountIds.length > 0 && (
+                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg border border-dashed">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase">Filter by Account Head:</span>
+                                <div className="w-[300px]">
+                                    <Autocomplete
+                                        options={filterOptions}
+                                        value={filterAccountId}
+                                        onValueChange={setFilterAccountId}
+                                        placeholder="All Accounts"
+                                        searchPlaceholder="Search selected accounts..."
+                                    />
+                                </div>
+                                {filterAccountId && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFilterAccountId("")}
+                                        className="text-xs text-destructive hover:bg-destructive/10 h-9 px-3"
+                                    >
+                                        Clear Filter
+                                    </Button>
+                                )}
+                            </div>
+                        )}
 
                         <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-border">
                             <table className="w-full text-sm">
@@ -554,9 +613,17 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                     {fields.map((field, index) => {
                                         const children = rowChildren[index] ?? [];
                                         const hasChildren = children.length > 0;
+                                        const detail = watchDetails[index] || {};
+                                        const shouldHide = filterAccountId && detail.accountId && detail.accountId !== filterAccountId;
 
                                         return (
-                                            <tr key={field.id} className="hover:bg-gray-50/50 dark:hover:bg-muted/50 align-top">
+                                            <tr
+                                                key={field.id}
+                                                className={cn(
+                                                    "hover:bg-gray-50/50 dark:hover:bg-muted/50 align-top",
+                                                    shouldHide && "hidden"
+                                                )}
+                                            >
                                                 <td className="px-4 py-3">
                                                     {/* Account selector */}
                                                     <Controller
@@ -805,6 +872,15 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                             {initialData ? "Update Journal Voucher" : "Create Journal Voucher"}
                         </Button>
                     </div>
+                    <VoucherImportModal
+                        open={isImportModalOpen}
+                        onOpenChange={setIsImportModalOpen}
+                        voucherType="journal"
+                        onImportComplete={(importedRows) => {
+                            replace(importedRows);
+                            toast.success(`Successfully imported ${importedRows.length} rows.`);
+                        }}
+                    />
                 </form>
             </CardContent>
         </Card>

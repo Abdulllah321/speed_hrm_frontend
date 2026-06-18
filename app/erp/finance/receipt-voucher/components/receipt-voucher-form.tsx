@@ -13,7 +13,8 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Loader2, CreditCard, Wallet, Copy } from "lucide-react";
+import { Plus, Trash2, Loader2, CreditCard, Wallet, Copy, Upload } from "lucide-react";
+import { VoucherImportModal } from "@/components/finance/voucher-import-modal";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createReceiptVoucher, updateReceiptVoucher, getAllCustomers, getPendingInvoicesByCustomer, type ReceiptVoucher } from "@/lib/actions/receipt-voucher";
@@ -141,7 +142,23 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
         },
     });
 
-    const { fields, append, remove } = useFieldArray({ control: form.control, name: "details" });
+    const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: "details" });
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [filterAccountId, setFilterAccountId] = useState<string>("");
+
+    const selectedAccountIds = useMemo(() => {
+        return Array.from(new Set(watchDetails.map((d: any) => d.accountId).filter(Boolean)));
+    }, [watchDetails.map((d: any) => d.accountId).join(",")]);
+
+    const filterOptions = useMemo(() => {
+        return selectedAccountIds.map(id => {
+            const node = findInTree(tree, id);
+            return {
+                value: id,
+                label: node ? `${node.code} - ${node.name}` : id
+            };
+        });
+    }, [selectedAccountIds, tree]);
     const voucherType = form.watch("type");
 
     const moveToNextRowOrAppend = (index: number) => {
@@ -844,6 +861,16 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                             <div className="flex items-center gap-2">
                                 <Button
                                     type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setIsImportModalOpen(true)}
+                                    disabled={isPending}
+                                >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Import Excel/CSV
+                                </Button>
+                                <Button
+                                    type="button"
                                     variant="secondary"
                                     size="sm"
                                     onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" })}
@@ -853,6 +880,33 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                 </Button>
                             </div>
                         </div>
+
+                        {/* Filter Bar */}
+                        {selectedAccountIds.length > 0 && (
+                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg border border-dashed">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase">Filter by Account Head:</span>
+                                <div className="w-[300px]">
+                                    <Autocomplete
+                                        options={filterOptions}
+                                        value={filterAccountId}
+                                        onValueChange={setFilterAccountId}
+                                        placeholder="All Accounts"
+                                        searchPlaceholder="Search selected accounts..."
+                                    />
+                                </div>
+                                {filterAccountId && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFilterAccountId("")}
+                                        className="text-xs text-destructive hover:bg-destructive/10 h-9 px-3"
+                                    >
+                                        Clear Filter
+                                    </Button>
+                                )}
+                            </div>
+                        )}
 
                         <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-border">
                             <table className="w-full text-sm">
@@ -865,8 +919,17 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {fields.map((field, index) => (
-                                        <tr key={field.id} className="hover:bg-gray-50/50 dark:hover:bg-muted/50 align-top">
+                                    {fields.map((field, index) => {
+                                        const detail = watchDetails[index] || {};
+                                        const shouldHide = filterAccountId && detail.accountId && detail.accountId !== filterAccountId;
+                                        return (
+                                            <tr
+                                                key={field.id}
+                                                className={cn(
+                                                    "hover:bg-gray-50/50 dark:hover:bg-muted/50 align-top",
+                                                    shouldHide && "hidden"
+                                                )}
+                                            >
                                             <td className="px-4 py-3">
                                                 <Controller
                                                     control={form.control}
@@ -1055,7 +1118,8 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                                 <tfoot className="font-bold border-t border-gray-200 dark:border-border">
                                     <tr>
@@ -1098,6 +1162,16 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                             {initialData ? "Update Receipt Voucher" : "Create Receipt Voucher"}
                         </Button>
                     </div>
+
+                    <VoucherImportModal
+                        open={isImportModalOpen}
+                        onOpenChange={setIsImportModalOpen}
+                        voucherType="receipt"
+                        onImportComplete={(importedRows) => {
+                            replace(importedRows);
+                            toast.success(`Successfully imported ${importedRows.length} rows.`);
+                        }}
+                    />
                 </form>
             </CardContent>
         </Card>
