@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { getPaymentVoucher, updatePaymentVoucherStatus, PaymentVoucher } from "@/lib/actions/payment-voucher";
 import { PaymentVoucherPrint, numberToWords } from "../components/payment-voucher-print";
@@ -50,6 +51,11 @@ export default function PaymentVoucherDetailPage({
   const [voucher, setVoucher] = useState<PaymentVoucher | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionPending, setActionPending] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleUpdateStatus = async (newStatus: "approved" | "rejected") => {
     if (!voucher) return;
@@ -123,25 +129,33 @@ export default function PaymentVoucherDetailPage({
       {/* ── Print styles ── */}
       <style jsx global>{`
         @media print {
-          body {
-            visibility: hidden;
-            background: white;
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
+            background: white !important;
+            color: black !important;
+          }
+          body > *:not(#pv-print-section) {
+            display: none !important;
           }
           #pv-print-section, #pv-print-section * {
-            visibility: visible;
+            visibility: visible !important;
           }
           #pv-print-section {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            background: white;
-            z-index: 9999;
+            display: block !important;
+            position: relative !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            color: black !important;
+            z-index: 99999 !important;
           }
           tr {
             page-break-inside: avoid;
+            break-inside: avoid;
           }
           thead {
             display: table-header-group;
@@ -153,7 +167,6 @@ export default function PaymentVoucherDetailPage({
             margin: 10mm;
             size: A4 portrait;
           }
-          header, nav, footer, aside { display: none !important; }
         }
       `}</style>
 
@@ -521,12 +534,21 @@ export default function PaymentVoucherDetailPage({
 
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════
-          PRINT VIEW
-      ══════════════════════════════════════════════════════════════ */}
-      <div id="pv-print-section" className="hidden print:block">
-        <PaymentVoucherPrint voucher={voucher} />
-      </div>
+      {mounted && typeof window !== "undefined" && createPortal(
+        <div 
+          id="pv-print-section" 
+          style={{
+            position: "fixed",
+            left: "-9999px",
+            top: 0,
+            pointerEvents: "none",
+          }}
+          aria-hidden="true"
+        >
+          <PaymentVoucherPrint voucher={voucher} />
+        </div>,
+        document.body
+      )}
     </>
   );
 }

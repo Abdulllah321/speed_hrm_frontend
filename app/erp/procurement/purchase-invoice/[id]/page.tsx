@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -144,6 +145,11 @@ export default function PurchaseInvoiceDetailPage() {
   const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleExportXLSX = () => {
     if (!invoice) return;
@@ -604,30 +610,33 @@ export default function PurchaseInvoiceDetailPage() {
       <>
         <style jsx global>{`
             @media print {
-                body {
-                    visibility: hidden;
+                html, body {
+                    height: auto !important;
+                    overflow: visible !important;
+                    background: white !important;
+                    color: black !important;
+                }
+                body > *:not(#print-section) {
+                    display: none !important;
+                }
+                #print-section, #print-section * {
+                    visibility: visible !important;
                 }
                 #print-section {
-                    visibility: visible;
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: auto;
-                    margin: 0;
-                    padding: 0;
-                    background: white;
-                    z-index: 9999;
-                }
-                #print-section * {
-                    visibility: visible;
+                    display: block !important;
+                    position: relative !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    width: 100% !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                    background: white !important;
+                    color: black !important;
+                    z-index: 99999 !important;
                 }
                 @page {
                     margin: 15mm;
                     size: A4;
-                }
-                header, nav, footer, aside, .banner {
-                    display: none !important;
                 }
                 tr {
                     page-break-inside: avoid;
@@ -925,178 +934,190 @@ export default function PurchaseInvoiceDetailPage() {
       </div>
 
       {/* Print View */}
-      <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
-          <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-0 print:max-w-none box-border">
-              {/* Header */}
-              <div className="flex justify-between mb-6 gap-4 items-start">
-                  {/* Logo */}
-                  <div className="w-[20%] flex flex-col items-start justify-center">
-                     <img src="/image.png" alt="Logo" className="w-32 object-contain" />
-                  </div>
-                  
-                  {/* Title */}
-                  <div className="w-[35%] flex flex-col justify-center">
-                    <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                      Purchase Invoice
-                    </div>
+      {mounted && typeof window !== "undefined" && createPortal(
+          <div 
+              id="print-section" 
+              style={{
+                  position: "fixed",
+                  left: "-9999px",
+                  top: 0,
+                  pointerEvents: "none",
+              }}
+              aria-hidden="true"
+          >
+              <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-0 print:max-w-none box-border">
+                  {/* Header */}
+                  <div className="flex justify-between mb-6 gap-4 items-start">
+                      {/* Logo */}
+                      <div className="w-[20%] flex flex-col items-start justify-center">
+                         <img src="/image.png" alt="Logo" className="w-32 object-contain" />
+                      </div>
+                      
+                      {/* Title */}
+                      <div className="w-[35%] flex flex-col justify-center">
+                        <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+                          Purchase Invoice
+                        </div>
+                      </div>
+
+                      {/* Details Box */}
+                      <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
+                         <div className="flex justify-between mb-2">
+                           <span className="font-bold">Invoice Number:</span>
+                           <span className="font-bold">{invoice.invoiceNumber}</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <div className="flex gap-2">
+                             <span className="font-bold">Date:</span>
+                             <span>{new Date(invoice.invoiceDate).toLocaleDateString('en-GB')}</span>
+                           </div>
+                         </div>
+                      </div>
                   </div>
 
-                  {/* Details Box */}
-                  <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                     <div className="flex justify-between mb-2">
-                       <span className="font-bold">Invoice Number:</span>
-                       <span className="font-bold">{invoice.invoiceNumber}</span>
-                     </div>
-                     <div className="flex justify-between">
-                       <div className="flex gap-2">
-                         <span className="font-bold">Date:</span>
-                         <span>{new Date(invoice.invoiceDate).toLocaleDateString('en-GB')}</span>
-                       </div>
-                     </div>
+                  {/* Supplier Details */}
+                  <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
+                      <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                          <div className="font-bold border-b border-gray-300 mb-2 pb-1">Supplier Details</div>
+                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{invoice.supplier?.name}</span></div>
+                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Code:</span> <span>{invoice.supplier?.code}</span></div>
+                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Email:</span> <span>{invoice.supplier?.email || '—'}</span></div>
+                          <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Phone:</span> <span>{invoice.supplier?.phone || '—'}</span></div>
+                      </div>
+                      <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                          <div className="font-bold border-b border-gray-300 mb-2 pb-1">Ship To</div>
+                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit Warehouse</span></div>
+                          <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Main Warehouse, Plot #45, Industrial Area, Karachi, Pakistan</span></div>
+                      </div>
                   </div>
-              </div>
 
-              {/* Vendor / Ship To Box */}
-              <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                      <div className="font-bold border-b border-gray-300 mb-2 pb-1">Supplier Details</div>
-                      <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{invoice.supplier?.name}</span></div>
-                      <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Code:</span> <span>{invoice.supplier?.code}</span></div>
-                  </div>
-                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                      <div className="font-bold border-b border-gray-300 mb-2 pb-1">Bill To</div>
-                      <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit ERP</span></div>
-                      <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Karachi, Pakistan</span></div>
-                  </div>
-              </div>
-
-              {/* Table */}
-              <table className="w-full text-[10px] sm:text-[11px] mb-4 border-collapse">
-                  <thead>
-                    <tr className="border-y-2 border-black">
-                      <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[7%]">HS Code</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[16%]">Description</th>
-                      <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
-                      <th className="py-1 pr-1 text-right font-bold w-[8%]">Unit Cost</th>
-                      <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
-                      <th className="py-1 pr-1 text-right font-bold w-[9%]">Sales Tax</th>
-                      <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Incl Tax</th>
-                      <th className="py-1 pr-1 text-right font-bold w-[10%]">Adv Tax</th>
-                      <th className="py-1 text-right font-bold w-[11%]">Line Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.items && invoice.items.length > 0 ? (
-                      getGroupedItems(invoice.items).map((item: any, i: number) => {
-                        const advRate  = Number((invoice as any).advanceTaxRate || 0.5);
-                        const qty      = Number(item.quantity    || 0);
-                        const unitCost = Number(item.unitPrice   || 0);
-                        const discRate = Number(item.discountRate || 0);
-                        const discAmt  = Number(item.discountAmount || (qty * unitCost * discRate / 100));
-                        const valExcl  = qty * unitCost - discAmt;
-                        const taxRate  = Number(item.taxRate     || 0);
-                        const taxAmt   = Number(item.taxAmount   || (valExcl * taxRate / 100));
-                        const valIncl  = valExcl + taxAmt;
-                        const itemAdv  = valIncl * advRate / 100;
-                        return (
-                          <tr key={item.id || i} className="border-b border-gray-300 align-top">
-                            <td className="py-1 pr-1 tabular-nums">{i + 1}</td>
-                            <td className="py-1 pr-1 font-mono font-bold">{item.item?.sku || item.sku || '—'}</td>
-                            <td className="py-1 pr-1 font-mono text-gray-500">{item.item?.hsCodeStr || '—'}</td>
-                            <td className="py-1 pr-1 text-gray-800">{item.item?.description || item.description || '—'}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(unitCost)}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(taxAmt)}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valIncl)}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(itemAdv)}</td>
-                            <td className="py-1 text-right tabular-nums font-semibold">{fmtInt(Number(item.lineTotal))}</td>
+                  {/* Table */}
+                  <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
+                      <thead>
+                        <tr className="border-y-2 border-black">
+                          <th className="py-2 pr-2 text-left font-bold w-[35%]">Item Details</th>
+                          <th className="py-2 pr-2 text-left font-bold w-[12%]">Size</th>
+                          <th className="py-2 pr-2 text-left font-bold w-[12%]">Color</th>
+                          <th className="py-2 pr-2 text-right font-bold w-[10%]">Qty</th>
+                          <th className="py-2 pr-2 text-right font-bold w-[15%]">Unit Cost</th>
+                          <th className="py-2 text-right font-bold w-[16%]">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoice.items && invoice.items.length > 0 ? (
+                          getGroupedItems(invoice.items).map((item: any, i: number) => (
+                            <tr key={item.id || i} className="border-b border-gray-300 align-top">
+                              <td className="py-2 pr-2 overflow-hidden text-ellipsis">
+                                <div className="font-medium">{item.sku}</div>
+                                <div className="text-gray-700">{item.description}</div>
+                              </td>
+                              <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                {item.size}
+                              </td>
+                              <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                {item.color}
+                              </td>
+                              <td className="py-2 pr-2 text-right tabular-nums">
+                                {item.quantity}
+                              </td>
+                              <td className="py-2 pr-2 text-right tabular-nums">
+                                {fmt(Number(item.unitPrice))}
+                              </td>
+                              <td className="py-2 text-right tabular-nums">
+                                {fmt(Number(item.lineTotal))}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                              <td colSpan={6} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                                  No items found for this invoice
+                              </td>
                           </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                          <td colSpan={11} className="py-4 text-center text-gray-400 border-b border-gray-300">
-                              No items found for this invoice
+                        )}
+                        <tr className="border-t-2 border-black">
+                          <td colSpan={3} className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]">Total Quantity:</td>
+                          <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                            {(invoice.items || []).reduce((sum, item) => sum + parseFloat(item.quantity as any || '0'), 0)}
                           </td>
-                      </tr>
-                    )}
-                  </tbody>
-              </table>
+                          <td colSpan={2} />
+                        </tr>
+                      </tbody>
+                  </table>
 
-              {/* Totals Section */}
-              <div className="flex border-b border-black pb-4 text-xs sm:text-[13px] justify-between">
-                   <div className="w-[50%] pt-4 flex flex-col justify-end">
-                       <div className="flex gap-2 font-bold mb-1">
-                           <span className="whitespace-nowrap">In Words:</span>
-                           <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(invoice.totalAmount || 0))}</span>
+                  {/* Totals Section */}
+                  <div className="flex border-b border-black pb-2 items-end">
+                       <div className="w-[50%] pt-4 flex flex-col justify-end">
+                           <div className="flex gap-2 font-bold mb-1">
+                               <span className="whitespace-nowrap">In Words:</span>
+                               <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(invoice.totalAmount || 0))}</span>
+                           </div>
+                       </div>
+                       <div className="w-[45%] flex flex-col space-y-1 text-right">
+                           {(() => {
+                             const advRate  = Number((invoice as any).advanceTaxRate || 0.5);
+                             const subtotal = Number(invoice.subtotal    || 0);
+                             const salesTax = Number(invoice.taxAmount   || 0);
+                             const advTax   = Number(invoice.advanceTaxAmount || 0);
+                             const discount = Number(invoice.discountAmount  || 0);
+                             const total    = Number(invoice.totalAmount || 0);
+                             const valExcl  = subtotal - discount;
+                             const valIncl  = valExcl + salesTax;
+                             return (
+                               <>
+                                 <div className="flex justify-between">
+                                   <span className="text-gray-600">Subtotal (Gross):</span>
+                                   <span className="tabular-nums font-medium">{fmtInt(subtotal)}</span>
+                                 </div>
+                                 {discount > 0 && (
+                                   <div className="flex justify-between">
+                                     <span className="text-gray-600">Discount:</span>
+                                     <span className="tabular-nums font-medium">-{fmtInt(discount)}</span>
+                                   </div>
+                                 )}
+                                 <div className="flex justify-between border-t border-gray-400 pt-1">
+                                   <span className="font-semibold">Value Excl. Sales Tax:</span>
+                                   <span className="tabular-nums font-semibold">{fmtInt(valExcl)}</span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span className="text-gray-600">Sale Tax Amount ({taxRateStr}):</span>
+                                   <span className="tabular-nums font-medium">{fmtInt(salesTax)}</span>
+                                 </div>
+                                 <div className="flex justify-between border-t border-gray-400 pt-1">
+                                   <span className="font-semibold">Value Incl. Sales Tax:</span>
+                                   <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
+                                 </div>
+                                 <div className="flex justify-between">
+                                   <span className="text-gray-600">Advance Tax ({advRate}%):</span>
+                                   <span className="tabular-nums font-medium">{fmtInt(advTax)}</span>
+                                 </div>
+                                 <div className="flex justify-between border-t border-black pt-1 font-bold">
+                                   <span>Total Amount:</span>
+                                   <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(total)}</span>
+                                 </div>
+                               </>
+                             );
+                           })()}
                        </div>
                    </div>
-                   <div className="w-[45%] flex flex-col space-y-1 text-right">
-                       {(() => {
-                         const advRate  = Number((invoice as any).advanceTaxRate || 0.5);
-                         const subtotal = Number(invoice.subtotal    || 0);
-                         const salesTax = Number(invoice.taxAmount   || 0);
-                         const advTax   = Number(invoice.advanceTaxAmount || 0);
-                         const discount = Number(invoice.discountAmount  || 0);
-                         const total    = Number(invoice.totalAmount || 0);
-                         const valExcl  = subtotal - discount;
-                         const valIncl  = valExcl + salesTax;
-                         return (
-                           <>
-                             <div className="flex justify-between">
-                               <span className="text-gray-600">Subtotal (Gross):</span>
-                               <span className="tabular-nums font-medium">{fmtInt(subtotal)}</span>
-                             </div>
-                             {discount > 0 && (
-                               <div className="flex justify-between">
-                                 <span className="text-gray-600">Discount:</span>
-                                 <span className="tabular-nums font-medium">-{fmtInt(discount)}</span>
-                               </div>
-                             )}
-                             <div className="flex justify-between border-t border-gray-400 pt-1">
-                               <span className="font-semibold">Value Excl. Sales Tax:</span>
-                               <span className="tabular-nums font-semibold">{fmtInt(valExcl)}</span>
-                             </div>
-                             <div className="flex justify-between">
-                               <span className="text-gray-600">Sale Tax Amount ({taxRateStr}):</span>
-                               <span className="tabular-nums font-medium">{fmtInt(salesTax)}</span>
-                             </div>
-                             <div className="flex justify-between border-t border-gray-400 pt-1">
-                               <span className="font-semibold">Value Incl. Sales Tax:</span>
-                               <span className="tabular-nums font-semibold">{fmtInt(valIncl)}</span>
-                             </div>
-                             <div className="flex justify-between">
-                               <span className="text-gray-600">Advance Tax ({advRate}%):</span>
-                               <span className="tabular-nums font-medium">{fmtInt(advTax)}</span>
-                             </div>
-                             <div className="flex justify-between border-t border-black pt-1 font-bold">
-                               <span>Total Amount:</span>
-                               <span className="tabular-nums font-bold" style={{ borderBottom: '3px double black' }}>{fmtInt(total)}</span>
-                             </div>
-                           </>
-                         );
-                       })()}
-                   </div>
-               </div>
 
-              {/* Signatures */}
-              <div className="grid grid-cols-3 gap-3 mt-8">
-                  <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center">PREPARED BY</span>
-                  </div>
-                  <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center">CHECKED BY</span>
-                  </div>
-                  <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center">APPROVED BY</span>
+                  {/* Signatures */}
+                  <div className="grid grid-cols-3 gap-3 mt-8">
+                      <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
+                          <span className="text-[10px] sm:text-[11px] font-bold text-center">PREPARED BY</span>
+                      </div>
+                      <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
+                          <span className="text-[10px] sm:text-[11px] font-bold text-center">CHECKED BY</span>
+                      </div>
+                      <div className="border border-black h-20 p-2 flex flex-col justify-start items-center">
+                          <span className="text-[10px] sm:text-[11px] font-bold text-center">APPROVED BY</span>
+                      </div>
                   </div>
               </div>
-          </div>
-      </div>
-    </>
+          </div>,
+          document.body
+      )}
+      </>
     </PermissionGuard>
   );
 }
