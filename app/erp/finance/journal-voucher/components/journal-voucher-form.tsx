@@ -152,11 +152,12 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                       credit: Math.round(Number(d.credit) || 0),
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
+                      refBillNo2: d.refBillNo2 || "",
                       taxType: (d.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
                   }))
                 : [
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
                   ],
         },
     });
@@ -208,6 +209,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                 credit: creditVal,
                 narration: "",
                 refBillNo: "",
+                refBillNo2: "",
                 taxType: "Taxable" as "Taxable" | "BTL" | "REIMB",
             });
             setTimeout(() => {
@@ -221,13 +223,15 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
     const handleKeyDown = (
         e: React.KeyboardEvent<HTMLInputElement>,
         index: number,
-        field: 'narration' | 'refBillNo' | 'debit' | 'credit'
+        field: 'narration' | 'refBillNo' | 'refBillNo2' | 'debit' | 'credit'
     ) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             if (field === 'narration') {
                 document.getElementById(`details-${index}-refBillNo`)?.focus();
             } else if (field === 'refBillNo') {
+                document.getElementById(`details-${index}-refBillNo2`)?.focus();
+            } else if (field === 'refBillNo2') {
                 document.getElementById(`details-${index}-debit`)?.focus();
             } else if (field === 'debit') {
                 const debitVal = Number(e.currentTarget.value) || 0;
@@ -489,6 +493,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             credit: isFromDebit ? val : 0,
             narration: fromRow.narration || "",
             refBillNo: fromRow.refBillNo || "",
+            refBillNo2: fromRow.refBillNo2 || "",
             taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB",
         };
         
@@ -497,6 +502,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             form.setValue(`details.${targetIndex}.credit`, oppositeRow.credit, { shouldValidate: true });
             form.setValue(`details.${targetIndex}.narration`, oppositeRow.narration, { shouldValidate: true });
             form.setValue(`details.${targetIndex}.refBillNo`, oppositeRow.refBillNo, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.refBillNo2`, oppositeRow.refBillNo2, { shouldValidate: true });
             form.setValue(`details.${targetIndex}.taxType`, oppositeRow.taxType, { shouldValidate: true });
         } else {
             append(oppositeRow);
@@ -697,17 +703,27 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                                 className="h-8 text-xs border-gray-300 dark:border-input"
                                                             />
                                                         </div>
-                                                        <div className="sm:col-span-3">
+                                                        <div className="sm:col-span-2">
                                                             <Input
                                                                 id={`details-${index}-refBillNo`}
-                                                                placeholder="Ref / Bill#"
+                                                                placeholder="Ref 1"
                                                                 {...form.register(`details.${index}.refBillNo`)}
                                                                 onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo')}
                                                                 disabled={isPending}
                                                                 className="h-8 text-xs border-gray-300 dark:border-input"
                                                             />
                                                         </div>
-                                                        <div className="sm:col-span-5 flex items-center gap-0.5 pl-1 select-none">
+                                                        <div className="sm:col-span-2">
+                                                            <Input
+                                                                id={`details-${index}-refBillNo2`}
+                                                                placeholder="Ref 2"
+                                                                {...form.register(`details.${index}.refBillNo2`)}
+                                                                onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo2')}
+                                                                disabled={isPending}
+                                                                className="h-8 text-xs border-gray-300 dark:border-input"
+                                                            />
+                                                        </div>
+                                                        <div className="sm:col-span-4 flex items-center gap-0.5 pl-1 select-none">
                                                             <Controller
                                                                 control={form.control}
                                                                 name={`details.${index}.taxType`}

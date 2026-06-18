@@ -150,12 +150,13 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                       credit: Math.round(Number(d.credit) || 0),
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
+                      refBillNo2: d.refBillNo2 || "",
                       taxType: (d.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
                       taxableValue: Math.round(Number(d.taxableValue) || 0),
                   }))
                 : [
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 },
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 },
                   ],
         },
     });
@@ -194,6 +195,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                 credit: 0,
                 narration: "",
                 refBillNo: "",
+                refBillNo2: "",
                 taxType: "Taxable" as "Taxable" | "BTL" | "REIMB",
                 taxableValue: 0
             });
@@ -208,7 +210,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const handleKeyDown = (
         e: React.KeyboardEvent<HTMLInputElement>,
         index: number,
-        field: 'narration' | 'refBillNo' | 'taxableValue' | 'debit' | 'credit'
+        field: 'narration' | 'refBillNo' | 'refBillNo2' | 'taxableValue' | 'debit' | 'credit'
     ) => {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -217,6 +219,8 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             } else if (field === 'narration') {
                 document.getElementById(`details-${index}-refBillNo`)?.focus();
             } else if (field === 'refBillNo') {
+                document.getElementById(`details-${index}-refBillNo2`)?.focus();
+            } else if (field === 'refBillNo2') {
                 document.getElementById(`details-${index}-debit`)?.focus();
             } else if (field === 'debit') {
                 const debitVal = Number(e.currentTarget.value) || 0;
@@ -424,7 +428,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 form.setValue(`details.${i}.debit`, 0);
                                 form.setValue(`details.${i}.credit`, 0);
                             } else {
-                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 });
+                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 });
                             }
                         });
                     }
@@ -484,6 +488,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             form.setValue(`details.${targetIndex}.debit`, 0, { shouldValidate: true });
             form.setValue(`details.${targetIndex}.narration`, fromRow.narration || "", { shouldValidate: true });
             form.setValue(`details.${targetIndex}.refBillNo`, fromRow.refBillNo || "", { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.refBillNo2`, fromRow.refBillNo2 || "", { shouldValidate: true });
             form.setValue(`details.${targetIndex}.taxType`, fromRow.taxType ?? "Taxable", { shouldValidate: true });
             form.setValue(`details.${targetIndex}.taxableValue`, fromRow.taxableValue ?? 0, { shouldValidate: true });
             if (fromRow.accountId) {
@@ -501,6 +506,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                 credit: debitVal,
                 narration: fromRow.narration || "",
                 refBillNo: fromRow.refBillNo || "",
+                refBillNo2: fromRow.refBillNo2 || "",
                 taxType: fromRow.taxType ?? "Taxable",
                 taxableValue: fromRow.taxableValue ?? 0
             });
@@ -649,6 +655,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                     credit: Math.round(Number(detail.credit) || 0),
                     narration: detail.narration || undefined,
                     refBillNo: detail.refBillNo || undefined,
+                    refBillNo2: detail.refBillNo2 || undefined,
                     taxType: detail.taxType ?? "Taxable",
                 })),
                 invoices: selectedInvoices.length > 0
@@ -1177,7 +1184,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                     type="button"
                                     variant="secondary"
                                     size="sm"
-                                    onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 })}
+                                    onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 })}
                                     disabled={isPending}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
@@ -1325,17 +1332,27 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                             className="h-8 text-xs border-gray-300 dark:border-input"
                                                         />
                                                     </div>
-                                                    <div className="sm:col-span-3">
+                                                    <div className="sm:col-span-2">
                                                         <Input
                                                             id={`details-${index}-refBillNo`}
-                                                            placeholder="Ref / Bill#"
+                                                            placeholder="Ref 1"
                                                             {...form.register(`details.${index}.refBillNo`)}
                                                             onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo')}
                                                             disabled={isPending}
                                                             className="h-8 text-xs border-gray-300 dark:border-input"
                                                         />
                                                     </div>
-                                                    <div className="sm:col-span-5 flex items-center gap-0.5 pl-1 select-none">
+                                                    <div className="sm:col-span-2">
+                                                        <Input
+                                                            id={`details-${index}-refBillNo2`}
+                                                            placeholder="Ref 2"
+                                                            {...form.register(`details.${index}.refBillNo2`)}
+                                                            onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo2')}
+                                                            disabled={isPending}
+                                                            className="h-8 text-xs border-gray-300 dark:border-input"
+                                                        />
+                                                    </div>
+                                                    <div className="sm:col-span-4 flex items-center gap-0.5 pl-1 select-none">
                                                         <Controller
                                                             control={form.control}
                                                             name={`details.${index}.taxType`}
@@ -1533,7 +1550,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                         onOpenChange={setIsImportModalOpen}
                         voucherType="payment"
                         onImportComplete={(importedRows) => {
-                            replace(importedRows);
+                            replace(importedRows as any);
                             toast.success(`Successfully imported ${importedRows.length} rows.`);
                         }}
                     />

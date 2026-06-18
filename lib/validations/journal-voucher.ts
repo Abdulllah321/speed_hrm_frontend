@@ -9,6 +9,7 @@ export const journalVoucherDetailSchema = z.object({
     credit: z.coerce.number().min(0).transform(v => Math.round(v)),
     narration: z.string().optional(),
     refBillNo: z.string().optional(),
+    refBillNo2: z.string().optional(),
     taxType: taxTypeEnum.default("Taxable"),
 }).refine(data => (data.debit > 0 && data.credit === 0) || (data.credit > 0 && data.debit === 0), {
     message: "Either Debit or Credit must be greater than 0, but not both.",

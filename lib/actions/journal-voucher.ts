@@ -15,6 +15,7 @@ export interface JournalVoucherDetail {
     credit: number;
     narration?: string;
     refBillNo?: string;
+    refBillNo2?: string;
     taxType?: string;
 }
 

@@ -49,6 +49,7 @@ interface MappedDetailRow {
     credit: number;
     narration: string;
     refBillNo: string;
+    refBillNo2: string;
     taxType: 'Taxable' | 'BTL' | 'REIMB';
     taxableValue?: number; // Needed for payment voucher details
 }
@@ -64,6 +65,7 @@ interface ParsedRow {
     credit: number;
     remarks: string;
     ref1: string;
+    ref2: string;
 }
 
 type RowStatus = 'pending' | 'searching' | 'found' | 'not_found' | 'error';
@@ -79,6 +81,7 @@ interface RowResult {
     credit: number;
     remarks: string;
     ref1: string;
+    ref2: string;
     status: RowStatus;
     resolvedAccountName?: string;
     resolvedTagName?: string;
@@ -163,6 +166,7 @@ function parseFile(file: File): Promise<ParsedRow[]> {
                     const creditKey = keys.find((k) => ['credit', 'cr', 'creditamount'].includes(normalise(k)));
                     const remarksKey = keys.find((k) => ['remarks', 'remarks', 'narration', 'remark', 'desc', 'description'].includes(normalise(k)));
                     const ref1Key = keys.find((k) => ['ref1', 'refbillno', 'ref', 'billno', 'bill'].includes(normalise(k)));
+                    const ref2Key = keys.find((k) => ['ref2', 'refbillno2', 'refbill2', 'billno2', 'bill2'].includes(normalise(k)));
 
                     const lineNumber = lineKey ? String(raw[lineKey]).trim() : idx + 1;
                     const accountCode = accKey ? String(raw[accKey]).trim() : '';
@@ -173,6 +177,7 @@ function parseFile(file: File): Promise<ParsedRow[]> {
                     const credit = creditKey ? cleanNumber(raw[creditKey]) : 0;
                     const remarks = remarksKey ? String(raw[remarksKey]).trim() : '';
                     const ref1 = ref1Key ? String(raw[ref1Key]).trim() : '';
+                    const ref2 = ref2Key ? String(raw[ref2Key]).trim() : '';
 
                     if (accountCode) {
                         rows.push({
@@ -186,6 +191,7 @@ function parseFile(file: File): Promise<ParsedRow[]> {
                             credit,
                             remarks,
                             ref1,
+                            ref2,
                         });
                     }
                 });
@@ -354,6 +360,7 @@ export function VoucherImportModal({ open, onOpenChange, onImportComplete, vouch
                         credit,
                         narration: parsedRow.remarks,
                         refBillNo: parsedRow.ref1,
+                        refBillNo2: parsedRow.ref2,
                         taxType: 'Taxable',
                     };
 
@@ -433,6 +440,7 @@ export function VoucherImportModal({ open, onOpenChange, onImportComplete, vouch
                 Credit: r.credit,
                 Remarks: r.remarks,
                 Ref1: r.ref1,
+                Ref2: r.ref2,
                 Reason: r.reason || 'Invalid',
             }))
         );
@@ -556,7 +564,7 @@ export function VoucherImportModal({ open, onOpenChange, onImportComplete, vouch
                                             <div className="text-center space-y-2">
                                                 <p className="font-bold text-lg">Click to select CSV or Excel file</p>
                                                 <p className="text-sm text-muted-foreground max-w-lg">
-                                                    Spreadsheet should have headers: <span className="font-mono font-bold">FKAccountCode</span>, <span className="font-mono font-bold">Debit</span>, <span className="font-mono font-bold">Credit</span>, and optional <span className="font-mono font-bold">TagID</span>, <span className="font-mono font-bold">Remarks</span>, <span className="font-mono font-bold">Ref 1</span>.
+                                                    Spreadsheet should have headers: <span className="font-mono font-bold">FKAccountCode</span>, <span className="font-mono font-bold">Debit</span>, <span className="font-mono font-bold">Credit</span>, and optional <span className="font-mono font-bold">TagID</span>, <span className="font-mono font-bold">Remarks</span>, <span className="font-mono font-bold">Ref 1</span>, <span className="font-mono font-bold">Ref 2</span>.
                                                 </p>
                                             </div>
                                             <div className="flex gap-2">
@@ -594,7 +602,7 @@ export function VoucherImportModal({ open, onOpenChange, onImportComplete, vouch
                                             <span className="font-bold text-foreground block">References & Remarks</span>
                                             <span className="text-[11px] text-muted-foreground block">Maps to line Narration and Bill No:</span>
                                             <div className="flex flex-wrap gap-1 mt-1">
-                                                {['Remarks', 'Ref 1'].map(h => (
+                                                {['Remarks', 'Ref 1', 'Ref 2'].map(h => (
                                                     <Badge key={h} variant="secondary" className="text-[10px] py-0 px-1 font-mono font-normal">{h}</Badge>
                                                 ))}
                                             </div>

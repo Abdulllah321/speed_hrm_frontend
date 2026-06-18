@@ -9,6 +9,7 @@ export const paymentVoucherDetailSchema = z.object({
     credit:       z.coerce.number().min(0).transform(v => Math.round(v)).default(0),
     narration:    z.string().optional(),   // per-line narration
     refBillNo:    z.string().optional(),   // per-line bill ref
+    refBillNo2:   z.string().optional(),
     taxType:      taxTypeEnum.default("Taxable"),
     taxableValue: z.coerce.number().optional().default(0), // base value for calculation
 });

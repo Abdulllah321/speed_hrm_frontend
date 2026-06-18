@@ -133,11 +133,12 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                       credit: Math.round(Number(d.credit) || 0),
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
+                      refBillNo2: d.refBillNo2 || "",
                       taxType: (d.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
                   }))
                 : [
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
                   ],
         },
     });
@@ -172,6 +173,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                 credit: 0,
                 narration: "",
                 refBillNo: "",
+                refBillNo2: "",
                 taxType: "Taxable" as "Taxable" | "BTL" | "REIMB",
             });
             setTimeout(() => {
@@ -185,13 +187,15 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const handleKeyDown = (
         e: React.KeyboardEvent<HTMLInputElement>,
         index: number,
-        field: 'narration' | 'refBillNo' | 'debit' | 'credit'
+        field: 'narration' | 'refBillNo' | 'refBillNo2' | 'debit' | 'credit'
     ) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             if (field === 'narration') {
                 document.getElementById(`details-${index}-refBillNo`)?.focus();
             } else if (field === 'refBillNo') {
+                document.getElementById(`details-${index}-refBillNo2`)?.focus();
+            } else if (field === 'refBillNo2') {
                 document.getElementById(`details-${index}-debit`)?.focus();
             } else if (field === 'debit') {
                 const debitVal = Number(e.currentTarget.value) || 0;
@@ -349,6 +353,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             form.setValue(`details.${targetIndex}.credit`, 0, { shouldValidate: true });
             form.setValue(`details.${targetIndex}.narration`, fromRow.narration || "", { shouldValidate: true });
             form.setValue(`details.${targetIndex}.refBillNo`, fromRow.refBillNo || "", { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.refBillNo2`, fromRow.refBillNo2 || "", { shouldValidate: true });
             form.setValue(`details.${targetIndex}.taxType`, fromRow.taxType ?? "Taxable", { shouldValidate: true });
             if (fromRow.accountId) {
                 form.setValue(`details.${targetIndex}.accountId`, fromRow.accountId, { shouldValidate: true });
@@ -365,6 +370,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                 credit: 0,
                 narration: fromRow.narration || "",
                 refBillNo: fromRow.refBillNo || "",
+                refBillNo2: fromRow.refBillNo2 || "",
                 taxType: fromRow.taxType ?? "Taxable"
             });
             toast.success(`Duplicated Row ${fromIndex + 1} to a new Debit Row.`);
@@ -600,6 +606,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                         credit: Math.round(Number(detail.credit) || 0),
                         narration: detail.narration || undefined,
                         refBillNo: detail.refBillNo || undefined,
+                        refBillNo2: detail.refBillNo2 || undefined,
                         taxType: detail.taxType ?? "Taxable",
                     })),
                 invoices: selectedInvoices.length > 0
@@ -874,7 +881,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                     type="button"
                                     variant="secondary"
                                     size="sm"
-                                    onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" })}
+                                    onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" })}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add More RV Rows
@@ -998,17 +1005,27 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                             className="h-8 text-xs border-gray-300 dark:border-input"
                                                         />
                                                     </div>
-                                                    <div className="sm:col-span-3">
+                                                    <div className="sm:col-span-2">
                                                         <Input
                                                             id={`details-${index}-refBillNo`}
-                                                            placeholder="Ref / Bill#"
+                                                            placeholder="Ref 1"
                                                             {...form.register(`details.${index}.refBillNo`)}
                                                             onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo')}
                                                             disabled={isPending}
                                                             className="h-8 text-xs border-gray-300 dark:border-input"
                                                         />
                                                     </div>
-                                                    <div className="sm:col-span-5 flex items-center gap-0.5 pl-1 select-none">
+                                                    <div className="sm:col-span-2">
+                                                        <Input
+                                                            id={`details-${index}-refBillNo2`}
+                                                            placeholder="Ref 2"
+                                                            {...form.register(`details.${index}.refBillNo2`)}
+                                                            onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo2')}
+                                                            disabled={isPending}
+                                                            className="h-8 text-xs border-gray-300 dark:border-input"
+                                                        />
+                                                    </div>
+                                                    <div className="sm:col-span-4 flex items-center gap-0.5 pl-1 select-none">
                                                         <Controller
                                                             control={form.control}
                                                             name={`details.${index}.taxType`}

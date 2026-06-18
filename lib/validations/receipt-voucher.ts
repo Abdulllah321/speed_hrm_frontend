@@ -9,6 +9,7 @@ export const receiptVoucherDetailSchema = z.object({
     credit:       z.coerce.number().min(0).transform(v => Math.round(v)).default(0),
     narration:    z.string().optional(),
     refBillNo:    z.string().optional(),
+    refBillNo2:   z.string().optional(),
     taxType:      taxTypeEnum.default("Taxable"),
 });
 
