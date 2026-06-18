@@ -143,6 +143,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     });
 
     const { fields, append, remove, replace } = useFieldArray({ control: form.control, name: "details" });
+    const watchDetails = form.watch("details") || [];
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [filterAccountId, setFilterAccountId] = useState<string>("");
 
@@ -229,7 +230,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
 
     // Clear tagAccountId when accountId changes for a row
     const prevAccountIds = useRef<Record<number, string>>({});
-    const watchDetails = form.watch("details") || [];
+    
     useEffect(() => {
         watchDetails.forEach((detail: any, index: number) => {
             const accountId = detail.accountId;

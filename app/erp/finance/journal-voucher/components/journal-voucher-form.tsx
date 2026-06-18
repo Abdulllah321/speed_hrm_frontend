@@ -166,6 +166,8 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         name: "details",
     });
 
+    const watchDetails = form.watch("details") || [];
+
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [filterAccountId, setFilterAccountId] = useState<string>("");
 
@@ -250,8 +252,6 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             }
         }
     };
-
-    const watchDetails = form.watch("details") || [];
 
     // Poll for the shared tree until it's available (it loads lazily on first open)
     useEffect(() => {

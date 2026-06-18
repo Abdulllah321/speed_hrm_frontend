@@ -165,6 +165,8 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         name: "details",
     });
 
+    const watchDetails = form.watch("details") || [];
+
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [filterAccountId, setFilterAccountId] = useState<string>("");
 
@@ -255,7 +257,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
     // Clear tagAccountId when accountId changes for a row
     const prevAccountIds = useRef<Record<number, string>>({});
-    const watchDetails = form.watch("details") || [];
+    
     useEffect(() => {
         watchDetails.forEach((detail, index) => {
             const accountId = detail.accountId;
