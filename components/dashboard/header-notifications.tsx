@@ -362,6 +362,27 @@ export function HeaderNotifications() {
       return;
     }
 
+    // landed-cost-export.ready
+    if (n.actionType === "landed-cost-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/landed-cost/export/${jobId}/download`,
+            `landed-cost-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Landed Cost export download failed:", e);
+      }
+      return;
+    }
+
+
     const route = getActionRoute(n);
     if (route) router.push(route);
   }, [handleMarkRead, getActionRoute, router]);

@@ -80,3 +80,20 @@ export async function getLandedCostChargeTypes() {
         return { status: false, data: [] };
     }
 }
+
+export async function exportLandedCost(
+    id: string,
+    filters: { search?: string; hsCodes?: string[]; skus?: string[] }
+) {
+    try {
+        const response = await authFetch(`/landed-cost/export/${id}`, {
+            method: "POST",
+            body: JSON.stringify(filters),
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Export landed cost error:", error);
+        throw error;
+    }
+}
+
