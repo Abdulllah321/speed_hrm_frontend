@@ -107,10 +107,10 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
                    </div>
                 )}
                 {/* Ref# */}
-                {(d.refBillNo || voucher.refBillNo || d.isTaxApplicable || voucher.isTaxApplicable) && (
+                {(d.refBillNo || voucher.refBillNo || d.taxType || voucher.taxType) && (
                   <div className="flex gap-1.5 sm:gap-3 mt-0.5">
                     <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
-                      Ref# {(d.isTaxApplicable ?? voucher.isTaxApplicable) ? "TAXABLE" : ""}
+                      Ref# {(d.taxType ?? voucher.taxType) ?? ""}
                     </span>
                     <span className="uppercase">{d.refBillNo || voucher.refBillNo}</span>
                   </div>

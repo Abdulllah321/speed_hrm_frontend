@@ -15,7 +15,7 @@ export interface ReceiptVoucherDetail {
     credit: number;
     narration?: string;
     refBillNo?: string;
-    isTaxApplicable?: boolean;
+    taxType?: string;
 }
 
 export interface ReceiptVoucher {
@@ -31,8 +31,8 @@ export interface ReceiptVoucher {
     debitAmount: number;
     customerId?: string;
     status: "pending" | "approved" | "rejected";
-    description: string;
-    isTaxApplicable?: boolean;
+    description?: string;
+    taxType?: string;
     isAdvance?: boolean;
     chequeNo?: string;
     chequeDate?: string;

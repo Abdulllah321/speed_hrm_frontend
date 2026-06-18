@@ -15,7 +15,7 @@ export interface PaymentVoucherDetail {
     credit: number;
     narration?: string;
     refBillNo?: string;
-    isTaxApplicable?: boolean;
+    taxType?: string;
 }
 
 export interface PaymentVoucher {
@@ -31,8 +31,8 @@ export interface PaymentVoucher {
     creditAccountName?: string; // helper for UI
     creditAmount: number;
     status: "pending" | "approved" | "rejected";
-    description: string;
-    isTaxApplicable: boolean;
+    description?: string;
+    taxType?: string;
     isAdvance: boolean;
     chequeNo?: string;
     chequeDate?: string; // ISO string

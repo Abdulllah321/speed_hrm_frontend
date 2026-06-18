@@ -311,12 +311,12 @@ export default function JournalVoucherDetailPage({
                       )}
 
                       {/* Ref# line */}
-                      {(d.refBillNo || d.isTaxApplicable) && (
+                      {(d.refBillNo || d.taxType) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-bold text-foreground/70">Ref#</span>
-                          {d.isTaxApplicable && (
+                          {d.taxType && (
                             <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
-                              TAXABLE
+                              {d.taxType}
                             </span>
                           )}
                           {d.refBillNo && (
@@ -363,12 +363,12 @@ export default function JournalVoucherDetailPage({
                       )}
 
                       {/* Ref# line */}
-                      {(d.refBillNo || d.isTaxApplicable) && (
+                      {(d.refBillNo || d.taxType) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-bold text-foreground/70">Ref#</span>
-                          {d.isTaxApplicable && (
+                          {d.taxType && (
                             <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
-                              TAXABLE
+                              {d.taxType}
                             </span>
                           )}
                           {d.refBillNo && (

@@ -100,10 +100,10 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
                    </div>
                 )}
                 {/* Ref# */}
-                {(d.refBillNo || d.isTaxApplicable) && (
+                {(d.refBillNo || d.taxType) && (
                   <div className="flex gap-1.5 sm:gap-3 mt-0.5">
                     <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
-                      Ref# {d.isTaxApplicable ? "TAXABLE" : ""}
+                      Ref# {d.taxType ?? ""}
                     </span>
                     <span className="uppercase">{d.refBillNo || "—"}</span>
                   </div>
@@ -134,10 +134,10 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
                    </div>
                 )}
                 {/* Ref# */}
-                {(d.refBillNo || d.isTaxApplicable) && (
+                {(d.refBillNo || d.taxType) && (
                   <div className="flex gap-1.5 sm:gap-3 mt-0.5">
                     <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
-                      Ref# {d.isTaxApplicable ? "TAXABLE" : ""}
+                      Ref# {d.taxType ?? ""}
                     </span>
                     <span className="uppercase">{d.refBillNo || "—"}</span>
                   </div>

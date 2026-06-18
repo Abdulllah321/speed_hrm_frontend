@@ -293,10 +293,10 @@ export default function ReceiptVoucherDetailPage({
                 </div>
               )}
 
-              {/* Tax applicable */}
+              {/* Tax Type */}
               <div className="space-y-1">
-                <p className="text-[10px] uppercase font-bold text-muted-foreground">Tax Applicable</p>
-                <p className="text-sm font-semibold">{voucher.isTaxApplicable ? "Yes" : "No"}</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">Tax Type</p>
+                <p className="text-sm font-semibold">{voucher.taxType ?? "Taxable"}</p>
               </div>
 
               {/* Advance */}
@@ -420,12 +420,12 @@ export default function ReceiptVoucherDetailPage({
                         </div>
                       )}
 
-                      {(d.refBillNo || d.isTaxApplicable || voucher.refBillNo || voucher.isTaxApplicable) && (
+                      {(d.refBillNo || d.taxType || voucher.refBillNo || voucher.taxType) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-bold text-foreground/70">Ref#</span>
-                          {(d.isTaxApplicable ?? voucher.isTaxApplicable) && (
+                          {(d.taxType ?? voucher.taxType) && (
                             <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
-                              TAXABLE
+                              {d.taxType ?? voucher.taxType}
                             </span>
                           )}
                           {(d.refBillNo || voucher.refBillNo) && (

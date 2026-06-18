@@ -14,6 +14,7 @@ import {
 import { Printer, Download, Plus, Eye, CheckCircle2 } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { JournalVoucher, updateJournalVoucher } from "@/lib/actions/journal-voucher";
+import { JournalVoucherPrint } from "./journal-voucher-print";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -50,13 +51,29 @@ export function JournalVoucherList({
         canApprove: boolean;
     }
 }) {
-    const [fromDate, setFromDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-    const [toDate, setToDate] = useState<Date | undefined>(new Date());
+    const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+    const [toDate, setToDate] = useState<Date | undefined>(undefined);
     const [selectedAccount, setSelectedAccount] = useState<string>("");
     const [status, setStatus] = useState<string>("all");
     const [vouchers, setVouchers] = useState<JournalVoucher[]>(initialData);
     const [showFilterInfo, setShowFilterInfo] = useState(false);
     const [localDrafts, setLocalDrafts] = useState<LocalDraft[]>([]);
+    const [printingVoucher, setPrintingVoucher] = useState<JournalVoucher | null>(null);
+
+    useEffect(() => {
+        const handleAfterPrint = () => {
+            setPrintingVoucher(null);
+        };
+        window.addEventListener("afterprint", handleAfterPrint);
+        return () => window.removeEventListener("afterprint", handleAfterPrint);
+    }, []);
+
+    const handlePrint = (voucher: JournalVoucher) => {
+        setPrintingVoucher(voucher);
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    };
 
     useEffect(() => {
         const draftsJson = localStorage.getItem("journal-voucher-drafts");
@@ -127,35 +144,42 @@ export function JournalVoucherList({
             id: "details",
             header: "Debit/Credit Details",
             cell: ({ row }) => (
-                <div className="space-y-1 min-w-[320px]">
-                    {row.original.details.map((detail, idx) => (
-                        <div key={idx} className="flex justify-between gap-4 items-start text-xs border-b border-dashed border-gray-100 dark:border-muted/30 pb-0.5 last:border-0">
-                            <span className="flex-1">
-                                <span className={cn(
-                                    "font-bold mr-1.5",
-                                    detail.debit > 0 ? "text-blue-600" : "text-green-600"
-                                )}>
-                                    {detail.debit > 0 ? "Dr" : "Cr"}
-                                </span>
-                                <span className="uppercase text-gray-700 dark:text-gray-300 font-medium">
-                                    {detail.accountCode ? `${detail.accountCode} - ` : ""}{detail.accountName || "Account"}
-                                </span>
-                                {detail.tagAccountCode && (
-                                    <span className="text-[10px] text-muted-foreground ml-1.5 italic bg-muted px-1 py-0.2 rounded">
-                                        Tag: {detail.tagAccountCode}
+                <div className="flex flex-col">
+                    <div className="space-y-1 min-w-[320px] max-h-36 overflow-y-auto pr-1.5 border border-muted/20 rounded-md p-1.5 bg-muted/10">
+                        {row.original.details.map((detail, idx) => (
+                            <div key={idx} className="flex justify-between gap-4 items-start text-xs border-b border-dashed border-gray-100 dark:border-muted/30 pb-0.5 last:border-0">
+                                <span className="flex-1">
+                                    <span className={cn(
+                                        "font-bold mr-1.5",
+                                        detail.debit > 0 ? "text-blue-600" : "text-green-600"
+                                    )}>
+                                        {detail.debit > 0 ? "Dr" : "Cr"}
                                     </span>
-                                )}
-                                {detail.narration && (
-                                    <span className="block text-[10px] text-muted-foreground italic mt-0.5 ml-5">
-                                        {detail.narration}
+                                    <span className="uppercase text-gray-700 dark:text-gray-300 font-medium">
+                                        {detail.accountCode ? `${detail.accountCode} - ` : ""}{detail.accountName || "Account"}
                                     </span>
-                                )}
-                            </span>
-                            <span className="font-mono font-bold text-gray-800 dark:text-foreground shrink-0 pl-2">
-                                {(detail.debit || detail.credit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
+                                    {detail.tagAccountCode && (
+                                        <span className="text-[10px] text-muted-foreground ml-1.5 italic bg-muted px-1 py-0.2 rounded">
+                                            Tag: {detail.tagAccountCode}
+                                        </span>
+                                    )}
+                                    {detail.narration && (
+                                        <span className="block text-[10px] text-muted-foreground italic mt-0.5 ml-5">
+                                            {detail.narration}
+                                        </span>
+                                    )}
+                                </span>
+                                <span className="font-mono font-bold text-gray-800 dark:text-foreground shrink-0 pl-2">
+                                    {(detail.debit || detail.credit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                    {row.original.details.length > 5 && (
+                        <div className="text-[10px] text-muted-foreground font-semibold mt-1 text-center">
+                            Showing {row.original.details.length} entries (scroll to see all)
                         </div>
-                    ))}
+                    )}
                 </div>
             )
         },
@@ -185,6 +209,15 @@ export function JournalVoucherList({
                             <Eye className="h-4 w-4 text-primary" />
                         </Button>
                     </Link>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handlePrint(row.original)}
+                        className="h-8 w-8 hover:bg-muted text-primary"
+                        title="Print Voucher"
+                    >
+                        <Printer className="h-4 w-4" />
+                    </Button>
                     {row.original.status === 'pending' && permissions?.canApprove && (
                         <Button
                             variant="ghost"
@@ -199,7 +232,7 @@ export function JournalVoucherList({
                 </div>
             )
         }
-    ], [permissions]);
+    ], [permissions, handlePrint]);
 
     // Filter logic for DataTable data
     const filteredVouchers = useMemo(() => {
@@ -358,6 +391,50 @@ export function JournalVoucherList({
                     />
                 </CardContent>
             </Card>
+
+            {/* Hidden Print Section */}
+            {printingVoucher && (
+                <>
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        @media print {
+                            body {
+                                visibility: hidden !important;
+                                background: white !important;
+                            }
+                            #jv-print-section, #jv-print-section * {
+                                visibility: visible !important;
+                            }
+                            #jv-print-section {
+                                position: absolute !important;
+                                left: 0 !important;
+                                top: 0 !important;
+                                width: 100% !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                background: white !important;
+                                z-index: 9999 !important;
+                            }
+                            tr {
+                                page-break-inside: avoid !important;
+                            }
+                            thead {
+                                display: table-header-group !important;
+                            }
+                            tfoot {
+                                display: table-footer-group !important;
+                            }
+                            @page {
+                                margin: 10mm !important;
+                                size: A4 portrait !important;
+                            }
+                            header, nav, footer, aside, .print\\:hidden { display: none !important; }
+                        }
+                    `}} />
+                    <div id="jv-print-section" className="hidden print:block">
+                        <JournalVoucherPrint voucher={printingVoucher} />
+                    </div>
+                </>
+            )}
         </div>
     );
 }

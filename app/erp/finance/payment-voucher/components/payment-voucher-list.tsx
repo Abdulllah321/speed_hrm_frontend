@@ -15,6 +15,7 @@ import {
 import { Printer, Download, Plus, CreditCard, Wallet, Eye } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { PaymentVoucher } from "@/lib/actions/payment-voucher";
+import { PaymentVoucherPrint } from "./payment-voucher-print";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -58,6 +59,22 @@ export function PaymentVoucherList({
     const [vouchers, setVouchers] = useState<PaymentVoucher[]>(initialData);
     const [showFilterInfo, setShowFilterInfo] = useState(false);
     const [localDrafts, setLocalDrafts] = useState<LocalDraft[]>([]);
+    const [printingVoucher, setPrintingVoucher] = useState<PaymentVoucher | null>(null);
+
+    useEffect(() => {
+        const handleAfterPrint = () => {
+            setPrintingVoucher(null);
+        };
+        window.addEventListener("afterprint", handleAfterPrint);
+        return () => window.removeEventListener("afterprint", handleAfterPrint);
+    }, []);
+
+    const handlePrint = (voucher: PaymentVoucher) => {
+        setPrintingVoucher(voucher);
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    };
 
     useEffect(() => {
         const draftsJson = localStorage.getItem("payment-voucher-drafts");
@@ -117,57 +134,64 @@ export function PaymentVoucherList({
                 const debitLines  = row.original.details.filter(d => Number(d.debit)  > 0);
                 const creditLines = row.original.details.filter(d => Number(d.credit) > 0);
                 return (
-                    <div className="space-y-0.5 min-w-50">
-                        {/* Debit lines */}
-                        {debitLines.map((d, di) => (
-                            <div key={`dr-${di}`} className="space-y-0.5">
-                                <div className="flex justify-between text-xs gap-3">
-                                    <span className="text-blue-600 font-medium truncate max-w-[200px]">
-                                        {d.accountCode ? `${d.accountCode} ` : ""}{d.accountName}
-                                    </span>
-                                    <span className="font-bold tabular-nums shrink-0">
-                                        {Number(d.debit).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                                {d.narration && (
-                                    <span className="block text-[10px] text-muted-foreground italic pl-2">
-                                        {d.narration}
-                                    </span>
-                                )}
-                            </div>
-                        ))}
-                        {/* Divider */}
-                        <div className="border-t border-dashed border-border my-0.5" />
-                        {/* Credit lines — from details if present, else fallback to header */}
-                        {creditLines.length > 0
-                            ? creditLines.map((d, ci) => (
-                                <div key={`cr-${ci}`} className="space-y-0.5 opacity-70 italic">
+                    <div className="flex flex-col">
+                        <div className="space-y-0.5 min-w-[280px] max-h-36 overflow-y-auto pr-1.5 border border-muted/20 rounded-md p-1.5 bg-muted/10">
+                            {/* Debit lines */}
+                            {debitLines.map((d, di) => (
+                                <div key={`dr-${di}`} className="space-y-0.5">
                                     <div className="flex justify-between text-xs gap-3">
-                                        <span className="text-green-600 truncate max-w-[200px]">
-                                            (Cr: {d.accountCode ? `${d.accountCode} ` : ""}{d.accountName})
+                                        <span className="text-blue-600 font-medium truncate max-w-[200px]">
+                                            {d.accountCode ? `${d.accountCode} ` : ""}{d.accountName}
                                         </span>
-                                        <span className="tabular-nums shrink-0">
-                                            {Number(d.credit).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                                        <span className="font-bold tabular-nums shrink-0">
+                                            {Number(d.debit).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
                                         </span>
                                     </div>
                                     {d.narration && (
-                                        <span className="block text-[10px] text-muted-foreground pl-2">
+                                        <span className="block text-[10px] text-muted-foreground italic pl-2">
                                             {d.narration}
                                         </span>
                                     )}
                                 </div>
-                            ))
-                            : (
-                                <div className="flex justify-between text-xs opacity-70 italic">
-                                    <span className="text-green-600 truncate max-w-[200px]">
-                                        (Cr: {row.original.creditAccountName})
-                                    </span>
-                                    <span className="tabular-nums shrink-0">
-                                        {Number(row.original.creditAmount).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
-                                    </span>
-                                </div>
-                            )
-                        }
+                            ))}
+                            {/* Divider */}
+                            <div className="border-t border-dashed border-border my-0.5" />
+                            {/* Credit lines — from details if present, else fallback to header */}
+                            {creditLines.length > 0
+                                ? creditLines.map((d, ci) => (
+                                    <div key={`cr-${ci}`} className="space-y-0.5 opacity-70 italic">
+                                        <div className="flex justify-between text-xs gap-3">
+                                            <span className="text-green-600 truncate max-w-[200px]">
+                                                (Cr: {d.accountCode ? `${d.accountCode} ` : ""}{d.accountName})
+                                            </span>
+                                            <span className="tabular-nums shrink-0">
+                                                {Number(d.credit).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        {d.narration && (
+                                            <span className="block text-[10px] text-muted-foreground pl-2">
+                                                {d.narration}
+                                            </span>
+                                        )}
+                                    </div>
+                                ))
+                                : (
+                                    <div className="flex justify-between text-xs opacity-70 italic">
+                                        <span className="text-green-600 truncate max-w-[200px]">
+                                            (Cr: {row.original.creditAccountName})
+                                        </span>
+                                        <span className="tabular-nums shrink-0">
+                                            {Number(row.original.creditAmount).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                )
+                            }
+                        </div>
+                        {row.original.details.length > 5 && (
+                            <div className="text-[10px] text-muted-foreground font-semibold mt-1 text-center">
+                                Total {row.original.details.length} lines (scroll to see all)
+                            </div>
+                        )}
                     </div>
                 );
             }
@@ -194,17 +218,28 @@ export function PaymentVoucherList({
             id: "actions",
             header: "",
             cell: ({ row }) => (
-                <Link
-                    href={`/erp/finance/payment-voucher/${row.original.id}`}
-                    transitionTypes={["nav-forward"]}
-                >
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
-                        <Eye className="h-3.5 w-3.5" />
+                <div className="flex items-center gap-1.5">
+                    <Link
+                        href={`/erp/finance/payment-voucher/${row.original.id}`}
+                        transitionTypes={["nav-forward"]}
+                    >
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="View Details">
+                            <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                    </Link>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handlePrint(row.original)}
+                        className="h-7 w-7 hover:bg-muted text-primary"
+                        title="Print Voucher"
+                    >
+                        <Printer className="h-3.5 w-3.5" />
                     </Button>
-                </Link>
+                </div>
             )
         }
-    ], []);
+    ], [handlePrint]);
 
     const filteredData = useMemo(() => {
         return vouchers.filter(v => {
@@ -384,6 +419,50 @@ export function PaymentVoucherList({
                     </CardContent>
                 </Card>
             </Tabs>
+
+            {/* Hidden Print Section */}
+            {printingVoucher && (
+                <>
+                    <style dangerouslySetInnerHTML={{ __html: `
+                        @media print {
+                            body {
+                                visibility: hidden !important;
+                                background: white !important;
+                            }
+                            #pv-print-section, #pv-print-section * {
+                                visibility: visible !important;
+                            }
+                            #pv-print-section {
+                                position: absolute !important;
+                                left: 0 !important;
+                                top: 0 !important;
+                                width: 100% !important;
+                                margin: 0 !important;
+                                padding: 0 !important;
+                                background: white !important;
+                                z-index: 9999 !important;
+                            }
+                            tr {
+                                page-break-inside: avoid !important;
+                            }
+                            thead {
+                                display: table-header-group !important;
+                            }
+                            tfoot {
+                                display: table-footer-group !important;
+                            }
+                            @page {
+                                margin: 10mm !important;
+                                size: A4 portrait !important;
+                            }
+                            header, nav, footer, aside, .print\\:hidden { display: none !important; }
+                        }
+                    `}} />
+                    <div id="pv-print-section" className="hidden print:block">
+                        <PaymentVoucherPrint voucher={printingVoucher} />
+                    </div>
+                </>
+            )}
         </div>
     );
 }

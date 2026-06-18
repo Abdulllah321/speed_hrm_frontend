@@ -1,13 +1,15 @@
 import { z } from "zod";
 
+export const taxTypeEnum = z.enum(["Taxable", "BTL", "REIMB"]);
+
 export const receiptVoucherDetailSchema = z.object({
-    accountId: z.string().min(1, "Account is required"),
+    accountId:    z.string().min(1, "Account is required"),
     tagAccountId: z.string().optional(),
-    debit: z.coerce.number().min(0).transform(v => Math.round(v)).default(0),
-    credit: z.coerce.number().min(0).transform(v => Math.round(v)).default(0),
-    narration: z.string().optional(),
-    refBillNo: z.string().optional(),
-    isTaxApplicable: z.boolean().optional(),
+    debit:        z.coerce.number().min(0).transform(v => Math.round(v)).default(0),
+    credit:       z.coerce.number().min(0).transform(v => Math.round(v)).default(0),
+    narration:    z.string().optional(),
+    refBillNo:    z.string().optional(),
+    taxType:      taxTypeEnum.default("Taxable"),
 });
 
 export const receiptVoucherInvoiceSchema = z.object({
@@ -25,18 +27,12 @@ export const receiptVoucherSchema = z.object({
     chequeDate: z.date().optional(),
     customerId: z.string().optional(),
     isAdvance: z.boolean().optional(),
-    isTaxApplicable: z.boolean().optional(),
+    taxType: taxTypeEnum.default("Taxable"),
     debitAccountId: z.string().optional(),
     debitAmount: z.coerce.number().transform(v => Math.round(v)).optional(),
     invoices: z.array(receiptVoucherInvoiceSchema).optional(),
-    description: z.string().min(1, "Description is required"),
+    description: z.string().optional(),
     details: z.array(receiptVoucherDetailSchema).min(2, "At least two detail rows are required"),
-}).refine(data => {
-    if (data.type === "bank") return !!data.chequeNo && !!data.chequeDate;
-    return true;
-}, {
-    message: "Cheque details are required for Bank receipts",
-    path: ["chequeNo"],
 }).refine(data => {
     const totalDebit = data.details.reduce((sum, item) => sum + item.debit, 0);
     const totalCredit = data.details.reduce((sum, item) => sum + item.credit, 0);
@@ -46,4 +42,4 @@ export const receiptVoucherSchema = z.object({
     path: ["details"],
 });
 
-export type ReceiptVoucherFormValues = z.infer<typeof receiptVoucherSchema>;
+export type ReceiptVoucherFormValues = z.infer<typeof receiptVoucherSchema>;

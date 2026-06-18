@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ChartOfAccountSelect, getSharedTree } from "@/components/ui/chart-of-account-select";
 import { Plus, Trash2, Loader2, Tag, CheckIcon, ChevronDownIcon, Copy } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createJournalVoucher, updateJournalVoucher, type JournalVoucher } from "@/lib/actions/journal-voucher";
@@ -150,11 +150,11 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                       credit: Math.round(Number(d.credit) || 0),
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
-                      isTaxApplicable: d.isTaxApplicable ?? false,
+                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
                   }))
                 : [
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
+                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" },
                   ],
         },
     });
@@ -187,7 +187,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                 credit: creditVal,
                 narration: "",
                 refBillNo: "",
-                isTaxApplicable: false,
+                taxType: "Taxable" as "Taxable" | "BTL" | "REIMB",
             });
             setTimeout(() => {
                 document.getElementById(`details-${index + 1}-accountId`)?.focus();
@@ -398,15 +398,15 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
     };
 
     // Watch for changes in detail rows to calculate taxes
-    const watchDetailsString = watchDetails.map((d: any) => `${d.debit}-${d.credit}-${d.accountId}-${d.tagAccountId}-${d.isTaxApplicable}`).join(",");
+    const watchDetailsString = watchDetails.map((d: any) => `${d.debit}-${d.credit}-${d.accountId}-${d.tagAccountId}-${d.taxType}`).join(",");
     useEffect(() => {
-        // Calculate total taxable amount (based on debits and credits where isTaxApplicable is true)
+        // Calculate total taxable amount (based on debits and credits where taxType is Taxable)
         const taxableDebitAmount = watchDetails.reduce((sum: number, detail: any) => {
-            return sum + (detail.isTaxApplicable ? Math.round(Number(detail.debit) || 0) : 0);
+            return sum + (detail.taxType === "Taxable" ? Math.round(Number(detail.debit) || 0) : 0);
         }, 0);
         
         const taxableCreditAmount = watchDetails.reduce((sum: number, detail: any) => {
-            return sum + (detail.isTaxApplicable ? Math.round(Number(detail.credit) || 0) : 0);
+            return sum + (detail.taxType === "Taxable" ? Math.round(Number(detail.credit) || 0) : 0);
         }, 0);
         
         const taxableAmount = Math.max(taxableDebitAmount, taxableCreditAmount);
@@ -470,7 +470,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             credit: isFromDebit ? val : 0,
             narration: fromRow.narration || "",
             refBillNo: fromRow.refBillNo || "",
-            isTaxApplicable: fromRow.isTaxApplicable ?? false,
+            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB",
         };
         
         if (targetIndex < currentDetails.length) {
@@ -478,7 +478,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             form.setValue(`details.${targetIndex}.credit`, oppositeRow.credit, { shouldValidate: true });
             form.setValue(`details.${targetIndex}.narration`, oppositeRow.narration, { shouldValidate: true });
             form.setValue(`details.${targetIndex}.refBillNo`, oppositeRow.refBillNo, { shouldValidate: true });
-            form.setValue(`details.${targetIndex}.isTaxApplicable`, oppositeRow.isTaxApplicable, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.taxType`, oppositeRow.taxType, { shouldValidate: true });
         } else {
             append(oppositeRow);
         }
@@ -533,7 +533,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                 type="button"
                                 variant="secondary"
                                 size="sm"
-                                onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", isTaxApplicable: false })}
+                                onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" })}
                             >
                                 <Plus className="h-4 w-4 mr-2" />
                                 Add More JV Rows
@@ -618,9 +618,9 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                         </div>
                                                     )}
 
-                                                    {/* Row-level narration, reference, and tax check */}
+                                                    {/* Row-level narration, reference, and tax type */}
                                                     <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-12 gap-2 border-t pt-2 border-gray-100 dark:border-muted/20">
-                                                        <div className="sm:col-span-6">
+                                                        <div className="sm:col-span-4">
                                                             <Input
                                                                 id={`details-${index}-narration`}
                                                                 placeholder="Line Narration (optional)"
@@ -640,25 +640,34 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                                 className="h-8 text-xs border-gray-300 dark:border-input"
                                                             />
                                                         </div>
-                                                        <div className="sm:col-span-3 flex items-center gap-2 pl-1 select-none">
+                                                        <div className="sm:col-span-5 flex items-center gap-0.5 pl-1 select-none">
                                                             <Controller
                                                                 control={form.control}
-                                                                name={`details.${index}.isTaxApplicable`}
+                                                                name={`details.${index}.taxType`}
                                                                 render={({ field }) => (
-                                                                    <Checkbox
-                                                                        id={`details.${index}.isTaxApplicable`}
-                                                                        checked={field.value ?? false}
-                                                                        onCheckedChange={field.onChange}
+                                                                    <RadioGroup
+                                                                        value={field.value ?? "Taxable"}
+                                                                        onValueChange={field.onChange}
                                                                         disabled={isPending}
-                                                                    />
+                                                                        className="flex gap-1"
+                                                                    >
+                                                                        {(["Taxable", "BTL", "REIMB"] as const).map((opt) => (
+                                                                            <Label
+                                                                                key={opt}
+                                                                                className={cn(
+                                                                                    "flex items-center gap-1 cursor-pointer px-2 py-1 rounded text-[11px] font-medium border transition-colors",
+                                                                                    field.value === opt
+                                                                                        ? "bg-primary text-primary-foreground border-primary"
+                                                                                        : "border-gray-300 dark:border-input text-muted-foreground hover:bg-accent"
+                                                                                )}
+                                                                            >
+                                                                                <RadioGroupItem value={opt} className="sr-only" />
+                                                                                {opt}
+                                                                            </Label>
+                                                                        ))}
+                                                                    </RadioGroup>
                                                                 )}
                                                             />
-                                                            <Label
-                                                                htmlFor={`details.${index}.isTaxApplicable`}
-                                                                className="text-xs text-muted-foreground cursor-pointer font-medium"
-                                                            >
-                                                                Taxable
-                                                            </Label>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -773,7 +782,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
 
                     <div className="space-y-2 pt-4">
                         <Label htmlFor="description" className="text-xs text-muted-foreground uppercase font-semibold">
-                            Description <span className="text-destructive">*</span>
+                            Description
                         </Label>
                         <Textarea
                             id="description"

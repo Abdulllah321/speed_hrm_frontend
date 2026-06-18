@@ -1149,7 +1149,7 @@ export interface PaymentVoucher {
   supplierId?: string;
   creditAmount: number;
   isAdvance: boolean;
-  isTaxApplicable: boolean;
+  taxType: string;
   description: string;
   status: 'pending' | 'approved' | 'rejected';
   details: PaymentVoucherDetail[];
@@ -1164,6 +1164,7 @@ export interface PaymentVoucherDetail {
   paymentVoucherId: string;
   accountId: string;
   debit: number;
+  taxType?: string;
   account?: { id: string; name: string; code: string };
 }
 
@@ -1193,11 +1194,12 @@ export const paymentVoucherApi = {
     supplierId?: string;
     creditAmount: number;
     isAdvance?: boolean;
-    isTaxApplicable?: boolean;
+    taxType?: string;
     description: string;
     details: {
       accountId: string;
       debit: number;
+      taxType?: string;
     }[];
   }) => fetchApi<PaymentVoucher>('/finance/payment-vouchers', {
     method: 'POST',

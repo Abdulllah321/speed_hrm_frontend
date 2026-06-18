@@ -15,14 +15,14 @@ export interface JournalVoucherDetail {
     credit: number;
     narration?: string;
     refBillNo?: string;
-    isTaxApplicable?: boolean;
+    taxType?: string;
 }
 
 export interface JournalVoucher {
     id: string;
     jvNo: string;
     jvDate: string;
-    description: string;
+    description?: string;
     details: JournalVoucherDetail[];
     status: "pending" | "approved" | "rejected";
     createdAt: string;
