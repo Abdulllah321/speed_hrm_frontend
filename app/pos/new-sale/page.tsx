@@ -103,44 +103,6 @@ export default function NewSalePage() {
     const [showHoldModal, setShowHoldModal] = useState(false);
     const [resumedHoldOrderId, setResumedHoldOrderId] = useState<string | null>(null);
 
-    // ─── Tick timer for hold countdowns ────────────────────────────
-    useEffect(() => {
-        const interval = setInterval(() => setHoldTimerTick(t => t + 1), 10000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // ─── Auto-focus search on mount + handle resume from holds page ─
-    useEffect(() => {
-        searchInputRef.current?.focus();
-        
-        // Check if we're resuming from the holds page
-        const resumeCart = sessionStorage.getItem("pos_resume_cart");
-        if (resumeCart) {
-            try {
-                const items = JSON.parse(resumeCart);
-                setCartItems(items);
-                sessionStorage.removeItem("pos_resume_cart");
-                toast.success("Hold order resumed");
-            } catch { /* ignore */ }
-        }
-        
-        // Check if we're coming back from checkout (cart should be preserved)
-        const checkoutCart = sessionStorage.getItem("pos_cart");
-        if (checkoutCart && !resumeCart) {
-            try {
-                const items = JSON.parse(checkoutCart);
-                setCartItems(items);
-                // Don't remove pos_cart here - let checkout remove it after successful order
-            } catch { /* ignore */ }
-        }
-        
-        // Auto-open hold orders panel if navigated from history with ?showHolds=1
-        if (searchParams.get("showHolds") === "1") {
-            loadHoldOrders();
-            setShowHoldOrders(true);
-        }
-    }, []);
-
     // ─── Load hold orders ───────────────────────────────────────────
     const loadHoldOrders = useCallback(async () => {
         setIsLoadingHolds(true);
@@ -432,6 +394,44 @@ export default function NewSalePage() {
         router.push("/pos/checkout");
     }, [cartItems, router, resumedHoldOrderId]);
 
+    // ─── Tick timer for hold countdowns ────────────────────────────
+    useEffect(() => {
+        const interval = setInterval(() => setHoldTimerTick(t => t + 1), 10000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // ─── Auto-focus search on mount + handle resume from holds page ─
+    useEffect(() => {
+        searchInputRef.current?.focus();
+        
+        // Check if we're resuming from the holds page
+        const resumeCart = sessionStorage.getItem("pos_resume_cart");
+        if (resumeCart) {
+            try {
+                const items = JSON.parse(resumeCart);
+                setCartItems(items);
+                sessionStorage.removeItem("pos_resume_cart");
+                toast.success("Hold order resumed");
+            } catch { /* ignore */ }
+        }
+        
+        // Check if we're coming back from checkout (cart should be preserved)
+        const checkoutCart = sessionStorage.getItem("pos_cart");
+        if (checkoutCart && !resumeCart) {
+            try {
+                const items = JSON.parse(checkoutCart);
+                setCartItems(items);
+                // Don't remove pos_cart here - let checkout remove it after successful order
+            } catch { /* ignore */ }
+        }
+        
+        // Auto-open hold orders panel if navigated from history with ?showHolds=1
+        if (searchParams.get("showHolds") === "1") {
+            loadHoldOrders();
+            setShowHoldOrders(true);
+        }
+    }, [searchParams, loadHoldOrders]);
+
     // ─── Keyboard shortcuts ─────────────────────────────────────────
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -575,7 +575,31 @@ export default function NewSalePage() {
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [cartItems, isProcessing, showHoldOrders, showShortcutsHelp, focusedCartIndex, handleHold, loadHoldOrders, handleQuantityChange, handleRemoveItem, handleToggleTransit, canTransit, canHold, canViewHolds]);
+    }, [cartItems, isProcessing, showHoldOrders, showShortcutsHelp, focusedCartIndex, handleHold, loadHoldOrders, handleQuantityChange, handleRemoveItem, handleToggleTransit, canTransit, canHold, canViewHolds, handleCheckout]);
+
+    // ─── Debounced Live Search ──────────────────────────────────────
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (searchQuery.trim().length >= 2) {
+                setIsSearching(true);
+                try {
+                    const res = await authFetch(`/pos-sales/lookup`, { params: { q: searchQuery.trim() } });
+                    if (res.ok && res.data?.status && res.data.data) {
+                        setSearchResults(res.data.data);
+                    } else {
+                        setSearchResults([]);
+                    }
+                } catch {
+                    setSearchResults([]);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setSearchResults([]);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     // ─── Derived state ──────────────────────────────────────────────
     const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);

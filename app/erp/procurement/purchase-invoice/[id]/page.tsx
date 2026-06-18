@@ -149,7 +149,7 @@ export default function PurchaseInvoiceDetailPage() {
     if (!invoice) return;
     try {
       const wb   = XLSX.utils.book_new();
-      const items = getGroupedItems(invoice.items || []);
+      const items = invoice.items || [];
 
       const advRate    = Number(invoice.advanceTaxRate || 0.5);
       const subtotal   = Number(invoice.subtotal       || 0);
@@ -247,8 +247,8 @@ export default function PurchaseInvoiceDetailPage() {
           item.item?.sku         || item.sku         || "—",
           item.item?.hsCodeStr   || "—",
           item.item?.description || item.description || "—",
-          item.size || "—",
-          item.color || "—",
+          item.item?.size?.name || "—",
+          item.item?.color?.name || "—",
           qty,
           unitCost,
           valExcl,
@@ -317,7 +317,7 @@ export default function PurchaseInvoiceDetailPage() {
   const handleExportCSV = () => {
     if (!invoice) return;
     try {
-      const items    = getGroupedItems(invoice.items || []);
+      const items    = invoice.items || [];
       const advRate  = Number(invoice.advanceTaxRate || 0.5);
       const subtotal = Number(invoice.subtotal       || 0);
       const salesTax = Number(invoice.taxAmount      || 0);
@@ -393,8 +393,8 @@ export default function PurchaseInvoiceDetailPage() {
           item.item?.sku         || item.sku         || "—",
           item.item?.hsCodeStr   || "—",
           item.item?.description || item.description || "—",
-          item.size || "—",
-          item.color || "—",
+          item.item?.size?.name || "—",
+          item.item?.color?.name || "—",
           qty,
           unitCost,
           valE,
@@ -766,7 +766,7 @@ export default function PurchaseInvoiceDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {getGroupedItems(invoice.items || []).map((item: any) => {
+                      {(invoice.items || []).map((item: any) => {
                         const advRate  = Number((invoice as any).advanceTaxRate || 0.5);
                         const qty      = Number(item.quantity      || 0);
                         const unitCost = Number(item.unitPrice     || 0);
@@ -784,8 +784,8 @@ export default function PurchaseInvoiceDetailPage() {
                             <td className="p-3">
                               <div className="font-medium">{item.item?.description || item.description || "—"}</div>
                             </td>
-                            <td className="p-3 text-left">{item.size || "—"}</td>
-                            <td className="p-3 text-left">{item.color || "—"}</td>
+                            <td className="p-3 text-left">{item.item?.size?.name || "—"}</td>
+                            <td className="p-3 text-left">{item.item?.color?.name || "—"}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(qty)}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(unitCost)}</td>
                             <td className="p-3 text-right tabular-nums">{fmt(valExcl)}</td>
@@ -965,9 +965,7 @@ export default function PurchaseInvoiceDetailPage() {
                       <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
                       <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
                       <th className="py-1 pr-1 text-left font-bold w-[8%]">HS Code</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[14%]">Description</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[5%]">Size</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[5%]">Color</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[24%]">Description</th>
                       <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
                       <th className="py-1 pr-1 text-right font-bold w-[9%]">Unit Cost</th>
                       <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
@@ -996,8 +994,6 @@ export default function PurchaseInvoiceDetailPage() {
                             <td className="py-1 pr-1 font-mono font-bold">{item.item?.sku || item.sku || '—'}</td>
                             <td className="py-1 pr-1 font-mono text-gray-500">{item.item?.hsCodeStr || '—'}</td>
                             <td className="py-1 pr-1 text-gray-800">{item.item?.description || item.description || '—'}</td>
-                            <td className="py-1 pr-1 text-gray-800">{item.size || '—'}</td>
-                            <td className="py-1 pr-1 text-gray-800">{item.color || '—'}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmt(unitCost)}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{fmt(valExcl)}</td>
