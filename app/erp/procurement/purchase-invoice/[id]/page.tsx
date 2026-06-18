@@ -596,6 +596,9 @@ export default function PurchaseInvoiceDetailPage() {
     );
   }
 
+  const uniqueTaxRates = Array.from(new Set((invoice?.items || []).map((i: any) => Number(i.taxRate || 0))));
+  const taxRateStr = uniqueTaxRates.length > 0 ? uniqueTaxRates.map(r => `${r}%`).join(', ') : '18%';
+
   return (
     <PermissionGuard permissions="erp.procurement.pi.read">
       <>
@@ -964,15 +967,15 @@ export default function PurchaseInvoiceDetailPage() {
                     <tr className="border-y-2 border-black">
                       <th className="py-1 pr-1 text-left font-bold w-[4%]">#</th>
                       <th className="py-1 pr-1 text-left font-bold w-[9%]">SKU</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[8%]">HS Code</th>
-                      <th className="py-1 pr-1 text-left font-bold w-[24%]">Description</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[7%]">HS Code</th>
+                      <th className="py-1 pr-1 text-left font-bold w-[16%]">Description</th>
                       <th className="py-1 pr-1 text-right font-bold w-[6%]">Qty</th>
-                      <th className="py-1 pr-1 text-right font-bold w-[9%]">Unit Cost</th>
+                      <th className="py-1 pr-1 text-right font-bold w-[8%]">Unit Cost</th>
                       <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Excl Tax</th>
-                      <th className="py-1 pr-1 text-right font-bold w-[5%]">Tax%</th>
                       <th className="py-1 pr-1 text-right font-bold w-[9%]">Sales Tax</th>
                       <th className="py-1 pr-1 text-right font-bold w-[10%]">Val Incl Tax</th>
-                      <th className="py-1 text-right font-bold w-[10%]">Adv Tax</th>
+                      <th className="py-1 pr-1 text-right font-bold w-[10%]">Adv Tax</th>
+                      <th className="py-1 text-right font-bold w-[11%]">Line Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -995,18 +998,18 @@ export default function PurchaseInvoiceDetailPage() {
                             <td className="py-1 pr-1 font-mono text-gray-500">{item.item?.hsCodeStr || '—'}</td>
                             <td className="py-1 pr-1 text-gray-800">{item.item?.description || item.description || '—'}</td>
                             <td className="py-1 pr-1 text-right tabular-nums">{qty}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmt(unitCost)}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmt(valExcl)}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{taxRate}%</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmt(taxAmt)}</td>
-                            <td className="py-1 pr-1 text-right tabular-nums">{fmt(valIncl)}</td>
-                            <td className="py-1 text-right tabular-nums">{fmt(itemAdv)}</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(unitCost)}</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valExcl)}</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(taxAmt)}</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(valIncl)}</td>
+                            <td className="py-1 pr-1 text-right tabular-nums">{fmtInt(itemAdv)}</td>
+                            <td className="py-1 text-right tabular-nums font-semibold">{fmtInt(Number(item.lineTotal))}</td>
                           </tr>
                         );
                       })
                     ) : (
                       <tr>
-                          <td colSpan={13} className="py-4 text-center text-gray-400 border-b border-gray-300">
+                          <td colSpan={11} className="py-4 text-center text-gray-400 border-b border-gray-300">
                               No items found for this invoice
                           </td>
                       </tr>
@@ -1049,7 +1052,7 @@ export default function PurchaseInvoiceDetailPage() {
                                <span className="tabular-nums font-semibold">{fmtInt(valExcl)}</span>
                              </div>
                              <div className="flex justify-between">
-                               <span className="text-gray-600">Sale Tax Amount:</span>
+                               <span className="text-gray-600">Sale Tax Amount ({taxRateStr}):</span>
                                <span className="tabular-nums font-medium">{fmtInt(salesTax)}</span>
                              </div>
                              <div className="flex justify-between border-t border-gray-400 pt-1">

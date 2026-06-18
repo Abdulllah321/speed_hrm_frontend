@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { getLandedCost } from '@/lib/actions/landed-cost';
+import { getLandedCost, exportLandedCost } from '@/lib/actions/landed-cost';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,8 @@ import {
     Anchor, 
     Globe, 
     Calendar, 
-    FileText 
+    FileText,
+    FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -60,6 +61,27 @@ export default function LandedCostReportPage() {
     const handlePrint = () => {
         window.print();
     };
+
+    const [exporting, setExporting] = useState(false);
+
+    const handleExportExcel = async () => {
+        setExporting(true);
+        try {
+            await exportLandedCost(id, {
+                search: searchTerm,
+                hsCodes: selectedHsCodes,
+                skus: selectedSkus,
+            });
+            toast.success("Excel export initiated! You'll receive an in-app notification when the file is ready to download.", {
+                duration: 5000,
+            });
+        } catch (error: any) {
+            toast.error(error.message || "Failed to initiate Excel export");
+        } finally {
+            setExporting(false);
+        }
+    };
+
 
     if (loading) {
         return (
@@ -293,6 +315,19 @@ export default function LandedCostReportPage() {
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={() => router.push('/erp/procurement/landed-cost/setup')} className="border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 bg-white dark:bg-slate-900">
                         Landed Cost Setup
+                    </Button>
+                    <Button 
+                        size="sm" 
+                        onClick={handleExportExcel} 
+                        disabled={exporting}
+                        className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-550 dark:hover:bg-emerald-650 text-white shadow-sm font-semibold gap-1.5"
+                    >
+                        {exporting ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                            <FileSpreadsheet className="h-4 w-4" />
+                        )}
+                        {exporting ? 'Exporting...' : 'Export Excel'}
                     </Button>
                     <Button size="sm" onClick={handlePrint} className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-550 dark:hover:bg-indigo-650 text-white shadow-sm font-semibold gap-1.5">
                         <Printer className="h-4 w-4" /> Print Ledger
