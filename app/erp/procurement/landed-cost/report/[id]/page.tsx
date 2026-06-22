@@ -226,53 +226,51 @@ export default function LandedCostReportPage() {
                 }
 
                 /* Premium Scrollbar */
-                .custom-scrollbar::-webkit-scrollbar {
+                .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar {
                     width: 6px;
                     height: 6px;
                 }
-                .custom-scrollbar::-webkit-scrollbar-track {
+                .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar-track {
                     background: transparent;
                 }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
+                .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar-thumb {
                     background: #cbd5e1;
                     border-radius: 3px;
                 }
-                .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+                .dark .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar-thumb {
                     background: #334155;
                 }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar-thumb:hover {
                     background: #94a3b8;
                 }
-                .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                .dark .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar-thumb:hover {
                     background: #475569;
                 }
                 
                 /* Sticky Headers and Footer */
-                .sticky-table-container {
-                    max-height: 620px;
-                    overflow: auto;
-                    position: relative;
+                .sticky-table-container div[data-slot="table-container"] {
+                    max-height: 620px !important;
+                    overflow: auto !important;
+                    position: relative !important;
                 }
-                .sticky-table-container table {
-                    border-collapse: separate;
-                    border-spacing: 0;
+                .sticky-table-container div[data-slot="table-container"] table {
+                    border-collapse: separate !important;
+                    border-spacing: 0 !important;
                 }
                 .sticky-table-container thead tr:nth-child(1) th {
-                    position: sticky;
-                    top: 0;
-                    z-index: 40;
-                    height: 32px;
+                    position: sticky !important;
+                    top: 0 !important;
+                    z-index: 40 !important;
                 }
                 .sticky-table-container thead tr:nth-child(2) th {
-                    position: sticky;
-                    top: 32px;
-                    z-index: 40;
-                    height: 28px;
+                    position: sticky !important;
+                    top: 32px !important;
+                    z-index: 40 !important;
                 }
                 .sticky-table-container tfoot tr td {
-                    position: sticky;
-                    bottom: 0;
-                    z-index: 30;
+                    position: sticky !important;
+                    bottom: 0 !important;
+                    z-index: 30 !important;
                     background-color: #f8fafc !important;
                     color: #0f172a !important;
                     font-weight: 800;
