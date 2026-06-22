@@ -161,6 +161,22 @@ function filterTreeExclude(nodes: ChartOfAccount[], excludeId?: string): ChartOf
         }));
 }
 
+/** Recursively filter out tag/sub-accounts (children of ledger/non-group accounts) from the tree. */
+function filterTreeExcludeTags(nodes: ChartOfAccount[]): ChartOfAccount[] {
+    return nodes.map((node) => {
+        if (!node.isGroup) {
+            return {
+                ...node,
+                children: [],
+            };
+        }
+        return {
+            ...node,
+            children: node.children ? filterTreeExcludeTags(node.children) : [],
+        };
+    });
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface ChartOfAccountSelectProps {
     accounts?: ChartOfAccount[];
@@ -172,6 +188,7 @@ export interface ChartOfAccountSelectProps {
     allowGroups?: boolean;
     groupsOnly?: boolean;
     excludeAccountId?: string;
+    excludeTags?: boolean;
     id?: string;
 }
 
@@ -436,6 +453,7 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
             allowGroups = false,
             groupsOnly = false,
             excludeAccountId,
+            excludeTags = false,
             id,
         },
         ref
@@ -491,8 +509,12 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
 
         // ── Derived ────────────────────────────────────────────────────────────────
         const filteredTree = React.useMemo(() => {
-            return filterTreeExclude(tree, excludeAccountId);
-        }, [tree, excludeAccountId]);
+            let result = filterTreeExclude(tree, excludeAccountId);
+            if (excludeTags) {
+                result = filterTreeExcludeTags(result);
+            }
+            return result;
+        }, [tree, excludeAccountId, excludeTags]);
 
         const allFlat = React.useMemo(() => flattenTree(filteredTree), [filteredTree]);
 

@@ -685,7 +685,11 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
             {/* ── Return slip ── */}
             {showReturnPrint && selectedOrder && (
                 <PrintReturnReceipt
-                    returnRef={selectedOrder?.orderNumber ?? ""}
+                    returnRef={
+                        isRefundPrint
+                            ? (returnDetails?.refundNumber || selectedOrder?.refundNumber || selectedOrder?.orderNumber || "")
+                            : (returnDetails?.returnNumber || selectedOrder?.returnNumber || selectedOrder?.orderNumber || "")
+                    }
                     isRefund={isRefundPrint}
                     isAlliance={!!selectedOrder?.alliance}
                     originalOrders={[{ orderNumber: selectedOrder?.orderNumber ?? "", grandTotal: Number(selectedOrder?.grandTotal ?? 0) }]}

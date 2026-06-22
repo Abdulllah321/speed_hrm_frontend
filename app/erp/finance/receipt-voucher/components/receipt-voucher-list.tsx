@@ -52,8 +52,8 @@ export function ReceiptVoucherList({
     };
 }) {
     const [type, setType] = useState<"bank" | "cash">("bank");
-    const [fromDate, setFromDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-    const [toDate, setToDate] = useState<Date | undefined>(new Date());
+    const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+    const [toDate, setToDate] = useState<Date | undefined>(undefined);
     const [selectedAccount, setSelectedAccount] = useState<string>("all");
     const [status, setStatus] = useState<string>("all");
     const [vouchers, setVouchers] = useState<ReceiptVoucher[]>(initialData);

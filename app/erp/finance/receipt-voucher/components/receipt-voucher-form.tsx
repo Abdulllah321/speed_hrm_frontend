@@ -962,6 +962,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                                 }, 50);
                                                             }}
                                                             placeholder="Select Account"
+                                                            excludeTags={true}
                                                             disabled={isPending}
                                                             className="h-10 border-gray-300 dark:border-input"
                                                         />

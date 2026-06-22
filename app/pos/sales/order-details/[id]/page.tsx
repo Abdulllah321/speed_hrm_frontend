@@ -516,7 +516,11 @@ export default function OrderDetailsPage() {
 
             {showReturnPrint && order && (
                 <PrintReturnReceipt
-                    returnRef={order.orderNumber}
+                    returnRef={
+                        isRefundPrint
+                            ? (returnDetails?.refundNumber || order.refundNumber || order.orderNumber || "")
+                            : (returnDetails?.returnNumber || order.returnNumber || order.orderNumber || "")
+                    }
                     isRefund={isRefundPrint}
                     isAlliance={!!order.alliance}
                     originalOrders={[{ orderNumber: order.orderNumber, grandTotal: Number(order.grandTotal) }]}
