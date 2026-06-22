@@ -30,6 +30,11 @@ export interface Voucher {
     cardLast4?: string;
     slipNo?: string;
     merchantId?: string;
+    sourceOrder?: {
+        orderNumber: string;
+        returnNumber?: string | null;
+        refundNumber?: string | null;
+    } | null;
 }
 
 export interface MerchantConfig {

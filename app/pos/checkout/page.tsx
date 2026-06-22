@@ -601,7 +601,6 @@ export default function CheckoutPage() {
                 items: cartItems.map(item => ({
                     itemId: item.id, quantity: item.quantity, unitPrice: item.price,
                     discountPercent: item.discountPercent, taxPercent: item.taxPercent,
-                    isStockInTransit: item.isStockInTransit || false,
                 })),
             };
             const res = await authFetch("/pos-sales/orders/hold", { method: "POST", body: payload });

@@ -533,7 +533,6 @@ export default function SalesHistoryPage() {
                     taxAmount: Number(oi.taxAmount),
                     total: Number(oi.lineTotal),
                     inStock: true, stockQty: 999,
-                    isStockInTransit: oi.isStockInTransit || false,
                 }));
                 sessionStorage.setItem("pos_resume_cart", JSON.stringify(cartItems));
                 toast.success(`Resuming ${resumed.orderNumber}`);

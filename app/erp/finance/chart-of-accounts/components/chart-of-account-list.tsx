@@ -225,12 +225,170 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
   const canDelete = hasPermission("erp.finance.chart-of-account.delete");
   const userIsAdmin = isAdmin();
 
+  // Precompute accounts map for O(1) parent lookup
+  const accountsMap = React.useMemo(() => {
+    const map = new Map<string, ChartOfAccount>();
+    initialData.forEach(account => map.set(account.id, account));
+    return map;
+  }, [initialData]);
+
+  // Precompute tags map for all accounts to avoid O(N) lookup per item
+  const tagsMap = React.useMemo(() => {
+    const map = new Map<string, string[]>();
+
+    initialData.forEach(account => {
+      const tags: string[] = [];
+
+      // Group vs Ledger
+      if (account.isGroup) {
+        tags.push("Group");
+      } else {
+        tags.push("Ledger");
+      }
+
+      // Find ancestors using accountsMap (O(1) lookups)
+      const ancestors: ChartOfAccount[] = [];
+      let current = account;
+      let safetyCounter = 0;
+      while (current.parentId && safetyCounter < 100) {
+        const parent = accountsMap.get(current.parentId);
+        if (!parent) break;
+        ancestors.push(parent);
+        current = parent;
+        safetyCounter++;
+      }
+
+      const ancestorNames = ancestors.map((a) => a.name.toUpperCase());
+      const ancestorCodes = ancestors.map((a) => a.code);
+      const selfName = account.name.toUpperCase();
+      const selfCode = account.code;
+
+      if (account.isGroup) {
+        // Classification for groups (Control Accounts)
+        if (
+          selfName.includes("DEBTOR") ||
+          selfName.includes("RECEIVABLE") ||
+          selfName.includes("CUSTOMER") ||
+          selfName.includes("A/R PARTIES")
+        ) {
+          tags.push("Customer Control");
+        } else if (
+          selfName.includes("CREDITOR") ||
+          selfName.includes("PAYABLE") ||
+          selfName.includes("SUPPLIER") ||
+          selfName.includes("A/P PARTIES") ||
+          selfCode.startsWith("12030001")
+        ) {
+          tags.push("Supplier Control");
+        } else if (
+          selfName.includes("BANK") ||
+          selfName.includes("CASH")
+        ) {
+          tags.push("Cash/Bank Control");
+        } else if (
+          selfName.includes("TAX") ||
+          selfName.includes("DUTY")
+        ) {
+          tags.push("Tax Control");
+        } else if (
+          selfName.includes("EMPLOYEE") ||
+          selfName.includes("SALARY") ||
+          selfName.includes("STAFF")
+        ) {
+          tags.push("Employee Control");
+        } else if (
+          selfName.includes("LOCATION") ||
+          selfName.includes("OUTLET") ||
+          selfName.includes("STORE") ||
+          selfName.includes("WAREHOUSE")
+        ) {
+          tags.push("Location Control");
+        }
+      } else {
+        // Classification for ledger accounts
+        const belongsTo = (namePattern: string, codePrefix?: string) => {
+          return (
+            ancestorNames.some((name) => name.includes(namePattern)) ||
+            (codePrefix && ancestorCodes.some((code) => code.startsWith(codePrefix))) ||
+            (codePrefix && selfCode.startsWith(codePrefix))
+          );
+        };
+
+        if (
+          belongsTo("DEBTOR") ||
+          belongsTo("RECEIVABLE") ||
+          belongsTo("CUSTOMER") ||
+          belongsTo("A/R PARTIES") ||
+          selfCode.startsWith("3102")
+        ) {
+          tags.push("Customer");
+        } else if (
+          belongsTo("CREDITOR") ||
+          belongsTo("PAYABLE") ||
+          belongsTo("SUPPLIER") ||
+          belongsTo("A/P PARTIES") ||
+          selfCode.startsWith("1201") ||
+          selfCode.startsWith("12030001")
+        ) {
+          tags.push("Supplier");
+        } else if (belongsTo("BANK") || selfCode.startsWith("3104") || selfCode.startsWith("3105")) {
+          tags.push("Bank");
+        } else if (belongsTo("CASH") || selfCode.startsWith("3106")) {
+          tags.push("Cash");
+        } else if (belongsTo("TAX") || belongsTo("DUTY") || selfCode.startsWith("1204") || selfCode.startsWith("1206")) {
+          tags.push("Tax");
+        } else if (
+          belongsTo("EMPLOYEE") ||
+          belongsTo("SALARY") ||
+          belongsTo("STAFF") ||
+          selfCode.startsWith("12030002") ||
+          selfCode.startsWith("12030003") ||
+          selfCode.startsWith("3103")
+        ) {
+          tags.push("Employee");
+        } else if (belongsTo("LOCATION") || belongsTo("OUTLET") || belongsTo("STORE") || belongsTo("WAREHOUSE")) {
+          tags.push("Location");
+        }
+      }
+
+      map.set(account.id, tags);
+    });
+
+    return map;
+  }, [initialData, accountsMap]);
+
+  // Build tree and flatten for DataTable
+  const tree = React.useMemo(() => buildTree(initialData), [initialData]);
+  const allFlatData = React.useMemo(() => flattenTree(tree), [tree]);
+
+  // Build map of parentPath by ID
+  const parentPathsMap = React.useMemo(() => {
+    const map = new Map<string, string[]>();
+    allFlatData.forEach(item => map.set(item.id, item.parentPath));
+    return map;
+  }, [allFlatData]);
+
+  // Pre-tokenized search index (all fields lowercased, computed once)
+  const searchIndex = React.useMemo(() => {
+    return initialData.map(account => {
+      const tags = tagsMap.get(account.id) ?? [];
+      const parentPath = parentPathsMap.get(account.id) ?? [];
+      return {
+        id: account.id,
+        nameLower: account.name.toLowerCase(),
+        codeLower: account.code.toLowerCase(),
+        tagsLower: tags.map(t => t.toLowerCase()),
+        parentPath,
+      };
+    });
+  }, [initialData, tagsMap, parentPathsMap]);
+
   // Collapse/expand state
-  const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
   const [activeParentForSubAccounts, setActiveParentForSubAccounts] = React.useState<ChartOfAccount | null>(null);
 
-  const toggleCollapse = React.useCallback((id: string) => {
-    setCollapsedIds(prev => {
+  const toggleExpand = React.useCallback((id: string) => {
+    setExpandedIds(prev => {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
@@ -241,32 +399,27 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     });
   }, []);
 
-  // Build tree and flatten for DataTable
-  const tree = React.useMemo(() => buildTree(initialData), [initialData]);
-  const allFlatData = React.useMemo(() => flattenTree(tree), [tree]);
-
   // Search state
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [preSearchCollapsedIds, setPreSearchCollapsedIds] = React.useState<Set<string> | null>(null);
+  const [preSearchExpandedIds, setPreSearchExpandedIds] = React.useState<Set<string> | null>(null);
 
   // Save/restore collapse state and auto-expand ancestors on search
   React.useEffect(() => {
     if (searchQuery.trim()) {
-      // If we weren't searching before, save the current collapsed state
-      if (preSearchCollapsedIds === null) {
-        setPreSearchCollapsedIds(new Set(collapsedIds));
+      // If we weren't searching before, save the current expanded state
+      if (preSearchExpandedIds === null) {
+        setPreSearchExpandedIds(new Set(expandedIds));
       }
 
       // Find all matches and their ancestors to expand them
       const query = searchQuery.toLowerCase().trim();
       const ancestorsToExpand = new Set<string>();
 
-      allFlatData.forEach(item => {
-        const tags = getAccountTags(item, initialData);
+      searchIndex.forEach(item => {
         const matches =
-          item.name.toLowerCase().includes(query) ||
-          item.code.toLowerCase().includes(query) ||
-          tags.some(t => t.toLowerCase().includes(query));
+          item.nameLower.includes(query) ||
+          item.codeLower.includes(query) ||
+          item.tagsLower.some(t => t.includes(query));
 
         if (matches) {
           item.parentPath.forEach(parentId => {
@@ -275,29 +428,29 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         }
       });
 
-      // Update collapsedIds: remove any ancestor that we want to expand
-      setCollapsedIds(prev => {
+      // Update expandedIds: add any ancestor that we want to expand
+      setExpandedIds(prev => {
         const next = new Set(prev);
         ancestorsToExpand.forEach(id => {
-          next.delete(id);
+          next.add(id);
         });
         return next;
       });
     } else {
-      // Search cleared: restore pre-search collapsed state
-      if (preSearchCollapsedIds !== null) {
-        setCollapsedIds(preSearchCollapsedIds);
-        setPreSearchCollapsedIds(null);
+      // Search cleared: restore pre-search expanded state
+      if (preSearchExpandedIds !== null) {
+        setExpandedIds(preSearchExpandedIds);
+        setPreSearchExpandedIds(null);
       }
     }
-  }, [searchQuery, allFlatData, initialData]);
+  }, [searchQuery, searchIndex]);
 
   // Filter out collapsed children or filter by search query with parent preservation
   const flatData = React.useMemo(() => {
     if (!searchQuery.trim()) {
       return allFlatData.filter(item => {
-        // Check if any parent in the path is collapsed
-        return !item.parentPath.some(parentId => collapsedIds.has(parentId));
+        // All parents in the path must be expanded
+        return item.parentPath.every(parentId => expandedIds.has(parentId));
       });
     }
 
@@ -305,12 +458,11 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
 
     // 1. Identify which node IDs match the query (including matching tags)
     const matchedIds = new Set<string>();
-    allFlatData.forEach(item => {
-      const tags = getAccountTags(item, initialData);
+    searchIndex.forEach(item => {
       if (
-        item.name.toLowerCase().includes(query) ||
-        item.code.toLowerCase().includes(query) ||
-        tags.some(t => t.toLowerCase().includes(query))
+        item.nameLower.includes(query) ||
+        item.codeLower.includes(query) ||
+        item.tagsLower.some(t => t.includes(query))
       ) {
         matchedIds.add(item.id);
       }
@@ -338,9 +490,9 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
     // 3. Keep only visible nodes AND respect the current collapse state
     return allFlatData.filter(item => {
       if (!visibleIds.has(item.id)) return false;
-      return !item.parentPath.some(parentId => collapsedIds.has(parentId));
+      return item.parentPath.every(parentId => expandedIds.has(parentId));
     });
-  }, [allFlatData, collapsedIds, searchQuery, initialData]);
+  }, [allFlatData, searchIndex, expandedIds, searchQuery]);
 
   // ── Delete dialog state ──────────────────────────────────────────────────
   const [deleteTarget, setDeleteTarget] = React.useState<ChartOfAccount | null>(null);
@@ -465,7 +617,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         const account = row.original;
         const indentSize = 24;
         const depth = account.depth || 0;
-        const isCollapsed = collapsedIds.has(account.id);
+        const isExpanded = expandedIds.has(account.id);
         const hasChildren = account.children && account.children.length > 0;
 
         return (
@@ -475,14 +627,14 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleCollapse(account.id);
+                  toggleExpand(account.id);
                 }}
                 className="mr-1 p-0.5 hover:bg-accent rounded transition-colors"
               >
-                {isCollapsed ? (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                ) : (
+                {isExpanded ? (
                   <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
               </button>
             ) : (
@@ -527,7 +679,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
       header: "Tags",
       cell: ({ row }) => {
         const account = row.original;
-        const tags = getAccountTags(account, initialData);
+        const tags = tagsMap.get(account.id) ?? [];
         return (
           <div className="flex flex-wrap gap-1">
             {tags.map((tag) => {
@@ -630,7 +782,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         );
       },
     },
-  ], [canEdit, canCreate, canDelete, handleEditClick, openDeleteDialog, collapsedIds, toggleCollapse, setActiveParentForSubAccounts]);
+  ], [canEdit, canCreate, canDelete, handleEditClick, openDeleteDialog, expandedIds, toggleExpand, setActiveParentForSubAccounts, tagsMap]);
 
   // ── Upload progress button label ─────────────────────────────────────────
   const progressLabel = React.useMemo(() => {
@@ -729,6 +881,7 @@ export function ChartOfAccountList({ initialData }: ChartOfAccountListProps) {
         canRowEdit={false}
         canRowDelete={false}
         initialPageSize={1000}
+        virtualized={true}
       />
 
       {/* ── Bulk Upload Modal ── */}

@@ -22,6 +22,7 @@ import {
   useReactTable,
   VisibilityState,
 } from "@tanstack/react-table";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 // Context for search highlighting
 const SearchHighlightContext = createContext<string>("");
@@ -183,6 +184,8 @@ type DataTableProps<TData extends DataTableRow> = {
   filterSlot?: React.ReactNode;
   /** Optional initial page size (defaults to 25) */
   initialPageSize?: number;
+  /** Enable virtualization */
+  virtualized?: boolean;
 };
 
 export default function DataTable<TData extends DataTableRow>({
@@ -218,6 +221,7 @@ export default function DataTable<TData extends DataTableRow>({
   rowClassName,
   filterSlot,
   initialPageSize,
+  virtualized = false,
 }: DataTableProps<TData>) {
   const id = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -275,6 +279,7 @@ export default function DataTable<TData extends DataTableRow>({
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", () => {
+    if (virtualized) return;
     if (!theadRef.current || !tableRef.current) return;
     const theadRect = theadRef.current.getBoundingClientRect();
     const tableRect = tableRef.current.getBoundingClientRect();
@@ -473,6 +478,25 @@ export default function DataTable<TData extends DataTableRow>({
   useEffect(() => {
     setData(initialData);
   }, [initialData]);
+
+  const rows = table.getRowModel().rows;
+  const disableAnimation = virtualized || rows.length > 100;
+
+  const virtualizer = useVirtualizer({
+    count: virtualized ? rows.length : 0,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 48,
+    overscan: 10,
+  });
+
+  const virtualRows = virtualizer.getVirtualItems();
+  const totalSize = virtualizer.getTotalSize();
+
+  const paddingTop = virtualized && virtualRows.length > 0 ? virtualRows[0].start : 0;
+  const paddingBottom =
+    virtualized && virtualRows.length > 0
+      ? totalSize - virtualRows[virtualRows.length - 1].end
+      : 0;
 
   // Load column visibility from AuthProvider preferences on mount
   useEffect(() => {
@@ -736,7 +760,10 @@ export default function DataTable<TData extends DataTableRow>({
           )}
           <div
             ref={scrollContainerRef}
-            className="bg-card/50 backdrop-blur-sm rounded-lg border border-border/50 shadow-sm w-full max-w-full overflow-x-auto"
+            className={cn(
+              "bg-card/50 backdrop-blur-sm rounded-lg border border-border/50 shadow-sm w-full max-w-full overflow-x-auto",
+              virtualized && "max-h-[650px] overflow-y-auto scrollbar-thin"
+            )}
           >
           <div className="w-full min-w-max">
             <table
@@ -745,7 +772,10 @@ export default function DataTable<TData extends DataTableRow>({
             >
               <thead
                 ref={theadRef}
-                className={cn("bg-muted/80 backdrop-blur-sm [&_tr]:border-b")}
+                className={cn(
+                  "bg-muted/80 backdrop-blur-sm [&_tr]:border-b",
+                  virtualized && "sticky top-0 z-30 bg-muted/95"
+                )}
               >
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
@@ -851,44 +881,97 @@ export default function DataTable<TData extends DataTableRow>({
                       })}
                     </tr>
                   ))
-                ) : table.getRowModel().rows.length ? (
-                  table.getRowModel().rows.map((row, index) => {
-                    const isNew = row.original.id === highlightedId;
+                ) : rows.length ? (
+                  <>
+                    {paddingTop > 0 && (
+                      <tr>
+                        <td style={{ height: `${paddingTop}px` }} colSpan={tableColumns.length} className="p-0 border-0" />
+                      </tr>
+                    )}
+                    {virtualized ? (
+                      virtualRows.map((virtualRow) => {
+                        const row = rows[virtualRow.index];
+                        if (!row) return null;
+                        const isNew = row.original.id === highlightedId;
+                        const index = virtualRow.index;
 
-                    return (
-                      <motion.tr
-                        key={row.id}
-                        layout="position"
-                        transition={{
-                          type: "spring",
-                          stiffness: 350,
-                          damping: 30,
-                        }}
-                        data-state={row.getIsSelected() && "selected"}
-                        className={cn(
-                          "border-b border-border/30 transition-colors",
-                          index % 2 === 0 ? "bg-transparent" : "bg-muted/20",
-                          "hover:bg-accent/50",
-                          rowClassName ? rowClassName(row.original) : "",
-                          isNew &&
-                            "bg-primary/10 animate-pulse ring-1 ring-primary/30",
-                        )}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell key={cell.id} className="py-3">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
+                        return (
+                          <motion.tr
+                            key={row.id}
+                            ref={virtualizer.measureElement}
+                            data-index={virtualRow.index}
+                            layout={disableAnimation ? undefined : "position"}
+                            transition={disableAnimation ? undefined : {
+                              type: "spring",
+                              stiffness: 350,
+                              damping: 30,
+                            }}
+                            data-state={row.getIsSelected() && "selected"}
+                            className={cn(
+                              "border-b border-border/30 transition-colors",
+                              index % 2 === 0 ? "bg-transparent" : "bg-muted/20",
+                              "hover:bg-accent/50",
+                              rowClassName ? rowClassName(row.original) : "",
+                              isNew &&
+                                "bg-primary/10 animate-pulse ring-1 ring-primary/30",
                             )}
-                          </TableCell>
-                        ))}
-                      </motion.tr>
-                    );
-                  })
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id} className="py-3">
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )}
+                              </TableCell>
+                            ))}
+                          </motion.tr>
+                        );
+                      })
+                    ) : (
+                      rows.map((row, index) => {
+                        const isNew = row.original.id === highlightedId;
+
+                        return (
+                          <motion.tr
+                            key={row.id}
+                            layout={disableAnimation ? undefined : "position"}
+                            transition={disableAnimation ? undefined : {
+                              type: "spring",
+                              stiffness: 350,
+                              damping: 30,
+                            }}
+                            data-state={row.getIsSelected() && "selected"}
+                            className={cn(
+                              "border-b border-border/30 transition-colors",
+                              index % 2 === 0 ? "bg-transparent" : "bg-muted/20",
+                              "hover:bg-accent/50",
+                              rowClassName ? rowClassName(row.original) : "",
+                              isNew &&
+                                "bg-primary/10 animate-pulse ring-1 ring-primary/30",
+                            )}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <TableCell key={cell.id} className="py-3">
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext(),
+                                )}
+                              </TableCell>
+                            ))}
+                          </motion.tr>
+                        );
+                      })
+                    )}
+                    {paddingBottom > 0 && (
+                      <tr>
+                        <td style={{ height: `${paddingBottom}px` }} colSpan={tableColumns.length} className="p-0 border-0" />
+                      </tr>
+                    )}
+                  </>
                 ) : (
                   <tr>
                     <td
-                      colSpan={columns.length}
+                      colSpan={tableColumns.length}
                       className="h-32 text-center text-muted-foreground p-2 align-middle"
                     >
                       <div className="flex flex-col items-center gap-2">
