@@ -77,11 +77,25 @@ export const columns: ColumnDef<HsCodeRow>[] = [
         cell: ({ row }) => <div>{Number(row.original.regulatoryDutyRd).toFixed(2)}%</div>,
     },
     {
+        header: "ACD (%)",
+        accessorKey: "additionalCustomsDutyAcd",
+        size: 100,
+        enableSorting: true,
+        cell: ({ row }) => <div>{Number(row.original.additionalCustomsDutyAcd).toFixed(2)}%</div>,
+    },
+    {
         header: "Sales Tax (%)",
         accessorKey: "salesTax",
         size: 120,
         enableSorting: true,
         cell: ({ row }) => <div>{Number(row.original.salesTax).toFixed(2)}%</div>,
+    },
+    {
+        header: "AST (%)",
+        accessorKey: "additionalSalesTax",
+        size: 100,
+        enableSorting: true,
+        cell: ({ row }) => <div>{Number(row.original.additionalSalesTax).toFixed(2)}%</div>,
     },
     {
         header: "Income Tax (%)",

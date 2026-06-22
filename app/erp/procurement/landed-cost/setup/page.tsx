@@ -586,8 +586,25 @@ export default function LandedCostSetupPage() {
       invForeign: acc.invForeign + (item.invoiceForeign || 0),
       freightForeign: acc.freightForeign + (item.freightForeign || 0),
       invPKR: acc.invPKR + (item.invoicePKR || 0),
+      insuranceCharges: acc.insuranceCharges + (item.insuranceCharges || 0),
+      landingCharges: acc.landingCharges + (item.landingCharges || 0),
       assessableValue: acc.assessableValue + (item.assessableValue || 0),
+      customsDutyAmount: acc.customsDutyAmount + (item.customsDutyAmount || 0),
+      regulatoryDutyAmount: acc.regulatoryDutyAmount + (item.regulatoryDutyAmount || 0),
+      additionalCustomsDutyAmount: acc.additionalCustomsDutyAmount + (item.additionalCustomsDutyAmount || 0),
+      valueForSaleTax: acc.valueForSaleTax + (item.valueForSaleTax || 0),
+      salesTaxAmount: acc.salesTaxAmount + (item.salesTaxAmount || 0),
+      additionalSalesTaxAmount: acc.additionalSalesTaxAmount + (item.additionalSalesTaxAmount || 0),
+      valueForIncomeTax: acc.valueForIncomeTax + (item.valueForIncomeTax || 0),
+      incomeTaxAmount: acc.incomeTaxAmount + (item.incomeTaxAmount || 0),
       totalDuty: acc.totalDuty + (item.totalDutyAmount || 0),
+      exciseChargesAmount: acc.exciseChargesAmount + (item.exciseChargesAmount || 0),
+      misFreightUSD: acc.misFreightUSD + (item.misFreightUSD || 0),
+      misFreightPKR: acc.misFreightPKR + (item.misFreightPKR || 0),
+      misDoThcPKR: acc.misDoThcPKR + (item.misDoThcPKR || 0),
+      misBankPKR: acc.misBankPKR + (item.misBankPKR || 0),
+      misInsurancePKR: acc.misInsurancePKR + (item.misInsurancePKR || 0),
+      misClgFwdPKR: acc.misClgFwdPKR + (item.misClgFwdPKR || 0),
       totalOther: acc.totalOther + (item.totalOtherCharges || 0),
       totalCost: acc.totalCost + (item.totalCostPKR || 0),
     }), {
@@ -595,8 +612,25 @@ export default function LandedCostSetupPage() {
       invForeign: 0,
       freightForeign: 0,
       invPKR: 0,
+      insuranceCharges: 0,
+      landingCharges: 0,
       assessableValue: 0,
+      customsDutyAmount: 0,
+      regulatoryDutyAmount: 0,
+      additionalCustomsDutyAmount: 0,
+      valueForSaleTax: 0,
+      salesTaxAmount: 0,
+      additionalSalesTaxAmount: 0,
+      valueForIncomeTax: 0,
+      incomeTaxAmount: 0,
       totalDuty: 0,
+      exciseChargesAmount: 0,
+      misFreightUSD: 0,
+      misFreightPKR: 0,
+      misDoThcPKR: 0,
+      misBankPKR: 0,
+      misInsurancePKR: 0,
+      misClgFwdPKR: 0,
       totalOther: 0,
       totalCost: 0,
     });
@@ -948,29 +982,65 @@ console.log(res)
       </Card>
 
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
-          <Table>
-            <TableHeader>
-              {/* Primary Header Grouping */}
-              <TableRow className="border-b-2">
-                <TableHead colSpan={11} className="text-center font-bold border-r">SHIPMENT DETAILS</TableHead>
-                <TableHead colSpan={9} className="text-center font-bold border-r bg-blue-50 text-blue-800">ASSESSABLE VALUE</TableHead>
-                {!isLocalGrn() && (
-                  <>
-                    <TableHead colSpan={9} className="text-center font-bold border-r bg-orange-50 text-orange-900">DUTY CALCULATION</TableHead>
-                    <TableHead colSpan={1} className="text-center font-bold border-r bg-purple-50 text-purple-900">EXCISE</TableHead>
-                    <TableHead colSpan={4} className="text-center font-bold border-r bg-green-100 text-green-900">FREIGHT (MIS)</TableHead>
-                    <TableHead colSpan={3} className="text-center font-bold border-r bg-green-100 text-green-900">DO/THC (MIS)</TableHead>
-                    <TableHead colSpan={1} className="text-center font-bold border-r bg-green-100 text-green-900">BANK (MIS)</TableHead>
-                    <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900">INSURANCE (MIS)</TableHead>
-                    <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900">CLG/FWD (MIS)</TableHead>
-                    <TableHead className="text-center font-bold bg-yellow-50 text-yellow-900 border-r">Total Other Charges</TableHead>
-                  </>
-                )}
-                <TableHead colSpan={3} className="text-center font-bold bg-gray-200 dark:bg-gray-950">TOTALS</TableHead>
-              </TableRow>
-              {/* Secondary Detail Header */}
-              <TableRow className="bg-card/50">
+        <CardContent className="p-0">
+          <style jsx global>{`
+            .sticky-table-container div[data-slot="table-container"] {
+              max-height: 600px !important;
+              overflow: auto !important;
+              position: relative !important;
+            }
+            .sticky-table-container div[data-slot="table-container"] table {
+              border-collapse: separate !important;
+              border-spacing: 0 !important;
+            }
+            .sticky-table-container thead tr:nth-child(1) th {
+              position: sticky !important;
+              top: 0 !important;
+              z-index: 40 !important;
+            }
+            .sticky-table-container thead tr:nth-child(2) th {
+              position: sticky !important;
+              top: 36px !important;
+              z-index: 40 !important;
+            }
+            .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar {
+              width: 6px;
+              height: 6px;
+            }
+            .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar-track {
+              background: transparent;
+            }
+            .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar-thumb {
+              background: #cbd5e1;
+              border-radius: 3px;
+            }
+            .dark .sticky-table-container div[data-slot="table-container"]::-webkit-scrollbar-thumb {
+              background: #334155;
+            }
+          `}</style>
+          <div className="sticky-table-container custom-scrollbar">
+            <Table>
+              <TableHeader>
+                {/* Primary Header Grouping */}
+                <TableRow className="border-b-2">
+                  <TableHead colSpan={11} className="text-center font-bold border-r bg-card">SHIPMENT DETAILS</TableHead>
+                  <TableHead colSpan={9} className="text-center font-bold border-r bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200">ASSESSABLE VALUE</TableHead>
+                  {!isLocalGrn() && (
+                    <>
+                      <TableHead colSpan={9} className="text-center font-bold border-r bg-orange-50 text-orange-900 dark:bg-orange-950 dark:text-orange-200">DUTY CALCULATION</TableHead>
+                      <TableHead colSpan={1} className="text-center font-bold border-r bg-purple-50 text-purple-900 dark:bg-purple-950 dark:text-purple-200">EXCISE</TableHead>
+                      <TableHead colSpan={4} className="text-center font-bold border-r bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200">FREIGHT (MIS)</TableHead>
+                      <TableHead colSpan={3} className="text-center font-bold border-r bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200">DO/THC (MIS)</TableHead>
+                      <TableHead colSpan={1} className="text-center font-bold border-r bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200">BANK (MIS)</TableHead>
+                      <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200">INSURANCE (MIS)</TableHead>
+                      <TableHead colSpan={2} className="text-center font-bold border-r bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200">CLG/FWD (MIS)</TableHead>
+                      <TableHead className="text-center font-bold bg-yellow-50 text-yellow-900 border-r dark:bg-yellow-950 dark:text-yellow-200">Total Other Charges</TableHead>
+                    </>
+                  )}
+                  <TableHead colSpan={3} className="text-center font-bold bg-gray-200 dark:bg-gray-950">TOTALS</TableHead>
+                </TableRow>
+                {/* Secondary Detail Header */}
+                <TableRow className="bg-card">
                 <TableHead>L.C. #</TableHead>
                 <TableHead>B.L. #</TableHead>
                 <TableHead>B.L. Date</TableHead>
@@ -1111,16 +1181,46 @@ console.log(res)
                   <TableRow className="font-bold border-t-2 border-gray-400">
                     <TableCell colSpan={12} className="text-right py-2">CALCULATED TOTALS:</TableCell>
                     <TableCell className="text-[11px]">{tableTotals.qty.toLocaleString()}</TableCell>
-                    <TableCell></TableCell>
+                    <TableCell className="text-[11px]">-</TableCell>
                     <TableCell className="text-[11px] text-blue-700">{tableTotals.invForeign.toFixed(2)}</TableCell>
-                    <TableCell className="text-[11px] text-green-700">{tableTotals.freightForeign.toFixed(2)}</TableCell>
-                    <TableCell></TableCell>
-                    <TableCell className="text-[11px]">{Math.round(tableTotals.invPKR).toLocaleString()}</TableCell>
-                    <TableCell></TableCell>
+                    <TableCell className="text-[11px] text-green-700">{isLocalGrn() ? '0.00' : tableTotals.freightForeign.toFixed(2)}</TableCell>
+                    <TableCell className="text-[11px]">-</TableCell>
+                    <TableCell className="text-[11px]">{isLocalGrn() ? '0' : Math.round(tableTotals.invPKR).toLocaleString()}</TableCell>
+                    <TableCell className="text-[11px]">{isLocalGrn() ? '0' : Math.round(tableTotals.insuranceCharges + tableTotals.landingCharges).toLocaleString()}</TableCell>
                     <TableCell className="text-[11px] bg-blue-50">{Math.round(tableTotals.assessableValue).toLocaleString()}</TableCell>
-                    {!isLocalGrn() && <TableCell colSpan={9} className="border-r"></TableCell>}
-                    <TableCell colSpan={isLocalGrn() ? 1 : 13} className="text-right border-r">TOTAL COST:</TableCell>
-                    <TableCell colSpan={isLocalGrn() ? 1 : 2} className="text-[11px] bg-green-50 text-green-800 text-center">{Math.round(tableTotals.totalCost).toLocaleString()}</TableCell>
+                    {!isLocalGrn() ? (
+                      <>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.customsDutyAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.regulatoryDutyAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.additionalCustomsDutyAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.valueForSaleTax).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.salesTaxAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.additionalSalesTaxAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.valueForIncomeTax).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.incomeTaxAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px] font-bold border-r">{Math.round(tableTotals.totalDuty).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px] bg-purple-50 border-r">{Math.round(tableTotals.exciseChargesAmount).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">{tableTotals.misFreightUSD.toFixed(2)}</TableCell>
+                        <TableCell className="text-[11px]">{Math.round(tableTotals.misFreightPKR).toLocaleString()}</TableCell>
+                        <TableCell className="text-[11px]">-</TableCell>
+                        <TableCell className="text-[11px]">-</TableCell>
+                        <TableCell className="text-[11px]">{tableTotals.misDoThcPKR.toFixed(2)}</TableCell>
+                        <TableCell className="text-[11px]">-</TableCell>
+                        <TableCell className="text-[11px]">-</TableCell>
+                        <TableCell className="text-[11px]">{tableTotals.misBankPKR.toFixed(2)}</TableCell>
+                        <TableCell className="text-[11px]">{tableTotals.misInsurancePKR.toFixed(2)}</TableCell>
+                        <TableCell className="text-[11px]">-</TableCell>
+                        <TableCell className="text-[11px]">{tableTotals.misClgFwdPKR.toFixed(2)}</TableCell>
+                        <TableCell className="text-[11px] border-r">-</TableCell>
+                        <TableCell className="text-[11px] font-bold bg-yellow-50 border-r">{tableTotals.totalOther.toFixed(2)}</TableCell>
+                        <TableCell className="text-[11px]">-</TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell className="text-[11px] font-bold border-r text-right">TOTAL COST:</TableCell>
+                      </>
+                    )}
+                    <TableCell className="text-[11px] bg-green-50 text-green-805 text-center font-bold">{Math.round(tableTotals.totalCost).toLocaleString()}</TableCell>
                   </TableRow>
 
                   <TableRow className="bg-blue-50 font-bold border-t border-blue-200">
@@ -1133,7 +1233,8 @@ console.log(res)
                 </>
               )}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

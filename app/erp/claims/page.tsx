@@ -84,14 +84,27 @@ export default function ClaimsPage() {
         if (res.ok && res.data?.status) {
             const full = res.data.data;
             setSelectedClaim(full);
+            
+            const isClaimReviewable = ["SUBMITTED", "UNDER_REVIEW"].includes(full.status);
+            
             // Init approvals from existing data
-            const init: Record<string, { approvedQty: number; notes: string; status: string }> = {};
+            const init: Record<string, { approvedQty: number; notes: string; status: string; remainingStatus?: string }> = {};
             (full.items || []).forEach((i: any) => {
-                init[i.id] = { 
-                    approvedQty: i.approvedQty || i.claimedQty, 
-                    notes: i.reviewNotes ?? "",
-                    status: i.itemStatus || "PENDING"
-                };
+                if (isClaimReviewable && i.itemStatus === 'PENDING') {
+                    for (let idx = 0; idx < i.claimedQty; idx++) {
+                        init[`${i.id}-${idx}`] = { 
+                            approvedQty: 1, 
+                            notes: i.reviewNotes ?? "",
+                            status: "PENDING"
+                        };
+                    }
+                } else {
+                    init[i.id] = { 
+                        approvedQty: i.approvedQty || i.claimedQty, 
+                        notes: i.reviewNotes ?? "",
+                        status: i.itemStatus || "PENDING"
+                    };
+                }
             });
             setItemApprovals(init);
             setReviewNotes(full.reviewNotes ?? "");
@@ -113,16 +126,86 @@ export default function ClaimsPage() {
         finally { setIsStartingReview(false); }
     };
 
+    const canReview = selectedClaim && ["SUBMITTED", "UNDER_REVIEW"].includes(selectedClaim.status);
+
+    const renderedItems = useMemo(() => {
+        if (!selectedClaim || !selectedClaim.items) return [];
+        const list: any[] = [];
+        for (const item of selectedClaim.items) {
+            // Expand any PENDING claim item by its claimed quantity
+            if (canReview && item.itemStatus === 'PENDING') {
+                for (let idx = 0; idx < item.claimedQty; idx++) {
+                    list.push({
+                        ...item,
+                        displayId: `${item.id}-${idx}`,
+                        displayQty: 1,
+                        originalItem: item,
+                        subIndex: idx,
+                    });
+                }
+            } else {
+                list.push({
+                    ...item,
+                    displayId: item.id,
+                    displayQty: item.claimedQty,
+                    originalItem: item,
+                    subIndex: 0,
+                });
+            }
+        }
+        return list;
+    }, [selectedClaim, canReview]);
+
     const handleSubmitReview = async () => {
         if (!selectedClaim) return;
         setIsSubmittingReview(true);
         try {
-            const items = (selectedClaim.items || []).map((i: any) => ({
-                claimItemId: i.id,
-                approvedQty: itemApprovals[i.id]?.approvedQty ?? 0,
-                reviewNotes: itemApprovals[i.id]?.notes || undefined,
-                status: itemApprovals[i.id]?.status || "PENDING",
-            }));
+            // Group displayId approvals by original claim item ID
+            const grouped = new Map<string, { approvedQty: number; statuses: string[]; notes: string[] }>();
+            
+            for (const item of renderedItems) {
+                if (item.originalItem) {
+                    const approval = itemApprovals[item.displayId] || { status: "PENDING", notes: "" };
+                    const originalId = item.originalItem.id;
+                    
+                    const current = grouped.get(originalId) || { approvedQty: 0, statuses: [], notes: [] };
+                    
+                    if (approval.status === 'APPROVED') {
+                        current.approvedQty += 1;
+                    }
+                    current.statuses.push(approval.status);
+                    if (approval.notes) {
+                        current.notes.push(approval.notes);
+                    }
+                    grouped.set(originalId, current);
+                }
+            }
+
+            const items = Array.from(grouped.entries()).map(([claimItemId, data]) => {
+                let status = "PENDING";
+                let remainingStatus = "REJECTED";
+                
+                const hasApproved = data.statuses.includes("APPROVED");
+                const hasPending = data.statuses.includes("PENDING");
+                
+                if (hasApproved) {
+                    status = "APPROVED";
+                    remainingStatus = hasPending ? "PENDING" : "REJECTED";
+                } else if (hasPending) {
+                    status = "PENDING";
+                } else {
+                    status = "REJECTED";
+                }
+                
+                return {
+                    claimItemId,
+                    approvedQty: data.approvedQty,
+                    reviewNotes: data.notes.join("; ") || undefined,
+                    status,
+                    remainingStatus,
+                };
+            });
+
             const res = await authFetch(`/pos-claims/${selectedClaim.id}/review`, {
                 method: "POST",
                 body: { items, reviewNotes: reviewNotes || undefined },
@@ -163,19 +246,17 @@ export default function ClaimsPage() {
 
     const totalApprovedInReview = useMemo(() => {
         if (!selectedClaim) return 0;
-        return (selectedClaim.items || []).reduce((s: number, i: any) => {
-            const approval = itemApprovals[i.id];
+        return renderedItems.reduce((s: number, i: any) => {
+            const approval = itemApprovals[i.displayId];
             if (approval && approval.status === 'APPROVED') {
-                return s + Number(i.unitPaidPrice) * approval.approvedQty;
+                return s + Number(i.unitPaidPrice) * 1;
             }
-            if (i.itemStatus === 'APPROVED' || i.itemStatus === 'PARTIALLY_APPROVED') {
+            if (!canReview && (i.itemStatus === 'APPROVED' || i.itemStatus === 'PARTIALLY_APPROVED')) {
                 return s + Number(i.approvedAmount || 0);
             }
             return s;
         }, 0);
-    }, [selectedClaim, itemApprovals]);
-
-    const canReview = selectedClaim && ["SUBMITTED", "UNDER_REVIEW"].includes(selectedClaim.status);
+    }, [selectedClaim, itemApprovals, renderedItems, canReview]);
 
     const columns = useMemo<ColumnDef<any>[]>(() => [
         {
@@ -325,19 +406,27 @@ export default function ClaimsPage() {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {selectedClaim.items?.map((item: any) => {
-                                                const approval = itemApprovals[item.id] ?? { approvedQty: item.approvedQty, notes: "", status: "PENDING" };
-                                                const approvedAmt = Number(item.unitPaidPrice) * approval.approvedQty;
+                                            {renderedItems?.map((item: any) => {
+                                                const approval = itemApprovals[item.displayId] ?? { approvedQty: item.approvedQty, notes: "", status: "PENDING" };
+                                                const isApproved = approval.status === 'APPROVED';
+                                                const approvedAmt = Number(item.unitPaidPrice) * (isApproved ? 1 : 0);
                                                 const isMeta = ITEM_STATUS_META[item.itemStatus] ?? { label: item.itemStatus, cls: "" };
                                                 return (
-                                                    <TableRow key={item.id}>
+                                                    <TableRow key={item.displayId}>
                                                         <TableCell>
-                                                            <p className="font-medium text-sm">{item.item?.description}</p>
-                                                            <p className="text-xs text-muted-foreground font-mono">{item.item?.sku}</p>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <p className="font-medium text-sm">{item.item?.description}</p>
+                                                                {item.item?.size?.name && (
+                                                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-semibold bg-zinc-100 text-zinc-800 border-zinc-200">
+                                                                        Size: {item.item.size.name}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground font-mono mt-0.5">{item.item?.sku}</p>
                                                         </TableCell>
-                                                        <TableCell className="text-right text-sm">{item.claimedQty}</TableCell>
+                                                        <TableCell className="text-right text-sm">{item.displayQty}</TableCell>
                                                         <TableCell className="text-right font-mono text-sm">Rs. {fmt(item.unitPaidPrice)}</TableCell>
-                                                        <TableCell className="text-right font-mono text-sm text-destructive">Rs. {fmt(item.claimedAmount)}</TableCell>
+                                                        <TableCell className="text-right font-mono text-sm text-destructive">Rs. {fmt(Number(item.unitPaidPrice) * item.displayQty)}</TableCell>
                                                         {canReview && item.itemStatus === 'PENDING' ? (
                                                             <>
                                                                 <TableCell className="text-center">
@@ -345,13 +434,12 @@ export default function ClaimsPage() {
                                                                         value={approval.status} 
                                                                         onValueChange={(val) => {
                                                                             setItemApprovals(p => {
-                                                                                const nextQty = val === 'APPROVED' ? (p[item.id]?.approvedQty || item.claimedQty) : 0;
                                                                                 return {
                                                                                     ...p,
-                                                                                    [item.id]: {
-                                                                                        ...p[item.id],
+                                                                                    [item.displayId]: {
+                                                                                        ...p[item.displayId],
                                                                                         status: val,
-                                                                                        approvedQty: nextQty
+                                                                                        approvedQty: val === 'APPROVED' ? 1 : 0
                                                                                     }
                                                                                 };
                                                                             });
@@ -367,24 +455,8 @@ export default function ClaimsPage() {
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </TableCell>
-                                                                <TableCell>
-                                                                    {approval.status === 'APPROVED' ? (
-                                                                        <div className="flex items-center justify-center gap-1">
-                                                                            <Button variant="outline" size="icon" className="h-6 w-6"
-                                                                                onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.max(1, (p[item.id]?.approvedQty ?? item.claimedQty) - 1) } }))}>
-                                                                                <ChevronDown className="h-3 w-3" />
-                                                                            </Button>
-                                                                            <Input type="number" min={1} max={item.claimedQty} className="w-14 h-7 text-center text-xs"
-                                                                                value={approval.approvedQty}
-                                                                                onChange={e => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, Math.max(1, parseInt(e.target.value) || 1)) } }))} />
-                                                                            <Button variant="outline" size="icon" className="h-6 w-6"
-                                                                                onClick={() => setItemApprovals(p => ({ ...p, [item.id]: { ...p[item.id], approvedQty: Math.min(item.claimedQty, (p[item.id]?.approvedQty ?? 1) + 1) } }))}>
-                                                                                <ChevronUp className="h-3 w-3" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <div className="text-center text-xs text-muted-foreground font-medium">—</div>
-                                                                    )}
+                                                                <TableCell className="text-center text-sm font-medium">
+                                                                    {isApproved ? 1 : 0}
                                                                 </TableCell>
                                                                 <TableCell className="text-right font-mono text-sm text-emerald-700 font-bold">
                                                                     Rs. {fmt(approvedAmt)}
