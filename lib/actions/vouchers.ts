@@ -25,6 +25,7 @@ export interface Voucher {
     createdAt: string;
     locations: { id: string; location: { id: string; name: string; code: string } }[];
     redemptions?: { amountUsed: number; orderId: string }[];
+    claims?: { id: string; claimNumber: string }[];
     paymentMode?: string;
     cardholderName?: string;
     cardLast4?: string;
