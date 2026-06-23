@@ -22,6 +22,7 @@ export interface JournalVoucherDetail {
 export interface JournalVoucher {
     id: string;
     jvNo: string;
+    folio?: string | null;
     jvDate: string;
     description?: string;
     details: JournalVoucherDetail[];

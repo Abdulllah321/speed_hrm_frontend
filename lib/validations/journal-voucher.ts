@@ -10,7 +10,7 @@ export const journalVoucherDetailSchema = z.object({
     narration: z.string().optional(),
     refBillNo: z.string().optional(),
     refBillNo2: z.string().optional(),
-    taxType: taxTypeEnum.default("Taxable"),
+    taxType: taxTypeEnum.default(""),
 }).refine(data => (data.debit > 0 && data.credit === 0) || (data.credit > 0 && data.debit === 0), {
     message: "Either Debit or Credit must be greater than 0, but not both.",
     path: ["debit"],

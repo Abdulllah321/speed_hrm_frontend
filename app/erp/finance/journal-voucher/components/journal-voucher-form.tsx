@@ -197,7 +197,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         narration: "",
         refBillNo: "",
         refBillNo2: "",
-        taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
+        taxType: "" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
     });
 
     const form = useForm<JournalVoucherFormValues>({
@@ -215,7 +215,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
                       refBillNo2: d.refBillNo2 || "",
-                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "Taxable",
+                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "",
                   }))
                 : [],
         },
@@ -280,7 +280,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             narration: lastRow.narration || "",
             refBillNo: lastRow.refBillNo || "",
             refBillNo2: lastRow.refBillNo2 || "",
-            taxType: lastRow.taxType || "Taxable",
+            taxType: lastRow.taxType || "",
             debit: defaultDebit,
             credit: defaultCredit,
         }));
@@ -331,7 +331,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             narration: "",
             refBillNo: "",
             refBillNo2: "",
-            taxType: "Taxable",
+            taxType: "",
         });
 
         // Refocus account selector
@@ -361,6 +361,11 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                 document.getElementById("entry-debit")?.focus();
             }
         }
+    };
+
+    const focusTaxType = () => {
+        const activeOpt = entryLine.taxType || "Taxable";
+        document.getElementById(`entry-taxType-${activeOpt}`)?.focus();
     };
 
     // Global listener for F4 key
@@ -561,13 +566,15 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
     // Watch for changes in detail rows to calculate taxes
     const watchDetailsString = watchDetails.map((d: any) => `${d.debit}-${d.credit}-${d.accountId}-${d.tagAccountId}-${d.taxType}`).join(",");
     useEffect(() => {
-        // Calculate total taxable amount (based on debits and credits where taxType is Taxable)
+        // Calculate total taxable amount (based on debits and credits where taxType is taxable)
         const taxableDebitAmount = watchDetails.reduce((sum: number, detail: any) => {
-            return sum + (detail.taxType === "Taxable" ? Math.round(Number(detail.debit) || 0) : 0);
+            const isTaxableType = detail.taxType === "Taxable" || detail.taxType === "BTL" || detail.taxType === "REIMB";
+            return sum + (isTaxableType ? Math.round(Number(detail.debit) || 0) : 0);
         }, 0);
         
         const taxableCreditAmount = watchDetails.reduce((sum: number, detail: any) => {
-            return sum + (detail.taxType === "Taxable" ? Math.round(Number(detail.credit) || 0) : 0);
+            const isTaxableType = detail.taxType === "Taxable" || detail.taxType === "BTL" || detail.taxType === "REIMB";
+            return sum + (isTaxableType ? Math.round(Number(detail.credit) || 0) : 0);
         }, 0);
         
         const taxableAmount = Math.max(taxableDebitAmount, taxableCreditAmount);
@@ -632,7 +639,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             narration: fromRow.narration || "",
             refBillNo: fromRow.refBillNo || "",
             refBillNo2: fromRow.refBillNo2 || "",
-            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
+            taxType: (fromRow.taxType ?? "") as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
         };
         
         if (targetIndex < currentDetails.length) {
@@ -735,7 +742,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                 narration: "",
                                                 refBillNo: "",
                                                 refBillNo2: "",
-                                                taxType: "Taxable",
+                                                taxType: "",
                                             });
                                         }}
                                     >
@@ -760,7 +767,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                 if (hasChildren) {
                                                     document.getElementById("entry-tagAccountId")?.focus();
                                                 } else {
-                                                    document.getElementById("entry-narration")?.focus();
+                                                    focusTaxType();
                                                 }
                                             }, 50);
                                         }}
@@ -781,7 +788,11 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                         onValueChange={(val) => {
                                             setEntryLine(prev => ({ ...prev, tagAccountId: val }));
                                             setTimeout(() => {
-                                                document.getElementById("entry-narration")?.focus();
+                                                if (val) {
+                                                    focusTaxType();
+                                                } else {
+                                                    document.getElementById("entry-narration")?.focus();
+                                                }
                                             }, 50);
                                         }}
                                         disabled={isPending || activeLineChildren.length === 0}
@@ -792,27 +803,52 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                 <div className="md:col-span-4 space-y-1 select-none">
                                     <Label className="text-[11px] text-muted-foreground font-semibold">TAX TYPE</Label>
                                     <div className="flex h-9 items-center gap-1 border rounded-md px-1 bg-background border-input">
-                                        {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => (
-                                            <button
-                                                key={opt}
-                                                type="button"
-                                                disabled={isPending}
-                                                onClick={() => {
-                                                    setEntryLine(prev => ({
-                                                        ...prev,
-                                                        taxType: prev.taxType === opt ? "" : opt
-                                                    }));
-                                                }}
-                                                className={cn(
-                                                    "flex-1 flex items-center justify-center cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center h-7",
-                                                    entryLine.taxType === opt
-                                                        ? "bg-primary text-primary-foreground border-primary"
-                                                        : "border-transparent text-muted-foreground hover:bg-accent"
-                                                )}
-                                            >
-                                                {opt}
-                                            </button>
-                                        ))}
+                                        {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => {
+                                            const isSelected = entryLine.taxType === opt;
+                                            const isFirst = opt === "Taxable";
+                                            const tabIndex = entryLine.taxType ? (isSelected ? 0 : -1) : (isFirst ? 0 : -1);
+                                            return (
+                                                <button
+                                                    key={opt}
+                                                    id={`entry-taxType-${opt}`}
+                                                    type="button"
+                                                    disabled={isPending}
+                                                    tabIndex={tabIndex}
+                                                    onClick={() => {
+                                                        setEntryLine(prev => ({
+                                                            ...prev,
+                                                            taxType: prev.taxType === opt ? "" : opt
+                                                        }));
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                                                            e.preventDefault();
+                                                            const opts = ["Taxable", "BTL", "REIMB", "Exempt"] as const;
+                                                            const currentIndex = opts.indexOf(opt);
+                                                            const nextIndex = e.key === "ArrowRight"
+                                                                ? (currentIndex + 1) % opts.length
+                                                                : (currentIndex - 1 + opts.length) % opts.length;
+                                                            const nextOpt = opts[nextIndex];
+                                                            setEntryLine(prev => ({ ...prev, taxType: nextOpt }));
+                                                            setTimeout(() => {
+                                                                document.getElementById(`entry-taxType-${nextOpt}`)?.focus();
+                                                            }, 10);
+                                                        } else if (e.key === "Enter") {
+                                                            e.preventDefault();
+                                                            document.getElementById("entry-narration")?.focus();
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "flex-1 flex items-center justify-center cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center h-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                                        isSelected
+                                                            ? "bg-primary text-primary-foreground border-primary"
+                                                            : "border-transparent text-muted-foreground hover:bg-accent"
+                                                    )}
+                                                >
+                                                    {opt}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -1062,7 +1098,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                                         narration: field.narration || "",
                                                                         refBillNo: field.refBillNo || "",
                                                                         refBillNo2: field.refBillNo2 || "",
-                                                                        taxType: field.taxType || "Taxable",
+                                                                        taxType: field.taxType || "",
                                                                     });
                                                                     setTimeout(() => {
                                                                         document.getElementById("entry-accountId")?.focus();
@@ -1101,7 +1137,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                                             narration: "",
                                                                             refBillNo: "",
                                                                             refBillNo2: "",
-                                                                            taxType: "Taxable",
+                                                                            taxType: "",
                                                                         });
                                                                     }
                                                                 }}

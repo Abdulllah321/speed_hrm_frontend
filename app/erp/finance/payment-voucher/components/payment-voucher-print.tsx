@@ -42,11 +42,21 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
 
   return (
     <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-4 sm:p-6 font-sans print:p-0 print:max-w-none box-border text-[10px] sm:text-[11px]">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            margin: 0;
+          }
+          body {
+            margin: 1.6cm;
+          }
+        }
+      `}} />
       {/* Header */}
       <div className="flex justify-between mb-4 gap-3 items-start">
         {/* Logo */}
         <div className="w-[20%] flex flex-col items-start justify-center">
-           <img src="/image.png" alt="Logo" className="w-24 object-contain" />
+           <img src="/image.png" alt="Logo" className="w-12 sm:w-14 print:w-8 object-contain" />
         </div>
         
         {/* Title */}
@@ -69,7 +79,7 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
              </div>
              <div className="flex gap-2">
                <span className="font-bold">Folio:</span>
-               <span>{voucher.id.replace(/-/g, "").slice(-5).toUpperCase()}</span>
+               <span>{voucher.folio || voucher.id.replace(/-/g, "").slice(-5).toUpperCase()}</span>
              </div>
            </div>
            {isBank && (
@@ -106,15 +116,18 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
                      <span className="uppercase text-gray-700">{d.tagAccountName}</span>
                    </div>
                 )}
-                {/* Ref# */}
-                {(d.refBillNo || voucher.refBillNo || d.taxType || voucher.taxType) && (
-                  <div className="flex gap-1.5 sm:gap-3 mt-0.5">
-                    <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
-                      Ref# {(d.taxType ?? voucher.taxType) ?? ""}
-                    </span>
-                    <span className="uppercase">{d.refBillNo || voucher.refBillNo}</span>
-                  </div>
-                )}
+                 {/* Ref# */}
+                 {(d.refBillNo || d.refBillNo2 || voucher.refBillNo || d.taxType || voucher.taxType) && (
+                   <div className="flex gap-1.5 sm:gap-3 mt-0.5">
+                     <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
+                       Ref# {(d.taxType ?? voucher.taxType) ?? ""}
+                     </span>
+                     <span className="uppercase">
+                       {d.refBillNo || voucher.refBillNo || "—"}
+                       {d.refBillNo2 ? ` / ${d.refBillNo2}` : ""}
+                     </span>
+                   </div>
+                 )}
               </td>
               <td className="py-1.5 pr-1 leading-tight">
                 {d.narration || voucher.description}

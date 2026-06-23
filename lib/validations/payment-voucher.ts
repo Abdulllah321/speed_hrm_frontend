@@ -10,7 +10,7 @@ export const paymentVoucherDetailSchema = z.object({
     narration:    z.string().optional(),   // per-line narration
     refBillNo:    z.string().optional(),   // per-line bill ref
     refBillNo2:   z.string().optional(),
-    taxType:      taxTypeEnum.default("Taxable"),
+    taxType:      taxTypeEnum.default(""),
     taxableValue: z.coerce.number().optional().default(0), // base value for calculation
 });
 
@@ -38,7 +38,7 @@ export const paymentVoucherSchema = z.object({
     supplierId: z.string().optional(),
     invoices: z.array(paymentVoucherInvoiceSchema).optional(),
 
-    taxType: taxTypeEnum.default("Taxable"),
+    taxType: taxTypeEnum.default(""),
     description: z.string().optional(),
     details: z.array(paymentVoucherDetailSchema).min(1, "At least one detail row is required"),
 }).refine(data => {

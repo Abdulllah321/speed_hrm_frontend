@@ -10,7 +10,7 @@ export const receiptVoucherDetailSchema = z.object({
     narration:    z.string().optional(),
     refBillNo:    z.string().optional(),
     refBillNo2:   z.string().optional(),
-    taxType:      taxTypeEnum.default("Taxable"),
+    taxType:      taxTypeEnum.default(""),
 });
 
 export const receiptVoucherInvoiceSchema = z.object({
@@ -28,7 +28,7 @@ export const receiptVoucherSchema = z.object({
     chequeDate: z.date().optional(),
     customerId: z.string().optional(),
     isAdvance: z.boolean().optional(),
-    taxType: taxTypeEnum.default("Taxable"),
+    taxType: taxTypeEnum.default(""),
     debitAccountId: z.string().optional(),
     debitAmount: z.coerce.number().transform(v => Math.round(v)).optional(),
     invoices: z.array(receiptVoucherInvoiceSchema).optional(),

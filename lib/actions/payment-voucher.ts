@@ -38,6 +38,7 @@ export interface PaymentVoucher {
     chequeNo?: string;
     chequeDate?: string; // ISO string
     details: PaymentVoucherDetail[];
+    folio?: string | null;
     createdAt: string;
     createdBy: string;
 }

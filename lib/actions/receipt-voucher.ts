@@ -39,6 +39,7 @@ export interface ReceiptVoucher {
     chequeDate?: string;
     details: ReceiptVoucherDetail[];
     invoices?: { salesInvoiceId: string; receivedAmount: number }[];
+    folio?: string | null;
     createdAt: string;
     createdBy: string;
 }

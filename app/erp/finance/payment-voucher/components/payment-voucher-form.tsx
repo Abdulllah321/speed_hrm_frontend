@@ -198,7 +198,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             creditAmount: Number(initialData?.creditAmount) || 0,
             supplierId: initialData?.supplierId || "",
             invoices: initialData?.invoices || [],
-            taxType: (initialData?.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "Taxable",
+            taxType: (initialData?.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "",
             description: initialData?.description || "",
             details: initialData?.details
                 ? initialData.details.map((d: any) => ({
@@ -209,7 +209,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
                       refBillNo2: d.refBillNo2 || "",
-                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "Taxable",
+                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "",
                       taxableValue: Math.round(Number(d.taxableValue) || 0),
                   }))
                 : [],
@@ -233,7 +233,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         narration: "",
         refBillNo: "",
         refBillNo2: "",
-        taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
+        taxType: "" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
         taxableValue: 0,
     });
 
@@ -290,7 +290,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             narration: lastRow.narration || "",
             refBillNo: lastRow.refBillNo || "",
             refBillNo2: lastRow.refBillNo2 || "",
-            taxType: lastRow.taxType || "Taxable",
+            taxType: lastRow.taxType || "",
             taxableValue: lastRow.taxableValue || 0,
             debit: defaultDebit,
             credit: defaultCredit,
@@ -344,7 +344,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             narration: "",
             refBillNo: "",
             refBillNo2: "",
-            taxType: "Taxable",
+            taxType: "",
             taxableValue: 0,
         });
 
@@ -368,15 +368,24 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             } else if (fieldName === "credit") {
                 handleAddOrUpdateLine();
             } else if (fieldName === "taxableValue") {
-                document.getElementById("entry-narration")?.focus();
+                document.getElementById("entry-debit")?.focus();
             } else if (fieldName === "narration") {
                 document.getElementById("entry-refBillNo")?.focus();
             } else if (fieldName === "refBillNo") {
                 document.getElementById("entry-refBillNo2")?.focus();
             } else if (fieldName === "refBillNo2") {
-                document.getElementById("entry-debit")?.focus();
+                if (entryLine.tagAccountId) {
+                    document.getElementById("entry-taxableValue")?.focus();
+                } else {
+                    document.getElementById("entry-debit")?.focus();
+                }
             }
         }
+    };
+
+    const focusTaxType = () => {
+        const activeOpt = entryLine.taxType || "Taxable";
+        document.getElementById(`entry-taxType-${activeOpt}`)?.focus();
     };
 
     // Global listener for F4 key
@@ -574,7 +583,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 form.setValue(`details.${i}.debit`, 0);
                                 form.setValue(`details.${i}.credit`, 0);
                             } else {
-                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "", taxableValue: 0 });
+                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "", taxableValue: 0 });
                             }
                         });
                     }
@@ -641,7 +650,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             narration: fromRow.narration || "",
             refBillNo: fromRow.refBillNo || "",
             refBillNo2: fromRow.refBillNo2 || "",
-            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
+            taxType: (fromRow.taxType ?? "") as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
             taxableValue: Math.round(Number(fromRow.taxableValue) || 0),
         };
         
@@ -862,6 +871,39 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
     // Watch for changes in detail rows to auto-balance and calculate taxes
     const watchDetailsString = watchDetails.map(d => `${d.debit}-${d.accountId}-${d.tagAccountId}-${d.taxType}-${d.taxableValue}`).join(",");
+
+    const taxableAmount = useMemo(() => {
+        return watchDetails.reduce((sum: number, detail: any) => {
+            const isTaxableType = detail.taxType === "Taxable" || detail.taxType === "BTL" || detail.taxType === "REIMB";
+            return sum + (isTaxableType ? Math.round(Number(detail.debit) || 0) : 0);
+        }, 0);
+    }, [watchDetailsString]);
+
+    // Auto-calculate tax inside the editor inputs (before adding the line)
+    useEffect(() => {
+        if (!entryLine.accountId || !entryLine.tagAccountId || tree.length === 0) return;
+        const accountNode = findInTree(tree, entryLine.accountId);
+        const tagNode = accountNode?.children?.find(c => c.id === entryLine.tagAccountId);
+        if (accountNode?.code && tagNode?.code) {
+            const baseAmount = taxableAmount || entryLine.taxableValue;
+            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, baseAmount);
+            if (calculatedTax !== null) {
+                const roundedTax = Math.round(calculatedTax);
+                const isDebit = accountNode.type === "Asset" || accountNode.type === "Expense";
+                setEntryLine(prev => {
+                    const nextDebit = isDebit ? roundedTax : 0;
+                    const nextCredit = isDebit ? 0 : roundedTax;
+                    if (prev.debit === nextDebit && prev.credit === nextCredit) return prev;
+                    return {
+                        ...prev,
+                        debit: nextDebit,
+                        credit: nextCredit
+                    };
+                });
+            }
+        }
+    }, [entryLine.accountId, entryLine.tagAccountId, entryLine.taxableValue, taxableAmount, tree]);
+
     useEffect(() => {
         let totalTaxAmount = 0;
 
@@ -869,7 +911,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         if (tree.length > 0) {
             watchDetails.forEach((detail, index) => {
                 const prev = prevDetailsRef.current[index] || { accountId: "", tagAccountId: "", taxableValue: 0 };
-                const currentTaxableValue = Math.round(Number(detail.taxableValue) || 0);
+                const currentTaxableValue = taxableAmount || Math.round(Number(detail.taxableValue) || 0);
                 
                 // Check if trigger fields changed for this row
                 const triggerChanged = 
@@ -889,8 +931,14 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 if (calculatedTax !== null) {
                                     const roundedTax = Math.round(calculatedTax);
                                     if (triggerChanged) {
-                                        form.setValue(`details.${index}.credit`, roundedTax, { shouldValidate: true });
-                                        form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                        const isDebit = accountNode.type === "Asset" || accountNode.type === "Expense";
+                                        if (isDebit) {
+                                            form.setValue(`details.${index}.debit`, roundedTax, { shouldValidate: true });
+                                            form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                                        } else {
+                                            form.setValue(`details.${index}.credit`, roundedTax, { shouldValidate: true });
+                                            form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                        }
                                         totalTaxAmount += roundedTax;
                                     } else {
                                         // Use user's manual entry (subtracting any debit to get net credit impact)
@@ -901,6 +949,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 const hasManualValue = (Number(detail.credit) || 0) > 0 || (Number(detail.debit) || 0) > 0;
                                 if (triggerChanged && !hasManualValue) {
                                     form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                                    form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
                                 } else {
                                     totalTaxAmount += Math.round(Number(detail.credit) || 0) - Math.round(Number(detail.debit) || 0);
                                 }
@@ -914,7 +963,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
         // ALWAYS sync the ref to current watchDetails, whether tree is loaded or not!
         watchDetails.forEach((detail, index) => {
-            const currentTaxableValue = Math.round(Number(detail.taxableValue) || 0);
+            const currentTaxableValue = taxableAmount || Math.round(Number(detail.taxableValue) || 0);
             prevDetailsRef.current[index] = {
                 accountId: detail.accountId || "",
                 tagAccountId: detail.tagAccountId || "",
@@ -1406,7 +1455,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                 narration: "",
                                                 refBillNo: "",
                                                 refBillNo2: "",
-                                                taxType: "Taxable",
+                                                taxType: "",
                                                 taxableValue: 0,
                                             });
                                         }}
@@ -1432,7 +1481,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                 if (hasChildren) {
                                                     document.getElementById("entry-tagAccountId")?.focus();
                                                 } else {
-                                                    document.getElementById("entry-narration")?.focus();
+                                                    focusTaxType();
                                                 }
                                             }, 50);
                                         }}
@@ -1454,7 +1503,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                             setEntryLine(prev => ({ ...prev, tagAccountId: val }));
                                             setTimeout(() => {
                                                 if (val) {
-                                                    document.getElementById("entry-taxableValue")?.focus();
+                                                    focusTaxType();
                                                 } else {
                                                     document.getElementById("entry-narration")?.focus();
                                                 }
@@ -1468,27 +1517,52 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 <div className="md:col-span-4 space-y-1 select-none">
                                     <Label className="text-[11px] text-muted-foreground font-semibold">TAX TYPE</Label>
                                     <div className="flex h-9 items-center gap-1 border rounded-md px-1 bg-background border-input">
-                                        {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => (
-                                            <button
-                                                key={opt}
-                                                type="button"
-                                                disabled={isPending}
-                                                onClick={() => {
-                                                    setEntryLine(prev => ({
-                                                        ...prev,
-                                                        taxType: prev.taxType === opt ? "" : opt
-                                                    }));
-                                                }}
-                                                className={cn(
-                                                    "flex-1 flex items-center justify-center cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center h-7",
-                                                    entryLine.taxType === opt
-                                                        ? "bg-primary text-primary-foreground border-primary"
-                                                        : "border-transparent text-muted-foreground hover:bg-accent"
-                                                )}
-                                            >
-                                                {opt}
-                                            </button>
-                                        ))}
+                                        {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => {
+                                            const isSelected = entryLine.taxType === opt;
+                                            const isFirst = opt === "Taxable";
+                                            const tabIndex = entryLine.taxType ? (isSelected ? 0 : -1) : (isFirst ? 0 : -1);
+                                            return (
+                                                <button
+                                                    key={opt}
+                                                    id={`entry-taxType-${opt}`}
+                                                    type="button"
+                                                    disabled={isPending}
+                                                    tabIndex={tabIndex}
+                                                    onClick={() => {
+                                                        setEntryLine(prev => ({
+                                                            ...prev,
+                                                            taxType: prev.taxType === opt ? "" : opt
+                                                        }));
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                                                            e.preventDefault();
+                                                            const opts = ["Taxable", "BTL", "REIMB", "Exempt"] as const;
+                                                            const currentIndex = opts.indexOf(opt);
+                                                            const nextIndex = e.key === "ArrowRight"
+                                                                ? (currentIndex + 1) % opts.length
+                                                                : (currentIndex - 1 + opts.length) % opts.length;
+                                                            const nextOpt = opts[nextIndex];
+                                                            setEntryLine(prev => ({ ...prev, taxType: nextOpt }));
+                                                            setTimeout(() => {
+                                                                document.getElementById(`entry-taxType-${nextOpt}`)?.focus();
+                                                            }, 10);
+                                                        } else if (e.key === "Enter") {
+                                                            e.preventDefault();
+                                                            document.getElementById("entry-narration")?.focus();
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "flex-1 flex items-center justify-center cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center h-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                                        isSelected
+                                                            ? "bg-primary text-primary-foreground border-primary"
+                                                            : "border-transparent text-muted-foreground hover:bg-accent"
+                                                    )}
+                                                >
+                                                    {opt}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -1759,7 +1833,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                                         narration: field.narration || "",
                                                                         refBillNo: field.refBillNo || "",
                                                                         refBillNo2: field.refBillNo2 || "",
-                                                                        taxType: field.taxType || "Taxable",
+                                                                        taxType: field.taxType || "",
                                                                         taxableValue: field.taxableValue || 0,
                                                                     });
                                                                     setTimeout(() => {
@@ -1799,7 +1873,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                                             narration: "",
                                                                             refBillNo: "",
                                                                             refBillNo2: "",
-                                                                            taxType: "Taxable",
+                                                                            taxType: "",
                                                                             taxableValue: 0,
                                                                         });
                                                                     }
