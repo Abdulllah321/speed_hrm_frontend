@@ -59,7 +59,26 @@ interface TagAccountSelectProps {
 
 function TagAccountSelect({ children, value, onValueChange, disabled, id }: TagAccountSelectProps) {
     const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
     const selected = children.find((c) => c.id === value);
+
+    useEffect(() => {
+        if (!open) {
+            setSearch("");
+        }
+    }, [open]);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+        if (disabled) return;
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
+            setSearch(e.key);
+            setOpen(true);
+        } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+            e.preventDefault();
+            setOpen(true);
+        }
+    };
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -70,6 +89,7 @@ function TagAccountSelect({ children, value, onValueChange, disabled, id }: TagA
                     role="combobox"
                     aria-expanded={open}
                     disabled={disabled}
+                    onKeyDown={handleKeyDown}
                     className={cn(
                         "flex items-center w-full h-8 px-2 rounded-md border border-dashed border-input bg-background text-xs cursor-pointer select-none text-left",
                         "hover:bg-accent hover:text-accent-foreground transition-colors",
@@ -94,7 +114,13 @@ function TagAccountSelect({ children, value, onValueChange, disabled, id }: TagA
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="start" sideOffset={4}>
                 <Command>
-                    <CommandInput placeholder="Search sub-account..." className="h-8 text-xs" />
+                    <CommandInput
+                        placeholder="Search sub-account..."
+                        className="h-8 text-xs"
+                        value={search}
+                        onValueChange={setSearch}
+                        autoFocus
+                    />
                     <CommandList className="max-h-52">
                         <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">
                             No sub-accounts found.

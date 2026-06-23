@@ -705,6 +705,18 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
             </Command>
         );
 
+        const handleTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+            if (disabled) return;
+            if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+                setSearch(e.key);
+                setOpen(true);
+            } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+                e.preventDefault();
+                setOpen(true);
+            }
+        };
+
         const triggerButton = (
             <button
                 id={id}
@@ -715,6 +727,7 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
                 aria-haspopup="listbox"
                 disabled={disabled}
                 onClick={mode === "modal" ? () => setOpen(true) : undefined}
+                onKeyDown={handleTriggerKeyDown}
                 className={cn(
                     "flex items-center w-full h-9 px-3 rounded-md border border-input bg-background text-sm font-normal cursor-pointer select-none text-left",
                     "hover:bg-accent hover:text-accent-foreground transition-colors",

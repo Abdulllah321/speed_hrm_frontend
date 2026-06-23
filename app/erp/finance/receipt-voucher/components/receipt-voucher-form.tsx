@@ -48,17 +48,45 @@ function TagAccountSelect({ children, value, onValueChange, disabled, id }: {
     id?: string;
 }) {
     const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
     const selected = children.find((c) => c.id === value);
+
+    useEffect(() => {
+        if (!open) {
+            setSearch("");
+        }
+    }, [open]);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+        if (disabled) return;
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
+            setSearch(e.key);
+            setOpen(true);
+        } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+            e.preventDefault();
+            setOpen(true);
+        }
+    };
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <button id={id} type="button" disabled={disabled} className={cn(
-                    "flex items-center w-full h-8 px-2 rounded-md border border-dashed border-input bg-background text-xs cursor-pointer select-none text-left",
-                    "hover:bg-accent hover:text-accent-foreground transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
-                    open && "ring-1 ring-ring/20",
-                    disabled && "pointer-events-none opacity-50"
-                )}>
+                <button
+                    id={id}
+                    type="button"
+                    role="combobox"
+                    aria-expanded={open}
+                    disabled={disabled}
+                    onKeyDown={handleKeyDown}
+                    className={cn(
+                        "flex items-center w-full h-8 px-2 rounded-md border border-dashed border-input bg-background text-xs cursor-pointer select-none text-left",
+                        "hover:bg-accent hover:text-accent-foreground transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
+                        open && "ring-1 ring-ring/20",
+                        disabled && "pointer-events-none opacity-50"
+                    )}
+                >
                     <Tag className="h-3 w-3 shrink-0 text-muted-foreground mr-1.5" />
                     <span className={cn("flex-1 min-w-0 truncate", !selected && "text-muted-foreground")}>
                         {selected ? `${selected.code} - ${selected.name}` : "Tag sub-account (optional)"}
@@ -68,7 +96,13 @@ function TagAccountSelect({ children, value, onValueChange, disabled, id }: {
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="start" sideOffset={4}>
                 <Command>
-                    <CommandInput placeholder="Search sub-account..." className="h-8 text-xs" />
+                    <CommandInput
+                        placeholder="Search sub-account..."
+                        className="h-8 text-xs"
+                        value={search}
+                        onValueChange={setSearch}
+                        autoFocus
+                    />
                     <CommandList className="max-h-52">
                         <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">No sub-accounts found.</CommandEmpty>
                         <CommandGroup>
