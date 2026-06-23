@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const taxTypeEnum = z.enum(["Taxable", "BTL", "REIMB"]);
+export const taxTypeEnum = z.enum(["Taxable", "BTL", "REIMB", "Exempt", ""]);
 
 export const receiptVoucherDetailSchema = z.object({
     accountId:    z.string().min(1, "Account is required"),

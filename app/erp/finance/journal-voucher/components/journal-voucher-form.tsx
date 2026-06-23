@@ -104,6 +104,30 @@ function TagAccountSelect({ children, value, onValueChange, disabled, id }: TagA
                             ? `${selected.code} - ${selected.name}`
                             : "Tag sub-account (optional)"}
                     </span>
+                    {selected && (
+                        <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                navigator.clipboard.writeText(selected.name);
+                                toast.success(`Copied tag name: "${selected.name}"`);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    navigator.clipboard.writeText(selected.name);
+                                    toast.success(`Copied tag name: "${selected.name}"`);
+                                }
+                            }}
+                            className="p-1 ml-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            title="Copy tag account name"
+                        >
+                            <Copy className="h-3.5 w-3.5" />
+                        </span>
+                    )}
                     <ChevronDownIcon
                         className={cn(
                             "ml-1 h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200",
@@ -173,7 +197,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         narration: "",
         refBillNo: "",
         refBillNo2: "",
-        taxType: "Taxable" as "Taxable" | "BTL" | "REIMB",
+        taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
     });
 
     const form = useForm<JournalVoucherFormValues>({
@@ -191,7 +215,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
                       refBillNo2: d.refBillNo2 || "",
-                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
+                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "Taxable",
                   }))
                 : [],
         },
@@ -204,6 +228,21 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
 
     const watchDetails = form.watch("details") || [];
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [filterAccountId, setFilterAccountId] = useState<string>("");
+
+    const selectedAccountIds = useMemo<string[]>(() => {
+        return Array.from(new Set(watchDetails.map((d: any) => d.accountId as string).filter(Boolean)));
+    }, [watchDetails.map((d: any) => d.accountId).join(",")]);
+
+    const filterOptions = useMemo(() => {
+        return selectedAccountIds.map(id => {
+            const node = findInTree(tree, id);
+            return {
+                value: id,
+                label: node ? `${node.code} - ${node.name}` : id
+            };
+        });
+    }, [selectedAccountIds, tree]);
 
     // Derive child sub-accounts for active line entry
     const activeLineChildren = useMemo(() => {
@@ -374,6 +413,26 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
     const voucherNo = watchAllFields.jvNo;
     useEffect(() => {
         if (initialData || !voucherNo) return;
+
+        // Avoid saving empty drafts (no details, no description)
+        const hasFormDetails = watchAllFields.details?.some((d: any) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0 || d.narration || d.refBillNo);
+        const hasDescription = !!watchAllFields.description;
+
+        if (!hasFormDetails && !hasDescription) {
+            // Delete draft if it exists to keep localStorage clean (e.g. if user cleared form)
+            const draftsJson = localStorage.getItem("journal-voucher-drafts");
+            if (draftsJson) {
+                try {
+                    const drafts = JSON.parse(draftsJson);
+                    if (drafts[voucherNo]) {
+                        delete drafts[voucherNo];
+                        localStorage.setItem("journal-voucher-drafts", JSON.stringify(drafts));
+                    }
+                } catch {}
+            }
+            return;
+        }
+
         const timeout = setTimeout(() => {
             const draftsJson = localStorage.getItem("journal-voucher-drafts") || "{}";
             try {
@@ -573,7 +632,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
             narration: fromRow.narration || "",
             refBillNo: fromRow.refBillNo || "",
             refBillNo2: fromRow.refBillNo2 || "",
-            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB",
+            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
         };
         
         if (targetIndex < currentDetails.length) {
@@ -708,7 +767,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                         placeholder="Select Account"
                                         excludeTags={true}
                                         disabled={isPending}
-                                        mode="modal"
+                                        mode="popover"
                                     />
                                 </div>
 
@@ -732,27 +791,29 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                 {/* Tax Type Selection */}
                                 <div className="md:col-span-4 space-y-1 select-none">
                                     <Label className="text-[11px] text-muted-foreground font-semibold">TAX TYPE</Label>
-                                    <RadioGroup
-                                        value={entryLine.taxType}
-                                        onValueChange={(val) => setEntryLine(prev => ({ ...prev, taxType: val as any }))}
-                                        disabled={isPending}
-                                        className="flex h-9 items-center gap-1 border rounded-md px-2 bg-background border-input"
-                                    >
-                                        {(["Taxable", "BTL", "REIMB"] as const).map((opt) => (
-                                            <Label
+                                    <div className="flex h-9 items-center gap-1 border rounded-md px-1 bg-background border-input">
+                                        {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => (
+                                            <button
                                                 key={opt}
+                                                type="button"
+                                                disabled={isPending}
+                                                onClick={() => {
+                                                    setEntryLine(prev => ({
+                                                        ...prev,
+                                                        taxType: prev.taxType === opt ? "" : opt
+                                                    }));
+                                                }}
                                                 className={cn(
-                                                    "flex-1 flex items-center justify-center gap-1 cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center",
+                                                    "flex-1 flex items-center justify-center cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center h-7",
                                                     entryLine.taxType === opt
                                                         ? "bg-primary text-primary-foreground border-primary"
                                                         : "border-transparent text-muted-foreground hover:bg-accent"
                                                 )}
                                             >
-                                                <RadioGroupItem value={opt} className="sr-only" />
                                                 {opt}
-                                            </Label>
+                                            </button>
                                         ))}
-                                    </RadioGroup>
+                                    </div>
                                 </div>
                             </div>
 
@@ -874,6 +935,33 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                             </div>
                         </div>
 
+                        {/* Filter Bar */}
+                        {selectedAccountIds.length > 0 && (
+                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg border border-dashed">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase">Filter by Account Head:</span>
+                                <div className="w-[300px]">
+                                    <Autocomplete
+                                        options={filterOptions}
+                                        value={filterAccountId}
+                                        onValueChange={setFilterAccountId}
+                                        placeholder="All Accounts"
+                                        searchPlaceholder="Search selected accounts..."
+                                    />
+                                </div>
+                                {filterAccountId && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFilterAccountId("")}
+                                        className="text-xs text-destructive hover:bg-destructive/10 h-9 px-3"
+                                    >
+                                        Clear Filter
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+
                         {/* ── Transaction Lines List (Bottom Form) ── */}
                         <div className="border rounded-xl overflow-hidden border-border bg-card">
                             <table className="w-full text-sm">
@@ -896,6 +984,10 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                         </tr>
                                     ) : (
                                         watchDetails.map((field, index) => {
+                                            const detail = watchDetails[index] || {};
+                                            const shouldHide = filterAccountId && detail.accountId && detail.accountId !== filterAccountId;
+                                            if (shouldHide) return null;
+
                                             const accountNode = findInTree(tree, field.accountId);
                                             const tagNode = accountNode?.children?.find(c => c.id === field.tagAccountId);
 
@@ -915,7 +1007,18 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                         {tagNode && (
                                                             <div className="text-xs text-muted-foreground font-mono mt-0.5 flex items-center gap-1">
                                                                 <span className="px-1.5 py-0.2 rounded bg-muted font-sans text-[9px] uppercase border font-semibold">Tag</span>
-                                                                {tagNode.code} - {tagNode.name}
+                                                                <span>{tagNode.code} - {tagNode.name}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(tagNode.name);
+                                                                        toast.success(`Copied tag name: "${tagNode.name}"`);
+                                                                    }}
+                                                                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                    title="Copy tag account name"
+                                                                >
+                                                                    <Copy className="h-3 w-3" />
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </td>
@@ -932,7 +1035,9 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                                             {field.refBillNo2 && (
                                                                 <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] font-mono">Ref2: {field.refBillNo2}</span>
                                                             )}
-                                                            <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] text-blue-600 dark:text-blue-400 font-semibold uppercase">{field.taxType}</span>
+                                                            {field.taxType && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] text-blue-600 dark:text-blue-400 font-semibold uppercase">{field.taxType}</span>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-foreground">

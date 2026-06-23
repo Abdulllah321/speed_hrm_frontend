@@ -91,6 +91,30 @@ function TagAccountSelect({ children, value, onValueChange, disabled, id }: {
                     <span className={cn("flex-1 min-w-0 truncate", !selected && "text-muted-foreground")}>
                         {selected ? `${selected.code} - ${selected.name}` : "Tag sub-account (optional)"}
                     </span>
+                    {selected && (
+                        <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                navigator.clipboard.writeText(selected.name);
+                                toast.success(`Copied tag name: "${selected.name}"`);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    navigator.clipboard.writeText(selected.name);
+                                    toast.success(`Copied tag name: "${selected.name}"`);
+                                }
+                            }}
+                            className="p-1 ml-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            title="Copy tag account name"
+                        >
+                            <Copy className="h-3.5 w-3.5" />
+                        </span>
+                    )}
                     <ChevronDownIcon className={cn("ml-1 h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
                 </button>
             </PopoverTrigger>
@@ -174,7 +198,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             creditAmount: Number(initialData?.creditAmount) || 0,
             supplierId: initialData?.supplierId || "",
             invoices: initialData?.invoices || [],
-            taxType: (initialData?.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
+            taxType: (initialData?.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "Taxable",
             description: initialData?.description || "",
             details: initialData?.details
                 ? initialData.details.map((d: any) => ({
@@ -185,7 +209,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
                       refBillNo2: d.refBillNo2 || "",
-                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
+                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "Taxable",
                       taxableValue: Math.round(Number(d.taxableValue) || 0),
                   }))
                 : [],
@@ -209,7 +233,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         narration: "",
         refBillNo: "",
         refBillNo2: "",
-        taxType: "Taxable" as "Taxable" | "BTL" | "REIMB",
+        taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
         taxableValue: 0,
     });
 
@@ -464,6 +488,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     // Auto-generate PV No based on type
     useEffect(() => {
         if (initialData) return;
+        if (isRestoring.current) return;
         const prefix = voucherType === "bank" ? "BPV" : "CPV";
         const datePart = `${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}`;
         const randomPart = Math.floor(1000 + Math.random() * 9000);
@@ -549,7 +574,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 form.setValue(`details.${i}.debit`, 0);
                                 form.setValue(`details.${i}.credit`, 0);
                             } else {
-                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 });
+                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "", taxableValue: 0 });
                             }
                         });
                     }
@@ -616,7 +641,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             narration: fromRow.narration || "",
             refBillNo: fromRow.refBillNo || "",
             refBillNo2: fromRow.refBillNo2 || "",
-            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB",
+            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
             taxableValue: Math.round(Number(fromRow.taxableValue) || 0),
         };
         
@@ -640,6 +665,28 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const voucherNo = watchAllFields.pvNo;
     useEffect(() => {
         if (initialData || !voucherNo) return;
+
+        // Avoid saving empty drafts (no details, no description, no supplier, no cheque/refs)
+        const hasFormDetails = watchAllFields.details?.some((d: any) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0 || d.narration || d.refBillNo);
+        const hasInvoicesOrAdvances = selectedInvoices.length > 0 || selectedAdvances.length > 0;
+        const hasDescriptionOrSupplier = watchAllFields.description || watchAllFields.supplierId;
+        const hasReferenceOrCheque = watchAllFields.refBillNo || watchAllFields.chequeNo;
+
+        if (!hasFormDetails && !hasInvoicesOrAdvances && !hasDescriptionOrSupplier && !hasReferenceOrCheque) {
+            // Delete draft if it exists to keep localStorage clean (e.g. if user cleared form)
+            const draftsJson = localStorage.getItem("payment-voucher-drafts");
+            if (draftsJson) {
+                try {
+                    const drafts = JSON.parse(draftsJson);
+                    if (drafts[voucherNo]) {
+                        delete drafts[voucherNo];
+                        localStorage.setItem("payment-voucher-drafts", JSON.stringify(drafts));
+                    }
+                } catch {}
+            }
+            return;
+        }
+
         const draftData = {
             formValues: watchAllFields,
             selectedInvoices,
@@ -835,24 +882,28 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                     const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
 
                     if (accountNode?.code && tagNode?.code) {
-                        if (currentTaxableValue > 0) {
-                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, currentTaxableValue);
-                            if (calculatedTax !== null) {
-                                const roundedTax = Math.round(calculatedTax);
-                                if (triggerChanged) {
-                                    form.setValue(`details.${index}.credit`, roundedTax, { shouldValidate: true });
-                                    form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
-                                    totalTaxAmount += roundedTax;
+                        const isTaxAccount = calculateTaxForAccount(accountNode.code, tagNode.code, 100) !== null;
+                        if (isTaxAccount) {
+                            if (currentTaxableValue > 0) {
+                                const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, currentTaxableValue);
+                                if (calculatedTax !== null) {
+                                    const roundedTax = Math.round(calculatedTax);
+                                    if (triggerChanged) {
+                                        form.setValue(`details.${index}.credit`, roundedTax, { shouldValidate: true });
+                                        form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                        totalTaxAmount += roundedTax;
+                                    } else {
+                                        // Use user's manual entry (subtracting any debit to get net credit impact)
+                                        totalTaxAmount += Math.round(Number(detail.credit) || 0) - Math.round(Number(detail.debit) || 0);
+                                    }
+                                }
+                            } else {
+                                const hasManualValue = (Number(detail.credit) || 0) > 0 || (Number(detail.debit) || 0) > 0;
+                                if (triggerChanged && !hasManualValue) {
+                                    form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
                                 } else {
-                                    // Use user's manual entry (subtracting any debit to get net credit impact)
                                     totalTaxAmount += Math.round(Number(detail.credit) || 0) - Math.round(Number(detail.debit) || 0);
                                 }
-                            }
-                        } else {
-                            if (triggerChanged) {
-                                form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
-                            } else {
-                                totalTaxAmount += Math.round(Number(detail.credit) || 0) - Math.round(Number(detail.debit) || 0);
                             }
                         }
                     }
@@ -1031,16 +1082,38 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 control={form.control}
                                 name="supplierId"
                                 render={({ field }) => (
-                                    <Autocomplete
-                                        options={suppliers.map(supplier => ({ 
-                                            value: supplier.id, 
-                                            label: `${supplier.code || supplier.name} - ${supplier.name}` 
-                                        }))}
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        placeholder={loadingSuppliers ? "Loading suppliers..." : "Select Supplier (Optional)"}
-                                        disabled={loadingSuppliers}
-                                    />
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1">
+                                            <Autocomplete
+                                                options={suppliers.map(supplier => ({ 
+                                                    value: supplier.id, 
+                                                    label: `${supplier.code || supplier.name} - ${supplier.name}` 
+                                                }))}
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                placeholder={loadingSuppliers ? "Loading suppliers..." : "Select Supplier (Optional)"}
+                                                disabled={loadingSuppliers}
+                                            />
+                                        </div>
+                                        {field.value && (() => {
+                                            const selectedSupplier = suppliers.find(s => s.id === field.value);
+                                            return selectedSupplier ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-10 w-10 shrink-0"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(selectedSupplier.name);
+                                                        toast.success(`Copied supplier name: "${selectedSupplier.name}"`);
+                                                    }}
+                                                    title="Copy Supplier Name"
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            ) : null;
+                                        })()}
+                                    </div>
                                 )}
                             />
                             {suppliersError && <p className="text-xs text-amber-600">{suppliersError}</p>}
@@ -1366,7 +1439,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                         placeholder="Select Account"
                                         excludeTags={true}
                                         disabled={isPending}
-                                        mode="modal"
+                                        mode="popover"
                                     />
                                 </div>
 
@@ -1394,27 +1467,29 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 {/* Tax Type Selection */}
                                 <div className="md:col-span-4 space-y-1 select-none">
                                     <Label className="text-[11px] text-muted-foreground font-semibold">TAX TYPE</Label>
-                                    <RadioGroup
-                                        value={entryLine.taxType}
-                                        onValueChange={(val) => setEntryLine(prev => ({ ...prev, taxType: val as any }))}
-                                        disabled={isPending}
-                                        className="flex h-9 items-center gap-1 border rounded-md px-2 bg-background border-input"
-                                    >
-                                        {(["Taxable", "BTL", "REIMB"] as const).map((opt) => (
-                                            <Label
+                                    <div className="flex h-9 items-center gap-1 border rounded-md px-1 bg-background border-input">
+                                        {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => (
+                                            <button
                                                 key={opt}
+                                                type="button"
+                                                disabled={isPending}
+                                                onClick={() => {
+                                                    setEntryLine(prev => ({
+                                                        ...prev,
+                                                        taxType: prev.taxType === opt ? "" : opt
+                                                    }));
+                                                }}
                                                 className={cn(
-                                                    "flex-1 flex items-center justify-center gap-1 cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center",
+                                                    "flex-1 flex items-center justify-center cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center h-7",
                                                     entryLine.taxType === opt
                                                         ? "bg-primary text-primary-foreground border-primary"
                                                         : "border-transparent text-muted-foreground hover:bg-accent"
                                                 )}
                                             >
-                                                <RadioGroupItem value={opt} className="sr-only" />
                                                 {opt}
-                                            </Label>
+                                            </button>
                                         ))}
-                                    </RadioGroup>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1626,7 +1701,18 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                         {tagNode && (
                                                             <div className="text-xs text-muted-foreground font-mono mt-0.5 flex items-center gap-1">
                                                                 <span className="px-1.5 py-0.2 rounded bg-muted font-sans text-[9px] uppercase border font-semibold">Tag</span>
-                                                                {tagNode.code} - {tagNode.name}
+                                                                <span>{tagNode.code} - {tagNode.name}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(tagNode.name);
+                                                                        toast.success(`Copied tag name: "${tagNode.name}"`);
+                                                                    }}
+                                                                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                    title="Copy tag account name"
+                                                                >
+                                                                    <Copy className="h-3 w-3" />
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </td>
@@ -1646,7 +1732,9 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                                             {field.taxableValue > 0 && (
                                                                 <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] font-mono">Taxable Val: {field.taxableValue.toLocaleString()}</span>
                                                             )}
-                                                            <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] text-blue-600 dark:text-blue-400 font-semibold uppercase">{field.taxType}</span>
+                                                            {field.taxType && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] text-blue-600 dark:text-blue-400 font-semibold uppercase">{field.taxType}</span>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-foreground">
@@ -1763,26 +1851,25 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                             control={form.control}
                             name="taxType"
                             render={({ field }) => (
-                                <RadioGroup
-                                    value={field.value ?? "Taxable"}
-                                    onValueChange={field.onChange}
-                                    className="flex gap-2"
-                                >
-                                    {(["Taxable", "BTL", "REIMB"] as const).map((opt) => (
-                                        <Label
+                                <div className="flex gap-2">
+                                    {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => (
+                                        <button
                                             key={opt}
+                                            type="button"
+                                            onClick={() => {
+                                                field.onChange(field.value === opt ? "" : opt);
+                                            }}
                                             className={cn(
-                                                "flex items-center gap-1 cursor-pointer px-3 py-1.5 rounded text-xs font-semibold border transition-colors",
+                                                "flex items-center justify-center cursor-pointer px-3 py-1.5 rounded text-xs font-semibold border transition-colors h-8",
                                                 field.value === opt
                                                     ? "bg-primary text-primary-foreground border-primary"
                                                     : "border-gray-300 dark:border-input text-muted-foreground hover:bg-accent"
                                             )}
                                         >
-                                            <RadioGroupItem value={opt} className="sr-only" />
                                             {opt}
-                                        </Label>
+                                        </button>
                                     ))}
-                                </RadioGroup>
+                                </div>
                             )}
                         />
                     </div>

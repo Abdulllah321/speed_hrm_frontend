@@ -91,6 +91,30 @@ function TagAccountSelect({ children, value, onValueChange, disabled, id }: {
                     <span className={cn("flex-1 min-w-0 truncate", !selected && "text-muted-foreground")}>
                         {selected ? `${selected.code} - ${selected.name}` : "Tag sub-account (optional)"}
                     </span>
+                    {selected && (
+                        <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                navigator.clipboard.writeText(selected.name);
+                                toast.success(`Copied tag name: "${selected.name}"`);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    navigator.clipboard.writeText(selected.name);
+                                    toast.success(`Copied tag name: "${selected.name}"`);
+                                }
+                            }}
+                            className="p-1 ml-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            title="Copy tag account name"
+                        >
+                            <Copy className="h-3.5 w-3.5" />
+                        </span>
+                    )}
                     <ChevronDownIcon className={cn("ml-1 h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
                 </button>
             </PopoverTrigger>
@@ -137,6 +161,7 @@ type InvoiceReceiptEntry = {
 
 export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const router = useRouter();
+    const isRestoring = useRef(false);
     const [isPending, setIsPending] = useState(false);
     const [customers, setCustomers] = useState<any[]>([]);
     const [pendingInvoices, setPendingInvoices] = useState<any[]>([]);
@@ -157,7 +182,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             description: initialData?.description || "",
             customerId: initialData?.customerId || "",
             isAdvance: initialData?.isAdvance ?? false,
-            taxType: (initialData?.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
+            taxType: (initialData?.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "Taxable",
             invoices: initialData?.invoices || [],
             details: initialData?.details
                 ? initialData.details.map((d: any) => ({
@@ -168,7 +193,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
                       refBillNo2: d.refBillNo2 || "",
-                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
+                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "Taxable",
                   }))
                 : [],
         },
@@ -187,7 +212,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
         narration: "",
         refBillNo: "",
         refBillNo2: "",
-        taxType: "Taxable" as "Taxable" | "BTL" | "REIMB",
+        taxType: "Taxable" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
     });
 
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -382,6 +407,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
 
     useEffect(() => {
         if (initialData) return;
+        if (isRestoring.current) return;
         const prefix = voucherType === "bank" ? "BRV" : "CRV";
         const datePart = `${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}`;
         form.setValue("rvNo", `${prefix}${datePart}${Math.floor(1000 + Math.random() * 9000)}`);
@@ -479,7 +505,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             narration: fromRow.narration || "",
             refBillNo: fromRow.refBillNo || "",
             refBillNo2: fromRow.refBillNo2 || "",
-            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB",
+            taxType: (fromRow.taxType ?? "Taxable") as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
         };
         
         if (targetIndex < currentDetails.length) {
@@ -524,24 +550,28 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                     const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
 
                     if (accountNode?.code && tagNode?.code) {
-                        if (taxableAmount > 0) {
-                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, taxableAmount);
-                            if (calculatedTax !== null) {
-                                const roundedTax = Math.round(calculatedTax);
-                                if (triggerChanged) {
-                                    form.setValue(`details.${index}.debit`, roundedTax, { shouldValidate: true });
-                                    form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
-                                    totalTaxAmount += roundedTax;
+                        const isTaxAccount = calculateTaxForAccount(accountNode.code, tagNode.code, 100) !== null;
+                        if (isTaxAccount) {
+                            if (taxableAmount > 0) {
+                                const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, taxableAmount);
+                                if (calculatedTax !== null) {
+                                    const roundedTax = Math.round(calculatedTax);
+                                    if (triggerChanged) {
+                                        form.setValue(`details.${index}.debit`, roundedTax, { shouldValidate: true });
+                                        form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                                        totalTaxAmount += roundedTax;
+                                    } else {
+                                        // Use user's manual entry (subtracting any credit to get net debit impact)
+                                        totalTaxAmount += Math.round(Number(detail.debit) || 0) - Math.round(Number(detail.credit) || 0);
+                                    }
+                                }
+                            } else {
+                                const hasManualValue = (Number(detail.debit) || 0) > 0 || (Number(detail.credit) || 0) > 0;
+                                if (triggerChanged && !hasManualValue) {
+                                    form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
                                 } else {
-                                    // Use user's manual entry (subtracting any credit to get net debit impact)
                                     totalTaxAmount += Math.round(Number(detail.debit) || 0) - Math.round(Number(detail.credit) || 0);
                                 }
-                            }
-                        } else {
-                            if (triggerChanged) {
-                                form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
-                            } else {
-                                totalTaxAmount += Math.round(Number(detail.debit) || 0) - Math.round(Number(detail.credit) || 0);
                             }
                         }
                     }
@@ -600,6 +630,28 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const voucherNo = watchAllFields.rvNo;
     useEffect(() => {
         if (initialData || !voucherNo) return;
+
+        // Avoid saving empty drafts (no details, no description, no customer, no cheque/refs)
+        const hasFormDetails = watchAllFields.details?.some((d: any) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0 || d.narration || d.refBillNo);
+        const hasInvoices = selectedInvoices.length > 0;
+        const hasDescriptionOrCustomer = watchAllFields.description || watchAllFields.customerId;
+        const hasReferenceOrCheque = watchAllFields.refBillNo || watchAllFields.chequeNo;
+
+        if (!hasFormDetails && !hasInvoices && !hasDescriptionOrCustomer && !hasReferenceOrCheque) {
+            // Delete draft if it exists to keep localStorage clean (e.g. if user cleared form)
+            const draftsJson = localStorage.getItem("receipt-voucher-drafts");
+            if (draftsJson) {
+                try {
+                    const drafts = JSON.parse(draftsJson);
+                    if (drafts[voucherNo]) {
+                        delete drafts[voucherNo];
+                        localStorage.setItem("receipt-voucher-drafts", JSON.stringify(drafts));
+                    }
+                } catch {}
+            }
+            return;
+        }
+
         const draftData = {
             formValues: watchAllFields,
             selectedInvoices,
@@ -638,11 +690,15 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             if (urlDraftId) {
                 const draft = drafts[urlDraftId];
                 if (draft && draft.formValues) {
+                    isRestoring.current = true;
                     if (draft.formValues.rvDate) draft.formValues.rvDate = new Date(draft.formValues.rvDate);
                     if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
                     if (draft.formValues.chequeDate) draft.formValues.chequeDate = new Date(draft.formValues.chequeDate);
                     form.reset(draft.formValues);
                     if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                    setTimeout(() => {
+                        isRestoring.current = false;
+                    }, 300);
                     toast.success(`Restored draft: ${urlDraftId}`);
                 }
             } else {
@@ -659,6 +715,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                             action: {
                                 label: "Restore",
                                 onClick: () => {
+                                    isRestoring.current = true;
                                     if (draft.formValues) {
                                         if (draft.formValues.rvDate) draft.formValues.rvDate = new Date(draft.formValues.rvDate);
                                         if (draft.formValues.billDate) draft.formValues.billDate = new Date(draft.formValues.billDate);
@@ -666,6 +723,9 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                         form.reset(draft.formValues);
                                     }
                                     if (draft.selectedInvoices) setSelectedInvoices(draft.selectedInvoices);
+                                    setTimeout(() => {
+                                        isRestoring.current = false;
+                                    }, 300);
                                     toast.success("Draft restored!");
                                 }
                             },
@@ -883,13 +943,35 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                         <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground uppercase font-semibold">Customer <span className="font-normal normal-case">(optional)</span></Label>
                             <Controller control={form.control} name="customerId" render={({ field }) => (
-                                <Autocomplete
-                                    options={customers.map(c => ({ value: c.id, label: `${c.code} - ${c.name}` }))}
-                                    value={field.value}
-                                    onValueChange={field.onChange}
-                                    placeholder={loadingCustomers ? "Loading customers..." : "Select Customer (Optional)"}
-                                    disabled={loadingCustomers}
-                                />
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1">
+                                        <Autocomplete
+                                            options={customers.map(c => ({ value: c.id, label: `${c.code} - ${c.name}` }))}
+                                            value={field.value}
+                                            onValueChange={field.onChange}
+                                            placeholder={loadingCustomers ? "Loading customers..." : "Select Customer (Optional)"}
+                                            disabled={loadingCustomers}
+                                        />
+                                    </div>
+                                    {field.value && (() => {
+                                        const selectedCustomer = customers.find(c => c.id === field.value);
+                                        return selectedCustomer ? (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="icon"
+                                                className="h-10 w-10 shrink-0"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(selectedCustomer.name);
+                                                    toast.success(`Copied customer name: "${selectedCustomer.name}"`);
+                                                }}
+                                                title="Copy Customer Name"
+                                            >
+                                                <Copy className="h-4 w-4" />
+                                            </Button>
+                                        ) : null;
+                                    })()}
+                                </div>
                             )} />
                         </div>
 
@@ -1059,7 +1141,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                         placeholder="Select Account"
                                         excludeTags={true}
                                         disabled={isPending}
-                                        mode="modal"
+                                        mode="popover"
                                     />
                                 </div>
 
@@ -1083,27 +1165,29 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                 {/* Tax Type Selection */}
                                 <div className="md:col-span-4 space-y-1 select-none">
                                     <Label className="text-[11px] text-muted-foreground font-semibold">TAX TYPE</Label>
-                                    <RadioGroup
-                                        value={entryLine.taxType}
-                                        onValueChange={(val) => setEntryLine(prev => ({ ...prev, taxType: val as any }))}
-                                        disabled={isPending}
-                                        className="flex h-9 items-center gap-1 border rounded-md px-2 bg-background border-input"
-                                    >
-                                        {(["Taxable", "BTL", "REIMB"] as const).map((opt) => (
-                                            <Label
+                                    <div className="flex h-9 items-center gap-1 border rounded-md px-1 bg-background border-input">
+                                        {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => (
+                                            <button
                                                 key={opt}
+                                                type="button"
+                                                disabled={isPending}
+                                                onClick={() => {
+                                                    setEntryLine(prev => ({
+                                                        ...prev,
+                                                        taxType: prev.taxType === opt ? "" : opt
+                                                    }));
+                                                }}
                                                 className={cn(
-                                                    "flex-1 flex items-center justify-center gap-1 cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center",
+                                                    "flex-1 flex items-center justify-center cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center h-7",
                                                     entryLine.taxType === opt
                                                         ? "bg-primary text-primary-foreground border-primary"
                                                         : "border-transparent text-muted-foreground hover:bg-accent"
                                                 )}
                                             >
-                                                <RadioGroupItem value={opt} className="sr-only" />
                                                 {opt}
-                                            </Label>
+                                            </button>
                                         ))}
-                                    </RadioGroup>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1297,7 +1381,18 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                         {tagNode && (
                                                             <div className="text-xs text-muted-foreground font-mono mt-0.5 flex items-center gap-1">
                                                                 <span className="px-1.5 py-0.2 rounded bg-muted font-sans text-[9px] uppercase border font-semibold">Tag</span>
-                                                                {tagNode.code} - {tagNode.name}
+                                                                <span>{tagNode.code} - {tagNode.name}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(tagNode.name);
+                                                                        toast.success(`Copied tag name: "${tagNode.name}"`);
+                                                                    }}
+                                                                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                    title="Copy tag account name"
+                                                                >
+                                                                    <Copy className="h-3 w-3" />
+                                                                </button>
                                                             </div>
                                                         )}
                                                     </td>
@@ -1314,7 +1409,9 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                             {field.refBillNo2 && (
                                                                 <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] font-mono">Ref2: {field.refBillNo2}</span>
                                                             )}
-                                                            <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] text-blue-600 dark:text-blue-400 font-semibold uppercase">{field.taxType}</span>
+                                                            {field.taxType && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] text-blue-600 dark:text-blue-400 font-semibold uppercase">{field.taxType}</span>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-foreground">
