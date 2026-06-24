@@ -172,7 +172,13 @@ export default function EditPurchaseReturnPage() {
               <div>
                 <Label>Source Type</Label>
                 <Input 
-                  value={purchaseReturn.sourceType === 'GRN' ? 'GRN' : 'Landed Cost'} 
+                  value={
+                    purchaseReturn.sourceType === 'INVOICE' 
+                      ? 'Purchase Invoice' 
+                      : purchaseReturn.sourceType === 'GRN' 
+                        ? 'GRN' 
+                        : 'Landed Cost'
+                  } 
                   disabled 
                 />
               </div>
