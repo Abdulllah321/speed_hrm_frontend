@@ -11,9 +11,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Printer, Download, Plus, Eye, CheckCircle2 } from "lucide-react";
+import { Printer, Download, Plus, Eye, CheckCircle2, Loader2 } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { JournalVoucher, updateJournalVoucher } from "@/lib/actions/journal-voucher";
+import { queueJournalVouchersExport } from "@/lib/actions/journal-voucher";
 import { JournalVoucherPrint } from "./journal-voucher-print";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -59,6 +60,27 @@ export function JournalVoucherList({
     const [showFilterInfo, setShowFilterInfo] = useState(false);
     const [localDrafts, setLocalDrafts] = useState<LocalDraft[]>([]);
     const [printingVoucher, setPrintingVoucher] = useState<JournalVoucher | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const result = await queueJournalVouchersExport({
+                status: status !== "all" ? status : undefined,
+                dateFrom: fromDate ? fromDate.toISOString().split("T")[0] : undefined,
+                dateTo:   toDate   ? toDate.toISOString().split("T")[0]   : undefined,
+            });
+            if (result.status) {
+                toast.success("Export queued! You'll receive a notification when your file is ready.");
+            } else {
+                toast.error(result.message || "Failed to queue export.");
+            }
+        } catch {
+            toast.error("An unexpected error occurred while queuing export.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     useEffect(() => {
         const handleAfterPrint = () => {
@@ -318,9 +340,11 @@ export function JournalVoucherList({
                             <Printer className="mr-2 h-4 w-4" />
                             Print
                         </Button>
-                        <Button variant="outline" size="sm">
-                            <Download className="mr-2 h-4 w-4" />
-                            Export (xlsx)
+                        <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
+                            {isExporting
+                                ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                : <Download className="mr-2 h-4 w-4" />}
+                            {isExporting ? "Queuing..." : "Export (xlsx)"}
                         </Button>
                     </div>
                 </CardHeader>

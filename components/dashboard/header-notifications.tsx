@@ -382,6 +382,65 @@ export function HeaderNotifications() {
       return;
     }
 
+    // journal-voucher-export.ready
+    if (n.actionType === "journal-voucher-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/finance/journal-vouchers/export/${jobId}/download`,
+            `journal-vouchers-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Journal Voucher export download failed:", e);
+      }
+      return;
+    }
+
+    // payment-voucher-export.ready
+    if (n.actionType === "payment-voucher-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/finance/payment-vouchers/export/${jobId}/download`,
+            `payment-vouchers-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Payment Voucher export download failed:", e);
+      }
+      return;
+    }
+
+    // receipt-voucher-export.ready
+    if (n.actionType === "receipt-voucher-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/finance/receipt-vouchers/export/${jobId}/download`,
+            `receipt-vouchers-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Receipt Voucher export download failed:", e);
+      }
+      return;
+    }
 
     const route = getActionRoute(n);
     if (route) router.push(route);

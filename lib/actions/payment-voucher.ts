@@ -374,3 +374,35 @@ export async function updatePaymentVoucherStatus(id: string, status: "approved" 
         return { status: false, message: error.message || "An unexpected error occurred" };
     }
 }
+
+// ── Background export ─────────────────────────────────────────────────────────
+export async function queuePaymentVouchersExport(opts?: {
+    type?: string;
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+}): Promise<{ status: boolean; jobId?: string; message?: string }> {
+    try {
+        const params = new URLSearchParams();
+        if (opts?.type   && opts.type   !== 'all') params.set('type',   opts.type);
+        if (opts?.status && opts.status !== 'all') params.set('status', opts.status);
+        if (opts?.dateFrom)                         params.set('dateFrom', opts.dateFrom);
+        if (opts?.dateTo)                           params.set('dateTo',   opts.dateTo);
+
+        const response = await authFetch(
+            `/finance/payment-vouchers/export?${params.toString()}`,
+            { method: 'POST' },
+        );
+
+        if (!response.ok) {
+            const err = response.data || {};
+            return { status: false, message: err.message || 'Failed to queue export' };
+        }
+
+        const result = response.data;
+        return { status: true, jobId: result?.data?.jobId };
+    } catch (error: any) {
+        return { status: false, message: error.message || 'An unexpected error occurred' };
+    }
+}
+
