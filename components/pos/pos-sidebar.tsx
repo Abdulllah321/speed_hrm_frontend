@@ -30,6 +30,7 @@ import {
     Wallet,
     PauseCircle,
     BookOpen,
+    FileText,
 } from "lucide-react";
 import { cn, COMPANY_NAME } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -45,6 +46,7 @@ const posMenuGroups = [
             { title: "Returns & Exchanges", icon: RefreshCw, href: "/pos/sales/returns" },
             { title: "Customer Ladger", icon: BookOpen, href: "/pos/customer-ledger" },
             { title: "Cash Drawer", icon: Wallet, href: "/pos/terminal/drawer" },
+            { title: "Reconciliation Report", icon: FileText, href: "/pos/reports/reconciliation" },
         ],
     },
     {

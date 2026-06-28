@@ -1678,7 +1678,13 @@ export const menuData: MenuItem[] = [
         title: "Stock Activity",
         href:"/pos/reports/stock-activity",
         permissions: ["pos.report.view"]
-      }
+      },
+      {
+        title: "Sales Reconciliation",
+        href:"/pos/reports/reconciliation",
+        permissions: ["pos.report.view"]
+      },
+    
     ],
   },
 
