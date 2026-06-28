@@ -74,12 +74,14 @@ export async function getStockActivityReport(filters: {
     locationId: string;
     startDate?: string;
     endDate?: string;
+    summaryOnly?: boolean;
 }) {
     try {
         const queryParams = new URLSearchParams();
         queryParams.append("locationId", filters.locationId);
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
 
         const queryString = queryParams.toString();
         const url = `/stock-ledger/activity-report${queryString ? `?${queryString}` : ""}`;
@@ -96,6 +98,8 @@ export async function queueStockActivityReportExport(filters: {
     locationId: string;
     startDate?: string;
     endDate?: string;
+    format: "xlsx" | "pdf";
+    summaryOnly?: boolean;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const url = `/stock-ledger/activity-report/export/queue`;
@@ -106,6 +110,8 @@ export async function queueStockActivityReportExport(filters: {
                 locationId: filters.locationId,
                 startDate: filters.startDate,
                 endDate: filters.endDate,
+                format: filters.format,
+                summaryOnly: !!filters.summaryOnly,
             }),
         });
         return response.data ?? { status: false, message: "No response from server" };

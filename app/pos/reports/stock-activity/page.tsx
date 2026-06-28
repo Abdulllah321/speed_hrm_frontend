@@ -39,14 +39,20 @@ export default function PosStockActivityReportPage() {
         to: endOfMonth(new Date()),
     });
 
+    const [summaryOnly, setSummaryOnly] = useState(false);
     const [reportData, setReportData] = useState<any[]>([]);
     const [isPending, startTransition] = useTransition();
     const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
-    // Export Background Queue States
+    // Excel Export Background Queue States
     const [exportJobId, setExportJobId] = useState<string | null>(null);
     const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
     const [exportProgress, setExportProgress] = useState<number>(0);
+
+    // PDF Export Background Queue States
+    const [pdfJobId, setPdfJobId] = useState<string | null>(null);
+    const [pdfExportState, setPdfExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
+    const [pdfExportProgress, setPdfExportProgress] = useState<number>(0);
 
     const fetchReport = useCallback(() => {
         if (!locationId || !dateRange.from || !dateRange.to) return;
@@ -55,6 +61,7 @@ export default function PosStockActivityReportPage() {
                 locationId,
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
+                summaryOnly,
             });
             if (result && result.status !== false) {
                 setReportData(result.data || result);
@@ -62,13 +69,13 @@ export default function PosStockActivityReportPage() {
                 toast.error("Failed to load report data");
             }
         });
-    }, [locationId, dateRange]);
+    }, [locationId, dateRange, summaryOnly]);
 
     useEffect(() => {
         fetchReport();
-    }, [locationId]);
+    }, [locationId, summaryOnly]);
 
-    // Poll Export Job Status
+    // Poll Excel Export Job Status
     useEffect(() => {
         if (exportState !== "queueing" && exportState !== "processing") return;
         if (!exportJobId) return;
@@ -86,7 +93,7 @@ export default function PosStockActivityReportPage() {
                         clearInterval(interval);
                     } else if (state === "failed") {
                         setExportState("failed");
-                        toast.error("Background export processing failed.");
+                        toast.error("Background Excel export processing failed.");
                         clearInterval(interval);
                     } else {
                         setExportState("processing");
@@ -99,6 +106,38 @@ export default function PosStockActivityReportPage() {
 
         return () => clearInterval(interval);
     }, [exportState, exportJobId]);
+
+    // Poll PDF Export Job Status
+    useEffect(() => {
+        if (pdfExportState !== "queueing" && pdfExportState !== "processing") return;
+        if (!pdfJobId) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await getStockActivityReportExportStatus(pdfJobId);
+                if (res && res.status) {
+                    const { state, progress } = res.data || {};
+                    setPdfExportProgress(progress || 0);
+
+                    if (state === "completed") {
+                        setPdfExportState("completed");
+                        toast.success("PDF Report generated successfully! Ready to download.");
+                        clearInterval(interval);
+                    } else if (state === "failed") {
+                        setPdfExportState("failed");
+                        toast.error("Background PDF generation failed.");
+                        clearInterval(interval);
+                    } else {
+                        setPdfExportState("processing");
+                    }
+                }
+            } catch (err) {
+                console.error("Error polling PDF job status:", err);
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [pdfExportState, pdfJobId]);
 
     const handleExportExcelClick = async () => {
         if (!locationId || !dateRange.from || !dateRange.to) return;
@@ -123,7 +162,7 @@ export default function PosStockActivityReportPage() {
                     document.body.removeChild(anchor);
                     URL.revokeObjectURL(objectUrl);
                     
-                    // Reset to idle state after download
+                    // Reset
                     setExportState("idle");
                     setExportJobId(null);
                     setExportProgress(0);
@@ -139,20 +178,22 @@ export default function PosStockActivityReportPage() {
             return;
         }
 
-        // Otherwise queue a new job
+        // Queue Excel job
         setExportState("queueing");
         try {
             const res = await queueStockActivityReportExport({
                 locationId,
                 startDate: dateRange.from.toISOString(),
                 endDate: dateRange.to.toISOString(),
+                format: "xlsx",
+                summaryOnly,
             });
 
             if (res && res.status && res.data?.jobId) {
                 setExportJobId(res.data.jobId);
                 setExportState("processing");
                 setExportProgress(5);
-                toast.info("Background Excel generation queued. Monitor progress on the export button.");
+                toast.info("Background Excel generation queued.");
             } else {
                 setExportState("failed");
                 toast.error(res.message || "Failed to queue export job.");
@@ -164,72 +205,120 @@ export default function PosStockActivityReportPage() {
         }
     };
 
-    const handleDownloadPdf = async () => {
+    const handleExportPdfClick = async () => {
         if (!locationId || !dateRange.from || !dateRange.to) return;
-        const base = getApiBaseUrl();
-        const queryParams = new URLSearchParams();
-        queryParams.append("locationId", locationId);
-        queryParams.append("startDate", dateRange.from.toISOString());
-        queryParams.append("endDate", dateRange.to.toISOString());
 
-        const downloadUrl = `${base}/stock-ledger/activity-report/pdf?${queryParams.toString()}`;
-        const filename = `stock-activity-report-${format(new Date(), "yyyy-MM-dd")}.pdf`;
+        // If completed, trigger download
+        if (pdfExportState === "completed" && pdfJobId) {
+            const base = getApiBaseUrl();
+            const url = `${base}/stock-ledger/activity-report/export/${pdfJobId}/download`;
+            const filename = `stock-activity-report-${format(new Date(), "yyyy-MM-dd")}.pdf`;
+            
+            setDownloadingFile(filename);
+            try {
+                const response = await fetch(url, { credentials: "include" });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    const anchor = document.createElement("a");
+                    anchor.href = objectUrl;
+                    anchor.download = filename;
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    document.body.removeChild(anchor);
+                    URL.revokeObjectURL(objectUrl);
+                    
+                    // Reset
+                    setPdfExportState("idle");
+                    setPdfJobId(null);
+                    setPdfExportProgress(0);
+                } else {
+                    toast.error("Download failed. The file may have expired.");
+                }
+            } catch (err) {
+                console.error(err);
+                toast.error("Failed to connect to the server.");
+            } finally {
+                setDownloadingFile(null);
+            }
+            return;
+        }
 
-        setDownloadingFile(filename);
+        // Queue PDF job
+        setPdfExportState("queueing");
         try {
-            const response = await fetch(downloadUrl, { credentials: "include" });
-            if (response.ok) {
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
-                const anchor = document.createElement("a");
-                anchor.href = objectUrl;
-                anchor.download = filename;
-                document.body.appendChild(anchor);
-                anchor.click();
-                document.body.removeChild(anchor);
-                URL.revokeObjectURL(objectUrl);
-                toast.success("PDF Report downloaded successfully.");
+            const res = await queueStockActivityReportExport({
+                locationId,
+                startDate: dateRange.from.toISOString(),
+                endDate: dateRange.to.toISOString(),
+                format: "pdf",
+                summaryOnly,
+            });
+
+            if (res && res.status && res.data?.jobId) {
+                setPdfJobId(res.data.jobId);
+                setPdfExportState("processing");
+                setPdfExportProgress(5);
+                toast.info("Background PDF generation queued.");
             } else {
-                toast.error("PDF generation failed on the server.");
+                setPdfExportState("failed");
+                toast.error(res.message || "Failed to queue export job.");
             }
         } catch (err) {
+            setPdfExportState("failed");
             console.error(err);
-            toast.error("Failed to connect to the server.");
-        } finally {
-            setDownloadingFile(null);
+            toast.error("Failed to queue export job.");
         }
     };
 
-    // Calculate High Level Metrics from nested hierarchy
-    const summaryMetrics = useMemo(() => {
-        const m = {
+    // Calculate High Level & Grand Totals Metrics
+    const grandTotals = useMemo(() => {
+        const t = {
             totalArticles: 0,
-            openingBal: 0,
-            trfIn: 0,
-            trfOut: 0,
+            bf: 0,
+            fromWarehouse: 0,
+            fromOutlet: 0,
+            totalTrfIn: 0,
+            toWarehouse: 0,
+            toOutlet: 0,
+            totalTrfOut: 0,
+            exchg: 0,
+            refund: 0,
+            claim: 0,
             sales: 0,
+            adj: 0,
+            availableStock: 0,
             transit: 0,
-            closingBal: 0,
+            balance: 0,
         };
 
-        for (const g of reportData) {
-            m.openingBal += g.totals.bf;
-            m.trfIn += g.totals.totalTrfIn;
-            m.trfOut += g.totals.totalTrfOut;
-            m.sales += g.totals.sales;
-            m.transit += g.totals.transit;
-            m.closingBal += g.totals.balance;
+        for (const d of reportData) {
+            t.bf += d.totals.bf;
+            t.fromWarehouse += d.totals.fromWarehouse;
+            t.fromOutlet += d.totals.fromOutlet;
+            t.totalTrfIn += d.totals.totalTrfIn;
+            t.toWarehouse += d.totals.toWarehouse;
+            t.toOutlet += d.totals.toOutlet;
+            t.totalTrfOut += d.totals.totalTrfOut;
+            t.exchg += d.totals.exchg;
+            t.refund += d.totals.refund;
+            t.claim += d.totals.claim;
+            t.sales += d.totals.sales;
+            t.adj += d.totals.adj;
+            t.availableStock += d.totals.availableStock;
+            t.transit += d.totals.transit;
+            t.balance += d.totals.balance;
 
             // Recurse to count total articles
-            g.categories.forEach((cat: any) => {
-                cat.divisions.forEach((div: any) => {
-                    div.brands.forEach((br: any) => {
-                        m.totalArticles += br.articles.length;
+            d.brands.forEach((br: any) => {
+                br.genders.forEach((g: any) => {
+                    g.categories.forEach((cat: any) => {
+                        t.totalArticles += cat.articles.length;
                     });
                 });
             });
         }
-        return m;
+        return t;
     }, [reportData]);
 
     const getExportButtonText = () => {
@@ -245,6 +334,22 @@ export default function PosStockActivityReportPage() {
             case "idle":
             default:
                 return "Export Excel";
+        }
+    };
+
+    const getPdfButtonText = () => {
+        switch (pdfExportState) {
+            case "queueing":
+                return "Queueing...";
+            case "processing":
+                return `Generating ${pdfExportProgress}%`;
+            case "completed":
+                return "Download PDF";
+            case "failed":
+                return "Retry PDF Export";
+            case "idle":
+            default:
+                return "Export PDF";
         }
     };
 
@@ -264,13 +369,22 @@ export default function PosStockActivityReportPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     <Button
-                        variant="outline"
-                        onClick={handleDownloadPdf}
-                        disabled={reportData.length === 0}
-                        className="border-red-500/40 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30 gap-2 font-semibold"
+                        variant={pdfExportState === "completed" ? "default" : "outline"}
+                        onClick={handleExportPdfClick}
+                        disabled={(pdfExportState === "queueing" || pdfExportState === "processing") || reportData.length === 0}
+                        className={cn(
+                            "gap-2 font-semibold transition-all",
+                            pdfExportState === "completed"
+                                ? "bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700 border-none"
+                                : "border-red-500/40 text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                        )}
                     >
-                        <Printer className="h-4 w-4" />
-                        Download PDF
+                        {pdfExportState === "queueing" || pdfExportState === "processing" ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-red-600" />
+                        ) : (
+                            <Printer className="h-4 w-4" />
+                        )}
+                        {getPdfButtonText()}
                     </Button>
                     <Button
                         variant={exportState === "completed" ? "default" : "outline"}
@@ -305,7 +419,7 @@ export default function PosStockActivityReportPage() {
 
             {/* Filters Row */}
             <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/40 border p-4 rounded-xl shadow-sm no-print">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                     <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5" />
                         Date Period:
@@ -328,11 +442,24 @@ export default function PosStockActivityReportPage() {
                     >
                         Apply / Refresh
                     </Button>
+
+                    <div className="flex items-center gap-2 border-l pl-4 ml-2">
+                        <input
+                            type="checkbox"
+                            id="summaryOnlyToggle"
+                            checked={summaryOnly}
+                            onChange={(e) => setSummaryOnly(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
+                        />
+                        <label htmlFor="summaryOnlyToggle" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none">
+                            Summary Only (Hide Sizes)
+                        </label>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
                     <Folder className="h-4 w-4 text-primary" />
-                    <span>Innovative Network &bull; Hierarchical Structure Preview</span>
+                    <span>Innovative Network &bull; Division &rarr; Brand &rarr; Gender &rarr; Category</span>
                 </div>
             </div>
 
@@ -342,7 +469,7 @@ export default function PosStockActivityReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Total Articles</p>
-                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{summaryMetrics.totalArticles}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{grandTotals.totalArticles}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-blue-50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400">
                             <Layers className="h-5 w-5" />
@@ -354,7 +481,7 @@ export default function PosStockActivityReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Opening Balance</p>
-                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{summaryMetrics.openingBal}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{grandTotals.bf}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-slate-100 dark:bg-slate-800 text-slate-600">
                             <Inbox className="h-5 w-5" />
@@ -366,7 +493,7 @@ export default function PosStockActivityReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Transfers IN (Net)</p>
-                            <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">+{summaryMetrics.trfIn}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">+{grandTotals.totalTrfIn}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600">
                             <ArrowUpRight className="h-5 w-5" />
@@ -378,7 +505,7 @@ export default function PosStockActivityReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Transfers OUT (Net)</p>
-                            <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-400">-{summaryMetrics.trfOut}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-400">-{grandTotals.totalTrfOut}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-rose-50 dark:bg-rose-950/20 text-rose-600">
                             <ArrowDownRight className="h-5 w-5" />
@@ -390,7 +517,7 @@ export default function PosStockActivityReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Total Sales</p>
-                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{summaryMetrics.sales}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{grandTotals.sales}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400">
                             <ShoppingCart className="h-5 w-5" />
@@ -402,7 +529,7 @@ export default function PosStockActivityReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">In Transit</p>
-                            <h3 className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-500">{summaryMetrics.transit}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-amber-600 dark:text-amber-500">{grandTotals.transit}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-amber-50 dark:bg-amber-950/20 text-amber-600">
                             <RefreshCw className="h-5 w-5" />
@@ -454,103 +581,103 @@ export default function PosStockActivityReportPage() {
                                     </td>
                                 </tr>
                             ) : (
-                                reportData.map((genderNode) => (
-                                    <React.Fragment key={genderNode.gender}>
-                                        {/* GENDER ROW */}
-                                        <tr className="bg-slate-200 dark:bg-slate-800 font-black text-slate-800 dark:text-slate-100 border-b">
+                                reportData.map((divisionNode) => (
+                                    <React.Fragment key={divisionNode.division}>
+                                        {/* DIVISION ROW */}
+                                        <tr className="bg-slate-900 text-slate-100 font-black border-b">
                                             <td colSpan={3} className="p-3 border-r text-sm">
-                                                GENDER: {genderNode.gender.toUpperCase()}
+                                                DIVISION: {divisionNode.division.toUpperCase()}
                                             </td>
-                                            <td className="p-3 border-r text-right">{genderNode.totals.bf}</td>
-                                            <td className="p-3 text-right bg-emerald-500/5">{genderNode.totals.fromWarehouse}</td>
-                                            <td className="p-3 text-right bg-emerald-500/5">{genderNode.totals.fromOutlet}</td>
-                                            <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-700 font-black">{genderNode.totals.totalTrfIn}</td>
-                                            <td className="p-3 text-right bg-rose-500/5">{genderNode.totals.toWarehouse}</td>
-                                            <td className="p-3 text-right bg-rose-500/5">{genderNode.totals.toOutlet}</td>
-                                            <td className="p-3 border-r text-right bg-rose-500/10 text-rose-700 font-black">{genderNode.totals.totalTrfOut}</td>
-                                            <td className="p-3 border-r text-right">{genderNode.totals.exchg}</td>
-                                            <td className="p-3 border-r text-right">{genderNode.totals.refund}</td>
-                                            <td className="p-3 border-r text-right">{genderNode.totals.claim}</td>
-                                            <td className="p-3 border-r text-right">{genderNode.totals.sales}</td>
-                                            <td className="p-3 border-r text-right">{genderNode.totals.adj}</td>
-                                            <td className="p-3 border-r text-right bg-blue-500/5 text-blue-700 font-black">{genderNode.totals.availableStock}</td>
-                                            <td className="p-3 border-r text-right text-amber-700 font-black">{genderNode.totals.transit}</td>
-                                            <td className="p-3 text-right bg-slate-500/5 font-black">{genderNode.totals.balance}</td>
+                                            <td className="p-3 border-r text-right">{divisionNode.totals.bf}</td>
+                                            <td className="p-3 text-right bg-emerald-500/5">{divisionNode.totals.fromWarehouse}</td>
+                                            <td className="p-3 text-right bg-emerald-500/5">{divisionNode.totals.fromOutlet}</td>
+                                            <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-400 font-black">{divisionNode.totals.totalTrfIn}</td>
+                                            <td className="p-3 text-right bg-rose-500/5">{divisionNode.totals.toWarehouse}</td>
+                                            <td className="p-3 text-right bg-rose-500/5">{divisionNode.totals.toOutlet}</td>
+                                            <td className="p-3 border-r text-right bg-rose-500/10 text-rose-400 font-black">{divisionNode.totals.totalTrfOut}</td>
+                                            <td className="p-3 border-r text-right">{divisionNode.totals.exchg}</td>
+                                            <td className="p-3 border-r text-right">{divisionNode.totals.refund}</td>
+                                            <td className="p-3 border-r text-right">{divisionNode.totals.claim}</td>
+                                            <td className="p-3 border-r text-right">{divisionNode.totals.sales}</td>
+                                            <td className="p-3 border-r text-right">{divisionNode.totals.adj}</td>
+                                            <td className="p-3 border-r text-right bg-blue-500/5 text-blue-400 font-black">{divisionNode.totals.availableStock}</td>
+                                            <td className="p-3 border-r text-right text-amber-400 font-black">{divisionNode.totals.transit}</td>
+                                            <td className="p-3 text-right bg-slate-500/5 font-black">{divisionNode.totals.balance}</td>
                                         </tr>
 
-                                        {genderNode.categories.map((catNode: any) => (
-                                            <React.Fragment key={catNode.category}>
-                                                {/* CATEGORY ROW */}
-                                                <tr className="bg-slate-100 dark:bg-slate-900 font-extrabold text-slate-700 dark:text-slate-200 border-b">
+                                        {divisionNode.brands.map((brandNode: any) => (
+                                            <React.Fragment key={brandNode.brand}>
+                                                {/* BRAND ROW */}
+                                                <tr className="bg-slate-750 text-white font-extrabold border-b">
                                                     <td colSpan={3} className="p-3 pl-6 border-r text-xs">
-                                                        &nbsp;&nbsp;CATEGORY: {catNode.category.toUpperCase()}
+                                                        &nbsp;&nbsp;BRAND: {brandNode.brand.toUpperCase()}
                                                     </td>
-                                                    <td className="p-3 border-r text-right">{catNode.totals.bf}</td>
-                                                    <td className="p-3 text-right bg-emerald-500/5">{catNode.totals.fromWarehouse}</td>
-                                                    <td className="p-3 text-right bg-emerald-500/5">{catNode.totals.fromOutlet}</td>
-                                                    <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-700 font-extrabold">{catNode.totals.totalTrfIn}</td>
-                                                    <td className="p-3 text-right bg-rose-500/5">{catNode.totals.toWarehouse}</td>
-                                                    <td className="p-3 text-right bg-rose-500/5">{catNode.totals.toOutlet}</td>
-                                                    <td className="p-3 border-r text-right bg-rose-500/10 text-rose-700 font-extrabold">{catNode.totals.totalTrfOut}</td>
-                                                    <td className="p-3 border-r text-right">{catNode.totals.exchg}</td>
-                                                    <td className="p-3 border-r text-right">{catNode.totals.refund}</td>
-                                                    <td className="p-3 border-r text-right">{catNode.totals.claim}</td>
-                                                    <td className="p-3 border-r text-right">{catNode.totals.sales}</td>
-                                                    <td className="p-3 border-r text-right">{catNode.totals.adj}</td>
-                                                    <td className="p-3 border-r text-right bg-blue-500/5 text-blue-700 font-extrabold">{catNode.totals.availableStock}</td>
-                                                    <td className="p-3 border-r text-right text-amber-700 font-extrabold">{catNode.totals.transit}</td>
-                                                    <td className="p-3 text-right bg-slate-500/5 font-extrabold">{catNode.totals.balance}</td>
+                                                    <td className="p-3 border-r text-right">{brandNode.totals.bf}</td>
+                                                    <td className="p-3 text-right bg-emerald-500/5">{brandNode.totals.fromWarehouse}</td>
+                                                    <td className="p-3 text-right bg-emerald-500/5">{brandNode.totals.fromOutlet}</td>
+                                                    <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-400 font-extrabold">{brandNode.totals.totalTrfIn}</td>
+                                                    <td className="p-3 text-right bg-rose-500/5">{brandNode.totals.toWarehouse}</td>
+                                                    <td className="p-3 text-right bg-rose-500/5">{brandNode.totals.toOutlet}</td>
+                                                    <td className="p-3 border-r text-right bg-rose-500/10 text-rose-400 font-extrabold">{brandNode.totals.totalTrfOut}</td>
+                                                    <td className="p-3 border-r text-right">{brandNode.totals.exchg}</td>
+                                                    <td className="p-3 border-r text-right">{brandNode.totals.refund}</td>
+                                                    <td className="p-3 border-r text-right">{brandNode.totals.claim}</td>
+                                                    <td className="p-3 border-r text-right">{brandNode.totals.sales}</td>
+                                                    <td className="p-3 border-r text-right">{brandNode.totals.adj}</td>
+                                                    <td className="p-3 border-r text-right bg-blue-500/5 text-blue-400 font-extrabold">{brandNode.totals.availableStock}</td>
+                                                    <td className="p-3 border-r text-right text-amber-400 font-extrabold">{brandNode.totals.transit}</td>
+                                                    <td className="p-3 text-right bg-slate-500/5 font-extrabold">{brandNode.totals.balance}</td>
                                                 </tr>
 
-                                                {catNode.divisions.map((divNode: any) => (
-                                                    <React.Fragment key={divNode.division}>
-                                                        {/* DIVISION ROW */}
-                                                        <tr className="bg-slate-50 dark:bg-slate-950/60 font-bold text-slate-600 dark:text-slate-300 border-b">
+                                                {brandNode.genders.map((genderNode: any) => (
+                                                    <React.Fragment key={genderNode.gender}>
+                                                        {/* GENDER ROW */}
+                                                        <tr className="bg-slate-600 text-white font-bold border-b">
                                                             <td colSpan={3} className="p-3 pl-10 border-r text-[11px]">
-                                                                &nbsp;&nbsp;&nbsp;&nbsp;DIVISION: {divNode.division.toUpperCase()}
+                                                                &nbsp;&nbsp;&nbsp;&nbsp;GENDER: {genderNode.gender.toUpperCase()}
                                                             </td>
-                                                            <td className="p-3 border-r text-right">{divNode.totals.bf}</td>
-                                                            <td className="p-3 text-right bg-emerald-500/5">{divNode.totals.fromWarehouse}</td>
-                                                            <td className="p-3 text-right bg-emerald-500/5">{divNode.totals.fromOutlet}</td>
-                                                            <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-700 font-semibold">{divNode.totals.totalTrfIn}</td>
-                                                            <td className="p-3 text-right bg-rose-500/5">{divNode.totals.toWarehouse}</td>
-                                                            <td className="p-3 text-right bg-rose-500/5">{divNode.totals.toOutlet}</td>
-                                                            <td className="p-3 border-r text-right bg-rose-500/10 text-rose-700 font-semibold">{divNode.totals.totalTrfOut}</td>
-                                                            <td className="p-3 border-r text-right">{divNode.totals.exchg}</td>
-                                                            <td className="p-3 border-r text-right">{divNode.totals.refund}</td>
-                                                            <td className="p-3 border-r text-right">{divNode.totals.claim}</td>
-                                                            <td className="p-3 border-r text-right">{divNode.totals.sales}</td>
-                                                            <td className="p-3 border-r text-right">{divNode.totals.adj}</td>
-                                                            <td className="p-3 border-r text-right bg-blue-500/5 text-blue-700 font-semibold">{divNode.totals.availableStock}</td>
-                                                            <td className="p-3 border-r text-right text-amber-700 font-semibold">{divNode.totals.transit}</td>
-                                                            <td className="p-3 text-right bg-slate-500/5 font-semibold">{divNode.totals.balance}</td>
+                                                            <td className="p-3 border-r text-right">{genderNode.totals.bf}</td>
+                                                            <td className="p-3 text-right bg-emerald-500/5">{genderNode.totals.fromWarehouse}</td>
+                                                            <td className="p-3 text-right bg-emerald-500/5">{genderNode.totals.fromOutlet}</td>
+                                                            <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-300 font-semibold">{genderNode.totals.totalTrfIn}</td>
+                                                            <td className="p-3 text-right bg-rose-500/5">{genderNode.totals.toWarehouse}</td>
+                                                            <td className="p-3 text-right bg-rose-500/5">{genderNode.totals.toOutlet}</td>
+                                                            <td className="p-3 border-r text-right bg-rose-500/10 text-rose-300 font-semibold">{genderNode.totals.totalTrfOut}</td>
+                                                            <td className="p-3 border-r text-right">{genderNode.totals.exchg}</td>
+                                                            <td className="p-3 border-r text-right">{genderNode.totals.refund}</td>
+                                                            <td className="p-3 border-r text-right">{genderNode.totals.claim}</td>
+                                                            <td className="p-3 border-r text-right">{genderNode.totals.sales}</td>
+                                                            <td className="p-3 border-r text-right">{genderNode.totals.adj}</td>
+                                                            <td className="p-3 border-r text-right bg-blue-500/5 text-blue-300 font-semibold">{genderNode.totals.availableStock}</td>
+                                                            <td className="p-3 border-r text-right text-amber-300 font-semibold">{genderNode.totals.transit}</td>
+                                                            <td className="p-3 text-right bg-slate-500/5 font-semibold">{genderNode.totals.balance}</td>
                                                         </tr>
 
-                                                        {divNode.brands.map((brandNode: any) => (
-                                                            <React.Fragment key={brandNode.brand}>
-                                                                {/* BRAND ROW */}
-                                                                <tr className="bg-slate-50/50 dark:bg-slate-950/30 font-semibold text-slate-500 dark:text-slate-400 border-b">
+                                                        {genderNode.categories.map((catNode: any) => (
+                                                            <React.Fragment key={catNode.category}>
+                                                                {/* CATEGORY ROW */}
+                                                                <tr className="bg-slate-400 text-slate-900 font-semibold border-b">
                                                                     <td colSpan={3} className="p-3 pl-14 border-r text-[10px]">
-                                                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;BRAND: {brandNode.brand.toUpperCase()}
+                                                                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;CATEGORY: {catNode.category.toUpperCase()}
                                                                     </td>
-                                                                    <td className="p-3 border-r text-right">{brandNode.totals.bf}</td>
-                                                                    <td className="p-3 text-right bg-emerald-500/5">{brandNode.totals.fromWarehouse}</td>
-                                                                    <td className="p-3 text-right bg-emerald-500/5">{brandNode.totals.fromOutlet}</td>
-                                                                    <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-700">{brandNode.totals.totalTrfIn}</td>
-                                                                    <td className="p-3 text-right bg-rose-500/5">{brandNode.totals.toWarehouse}</td>
-                                                                    <td className="p-3 text-right bg-rose-500/5">{brandNode.totals.toOutlet}</td>
-                                                                    <td className="p-3 border-r text-right bg-rose-500/10 text-rose-700">{brandNode.totals.totalTrfOut}</td>
-                                                                    <td className="p-3 border-r text-right">{brandNode.totals.exchg}</td>
-                                                                    <td className="p-3 border-r text-right">{brandNode.totals.refund}</td>
-                                                                    <td className="p-3 border-r text-right">{brandNode.totals.claim}</td>
-                                                                    <td className="p-3 border-r text-right">{brandNode.totals.sales}</td>
-                                                                    <td className="p-3 border-r text-right">{brandNode.totals.adj}</td>
-                                                                    <td className="p-3 border-r text-right bg-blue-500/5 text-blue-700">{brandNode.totals.availableStock}</td>
-                                                                    <td className="p-3 border-r text-right text-amber-700">{brandNode.totals.transit}</td>
-                                                                    <td className="p-3 text-right bg-slate-500/5">{brandNode.totals.balance}</td>
+                                                                    <td className="p-3 border-r text-right">{catNode.totals.bf}</td>
+                                                                    <td className="p-3 text-right bg-emerald-500/5">{catNode.totals.fromWarehouse}</td>
+                                                                    <td className="p-3 text-right bg-emerald-500/5">{catNode.totals.fromOutlet}</td>
+                                                                    <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-800">{catNode.totals.totalTrfIn}</td>
+                                                                    <td className="p-3 text-right bg-rose-500/5">{catNode.totals.toWarehouse}</td>
+                                                                    <td className="p-3 text-right bg-rose-500/5">{catNode.totals.toOutlet}</td>
+                                                                    <td className="p-3 border-r text-right bg-rose-500/10 text-rose-800">{catNode.totals.totalTrfOut}</td>
+                                                                    <td className="p-3 border-r text-right">{catNode.totals.exchg}</td>
+                                                                    <td className="p-3 border-r text-right">{catNode.totals.refund}</td>
+                                                                    <td className="p-3 border-r text-right">{catNode.totals.claim}</td>
+                                                                    <td className="p-3 border-r text-right">{catNode.totals.sales}</td>
+                                                                    <td className="p-3 border-r text-right">{catNode.totals.adj}</td>
+                                                                    <td className="p-3 border-r text-right bg-blue-500/5 text-blue-800">{catNode.totals.availableStock}</td>
+                                                                    <td className="p-3 border-r text-right text-amber-800">{catNode.totals.transit}</td>
+                                                                    <td className="p-3 text-right bg-slate-500/5">{catNode.totals.balance}</td>
                                                                 </tr>
 
-                                                                {brandNode.articles.map((artNode: any) => (
+                                                                {catNode.articles.map((artNode: any) => (
                                                                     <React.Fragment key={artNode.sku}>
                                                                         {/* ARTICLE SUMMARY ROW */}
                                                                         <tr className="bg-slate-100/25 dark:bg-slate-900/15 font-semibold text-slate-800 dark:text-slate-200 border-b">
@@ -578,7 +705,7 @@ export default function PosStockActivityReportPage() {
                                                                         </tr>
 
                                                                         {/* VARIANT DETAIL ROWS */}
-                                                                        {artNode.variants.map((v: any, vIdx: number) => (
+                                                                        {!summaryOnly && artNode.variants.map((v: any, vIdx: number) => (
                                                                             <tr key={`${artNode.sku}-${v.color}-${v.size}-${vIdx}`} className="hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors">
                                                                                 <td className="p-3 border-r pl-24 text-muted-foreground italic">&mdash; Variant Item</td>
                                                                                 <td className="p-3 border-r text-center font-semibold text-slate-700 dark:text-slate-300">{v.color}</td>
@@ -612,6 +739,32 @@ export default function PosStockActivityReportPage() {
                                 ))
                             )}
                         </tbody>
+
+                        {/* GRAND TOTALS FOOTER ROW */}
+                        {reportData.length > 0 && (
+                            <tfoot>
+                                <tr className="bg-slate-800 text-slate-100 font-extrabold border-t-2 border-slate-900 text-xs">
+                                    <td colSpan={3} className="p-3 border-r text-left uppercase tracking-wider font-black">
+                                        GRAND TOTALS
+                                    </td>
+                                    <td className="p-3 border-r text-right font-black">{grandTotals.bf}</td>
+                                    <td className="p-3 text-right font-bold bg-slate-700/30">{grandTotals.fromWarehouse}</td>
+                                    <td className="p-3 text-right font-bold bg-slate-700/30">{grandTotals.fromOutlet}</td>
+                                    <td className="p-3 border-r text-right font-black bg-emerald-600/35 text-emerald-400">{grandTotals.totalTrfIn}</td>
+                                    <td className="p-3 text-right font-bold bg-slate-700/30">{grandTotals.toWarehouse}</td>
+                                    <td className="p-3 text-right font-bold bg-slate-700/30">{grandTotals.toOutlet}</td>
+                                    <td className="p-3 border-r text-right font-black bg-rose-600/35 text-rose-400">{grandTotals.totalTrfOut}</td>
+                                    <td className="p-3 border-r text-right font-bold">{grandTotals.exchg}</td>
+                                    <td className="p-3 border-r text-right font-bold">{grandTotals.refund}</td>
+                                    <td className="p-3 border-r text-right font-bold">{grandTotals.claim}</td>
+                                    <td className="p-3 border-r text-right font-bold">{grandTotals.sales}</td>
+                                    <td className="p-3 border-r text-right font-bold">{grandTotals.adj}</td>
+                                    <td className="p-3 border-r text-right font-black bg-blue-600/35 text-blue-400">{grandTotals.availableStock}</td>
+                                    <td className="p-3 border-r text-right font-black text-amber-400">{grandTotals.transit}</td>
+                                    <td className="p-3 text-right font-black bg-slate-900 text-white">{grandTotals.balance}</td>
+                                </tr>
+                            </tfoot>
+                        )}
                     </table>
                 </div>
             </div>
@@ -627,13 +780,13 @@ export default function PosStockActivityReportPage() {
                             <h4 className="font-bold text-sm text-foreground">Preparing Download</h4>
                             <p className="text-xs text-muted-foreground break-all max-w-[280px]">
                                 Downloading {downloadingFile}... Please wait.
-                            </p>
+                              </p>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Print Styling Rules */}
+            {/* CSS Print Styles */}
             <style jsx global>{`
                 @media print {
                     body {
@@ -660,6 +813,9 @@ export default function PosStockActivityReportPage() {
                     thead {
                         display: table-header-group !important;
                     }
+                }
+                .bg-slate-750 {
+                    background-color: #2a3342;
                 }
             `}</style>
         </div>
