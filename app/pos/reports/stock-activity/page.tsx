@@ -526,6 +526,20 @@ export default function PosStockActivityReportPage() {
                 </div>
             </div>
 
+            {/* Warning banner for large data sets */}
+            {grandTotals.totalArticles > 500 && !summaryOnly && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-500/30 text-amber-800 dark:text-amber-300 p-4 rounded-xl flex items-start gap-3 no-print">
+                    <span className="text-lg">⚠️</span>
+                    <div className="space-y-1">
+                        <h4 className="font-bold text-xs">Large Report Detected ({grandTotals.totalArticles} Articles)</h4>
+                        <p className="text-[11px] leading-relaxed opacity-90">
+                            Exporting this volume as a detailed PDF (with all sizes/colors) requires rendering hundreds of pages, which puts heavy load on the server and may take a few minutes. 
+                            We **highly recommend** downloading as **Excel (XLSX)** (which downloads instantly) or checking the **"Summary Only (Hide Sizes)"** filter before exporting to PDF.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* KPI Overview Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 no-print">
                 <Card className="shadow-xs border-slate-100">
