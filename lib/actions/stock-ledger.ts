@@ -74,14 +74,12 @@ export async function getStockActivityReport(filters: {
     locationId: string;
     startDate?: string;
     endDate?: string;
-    search?: string;
 }) {
     try {
         const queryParams = new URLSearchParams();
         queryParams.append("locationId", filters.locationId);
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
-        if (filters.search) queryParams.append("search", filters.search);
 
         const queryString = queryParams.toString();
         const url = `/stock-ledger/activity-report${queryString ? `?${queryString}` : ""}`;
@@ -91,5 +89,39 @@ export async function getStockActivityReport(filters: {
     } catch (error) {
         console.error("Get stock activity report error:", error);
         return { status: false, data: [], message: "Failed to fetch stock activity report" };
+    }
+}
+
+export async function queueStockActivityReportExport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+}): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
+    try {
+        const url = `/stock-ledger/activity-report/export/queue`;
+        const response = await authFetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                locationId: filters.locationId,
+                startDate: filters.startDate,
+                endDate: filters.endDate,
+            }),
+        });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Queue stock activity report export error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getStockActivityReportExportStatus(jobId: string): Promise<{ status: boolean; data?: { state: string; progress: number }; message?: string }> {
+    try {
+        const url = `/stock-ledger/activity-report/export/${jobId}/status`;
+        const response = await authFetch(url, { method: "GET" });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Get stock activity report status error:", error);
+        return { status: false, message: "Failed to connect to server" };
     }
 }

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
-import { Bell } from "lucide-react";
+import { Bell, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSocket } from "@/components/providers/socket-provider";
 import { authFetch } from "@/lib/auth";
@@ -43,6 +43,7 @@ export function HeaderNotifications() {
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   const playNotificationSound = useCallback(() => {
     try {
@@ -166,19 +167,26 @@ export function HeaderNotifications() {
 
     // Generic binary-file download helper
     const triggerDownload = async (url: string, filename: string) => {
-      const response = await fetch(url, { credentials: "include" });
-      if (response.ok) {
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = objectUrl;
-        anchor.download = filename;
-        document.body.appendChild(anchor);
-        anchor.click();
-        document.body.removeChild(anchor);
-        URL.revokeObjectURL(objectUrl);
-      } else {
-        console.error(`Download failed with status: ${response.status}`);
+      setDownloadingFile(filename);
+      try {
+        const response = await fetch(url, { credentials: "include" });
+        if (response.ok) {
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          const anchor = document.createElement("a");
+          anchor.href = objectUrl;
+          anchor.download = filename;
+          document.body.appendChild(anchor);
+          anchor.click();
+          document.body.removeChild(anchor);
+          URL.revokeObjectURL(objectUrl);
+        } else {
+          console.error(`Download failed with status: ${response.status}`);
+        }
+      } catch (err) {
+        console.error("Fetch download failed:", err);
+      } finally {
+        setDownloadingFile(null);
       }
     };
 
@@ -382,6 +390,26 @@ export function HeaderNotifications() {
       return;
     }
 
+    // stock-activity-export.ready
+    if (n.actionType === "stock-activity-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/stock-ledger/activity-report/export/${jobId}/download`,
+            `stock-activity-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("Stock Activity export download failed:", e);
+      }
+      return;
+    }
+
     // landed-cost-export.ready
     if (n.actionType === "landed-cost-export.ready" && n.actionPayload) {
       try {
@@ -471,65 +499,83 @@ export function HeaderNotifications() {
   if (!user) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <div className="relative">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-        </Button>
-         {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
-              {badgeText}
-            </span>
-          )}</div>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          {items.length === 0 ? (
-            <DropdownMenuItem disabled className="text-sm text-muted-foreground">
-              No notifications
-            </DropdownMenuItem>
-          ) : (
-            items.map((n) => {
-              const isUnread = n.status === "unread";
-              return (
-                <DropdownMenuItem
-                  key={n.id}
-                  className="flex flex-col items-start gap-1"
-                  onSelect={async () => {
-                    await handleNotificationSelect(n);
-                  }}
-                >
-                  <div className="flex w-full items-center justify-between gap-2">
-                    <span className={isUnread ? "font-semibold" : "font-medium"}>
-                      {n.title}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <div className="relative">
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="h-5 w-5" />
+          </Button>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-[10px] font-medium text-destructive-foreground flex items-center justify-center">
+                {badgeText}
+              </span>
+            )}</div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            {items.length === 0 ? (
+              <DropdownMenuItem disabled className="text-sm text-muted-foreground">
+                No notifications
+              </DropdownMenuItem>
+            ) : (
+              items.map((n) => {
+                const isUnread = n.status === "unread";
+                return (
+                  <DropdownMenuItem
+                    key={n.id}
+                    className="flex flex-col items-start gap-1"
+                    onSelect={async () => {
+                      await handleNotificationSelect(n);
+                    }}
+                  >
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <span className={isUnread ? "font-semibold" : "font-medium"}>
+                        {n.title}
+                      </span>
+                      <Badge variant={isUnread ? "default" : "secondary"} className="capitalize">
+                        {n.category || "general"}
+                      </Badge>
+                    </div>
+                    <span className="text-xs text-muted-foreground line-clamp-2">
+                      {n.message}
                     </span>
-                    <Badge variant={isUnread ? "default" : "secondary"} className="capitalize">
-                      {n.category || "general"}
-                    </Badge>
-                  </div>
-                  <span className="text-xs text-muted-foreground line-clamp-2">
-                    {n.message}
-                  </span>
-                </DropdownMenuItem>
-              );
-            })
-          )}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={async (e) => {
-            e.preventDefault();
-            await handleMarkAllRead();
-          }}
-          disabled={unreadCount === 0}
-        >
-          Mark all as read
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+                  </DropdownMenuItem>
+                );
+              })
+            )}
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={async (e) => {
+              e.preventDefault();
+              await handleMarkAllRead();
+            }}
+            disabled={unreadCount === 0}
+          >
+            Mark all as read
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {downloadingFile && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center pointer-events-auto">
+          <div className="bg-background border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl flex flex-col items-center gap-4 text-center">
+            <div className="relative h-12 w-12 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 text-primary animate-spin" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="font-bold text-sm text-foreground">Preparing Download</h4>
+              <p className="text-xs text-muted-foreground break-all max-w-[280px]">
+                Downloading {downloadingFile}... Please wait.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
