@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
-import { cn, getApiBaseUrl } from "@/lib/utils";
+import { cn, COMPANY_NAME, getApiBaseUrl } from "@/lib/utils";
 
 export default function PosStockActivityReportPage() {
     const { user } = useAuth();
@@ -522,7 +522,7 @@ export default function PosStockActivityReportPage() {
 
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
                     <Folder className="h-4 w-4 text-primary" />
-                    <span>Innovative Network &bull; Virtualized High-Performance Scroll</span>
+                    <span>{COMPANY_NAME} &bull; Virtualized High-Performance Scroll</span>
                 </div>
             </div>
 
