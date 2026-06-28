@@ -1674,6 +1674,11 @@ export const menuData: MenuItem[] = [
         href: "/pos/session",
         permissions: ["pos.shift.view"],
       },
+      {
+        title: "Stock Activity",
+        href:"/pos/reports/stock-activity",
+        permissions: ["pos.report.view"]
+      }
     ],
   },
 

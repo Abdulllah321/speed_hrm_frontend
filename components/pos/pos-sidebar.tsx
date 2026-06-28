@@ -52,6 +52,7 @@ const posMenuGroups = [
         items: [
             { title: "Products", icon: Package, href: "/pos/products" },
             { title: "Stock", icon: TrendingUp, href: "/pos/stock" },
+            { title: "Stock Activity", icon: TrendingUp, href: "/pos/reports/stock-activity" },
         ],
     },
     {
