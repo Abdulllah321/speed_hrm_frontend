@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DatePicker } from "@/components/ui/date-picker";
 import { authFetch } from "@/lib/auth";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getApiBaseUrl } from "@/lib/utils";
 import {
     Printer, Receipt, CreditCard, Wallet, Banknote, Clock, User, FileText,
     FileSpreadsheet, Loader2, Check, Download, Calendar
@@ -64,6 +64,8 @@ export default function ReconciliationReportPage() {
     const [loading, setLoading] = useState(false);
     const [layout, setLayout] = useState<"thermal" | "desktop">("desktop");
     const [isDownloading, setIsDownloading] = useState(false);
+    const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
+    const [exportProgress, setExportProgress] = useState(0);
     const reportRef = useRef<HTMLDivElement>(null);
 
     const getTodayString = () => {
@@ -151,6 +153,82 @@ export default function ReconciliationReportPage() {
             toast.error("An error occurred while downloading the PDF", { id: toastId });
         } finally {
             setIsDownloading(false);
+        }
+    };
+
+    const handleDownloadExcel = async () => {
+        if (!selectedDate) return;
+        setExportState("queueing");
+        setExportProgress(0);
+        const toastId = toast.loading("Queueing Excel export job...");
+        try {
+            const apiBase = getApiBaseUrl();
+            const queueRes = await fetch(`${apiBase}/pos-session/reconciliation/daywise/export/queue?date=${selectedDate}`, {
+                method: "POST",
+                credentials: "include"
+            });
+            
+            if (!queueRes.ok) {
+                const text = await queueRes.text();
+                let msg = "Failed to queue export job";
+                try {
+                    const json = JSON.parse(text);
+                    msg = json.message || msg;
+                } catch {}
+                throw new Error(msg);
+            }
+
+            const queueData = await queueRes.json();
+            const jobId = queueData?.data?.jobId;
+            if (!jobId) {
+                throw new Error("No job ID returned from server");
+            }
+
+            setExportState("processing");
+            toast.loading("Processing export: 0% completed", { id: toastId });
+
+            const interval = setInterval(async () => {
+                try {
+                    const statusRes = await fetch(`${apiBase}/pos-session/reconciliation/daywise/export/${jobId}/status`, {
+                        credentials: "include"
+                    });
+                    if (!statusRes.ok) return;
+
+                    const statusData = await statusRes.json();
+                    const { state, progress } = statusData?.data || {};
+
+                    setExportProgress(progress || 0);
+                    toast.loading(`Processing export: ${progress || 0}% completed`, { id: toastId });
+
+                    if (state === "completed") {
+                        clearInterval(interval);
+                        setExportState("completed");
+                        toast.loading("Downloading Excel sheet...", { id: toastId });
+
+                        const anchor = document.createElement("a");
+                        anchor.href = `${apiBase}/pos-session/reconciliation/daywise/export/${jobId}/download`;
+                        document.body.appendChild(anchor);
+                        anchor.click();
+                        document.body.removeChild(anchor);
+
+                        toast.success("Excel Reconciliation Report exported successfully!", { id: toastId });
+                        setTimeout(() => setExportState("idle"), 2000);
+                    } else if (state === "failed") {
+                        clearInterval(interval);
+                        setExportState("failed");
+                        toast.error("Background export processor failed", { id: toastId });
+                        setTimeout(() => setExportState("idle"), 3000);
+                    }
+                } catch (err) {
+                    console.error("Error polling export status:", err);
+                }
+            }, 2000);
+
+        } catch (error: any) {
+            console.error("Excel background export error:", error);
+            setExportState("failed");
+            toast.error(error.message || "An error occurred during Excel export", { id: toastId });
+            setTimeout(() => setExportState("idle"), 3000);
         }
     };
 
@@ -551,6 +629,25 @@ export default function ReconciliationReportPage() {
                             <Download className="w-3.5 h-3.5" />
                         )}
                         Download PDF
+                    </Button>
+                    <Button 
+                        onClick={handleDownloadExcel} 
+                        disabled={loading || !data || exportState !== "idle"} 
+                        variant="secondary"
+                        size="sm"
+                        className="rounded-full gap-1.5 px-4 text-xs font-bold shadow-sm"
+                    >
+                        {exportState !== "idle" ? (
+                            <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                {exportState === "queueing" ? "Queueing..." : `Exporting ${exportProgress}%`}
+                            </>
+                        ) : (
+                            <>
+                                <FileSpreadsheet className="w-3.5 h-3.5" />
+                                Export Excel
+                            </>
+                        )}
                     </Button>
                     <Button 
                         onClick={handlePrint} 
