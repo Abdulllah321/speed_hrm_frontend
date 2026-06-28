@@ -638,6 +638,7 @@ function ReturnBody({
                 {storeSTRN && <p>NTN: {storeSTRN}</p>}
                 <p>{settings.receiptFooter || "*** THANK YOU ***"}</p>
                 <p className="tracking-widest font-bold">{returnRef}</p>
+                <p className="text-[9px] text-zinc-500 pt-0.5">Software by Innovative Network</p>
             </div>
 
         </div>

@@ -474,6 +474,7 @@ function VoucherReceiptBody({
                 <p className="text-[9px] text-zinc-800">
                     For assistance, please contact the store
                 </p>
+                <p className="text-[9px] text-zinc-500 pt-0.5">Software by Innovative Network</p>
             </div>
 
             {/* ── Decorative border ── */}

@@ -586,6 +586,7 @@ function ClaimBody({
                 <p>Thank you for your patience</p>
                 <p>For queries: {storePhone || "+92-XXX-XXXXXXX"}</p>
                 <p className="tracking-widest font-bold">{claimNumber}</p>
+                <p className="text-[9px] text-zinc-500 pt-0.5">Software by Innovative Network</p>
             </div>
 
         </div>
