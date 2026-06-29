@@ -13,7 +13,10 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { getPayrollReport } from "@/lib/actions/payroll";
 import { Department, SubDepartment, getSubDepartmentsByDepartment } from "@/lib/actions/department";
-import { EmployeeSelect } from "@/components/employees/employee-select";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { useEmployeeDropdown } from "@/hooks/use-employee-dropdown";
+import { getAllEmployeesForDropdown } from "@/lib/actions/employee";
+import { type Location } from "@/lib/actions/location";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { useAuth } from "@/components/providers/auth-provider";
 import { useRouter } from "next/navigation";
@@ -21,9 +24,10 @@ import { useEffect } from "react";
 
 interface ReportContentProps {
     initialDepartments: Department[];
+    initialLocations: Location[];
 }
 
-export function ReportContent({ initialDepartments }: ReportContentProps) {
+export function ReportContent({ initialDepartments, initialLocations }: ReportContentProps) {
     const { user, isAdmin, hasPermission } = useAuth();
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -44,12 +48,52 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
     const [filters, setFilters] = useState({
         departmentId: "all",
         subDepartmentId: "all",
+        locationId: "all",
         monthYear: format(new Date(), "yyyy-MM"),
-        employeeId: "all",
     });
 
+    const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+    const [loadingEmployeesForLocation, setLoadingEmployeesForLocation] = useState(false);
+    const [locations] = useState<Location[]>(initialLocations);
+
+    const { totalCount, isInitialLoading, multiSelectProps } = useEmployeeDropdown({
+        departmentId: filters.departmentId,
+        subDepartmentId: filters.subDepartmentId,
+        locationId: filters.locationId,
+        selectedIds: selectedEmployeeIds,
+    });
+
+    // Fetch and select all employees for selected location
+    useEffect(() => {
+        const selectAllEmployeesForLocation = async () => {
+            if (filters.locationId && filters.locationId !== "all") {
+                setLoadingEmployeesForLocation(true);
+                try {
+                    const result = await getAllEmployeesForDropdown({
+                        locationId: filters.locationId,
+                        departmentId: filters.departmentId !== "all" ? filters.departmentId : undefined,
+                        subDepartmentId: filters.subDepartmentId !== "all" ? filters.subDepartmentId : undefined,
+                    });
+                    if (result.status && result.data) {
+                        const ids = result.data.map(emp => emp.id);
+                        setSelectedEmployeeIds(ids);
+                    }
+                } catch (error) {
+                    console.error("Failed to select employees for location:", error);
+                } finally {
+                    setLoadingEmployeesForLocation(false);
+                }
+            } else {
+                setSelectedEmployeeIds([]);
+            }
+        };
+
+        selectAllEmployeesForLocation();
+    }, [filters.locationId, filters.departmentId, filters.subDepartmentId]);
+
     const handleDepartmentChange = async (val: string) => {
-        setFilters(prev => ({ ...prev, departmentId: val, subDepartmentId: "all", employeeId: "all" }));
+        setFilters(prev => ({ ...prev, departmentId: val, subDepartmentId: "all" }));
+        setSelectedEmployeeIds([]);
         if (val !== "all") {
             setLoadingSubDepartments(true);
             try {
@@ -75,7 +119,9 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
             }
 
             // Enforce employee restriction in search
-            const effectiveEmployeeId = !canViewAll && user?.employeeId ? user.employeeId : filters.employeeId;
+            const effectiveEmployeeId = !canViewAll && user?.employeeId 
+                ? user.employeeId 
+                : (selectedEmployeeIds.length > 0 ? selectedEmployeeIds.join(",") : "all");
             
             try {
                 const [year, month] = filters.monthYear.split("-");
@@ -85,6 +131,7 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
                     departmentId: filters.departmentId,
                     subDepartmentId: filters.subDepartmentId,
                     employeeId: effectiveEmployeeId,
+                    locationId: filters.locationId,
                 });
 
                 if (result.status && result.data) {
@@ -142,13 +189,68 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
+        // Calculate totals for specific items
+        let basicSalaryTotal = 0;
+        let utilityTotal = 0;
+        let houseRentTotal = 0;
+        let pfTotal = 0;
+        let taxTotal = 0;
+
+        data.forEach(row => {
+            // Basic Salary
+            const basicObj = (row.salaryBreakup || []).find((b: any) => 
+                b.name.toLowerCase().includes("basic")
+            );
+            if (basicObj) basicSalaryTotal += Number(basicObj.amount || 0);
+
+            // Utility
+            const utilityObj = (row.salaryBreakup || []).find((b: any) => 
+                b.name.toLowerCase().includes("utility")
+            ) || (row.allowanceBreakup || []).find((a: any) => 
+                a.name.toLowerCase().includes("utility")
+            );
+            if (utilityObj) utilityTotal += Number(utilityObj.amount || 0);
+
+            // House Rent
+            const hrObj = (row.salaryBreakup || []).find((b: any) => 
+                b.name.toLowerCase().includes("house rent") || b.name.toLowerCase() === "hra"
+            ) || (row.allowanceBreakup || []).find((a: any) => 
+                a.name.toLowerCase().includes("house rent") || a.name.toLowerCase() === "hra"
+            );
+            if (hrObj) houseRentTotal += Number(hrObj.amount || 0);
+
+            // PF
+            pfTotal += Number(row.providentFundDeduction || 0);
+
+            // Tax
+            taxTotal += Number(row.taxDeduction || 0);
+        });
+
+        const selectedLocationName = filters.locationId === "all" 
+            ? "All Locations" 
+            : locations.find(l => l.id === filters.locationId)?.name || "";
+
+        const getFormattedMonthYear = (monthYearStr: string) => {
+            if (!monthYearStr) return "";
+            try {
+                const [year, month] = monthYearStr.split("-");
+                const date = new Date(Number(year), Number(month) - 1, 1);
+                return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            } catch (e) {
+                return monthYearStr;
+            }
+        };
+        const formattedMonthYear = getFormattedMonthYear(filters.monthYear);
+
         const printContent = `
       <html>
         <head>
           <title>Payroll Report - ${filters.monthYear}</title>
           <style>
             body { font-family: Arial, sans-serif; font-size: 9px; margin: 10px; }
-            h1 { text-align: center; font-size: 14px; margin-bottom: 10px; }
+            h2 { text-align: center; font-size: 14px; margin-bottom: 5px; }
+            h3 { text-align: center; font-size: 11px; margin-bottom: 5px; }
+            h4 { text-align: center; font-size: 10px; margin-bottom: 10px; }
             .header-info { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 8px; }
             table { width: 100%; border-collapse: collapse; margin-top: 10px; }
             th, td { border: 1px solid #ccc; padding: 4px; text-align: left; vertical-align: top; font-size: 8px; }
@@ -166,7 +268,7 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
             .deduction { color: #dc2626; }
             @media print {
               body { margin: 0; }
-              @page { size: landscape; margin: 5mm; }
+              @page { size: A4 portrait; margin: 8mm; }
             }
           </style>
         </head>
@@ -175,19 +277,21 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
             <span>${new Date().toLocaleDateString()}</span>
             <span>Payroll Report - ${filters.monthYear}</span>
           </div>
-          <h1>Payroll Report - ${filters.monthYear}</h1>
+          
+          <div style="text-align: center; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase;">SPEED (PRIVATE) LIMITED</h2>
+            <h3 style="margin: 5px 0 0 0; font-size: 12px; font-weight: normal;">Salary Sheet for the Month of ${formattedMonthYear}</h3>
+            ${selectedLocationName ? `<h4 style="margin: 3px 0 0 0; font-size: 10px; font-weight: normal; color: #555;"><b>Location:</b> ${selectedLocationName}</h4>` : ''}
+          </div>
+
           <table>
             <thead>
               <tr>
-                <th style="width: 3%">S.No</th>
-                <th style="width: 12%">Employee</th>
-                <th style="width: 15%">Emp Details</th>
-                <th style="width: 18%">Salary/Allowances</th>
-                <th style="width: 12%">Tax</th>
-                <th style="width: 15%">Deductions</th>
-                <th style="width: 8%">Net Salary</th>
-                <th style="width: 10%">Account No</th>
-                <th style="width: 7%">Payment Mode</th>
+                <th style="width: 5%">S.No</th>
+                <th style="width: 25%">Employee</th>
+                <th style="width: 35%">Salary/Allowances</th>
+                <th style="width: 20%">Deductions</th>
+                <th style="width: 15%">Net Salary</th>
               </tr>
             </thead>
             <tbody>
@@ -207,50 +311,86 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
                   <td>${i + 1}</td>
                   <td><b>(${row.employee.employeeId}) ${row.employee.employeeName}</b></td>
                   <td>
-                    <div><b>Country:</b> ${row.employee.country?.name || '-'}</div>
-                    <div><b>Province:</b> ${row.employee.state?.name || '-'}</div>
-                    <div><b>City:</b> ${row.employee.city?.name || '-'}</div>
-                    <div><b>Station:</b> ${row.employee.branch?.name || '-'}</div>
-                    <div><b>Dept:</b> ${row.employee.department?.name || '-'}</div>
-                    <div><b>Sub-Dept:</b> ${row.employee.subDepartment?.name || '-'}</div>
-                    <div><b>Designation:</b> ${row.employee.designation?.name || '-'}</div>
-                  </td>
-                  <td>
                     ${salaryBreakup.map((b: any) => `<div class="breakup-item"><span class="breakup-label">${b.name}:</span><span class="breakup-value">${Math.round(Number(b.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')}
                     ${allowanceBreakup.map((a: any) => `<div class="breakup-item"><span class="breakup-label">${a.name}:</span><span class="breakup-value">${Math.round(Number(a.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')}
+                    ${Number(row.overtimeAmount || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Overtime:</span><span class="breakup-value">${Math.round(Number(row.overtimeAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : ''}
+                    ${row.bonusBreakup && row.bonusBreakup.length > 0 ?
+                      row.bonusBreakup.map((b: any) => `<div class="breakup-item"><span class="breakup-label">${b.name || 'Bonus'}:</span><span class="breakup-value">${Math.round(Number(b.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')
+                      : (Number(row.bonusAmount || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Bonus:</span><span class="breakup-value">${Math.round(Number(row.bonusAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : '')}
                     ${Number(row.leaveEncashmentAmount || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Leave Encashment:</span><span class="breakup-value">${Math.round(Number(row.leaveEncashmentAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : ''}
-                    <div class="total-row" style="margin-top: 4px; border-top: 2px solid #333;"><b>Gross:</b> ${Math.round(totalGross).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div class="total-row breakup-item" style="margin-top: 4px; border-top: 2px solid #333; padding: 2px 0;">
+                      <span class="breakup-label">Gross:</span>
+                      <span class="breakup-value">${Math.round(totalGross).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                    </div>
                   </td>
                   <td>
-                    <div><b>Taxable:</b> ${Math.round(Number(row.taxBreakup?.taxableIncome || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                    ${row.taxBreakup?.fixedAmountTax > 0 ? `<div><b>Fixed Tax:</b> ${Math.round(Number(row.taxBreakup?.fixedAmountTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>` : ''}
-                    ${row.taxBreakup?.percentageTax > 0 ? `<div><b>% Tax:</b> ${Math.round(Number(row.taxBreakup?.percentageTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>` : ''}
-                    <div><b>Annual Tax:</b> ${Math.round(Number(row.taxBreakup?.fixedAmountTax || 0) + Number(row.taxBreakup?.percentageTax || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                    <div class="section-header" style="margin-top: 4px; border-top: 1px solid #999;"><b>Monthly Tax:</b> ${Math.round(Number(row.taxDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
+                    <div class="breakup-item"><span class="breakup-label">PF:</span><span class="breakup-value">${Math.round(Number(row.providentFundDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>
+                    <div class="breakup-item"><span class="breakup-label">Advance:</span><span class="breakup-value">${Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>
+                    <div class="breakup-item"><span class="breakup-label">Loan:</span><span class="breakup-value">${Math.round(Number(row.loanDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>
+                    ${Number(row.taxDeduction || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Tax:</span><span class="breakup-value">${Math.round(Number(row.taxDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : ''}
+                    ${deductionBreakup.map((d: any) => `<div class="breakup-item"><span class="breakup-label">${d.name}:</span><span class="breakup-value">${Math.round(Number(d.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')}
+                    <div class="breakup-item"><span class="breakup-label">Attendance:</span><span class="breakup-value">${Math.round(Number(row.attendanceDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>
+                    <div class="total-row deduction breakup-item" style="margin-top: 4px; border-top: 1px solid #999; padding: 2px 0;">
+                      <span class="breakup-label">Total:</span>
+                      <span class="breakup-value">${Math.round(totalDed).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                    </div>
                   </td>
-                  <td>
-                    <div><b>PF:</b> ${Math.round(Number(row.providentFundDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                    <div><b>Advance:</b> ${Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                    <div><b>Loan:</b> ${Math.round(Number(row.loanDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                    ${deductionBreakup.map((d: any) => `<div><b>${d.name}:</b> ${Math.round(Number(d.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>`).join('')}
-                    <div><b>Attendance:</b> ${Math.round(Number(row.attendanceDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                    <div class="total-row deduction" style="margin-top: 4px; border-top: 1px solid #999;"><b>Total:</b> ${Math.round(totalDed).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
-                  </td>
-                  <td class="net-salary">${Math.round(Number(row.netSalary || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                  <td>${row.accountNumber || '-'}</td>
-                  <td>${row.paymentMode || 'Bank Transfer'}</td>
+                  <td class="net-salary text-right">${Math.round(Number(row.netSalary || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                 </tr>
               `}).join('')}
               <tr class="font-bold bg-green">
-                <td colspan="3" class="text-right"><b>Grand Total:</b></td>
-                <td><b>${Math.round(totals.grossSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
-                <td><b>${Math.round(totals.taxDeduction).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
-                <td><b>${Math.round(totals.totalDeductions).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
-                <td class="net-salary"><b>${Math.round(totals.netSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
-                <td colspan="2"></td>
+                <td colspan="2" class="text-right"><b>Grand Total:</b></td>
+                <td class="text-right"><b>${Math.round(totals.grossSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
+                <td class="text-right"><b>${Math.round(totals.totalDeductions).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
+                <td class="net-salary text-right"><b>${Math.round(totals.netSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
               </tr>
             </tbody>
           </table>
+
+          <div style="margin-top: 20px; display: flex; justify-content: flex-end; page-break-inside: avoid;">
+            <div class="summary-box" style="width: 250px; border: 1px solid #ccc; padding: 10px; background-color: #f9fafb;">
+              <h3 style="margin-top: 0; margin-bottom: 8px; font-size: 11px; border-bottom: 1px solid #ddd; padding-bottom: 4px; text-align: left;">Grand Summary</h3>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+                <span><b>Basic Salary:</b></span>
+                <span>${Math.round(basicSalaryTotal).toLocaleString()}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+                <span><b>House Rent:</b></span>
+                <span>${Math.round(houseRentTotal).toLocaleString()}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+                <span><b>Utility:</b></span>
+                <span>${Math.round(utilityTotal).toLocaleString()}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+                <span><b>PF:</b></span>
+                <span>${Math.round(pfTotal).toLocaleString()}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+                <span><b>Tax:</b></span>
+                <span>${Math.round(taxTotal).toLocaleString()}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-top: 8px; border-top: 2px solid #333; padding-top: 4px; font-weight: bold;">
+                <span>Total:</span>
+                <span>${Math.round(basicSalaryTotal + houseRentTotal + utilityTotal + pfTotal + taxTotal).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 60px; display: flex; justify-content: space-between; font-size: 10px; padding: 0 20px; page-break-inside: avoid;">
+            <div style="text-align: center; width: 180px;">
+              <div style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
+              <b>Prepared By</b>
+            </div>
+            <div style="text-align: center; width: 180px;">
+              <div style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
+              <b>Checked By</b>
+            </div>
+            <div style="text-align: center; width: 180px;">
+              <div style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
+              <b>Approved By</b>
+            </div>
+          </div>
         </body>
       </html>
     `;
@@ -275,7 +415,8 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
                 year,
                 departmentId: filters.departmentId !== "all" ? filters.departmentId : undefined,
                 subDepartmentId: filters.subDepartmentId !== "all" ? filters.subDepartmentId : undefined,
-                employeeId: filters.employeeId !== "all" ? filters.employeeId : undefined,
+                employeeId: selectedEmployeeIds.length > 0 ? selectedEmployeeIds.join(",") : undefined,
+                locationId: filters.locationId !== "all" ? filters.locationId : undefined,
             });
 
             if (!result.status || !result.data || result.data.length === 0) {
@@ -402,7 +543,7 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
                     <CardTitle>View Payroll Report</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {canViewAll && (
                             <>
                                 <div className="space-y-2">
@@ -421,7 +562,10 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
                                     <Autocomplete
                                         options={subDepartments.map(d => ({ value: d.id, label: d.name }))}
                                         value={filters.subDepartmentId}
-                                        onValueChange={(val) => setFilters(p => ({ ...p, subDepartmentId: val || "all", employeeId: "all" }))}
+                                        onValueChange={(val) => {
+                                            setFilters(p => ({ ...p, subDepartmentId: val || "all" }));
+                                            setSelectedEmployeeIds([]);
+                                        }}
                                         disabled={filters.departmentId === "all" || loadingSubDepartments}
                                         placeholder="All Sub Departments"
                                         searchPlaceholder="Search sub department..."
@@ -430,16 +574,24 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Employee</Label>
-                                    <EmployeeSelect
-                                        value={filters.employeeId}
-                                        onValueChange={(val) => setFilters(p => ({ ...p, employeeId: val || "all" }))}
-                                        departmentId={filters.departmentId}
-                                        subDepartmentId={filters.subDepartmentId}
-                                        includeAllOption
-                                        placeholder="All Employees"
-                                        searchPlaceholder="Search employee..."
-                                    />
+                                    <Label>Location</Label>
+                                    <Select
+                                        value={filters.locationId}
+                                        onValueChange={(val) => setFilters(prev => ({ ...prev, locationId: val }))}
+                                        disabled={isPending}
+                                    >
+                                        <SelectTrigger id="location">
+                                            <SelectValue placeholder="Select Location" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Locations</SelectItem>
+                                            {locations.map((loc) => (
+                                                <SelectItem key={loc.id} value={loc.id}>
+                                                    {loc.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </>
                         )}
@@ -453,21 +605,51 @@ export function ReportContent({ initialDepartments }: ReportContentProps) {
                                 placeholder="Select month and year"
                             />
                         </div>
-
-                        <div className="flex items-end gap-2">
-                            <Button onClick={handleSearch} disabled={isPending} className="w-full">
-                                {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
-                                Search
-                            </Button>
-                        </div>
                     </div>
 
-                    <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={handlePrint}>
-                            <Printer className="w-4 h-4 mr-2" /> Print
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleExportCSV}>
-                            <Download className="w-4 h-4 mr-2" /> Export CSV
+                    {canViewAll && (
+                        <div className="space-y-2">
+                            <Label htmlFor="employee">Select Employees (Optional)</Label>
+                            {isInitialLoading || loadingEmployeesForLocation ? (
+                                <div className="h-10 bg-muted rounded-md animate-pulse flex items-center justify-center text-sm text-muted-foreground">
+                                    Loading employees...
+                                </div>
+                            ) : (
+                                <MultiSelect
+                                    options={multiSelectProps.options}
+                                    value={selectedEmployeeIds}
+                                    onValueChange={setSelectedEmployeeIds}
+                                    onSearch={multiSelectProps.onSearch}
+                                    onLoadMore={multiSelectProps.onLoadMore}
+                                    hasMore={multiSelectProps.hasMore}
+                                    isLoading={multiSelectProps.isLoading}
+                                    placeholder="Select specific employees..."
+                                    searchPlaceholder="Search by name or employee ID..."
+                                    emptyMessage={multiSelectProps.isLoading ? "Loading employees..." : "No employees found"}
+                                    disabled={isPending}
+                                    showSelectAll={false}
+                                />
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                                {selectedEmployeeIds.length > 0
+                                    ? `${selectedEmployeeIds.length} employees selected`
+                                    : `All ${totalCount} employees in filter`}
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center gap-2 pt-2">
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={handlePrint}>
+                                <Printer className="w-4 h-4 mr-2" /> Print
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleExportCSV}>
+                                <Download className="w-4 h-4 mr-2" /> Export CSV
+                            </Button>
+                        </div>
+                        <Button onClick={handleSearch} disabled={isPending} className="w-48">
+                            {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
+                            Search
                         </Button>
                     </div>
 

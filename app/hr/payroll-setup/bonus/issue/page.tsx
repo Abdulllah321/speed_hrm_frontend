@@ -57,6 +57,7 @@ import { createBonuses } from "@/lib/actions/bonus";
 import { MonthYearPicker } from "@/components/ui/month-year-picker";
 import { Autocomplete } from "@/components/ui/autocomplete";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -159,6 +160,26 @@ export default function IssueBonusPage() {
   const [employeeBonuses, setEmployeeBonuses] = useState<EmployeeBonusItem[]>(
     []
   );
+  const [calculationType, setCalculationType] = useState<"Amount" | "Percentage">("Amount");
+
+  const handleCalculationTypeChange = (type: "Amount" | "Percentage") => {
+    setCalculationType(type);
+    if (type === "Amount") {
+      form.setValue("percentage", "");
+      if (selectedBonusType?.calculationType === "Amount" && selectedBonusType.amount) {
+        form.setValue("amount", selectedBonusType.amount.toString());
+      } else {
+        form.setValue("amount", "");
+      }
+    } else {
+      form.setValue("amount", "");
+      if (selectedBonusType?.calculationType === "Percentage" && selectedBonusType.percentage) {
+        form.setValue("percentage", selectedBonusType.percentage.toString());
+      } else {
+        form.setValue("percentage", "");
+      }
+    }
+  };
 
   const form = useForm<BonusIssueFormData>({
     resolver: zodResolver(bonusIssueFormSchema) as any,
@@ -259,15 +280,22 @@ export default function IssueBonusPage() {
     if (selectedBonusTypeId) {
       const bonusType = bonusTypes.find((bt) => bt.id === selectedBonusTypeId);
       setSelectedBonusType(bonusType || null);
-      if (bonusType?.calculationType === "Amount") {
-        form.setValue("percentage", "");
-        if (bonusType.amount) {
-          form.setValue("amount", bonusType.amount.toString());
-        }
-      } else if (bonusType?.calculationType === "Percentage") {
-        form.setValue("amount", "");
-        if (bonusType.percentage) {
-          form.setValue("percentage", bonusType.percentage.toString());
+      if (bonusType) {
+        setCalculationType(bonusType.calculationType as "Amount" | "Percentage");
+        if (bonusType.calculationType === "Amount") {
+          form.setValue("percentage", "");
+          if (bonusType.amount) {
+            form.setValue("amount", bonusType.amount.toString());
+          } else {
+            form.setValue("amount", "");
+          }
+        } else if (bonusType.calculationType === "Percentage") {
+          form.setValue("amount", "");
+          if (bonusType.percentage) {
+            form.setValue("percentage", bonusType.percentage.toString());
+          } else {
+            form.setValue("percentage", "");
+          }
         }
       }
     } else {
@@ -346,12 +374,12 @@ export default function IssueBonusPage() {
     }
 
     if (selectedBonusType) {
-      if (selectedBonusType.calculationType === "Amount" && !amount) {
-        toast.error("Amount is required for this bonus type");
+      if (calculationType === "Amount" && !amount) {
+        toast.error("Amount is required");
         return;
       }
-      if (selectedBonusType.calculationType === "Percentage" && !percentage) {
-        toast.error("Percentage is required for this bonus type");
+      if (calculationType === "Percentage" && !percentage) {
+        toast.error("Percentage is required");
         return;
       }
     }
@@ -368,7 +396,7 @@ export default function IssueBonusPage() {
       let calculatedAmount = 0;
       let calculatedPercentage: number | undefined = undefined;
 
-      if (selectedBonusTypeObj.calculationType === "Amount") {
+      if (calculationType === "Amount") {
         calculatedAmount = parseFloat(amount || "0");
       } else {
         calculatedPercentage = parseFloat(percentage || "0");
@@ -698,7 +726,7 @@ export default function IssueBonusPage() {
                 />
               </div>
 
-              <div className={cn("grid grid-cols-1 gap-4 items-start", selectedBonusType?.calculationType ? "md:grid-cols-3" : "md:grid-cols-2")}>
+              <div className={cn("grid grid-cols-1 gap-4 items-start", selectedBonusType ? "md:grid-cols-4" : "md:grid-cols-2")}>
                 {/* Bonus Type */}
                 <FormField
                   control={form.control}
@@ -733,8 +761,33 @@ export default function IssueBonusPage() {
                   )}
                 />
 
-                {/* Amount or Percentage based on bonus type */}
-                {selectedBonusType?.calculationType === "Amount" ? (
+                {/* Calculation Type Selector */}
+                {selectedBonusType && (
+                  <div className="space-y-2">
+                    <Label htmlFor="calculationType" className="flex items-center gap-2">
+                      <Percent className="h-4 w-4" />
+                      Calculation Type
+                    </Label>
+                    <Select
+                      value={calculationType}
+                      onValueChange={(val) => {
+                        handleCalculationTypeChange(val as "Amount" | "Percentage");
+                      }}
+                      disabled={form.formState.isSubmitting || submitting}
+                    >
+                      <SelectTrigger id="calculationType">
+                        <SelectValue placeholder="Select Calculation Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Amount">Amount</SelectItem>
+                        <SelectItem value="Percentage">Percentage</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Amount or Percentage based on selected calculation type */}
+                {selectedBonusType && calculationType === "Amount" ? (
                   <FormField
                     control={form.control}
                     name="amount"
@@ -751,20 +804,26 @@ export default function IssueBonusPage() {
                             step="0.01"
                             min="0"
                             placeholder={
-                              selectedBonusType.amount
+                              selectedBonusType.calculationType === "Amount" && selectedBonusType.amount
                                 ? selectedBonusType.amount.toString()
                                 : "0.00"
                             }
                             disabled={
                               form.formState.isSubmitting ||
                               submitting ||
-                              !!selectedBonusType.amount
+                              (calculationType === "Amount" &&
+                                selectedBonusType?.calculationType === "Amount" &&
+                                !!selectedBonusType.amount &&
+                                !selectedBonusType.name?.toLowerCase().includes("performance"))
                             }
                             {...field}
                           />
                         </FormControl>
                         <FormDescription>
-                          {selectedBonusType.amount
+                          {calculationType === "Amount" &&
+                          selectedBonusType.calculationType === "Amount" &&
+                          selectedBonusType.amount &&
+                          !selectedBonusType.name?.toLowerCase().includes("performance")
                             ? `Fixed amount: ${selectedBonusType.amount} (pre-filled from bonus type)`
                             : "Enter the bonus amount per employee"}
                         </FormDescription>
@@ -772,7 +831,7 @@ export default function IssueBonusPage() {
                       </FormItem>
                     )}
                   />
-                ) : selectedBonusType?.calculationType === "Percentage" ? (
+                ) : selectedBonusType && calculationType === "Percentage" ? (
                   <FormField
                     control={form.control}
                     name="percentage"
@@ -790,20 +849,26 @@ export default function IssueBonusPage() {
                             min="0"
                             max="100"
                             placeholder={
-                              selectedBonusType.percentage
+                              selectedBonusType.calculationType === "Percentage" && selectedBonusType.percentage
                                 ? selectedBonusType.percentage.toString()
                                 : "0.00"
                             }
                             disabled={
                               form.formState.isSubmitting ||
                               submitting ||
-                              !!selectedBonusType.percentage
+                              (calculationType === "Percentage" &&
+                                selectedBonusType?.calculationType === "Percentage" &&
+                                !!selectedBonusType.percentage &&
+                                !selectedBonusType.name?.toLowerCase().includes("performance"))
                             }
                             {...field}
                           />
                         </FormControl>
                         <FormDescription>
-                          {selectedBonusType.percentage
+                          {calculationType === "Percentage" &&
+                          selectedBonusType.calculationType === "Percentage" &&
+                          selectedBonusType.percentage &&
+                          !selectedBonusType.name?.toLowerCase().includes("performance")
                             ? `Fixed percentage: ${selectedBonusType.percentage}% (pre-filled from bonus type). Amount will be calculated based on each employee's salary.`
                             : "Enter the bonus percentage (0-100%). Amount will be calculated based on each employee's salary."}
                         </FormDescription>

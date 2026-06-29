@@ -38,23 +38,27 @@ import {
     type Department,
     type SubDepartment,
 } from "@/lib/actions/department";
+import { type Location } from "@/lib/actions/location";
 import { previewPayroll, confirmPayroll } from "@/lib/actions/payroll";
 import { getAllEmployeesForDropdown, type EmployeeDropdownOption } from "@/lib/actions/employee";
 import { useEmployeeDropdown } from "@/hooks/use-employee-dropdown";
 
 interface GeneratePayrollClientProps {
     initialDepartments: Department[];
+    initialLocations: Location[];
     initialEmployees?: EmployeeDropdownOption[];
     currentUserId: string;
 }
 
 export function GeneratePayrollClient({
     initialDepartments,
+    initialLocations,
     currentUserId,
 }: GeneratePayrollClientProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [departments] = useState<Department[]>(initialDepartments);
+    const [locations] = useState<Location[]>(initialLocations);
     // ...
     const [subDepartments, setSubDepartments] = useState<SubDepartment[]>([]);
     const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
@@ -67,14 +71,17 @@ export function GeneratePayrollClient({
     const [formData, setFormData] = useState({
         department: "all",
         subDepartment: "all",
+        location: "all",
         monthYear: new Date().toISOString().split('T')[0],
     });
 
     const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<string[]>([]);
+    const [loadingEmployeesForLocation, setLoadingEmployeesForLocation] = useState(false);
 
     const { totalCount, isInitialLoading, multiSelectProps } = useEmployeeDropdown({
         departmentId: formData.department,
         subDepartmentId: formData.subDepartment,
+        locationId: formData.location,
         selectedIds: selectedEmployeeIds,
     });
 
@@ -105,6 +112,34 @@ export function GeneratePayrollClient({
         fetchSubDepartments();
     }, [formData.department]);
 
+    // Fetch and select all employees for selected location
+    useEffect(() => {
+        const selectAllEmployeesForLocation = async () => {
+            if (formData.location && formData.location !== "all") {
+                setLoadingEmployeesForLocation(true);
+                try {
+                    const result = await getAllEmployeesForDropdown({
+                        locationId: formData.location,
+                        departmentId: formData.department !== "all" ? formData.department : undefined,
+                        subDepartmentId: formData.subDepartment !== "all" ? formData.subDepartment : undefined,
+                    });
+                    if (result.status && result.data) {
+                        const ids = result.data.map(emp => emp.id);
+                        setSelectedEmployeeIds(ids);
+                    }
+                } catch (error) {
+                    console.error("Failed to select employees for location:", error);
+                } finally {
+                    setLoadingEmployeesForLocation(false);
+                }
+            } else {
+                setSelectedEmployeeIds([]);
+            }
+        };
+
+        selectAllEmployeesForLocation();
+    }, [formData.location, formData.department, formData.subDepartment]);
+
     // Initialize sandwich deduction state when preview data loads
     useEffect(() => {
         if (previewData.length > 0) {
@@ -134,14 +169,15 @@ export function GeneratePayrollClient({
         let idsPayload: string[] | undefined = undefined;
         if (selectedEmployeeIds.length > 0) {
             idsPayload = selectedEmployeeIds;
-        } else if (formData.department !== 'all') {
+        } else if (formData.location !== 'all' || formData.department !== 'all') {
             const allEmployeesResult = await getAllEmployeesForDropdown({
+                locationId: formData.location !== "all" ? formData.location : undefined,
                 departmentId: formData.department !== "all" ? formData.department : undefined,
                 subDepartmentId: formData.subDepartment !== "all" ? formData.subDepartment : undefined,
             });
             idsPayload = allEmployeesResult.data?.map((e) => e.id) ?? [];
             if (idsPayload.length === 0) {
-                toast.error("No employees found in selected department");
+                toast.error("No employees found in selected filters");
                 return;
             }
         }
@@ -306,7 +342,7 @@ export function GeneratePayrollClient({
                             <div className="border-t pt-4"></div>
 
                             {/* Filters */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 {/* Department */}
                                 <div className="space-y-2">
                                     <Label htmlFor="department">Filter by Department</Label>
@@ -350,6 +386,28 @@ export function GeneratePayrollClient({
                                         </SelectContent>
                                     </Select>
                                 </div>
+
+                                {/* Location */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="location">Filter & Select by Location</Label>
+                                    <Select
+                                        value={formData.location}
+                                        onValueChange={(val) => setFormData(prev => ({ ...prev, location: val }))}
+                                        disabled={isPending}
+                                    >
+                                        <SelectTrigger id="location">
+                                            <SelectValue placeholder="Select Location" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Locations</SelectItem>
+                                            {locations.map((loc) => (
+                                                <SelectItem key={loc.id} value={loc.id}>
+                                                    {loc.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
                             {/* Employee Multi-Select */}
@@ -357,8 +415,10 @@ export function GeneratePayrollClient({
                                 <Label htmlFor="employee">
                                     Select Employees (Optional)
                                 </Label>
-                                {isInitialLoading ? (
-                                    <div className="h-10 bg-muted rounded-md animate-pulse" />
+                                {isInitialLoading || loadingEmployeesForLocation ? (
+                                    <div className="h-10 bg-muted rounded-md animate-pulse flex items-center justify-center text-sm text-muted-foreground">
+                                        Loading employees...
+                                    </div>
                                 ) : (
                                     <MultiSelect
                                         options={multiSelectProps.options}
@@ -538,11 +598,20 @@ export function GeneratePayrollClient({
                                                                     <span className="text-right">{Math.round(Number(row.overtimeAmount || 0)).toLocaleString()}</span>
                                                                 </div>
                                                             )}
-                                                            {row.bonusAmount > 0 && (
-                                                                <div className="flex justify-between items-center gap-2">
-                                                                    <span className="font-bold shrink-0">Bonus:</span>
-                                                                    <span className="text-right">{Math.round(Number(row.bonusAmount || 0)).toLocaleString()}</span>
-                                                                </div>
+                                                            {row.bonusBreakup && row.bonusBreakup.length > 0 ? (
+                                                                row.bonusBreakup.map((b: any) => (
+                                                                    <div key={b.id || b.name} className="flex justify-between items-center gap-2">
+                                                                        <span className="font-bold shrink-0">{b.name || 'Bonus'}:</span>
+                                                                        <span className="text-right">{Math.round(Number(b.amount || 0)).toLocaleString()}</span>
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                row.bonusAmount > 0 && (
+                                                                    <div className="flex justify-between items-center gap-2">
+                                                                        <span className="font-bold shrink-0">Bonus:</span>
+                                                                        <span className="text-right">{Math.round(Number(row.bonusAmount || 0)).toLocaleString()}</span>
+                                                                    </div>
+                                                                )
                                                             )}
                                                             {row.leaveEncashmentAmount > 0 && (
                                                                 <div className="flex justify-between items-center gap-2">

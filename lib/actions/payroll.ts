@@ -78,6 +78,7 @@ export async function getPayrollReport(filters: {
     departmentId?: string;
     subDepartmentId?: string;
     employeeId?: string;
+    locationId?: string;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -86,6 +87,7 @@ export async function getPayrollReport(filters: {
         if (filters.departmentId && filters.departmentId !== 'all') queryParams.append("departmentId", filters.departmentId);
         if (filters.subDepartmentId && filters.subDepartmentId !== 'all') queryParams.append("subDepartmentId", filters.subDepartmentId);
         if (filters.employeeId && filters.employeeId !== 'all') queryParams.append("employeeId", filters.employeeId);
+        if (filters.locationId && filters.locationId !== 'all') queryParams.append("locationId", filters.locationId);
 
         const response = await authFetch(`/payroll/report?${queryParams.toString()}`, {
             method: "GET",

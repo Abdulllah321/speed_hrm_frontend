@@ -824,6 +824,14 @@ export const menuData: MenuItem[] = [
             href: "/erp/inventory/transactions/delivery-note",
           },
           {
+            title: "Stock Requisition",
+            href: "/erp/inventory/transactions/stock-requisition",
+          },
+          {
+            title: "Requisition Pending List",
+            href: "/erp/inventory/transactions/stock-requisition/pending",
+          },
+          {
             title: "Stock Transfer",
             href: "/erp/inventory/transactions/stock-transfer",
           },
@@ -1624,7 +1632,7 @@ export const menuData: MenuItem[] = [
     ],
     children: [
       {
-        title: "Stock View",
+        title: "Outlet Request",
         href: "/pos/inventory/view",
         permissions: ["pos.inventory.view"],
       },

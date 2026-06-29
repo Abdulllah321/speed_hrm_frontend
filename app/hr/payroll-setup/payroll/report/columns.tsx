@@ -156,11 +156,20 @@ export const columns: ColumnDef<PayrollReportRow>[] = [
                             <span className="text-right">{Math.round(Number(data.overtimeAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         </div>
                     )}
-                    {data.bonusAmount > 0 && (
-                        <div className="flex justify-between items-center gap-2">
-                            <span className="font-bold shrink-0">Bonus:</span>
-                            <span className="text-right">{Math.round(Number(data.bonusAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                        </div>
+                    {data.bonusBreakup && data.bonusBreakup.length > 0 ? (
+                        data.bonusBreakup.map((b: any) => (
+                            <div key={b.id || b.name} className="flex justify-between items-center gap-2">
+                                <span className="font-bold shrink-0">{b.name || 'Bonus'}:</span>
+                                <span className="text-right">{Math.round(Number(b.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                            </div>
+                        ))
+                    ) : (
+                        data.bonusAmount > 0 && (
+                            <div className="flex justify-between items-center gap-2">
+                                <span className="font-bold shrink-0">Bonus:</span>
+                                <span className="text-right">{Math.round(Number(data.bonusAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                            </div>
+                        )
                     )}
                     {data.leaveEncashmentAmount > 0 && (
                         <div className="flex justify-between items-center gap-2">

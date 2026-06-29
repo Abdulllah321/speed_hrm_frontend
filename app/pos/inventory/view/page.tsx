@@ -74,7 +74,7 @@ export default function InventoryViewPage() {
             >
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Stock View</h1>
+                        <h1 className="text-2xl font-bold tracking-tight">Outlet Request</h1>
                         <p className="text-sm text-muted-foreground font-medium mt-0.5">
                             {items.length > 0 ? `${items.length} items found` : "Search to check stock levels"}
                         </p>

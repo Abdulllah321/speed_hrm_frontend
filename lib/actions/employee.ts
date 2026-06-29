@@ -145,6 +145,7 @@ export async function getEmployeesForDropdown(params?: {
   departmentId?: string;
   subDepartmentId?: string;
   providentFund?: boolean;
+  locationId?: string;
 }): Promise<{
   status: boolean;
   data?: EmployeeDropdownOption[];
@@ -163,6 +164,7 @@ export async function getEmployeesForDropdown(params?: {
     if (params?.search) searchParams.append('search', params.search);
     if (params?.departmentId) searchParams.append('departmentId', params.departmentId);
     if (params?.subDepartmentId) searchParams.append('subDepartmentId', params.subDepartmentId);
+    if (params?.locationId) searchParams.append('locationId', params.locationId);
     if (params?.providentFund) searchParams.append('providentFund', 'true');
 
     const url = `/employees/dropdown${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
@@ -187,6 +189,7 @@ export async function getAllEmployeesForDropdown(filters?: {
   subDepartmentId?: string;
   search?: string;
   providentFund?: boolean;
+  locationId?: string;
 }): Promise<{
   status: boolean;
   data?: EmployeeDropdownOption[];
