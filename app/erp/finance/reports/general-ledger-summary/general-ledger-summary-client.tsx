@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Square,
   Check,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -69,7 +70,11 @@ export function GeneralLedgerSummaryClient({
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [fromSerial, setFromSerial] = React.useState("");
   const [toSerial, setToSerial] = React.useState("");
-  const [serialPattern, setSerialPattern] = React.useState("");
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [fromAccountId, setFromAccountId] = React.useState<string | null>(null);
+  const [toAccountId, setToAccountId] = React.useState<string | null>(null);
+  const [toSearch, setToSearch] = React.useState("");
+  const [showToDropdown, setShowToDropdown] = React.useState(false);
 
   // Keyboard navigation on list
   const [focusedIndex, setFocusedIndex] = React.useState<number>(-1);
@@ -97,6 +102,17 @@ export function GeneralLedgerSummaryClient({
     return selectedParentInTree?.children ?? [];
   }, [selectedParentInTree]);
 
+  // Filtered subaccounts based on search input
+  const filteredSubAccounts = React.useMemo(() => {
+    if (!searchQuery.trim()) return subAccounts;
+    const q = searchQuery.toLowerCase();
+    return subAccounts.filter(
+      (sa) =>
+        sa.code.toLowerCase().includes(q) ||
+        sa.name.toLowerCase().includes(q)
+    );
+  }, [subAccounts, searchQuery]);
+
   // Reset/select all sub-accounts on parent account selection
   React.useEffect(() => {
     if (subAccounts.length > 0) {
@@ -109,44 +125,55 @@ export function GeneralLedgerSummaryClient({
     }
     setFromSerial("");
     setToSerial("");
-    setSerialPattern("");
+    setFromAccountId(null);
+    setToAccountId(null);
+    setToSearch("");
   }, [subAccounts]);
 
-  const toggleSelectAll = () => {
-    if (selectedIds.size === subAccounts.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(subAccounts.map((sa) => sa.id)));
-    }
+  const toggleSelectAllFiltered = () => {
+    const filteredIds = filteredSubAccounts.map((sa) => sa.id);
+    const allFilteredSelected = filteredIds.every((id) => selectedIds.has(id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filteredIds.forEach((id) => next.delete(id));
+      } else {
+        filteredIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
   };
 
   // Keyboard list interactions
   React.useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      // Do not intercept if user is typing in input fields
+      // Global shortcut: Ctrl+Enter loads summary directly
+      if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        loadLedgerSummary();
+        return;
+      }
+
+      // Do not intercept keyboard actions if typing in input fields (except search or range input fields if needed)
       if (
         document.activeElement?.tagName === "INPUT" ||
         document.activeElement?.tagName === "TEXTAREA"
       ) {
-        if (e.key === "Enter" && document.activeElement.id === "serial-pattern-input") {
-          e.preventDefault();
-          applySerialPattern();
-        }
         return;
       }
 
-      if (subAccounts.length === 0) return;
+      if (filteredSubAccounts.length === 0) return;
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setFocusedIndex((prev) => Math.min(prev + 1, subAccounts.length - 1));
+        setFocusedIndex((prev) => Math.min(prev + 1, filteredSubAccounts.length - 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         setFocusedIndex((prev) => Math.max(prev - 1, 0));
       } else if (e.key === " ") {
         e.preventDefault();
-        if (focusedIndex >= 0 && focusedIndex < subAccounts.length) {
-          const focusedSa = subAccounts[focusedIndex];
+        if (focusedIndex >= 0 && focusedIndex < filteredSubAccounts.length) {
+          const focusedSa = filteredSubAccounts[focusedIndex];
           setSelectedIds((prev) => {
             const next = new Set(prev);
             if (next.has(focusedSa.id)) {
@@ -165,12 +192,57 @@ export function GeneralLedgerSummaryClient({
         e.preventDefault();
         setSelectedIds(new Set());
         toast.success("Cleared selection");
+      } else if (e.key === "[") {
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < filteredSubAccounts.length) {
+          const sa = filteredSubAccounts[focusedIndex];
+          setFromAccountId(sa.id);
+          toast.success(`Set From Account to: ${sa.name}`);
+        }
+      } else if (e.key === "]") {
+        e.preventDefault();
+        if (focusedIndex >= 0 && focusedIndex < filteredSubAccounts.length) {
+          const sa = filteredSubAccounts[focusedIndex];
+          setToAccountId(sa.id);
+          toast.success(`Set To Account to: ${sa.name}`);
+        }
       }
     };
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [subAccounts, focusedIndex]);
+  }, [filteredSubAccounts, focusedIndex, parentAccountId, selectedIds]);
+
+  // Set Range Selection when From & To Accounts are chosen
+  React.useEffect(() => {
+    if (fromAccountId && toAccountId) {
+      const fromIdx = subAccounts.findIndex((sa) => sa.id === fromAccountId);
+      const toIdx = subAccounts.findIndex((sa) => sa.id === toAccountId);
+      if (fromIdx !== -1 && toIdx !== -1) {
+        const min = Math.min(fromIdx, toIdx);
+        const max = Math.max(fromIdx, toIdx);
+        const newSelected = new Set(selectedIds);
+        subAccounts.forEach((sa, idx) => {
+          if (idx >= min && idx <= max) {
+            newSelected.add(sa.id);
+          }
+        });
+        setSelectedIds(newSelected);
+      }
+    }
+  }, [fromAccountId, toAccountId]);
+
+  // Scroll active/focused element into view automatically
+  React.useEffect(() => {
+    if (focusedIndex >= 0 && filteredSubAccounts[focusedIndex]) {
+      const activeId = filteredSubAccounts[focusedIndex].id;
+      const container = document.getElementById("subaccounts-list-container");
+      const item = document.getElementById(`subaccount-item-${activeId}`);
+      if (container && item) {
+        item.scrollIntoView({ block: "nearest", behavior: "auto" });
+      }
+    }
+  }, [focusedIndex, filteredSubAccounts]);
 
   const applySerialRange = () => {
     const fromVal = parseInt(fromSerial, 10);
@@ -190,44 +262,6 @@ export function GeneralLedgerSummaryClient({
     });
     setSelectedIds(newSelected);
     toast.success(`Selected sub-accounts from serial #${min} to #${max}`);
-  };
-
-  const applySerialPattern = () => {
-    if (!serialPattern.trim()) return;
-    const maxSerial = subAccounts.length;
-    const selectedSerials: number[] = [];
-    const parts = serialPattern.split(",");
-    for (const part of parts) {
-      const trimmed = part.trim();
-      if (trimmed.toLowerCase() === "all") {
-        for (let i = 1; i <= maxSerial; i++) selectedSerials.push(i);
-      } else if (trimmed.includes("-")) {
-        const [startStr, endStr] = trimmed.split("-");
-        const start = parseInt(startStr.trim(), 10);
-        const end = parseInt(endStr.trim(), 10);
-        if (!isNaN(start) && !isNaN(end)) {
-          const min = Math.min(start, end);
-          const max = Math.max(start, end);
-          for (let i = min; i <= Math.min(max, maxSerial); i++) {
-            selectedSerials.push(i);
-          }
-        }
-      } else {
-        const val = parseInt(trimmed, 10);
-        if (!isNaN(val) && val >= 1 && val <= maxSerial) {
-          selectedSerials.push(val);
-        }
-      }
-    }
-
-    const newSelected = new Set<string>();
-    subAccounts.forEach((sa, idx) => {
-      if (selectedSerials.includes(idx + 1)) {
-        newSelected.add(sa.id);
-      }
-    });
-    setSelectedIds(newSelected);
-    toast.success(`Applied selection pattern for ${newSelected.size} sub-accounts`);
   };
 
   const loadLedgerSummary = () => {
@@ -370,8 +404,8 @@ export function GeneralLedgerSummaryClient({
           <CardContent className="pt-6 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
               {/* Left Column: Keyboard-driven sub-account list selection (4 cols) */}
-              <div className="lg:col-span-4 border rounded-xl p-4 bg-muted/5 flex flex-col h-[500px]">
-                <div className="space-y-4 flex-shrink-0">
+              <div className="lg:col-span-4 border rounded-xl p-4 bg-muted/5 flex flex-col h-[750px] space-y-4">
+                <div className="space-y-3 flex-shrink-0">
                   <div className="space-y-1">
                     <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <BookOpen className="h-3 w-3 text-primary/70" /> Parent Account
@@ -388,44 +422,111 @@ export function GeneralLedgerSummaryClient({
                   </div>
 
                   {subAccounts.length > 0 && (
-                    <>
-                      {/* Keyboard Quick selection pattern box */}
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          <Keyboard className="h-3 w-3 text-indigo-500" /> Keyboard Selection Pattern
-                        </Label>
-                        <Input
-                          id="serial-pattern-input"
-                          placeholder="e.g. 1-5, 8, 12-15 or 'all'"
-                          value={serialPattern}
-                          onChange={(e) => setSerialPattern(e.target.value)}
-                          className="h-9 text-xs"
-                        />
-                        <p className="text-[9px] text-muted-foreground/70 italic">
-                          Press Enter to apply pattern selection instantly.
-                        </p>
+                    <div className="space-y-3 bg-muted/10 p-3 rounded-lg border border-border/50 text-xs">
+                      <div className="flex justify-between items-center font-bold text-[9px] uppercase tracking-wider text-muted-foreground">
+                        <span>Range Selection</span>
+                        {(fromAccountId || toAccountId) && (
+                          <button
+                            onClick={() => {
+                              setFromAccountId(null);
+                              setToAccountId(null);
+                              setToSearch("");
+                            }}
+                            className="text-[9px] text-rose-500 font-bold hover:underline"
+                          >
+                            Reset Range
+                          </button>
+                        )}
                       </div>
 
-                      {/* From/To Serial Range boxes */}
-                      <div className="grid grid-cols-2 gap-2">
+                      {/* From Account Display (marked from the list) */}
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-semibold text-muted-foreground">From Account (Set by list click or `[` key)</Label>
+                        <div className="h-8 border rounded px-2 bg-background flex items-center justify-between text-xs">
+                          <span className="truncate font-medium text-foreground max-w-[200px]">
+                            {fromAccountId
+                              ? subAccounts.find((sa) => sa.id === fromAccountId)?.name || "Selected"
+                              : "Not selected"}
+                          </span>
+                          {fromAccountId && (
+                            <span className="text-[8px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1 rounded font-bold uppercase tracking-wider shrink-0 scale-90">
+                              Start
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* To Account searchable combobox / input */}
+                      <div className="space-y-1 relative">
+                        <Label className="text-[9px] font-semibold text-muted-foreground">To Account (Search & Select)</Label>
+                        <Input
+                          placeholder="Type to search To-Account..."
+                          value={toSearch}
+                          onChange={(e) => {
+                            setToSearch(e.target.value);
+                            setShowToDropdown(true);
+                          }}
+                          onFocus={() => setShowToDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowToDropdown(false), 200)}
+                          className="h-8 text-xs font-medium"
+                        />
+
+                        {showToDropdown && (
+                          <div className="absolute z-50 left-0 right-0 mt-1 max-h-[160px] overflow-y-auto border bg-popover text-popover-foreground rounded-md shadow-lg divide-y text-xs">
+                            {subAccounts
+                              .filter(
+                                (sa) =>
+                                  sa.code.toLowerCase().includes(toSearch.toLowerCase()) ||
+                                  sa.name.toLowerCase().includes(toSearch.toLowerCase())
+                              )
+                              .slice(0, 15)
+                              .map((sa) => (
+                                <div
+                                  key={sa.id}
+                                  onMouseDown={() => {
+                                    setToAccountId(sa.id);
+                                    setToSearch(sa.name);
+                                    setShowToDropdown(false);
+                                  }}
+                                  className="px-2.5 py-1.5 hover:bg-accent hover:text-accent-foreground cursor-pointer font-medium truncate flex justify-between"
+                                >
+                                  <span className="truncate">{sa.name}</span>
+                                  <span className="font-mono text-[9px] text-muted-foreground ml-2 shrink-0">{sa.code}</span>
+                                </div>
+                              ))}
+                            {subAccounts.filter(
+                              (sa) =>
+                                sa.code.toLowerCase().includes(toSearch.toLowerCase()) ||
+                                sa.name.toLowerCase().includes(toSearch.toLowerCase())
+                            ).length === 0 && (
+                              <div className="px-2.5 py-1.5 text-muted-foreground text-center">
+                                No accounts found
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Serial Selection Range boxes */}
+                      <div className="grid grid-cols-2 gap-2 border-t pt-2 mt-2">
                         <div className="space-y-1">
-                          <Label className="text-[9px] font-bold text-muted-foreground">From Serial</Label>
+                          <Label className="text-[9px] font-semibold text-muted-foreground">From Serial</Label>
                           <Input
                             type="number"
                             placeholder="1"
                             value={fromSerial}
                             onChange={(e) => setFromSerial(e.target.value)}
-                            className="h-8 text-xs font-mono"
+                            className="h-7 text-xs font-mono"
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[9px] font-bold text-muted-foreground">To Serial</Label>
+                          <Label className="text-[9px] font-semibold text-muted-foreground">To Serial</Label>
                           <Input
                             type="number"
                             placeholder={subAccounts.length.toString()}
                             value={toSerial}
                             onChange={(e) => setToSerial(e.target.value)}
-                            className="h-8 text-xs font-mono"
+                            className="h-7 text-xs font-mono"
                           />
                         </div>
                       </div>
@@ -434,38 +535,67 @@ export function GeneralLedgerSummaryClient({
                         variant="secondary"
                         size="sm"
                         onClick={applySerialRange}
-                        className="w-full h-8 text-xs font-semibold shadow-sm"
+                        className="w-full h-7 text-[10px] font-bold shadow-sm"
                       >
-                        Apply Serial Range
+                        Select Range By Serial
                       </Button>
-                    </>
+                    </div>
                   )}
                 </div>
 
                 {subAccounts.length > 0 && (
-                  <div className="flex-1 flex flex-col mt-4 min-h-0 border rounded-lg bg-background">
+                  <div className="flex-1 flex flex-col min-h-0 border rounded-lg bg-background">
                     {/* Header bar of checklist */}
                     <div className="flex items-center justify-between px-3 py-2 border-b bg-muted/20 text-xs font-bold flex-shrink-0">
-                      <span>Sub-accounts ({subAccounts.length})</span>
+                      <span>Sub-accounts ({filteredSubAccounts.length})</span>
                       <button
                         type="button"
-                        onClick={toggleSelectAll}
+                        onClick={toggleSelectAllFiltered}
                         className="text-primary hover:underline font-semibold"
                       >
-                        {selectedIds.size === subAccounts.length ? "Deselect All" : "Select All"}
+                        {filteredSubAccounts.every((sa) => selectedIds.has(sa.id)) ? "Deselect Filtered" : "Select Filtered"}
                       </button>
                     </div>
 
+                    {/* Search Bar for Subaccounts */}
+                    <div className="p-2 border-b bg-muted/5 flex-shrink-0">
+                      <div className="relative">
+                        <Input
+                          placeholder="Search sub-accounts by code/name..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setFocusedIndex(0);
+                          }}
+                          className="h-8 text-xs pl-8"
+                        />
+                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground/60" />
+                        {searchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setSearchQuery("")}
+                            className="absolute right-2.5 top-2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Scrollable list with focused row visual indicator */}
-                    <div className="flex-1 overflow-y-auto p-1 divide-y divide-border/40 select-none">
-                      {subAccounts.map((child, idx) => {
-                        const serial = idx + 1;
+                    <div
+                      id="subaccounts-list-container"
+                      className="flex-1 overflow-y-auto p-1 divide-y divide-border/40 select-none scroll-smooth"
+                    >
+                      {filteredSubAccounts.map((child, idx) => {
+                        const serial = subAccounts.findIndex((sa) => sa.id === child.id) + 1;
                         const isSelected = selectedIds.has(child.id);
                         const isFocused = focusedIndex === idx;
 
                         return (
                           <div
                             key={child.id}
+                            id={`subaccount-item-${child.id}`}
                             onClick={() => {
                               setSelectedIds((prev) => {
                                 const next = new Set(prev);
@@ -476,41 +606,91 @@ export function GeneralLedgerSummaryClient({
                               setFocusedIndex(idx);
                             }}
                             className={cn(
-                              "flex items-center gap-2.5 px-2.5 py-1.5 text-xs cursor-pointer transition-colors rounded",
+                              "flex items-center gap-2 px-2 py-1.5 text-xs cursor-pointer transition-colors rounded group justify-between",
                               isFocused
-                                ? "bg-accent/70 text-accent-foreground border-l-2 border-primary"
-                                : "hover:bg-accent/30",
+                                ? "bg-accent text-accent-foreground border-l-2 border-primary"
+                                : "hover:bg-accent/40",
                             )}
                           >
-                            <span className="font-mono text-[9px] text-muted-foreground w-5 text-right">
-                              {serial}.
-                            </span>
-                            {isSelected ? (
-                              <CheckSquare className="h-3.5 w-3.5 text-primary shrink-0" />
-                            ) : (
-                              <Square className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-mono text-[10px] font-semibold text-foreground truncate">
-                                {child.code}
-                              </p>
-                              <p className="text-muted-foreground text-[10px] truncate leading-none">
-                                {child.name}
-                              </p>
-                            </div>
-                            {isFocused && (
-                              <span className="text-[8px] bg-primary/10 text-primary px-1 rounded font-bold uppercase tracking-wider scale-90">
-                                active
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="font-mono text-[9px] text-muted-foreground w-6 text-right shrink-0">
+                                {serial}.
                               </span>
-                            )}
+                              {isSelected ? (
+                                <CheckSquare className="h-3.5 w-3.5 text-primary shrink-0" />
+                              ) : (
+                                <Square className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+                              )}
+                              <div className="min-w-0 leading-tight">
+                                <p className="font-mono text-[10px] font-semibold text-foreground truncate">
+                                  {child.code}
+                                </p>
+                                <p className="text-muted-foreground text-[10px] truncate">
+                                  {child.name}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Range set buttons & indicators */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {fromAccountId === child.id && (
+                                <span className="text-[7px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1 rounded font-extrabold uppercase scale-90">
+                                  From
+                                </span>
+                              )}
+                              {toAccountId === child.id && (
+                                <span className="text-[7px] bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300 px-1 rounded font-extrabold uppercase scale-90">
+                                  To
+                                </span>
+                              )}
+
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setFromAccountId(child.id);
+                                    toast.success(`Set start account: ${child.name}`);
+                                  }}
+                                  className={cn(
+                                    "px-1 py-0.5 rounded text-[8px] font-extrabold border bg-background hover:bg-accent shadow-sm",
+                                    fromAccountId === child.id && "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                  )}
+                                >
+                                  From
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setToAccountId(child.id);
+                                    toast.success(`Set end account: ${child.name}`);
+                                  }}
+                                  className={cn(
+                                    "px-1 py-0.5 rounded text-[8px] font-extrabold border bg-background hover:bg-accent shadow-sm",
+                                    toAccountId === child.id && "bg-indigo-50 border-indigo-300 text-indigo-700"
+                                  )}
+                                >
+                                  To
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
+                      {filteredSubAccounts.length === 0 && (
+                        <div className="p-4 text-center text-muted-foreground text-xs">
+                          No sub-accounts match the search query.
+                        </div>
+                      )}
                     </div>
-                    <div className="px-2 py-1 bg-muted/15 border-t text-[8px] text-muted-foreground flex justify-between">
+
+                    <div className="px-2 py-1.5 bg-muted/15 border-t text-[8px] text-muted-foreground flex justify-between flex-wrap gap-1">
                       <span>[⇅] Focus row</span>
                       <span>[Space] Toggle</span>
+                      <span>[ [ / ] ] Set From/To</span>
                       <span>[Ctrl+A/C] Select/Clear</span>
+                      <span>[Ctrl+Enter] Load Summary</span>
                     </div>
                   </div>
                 )}
@@ -742,7 +922,6 @@ export function GeneralLedgerSummaryClient({
               </h1>
             </div>
             <div className="text-right">
-              <span className="text-[10px] font-bold">NIKE</span>
               <p className="text-[8px] mt-0.5">
                 Form {fromDate ? format(fromDate, "dd/MM/yyyy") : "Beginning"} To{" "}
                 {toDate ? format(toDate, "dd/MM/yyyy") : "Present"}
