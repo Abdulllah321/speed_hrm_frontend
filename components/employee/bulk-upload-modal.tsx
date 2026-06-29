@@ -214,7 +214,7 @@ export function EmployeeBulkUploadModal({
                 <DialogHeader className="p-6 pb-2 border-b bg-muted/30 shrink-0">
                     <DialogTitle className="flex items-center gap-2 text-2xl font-bold tracking-tight">
                         <UserPlus className="h-6 w-6 text-primary" />
-                        Bulk Employee Upload
+                        Bulk Employee Upload & Update
                         {data?.status && (
                             <Badge variant="outline" className="ml-2 capitalize">
                                 {data.status}
@@ -222,7 +222,7 @@ export function EmployeeBulkUploadModal({
                         )}
                     </DialogTitle>
                     <DialogDescription className="text-sm">
-                        Efficiently onboard multiple employees. Validate data formats first, then confirm import.
+                        Efficiently onboard new employees or update existing records in bulk. Validate data formats first, then confirm import/update.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -278,9 +278,9 @@ export function EmployeeBulkUploadModal({
                                                 <Upload className="h-10 w-10 text-muted-foreground group-hover:text-primary" />
                                             </div>
                                             <div className="text-center space-y-2">
-                                                <p className="font-bold text-xl">Upload Employee CSV</p>
-                                                <p className="text-sm text-muted-foreground max-w-[300px]">
-                                                    Select a CSV or Excel file containing employee information.
+                                                <p className="font-bold text-xl">Upload Employee CSV / Excel</p>
+                                                <p className="text-sm text-muted-foreground max-w-[350px]">
+                                                    Select a CSV or Excel file containing employee details to import or update.
                                                 </p>
                                             </div>
                                         </>
@@ -311,7 +311,7 @@ export function EmployeeBulkUploadModal({
                                             <div className="flex items-center gap-2">
                                                 {isProcessing && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                                                 <p className="text-sm font-bold text-primary uppercase tracking-widest">
-                                                    {isValidating ? 'Step 1: Validating Data' : data?.status === 'processing' ? 'Step 2: Importing Employees' : 'Status'}
+                                                    {isValidating ? 'Step 1: Validating Data' : data?.status === 'processing' ? 'Step 2: Importing & Updating' : 'Status'}
                                                 </p>
                                             </div>
                                             <h3 className="text-2xl font-black truncate max-w-[450px]">{data?.filename}</h3>
@@ -418,7 +418,7 @@ export function EmployeeBulkUploadModal({
                                             <div className="space-y-1">
                                                 <h3 className="text-2xl font-black text-green-700">Import Complete!</h3>
                                                 <p className="text-green-600/80 font-medium">
-                                                    {data?.successRecords} employees have been successfully added to the system.
+                                                    {data?.successRecords} employees have been successfully added or updated.
                                                 </p>
                                             </div>
                                         </div>

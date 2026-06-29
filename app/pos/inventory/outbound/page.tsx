@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/providers/auth-provider";
-import { getOutboundTransferRequests, approveSourceTransferRequest } from "@/lib/actions/transfer-request";
+import { getOutboundTransferRequests, approveSourceTransferRequest, updateTransferRequestStatus } from "@/lib/actions/transfer-request";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -27,6 +27,7 @@ export default function OutboundRequestsPage() {
     const [requests, setRequests] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isApproving, setIsApproving] = useState<string | null>(null);
+    const [isRejecting, setIsRejecting] = useState<string | null>(null);
 
     const locationId = user?.terminal?.location?.id || user?.locationId;
 
@@ -64,6 +65,23 @@ export default function OutboundRequestsPage() {
             toast.error(error.message || "Failed to approve transfer");
         } finally {
             setIsApproving(null);
+        }
+    };
+
+    const handleReject = async (requestId: string) => {
+        setIsRejecting(requestId);
+        try {
+            const res = await updateTransferRequestStatus(requestId, 'REJECTED');
+            if (res.status) {
+                toast.success("Transfer request rejected successfully.");
+                setRequests(prev => prev.filter(r => r.id !== requestId));
+            } else {
+                toast.error(res.message || "Failed to reject transfer");
+            }
+        } catch (error: any) {
+            toast.error(error.message || "Failed to reject transfer");
+        } finally {
+            setIsRejecting(null);
         }
     };
 
@@ -173,8 +191,8 @@ export default function OutboundRequestsPage() {
 
                                             <div className="w-full md:w-auto flex flex-col gap-2">
                                                 <Button
-                                                    className="w-full md:w-40 h-14 text-lg font-bold gap-2 shadow-lg shadow-blue-200 bg-blue-600 hover:bg-blue-700"
-                                                    disabled={isApproving === request.id || !hasPermission('pos.inventory.outbound.approve')}
+                                                    className="w-full md:w-40 h-12 text-md font-bold gap-2 shadow-lg shadow-blue-200 bg-blue-600 hover:bg-blue-700"
+                                                    disabled={isApproving === request.id || isRejecting === request.id || !hasPermission('pos.inventory.outbound.approve')}
                                                     onClick={() => handleApprove(request.id)}
                                                 >
                                                     {isApproving === request.id ? (
@@ -183,6 +201,15 @@ export default function OutboundRequestsPage() {
                                                         <CheckCircle2 className="h-5 w-5" />
                                                     )}
                                                     {isApproving === request.id ? "Approving..." : "Approve & Release"}
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    className="w-full md:w-40 h-10 font-bold gap-2"
+                                                    disabled={isRejecting === request.id || isApproving === request.id || !hasPermission('pos.inventory.outbound.approve')}
+                                                    onClick={() => handleReject(request.id)}
+                                                >
+                                                    {isRejecting === request.id && <RefreshCcw className="h-4 w-4 animate-spin" />}
+                                                    Reject Request
                                                 </Button>
                                                 <Button variant="outline" className="w-full md:w-40 h-10 font-semibold text-blue-600 border-blue-200 hover:bg-blue-50" asChild>
                                                     <Link href={`/erp/inventory/transactions/outlet-transfer/slip/${request.id}`} target="_blank">

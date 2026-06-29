@@ -15,7 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Package, Send, AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { createStockRequisition } from "@/lib/actions/stock-requisition";
 import { createTransferRequest } from "@/lib/actions/transfer-request";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface RequestStockModalProps {
     item: {
@@ -25,6 +27,7 @@ interface RequestStockModalProps {
     } | null;
     fromLocation: {
         location: {
+            id?: string;
             name: string;
             warehouse: {
                 id: string;
@@ -43,6 +46,7 @@ export function RequestStockModal({
     isOpen,
     onClose,
 }: RequestStockModalProps) {
+    const { user } = useAuth();
     const [quantity, setQuantity] = useState("1");
     const [notes, setNotes] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,28 +62,50 @@ export function RequestStockModal({
             return;
         }
 
-        if (qty > fromLocation.quantity) {
-            toast.error(`Requested quantity exceeds available stock (${fromLocation.quantity})`);
+        const toLocationId = user?.terminal?.location?.id || user?.locationId;
+        if (!toLocationId) {
+            toast.error("Your terminal/outlet location is not configured");
             return;
         }
 
         setIsSubmitting(true);
         try {
-            const res = await createTransferRequest({
-                fromWarehouseId: fromLocation.location.warehouse.id,
-                toWarehouseId: "CURRENT_WAREHOUSE_ID", // TODO: Replace with actual current POS warehouse ID from context/auth
-                items: [
-                    {
-                        itemId: item.id,
-                        quantity: qty,
-                    },
-                ],
-                notes,
-            });
+            const isFromOutlet = !!fromLocation.location.id;
+            let res;
+            if (isFromOutlet) {
+                // Direct Outlet-to-Outlet Transfer Request
+                res = await createTransferRequest({
+                    fromLocationId: fromLocation.location.id,
+                    toLocationId: toLocationId,
+                    transferType: "OUTLET_TO_OUTLET",
+                    items: [
+                        {
+                            itemId: item.id,
+                            quantity: qty,
+                        },
+                    ],
+                    notes,
+                });
+            } else {
+                // Stock Requisition (SRN) from Warehouse
+                res = await createStockRequisition({
+                    fromWarehouseId: fromLocation.location.warehouse.id,
+                    toLocationId: toLocationId,
+                    documentType: "Outlet Request",
+                    status: "DRAFT",
+                    items: [
+                        {
+                            itemId: item.id,
+                            quantity: qty,
+                        },
+                    ],
+                    notes,
+                });
+            }
 
             if (res.status) {
                 setIsSuccess(true);
-                toast.success(res.message || "Stock transfer request sent successfully");
+                toast.success(res.message || "Request sent successfully");
                 setTimeout(() => {
                     onClose();
                     setIsSuccess(false);
@@ -87,10 +113,10 @@ export function RequestStockModal({
                     setNotes("");
                 }, 2000);
             } else {
-                toast.error(res.message || "Failed to send transfer request");
+                toast.error(res.message || "Failed to send Request");
             }
         } catch (error: any) {
-            console.error("Transfer request error:", error);
+            console.error("Request stock error:", error);
             toast.error(error.message || "An error occurred while sending the request");
         } finally {
             setIsSubmitting(false);

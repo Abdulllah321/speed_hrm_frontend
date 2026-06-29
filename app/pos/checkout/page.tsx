@@ -345,7 +345,7 @@ export default function CheckoutPage() {
     }, 0);
 
     const subtotalAfterItems = subtotal - itemDiscounts;
-    
+
     const defaultItemTax = cartItems.reduce((acc, i) => {
         const taxDivisor = 1 + (i.taxPercent / 100);
         const wostPerUnit = i.price / taxDivisor;
@@ -490,7 +490,14 @@ export default function CheckoutPage() {
 
     const addTender = () => {
         if (!tenderAmount || tenderAmount <= 0) return;
-        
+
+        // Prevent total tender from exceeding the invoice amount
+        const alreadyPaid = tenders.reduce((a, t) => a + t.amount, 0);
+        if (alreadyPaid + tenderAmount > grandTotal) {
+            toast.error(`Tender amount exceeds the invoice total of ${fmtCurrency(grandTotal)}. Maximum allowed: ${fmtCurrency(Math.max(0, grandTotal - alreadyPaid))}.`);
+            return;
+        }
+
         if (discountMode === "alliance" && selectedAlliance) {
             if (tenderMethod === "cash") {
                 toast.error("Cash payment is not allowed when Alliance is selected.");
@@ -574,6 +581,12 @@ export default function CheckoutPage() {
         if (!validatedVoucher || !tenderAmount || tenderAmount <= 0) return;
         if (appliedVouchers.some(v => v.voucherId === validatedVoucher.id)) {
             toast.error("This voucher is already added");
+            return;
+        }
+        const alreadyPaid = tenders.reduce((a, t) => a + t.amount, 0);
+        const maxAllowed = Math.max(0, grandTotal - alreadyPaid);
+        if (tenderAmount > maxAllowed) {
+            toast.error(`Voucher amount exceeds the invoice total of ${fmtCurrency(grandTotal)}. Maximum allowed: ${fmtCurrency(maxAllowed)}.`);
             return;
         }
         const amount = Math.min(tenderAmount, validatedVoucher.faceValue);
@@ -822,8 +835,8 @@ export default function CheckoutPage() {
         const handler = (e: KeyboardEvent) => {
             const activeEl = document.activeElement;
             const isInput = activeEl && (
-                activeEl.tagName === "INPUT" || 
-                activeEl.tagName === "TEXTAREA" || 
+                activeEl.tagName === "INPUT" ||
+                activeEl.tagName === "TEXTAREA" ||
                 activeEl.tagName === "SELECT" ||
                 activeEl.getAttribute("contenteditable") === "true"
             );
@@ -1026,9 +1039,9 @@ export default function CheckoutPage() {
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
     }, [
-        balanceDue, isSubmitting, handleConfirm, clearDiscount, tenderMethod, 
-        discountMode, selectedAlliance, isGiftReceipt, canHold, cartItems, 
-        isHolding, handleHold, selectedCustomer, handleCreditSale, 
+        balanceDue, isSubmitting, handleConfirm, clearDiscount, tenderMethod,
+        discountMode, selectedAlliance, isGiftReceipt, canHold, cartItems,
+        isHolding, handleHold, selectedCustomer, handleCreditSale,
         showShortcutsHelp, showReceiptPreview, showHoldModal, router
     ]);
 
@@ -1134,6 +1147,11 @@ export default function CheckoutPage() {
                                 toast.error("Alliance discount cannot be applied when cash payment is added.");
                                 return;
                             }
+                            // Clear any previously added tenders (e.g. bank_transfer) so the
+                            // amount resets against the new alliance-discounted grand total
+                            setTenders([]);
+                            setAppliedVouchers([]);
+                            setTenderAmount(0);
                             clearDiscount();
                             setSelectedAlliance(a);
                             setDiscountMode("alliance");
@@ -1357,7 +1375,7 @@ export default function CheckoutPage() {
                         <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                         <span className="font-semibold text-xs uppercase tracking-wider text-foreground">Checkout Guide</span>
                     </div>
-                    <button 
+                    <button
                         onClick={() => setShowShortcutsHelp(false)}
                         className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground transition-colors font-mono"
                     >

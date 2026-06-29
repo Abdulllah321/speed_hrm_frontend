@@ -366,7 +366,7 @@ export default function EmployeeListPage() {
             </Link>
             <Button variant="secondary" onClick={() => setUploadModalOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
-              Bulk Upload
+              Bulk Upload / Update
             </Button>
           </div>
         </div>

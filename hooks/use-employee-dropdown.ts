@@ -17,6 +17,7 @@ function normalizeFilterId(value?: string) {
 export interface UseEmployeeDropdownOptions {
   departmentId?: string;
   subDepartmentId?: string;
+  locationId?: string;
   selectedIds?: string[];
   limit?: number;
   providentFundOnly?: boolean;
@@ -25,6 +26,7 @@ export interface UseEmployeeDropdownOptions {
 export function useEmployeeDropdown({
   departmentId,
   subDepartmentId,
+  locationId,
   selectedIds = [],
   limit = 100,
   providentFundOnly = false,
@@ -41,15 +43,16 @@ export function useEmployeeDropdown({
 
   const normalizedDepartmentId = normalizeFilterId(departmentId);
   const normalizedSubDepartmentId = normalizeFilterId(subDepartmentId);
+  const normalizedLocationId = normalizeFilterId(locationId);
 
   useEffect(() => {
     setPage(1);
     setSearchResults([]);
     setSearchInput("");
-  }, [normalizedDepartmentId, normalizedSubDepartmentId, providentFundOnly]);
+  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, providentFundOnly]);
 
   useEffect(() => {
-    const filterKey = `${normalizedDepartmentId}|${normalizedSubDepartmentId}|${debouncedSearch}|${providentFundOnly}`;
+    const filterKey = `${normalizedDepartmentId}|${normalizedSubDepartmentId}|${normalizedLocationId}|${debouncedSearch}|${providentFundOnly}`;
     const filtersChanged = filterKey !== filterKeyRef.current;
     filterKeyRef.current = filterKey;
 
@@ -65,6 +68,7 @@ export function useEmployeeDropdown({
         const result = await getEmployeesForDropdown({
           departmentId: normalizedDepartmentId,
           subDepartmentId: normalizedSubDepartmentId,
+          locationId: normalizedLocationId,
           search: debouncedSearch || undefined,
           page: fetchPage,
           limit,
@@ -102,7 +106,7 @@ export function useEmployeeDropdown({
     };
 
     fetchEmployees();
-  }, [normalizedDepartmentId, normalizedSubDepartmentId, debouncedSearch, page, limit, providentFundOnly]);
+  }, [normalizedDepartmentId, normalizedSubDepartmentId, normalizedLocationId, debouncedSearch, page, limit, providentFundOnly]);
 
   const displayEmployees = useMemo(() => {
     const map = new Map<string, EmployeeDropdownOption>();
