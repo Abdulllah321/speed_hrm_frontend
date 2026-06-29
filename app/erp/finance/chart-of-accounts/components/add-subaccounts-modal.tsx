@@ -141,7 +141,7 @@ export function AddSubAccountsModal({
           getSuppliers(),
           getCustomers(),
           getLocations(),
-          getEmployees(),
+          getEmployees({limit: 1000}),
         ]);
         
         await Promise.all([
