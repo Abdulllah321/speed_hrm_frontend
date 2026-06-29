@@ -53,6 +53,9 @@ export interface GeneralLedgerRow {
     code: string;
     name: string;
   } | null;
+  chequeNo?: string;
+  refBillNo?: string | null;
+  refBillNo2?: string | null;
 }
 
 export interface GeneralLedgerResult {
@@ -200,6 +203,50 @@ export async function queueGeneralLedgerExport(
         sourceType: sourceType === 'all' ? undefined : sourceType,
       })}`,
       { method: 'POST' }
+    );
+    return res.data;
+  } catch (e: any) {
+    return { status: false, message: e.message };
+  }
+}
+
+export interface GeneralLedgerSummaryRow {
+  id: string;
+  code: string;
+  name: string;
+  openingBalance: number;
+  debit: number;
+  credit: number;
+  closingBalance: number;
+}
+
+export interface GeneralLedgerSummaryResult {
+  parentAccount: { id: string; code: string; name: string; type: string };
+  rows: GeneralLedgerSummaryRow[];
+  totals: {
+    openingBalance: number;
+    debit: number;
+    credit: number;
+    closingBalance: number;
+  };
+}
+
+export async function getGeneralLedgerSummary(
+  parentAccountId: string,
+  subAccountIds: string[],
+  from?: string,
+  to?: string
+): Promise<{ status: boolean; data?: GeneralLedgerSummaryResult; message?: string }> {
+  try {
+    const idsParam = subAccountIds && subAccountIds.length > 0 ? subAccountIds.join(',') : undefined;
+    const res = await authFetch(
+      `/finance/reports/general-ledger-summary${buildQuery({
+        parentAccountId,
+        subAccountIds: idsParam,
+        from,
+        to,
+      })}`,
+      {}
     );
     return res.data;
   } catch (e: any) {

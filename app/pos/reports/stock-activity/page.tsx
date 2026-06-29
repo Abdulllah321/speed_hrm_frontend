@@ -623,12 +623,12 @@ export default function PosStockActivityReportPage() {
                             <th className="p-3 w-[280px] border-r bg-slate-800">Article / Variant Info</th>
                             <th className="p-3 w-[100px] border-r text-center bg-slate-800">Color</th>
                             <th className="p-3 w-[80px] border-r text-center bg-slate-800">Size</th>
-                            <th className="p-3 w-[90px] border-r text-right bg-slate-800">BF</th>
+                            <th className="p-3 w-[90px] border-r text-right bg-slate-800">Opening</th>
                             <th className="p-3 w-[90px] text-right bg-emerald-900/10">Wh IN</th>
-                            <th className="p-3 w-[90px] text-right bg-emerald-900/10">Out IN</th>
+                            <th className="p-3 w-[90px] text-right bg-emerald-900/10">Outlet IN</th>
                             <th className="p-3 w-[90px] border-r text-right bg-emerald-900/25 font-extrabold text-emerald-300">Trf IN</th>
                             <th className="p-3 w-[90px] text-right bg-rose-900/10">Wh OUT</th>
-                            <th className="p-3 w-[90px] text-right bg-rose-900/10">Out OUT</th>
+                            <th className="p-3 w-[90px] text-right bg-rose-900/10">Outlet OUT</th>
                             <th className="p-3 w-[90px] border-r text-right bg-rose-900/25 font-extrabold text-rose-300">Trf OUT</th>
                             <th className="p-3 w-[80px] border-r text-right bg-slate-800">Exchg</th>
                             <th className="p-3 w-[80px] border-r text-right bg-slate-800">Refund</th>

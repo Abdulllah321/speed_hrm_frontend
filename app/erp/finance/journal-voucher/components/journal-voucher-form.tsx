@@ -323,16 +323,16 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         }
 
         // Reset Entry Line state
-        setEntryLine({
+        setEntryLine(prev => ({
             accountId: "",
             tagAccountId: "",
             debit: 0,
             credit: 0,
-            narration: "",
+            narration: prev.narration,
             refBillNo: "",
             refBillNo2: "",
             taxType: "",
-        });
+        }));
 
         // Refocus account selector
         setTimeout(() => {
