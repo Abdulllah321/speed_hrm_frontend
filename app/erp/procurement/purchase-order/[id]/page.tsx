@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,10 +14,9 @@ import { toast } from 'sonner';
 import { Printer, ArrowLeft, Building2, CheckCircle2, Clock, XCircle, ThumbsUp, Check, X, Pencil } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
 import { PermissionGuard } from '@/components/auth/permission-guard';
-
 export function numberToWords(amount: number): string {
     const a = [
-        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", 
+        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
         "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
     ];
     const b = [
@@ -26,16 +26,16 @@ export function numberToWords(amount: number): string {
     const inWords = (num: number): string => {
         let n = Math.floor(num);
         if (n === 0) return "Zero";
-        
+
         const convert = (n: number): string => {
             if (n < 20) return a[n];
             if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? "-" + a[n % 10] : "");
             if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " " + convert(n % 100) : "");
-            if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 !== 0 ? " " + convert(n % 1000) : "");
-            if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 !== 0 ? " " + convert(n % 100000) : "");
-            return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 !== 0 ? " " + convert(n % 10000000) : "");
+            if (n < 1000000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 !== 0 ? " " + convert(n % 1000) : "");
+            if (n < 1000000000) return convert(Math.floor(n / 1000000)) + " Million" + (n % 1000000 !== 0 ? " " + convert(n % 1000000) : "");
+            return convert(Math.floor(n / 1000000000)) + " Billion" + (n % 1000000000 !== 0 ? " " + convert(n % 1000000000) : "");
         };
-        
+
         return convert(n) + " Only";
     };
 
@@ -56,6 +56,11 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
     const canCheck = hasPermission('erp.procurement.po.check');
     const canAuthorize = hasPermission('erp.procurement.po.authorize');
     const [submitting, setSubmitting] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
         fetchOrder();
@@ -100,40 +105,44 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
 
     return (
         <>
-            <style jsx global>{`                @media print {
-                    /* Hide everything in the body by default */
-                    body {
-                        visibility: hidden;
+            <style jsx global>{`
+                @media print {
+                    html, body {
+                        height: auto !important;
+                        overflow: visible !important;
+                        background: white !important;
+                        color: black !important;
                     }
-
-                    /* Make the print section visible and position it absolute to allow scrolling/multiple pages */
-                    #print-section {
-                        visibility: visible;
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: auto;
-                        margin: 0;
-                        padding: 0;
-                        background: white;
-                        z-index: 9999;
-                    }
-
-                    /* Ensure all children of print section are visible */
-                    #print-section * {
-                        visibility: visible;
-                    }
-
-                    /* Hide browser default headers/footers if supported */
-                    @page {
-                        margin: 0;
-                        size: auto;
-                    }
-
-                    /* Explicitly hide layout elements that might interfere */
-                    header, nav, footer, aside, .banner {
+                    body > *:not(#print-section) {
                         display: none !important;
+                    }
+                    #print-section, #print-section * {
+                        visibility: visible !important;
+                    }
+                    #print-section {
+                        display: block !important;
+                        position: relative !important;
+                        top: 0 !important;
+                        left: 0 !important;
+                        width: 100% !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: white !important;
+                        color: black !important;
+                        z-index: 99999 !important;
+                    }
+                    @page {
+                        margin: 15mm;
+                        size: A4;
+                    }
+                    tr {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
+                    }
+                    #print-section .grid, 
+                    #print-section .flex {
+                        page-break-inside: avoid;
+                        break-inside: avoid;
                     }
                 }
             `}</style>
@@ -471,178 +480,190 @@ export default function PurchaseOrderDetail({ params }: { params: Promise<{ id: 
             </div>
 
             {/* Professional Print View - Hidden on Screen */}
-            <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
-                <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-8 print:max-w-none box-border">
-                    {/* Header */}
-                    <div className="flex justify-between mb-6 gap-4 items-start">
-                        {/* Logo */}
-                        <div className="w-[20%] flex flex-col items-start justify-center">
-                           <img src="/image.png" alt="Logo" className="w-32 object-contain" />
-                        </div>
-                        
-                        {/* Title */}
-                        <div className="w-[35%] flex flex-col justify-center">
-                          <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                            Purchase Order
-                          </div>
+            {mounted && typeof window !== "undefined" && createPortal(
+                <div 
+                    id="print-section" 
+                    style={{
+                        position: "fixed",
+                        left: "-9999px",
+                        top: 0,
+                        pointerEvents: "none",
+                    }}
+                    aria-hidden="true"
+                >
+                    <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-0 print:max-w-none box-border">
+                        {/* Header */}
+                        <div className="flex justify-between mb-6 gap-4 items-start">
+                            {/* Logo */}
+                            <div className="w-[20%] flex flex-col items-start justify-center">
+                               <img src="/image.png" alt="Logo" className="w-32 object-contain" />
+                            </div>
+                            
+                            {/* Title */}
+                            <div className="w-[35%] flex flex-col justify-center">
+                              <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+                                Purchase Order
+                              </div>
+                            </div>
+
+                            {/* Details Box */}
+                            <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
+                               <div className="flex justify-between mb-2">
+                                 <span className="font-bold">PO Number:</span>
+                                 <span className="font-bold">{order.poNumber}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                 <div className="flex gap-2">
+                                   <span className="font-bold">Date:</span>
+                                   <span>{new Date(order.orderDate).toLocaleDateString('en-GB')}</span>
+                                 </div>
+                               </div>
+                            </div>
                         </div>
 
-                        {/* Details Box */}
-                        <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                           <div className="flex justify-between mb-2">
-                             <span className="font-bold">PO Number:</span>
-                             <span className="font-bold">{order.poNumber}</span>
-                           </div>
-                           <div className="flex justify-between">
-                             <div className="flex gap-2">
-                               <span className="font-bold">Date:</span>
-                               <span>{new Date(order.orderDate).toLocaleDateString('en-GB')}</span>
-                             </div>
-                           </div>
+                        {/* Vendor / Ship To Box */}
+                        <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
+                            <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                                <div className="font-bold border-b border-gray-300 mb-2 pb-1">Vendor Details</div>
+                                <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{order.vendor?.name}</span></div>
+                                <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Code:</span> <span>{order.vendor?.code}</span></div>
+                                <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Email:</span> <span>{order.vendor?.email || 'N/A'}</span></div>
+                                <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Contact:</span> <span>{order.vendor?.contactNo || 'N/A'}</span></div>
+                            </div>
+                            <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                                <div className="font-bold border-b border-gray-300 mb-2 pb-1">Ship To</div>
+                                <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit Warehouse</span></div>
+                                <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Main Warehouse, Plot #45, Industrial Area, Karachi, Pakistan</span></div>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Vendor / Ship To Box */}
-                    <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                        <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                            <div className="font-bold border-b border-gray-300 mb-2 pb-1">Vendor Details</div>
-                            <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{order.vendor?.name}</span></div>
-                            <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Code:</span> <span>{order.vendor?.code}</span></div>
-                            <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Email:</span> <span>{order.vendor?.email || 'N/A'}</span></div>
-                            <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Contact:</span> <span>{order.vendor?.contactNo || 'N/A'}</span></div>
-                        </div>
-                        <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                            <div className="font-bold border-b border-gray-300 mb-2 pb-1">Ship To</div>
-                            <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit Warehouse</span></div>
-                            <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Main Warehouse, Plot #45, Industrial Area, Karachi, Pakistan</span></div>
-                        </div>
-                    </div>
-
-                    {/* Table */}
-                    <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
-                        <thead>
-                          <tr className="border-y-2 border-black">
-                            <th className="py-2 pr-2 text-left font-bold w-[15%]">SKU</th>
-                            <th className="py-2 pr-2 text-left font-bold w-[25%]">Description</th>
-                            <th className="py-2 pr-2 text-left font-bold w-[10%]">Size</th>
-                            <th className="py-2 pr-2 text-left font-bold w-[10%]">Color</th>
-                            <th className="py-2 pr-2 text-right font-bold w-[10%]">Qty</th>
-                            <th className="py-2 pr-2 text-right font-bold w-[15%]">Unit Price</th>
-                            <th className="py-2 text-right font-bold w-[15%]">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {order.items && order.items.length > 0 ? (
-                            <>
-                              {order.items.map((item, i) => (
-                                <tr key={item.id || i} className="border-b border-gray-300 align-top">
-                                  <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
-                                    {item.item?.sku || '-'}
-                                  </td>
-                                  <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
-                                    {item.description || '-'}
-                                  </td>
-                                  <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                                    {item.item?.size?.name || '-'}
-                                  </td>
-                                  <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                                    {item.item?.color?.name || '-'}
-                                  </td>
-                                  <td className="py-2 pr-2 text-right tabular-nums">
-                                    {parseFloat(item.quantity).toFixed(2)}
-                                  </td>
-                                  <td className="py-2 pr-2 text-right tabular-nums">
-                                    {fmt(Number(item.unitPrice))}
-                                  </td>
-                                  <td className="py-2 text-right tabular-nums">
-                                    {fmt(Number(item.lineTotal))}
-                                  </td>
-                                </tr>
-                              ))}
-                              <tr className="border-t-2 border-black">
-                                <td colSpan={4} className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]">Total Ordered Qty:</td>
-                                <td className="py-2 pr-2 text-right tabular-nums font-bold">
-                                  {order.items.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(2)}
-                                </td>
-                                <td colSpan={2} />
+                        {/* Table */}
+                        <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
+                            <thead>
+                              <tr className="border-y-2 border-black">
+                                <th className="py-2 pr-2 text-left font-bold w-[15%]">SKU</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[25%]">Description</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[10%]">Size</th>
+                                <th className="py-2 pr-2 text-left font-bold w-[10%]">Color</th>
+                                <th className="py-2 pr-2 text-right font-bold w-[10%]">Qty</th>
+                                <th className="py-2 pr-2 text-right font-bold w-[15%]">Unit Price</th>
+                                <th className="py-2 text-right font-bold w-[15%]">Total</th>
                               </tr>
-                            </>
-                          ) : (
-                            <tr>
-                                <td colSpan={7} className="py-4 text-center text-muted-foreground border-b border-gray-300">
-                                    No items found for this purchase order
-                                </td>
-                            </tr>
-                          )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                              {order.items && order.items.length > 0 ? (
+                                <>
+                                  {order.items.map((item, i) => (
+                                    <tr key={item.id || i} className="border-b border-gray-300 align-top">
+                                      <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
+                                        {item.item?.sku || '-'}
+                                      </td>
+                                      <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
+                                        {item.description || '-'}
+                                      </td>
+                                      <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                        {item.item?.size?.name || '-'}
+                                      </td>
+                                      <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                        {item.item?.color?.name || '-'}
+                                      </td>
+                                      <td className="py-2 pr-2 text-right tabular-nums">
+                                        {parseFloat(item.quantity).toFixed(2)}
+                                      </td>
+                                      <td className="py-2 pr-2 text-right tabular-nums">
+                                        {fmt(Number(item.unitPrice))}
+                                      </td>
+                                      <td className="py-2 text-right tabular-nums">
+                                        {fmt(Number(item.lineTotal))}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                  <tr className="border-t-2 border-black">
+                                    <td colSpan={4} className="py-2 pr-2 text-right font-bold text-xs sm:text-[13px]">Total Ordered Qty:</td>
+                                    <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                                      {order.items.reduce((sum, item) => sum + parseFloat(item.quantity), 0).toFixed(2)}
+                                    </td>
+                                    <td colSpan={2} />
+                                  </tr>
+                                </>
+                              ) : (
+                                <tr>
+                                    <td colSpan={7} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                                        No items found for this purchase order
+                                    </td>
+                                </tr>
+                              )}
+                            </tbody>
+                        </table>
 
-                    {/* Totals Section */}
-                    <div className="flex border-b border-black pb-2 items-end">
-                        <div className="w-[55%] pt-4">
-                            <div className="flex gap-2 font-bold text-xs sm:text-[13px]">
-                                <span className="whitespace-nowrap">In Words</span>
-                                <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(order.totalAmount || 0))}</span>
+                        {/* Totals Section */}
+                        <div className="flex border-b border-black pb-2 items-end">
+                            <div className="w-[55%] pt-4">
+                                <div className="flex gap-2 font-bold text-xs sm:text-[13px]">
+                                    <span className="whitespace-nowrap">In Words</span>
+                                    <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(Number(order.totalAmount || 0))}</span>
+                                </div>
+                            </div>
+                            <div className="w-[25%] pr-2 text-right">
+                                <div className="text-xs sm:text-[13px] text-gray-700">Subtotal:</div>
+                                <div className="text-xs sm:text-[13px] text-gray-700">Tax:</div>
+                                <div className="text-xs sm:text-[13px] text-gray-700">Discount:</div>
+                                <div className="font-bold text-xs sm:text-[13px] mt-1">Total:</div>
+                            </div>
+                            <div className="w-[20%] text-right">
+                                <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">{fmt(Number(order.subtotal || 0))}</div>
+                                <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">{fmt(Number(order.taxAmount || 0))}</div>
+                                <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">-{fmt(Number(order.discountAmount || 0))}</div>
+                                <div className="ml-auto border-t border-black pb-0.5 mt-1" style={{ borderBottom: '3px double black' }}>
+                                    <span className="tabular-nums font-bold text-xs sm:text-[13px] block pt-0.5">{fmt(Number(order.totalAmount || 0))}</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="w-[25%] pr-2 text-right">
-                            <div className="text-xs sm:text-[13px] text-gray-700">Subtotal:</div>
-                            <div className="text-xs sm:text-[13px] text-gray-700">Tax:</div>
-                            <div className="text-xs sm:text-[13px] text-gray-700">Discount:</div>
-                            <div className="font-bold text-xs sm:text-[13px] mt-1">Total:</div>
+
+                        {/* Remarks */}
+                        <div className="mt-4 mb-8">
+                            <div className="font-bold text-xs sm:text-[14px]">Notes & Instructions</div>
+                            <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{order.notes || "1. Please quote PO number on all correspondence.\n2. Goods must be delivered within 7 days.\n3. Payment terms: Net 30 days."}</p>
                         </div>
-                        <div className="w-[20%] text-right">
-                            <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">{fmt(Number(order.subtotal || 0))}</div>
-                            <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">{fmt(Number(order.taxAmount || 0))}</div>
-                            <div className="tabular-nums text-xs sm:text-[13px] text-gray-700">-{fmt(Number(order.discountAmount || 0))}</div>
-                            <div className="ml-auto border-t border-black pb-0.5 mt-1" style={{ borderBottom: '3px double black' }}>
-                                <span className="tabular-nums font-bold text-xs sm:text-[13px] block pt-0.5">{fmt(Number(order.totalAmount || 0))}</span>
+
+                        {/* Signatures */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                                <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">PREPARED BY (MAKER)</span>
+                                {order.creatorName && (
+                                    <div className="text-center">
+                                        <p className="text-[11px] font-semibold">{order.creatorName}</p>
+                                        <p className="text-[9px] text-gray-600">{new Date(order.orderDate).toLocaleDateString('en-GB')}</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                                <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">CHECKED BY (CHECKER)</span>
+                                {order.checkerName ? (
+                                    <div className="text-center">
+                                        <p className="text-[11px] font-semibold">{order.checkerName}</p>
+                                        <p className="text-[9px] text-gray-600">{order.checkedAt ? new Date(order.checkedAt).toLocaleDateString('en-GB') : ''}</p>
+                                    </div>
+                                ) : (
+                                    <span className="text-[10px] text-gray-400 italic">Pending Verification</span>
+                                )}
+                            </div>
+                            <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                                <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">APPROVED BY (AUTHORIZER)</span>
+                                {order.authorizerName ? (
+                                    <div className="text-center">
+                                        <p className="text-[11px] font-semibold">{order.authorizerName}</p>
+                                        <p className="text-[9px] text-gray-600">{order.authorizedAt ? new Date(order.authorizedAt).toLocaleDateString('en-GB') : ''}</p>
+                                    </div>
+                                ) : (
+                                    <span className="text-[10px] text-gray-400 italic">Pending Approval</span>
+                                )}
                             </div>
                         </div>
                     </div>
-
-                    {/* Remarks */}
-                    <div className="mt-4 mb-8">
-                        <div className="font-bold text-xs sm:text-[14px]">Notes & Instructions</div>
-                        <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{order.notes || "1. Please quote PO number on all correspondence.\n2. Goods must be delivered within 7 days.\n3. Payment terms: Net 30 days."}</p>
-                    </div>
-
-                    {/* Signatures */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">PREPARED BY (MAKER)</span>
-                            {order.creatorName && (
-                                <div className="text-center">
-                                    <p className="text-[11px] font-semibold">{order.creatorName}</p>
-                                    <p className="text-[9px] text-gray-600">{new Date(order.orderDate).toLocaleDateString('en-GB')}</p>
-                                </div>
-                            )}
-                        </div>
-                        <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">CHECKED BY (CHECKER)</span>
-                            {order.checkerName ? (
-                                <div className="text-center">
-                                    <p className="text-[11px] font-semibold">{order.checkerName}</p>
-                                    <p className="text-[9px] text-gray-600">{order.checkedAt ? new Date(order.checkedAt).toLocaleDateString('en-GB') : ''}</p>
-                                </div>
-                            ) : (
-                                <span className="text-[10px] text-gray-400 italic">Pending Verification</span>
-                            )}
-                        </div>
-                        <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
-                            <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">APPROVED BY (AUTHORIZER)</span>
-                            {order.authorizerName ? (
-                                <div className="text-center">
-                                    <p className="text-[11px] font-semibold">{order.authorizerName}</p>
-                                    <p className="text-[9px] text-gray-600">{order.authorizedAt ? new Date(order.authorizedAt).toLocaleDateString('en-GB') : ''}</p>
-                                </div>
-                            ) : (
-                                <span className="text-[10px] text-gray-400 italic">Pending Approval</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
+                </div>,
+                document.body
+            )}
         </>
     );
 }

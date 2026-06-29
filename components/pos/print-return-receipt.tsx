@@ -264,7 +264,7 @@ export function PrintReturnReceipt({
                                 ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                                 : <RotateCcw className="h-4 w-4 text-destructive" />
                             }
-                            {isRefund ? "Refund Receipt" : "Return Receipt"}
+                            {isRefund ? "Refund Voucher" : "Sales Return"}
                         </DialogTitle>
                         <p className="text-sm text-muted-foreground">
                             {isLoading ? `Loading ${isRefund ? 'refund' : 'return'} details…` : "Review before printing."}
@@ -539,7 +539,7 @@ function ReturnBody({
                     className="font-black text-sm border-t pt-0.5 mt-0.5"
                     style={{ display: "flex", justifyContent: "space-between", fontWeight: "900" }}
                 >
-                    <span>Total Refund</span>
+                    <span>Total</span>
                     <span>Rs. {fmt(refundTotal)}</span>
                 </div>
             </div>
@@ -638,6 +638,7 @@ function ReturnBody({
                 {storeSTRN && <p>NTN: {storeSTRN}</p>}
                 <p>{settings.receiptFooter || "*** THANK YOU ***"}</p>
                 <p className="tracking-widest font-bold">{returnRef}</p>
+                <p className="text-[9px] text-zinc-500 pt-0.5">Software by Innovative Network</p>
             </div>
 
         </div>

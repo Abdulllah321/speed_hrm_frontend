@@ -3,7 +3,7 @@ import { format } from "date-fns";
 
 export function numberToWords(amount: number): string {
     const a = [
-        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", 
+        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
         "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"
     ];
     const b = [
@@ -13,16 +13,16 @@ export function numberToWords(amount: number): string {
     const inWords = (num: number): string => {
         let n = Math.floor(num);
         if (n === 0) return "Zero";
-        
+
         const convert = (n: number): string => {
             if (n < 20) return a[n];
             if (n < 100) return b[Math.floor(n / 10)] + (n % 10 !== 0 ? "-" + a[n % 10] : "");
             if (n < 1000) return a[Math.floor(n / 100)] + " Hundred" + (n % 100 !== 0 ? " " + convert(n % 100) : "");
-            if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 !== 0 ? " " + convert(n % 1000) : "");
-            if (n < 10000000) return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 !== 0 ? " " + convert(n % 100000) : "");
-            return convert(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 !== 0 ? " " + convert(n % 10000000) : "");
+            if (n < 1000000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 !== 0 ? " " + convert(n % 1000) : "");
+            if (n < 1000000000) return convert(Math.floor(n / 1000000)) + " Million" + (n % 1000000 !== 0 ? " " + convert(n % 1000000) : "");
+            return convert(Math.floor(n / 1000000000)) + " Billion" + (n % 1000000000 !== 0 ? " " + convert(n % 1000000000) : "");
         };
-        
+
         return convert(n) + " Only";
     };
 
@@ -41,11 +41,21 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
 
   return (
     <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-4 sm:p-6 font-sans print:p-0 print:max-w-none box-border text-[10px] sm:text-[11px]">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            margin: 0;
+          }
+          body {
+            margin: 1.6cm;
+          }
+        }
+      `}} />
       {/* Header */}
       <div className="flex justify-between mb-4 gap-3 items-start">
         {/* Logo */}
         <div className="w-[20%] flex flex-col items-start justify-center">
-           <img src="/image.png" alt="Logo" className="w-24 object-contain" />
+           <img src="/image.png" alt="Logo" className="w-12 sm:w-14 print:w-8 object-contain" />
         </div>
         
         {/* Title */}
@@ -68,7 +78,7 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
              </div>
              <div className="flex gap-2">
                <span className="font-bold">Folio:</span>
-               <span>{voucher.id.replace(/-/g, "").slice(-5).toUpperCase()}</span>
+               <span>{voucher.folio || voucher.id.replace(/-/g, "").slice(-5).toUpperCase()}</span>
              </div>
            </div>
         </div>
@@ -92,22 +102,25 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
                   <span className="w-14 sm:w-20 shrink-0 font-medium">{d.accountCode}</span>
                   <span className="uppercase font-medium">{d.accountName}</span>
                 </div>
-                {/* Tag Account */}
-                {(d.tagAccountCode || d.tagAccountName) && (
+                 {/* Tag Account */}
+                 {(d.tagAccountCode || d.tagAccountName) && (
+                    <div className="flex gap-1.5 sm:gap-3 mt-0.5">
+                      <span className="w-14 sm:w-20 shrink-0 font-medium text-gray-700">{d.tagAccountCode}</span>
+                      <span className="uppercase text-gray-700">{d.tagAccountName}</span>
+                    </div>
+                 )}
+                 {/* Ref# */}
+                 {(d.refBillNo || d.refBillNo2 || d.taxType) && (
                    <div className="flex gap-1.5 sm:gap-3 mt-0.5">
-                     <span className="w-14 sm:w-20 shrink-0 font-medium text-gray-700">{d.tagAccountCode}</span>
-                     <span className="uppercase text-gray-700">{d.tagAccountName}</span>
+                     <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
+                       Ref# {d.taxType ?? ""}
+                     </span>
+                     <span className="uppercase">
+                       {d.refBillNo || "—"}
+                       {d.refBillNo2 ? ` / ${d.refBillNo2}` : ""}
+                     </span>
                    </div>
-                )}
-                {/* Ref# */}
-                {(d.refBillNo || d.taxType) && (
-                  <div className="flex gap-1.5 sm:gap-3 mt-0.5">
-                    <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
-                      Ref# {d.taxType ?? ""}
-                    </span>
-                    <span className="uppercase">{d.refBillNo || "—"}</span>
-                  </div>
-                )}
+                 )}
               </td>
               <td className="py-1.5 pr-1 leading-tight">
                 {d.narration || voucher.description}
@@ -134,12 +147,15 @@ export function JournalVoucherPrint({ voucher }: { voucher: JournalVoucher }) {
                    </div>
                 )}
                 {/* Ref# */}
-                {(d.refBillNo || d.taxType) && (
+                {(d.refBillNo || d.refBillNo2 || d.taxType) && (
                   <div className="flex gap-1.5 sm:gap-3 mt-0.5">
                     <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
                       Ref# {d.taxType ?? ""}
                     </span>
-                    <span className="uppercase">{d.refBillNo || "—"}</span>
+                    <span className="uppercase">
+                      {d.refBillNo || "—"}
+                      {d.refBillNo2 ? ` / ${d.refBillNo2}` : ""}
+                    </span>
                   </div>
                 )}
               </td>

@@ -1192,6 +1192,7 @@ function ReceiptBody({
         {storeSTRN && <p>NTN: {storeSTRN}</p>}
         <p>{settings.receiptFooter || "*** THANK YOU FOR SHOPPING ***"}</p>
         <p className="tracking-widest font-bold">{order?.orderNumber}</p>
+        <p className="text-[9px] text-zinc-550 pt-0.5">Software by Innovative Network</p>
       </div>
     </div>
   );
@@ -1594,6 +1595,7 @@ function A4InvoiceBody({
             <p className="text-[9px] text-zinc-400 font-mono mt-0.5">
               Invoice Ref: {order?.orderNumber}
             </p>
+            <p className="text-[9px] text-zinc-400 pt-0.5">Software by Innovative Network</p>
           </div>
         </div>
       </div>

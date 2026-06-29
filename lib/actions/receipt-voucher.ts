@@ -15,6 +15,7 @@ export interface ReceiptVoucherDetail {
     credit: number;
     narration?: string;
     refBillNo?: string;
+    refBillNo2?: string;
     taxType?: string;
 }
 
@@ -38,6 +39,7 @@ export interface ReceiptVoucher {
     chequeDate?: string;
     details: ReceiptVoucherDetail[];
     invoices?: { salesInvoiceId: string; receivedAmount: number }[];
+    folio?: string | null;
     createdAt: string;
     createdBy: string;
 }
@@ -236,3 +238,35 @@ export async function updateReceiptVoucherStatus(id: string, status: "approved" 
         return { status: false, message: e.message || "An unexpected error occurred" };
     }
 }
+
+// ── Background export ─────────────────────────────────────────────────────────
+export async function queueReceiptVouchersExport(opts?: {
+    type?: string;
+    status?: string;
+    dateFrom?: string;
+    dateTo?: string;
+}): Promise<{ status: boolean; jobId?: string; message?: string }> {
+    try {
+        const params = new URLSearchParams();
+        if (opts?.type   && opts.type   !== 'all') params.set('type',   opts.type);
+        if (opts?.status && opts.status !== 'all') params.set('status', opts.status);
+        if (opts?.dateFrom)                         params.set('dateFrom', opts.dateFrom);
+        if (opts?.dateTo)                           params.set('dateTo',   opts.dateTo);
+
+        const response = await authFetch(
+            `/finance/receipt-vouchers/export?${params.toString()}`,
+            { method: 'POST' },
+        );
+
+        if (!response.ok) {
+            const err = response.data || {};
+            return { status: false, message: err.message || 'Failed to queue export' };
+        }
+
+        const result = response.data;
+        return { status: true, jobId: result?.data?.jobId };
+    } catch (error: any) {
+        return { status: false, message: error.message || 'An unexpected error occurred' };
+    }
+}
+

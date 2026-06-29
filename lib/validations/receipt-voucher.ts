@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const taxTypeEnum = z.enum(["Taxable", "BTL", "REIMB"]);
+export const taxTypeEnum = z.enum(["Taxable", "BTL", "REIMB", "Exempt", ""]);
 
 export const receiptVoucherDetailSchema = z.object({
     accountId:    z.string().min(1, "Account is required"),
@@ -9,7 +9,8 @@ export const receiptVoucherDetailSchema = z.object({
     credit:       z.coerce.number().min(0).transform(v => Math.round(v)).default(0),
     narration:    z.string().optional(),
     refBillNo:    z.string().optional(),
-    taxType:      taxTypeEnum.default("Taxable"),
+    refBillNo2:   z.string().optional(),
+    taxType:      taxTypeEnum.default(""),
 });
 
 export const receiptVoucherInvoiceSchema = z.object({
@@ -27,7 +28,7 @@ export const receiptVoucherSchema = z.object({
     chequeDate: z.date().optional(),
     customerId: z.string().optional(),
     isAdvance: z.boolean().optional(),
-    taxType: taxTypeEnum.default("Taxable"),
+    taxType: taxTypeEnum.default(""),
     debitAccountId: z.string().optional(),
     debitAmount: z.coerce.number().transform(v => Math.round(v)).optional(),
     invoices: z.array(receiptVoucherInvoiceSchema).optional(),

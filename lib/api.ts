@@ -1174,6 +1174,8 @@ export interface PaymentVoucherDetail {
   accountId: string;
   debit: number;
   taxType?: string;
+  refBillNo?: string;
+  refBillNo2?: string;
   account?: { id: string; name: string; code: string };
 }
 

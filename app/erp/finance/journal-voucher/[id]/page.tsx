@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { getJournalVoucher, updateJournalVoucher, JournalVoucher } from "@/lib/actions/journal-voucher";
 import { JournalVoucherPrint, numberToWords } from "../components/journal-voucher-print";
@@ -48,6 +49,11 @@ export default function JournalVoucherDetailPage({
   const [voucher, setVoucher] = useState<JournalVoucher | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionPending, setActionPending] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     getJournalVoucher(id).then((res) => {
@@ -118,25 +124,33 @@ export default function JournalVoucherDetailPage({
       {/* ── Print styles ── */}
       <style jsx global>{`
         @media print {
-          body {
-            visibility: hidden;
-            background: white;
+          html, body {
+            height: auto !important;
+            overflow: visible !important;
+            background: white !important;
+            color: black !important;
+          }
+          body > *:not(#jv-print-section) {
+            display: none !important;
           }
           #jv-print-section, #jv-print-section * {
-            visibility: visible;
+            visibility: visible !important;
           }
           #jv-print-section {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            background: white;
-            z-index: 9999;
+            display: block !important;
+            position: relative !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            color: black !important;
+            z-index: 99999 !important;
           }
           tr {
             page-break-inside: avoid;
+            break-inside: avoid;
           }
           thead {
             display: table-header-group;
@@ -148,7 +162,6 @@ export default function JournalVoucherDetailPage({
             margin: 10mm;
             size: A4 portrait;
           }
-          header, nav, footer, aside { display: none !important; }
         }
       `}</style>
 
@@ -451,12 +464,21 @@ export default function JournalVoucherDetailPage({
 
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════
-          PRINT VIEW
-      ══════════════════════════════════════════════════════════════ */}
-      <div id="jv-print-section" className="hidden print:block">
-        <JournalVoucherPrint voucher={voucher} />
-      </div>
+      {mounted && typeof window !== "undefined" && createPortal(
+        <div 
+          id="jv-print-section" 
+          style={{
+            position: "fixed",
+            left: "-9999px",
+            top: 0,
+            pointerEvents: "none",
+          }}
+          aria-hidden="true"
+        >
+          <JournalVoucherPrint voucher={voucher} />
+        </div>,
+        document.body
+      )}
     </>
   );
 }

@@ -12,9 +12,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Printer, Download, Plus, CreditCard, Wallet, Eye } from "lucide-react";
+import { Printer, Download, Plus, CreditCard, Wallet, Eye, Loader2 } from "lucide-react";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
 import { PaymentVoucher } from "@/lib/actions/payment-voucher";
+import { queuePaymentVouchersExport } from "@/lib/actions/payment-voucher";
 import { PaymentVoucherPrint } from "./payment-voucher-print";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -52,14 +53,36 @@ export function PaymentVoucherList({
     };
 }) {
     const [type, setType] = useState<"bank" | "cash">("bank");
-    const [fromDate, setFromDate] = useState<Date | undefined>(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
-    const [toDate, setToDate] = useState<Date | undefined>(new Date());
+    const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+    const [toDate, setToDate] = useState<Date | undefined>(undefined);
     const [selectedAccount, setSelectedAccount] = useState<string>("");
     const [status, setStatus] = useState<string>("all");
     const [vouchers, setVouchers] = useState<PaymentVoucher[]>(initialData);
     const [showFilterInfo, setShowFilterInfo] = useState(false);
     const [localDrafts, setLocalDrafts] = useState<LocalDraft[]>([]);
     const [printingVoucher, setPrintingVoucher] = useState<PaymentVoucher | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExport = async () => {
+        setIsExporting(true);
+        try {
+            const result = await queuePaymentVouchersExport({
+                type:     type,
+                status:   status !== "all" ? status : undefined,
+                dateFrom: fromDate ? fromDate.toISOString().split("T")[0] : undefined,
+                dateTo:   toDate   ? toDate.toISOString().split("T")[0]   : undefined,
+            });
+            if (result.status) {
+                toast.success("Export queued! You'll receive a notification when your file is ready.");
+            } else {
+                toast.error(result.message || "Failed to queue export.");
+            }
+        } catch {
+            toast.error("An unexpected error occurred while queuing export.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
 
     useEffect(() => {
         const handleAfterPrint = () => {
@@ -333,9 +356,11 @@ export function PaymentVoucherList({
                                     <Printer className="mr-2 h-4 w-4" />
                                     Print
                                 </Button>
-                                <Button variant="outline" size="sm">
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Export (xlsx)
+                                <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
+                                    {isExporting
+                                        ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        : <Download className="mr-2 h-4 w-4" />}
+                                    {isExporting ? "Queuing..." : "Export (xlsx)"}
                                 </Button>
                             </div>
                         </div>

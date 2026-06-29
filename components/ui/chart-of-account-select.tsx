@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Command,
     CommandInput,
@@ -161,6 +162,22 @@ function filterTreeExclude(nodes: ChartOfAccount[], excludeId?: string): ChartOf
         }));
 }
 
+/** Recursively filter out tag/sub-accounts (children of ledger/non-group accounts) from the tree. */
+function filterTreeExcludeTags(nodes: ChartOfAccount[]): ChartOfAccount[] {
+    return nodes.map((node) => {
+        if (!node.isGroup) {
+            return {
+                ...node,
+                children: [],
+            };
+        }
+        return {
+            ...node,
+            children: node.children ? filterTreeExcludeTags(node.children) : [],
+        };
+    });
+}
+
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface ChartOfAccountSelectProps {
     accounts?: ChartOfAccount[];
@@ -172,7 +189,9 @@ export interface ChartOfAccountSelectProps {
     allowGroups?: boolean;
     groupsOnly?: boolean;
     excludeAccountId?: string;
+    excludeTags?: boolean;
     id?: string;
+    mode?: "popover" | "modal";
 }
 
 // ─── Tree row ─────────────────────────────────────────────────────────────────
@@ -436,7 +455,9 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
             allowGroups = false,
             groupsOnly = false,
             excludeAccountId,
+            excludeTags = false,
             id,
+            mode = "popover",
         },
         ref
     ) {
@@ -448,6 +469,7 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
         const [search, setSearch] = React.useState("");
         const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
         const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+        const [activeTab, setActiveTab] = React.useState<string>("all");
 
         // Lazy-fetch on first open OR if value is set
         React.useEffect(() => {
@@ -490,15 +512,24 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
         }, [open]);
 
         // ── Derived ────────────────────────────────────────────────────────────────
+        const baseFilteredTree = React.useMemo(() => {
+            let result = filterTreeExclude(tree, excludeAccountId);
+            if (excludeTags) {
+                result = filterTreeExcludeTags(result);
+            }
+            return result;
+        }, [tree, excludeAccountId, excludeTags]);
+
         const filteredTree = React.useMemo(() => {
-            return filterTreeExclude(tree, excludeAccountId);
-        }, [tree, excludeAccountId]);
+            if (mode === "popover" || activeTab === "all") return baseFilteredTree;
+            return baseFilteredTree.filter(node => node.type === activeTab);
+        }, [baseFilteredTree, activeTab, mode]);
 
-        const allFlat = React.useMemo(() => flattenTree(filteredTree), [filteredTree]);
+        const allFlat = React.useMemo(() => flattenTree(baseFilteredTree), [baseFilteredTree]);
 
-        const breadcrumbMap = React.useMemo(() => buildBreadcrumbs(filteredTree), [filteredTree]);
+        const breadcrumbMap = React.useMemo(() => buildBreadcrumbs(baseFilteredTree), [baseFilteredTree]);
 
-        const searchResults = React.useMemo(() => {
+        const baseSearchResults = React.useMemo(() => {
             if (!search.trim()) return [];
             const q = search.trim().toLowerCase();
             return allFlat.filter((a) => {
@@ -515,9 +546,14 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
             });
         }, [allFlat, search, groupsOnly, allowGroups]);
 
+        const searchResults = React.useMemo(() => {
+            if (mode === "popover" || activeTab === "all") return baseSearchResults;
+            return baseSearchResults.filter(a => a.type === activeTab);
+        }, [baseSearchResults, activeTab, mode]);
+
         const selectedAccount = React.useMemo(
-            () => (value ? findById(filteredTree, value) : undefined),
-            [filteredTree, value]
+            () => (value ? findById(baseFilteredTree, value) : undefined),
+            [baseFilteredTree, value]
         );
 
         const displayLabel = selectedAccount
@@ -552,165 +588,219 @@ export const ChartOfAccountSelect = React.forwardRef<HTMLButtonElement, ChartOfA
 
         const isSearching = search.trim().length > 0;
 
+        const renderCommandBody = () => (
+            <Command shouldFilter={false}>
+                {/* Search bar */}
+                <CommandInput
+                    placeholder="Search by code or name..."
+                    value={search}
+                    onValueChange={setSearch}
+                    autoFocus
+                />
+
+                {/* Body */}
+                <CommandList className={cn("overflow-y-auto p-1", mode === "modal" ? "max-h-[380px]" : "max-h-80")}>
+                    {isLoading ? (
+                        <div className="flex items-center justify-center py-8 gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Loading accounts...</span>
+                        </div>
+                    ) : isSearching ? (
+                        /* ── Search mode ── */
+                        searchResults.length === 0 ? (
+                            <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                                No accounts found.
+                            </CommandEmpty>
+                        ) : (
+                            searchResults.map((acc) => (
+                                <CommandItem
+                                    key={acc.id}
+                                    value={acc.id}
+                                    onSelect={() => handleSelect(acc.id)}
+                                    className="flex items-start gap-2 px-3 py-2 rounded-md cursor-pointer select-none"
+                                >
+                                    <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className="text-[11px] font-mono text-muted-foreground shrink-0">{acc.code}</span>
+                                            <span className={cn("text-sm truncate", value === acc.id && "font-medium")}>{acc.name}</span>
+                                            <span className={cn(
+                                                "text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase shrink-0 self-center",
+                                                TYPE_CONFIG[acc.type]?.className || "bg-muted"
+                                            )}>
+                                                {TYPE_CONFIG[acc.type]?.label || acc.type}
+                                            </span>
+                                        </div>
+                                        {breadcrumbMap.get(acc.id) && (
+                                            <span className="text-[10px] text-muted-foreground truncate">{breadcrumbMap.get(acc.id)}</span>
+                                        )}
+                                    </div>
+                                    {value === acc.id && <CheckIcon className="h-4 w-4 shrink-0 text-primary mt-0.5" />}
+                                </CommandItem>
+                            ))
+                        )
+                    ) : (
+                        /* ── Tree mode ── */
+                        filteredTree.length === 0 ? (
+                            <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
+                                No accounts available.
+                            </CommandEmpty>
+                        ) : (
+                            filteredTree.map((node) => (
+                                <TreeRow
+                                    key={node.id}
+                                    node={node}
+                                    depth={0}
+                                    expanded={expanded}
+                                    onToggle={toggleExpand}
+                                    selectedId={value}
+                                    onSelect={handleSelect}
+                                    allowGroups={allowGroups}
+                                    groupsOnly={groupsOnly}
+                                />
+                            ))
+                        )
+                    )}
+                </CommandList>
+
+                {/* Create New Account Button */}
+                {!isLoading && !groupsOnly && (
+                    <div className="border-t p-2 bg-muted/40 flex flex-col gap-1">
+                        <button
+                            type="button"
+                            className="w-full text-xs flex items-center justify-center gap-1.5 h-8 border border-dashed rounded-md bg-background hover:bg-accent text-accent-foreground transition-colors cursor-pointer select-none"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsCreateDialogOpen(true);
+                            }}
+                        >
+                            <Plus className="h-3.5 w-3.5 text-primary" />
+                            <span>Create New Ledger</span>
+                            <span className="text-[10px] text-muted-foreground font-mono ml-auto">Alt+C</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Footer */}
+                {!isLoading && allFlat.length > 0 && (
+                    <div className="border-t px-3 py-2 flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">
+                            {isSearching
+                                ? `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`
+                                : groupsOnly
+                                    ? `${allFlat.filter((a) => a.isGroup).length} groups`
+                                    : `${allFlat.filter((a) => !a.isGroup).length} accounts`}
+                        </span>
+                        {value && (
+                            <button
+                                type="button"
+                                onClick={() => { onValueChange?.(""); setOpen(false); }}
+                                className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                            >
+                                Clear selection
+                            </button>
+                        )}
+                    </div>
+                )}
+            </Command>
+        );
+
+        const handleTriggerKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+            if (disabled) return;
+            if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                e.preventDefault();
+                setSearch(e.key);
+                setOpen(true);
+            } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+                e.preventDefault();
+                setOpen(true);
+            }
+        };
+
+        const triggerButton = (
+            <button
+                id={id}
+                ref={ref}
+                type="button"
+                role="combobox"
+                aria-expanded={open}
+                aria-haspopup="listbox"
+                disabled={disabled}
+                onClick={mode === "modal" ? () => setOpen(true) : undefined}
+                onKeyDown={handleTriggerKeyDown}
+                className={cn(
+                    "flex items-center w-full h-9 px-3 rounded-md border border-input bg-background text-sm font-normal cursor-pointer select-none text-left",
+                    "hover:bg-accent hover:text-accent-foreground transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+                    open && "ring-2 ring-ring/20",
+                    disabled && "pointer-events-none opacity-50",
+                    className
+                )}
+            >
+                <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mr-2" />
+                <span className={cn("flex-1 min-w-0 truncate", !displayLabel && "text-muted-foreground")}>
+                    {displayLabel ?? placeholder}
+                </span>
+                {selectedAccount && (
+                    <span
+                        className={cn(
+                            "ml-2 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded",
+                            TYPE_CONFIG[selectedAccount.type]?.className ?? "bg-muted text-muted-foreground"
+                        )}
+                    >
+                        {TYPE_CONFIG[selectedAccount.type]?.label ?? selectedAccount.type}
+                    </span>
+                )}
+                <ChevronDownIcon
+                    className={cn(
+                        "ml-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                        open && "rotate-180"
+                    )}
+                />
+            </button>
+        );
+
         return (
             <>
-                <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                        <button
-                            id={id}
-                            ref={ref}
-                            type="button"
-                            role="combobox"
-                            aria-expanded={open}
-                            aria-haspopup="listbox"
-                            disabled={disabled}
-                            className={cn(
-                                "flex items-center w-full h-9 px-3 rounded-md border border-input bg-background text-sm font-normal cursor-pointer select-none text-left",
-                                "hover:bg-accent hover:text-accent-foreground transition-colors",
-                                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                                open && "ring-2 ring-ring/20",
-                                disabled && "pointer-events-none opacity-50",
-                                className
-                            )}
+                {mode === "popover" ? (
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            {triggerButton}
+                        </PopoverTrigger>
+                        <PopoverContent
+                            className="w-(--radix-popover-trigger-width) min-w-80 p-0"
+                            align="start"
+                            sideOffset={4}
                         >
-                            <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mr-2" />
-                            <span className={cn("flex-1 min-w-0 truncate", !displayLabel && "text-muted-foreground")}>
-                                {displayLabel ?? placeholder}
-                            </span>
-                            {selectedAccount && (
-                                <span
-                                    className={cn(
-                                        "ml-2 shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded",
-                                        TYPE_CONFIG[selectedAccount.type]?.className ?? "bg-muted text-muted-foreground"
-                                    )}
-                                >
-                                    {TYPE_CONFIG[selectedAccount.type]?.label ?? selectedAccount.type}
-                                </span>
-                            )}
-                            <ChevronDownIcon
-                                className={cn(
-                                    "ml-2 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                                    open && "rotate-180"
-                                )}
-                            />
-                        </button>
-                    </PopoverTrigger>
-
-                    <PopoverContent
-                        className="w-(--radix-popover-trigger-width) min-w-80 p-0"
-                        align="start"
-                        sideOffset={4}
-                    >
-                        <Command shouldFilter={false}>
-                            {/* Search bar */}
-                            <CommandInput
-                                placeholder="Search by code or name..."
-                                value={search}
-                                onValueChange={setSearch}
-                                autoFocus
-                            />
-
-                            {/* Body */}
-                            <CommandList className="max-h-80 overflow-y-auto p-1">
-                                {isLoading ? (
-                                    <div className="flex items-center justify-center py-8 gap-2">
-                                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                        <span className="text-sm text-muted-foreground">Loading accounts...</span>
-                                    </div>
-                                ) : isSearching ? (
-                                    /* ── Search mode ── */
-                                    searchResults.length === 0 ? (
-                                        <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                                            No accounts found.
-                                        </CommandEmpty>
-                                    ) : (
-                                        searchResults.map((acc) => (
-                                            <CommandItem
-                                                key={acc.id}
-                                                value={acc.id}
-                                                onSelect={() => handleSelect(acc.id)}
-                                                className="flex items-start gap-2 px-3 py-2 rounded-md cursor-pointer select-none"
-                                            >
-                                                <BookOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground mt-0.5" />
-                                                <div className="flex flex-col flex-1 min-w-0">
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                        <span className="text-[11px] font-mono text-muted-foreground shrink-0">{acc.code}</span>
-                                                        <span className={cn("text-sm truncate", value === acc.id && "font-medium")}>{acc.name}</span>
-                                                    </div>
-                                                    {breadcrumbMap.get(acc.id) && (
-                                                        <span className="text-[10px] text-muted-foreground truncate">{breadcrumbMap.get(acc.id)}</span>
-                                                    )}
-                                                </div>
-                                                {value === acc.id && <CheckIcon className="h-4 w-4 shrink-0 text-primary mt-0.5" />}
-                                            </CommandItem>
-                                        ))
-                                    )
-                                ) : (
-                                    /* ── Tree mode ── */
-                                    filteredTree.length === 0 ? (
-                                        <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
-                                            No accounts available.
-                                        </CommandEmpty>
-                                    ) : (
-                                        filteredTree.map((node) => (
-                                            <TreeRow
-                                                key={node.id}
-                                                node={node}
-                                                depth={0}
-                                                expanded={expanded}
-                                                onToggle={toggleExpand}
-                                                selectedId={value}
-                                                onSelect={handleSelect}
-                                                allowGroups={allowGroups}
-                                                groupsOnly={groupsOnly}
-                                            />
-                                        ))
-                                    )
-                                )}
-                            </CommandList>
-
-                            {/* Create New Account Button */}
-                            {!isLoading && !groupsOnly && (
-                                <div className="border-t p-2 bg-muted/40 flex flex-col gap-1">
-                                    <button
-                                        type="button"
-                                        className="w-full text-xs flex items-center justify-center gap-1.5 h-8 border border-dashed rounded-md bg-background hover:bg-accent text-accent-foreground transition-colors cursor-pointer select-none"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setIsCreateDialogOpen(true);
-                                        }}
-                                    >
-                                        <Plus className="h-3.5 w-3.5 text-primary" />
-                                        <span>Create New Ledger</span>
-                                        <span className="text-[10px] text-muted-foreground font-mono ml-auto">Alt+C</span>
-                                    </button>
+                            {renderCommandBody()}
+                        </PopoverContent>
+                    </Popover>
+                ) : (
+                    <Dialog open={open} onOpenChange={setOpen}>
+                        {triggerButton}
+                        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden gap-0 bg-background border">
+                            <DialogHeader className="p-4 pb-2 border-b">
+                                <DialogTitle className="text-base font-semibold">Search Chart of Accounts</DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground">
+                                    Search by code or name. Filter by category tabs for quicker access.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                                <div className="px-4 py-2 border-b bg-muted/30">
+                                    <TabsList className="grid grid-cols-6 h-8 w-full">
+                                        <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+                                        <TabsTrigger value="ASSET" className="text-xs">Assets</TabsTrigger>
+                                        <TabsTrigger value="LIABILITY" className="text-xs">Liabilities</TabsTrigger>
+                                        <TabsTrigger value="EQUITY" className="text-xs">Equity</TabsTrigger>
+                                        <TabsTrigger value="REVENUE" className="text-xs">Revenue</TabsTrigger>
+                                        <TabsTrigger value="EXPENSE" className="text-xs">Expenses</TabsTrigger>
+                                    </TabsList>
                                 </div>
-                            )}
-
-                            {/* Footer */}
-                            {!isLoading && allFlat.length > 0 && (
-                                <div className="border-t px-3 py-2 flex items-center justify-between">
-                                    <span className="text-[10px] text-muted-foreground">
-                                        {isSearching
-                                            ? `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`
-                                            : groupsOnly
-                                                ? `${allFlat.filter((a) => a.isGroup).length} groups`
-                                                : `${allFlat.filter((a) => !a.isGroup).length} accounts`}
-                                    </span>
-                                    {value && (
-                                        <button
-                                            type="button"
-                                            onClick={() => { onValueChange?.(""); setOpen(false); }}
-                                            className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
-                                        >
-                                            Clear selection
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </Command>
-                    </PopoverContent>
-                </Popover>
+                            </Tabs>
+                            {renderCommandBody()}
+                        </DialogContent>
+                    </Dialog>
+                )}
 
                 <CreateAccountDialog
                     open={isCreateDialogOpen}

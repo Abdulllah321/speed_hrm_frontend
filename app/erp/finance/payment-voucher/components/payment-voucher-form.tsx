@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Autocomplete } from "@/components/ui/autocomplete";
-import { Plus, Trash2, Loader2, CreditCard, Wallet, Copy } from "lucide-react";
+import { Plus, Trash2, Loader2, CreditCard, Wallet, Copy, Upload, Pencil } from "lucide-react";
+import { VoucherImportModal } from "@/components/finance/voucher-import-modal";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createPaymentVoucher, updatePaymentVoucher, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts, getAdvancesBySupplier, getSupplierSummary, type PaymentVoucher } from "@/lib/actions/payment-voucher";
@@ -47,27 +48,85 @@ function TagAccountSelect({ children, value, onValueChange, disabled, id }: {
     id?: string;
 }) {
     const [open, setOpen] = useState(false);
+    const [search, setSearch] = useState("");
     const selected = children.find((c) => c.id === value);
+
+    useEffect(() => {
+        if (!open) {
+            setSearch("");
+        }
+    }, [open]);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+        if (disabled) return;
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault();
+            setSearch(e.key);
+            setOpen(true);
+        } else if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+            e.preventDefault();
+            setOpen(true);
+        }
+    };
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <button id={id} type="button" disabled={disabled} className={cn(
-                    "flex items-center w-full h-8 px-2 rounded-md border border-dashed border-input bg-background text-xs cursor-pointer select-none text-left",
-                    "hover:bg-accent hover:text-accent-foreground transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
-                    open && "ring-1 ring-ring/20",
-                    disabled && "pointer-events-none opacity-50"
-                )}>
+                <button
+                    id={id}
+                    type="button"
+                    role="combobox"
+                    aria-expanded={open}
+                    disabled={disabled}
+                    onKeyDown={handleKeyDown}
+                    className={cn(
+                        "flex items-center w-full h-8 px-2 rounded-md border border-dashed border-input bg-background text-xs cursor-pointer select-none text-left",
+                        "hover:bg-accent hover:text-accent-foreground transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50",
+                        open && "ring-1 ring-ring/20",
+                        disabled && "pointer-events-none opacity-50"
+                    )}
+                >
                     <Tag className="h-3 w-3 shrink-0 text-muted-foreground mr-1.5" />
                     <span className={cn("flex-1 min-w-0 truncate", !selected && "text-muted-foreground")}>
                         {selected ? `${selected.code} - ${selected.name}` : "Tag sub-account (optional)"}
                     </span>
+                    {selected && (
+                        <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                navigator.clipboard.writeText(selected.name);
+                                toast.success(`Copied tag name: "${selected.name}"`);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    navigator.clipboard.writeText(selected.name);
+                                    toast.success(`Copied tag name: "${selected.name}"`);
+                                }
+                            }}
+                            className="p-1 ml-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                            title="Copy tag account name"
+                        >
+                            <Copy className="h-3.5 w-3.5" />
+                        </span>
+                    )}
                     <ChevronDownIcon className={cn("ml-1 h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
                 </button>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0" align="start" sideOffset={4}>
                 <Command>
-                    <CommandInput placeholder="Search sub-account..." className="h-8 text-xs" />
+                    <CommandInput
+                        placeholder="Search sub-account..."
+                        className="h-8 text-xs"
+                        value={search}
+                        onValueChange={setSearch}
+                        autoFocus
+                    />
                     <CommandList className="max-h-52">
                         <CommandEmpty className="py-4 text-center text-xs text-muted-foreground">No sub-accounts found.</CommandEmpty>
                         <CommandGroup>
@@ -139,7 +198,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             creditAmount: Number(initialData?.creditAmount) || 0,
             supplierId: initialData?.supplierId || "",
             invoices: initialData?.invoices || [],
-            taxType: (initialData?.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
+            taxType: (initialData?.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "",
             description: initialData?.description || "",
             details: initialData?.details
                 ? initialData.details.map((d: any) => ({
@@ -149,78 +208,197 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                       credit: Math.round(Number(d.credit) || 0),
                       narration: d.narration || "",
                       refBillNo: d.refBillNo || "",
-                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB") ?? "Taxable",
+                      refBillNo2: d.refBillNo2 || "",
+                      taxType: (d.taxType as "Taxable" | "BTL" | "REIMB" | "Exempt" | "") ?? "",
                       taxableValue: Math.round(Number(d.taxableValue) || 0),
                   }))
-                : [
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 },
-                      { accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 },
-                  ],
+                : [],
         },
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove, replace, update } = useFieldArray({
         control: form.control,
         name: "details",
     });
 
-    const moveToNextRowOrAppend = (index: number) => {
-        const isLast = index === fields.length - 1;
-        if (isLast) {
-            append({
-                accountId: "",
-                tagAccountId: "",
-                debit: 0,
-                credit: 0,
-                narration: "",
-                refBillNo: "",
-                taxType: "Taxable" as "Taxable" | "BTL" | "REIMB",
-                taxableValue: 0
-            });
-            setTimeout(() => {
-                document.getElementById(`details-${index + 1}-accountId`)?.focus();
-            }, 50);
+    const watchDetails = form.watch("details") || [];
+
+    // States for Master-Detail Grid Entry
+    const [editingIndex, setEditingIndex] = useState<number | null>(null);
+    const [entryLine, setEntryLine] = useState({
+        accountId: "",
+        tagAccountId: "",
+        debit: 0,
+        credit: 0,
+        narration: "",
+        refBillNo: "",
+        refBillNo2: "",
+        taxType: "" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
+        taxableValue: 0,
+    });
+
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [filterAccountId, setFilterAccountId] = useState<string>("");
+
+    const selectedAccountIds = useMemo<string[]>(() => {
+        return Array.from(new Set(watchDetails.map((d: any) => d.accountId as string).filter(Boolean)));
+    }, [watchDetails.map((d: any) => d.accountId).join(",")]);
+
+    const filterOptions = useMemo(() => {
+        return selectedAccountIds.map(id => {
+            const node = findInTree(tree, id);
+            return {
+                value: id,
+                label: node ? `${node.code} - ${node.name}` : id
+            };
+        });
+    }, [selectedAccountIds, tree]);
+
+    // Derive child sub-accounts for active line entry
+    const activeLineChildren = useMemo(() => {
+        if (!entryLine.accountId || tree.length === 0) return [];
+        const node = findInTree(tree, entryLine.accountId);
+        return node?.children ?? [];
+    }, [entryLine.accountId, tree]);
+
+    // Copy previous row values (F4 shortcut)
+    const handleCopyPrevious = () => {
+        const details = form.getValues("details") || [];
+        if (details.length === 0) {
+            toast.info("No previous row to copy from.");
+            return;
+        }
+        const lastRow = details[details.length - 1];
+
+        // Auto-calculate balanced amount
+        const totalDebit = details.reduce((sum, d) => sum + (Number(d.debit) || 0), 0);
+        const totalCredit = details.reduce((sum, d) => sum + (Number(d.credit) || 0), 0);
+        const diff = totalDebit - totalCredit;
+
+        let defaultDebit = 0;
+        let defaultCredit = 0;
+        if (diff > 0) {
+            defaultCredit = diff;
+        } else if (diff < 0) {
+            defaultDebit = Math.abs(diff);
+        }
+
+        setEntryLine((prev) => ({
+            ...prev,
+            accountId: lastRow.accountId || "",
+            tagAccountId: lastRow.tagAccountId || "",
+            narration: lastRow.narration || "",
+            refBillNo: lastRow.refBillNo || "",
+            refBillNo2: lastRow.refBillNo2 || "",
+            taxType: lastRow.taxType || "",
+            taxableValue: lastRow.taxableValue || 0,
+            debit: defaultDebit,
+            credit: defaultCredit,
+        }));
+        toast.success("Copied details from last row.");
+    };
+
+    // Add or Update Line
+    const handleAddOrUpdateLine = () => {
+        if (!entryLine.accountId) {
+            toast.error("Please select an Account Head.");
+            return;
+        }
+
+        const debitVal = Math.round(Number(entryLine.debit) || 0);
+        const creditVal = Math.round(Number(entryLine.credit) || 0);
+        const taxableVal = Math.round(Number(entryLine.taxableValue) || 0);
+
+        if (debitVal === 0 && creditVal === 0) {
+            toast.error("Please enter a positive Debit or Credit amount.");
+            return;
+        }
+
+        if (debitVal > 0 && creditVal > 0) {
+            toast.error("A line cannot have both Debit and Credit.");
+            return;
+        }
+
+        const lineData = {
+            ...entryLine,
+            debit: debitVal,
+            credit: creditVal,
+            taxableValue: taxableVal,
+        };
+
+        if (editingIndex !== null) {
+            update(editingIndex, lineData);
+            setEditingIndex(null);
+            toast.success(`Updated line #${editingIndex + 1}.`);
         } else {
-            document.getElementById(`details-${index + 1}-accountId`)?.focus();
+            append(lineData);
+            toast.success("Added new transaction line.");
+        }
+
+        // Reset Entry Line state
+        setEntryLine({
+            accountId: "",
+            tagAccountId: "",
+            debit: 0,
+            credit: 0,
+            narration: "",
+            refBillNo: "",
+            refBillNo2: "",
+            taxType: "",
+            taxableValue: 0,
+        });
+
+        // Refocus account selector
+        setTimeout(() => {
+            document.getElementById("entry-accountId")?.focus();
+        }, 50);
+    };
+
+    // Keydown handler for keyboard-driven data entry
+    const handleEntryKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, fieldName: string) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            if (fieldName === "debit") {
+                const val = Number(e.currentTarget.value) || 0;
+                if (val > 0) {
+                    handleAddOrUpdateLine();
+                } else {
+                    document.getElementById("entry-credit")?.focus();
+                }
+            } else if (fieldName === "credit") {
+                handleAddOrUpdateLine();
+            } else if (fieldName === "taxableValue") {
+                document.getElementById("entry-debit")?.focus();
+            } else if (fieldName === "narration") {
+                document.getElementById("entry-refBillNo")?.focus();
+            } else if (fieldName === "refBillNo") {
+                document.getElementById("entry-refBillNo2")?.focus();
+            } else if (fieldName === "refBillNo2") {
+                if (entryLine.tagAccountId) {
+                    document.getElementById("entry-taxableValue")?.focus();
+                } else {
+                    document.getElementById("entry-debit")?.focus();
+                }
+            }
         }
     };
 
-    const handleKeyDown = (
-        e: React.KeyboardEvent<HTMLInputElement>,
-        index: number,
-        field: 'narration' | 'refBillNo' | 'taxableValue' | 'debit' | 'credit'
-    ) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            if (field === 'taxableValue') {
-                document.getElementById(`details-${index}-narration`)?.focus();
-            } else if (field === 'narration') {
-                document.getElementById(`details-${index}-refBillNo`)?.focus();
-            } else if (field === 'refBillNo') {
-                document.getElementById(`details-${index}-debit`)?.focus();
-            } else if (field === 'debit') {
-                const debitVal = Number(e.currentTarget.value) || 0;
-                if (debitVal > 0) {
-                    moveToNextRowOrAppend(index);
-                } else {
-                    document.getElementById(`details-${index}-credit`)?.focus();
-                }
-            } else if (field === 'credit') {
-                moveToNextRowOrAppend(index);
-            }
-        } else if (e.key === 'Tab' && !e.shiftKey && (field === 'debit' || field === 'credit')) {
-            if (field === 'debit') {
-                const debitVal = Number(e.currentTarget.value) || 0;
-                if (debitVal > 0) {
-                    e.preventDefault();
-                    moveToNextRowOrAppend(index);
-                }
-            } else if (field === 'credit') {
-                e.preventDefault();
-                moveToNextRowOrAppend(index);
-            }
-        }
+    const focusTaxType = () => {
+        const activeOpt = entryLine.taxType || "Taxable";
+        document.getElementById(`entry-taxType-${activeOpt}`)?.focus();
     };
+
+    // Global listener for F4 key
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "F4") {
+                e.preventDefault();
+                handleCopyPrevious();
+            }
+        };
+        window.addEventListener("keydown", handleGlobalKeyDown);
+        return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, [watchDetails]);
 
     const voucherType = form.watch("type");
 
@@ -237,7 +415,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
     // Clear tagAccountId when accountId changes for a row
     const prevAccountIds = useRef<Record<number, string>>({});
-    const watchDetails = form.watch("details") || [];
+    
     useEffect(() => {
         watchDetails.forEach((detail, index) => {
             const accountId = detail.accountId;
@@ -319,6 +497,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     // Auto-generate PV No based on type
     useEffect(() => {
         if (initialData) return;
+        if (isRestoring.current) return;
         const prefix = voucherType === "bank" ? "BPV" : "CPV";
         const datePart = `${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}`;
         const randomPart = Math.floor(1000 + Math.random() * 9000);
@@ -404,7 +583,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 form.setValue(`details.${i}.debit`, 0);
                                 form.setValue(`details.${i}.credit`, 0);
                             } else {
-                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 });
+                                append({ accountId: acc.id, debit: 0, credit: 0, narration: "", refBillNo: "", refBillNo2: "", taxType: "" as "Taxable" | "BTL" | "REIMB" | "Exempt" | "", taxableValue: 0 });
                             }
                         });
                     }
@@ -452,39 +631,41 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const totalInvoicePayments = selectedInvoices.reduce((s, i) => s + (i.payingNow || 0), 0);
     const totalAdvanceApplied = selectedAdvances.reduce((s, a) => s + (a.applyingNow || 0), 0);
 
-    const duplicateToCredit = (fromIndex: number) => {
+    const duplicateRowToOpposite = (fromIndex: number) => {
         const fromRow = form.getValues(`details.${fromIndex}`);
         const debitVal = Math.round(Number(fromRow.debit) || 0);
+        const creditVal = Math.round(Number(fromRow.credit) || 0);
+        
+        const val = Math.round(debitVal || creditVal);
+        const isFromDebit = debitVal > 0;
         
         const targetIndex = fromIndex + 1;
         const currentDetails = form.getValues("details") || [];
         
+        const oppositeRow = {
+            accountId: fromRow.accountId || "",
+            tagAccountId: fromRow.tagAccountId || "",
+            debit: isFromDebit ? 0 : val,
+            credit: isFromDebit ? val : 0,
+            narration: fromRow.narration || "",
+            refBillNo: fromRow.refBillNo || "",
+            refBillNo2: fromRow.refBillNo2 || "",
+            taxType: (fromRow.taxType ?? "") as "Taxable" | "BTL" | "REIMB" | "Exempt" | "",
+            taxableValue: Math.round(Number(fromRow.taxableValue) || 0),
+        };
+        
         if (targetIndex < currentDetails.length) {
-            form.setValue(`details.${targetIndex}.credit`, debitVal, { shouldValidate: true });
-            form.setValue(`details.${targetIndex}.debit`, 0, { shouldValidate: true });
-            form.setValue(`details.${targetIndex}.narration`, fromRow.narration || "", { shouldValidate: true });
-            form.setValue(`details.${targetIndex}.refBillNo`, fromRow.refBillNo || "", { shouldValidate: true });
-            form.setValue(`details.${targetIndex}.taxType`, fromRow.taxType ?? "Taxable", { shouldValidate: true });
-            form.setValue(`details.${targetIndex}.taxableValue`, fromRow.taxableValue ?? 0, { shouldValidate: true });
-            if (fromRow.accountId) {
-                form.setValue(`details.${targetIndex}.accountId`, fromRow.accountId, { shouldValidate: true });
-            }
-            if (fromRow.tagAccountId) {
-                form.setValue(`details.${targetIndex}.tagAccountId`, fromRow.tagAccountId, { shouldValidate: true });
-            }
-            toast.success(`Copied details from Row ${fromIndex + 1} to Row ${targetIndex + 1} as Credit.`);
+            form.setValue(`details.${targetIndex}.debit`, oppositeRow.debit, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.credit`, oppositeRow.credit, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.narration`, oppositeRow.narration, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.refBillNo`, oppositeRow.refBillNo, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.refBillNo2`, oppositeRow.refBillNo2, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.taxType`, oppositeRow.taxType, { shouldValidate: true });
+            form.setValue(`details.${targetIndex}.taxableValue`, oppositeRow.taxableValue, { shouldValidate: true });
+            if (oppositeRow.accountId) form.setValue(`details.${targetIndex}.accountId`, oppositeRow.accountId, { shouldValidate: true });
+            if (oppositeRow.tagAccountId) form.setValue(`details.${targetIndex}.tagAccountId`, oppositeRow.tagAccountId, { shouldValidate: true });
         } else {
-            append({
-                accountId: fromRow.accountId || "",
-                tagAccountId: fromRow.tagAccountId || "",
-                debit: 0,
-                credit: debitVal,
-                narration: fromRow.narration || "",
-                refBillNo: fromRow.refBillNo || "",
-                taxType: fromRow.taxType ?? "Taxable",
-                taxableValue: fromRow.taxableValue ?? 0
-            });
-            toast.success(`Duplicated Row ${fromIndex + 1} to a new Credit Row.`);
+            append(oppositeRow);
         }
     };
 
@@ -493,6 +674,28 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const voucherNo = watchAllFields.pvNo;
     useEffect(() => {
         if (initialData || !voucherNo) return;
+
+        // Avoid saving empty drafts (no details, no description, no supplier, no cheque/refs)
+        const hasFormDetails = watchAllFields.details?.some((d: any) => d.accountId || (d.debit ?? 0) > 0 || (d.credit ?? 0) > 0 || d.narration || d.refBillNo);
+        const hasInvoicesOrAdvances = selectedInvoices.length > 0 || selectedAdvances.length > 0;
+        const hasDescriptionOrSupplier = watchAllFields.description || watchAllFields.supplierId;
+        const hasReferenceOrCheque = watchAllFields.refBillNo || watchAllFields.chequeNo;
+
+        if (!hasFormDetails && !hasInvoicesOrAdvances && !hasDescriptionOrSupplier && !hasReferenceOrCheque) {
+            // Delete draft if it exists to keep localStorage clean (e.g. if user cleared form)
+            const draftsJson = localStorage.getItem("payment-voucher-drafts");
+            if (draftsJson) {
+                try {
+                    const drafts = JSON.parse(draftsJson);
+                    if (drafts[voucherNo]) {
+                        delete drafts[voucherNo];
+                        localStorage.setItem("payment-voucher-drafts", JSON.stringify(drafts));
+                    }
+                } catch {}
+            }
+            return;
+        }
+
         const draftData = {
             formValues: watchAllFields,
             selectedInvoices,
@@ -629,6 +832,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                     credit: Math.round(Number(detail.credit) || 0),
                     narration: detail.narration || undefined,
                     refBillNo: detail.refBillNo || undefined,
+                    refBillNo2: detail.refBillNo2 || undefined,
                     taxType: detail.taxType ?? "Taxable",
                 })),
                 invoices: selectedInvoices.length > 0
@@ -667,6 +871,39 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
     // Watch for changes in detail rows to auto-balance and calculate taxes
     const watchDetailsString = watchDetails.map(d => `${d.debit}-${d.accountId}-${d.tagAccountId}-${d.taxType}-${d.taxableValue}`).join(",");
+
+    const taxableAmount = useMemo(() => {
+        return watchDetails.reduce((sum: number, detail: any) => {
+            const isTaxableType = detail.taxType === "Taxable" || detail.taxType === "BTL" || detail.taxType === "REIMB";
+            return sum + (isTaxableType ? Math.round(Number(detail.debit) || 0) : 0);
+        }, 0);
+    }, [watchDetailsString]);
+
+    // Auto-calculate tax inside the editor inputs (before adding the line)
+    useEffect(() => {
+        if (!entryLine.accountId || !entryLine.tagAccountId || tree.length === 0) return;
+        const accountNode = findInTree(tree, entryLine.accountId);
+        const tagNode = accountNode?.children?.find(c => c.id === entryLine.tagAccountId);
+        if (accountNode?.code && tagNode?.code) {
+            const baseAmount = taxableAmount || entryLine.taxableValue;
+            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, baseAmount);
+            if (calculatedTax !== null) {
+                const roundedTax = Math.round(calculatedTax);
+                const isDebit = accountNode.type === "Asset" || accountNode.type === "Expense";
+                setEntryLine(prev => {
+                    const nextDebit = isDebit ? roundedTax : 0;
+                    const nextCredit = isDebit ? 0 : roundedTax;
+                    if (prev.debit === nextDebit && prev.credit === nextCredit) return prev;
+                    return {
+                        ...prev,
+                        debit: nextDebit,
+                        credit: nextCredit
+                    };
+                });
+            }
+        }
+    }, [entryLine.accountId, entryLine.tagAccountId, entryLine.taxableValue, taxableAmount, tree]);
+
     useEffect(() => {
         let totalTaxAmount = 0;
 
@@ -674,7 +911,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         if (tree.length > 0) {
             watchDetails.forEach((detail, index) => {
                 const prev = prevDetailsRef.current[index] || { accountId: "", tagAccountId: "", taxableValue: 0 };
-                const currentTaxableValue = Math.round(Number(detail.taxableValue) || 0);
+                const currentTaxableValue = taxableAmount || Math.round(Number(detail.taxableValue) || 0);
                 
                 // Check if trigger fields changed for this row
                 const triggerChanged = 
@@ -687,24 +924,35 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                     const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
 
                     if (accountNode?.code && tagNode?.code) {
-                        if (currentTaxableValue > 0) {
-                            const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, currentTaxableValue);
-                            if (calculatedTax !== null) {
-                                const roundedTax = Math.round(calculatedTax);
-                                if (triggerChanged) {
-                                    form.setValue(`details.${index}.credit`, roundedTax, { shouldValidate: true });
+                        const isTaxAccount = calculateTaxForAccount(accountNode.code, tagNode.code, 100) !== null;
+                        if (isTaxAccount) {
+                            if (currentTaxableValue > 0) {
+                                const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, currentTaxableValue);
+                                if (calculatedTax !== null) {
+                                    const roundedTax = Math.round(calculatedTax);
+                                    if (triggerChanged) {
+                                        const isDebit = accountNode.type === "Asset" || accountNode.type === "Expense";
+                                        if (isDebit) {
+                                            form.setValue(`details.${index}.debit`, roundedTax, { shouldValidate: true });
+                                            form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
+                                        } else {
+                                            form.setValue(`details.${index}.credit`, roundedTax, { shouldValidate: true });
+                                            form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
+                                        }
+                                        totalTaxAmount += roundedTax;
+                                    } else {
+                                        // Use user's manual entry (subtracting any debit to get net credit impact)
+                                        totalTaxAmount += Math.round(Number(detail.credit) || 0) - Math.round(Number(detail.debit) || 0);
+                                    }
+                                }
+                            } else {
+                                const hasManualValue = (Number(detail.credit) || 0) > 0 || (Number(detail.debit) || 0) > 0;
+                                if (triggerChanged && !hasManualValue) {
+                                    form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
                                     form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
-                                    totalTaxAmount += roundedTax;
                                 } else {
-                                    // Use user's manual entry (subtracting any debit to get net credit impact)
                                     totalTaxAmount += Math.round(Number(detail.credit) || 0) - Math.round(Number(detail.debit) || 0);
                                 }
-                            }
-                        } else {
-                            if (triggerChanged) {
-                                form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
-                            } else {
-                                totalTaxAmount += Math.round(Number(detail.credit) || 0) - Math.round(Number(detail.debit) || 0);
                             }
                         }
                     }
@@ -715,7 +963,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
         // ALWAYS sync the ref to current watchDetails, whether tree is loaded or not!
         watchDetails.forEach((detail, index) => {
-            const currentTaxableValue = Math.round(Number(detail.taxableValue) || 0);
+            const currentTaxableValue = taxableAmount || Math.round(Number(detail.taxableValue) || 0);
             prevDetailsRef.current[index] = {
                 accountId: detail.accountId || "",
                 tagAccountId: detail.tagAccountId || "",
@@ -883,16 +1131,38 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                 control={form.control}
                                 name="supplierId"
                                 render={({ field }) => (
-                                    <Autocomplete
-                                        options={suppliers.map(supplier => ({ 
-                                            value: supplier.id, 
-                                            label: `${supplier.code || supplier.name} - ${supplier.name}` 
-                                        }))}
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        placeholder={loadingSuppliers ? "Loading suppliers..." : "Select Supplier (Optional)"}
-                                        disabled={loadingSuppliers}
-                                    />
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1">
+                                            <Autocomplete
+                                                options={suppliers.map(supplier => ({ 
+                                                    value: supplier.id, 
+                                                    label: `${supplier.code || supplier.name} - ${supplier.name}` 
+                                                }))}
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                placeholder={loadingSuppliers ? "Loading suppliers..." : "Select Supplier (Optional)"}
+                                                disabled={loadingSuppliers}
+                                            />
+                                        </div>
+                                        {field.value && (() => {
+                                            const selectedSupplier = suppliers.find(s => s.id === field.value);
+                                            return selectedSupplier ? (
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-10 w-10 shrink-0"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(selectedSupplier.name);
+                                                        toast.success(`Copied supplier name: "${selectedSupplier.name}"`);
+                                                    }}
+                                                    title="Copy Supplier Name"
+                                                >
+                                                    <Copy className="h-4 w-4" />
+                                                </Button>
+                                            ) : null;
+                                        })()}
+                                    </div>
                                 )}
                             />
                             {suppliersError && <p className="text-xs text-amber-600">{suppliersError}</p>}
@@ -1142,260 +1412,500 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                     <p className="text-xs text-muted-foreground mt-0.5">Debit: <span className="font-mono font-semibold">12030001 – A/P PARTIES</span> &nbsp;|&nbsp; Credit: <span className="font-mono font-semibold">Bank / Cash account</span> (cash portion only)</p>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex gap-2">
                                 <Button
                                     type="button"
-                                    variant="secondary"
+                                    variant="outline"
                                     size="sm"
-                                    onClick={() => append({ accountId: "", tagAccountId: "", debit: 0, credit: 0, narration: "", refBillNo: "", taxType: "Taxable" as "Taxable" | "BTL" | "REIMB", taxableValue: 0 })}
+                                    onClick={() => setIsImportModalOpen(true)}
+                                    disabled={isPending}
                                 >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add More PV Rows
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Import Excel/CSV
                                 </Button>
                             </div>
                         </div>
 
-                        <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-border">
+                        {/* ── Line Entry Card (Top Form) ── */}
+                        <div className="p-4 rounded-xl border bg-muted/20 dark:bg-muted/5 border-border space-y-4 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                                    {editingIndex !== null ? (
+                                        <span className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                                            <span className="h-2.5 w-2.5 rounded-full bg-blue-500 animate-pulse" />
+                                            Editing Line #{editingIndex + 1}
+                                        </span>
+                                    ) : (
+                                        "Add Transaction Line"
+                                    )}
+                                </h3>
+                                {editingIndex !== null && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs text-destructive hover:bg-destructive/10"
+                                        onClick={() => {
+                                            setEditingIndex(null);
+                                            setEntryLine({
+                                                accountId: "",
+                                                tagAccountId: "",
+                                                debit: 0,
+                                                credit: 0,
+                                                narration: "",
+                                                refBillNo: "",
+                                                refBillNo2: "",
+                                                taxType: "",
+                                                taxableValue: 0,
+                                            });
+                                        }}
+                                    >
+                                        Cancel Edit
+                                    </Button>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                {/* Account Selector */}
+                                <div className="md:col-span-4 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground font-semibold">ACCOUNT HEAD *</Label>
+                                    <ChartOfAccountSelect
+                                        id="entry-accountId"
+                                        value={entryLine.accountId}
+                                        onValueChange={(val) => {
+                                            setEntryLine(prev => ({ ...prev, accountId: val, tagAccountId: "" }));
+                                            setTimeout(() => {
+                                                const nodes = getSharedTree().length > 0 ? getSharedTree() : tree;
+                                                const node = findInTree(nodes, val);
+                                                const hasChildren = (node?.children?.length ?? 0) > 0;
+                                                if (hasChildren) {
+                                                    document.getElementById("entry-tagAccountId")?.focus();
+                                                } else {
+                                                    focusTaxType();
+                                                }
+                                            }, 50);
+                                        }}
+                                        placeholder="Select Account"
+                                        excludeTags={true}
+                                        disabled={isPending}
+                                        mode="popover"
+                                    />
+                                </div>
+
+                                {/* Tag/Sub-account Selection */}
+                                <div className="md:col-span-4 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground font-semibold">TAG SUB-ACCOUNT</Label>
+                                    <TagAccountSelect
+                                        id="entry-tagAccountId"
+                                        children={activeLineChildren}
+                                        value={entryLine.tagAccountId}
+                                        onValueChange={(val) => {
+                                            setEntryLine(prev => ({ ...prev, tagAccountId: val }));
+                                            setTimeout(() => {
+                                                if (val) {
+                                                    focusTaxType();
+                                                } else {
+                                                    document.getElementById("entry-narration")?.focus();
+                                                }
+                                            }, 50);
+                                        }}
+                                        disabled={isPending || activeLineChildren.length === 0}
+                                    />
+                                </div>
+
+                                {/* Tax Type Selection */}
+                                <div className="md:col-span-4 space-y-1 select-none">
+                                    <Label className="text-[11px] text-muted-foreground font-semibold">TAX TYPE</Label>
+                                    <div className="flex h-9 items-center gap-1 border rounded-md px-1 bg-background border-input">
+                                        {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => {
+                                            const isSelected = entryLine.taxType === opt;
+                                            const isFirst = opt === "Taxable";
+                                            const tabIndex = entryLine.taxType ? (isSelected ? 0 : -1) : (isFirst ? 0 : -1);
+                                            return (
+                                                <button
+                                                    key={opt}
+                                                    id={`entry-taxType-${opt}`}
+                                                    type="button"
+                                                    disabled={isPending}
+                                                    tabIndex={tabIndex}
+                                                    onClick={() => {
+                                                        setEntryLine(prev => ({
+                                                            ...prev,
+                                                            taxType: prev.taxType === opt ? "" : opt
+                                                        }));
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                                                            e.preventDefault();
+                                                            const opts = ["Taxable", "BTL", "REIMB", "Exempt"] as const;
+                                                            const currentIndex = opts.indexOf(opt);
+                                                            const nextIndex = e.key === "ArrowRight"
+                                                                ? (currentIndex + 1) % opts.length
+                                                                : (currentIndex - 1 + opts.length) % opts.length;
+                                                            const nextOpt = opts[nextIndex];
+                                                            setEntryLine(prev => ({ ...prev, taxType: nextOpt }));
+                                                            setTimeout(() => {
+                                                                document.getElementById(`entry-taxType-${nextOpt}`)?.focus();
+                                                            }, 10);
+                                                        } else if (e.key === "Enter") {
+                                                            e.preventDefault();
+                                                            document.getElementById("entry-narration")?.focus();
+                                                        }
+                                                    }}
+                                                    className={cn(
+                                                        "flex-1 flex items-center justify-center cursor-pointer py-1 rounded text-[10px] font-medium border transition-colors text-center h-7 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                                                        isSelected
+                                                            ? "bg-primary text-primary-foreground border-primary"
+                                                            : "border-transparent text-muted-foreground hover:bg-accent"
+                                                    )}
+                                                >
+                                                    {opt}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                                {/* Narration */}
+                                <div className={cn(entryLine.tagAccountId ? "md:col-span-5" : "md:col-span-8", "space-y-1")}>
+                                    <Label className="text-[11px] text-muted-foreground font-semibold">LINE NARRATION</Label>
+                                    <Input
+                                        id="entry-narration"
+                                        placeholder="Narration for this line..."
+                                        value={entryLine.narration}
+                                        onChange={(e) => setEntryLine(prev => ({ ...prev, narration: e.target.value }))}
+                                        onKeyDown={(e) => handleEntryKeyDown(e, "narration")}
+                                        disabled={isPending}
+                                        className="h-9 border-input bg-background"
+                                    />
+                                </div>
+
+                                {/* Ref 1 */}
+                                <div className="md:col-span-2 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground font-semibold">REF 1</Label>
+                                    <Input
+                                        id="entry-refBillNo"
+                                        placeholder="Reference 1"
+                                        value={entryLine.refBillNo}
+                                        onChange={(e) => setEntryLine(prev => ({ ...prev, refBillNo: e.target.value }))}
+                                        onKeyDown={(e) => handleEntryKeyDown(e, "refBillNo")}
+                                        disabled={isPending}
+                                        className="h-9 border-input bg-background"
+                                    />
+                                </div>
+
+                                {/* Ref 2 */}
+                                <div className="md:col-span-2 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground font-semibold">REF 2</Label>
+                                    <Input
+                                        id="entry-refBillNo2"
+                                        placeholder="Reference 2"
+                                        value={entryLine.refBillNo2}
+                                        onChange={(e) => setEntryLine(prev => ({ ...prev, refBillNo2: e.target.value }))}
+                                        onKeyDown={(e) => handleEntryKeyDown(e, "refBillNo2")}
+                                        disabled={isPending}
+                                        className="h-9 border-input bg-background"
+                                    />
+                                </div>
+
+                                {/* Taxable Value */}
+                                {entryLine.tagAccountId && (
+                                    <div className="md:col-span-3 space-y-1">
+                                        <Label className="text-[11px] text-muted-foreground font-semibold">TAXABLE VALUE</Label>
+                                        <Input
+                                            id="entry-taxableValue"
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="Taxable Value"
+                                            value={entryLine.taxableValue || ""}
+                                            onChange={(e) => setEntryLine(prev => ({ ...prev, taxableValue: Number(e.target.value) || 0 }))}
+                                            onKeyDown={(e) => handleEntryKeyDown(e, "taxableValue")}
+                                            disabled={isPending}
+                                            className="h-9 border-input bg-background font-mono text-sm"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center pt-2">
+                                {/* Debit */}
+                                <div className="md:col-span-4 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground font-semibold">DEBIT AMOUNT</Label>
+                                    <Input
+                                        id="entry-debit"
+                                        type="number"
+                                        step="1"
+                                        placeholder="0"
+                                        value={entryLine.debit || ""}
+                                        onChange={(e) => {
+                                            const rawVal = Number(e.target.value) || 0;
+                                            const roundedVal = Math.round(rawVal);
+                                            setEntryLine(prev => ({
+                                                ...prev,
+                                                debit: roundedVal,
+                                                credit: roundedVal > 0 ? 0 : prev.credit
+                                            }));
+                                        }}
+                                        onKeyDown={(e) => handleEntryKeyDown(e, "debit")}
+                                        disabled={isPending}
+                                        className="h-9 border-input bg-background font-mono text-sm font-semibold"
+                                    />
+                                </div>
+
+                                {/* Credit */}
+                                <div className="md:col-span-4 space-y-1">
+                                    <Label className="text-[11px] text-muted-foreground font-semibold">CREDIT AMOUNT</Label>
+                                    <Input
+                                        id="entry-credit"
+                                        type="number"
+                                        step="1"
+                                        placeholder="0"
+                                        value={entryLine.credit || ""}
+                                        onChange={(e) => {
+                                            const rawVal = Number(e.target.value) || 0;
+                                            const roundedVal = Math.round(rawVal);
+                                            setEntryLine(prev => ({
+                                                ...prev,
+                                                credit: roundedVal,
+                                                debit: roundedVal > 0 ? 0 : prev.debit
+                                            }));
+                                        }}
+                                        onKeyDown={(e) => handleEntryKeyDown(e, "credit")}
+                                        disabled={isPending}
+                                        className="h-9 border-input bg-background font-mono text-sm font-semibold"
+                                    />
+                                </div>
+
+                                {/* Form Action Buttons */}
+                                <div className="md:col-span-4 flex gap-2 self-end pt-4 md:pt-0">
+                                    <Button
+                                        type="button"
+                                        variant="default"
+                                        onClick={handleAddOrUpdateLine}
+                                        disabled={isPending}
+                                        className="flex-1 h-9 shadow-sm font-semibold"
+                                    >
+                                        {editingIndex !== null ? "Update Line" : "Add Line"}
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleCopyPrevious}
+                                        disabled={isPending || watchDetails.length === 0}
+                                        title="Copy previous row details (F4)"
+                                        className="h-9 w-12 px-0 text-muted-foreground hover:text-foreground font-bold"
+                                    >
+                                        F4
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Filter Bar */}
+                        {selectedAccountIds.length > 0 && (
+                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg border border-dashed">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase">Filter by Account Head:</span>
+                                <div className="w-[300px]">
+                                    <Autocomplete
+                                        options={filterOptions}
+                                        value={filterAccountId}
+                                        onValueChange={setFilterAccountId}
+                                        placeholder="All Accounts"
+                                        searchPlaceholder="Search selected accounts..."
+                                    />
+                                </div>
+                                {filterAccountId && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setFilterAccountId("")}
+                                        className="text-xs text-destructive hover:bg-destructive/10 h-9 px-3"
+                                    >
+                                        Clear Filter
+                                    </Button>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ── Transaction Lines List (Bottom Form) ── */}
+                        <div className="border rounded-xl overflow-hidden border-border bg-card">
                             <table className="w-full text-sm">
-                                <thead className="dark:bg-muted text-foreground border-b font-bold">
+                                <thead className="bg-muted/60 text-muted-foreground border-b text-xs font-bold uppercase tracking-wider">
                                     <tr>
-                                        <th className="px-4 py-3 text-left">Account Head</th>
-                                        <th className="px-4 py-3 text-left w-[180px]">Debit</th>
-                                        <th className="px-4 py-3 text-left w-[180px]">Credit</th>
-                                        <th className="px-4 py-3 text-center w-[80px]">Action</th>
+                                        <th className="px-4 py-3 text-left w-12">#</th>
+                                        <th className="px-4 py-3 text-left">Account Head & Tag</th>
+                                        <th className="px-4 py-3 text-left">Narration & References</th>
+                                        <th className="px-4 py-3 text-right w-[150px]">Debit</th>
+                                        <th className="px-4 py-3 text-right w-[150px]">Credit</th>
+                                        <th className="px-4 py-3 text-center w-28">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {fields.map((field, index) => (
-                                        <tr key={field.id} className="hover:bg-gray-50/50 dark:hover:bg-muted/50 align-top">
-                                            <td className="px-4 py-3">
-                                                <Controller
-                                                    control={form.control}
-                                                    name={`details.${index}.accountId`}
-                                                    render={({ field }) => (
-                                                        <ChartOfAccountSelect
-                                                            id={`details-${index}-accountId`}
-                                                            value={field.value}
-                                                            onValueChange={(val) => {
-                                                                field.onChange(val);
-                                                                const t = getSharedTree();
-                                                                if (t.length > 0) setTree([...t]);
-                                                                setTimeout(() => {
-                                                                    const nodes = t.length > 0 ? t : tree;
-                                                                    const node = findInTree(nodes, val);
-                                                                    const hasChildren = (node?.children?.length ?? 0) > 0;
-                                                                    if (hasChildren) {
-                                                                        document.getElementById(`details-${index}-tagAccountId`)?.focus();
-                                                                    } else {
-                                                                        document.getElementById(`details-${index}-narration`)?.focus();
-                                                                    }
-                                                                }, 50);
-                                                            }}
-                                                            placeholder="Select Account"
-                                                            disabled={isPending}
-                                                            className="h-10 border-gray-300 dark:border-input"
-                                                        />
-                                                    )}
-                                                />
-                                                {form.formState.errors.details?.[index]?.accountId && (
-                                                    <p className="text-[10px] text-destructive mt-1">
-                                                        {form.formState.errors.details[index].accountId?.message}
-                                                    </p>
-                                                )}
-                                                {(rowChildren[index]?.length ?? 0) > 0 && (
-                                                    <div className="mt-1.5 flex gap-2">
-                                                        <div className="flex-1">
-                                                            <Controller
-                                                                control={form.control}
-                                                                name={`details.${index}.tagAccountId`}
-                                                                render={({ field }) => (
-                                                                    <TagAccountSelect
-                                                                        id={`details-${index}-tagAccountId`}
-                                                                        children={rowChildren[index]}
-                                                                        value={field.value ?? ""}
-                                                                        onValueChange={(val) => {
-                                                                            field.onChange(val);
-                                                                            setTimeout(() => {
-                                                                                const hasTaxableValue = document.getElementById(`details-${index}-taxableValue`);
-                                                                                if (hasTaxableValue) {
-                                                                                    hasTaxableValue.focus();
-                                                                                } else {
-                                                                                    document.getElementById(`details-${index}-narration`)?.focus();
-                                                                                }
-                                                                            }, 50);
-                                                                        }}
-                                                                        disabled={isPending}
-                                                                    />
-                                                                )}
-                                                            />
-                                                        </div>
-                                                        {watchDetails[index]?.tagAccountId && (
-                                                            <div className="w-[120px] shrink-0">
-                                                                <Input
-                                                                    id={`details-${index}-taxableValue`}
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    placeholder="Taxable Value"
-                                                                    {...form.register(`details.${index}.taxableValue`, {
-                                                                        valueAsNumber: true,
-                                                                    })}
-                                                                    onKeyDown={(e) => handleKeyDown(e, index, 'taxableValue')}
-                                                                    disabled={isPending}
-                                                                    className="h-8 text-xs border-gray-300 dark:border-input"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-12 gap-2 border-t pt-2 border-gray-100 dark:border-muted/20">
-                                                    <div className="sm:col-span-4">
-                                                        <Input
-                                                            id={`details-${index}-narration`}
-                                                            placeholder="Line Narration (optional)"
-                                                            {...form.register(`details.${index}.narration`)}
-                                                            onKeyDown={(e) => handleKeyDown(e, index, 'narration')}
-                                                            disabled={isPending}
-                                                            className="h-8 text-xs border-gray-300 dark:border-input"
-                                                        />
-                                                    </div>
-                                                    <div className="sm:col-span-3">
-                                                        <Input
-                                                            id={`details-${index}-refBillNo`}
-                                                            placeholder="Ref / Bill#"
-                                                            {...form.register(`details.${index}.refBillNo`)}
-                                                            onKeyDown={(e) => handleKeyDown(e, index, 'refBillNo')}
-                                                            disabled={isPending}
-                                                            className="h-8 text-xs border-gray-300 dark:border-input"
-                                                        />
-                                                    </div>
-                                                    <div className="sm:col-span-5 flex items-center gap-0.5 pl-1 select-none">
-                                                        <Controller
-                                                            control={form.control}
-                                                            name={`details.${index}.taxType`}
-                                                            render={({ field }) => (
-                                                                <RadioGroup
-                                                                    value={field.value ?? "Taxable"}
-                                                                    onValueChange={field.onChange}
-                                                                    disabled={isPending}
-                                                                    className="flex gap-1"
-                                                                >
-                                                                    {(["Taxable", "BTL", "REIMB"] as const).map((opt) => (
-                                                                        <Label
-                                                                            key={opt}
-                                                                            className={cn(
-                                                                                "flex items-center gap-1 cursor-pointer px-2 py-1 rounded text-[11px] font-medium border transition-colors",
-                                                                                field.value === opt
-                                                                                    ? "bg-primary text-primary-foreground border-primary"
-                                                                                    : "border-gray-300 dark:border-input text-muted-foreground hover:bg-accent"
-                                                                            )}
-                                                                        >
-                                                                            <RadioGroupItem value={opt} className="sr-only" />
-                                                                            {opt}
-                                                                        </Label>
-                                                                    ))}
-                                                                </RadioGroup>
-                                                            )}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <Input
-                                                    id={`details-${index}-debit`}
-                                                    type="number"
-                                                    step="1"
-                                                    placeholder="0"
-                                                    {...form.register(`details.${index}.debit`, {
-                                                        valueAsNumber: true,
-                                                        onChange: (e) => {
-                                                            const rawVal = Number(e.target.value) || 0;
-                                                            const roundedVal = Math.round(rawVal);
-                                                            if (rawVal !== roundedVal) {
-                                                                form.setValue(`details.${index}.debit`, roundedVal, { shouldValidate: true });
-                                                            }
-                                                            if (roundedVal > 0) {
-                                                                form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
-                                                            }
-                                                        }
-                                                    })}
-                                                    onKeyDown={(e) => handleKeyDown(e, index, 'debit')}
-                                                    disabled={isPending}
-                                                    className="h-10 border-gray-300 dark:border-input font-medium"
-                                                />
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <Input
-                                                    id={`details-${index}-credit`}
-                                                    type="number"
-                                                    step="1"
-                                                    placeholder="0"
-                                                    {...form.register(`details.${index}.credit`, {
-                                                        valueAsNumber: true,
-                                                        onChange: (e) => {
-                                                            const rawVal = Number(e.target.value) || 0;
-                                                            const roundedVal = Math.round(rawVal);
-                                                            if (rawVal !== roundedVal) {
-                                                                form.setValue(`details.${index}.credit`, roundedVal, { shouldValidate: true });
-                                                            }
-                                                            if (roundedVal > 0) {
-                                                                form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
-                                                            }
-                                                        }
-                                                    })}
-                                                    onKeyDown={(e) => handleKeyDown(e, index, 'credit')}
-                                                    disabled={isPending}
-                                                    className="h-10 border-gray-300 dark:border-input font-medium"
-                                                />
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <div className="flex items-center justify-center gap-1">
-                                                    {Number(watchDetails[index]?.debit) > 0 && (
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            title="Duplicate to Credit Row"
-                                                            onClick={() => duplicateToCredit(index)}
-                                                            disabled={isPending}
-                                                            className="rounded-full text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950/30"
-                                                        >
-                                                            <Copy className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
-                                                    {fields.length > 2 ? (
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={() => remove(index)}
-                                                            disabled={isPending}
-                                                            className="rounded-full text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    ) : (
-                                                        <span className="text-gray-300">---</span>
-                                                    )}
-                                                </div>
+                                <tbody className="divide-y divide-border">
+                                    {watchDetails.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                                                No lines added yet. Use the editor above to add lines.
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        watchDetails.map((field, index) => {
+                                            const detail = watchDetails[index] || {};
+                                            const shouldHide = filterAccountId && detail.accountId && detail.accountId !== filterAccountId;
+                                            if (shouldHide) return null;
+
+                                            const accountNode = findInTree(tree, field.accountId);
+                                            const tagNode = accountNode?.children?.find(c => c.id === field.tagAccountId);
+
+                                            return (
+                                                <tr
+                                                    key={index}
+                                                    className={cn(
+                                                        "hover:bg-muted/20 align-top transition-colors",
+                                                        editingIndex === index && "bg-blue-50/40 dark:bg-blue-950/15"
+                                                    )}
+                                                >
+                                                    <td className="px-4 py-3 font-medium text-muted-foreground">{index + 1}</td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="font-semibold text-foreground">
+                                                            {accountNode ? `${accountNode.code} - ${accountNode.name}` : "Unknown Account"}
+                                                        </div>
+                                                        {tagNode && (
+                                                            <div className="text-xs text-muted-foreground font-mono mt-0.5 flex items-center gap-1">
+                                                                <span className="px-1.5 py-0.2 rounded bg-muted font-sans text-[9px] uppercase border font-semibold">Tag</span>
+                                                                <span>{tagNode.code} - {tagNode.name}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        navigator.clipboard.writeText(tagNode.name);
+                                                                        toast.success(`Copied tag name: "${tagNode.name}"`);
+                                                                    }}
+                                                                    className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                                                                    title="Copy tag account name"
+                                                                >
+                                                                    <Copy className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {field.narration ? (
+                                                            <div className="italic text-muted-foreground text-xs">{field.narration}</div>
+                                                        ) : (
+                                                            <div className="text-muted-foreground/30 text-xs italic">No narration</div>
+                                                        )}
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            {field.refBillNo && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] font-mono">Ref1: {field.refBillNo}</span>
+                                                            )}
+                                                            {field.refBillNo2 && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] font-mono">Ref2: {field.refBillNo2}</span>
+                                                            )}
+                                                            {field.taxableValue > 0 && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] font-mono">Taxable Val: {field.taxableValue.toLocaleString()}</span>
+                                                            )}
+                                                            {field.taxType && (
+                                                                <span className="px-1.5 py-0.5 rounded bg-muted border text-[9px] text-blue-600 dark:text-blue-400 font-semibold uppercase">{field.taxType}</span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-foreground">
+                                                        {field.debit > 0 ? field.debit.toLocaleString() : "—"}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-foreground">
+                                                        {field.credit > 0 ? field.credit.toLocaleString() : "—"}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => {
+                                                                    setEditingIndex(index);
+                                                                    setEntryLine({
+                                                                        accountId: field.accountId,
+                                                                        tagAccountId: field.tagAccountId || "",
+                                                                        debit: field.debit,
+                                                                        credit: field.credit,
+                                                                        narration: field.narration || "",
+                                                                        refBillNo: field.refBillNo || "",
+                                                                        refBillNo2: field.refBillNo2 || "",
+                                                                        taxType: field.taxType || "",
+                                                                        taxableValue: field.taxableValue || 0,
+                                                                    });
+                                                                    setTimeout(() => {
+                                                                        document.getElementById("entry-accountId")?.focus();
+                                                                    }, 50);
+                                                                }}
+                                                                disabled={isPending}
+                                                                title="Edit line"
+                                                                className="rounded-full h-8 w-8 hover:bg-muted text-muted-foreground hover:text-foreground"
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => duplicateRowToOpposite(index)}
+                                                                disabled={isPending}
+                                                                title="Duplicate row data and swap debit/credit"
+                                                                className="rounded-full hover:bg-blue-50 dark:hover:bg-blue-950/20 text-blue-600 h-8 w-8"
+                                                            >
+                                                                <Copy className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => {
+                                                                    remove(index);
+                                                                    if (editingIndex === index) {
+                                                                        setEditingIndex(null);
+                                                                        setEntryLine({
+                                                                            accountId: "",
+                                                                            tagAccountId: "",
+                                                                            debit: 0,
+                                                                            credit: 0,
+                                                                            narration: "",
+                                                                            refBillNo: "",
+                                                                            refBillNo2: "",
+                                                                            taxType: "",
+                                                                            taxableValue: 0,
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                disabled={isPending}
+                                                                title="Delete line"
+                                                                className="rounded-full h-8 w-8 text-destructive hover:bg-destructive/10"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
                                 </tbody>
-                                <tfoot className="font-bold border-t border-gray-200 dark:border-border">
+                                <tfoot className="font-bold border-t border-border bg-muted/20 text-foreground">
                                     <tr>
-                                        <td className="px-4 py-4 text-right pr-8 text-gray-600 dark:text-muted-foreground">Totals:</td>
-                                        <td className="px-4 py-4 text-right text-lg">
+                                        <td colSpan={3} className="px-4 py-4 text-right pr-8 text-muted-foreground text-xs uppercase tracking-wider">Totals:</td>
+                                        <td className="px-4 py-4 text-right text-base font-mono tabular-nums">
                                             {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td className="px-4 py-4 text-right text-lg">
+                                        <td className="px-4 py-4 text-right text-base font-mono tabular-nums">
                                             {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                         <td className="px-4 py-4 text-center">
                                             {!isBalanced && totalDebit > 0 && (
-                                                <div className="mx-auto w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="Out of Balance" />
-                                            )}
-                                            {isBalanced && totalDebit > 0 && (
-                                                <div className="mx-auto w-2.5 h-2.5 rounded-full bg-green-500" title="Balanced" />
+                                                <div
+                                                    className="mx-auto w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"
+                                                    title="Out of Balance"
+                                                />
                                             )}
                                         </td>
                                     </tr>
@@ -1403,7 +1913,9 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                             </table>
                         </div>
                         {form.formState.errors.details?.root && (
-                            <p className="text-sm text-destructive font-medium">{form.formState.errors.details.root.message}</p>
+                            <p className="text-sm text-destructive font-medium">
+                                {form.formState.errors.details.root.message}
+                            </p>
                         )}
                     </div>
 
@@ -1413,26 +1925,25 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                             control={form.control}
                             name="taxType"
                             render={({ field }) => (
-                                <RadioGroup
-                                    value={field.value ?? "Taxable"}
-                                    onValueChange={field.onChange}
-                                    className="flex gap-2"
-                                >
-                                    {(["Taxable", "BTL", "REIMB"] as const).map((opt) => (
-                                        <Label
+                                <div className="flex gap-2">
+                                    {(["Taxable", "BTL", "REIMB", "Exempt"] as const).map((opt) => (
+                                        <button
                                             key={opt}
+                                            type="button"
+                                            onClick={() => {
+                                                field.onChange(field.value === opt ? "" : opt);
+                                            }}
                                             className={cn(
-                                                "flex items-center gap-1 cursor-pointer px-3 py-1.5 rounded text-xs font-semibold border transition-colors",
+                                                "flex items-center justify-center cursor-pointer px-3 py-1.5 rounded text-xs font-semibold border transition-colors h-8",
                                                 field.value === opt
                                                     ? "bg-primary text-primary-foreground border-primary"
                                                     : "border-gray-300 dark:border-input text-muted-foreground hover:bg-accent"
                                             )}
                                         >
-                                            <RadioGroupItem value={opt} className="sr-only" />
                                             {opt}
-                                        </Label>
+                                        </button>
                                     ))}
-                                </RadioGroup>
+                                </div>
                             )}
                         />
                     </div>
@@ -1460,6 +1971,15 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                             {initialData ? "Update Payment Voucher" : "Create Payment Voucher"}
                         </Button>
                     </div>
+                    <VoucherImportModal
+                        open={isImportModalOpen}
+                        onOpenChange={setIsImportModalOpen}
+                        voucherType="payment"
+                        onImportComplete={(importedRows) => {
+                            replace(importedRows as any);
+                            toast.success(`Successfully imported ${importedRows.length} rows.`);
+                        }}
+                    />
                 </form>
             </CardContent>
         </Card>

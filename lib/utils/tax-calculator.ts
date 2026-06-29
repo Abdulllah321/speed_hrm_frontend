@@ -163,5 +163,48 @@ export function calculateTaxForAccount(
     return Math.round(taxableAmount * 0.025 * 100) / 100;
   }
 
+  // --- Sales Tax Withheld (ST0001 - ST0007) ---
+
+  // 12040003 - SALES TAX WITHHELD ON PURCHASES (Goods)
+  
+  // ST0001: Sales Tax Withhled Goods 10% - Registered (Wholesaler, Distributors & Dealers)
+  if (accountCode === "12040003" && tagCode === "ST0001") {
+    return Math.round(taxableAmount * 0.10 * 100) / 100;
+  }
+
+  // ST0002: Sales Tax Withheld Goods 20% - Registered person other than (Wholesaler, Distributors & Dealers)
+  if (accountCode === "12040003" && tagCode === "ST0002") {
+    return Math.round(taxableAmount * 0.20 * 100) / 100;
+  }
+
+  // ST0003: Sales Tax Withheld Goods 5% - Unregistered person
+  if (accountCode === "12040003" && tagCode === "ST0003") {
+    return Math.round(taxableAmount * 0.05 * 100) / 100;
+  }
+
+  // 12040004 - SALES TAX WITHHELD SRB
+  
+  // ST0004: Sales Tax Withheld SRB - 100% - SRB (Rent)
+  if (accountCode === "12040004" && tagCode === "ST0004") {
+    return Math.round(taxableAmount * 1.00 * 100) / 100;
+  }
+
+  // ST0005: Sales Tax Witheld SRB - 20% - SRB (Services)
+  if (accountCode === "12040004" && tagCode === "ST0005") {
+    return Math.round(taxableAmount * 0.20 * 100) / 100;
+  }
+
+  // 12040005 - SALES TAX WITHHELD PRA
+  
+  // ST0006: Sales Tax Withheld Service PRA - 20% - PRA (Services)
+  if (accountCode === "12040005" && tagCode === "ST0006") {
+    return Math.round(taxableAmount * 0.20 * 100) / 100;
+  }
+
+  // ST0007: Sales Tax Withheld Service PRA - 100% - PRA (Services)
+  if (accountCode === "12040005" && tagCode === "ST0007") {
+    return Math.round(taxableAmount * 1.00 * 100) / 100;
+  }
+
   return null; // Return null if it's not a recognized tax account
 }

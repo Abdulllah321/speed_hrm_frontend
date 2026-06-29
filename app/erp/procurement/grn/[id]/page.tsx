@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -22,6 +23,11 @@ export default function GrnDetailPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const { hasPermission } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const canCheck = hasPermission('erp.procurement.grn.check');
   const canAuthorize = hasPermission('erp.procurement.grn.authorize');
@@ -68,32 +74,44 @@ export default function GrnDetailPage() {
   return (
     <PermissionGuard permissions="erp.procurement.grn.read">
     <>
-      <style jsx global>{`
+       <style jsx global>{`
         @media print {
-            body {
-                visibility: hidden;
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
+                background: white !important;
+                color: black !important;
+            }
+            body > *:not(#print-section) {
+                display: none !important;
+            }
+            #print-section, #print-section * {
+                visibility: visible !important;
             }
             #print-section {
-                visibility: visible;
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: auto;
-                margin: 0;
-                padding: 0;
-                background: white;
-                z-index: 9999;
-            }
-            #print-section * {
-                visibility: visible;
+                display: block !important;
+                position: relative !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                color: black !important;
+                z-index: 99999 !important;
             }
             @page {
-                margin: 0;
-                size: auto;
+                margin: 15mm;
+                size: A4;
             }
-            header, nav, footer, aside, .banner {
-                display: none !important;
+            tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            #print-section .grid, 
+            #print-section .flex {
+                page-break-inside: avoid;
+                break-inside: avoid;
             }
         }
       `}</style>
@@ -330,147 +348,159 @@ export default function GrnDetailPage() {
       </div>
 
       {/* Print View */}
-      <div id="print-section" className="hidden print:block min-h-screen bg-white p-0">
-          <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-8 print:max-w-none box-border">
-              {/* Header */}
-              <div className="flex justify-between mb-6 gap-4 items-start">
-                  {/* Logo */}
-                  <div className="w-[20%] flex flex-col items-start justify-center">
-                     <img src="/image.png" alt="Logo" className="w-32 object-contain" />
-                  </div>
-                  
-                  {/* Title */}
-                  <div className="w-[35%] flex flex-col justify-center">
-                    <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-                      Goods Receipt Note
-                    </div>
+      {mounted && typeof window !== "undefined" && createPortal(
+          <div 
+              id="print-section" 
+              style={{
+                  position: "fixed",
+                  left: "-9999px",
+                  top: 0,
+                  pointerEvents: "none",
+              }}
+              aria-hidden="true"
+          >
+              <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-0 print:max-w-none box-border">
+                  {/* Header */}
+                  <div className="flex justify-between mb-6 gap-4 items-start">
+                      {/* Logo */}
+                      <div className="w-[20%] flex flex-col items-start justify-center">
+                         <img src="/image.png" alt="Logo" className="w-32 object-contain" />
+                      </div>
+                      
+                      {/* Title */}
+                      <div className="w-[35%] flex flex-col justify-center">
+                        <div className="bg-[#eef2f6] text-black w-full text-center py-2 text-xl sm:text-xl font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+                          Goods Receipt Note
+                        </div>
+                      </div>
+
+                      {/* Details Box */}
+                      <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
+                         <div className="flex justify-between mb-2">
+                           <span className="font-bold">GRN Number:</span>
+                           <span className="font-bold">{grn.grnNumber}</span>
+                         </div>
+                         <div className="flex justify-between mb-2">
+                           <span className="font-bold">PO Number:</span>
+                           <span>{grn.purchaseOrder?.poNumber || 'N/A'}</span>
+                         </div>
+                         <div className="flex justify-between">
+                           <div className="flex gap-2">
+                             <span className="font-bold">Date:</span>
+                             <span>{new Date(grn.receivedDate).toLocaleDateString('en-GB')}</span>
+                           </div>
+                         </div>
+                      </div>
                   </div>
 
-                  {/* Details Box */}
-                  <div className="w-[45%] bg-[#f8fafc] text-xs sm:text-[13px] p-2 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-                     <div className="flex justify-between mb-2">
-                       <span className="font-bold">GRN Number:</span>
-                       <span className="font-bold">{grn.grnNumber}</span>
-                     </div>
-                     <div className="flex justify-between mb-2">
-                       <span className="font-bold">PO Number:</span>
-                       <span>{grn.purchaseOrder?.poNumber || 'N/A'}</span>
-                     </div>
-                     <div className="flex justify-between">
-                       <div className="flex gap-2">
-                         <span className="font-bold">Date:</span>
-                         <span>{new Date(grn.receivedDate).toLocaleDateString('en-GB')}</span>
-                       </div>
-                     </div>
+                  {/* Warehouse / Ship To Box */}
+                  <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
+                      <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                          <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
+                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{grn.warehouse?.name || 'N/A'}</span></div>
+                          <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Location:</span> <span>Speed Limit ERP Location</span></div>
+                      </div>
+                      <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
+                          <div className="font-bold border-b border-gray-300 mb-2 pb-1">Ship To</div>
+                          <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit Warehouse</span></div>
+                          <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Main Warehouse, Plot #45, Industrial Area, Karachi, Pakistan</span></div>
+                      </div>
                   </div>
-              </div>
 
-              {/* Warehouse / Ship To Box */}
-              <div className="flex gap-4 mb-4 text-xs sm:text-[13px]">
-                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                      <div className="font-bold border-b border-gray-300 mb-2 pb-1">Warehouse</div>
-                      <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>{grn.warehouse?.name || 'N/A'}</span></div>
-                      <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Location:</span> <span>Speed Limit ERP Location</span></div>
-                  </div>
-                  <div className="w-1/2 p-2 border border-gray-300 flex flex-col justify-center">
-                      <div className="font-bold border-b border-gray-300 mb-2 pb-1">Ship To</div>
-                      <div className="flex gap-2 mb-1"><span className="font-bold w-16 shrink-0">Name:</span> <span>Speed Limit Warehouse</span></div>
-                      <div className="flex gap-2"><span className="font-bold w-16 shrink-0">Address:</span> <span>Main Warehouse, Plot #45, Industrial Area, Karachi, Pakistan</span></div>
-                  </div>
-              </div>
-
-              {/* Table */}
-              <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
-                  <thead>
-                    <tr className="border-y-2 border-black">
-                      <th className="py-2 pr-2 text-left font-bold w-[15%]">SKU</th>
-                      <th className="py-2 pr-2 text-left font-bold w-[25%]">Description</th>
-                      <th className="py-2 pr-2 text-left font-bold w-[15%]">Size</th>
-                      <th className="py-2 pr-2 text-left font-bold w-[15%]">Color</th>
-                      <th className="py-2 pr-2 text-right font-bold w-[30%]">Received Qty</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {grn.items && grn.items.length > 0 ? (
-                      grn.items.map((item, i) => (
-                        <tr key={item.id || i} className="border-b border-gray-300 align-top">
-                          <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
-                            {item.item?.sku || '-'}
-                          </td>
-                          <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
-                            {item.description || '-'}
-                          </td>
-                          <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                            {item.item?.size?.name || '-'}
-                          </td>
-                          <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
-                            {item.item?.color?.name || '-'}
-                          </td>
+                  {/* Table */}
+                  <table className="w-full text-xs sm:text-[13px] mb-4 border-collapse table-fixed">
+                      <thead>
+                        <tr className="border-y-2 border-black">
+                          <th className="py-2 pr-2 text-left font-bold w-[15%]">SKU</th>
+                          <th className="py-2 pr-2 text-left font-bold w-[25%]">Description</th>
+                          <th className="py-2 pr-2 text-left font-bold w-[15%]">Size</th>
+                          <th className="py-2 pr-2 text-left font-bold w-[15%]">Color</th>
+                          <th className="py-2 pr-2 text-right font-bold w-[30%]">Received Qty</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {grn.items && grn.items.length > 0 ? (
+                          grn.items.map((item, i) => (
+                            <tr key={item.id || i} className="border-b border-gray-300 align-top">
+                              <td className="py-2 pr-2 font-medium overflow-hidden text-ellipsis">
+                                {item.item?.sku || '-'}
+                              </td>
+                              <td className="py-2 pr-2 overflow-hidden text-ellipsis text-gray-700">
+                                {item.description || '-'}
+                              </td>
+                              <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                {item.item?.size?.name || '-'}
+                              </td>
+                              <td className="py-2 pr-2 text-left overflow-hidden text-ellipsis">
+                                {item.item?.color?.name || '-'}
+                              </td>
+                              <td className="py-2 pr-2 text-right tabular-nums font-bold">
+                                {parseFloat(item.receivedQty as any).toFixed(2)}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                              <td colSpan={5} className="py-4 text-center text-muted-foreground border-b border-gray-300">
+                                  No items found for this GRN
+                              </td>
+                          </tr>
+                        )}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-y-2 border-black font-bold">
+                          <td colSpan={4} className="py-2 pr-2 font-bold text-left">Total</td>
                           <td className="py-2 pr-2 text-right tabular-nums font-bold">
-                            {parseFloat(item.receivedQty as any).toFixed(2)}
+                            {totalReceivedQty.toFixed(2)}
                           </td>
                         </tr>
-                      ))
-                    ) : (
-                      <tr>
-                          <td colSpan={5} className="py-4 text-center text-muted-foreground border-b border-gray-300">
-                              No items found for this GRN
-                          </td>
-                      </tr>
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr className="border-y-2 border-black font-bold">
-                      <td colSpan={4} className="py-2 pr-2 font-bold text-left">Total</td>
-                      <td className="py-2 pr-2 text-right tabular-nums font-bold">
-                        {totalReceivedQty.toFixed(2)}
-                      </td>
-                    </tr>
-                  </tfoot>
-              </table>
+                      </tfoot>
+                  </table>
 
-              {/* Remarks */}
-              <div className="mt-4 mb-8">
-                  <div className="font-bold text-xs sm:text-[14px]">Notes & Instructions</div>
-                  <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.notes || "N/A"}</p>
-              </div>
+                  {/* Remarks */}
+                  <div className="mt-4 mb-8">
+                      <div className="font-bold text-xs sm:text-[14px]">Notes & Instructions</div>
+                      <p className="text-xs sm:text-[13px] mt-1 text-gray-700 whitespace-pre-wrap">{grn.notes || "N/A"}</p>
+                  </div>
 
-              {/* Signatures */}
-              <div className="grid grid-cols-3 gap-3">
-                  <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">PREPARED BY (MAKER)</span>
-                      {grn.creatorName && (
-                          <div className="text-center">
-                              <p className="text-[11px] font-semibold">{grn.creatorName}</p>
-                              <p className="text-[9px] text-gray-600">{new Date(grn.createdAt).toLocaleDateString('en-GB')}</p>
-                          </div>
-                      )}
-                  </div>
-                  <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">CHECKED BY (CHECKER)</span>
-                      {grn.checkerName ? (
-                          <div className="text-center">
-                              <p className="text-[11px] font-semibold">{grn.checkerName}</p>
-                              <p className="text-[9px] text-gray-600">{grn.checkedAt ? new Date(grn.checkedAt).toLocaleDateString('en-GB') : ''}</p>
-                          </div>
-                      ) : (
-                          <span className="text-[10px] text-gray-400 italic">Pending Verification</span>
-                      )}
-                  </div>
-                  <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
-                      <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">APPROVED BY (AUTHORIZER)</span>
-                      {grn.authorizerName ? (
-                          <div className="text-center">
-                              <p className="text-[11px] font-semibold">{grn.authorizerName}</p>
-                              <p className="text-[9px] text-gray-600">{grn.authorizedAt ? new Date(grn.authorizedAt).toLocaleDateString('en-GB') : ''}</p>
-                          </div>
-                      ) : (
-                          <span className="text-[10px] text-gray-400 italic">Pending Approval</span>
-                      )}
+                  {/* Signatures */}
+                  <div className="grid grid-cols-3 gap-3">
+                      <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                          <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">PREPARED BY (MAKER)</span>
+                          {grn.creatorName && (
+                              <div className="text-center">
+                                  <p className="text-[11px] font-semibold">{grn.creatorName}</p>
+                                  <p className="text-[9px] text-gray-600">{new Date(grn.createdAt).toLocaleDateString('en-GB')}</p>
+                              </div>
+                          )}
+                      </div>
+                      <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                          <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">CHECKED BY (CHECKER)</span>
+                          {grn.checkerName ? (
+                              <div className="text-center">
+                                  <p className="text-[11px] font-semibold">{grn.checkerName}</p>
+                                  <p className="text-[9px] text-gray-600">{grn.checkedAt ? new Date(grn.checkedAt).toLocaleDateString('en-GB') : ''}</p>
+                              </div>
+                          ) : (
+                              <span className="text-[10px] text-gray-400 italic">Pending Verification</span>
+                          )}
+                      </div>
+                      <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+                          <span className="text-[10px] sm:text-[11px] font-bold text-center border-b border-black w-full pb-1">APPROVED BY (AUTHORIZER)</span>
+                          {grn.authorizerName ? (
+                              <div className="text-center">
+                                  <p className="text-[11px] font-semibold">{grn.authorizerName}</p>
+                                  <p className="text-[9px] text-gray-600">{grn.authorizedAt ? new Date(grn.authorizedAt).toLocaleDateString('en-GB') : ''}</p>
+                              </div>
+                          ) : (
+                              <span className="text-[10px] text-gray-400 italic">Pending Approval</span>
+                          )}
+                      </div>
                   </div>
               </div>
-          </div>
-      </div>
+          </div>,
+          document.body
+      )}
     </>
     </PermissionGuard>
   );

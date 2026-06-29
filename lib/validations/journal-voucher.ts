@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const taxTypeEnum = z.enum(["Taxable", "BTL", "REIMB"]);
+export const taxTypeEnum = z.enum(["Taxable", "BTL", "REIMB", "Exempt", ""]);
 
 export const journalVoucherDetailSchema = z.object({
     accountId: z.string().min(1, "Account is required"),
@@ -9,7 +9,8 @@ export const journalVoucherDetailSchema = z.object({
     credit: z.coerce.number().min(0).transform(v => Math.round(v)),
     narration: z.string().optional(),
     refBillNo: z.string().optional(),
-    taxType: taxTypeEnum.default("Taxable"),
+    refBillNo2: z.string().optional(),
+    taxType: taxTypeEnum.default(""),
 }).refine(data => (data.debit > 0 && data.credit === 0) || (data.credit > 0 && data.debit === 0), {
     message: "Either Debit or Credit must be greater than 0, but not both.",
     path: ["debit"],
