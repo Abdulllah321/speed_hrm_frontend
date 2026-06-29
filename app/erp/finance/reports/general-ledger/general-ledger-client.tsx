@@ -42,11 +42,19 @@ import { numberToWords } from "../../journal-voucher/components/journal-voucher-
 import Link from "next/link";
 import { toast } from "sonner";
 
-const fmt = (n: number) =>
-  n.toLocaleString("en-PK", {
+const fmt = (n: number) => {
+  if (n < 0) {
+    const absVal = Math.abs(n).toLocaleString("en-PK", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    return `(${absVal})`;
+  }
+  return n.toLocaleString("en-PK", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+};
 
 const getLocalStartOfDayISO = (d: Date) => {
   const start = new Date(d);
@@ -61,12 +69,12 @@ const getLocalEndOfDayISO = (d: Date) => {
 };
 
 const SOURCE_LABELS: Record<string, string> = {
-  PURCHASE_INVOICE: "Purchase Invoice",
-  PAYMENT_VOUCHER: "Payment Voucher",
-  RECEIPT_VOUCHER: "Receipt Voucher",
-  JOURNAL_VOUCHER: "Journal Voucher",
+  PURCHASE_INVOICE: "PI",
+  PAYMENT_VOUCHER: "PV",
+  RECEIPT_VOUCHER: "RV",
+  JOURNAL_VOUCHER: "JV",
   ADVANCE_APPLICATION: "Advance Application",
-  SALES_INVOICE: "Sales Invoice",
+  SALES_INVOICE: "SI",
 };
 
 const SOURCE_BADGES: Record<string, string> = {
@@ -182,8 +190,11 @@ export function GeneralLedgerClient({
     if (!data) return;
     const headers = [
       "Date",
-      "Reference",
-      "Source Document",
+      "VOH No.",
+      "VOH TYPE",
+      "Cheque No",
+      "Ref 1",
+      "Ref 2",
       "Narration",
       "Debit",
       "Credit",
@@ -195,10 +206,13 @@ export function GeneralLedgerClient({
       format(new Date(r.transactionDate), "yyyy-MM-dd"),
       r.sourceRef,
       SOURCE_LABELS[r.sourceType] ?? r.sourceType,
-      r.description ?? "",
-      r.debit > 0 ? r.debit.toString() : "0.00",
-      r.credit > 0 ? r.credit.toString() : "0.00",
-      r.runningBalance.toString(),
+      r.chequeNo ?? "",
+      r.refBillNo ?? "",
+      r.refBillNo2 ?? "",
+      r.narration || r.description || "",
+      r.debit > 0 ? r.debit.toFixed(2) : "0.00",
+      r.credit > 0 ? r.credit.toFixed(2) : "0.00",
+      r.runningBalance.toFixed(2),
     ]);
 
     // Build the CSV structure
@@ -212,12 +226,15 @@ export function GeneralLedgerClient({
       ],
       [],
       headers,
-      ["", "", "Opening Balance", "", "", "", data.openingBalance.toFixed(2)],
+      ["", "", "Opening Balance", "", "", "", "Balance brought forward", "", "", data.openingBalance.toFixed(2)],
       ...rows,
       [
         "",
         "",
         "Closing Balance",
+        "",
+        "",
+        "",
         "",
         data.rangeTotalDebit.toFixed(2),
         data.rangeTotalCredit.toFixed(2),
@@ -364,6 +381,7 @@ export function GeneralLedgerClient({
                   }}
                   placeholder="Select Account..."
                   allowGroups={true}
+                  excludeTags
                   className="h-10 text-sm shadow-sm"
                 />
               </div>
@@ -475,7 +493,7 @@ export function GeneralLedgerClient({
                       value: data.openingBalance,
                       desc: isDebitNormal ? "Debit normal" : "Credit normal",
                       color: "text-foreground",
-                      badge: isDebitNormal ? "Dr" : "Cr",
+                      badge: data.openingBalance >= 0 ? "Dr" : "Cr",
                       gradient:
                         "from-slate-50 to-slate-100 dark:from-slate-900/30 dark:to-slate-800/20 border-slate-200/60 dark:border-slate-800/40",
                     },
@@ -502,19 +520,14 @@ export function GeneralLedgerClient({
                       value: data.rangeClosingBalance,
                       desc: `Net ${isDebitNormal ? "Dr" : "Cr"} normal`,
                       color:
-                        data.rangeClosingBalance >= 0
+                        (isDebitNormal ? data.rangeClosingBalance >= 0 : data.rangeClosingBalance <= 0)
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-rose-600 dark:text-rose-400",
-                      badge:
-                        data.rangeClosingBalance >= 0
-                          ? isDebitNormal
-                            ? "Dr"
-                            : "Cr"
-                          : isDebitNormal
-                            ? "Cr"
-                            : "Dr",
+                      badge: data.rangeClosingBalance >= 0 ? "Dr" : "Cr",
                       gradient:
-                        "from-emerald-50/70 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 border-emerald-100/50 dark:border-emerald-950/20",
+                        (isDebitNormal ? data.rangeClosingBalance >= 0 : data.rangeClosingBalance <= 0)
+                          ? "from-emerald-50/70 to-teal-50/50 dark:from-emerald-950/10 dark:to-teal-950/10 border-emerald-100/50 dark:border-emerald-950/20"
+                          : "from-amber-50/70 to-rose-50/50 dark:from-amber-950/10 dark:to-rose-950/10 border-rose-100/50 dark:border-rose-950/20",
                     },
                   ].map((c) => (
                     <div
@@ -556,11 +569,20 @@ export function GeneralLedgerClient({
                         <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
                           Date
                         </th>
-                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-44">
-                          Reference
-                        </th>
                         <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-36">
-                          Source
+                          VOH No.
+                        </th>
+                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                          VOH TYPE
+                        </th>
+                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                          Cheque No.
+                        </th>
+                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                          Ref 1
+                        </th>
+                        <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50 w-28">
+                          Ref 2
                         </th>
                         <th className="text-left px-4 py-3.5 font-bold uppercase text-[10px] tracking-wider border-r dark:border-border/50">
                           Narration
@@ -588,6 +610,15 @@ export function GeneralLedgerClient({
                         <td className="px-4 py-2.5 border-r dark:border-border/40 text-xs italic">
                           Opening Balance
                         </td>
+                        <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                          —
+                        </td>
+                        <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                          —
+                        </td>
+                        <td className="px-4 py-2.5 border-r dark:border-border/40 font-mono italic">
+                          —
+                        </td>
                         <td className="px-4 py-2.5 border-r dark:border-border/40 text-xs italic">
                           Balance brought forward
                         </td>
@@ -605,7 +636,7 @@ export function GeneralLedgerClient({
                       {data.rows.length === 0 && (
                         <tr>
                           <td
-                            colSpan={7}
+                            colSpan={10}
                             className="px-4 py-12 text-center text-muted-foreground font-medium bg-muted/5 border-b"
                           >
                             No accounting transactions recorded in this period.
@@ -663,17 +694,26 @@ export function GeneralLedgerClient({
                               </span>
                             </td>
 
+                            {/* Cheque No */}
+                            <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-xs text-muted-foreground">
+                              {row.chequeNo || "—"}
+                            </td>
+
+                            {/* Ref 1 */}
+                            <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-xs text-muted-foreground">
+                              {row.refBillNo || "—"}
+                            </td>
+
+                            {/* Ref 2 */}
+                            <td className="px-4 py-3 border-r dark:border-border/40 font-mono text-xs text-muted-foreground">
+                              {row.refBillNo2 || "—"}
+                            </td>
+
                             {/* Narration */}
                             <td className="px-4 py-3 border-r dark:border-border/40 max-w-[240px] truncate text-muted-foreground/90">
                               <div className="font-medium truncate">
                                 {row.narration || row.description || "—"}
                               </div>
-                              {row.tagAccount && (
-                                <span className="inline-block mt-1 text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-950/40">
-                                  Tag: {row.tagAccount.code} -{" "}
-                                  {row.tagAccount.name}
-                                </span>
-                              )}
                             </td>
 
                             {/* Debit */}
@@ -722,7 +762,7 @@ export function GeneralLedgerClient({
                     <tfoot>
                       <tr className="bg-muted/40 border-t-2 border-border font-bold text-xs text-foreground">
                         <td
-                          colSpan={4}
+                          colSpan={7}
                           className="px-4 py-3.5 text-right border-r dark:border-border/40 uppercase tracking-wider font-extrabold text-[10px] text-muted-foreground"
                         >
                           Total Activity / Range Net
@@ -932,17 +972,20 @@ export function GeneralLedgerClient({
           <table className="w-full text-[9px] mb-2 border-collapse table-fixed">
             <thead>
               <tr className="border-y border-black font-bold text-left">
-                <th className="py-1 pr-1 w-[12%] text-[9px]">Date</th>
-                <th className="py-1 pr-1 w-[18%] text-[9px]">Reference</th>
-                <th className="py-1 pr-1 w-[16%] text-[9px]">Source Doc</th>
-                <th className="py-1 pr-1 w-[24%] text-[9px]">Narration</th>
-                <th className="py-1 pr-1 text-right w-[10%] text-[9px]">
+                <th className="py-1 pr-1 w-[8%] text-[9px]">Date</th>
+                <th className="py-1 pr-1 w-[11%] text-[9px]">VOH No.</th>
+                <th className="py-1 pr-1 w-[10%] text-[9px]">VOH TYPE</th>
+                <th className="py-1 pr-1 w-[10%] text-[9px]">Cheque No.</th>
+                <th className="py-1 pr-1 w-[9%] text-[9px]">Ref. 1</th>
+                <th className="py-1 pr-1 w-[9%] text-[9px]">Ref. 2</th>
+                <th className="py-1 pr-1 w-[19%] text-[9px]">Narration</th>
+                <th className="py-1 pr-1 text-right w-[8%] text-[9px]">
                   Debit
                 </th>
-                <th className="py-1 pr-1 text-right w-[10%] text-[9px]">
+                <th className="py-1 pr-1 text-right w-[8%] text-[9px]">
                   Credit
                 </th>
-                <th className="py-1 text-right w-[10%] text-[9px]">Balance</th>
+                <th className="py-1 text-right w-[9%] text-[9px]">Balance</th>
               </tr>
             </thead>
             <tbody>
@@ -951,6 +994,9 @@ export function GeneralLedgerClient({
                 <td className="py-1 pr-1">—</td>
                 <td className="py-1 pr-1">—</td>
                 <td className="py-1 pr-1">Opening Balance</td>
+                <td className="py-1 pr-1">—</td>
+                <td className="py-1 pr-1">—</td>
+                <td className="py-1 pr-1">—</td>
                 <td className="py-1 pr-1">Balance brought forward</td>
                 <td className="py-1 pr-1 text-right">—</td>
                 <td className="py-1 pr-1 text-right">—</td>
@@ -962,7 +1008,7 @@ export function GeneralLedgerClient({
               {data.rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={10}
                     className="py-4 text-center text-gray-500 border-b"
                   >
                     No transactions recorded in this period.
@@ -981,13 +1027,17 @@ export function GeneralLedgerClient({
                   <td className="py-1 pr-1 text-[8px]">
                     {SOURCE_LABELS[row.sourceType] ?? row.sourceType}
                   </td>
+                  <td className="py-1 pr-1 text-[8px] font-mono">
+                    {row.chequeNo || "—"}
+                  </td>
+                  <td className="py-1 pr-1 text-[8px] font-mono">
+                    {row.refBillNo || "—"}
+                  </td>
+                  <td className="py-1 pr-1 text-[8px] font-mono">
+                    {row.refBillNo2 || "—"}
+                  </td>
                   <td className="py-1 pr-1 text-[8px] leading-tight break-words">
                     <div>{row.narration || row.description || "—"}</div>
-                    {row.tagAccount && (
-                      <div className="text-[7px] text-indigo-700 font-semibold mt-0.5">
-                        Tag: {row.tagAccount.code} - {row.tagAccount.name}
-                      </div>
-                    )}
                   </td>
                   <td className="py-1 pr-1 text-right font-mono text-[8px]">
                     {row.debit > 0 ? fmt(row.debit) : ""}
@@ -1004,7 +1054,7 @@ export function GeneralLedgerClient({
             <tfoot>
               <tr>
                 <td
-                  colSpan={4}
+                  colSpan={7}
                   className="py-2 px-0 align-bottom border-b border-black"
                 >
                   <div className="flex gap-2 font-bold text-[9px] leading-tight flex-wrap">
@@ -1013,13 +1063,7 @@ export function GeneralLedgerClient({
                     </span>
                     <span className="underline decoration-dashed decoration-gray-400 underline-offset-2 break-words">
                       {numberToWords(Math.abs(data.rangeClosingBalance))}{" "}
-                      {data.rangeClosingBalance >= 0
-                        ? isDebitNormal
-                          ? "(Debit)"
-                          : "(Credit)"
-                        : isDebitNormal
-                          ? "(Credit)"
-                          : "(Debit)"}
+                      {data.rangeClosingBalance >= 0 ? "(Debit)" : "(Credit)"}
                     </span>
                   </div>
                 </td>

@@ -53,6 +53,9 @@ export interface GeneralLedgerRow {
     code: string;
     name: string;
   } | null;
+  chequeNo?: string;
+  refBillNo?: string | null;
+  refBillNo2?: string | null;
 }
 
 export interface GeneralLedgerResult {
