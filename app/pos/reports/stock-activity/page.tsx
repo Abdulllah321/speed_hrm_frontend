@@ -406,7 +406,7 @@ export default function PosStockActivityReportPage() {
                 rows.push({
                     id: `${node.level}-${currentPath}`,
                     type: node.level,
-                    label: `${node.level.toUpperCase()}: ${node.value.toUpperCase()}`,
+                    label: `${node.value.toUpperCase()}`,
                     totals: node.totals,
                 });
             }

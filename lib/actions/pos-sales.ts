@@ -79,3 +79,48 @@ export async function listSalesOrders(params?: {
         return { status: false, data: [], meta: { total: 0, page: 1, limit: 100, totalPages: 0 }, message: "Failed to fetch orders" };
     }
 }
+
+export interface ListActivitiesResult {
+    status: boolean;
+    data: any[];
+    meta: { total: number; page: number; limit: number; totalPages: number };
+    message?: string;
+}
+
+export async function listSalesActivities(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    activityType?: string;
+    posId?: string;
+}): Promise<ListActivitiesResult> {
+    try {
+        const res = await authFetch("/pos-sales/activities", {
+            params: {
+                page: params?.page ?? 1,
+                limit: params?.limit ?? 20,
+                search: params?.search || undefined,
+                startDate: params?.startDate || undefined,
+                endDate: params?.endDate || undefined,
+                activityType: params?.activityType || undefined,
+                posId: params?.posId || undefined,
+            },
+        });
+
+        if (res.ok && res.data?.status) {
+            return {
+                status: true,
+                data: res.data.data ?? [],
+                meta: res.data.meta ?? { total: 0, page: 1, limit: 20, totalPages: 0 },
+            };
+        }
+
+        return { status: false, data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 }, message: res.data?.message };
+    } catch (error) {
+        console.error("listSalesActivities error:", error);
+        return { status: false, data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 }, message: "Failed to fetch activities" };
+    }
+}
+
