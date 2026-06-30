@@ -24,6 +24,8 @@ interface RequestStockModalProps {
         id: string;
         sku: string;
         description: string;
+        size?: string;
+        color?: string;
     } | null;
     fromLocation: {
         location: {
@@ -143,9 +145,23 @@ export function RequestStockModal({
                                 <Package className="w-5 h-5 text-primary" />
                                 <DialogTitle className="text-xl font-bold tracking-tight">Request Stock Transfer</DialogTitle>
                             </div>
-                            <DialogDescription className="text-muted-foreground font-medium">
-                                Request stock for <span className="font-bold text-foreground tracking-tight">{item?.sku}</span> from
-                                <span className="font-bold text-foreground tracking-tight"> {fromLocation?.location.warehouse.name}</span>.
+                            <DialogDescription className="text-muted-foreground font-medium flex flex-col gap-1 mt-1">
+                                <div className="flex items-center flex-wrap gap-1.5">
+                                    <span>Request stock for</span>
+                                    <span className="font-bold text-foreground tracking-tight">{item?.sku}</span>
+                                    {item?.size && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-300/20">
+                                            Size: {item.size}
+                                        </span>
+                                    )}
+                                    {item?.color && (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-pink-50 text-pink-700 dark:bg-pink-950/40 dark:text-pink-300 ring-1 ring-inset ring-pink-700/10 dark:ring-pink-300/20">
+                                            Color: {item.color}
+                                        </span>
+                                    )}
+                                    <span>from</span>
+                                    <span className="font-bold text-foreground tracking-tight">{fromLocation?.location.warehouse.name}</span>.
+                                </div>
                             </DialogDescription>
                         </DialogHeader>
 
