@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useTransition, useEffect, useMemo, startTransition, addTransitionType } from "react";
+import {
+  useState,
+  useTransition,
+  useEffect,
+  useMemo,
+  startTransition,
+  addTransitionType,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,7 +50,12 @@ import type { LeavesPolicy } from "@/lib/actions/leaves-policy";
 import type { Qualification } from "@/lib/actions/qualification";
 import type { Institute } from "@/lib/actions/institute";
 import type { Allocation } from "@/lib/actions/allocation";
-import { createEmployee, updateEmployee, getEmployees, type Employee } from "@/lib/actions/employee";
+import {
+  createEmployee,
+  updateEmployee,
+  getEmployees,
+  type Employee,
+} from "@/lib/actions/employee";
 import { BasicInfoSection } from "@/app/hr/employee/create/components/basic-info-section";
 import { QualificationSection } from "@/app/hr/employee/create/components/qualification-section";
 import { SocialSecuritySection } from "@/app/hr/employee/create/components/social-security-section";
@@ -52,7 +64,13 @@ import { uploadFile } from "@/lib/upload";
 import { DateSection } from "@/app/hr/employee/create/components/date-section";
 import { getCountries } from "@/lib/actions/city";
 import Cropper from "react-easy-crop";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // CNIC validation regex
 const cnicRegex = /^\d{5}-\d{7}-\d{1}$/;
@@ -100,17 +118,11 @@ const employeeFormSchema = z.object({
     .min(3, "Father/Husband Name must be at least 3 characters")
     .max(100, "Father/Husband Name must not exceed 100 characters"),
 
-  department: z
-    .string()
-    .min(1, "Department is required"),
+  department: z.string().min(1, "Department is required"),
 
-  subDepartment: z
-    .string()
-    .optional(),
+  subDepartment: z.string().optional(),
 
-  employeeGrade: z
-    .string()
-    .min(1, "Employee Grade is required"),
+  employeeGrade: z.string().min(1, "Employee Grade is required"),
 
   attendanceId: z
     .string()
@@ -118,97 +130,67 @@ const employeeFormSchema = z.object({
     .min(3, "Attendance ID must be at least 3 characters")
     .max(20, "Attendance ID must not exceed 20 characters"),
 
-  designation: z
-    .string()
-    .min(1, "Designation is required"),
+  designation: z.string().min(1, "Designation is required"),
 
-  maritalStatus: z
-    .string()
-    .optional()
-    .or(z.literal("")),
+  maritalStatus: z.string().optional().or(z.literal("")),
 
-  employmentStatus: z
-    .string()
-    .optional()
-    .or(z.literal("")),
+  employmentStatus: z.string().optional().or(z.literal("")),
 
-  probationExpiryDate: z
-    .string()
-    .optional(),
+  probationExpiryDate: z.string().optional(),
 
   cnicNumber: z
     .string()
     .min(1, "CNIC Number is required")
     .refine(
       (value) => validateCNIC(value),
-      "CNIC must be in format: 00000-0000000-0"
+      "CNIC must be in format: 00000-0000000-0",
     ),
 
-  cnicExpiryDate: z
-    .string()
-    .optional(),
+  cnicExpiryDate: z.string().optional(),
 
-  lifetimeCnic: z
-    .boolean()
-    .default(false),
+  lifetimeCnic: z.boolean().default(false),
 
   joiningDate: z
     .string()
     .optional()
-    .refine(
-      (date) => {
-        if (!date) return true;
-        const selectedDate = new Date(date);
-        return selectedDate <= new Date();
-      },
-      "Joining Date cannot be in the future"
-    ),
+    .refine((date) => {
+      if (!date) return true;
+      const selectedDate = new Date(date);
+      return selectedDate <= new Date();
+    }, "Joining Date cannot be in the future"),
 
   dateOfBirth: z
     .string()
     .optional()
-    .refine(
-      (date) => {
-        if (!date) return true;
-        const dob = new Date(date);
-        const today = new Date();
-        const age = today.getFullYear() - dob.getFullYear();
-        return age >= 18;
-      },
-      "Employee must be at least 18 years old"
-    ),
+    .refine((date) => {
+      if (!date) return true;
+      const dob = new Date(date);
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear();
+      return age >= 18;
+    }, "Employee must be at least 18 years old"),
 
-  nationality: z
-    .string()
-    .min(1, "Nationality is required"),
+  nationality: z.string().min(1, "Nationality is required"),
 
-  gender: z
-    .string()
-    .min(1, "Gender is required"),
+  gender: z.string().min(1, "Gender is required"),
 
   contactNumber: z
     .string()
     .min(1, "Contact Number is required")
     .refine(
       (value) => /^03\d{2}-\d{7}$|^\+92\d{10}$/.test(value.replace(/\s/g, "")),
-      "Contact Number must be in format: 03XX-XXXXXXX"
+      "Contact Number must be in format: 03XX-XXXXXXX",
     ),
 
-  emergencyContactNumber: z
-    .string()
-    .optional()
-  ,
-
-  emergencyContactPersonName: z
-    .string()
-    .optional(),
+  emergencyContactNumber: z.string().optional(),
+  emergencyContactPersonName: z.string().optional(),
 
   personalEmail: z
     .string()
     .optional()
     .refine(
       (value) => !value || emailRegex.test(value),
-      "Personal Email must be a valid email address"
+      "Personal Email must be a valid email address",
     ),
 
   officialEmail: z
@@ -216,116 +198,78 @@ const employeeFormSchema = z.object({
     .optional()
     .refine(
       (val) => !val || emailRegex.test(val),
-      "Official Email must be a valid email address"
+      "Official Email must be a valid email address",
     ),
 
-  country: z
-    .string()
-    .min(1, "Country is required"),
+  country: z.string().min(1, "Country is required"),
 
-  state: z
-    .string()
-    .min(1, "State is required"),
+  state: z.string().min(1, "State is required"),
 
-  city: z
-    .string()
-    .min(1, "City is required"),
+  city: z.string().min(1, "City is required"),
 
   employeeSalary: z
     .string()
     .min(1, "Employee Salary is required")
-    .refine(
-      (value) => {
-        const num = parseFloat(value);
-        return !isNaN(num) && num > 0;
-      },
-      "Employee Salary must be a positive number"
-    ),
+    .refine((value) => {
+      const num = parseFloat(value);
+      return !isNaN(num) && num > 0;
+    }, "Employee Salary must be a positive number"),
 
   // Benefits
-  eobi: z
-    .boolean()
-    .default(false),
+  eobi: z.boolean().default(false),
 
   eobiId: z
     .string()
     .optional()
     .refine(
       (value) => !value || value.trim() === "" || value.trim().length > 0,
-      "EOBI ID is required if provided"
+      "EOBI ID is required if provided",
     ),
   eobiCode: z
     .string()
     .optional()
     .refine(
       (value) => !value || value.trim() === "" || value.trim().length > 0,
-      "EOBI Code is required if provided"
+      "EOBI Code is required if provided",
     ),
   eobiNumber: z
     .string()
     .optional()
     .refine(
-      (value) => !value || value.trim() === "" || /^\d{7,10}$/.test(value.trim()),
-      "EOBI Number must be 7-10 digits"
+      (value) =>
+        !value || value.trim() === "" || /^\d{7,10}$/.test(value.trim()),
+      "EOBI Number must be 7-10 digits",
     ),
 
-  providentFund: z
-    .boolean()
-    .default(false),
+  providentFund: z.boolean().default(false),
 
-  overtimeApplicable: z
-    .boolean()
-    .default(false),
+  overtimeApplicable: z.boolean().default(false),
 
-  daysOff: z
-    .string()
-    .optional(),
+  daysOff: z.string().optional(),
 
-  reportingManager: z
-    .string()
-    .optional(),
+  reportingManager: z.string().optional(),
 
-  workingHoursPolicy: z
-    .string()
-    .min(1, "Working Hours Policy is required"),
+  workingHoursPolicy: z.string().min(1, "Working Hours Policy is required"),
 
-  location: z
-    .string()
-    .optional(),
+  location: z.string().optional(),
 
-  leavesPolicy: z
-    .string()
-    .min(1, "Leaves Policy is required"),
+  leavesPolicy: z.string().min(1, "Leaves Policy is required"),
 
-  allocation: z
-    .string()
-    .optional(),
+  allocation: z.string().optional(),
   socialSecurityInstitutionId: z.string().optional(),
 
-  allowRemoteAttendance: z
-    .boolean()
-    .default(false),
+  allowRemoteAttendance: z.boolean().default(false),
 
   // Address Information
-  currentAddress: z
-    .string()
-    .optional(),
+  currentAddress: z.string().optional(),
 
-  permanentAddress: z
-    .string()
-    .optional(),
+  permanentAddress: z.string().optional(),
 
-  bankName: z
-    .string()
-    .optional(),
+  bankName: z.string().optional(),
 
-  accountNumber: z
-    .string()
-    .optional(),
+  accountNumber: z.string().optional(),
 
-  accountTitle: z
-    .string()
-    .optional(),
+  accountTitle: z.string().optional(),
 
   avatarUrl: z.string().optional(),
   eobiDocumentUrl: z.string().optional(),
@@ -341,7 +285,7 @@ const employeeFormSchema = z.object({
         baseSalary: z.union([z.string(), z.number()]).optional(),
         monthlyContribution: z.union([z.string(), z.number()]).optional(),
         status: z.string().optional(),
-      })
+      }),
     )
     .default([])
     .optional(),
@@ -354,7 +298,7 @@ const employeeFormSchema = z.object({
         productId: z.string().optional(),
         assignedDate: z.string().optional(),
         notes: z.string().optional(),
-      })
+      }),
     )
     .default([]),
 
@@ -369,7 +313,7 @@ const employeeFormSchema = z.object({
         year: z.union([z.string(), z.number()]).optional(),
         grade: z.string().optional(),
         documentUrl: z.string().optional(),
-      })
+      }),
     )
     .default([])
     .optional(),
@@ -437,154 +381,251 @@ export function EmployeeForm({
   // React Hook Form with Zod validation
   const form = useForm({
     resolver: zodResolver(employeeFormSchema),
-    defaultValues: initialData ? {
-      employeeId: initialData.employeeId || "",
-      employeeName: initialData.employeeName || "",
-      fatherHusbandName: initialData.fatherHusbandName || "",
-      department: (initialData as any).departmentId || (typeof initialData.department === 'string' ? initialData.department : (initialData.department as any)?.id) || "",
-      subDepartment: (initialData as any).subDepartmentId || (typeof initialData.subDepartment === 'string' ? initialData.subDepartment : (initialData.subDepartment as any)?.id) || "",
-      employeeGrade: (initialData as any).employeeGradeId || (typeof initialData.employeeGrade === 'string' ? initialData.employeeGrade : (initialData.employeeGrade as any)?.id) || "",
-      attendanceId: initialData.attendanceId || "",
-      designation: (initialData as any).designationId || (typeof initialData.designation === 'string' ? initialData.designation : (initialData.designation as any)?.id) || "",
-      maritalStatus: (initialData as any).maritalStatusId || (typeof initialData.maritalStatus === 'string' ? initialData.maritalStatus : (initialData.maritalStatus as any)?.id) || "",
-      employmentStatus: (initialData as any).employmentStatusId || (typeof initialData.employmentStatus === 'string' ? initialData.employmentStatus : (initialData.employmentStatus as any)?.id) || "",
-      probationExpiryDate: initialData.probationExpiryDate || "",
-      cnicNumber: formatCNICValue(initialData.cnicNumber || ""),
-      cnicExpiryDate: initialData.cnicExpiryDate || "",
-      lifetimeCnic: initialData.lifetimeCnic || false,
-      joiningDate: initialData.joiningDate || "",
-      dateOfBirth: initialData.dateOfBirth || "",
-      nationality: initialData.nationality || "Pakistani",
-      gender: initialData.gender || "",
-      contactNumber: initialData.contactNumber || "",
-      emergencyContactNumber: initialData.emergencyContactNumber || "",
-      emergencyContactPersonName: (initialData as any).emergencyContactPersonName || initialData.emergencyContactPerson || "",
-      personalEmail: initialData.personalEmail || "",
-      officialEmail: initialData.officialEmail || "",
-      country: (initialData as any).countryId || (typeof initialData.country === 'string' ? initialData.country : (initialData.country as any)?.id) || "Pakistan",
-      state: (initialData as any).stateId || (typeof (initialData as any).province === 'string' ? (initialData as any).province : (initialData as any).province?.id) || (typeof (initialData as any).state === 'string' ? (initialData as any).state : (initialData as any).state?.id) || "",
-      city: (initialData as any).cityId || (typeof initialData.city === 'string' ? initialData.city : (initialData.city as any)?.id) || "",
-      employeeSalary: initialData.employeeSalary?.toString() || "",
-      eobi: initialData.eobi || false,
-      eobiId: (initialData as any).eobiId || "",
-      eobiCode: (initialData as any).eobiCode || "",
-      eobiNumber: initialData.eobiNumber || "",
-      providentFund: initialData.providentFund || false,
-      overtimeApplicable: initialData.overtimeApplicable || false,
-      daysOff: initialData.daysOff || "",
-      reportingManager: initialData.reportingManager || "",
-      workingHoursPolicy: (initialData as any).workingHoursPolicyId || (typeof initialData.workingHoursPolicy === 'string' ? initialData.workingHoursPolicy : (initialData.workingHoursPolicy as any)?.id) || "",
-      location: (initialData as any).locationId || (typeof (initialData as any).location === 'string' ? (initialData as any).location : (initialData as any).location?.id) || (initialData as any).branchId || (typeof (initialData as any).branch === 'string' ? (initialData as any).branch : (initialData as any).branch?.id) || "",
-      leavesPolicy: (initialData as any).leavesPolicyId || (typeof initialData.leavesPolicy === 'string' ? initialData.leavesPolicy : (initialData.leavesPolicy as any)?.id) || "",
-      allocation: (initialData as any).allocationId || (typeof (initialData as any).allocation === 'string' ? (initialData as any).allocation : (initialData as any).allocation?.id) || (initialData as any).allocationId || "",
-      socialSecurityInstitutionId: (initialData as any).socialSecurityInstitutionId || "",
-      allowRemoteAttendance: initialData.allowRemoteAttendance || false,
-      currentAddress: initialData.currentAddress ?? "",
-      permanentAddress: initialData.permanentAddress ?? "",
-      bankName: initialData.bankName || "",
-      accountNumber: initialData.accountNumber || "",
-      accountTitle: initialData.accountTitle || "",
-      equipmentAssignments: (initialData as any).equipmentAssignments
-        ? (initialData as any).equipmentAssignments.map((ea: any) => ({
-          equipmentId: ea.equipment?.id || ea.equipmentId || "",
-          productId: ea.productId || "",
-          assignedDate: ea.assignedDate ? new Date(ea.assignedDate).toISOString() : new Date().toISOString(),
-          notes: ea.notes || "",
-        }))
-        : [],
-      avatarUrl: (initialData as any).avatarUrl || "",
-      eobiDocumentUrl: (initialData as any).eobiDocumentUrl || "",
-      qualifications: (initialData as any).qualifications && Array.isArray((initialData as any).qualifications) && (initialData as any).qualifications.length > 0
-        ? (initialData as any).qualifications.map((q: any) => ({
-          qualification: q.qualificationId || q.qualification || "",
-          instituteId: q.instituteId || "",
-          stateId: q.stateId || "",
-          cityId: q.cityId || "",
-          year: q.year?.toString() || "",
-          grade: q.grade || "",
-          documentUrl: q.documentUrl || "",
-        }))
-        : [{
-          qualification: "",
-          instituteId: "",
-          stateId: "",
-          cityId: "",
-          year: "",
-          grade: "",
-          documentUrl: "",
-        }],
-      socialSecurityRegistrations: (initialData as any).socialSecurityRegistrations && Array.isArray((initialData as any).socialSecurityRegistrations)
-        ? (initialData as any).socialSecurityRegistrations.map((reg: any) => ({
-          institutionId: reg.institutionId || "",
-          registrationNumber: reg.registrationNumber || "",
-          cardNumber: reg.cardNumber || "",
-          registrationDate: reg.registrationDate ? new Date(reg.registrationDate).toISOString().split('T')[0] : "",
-          baseSalary: reg.baseSalary?.toString() || "",
-          monthlyContribution: reg.monthlyContribution?.toString() || "",
-          status: reg.status || "active",
-        }))
-        : [],
-    } : {
-      employeeId: "",
-      employeeName: "",
-      fatherHusbandName: "",
-      department: "",
-      subDepartment: "",
-      employeeGrade: "",
-      attendanceId: "",
-      designation: "",
-      maritalStatus: "",
-      employmentStatus: "",
-      probationExpiryDate: "",
-      cnicNumber: "",
-      cnicExpiryDate: "",
-      lifetimeCnic: false,
-      joiningDate: "",
-      dateOfBirth: "",
-      nationality: "Pakistani",
-      gender: "",
-      contactNumber: "",
-      emergencyContactNumber: "",
-      emergencyContactPersonName: "",
-      personalEmail: "",
-      officialEmail: "",
-      country: "Pakistan",
-      state: "",
-      city: "",
-      employeeSalary: "",
-      eobi: false,
-      eobiId: "",
-      eobiCode: "",
-      eobiNumber: "",
-      providentFund: false,
-      overtimeApplicable: false,
-      daysOff: "",
-      reportingManager: "",
-      workingHoursPolicy: "",
-      location: "",
-      leavesPolicy: "",
-      allocation: "",
-      socialSecurityInstitutionId: "",
-      allowRemoteAttendance: false,
-      currentAddress: "",
-      permanentAddress: "",
-      bankName: "",
-      accountNumber: "",
-      accountTitle: "",
-      equipmentAssignments: [],
-      avatarUrl: "",
-      eobiDocumentUrl: "",
-      qualifications: [{
-        qualification: "",
-        instituteId: "",
-        stateId: "",
-        cityId: "",
-        year: "",
-        grade: "",
-        documentUrl: "",
-      }],
-      socialSecurityRegistrations: [],
-    },
+    defaultValues: initialData
+      ? {
+          employeeId: initialData.employeeId || "",
+          employeeName: initialData.employeeName || "",
+          fatherHusbandName: initialData.fatherHusbandName || "",
+          department:
+            (initialData as any).departmentId ||
+            (typeof initialData.department === "string"
+              ? initialData.department
+              : (initialData.department as any)?.id) ||
+            "",
+          subDepartment:
+            (initialData as any).subDepartmentId ||
+            (typeof initialData.subDepartment === "string"
+              ? initialData.subDepartment
+              : (initialData.subDepartment as any)?.id) ||
+            "",
+          employeeGrade:
+            (initialData as any).employeeGradeId ||
+            (typeof initialData.employeeGrade === "string"
+              ? initialData.employeeGrade
+              : (initialData.employeeGrade as any)?.id) ||
+            "",
+          attendanceId: initialData.attendanceId || "",
+          designation:
+            (initialData as any).designationId ||
+            (typeof initialData.designation === "string"
+              ? initialData.designation
+              : (initialData.designation as any)?.id) ||
+            "",
+          maritalStatus:
+            (initialData as any).maritalStatusId ||
+            (typeof initialData.maritalStatus === "string"
+              ? initialData.maritalStatus
+              : (initialData.maritalStatus as any)?.id) ||
+            "",
+          employmentStatus:
+            (initialData as any).employmentStatusId ||
+            (typeof initialData.employmentStatus === "string"
+              ? initialData.employmentStatus
+              : (initialData.employmentStatus as any)?.id) ||
+            "",
+          probationExpiryDate: initialData.probationExpiryDate || "",
+          cnicNumber: formatCNICValue(initialData.cnicNumber || ""),
+          cnicExpiryDate: initialData.cnicExpiryDate || "",
+          lifetimeCnic: initialData.lifetimeCnic || false,
+          joiningDate: initialData.joiningDate || "",
+          dateOfBirth: initialData.dateOfBirth || "",
+          nationality: initialData.nationality || "Pakistani",
+          gender: initialData.gender || "",
+          contactNumber: initialData.contactNumber || "",
+          emergencyContactNumber: initialData.emergencyContactNumber || "",
+          emergencyContactPersonName:
+            (initialData as any).emergencyContactPersonName ||
+            initialData.emergencyContactPerson ||
+            "",
+          personalEmail: initialData.personalEmail || "",
+          officialEmail: initialData.officialEmail || "",
+          country:
+            (initialData as any).countryId ||
+            (typeof initialData.country === "string"
+              ? initialData.country
+              : (initialData.country as any)?.id) ||
+            "Pakistan",
+          state:
+            (initialData as any).stateId ||
+            (typeof (initialData as any).province === "string"
+              ? (initialData as any).province
+              : (initialData as any).province?.id) ||
+            (typeof (initialData as any).state === "string"
+              ? (initialData as any).state
+              : (initialData as any).state?.id) ||
+            "",
+          city:
+            (initialData as any).cityId ||
+            (typeof initialData.city === "string"
+              ? initialData.city
+              : (initialData.city as any)?.id) ||
+            "",
+          employeeSalary: initialData.employeeSalary?.toString() || "",
+          eobi: initialData.eobi || false,
+          eobiId: (initialData as any).eobiId || "",
+          eobiCode: (initialData as any).eobiCode || "",
+          eobiNumber: initialData.eobiNumber || "",
+          providentFund: initialData.providentFund || false,
+          overtimeApplicable: initialData.overtimeApplicable || false,
+          daysOff: initialData.daysOff || "",
+          reportingManager: initialData.reportingManager || "",
+          workingHoursPolicy:
+            (initialData as any).workingHoursPolicyId ||
+            (typeof initialData.workingHoursPolicy === "string"
+              ? initialData.workingHoursPolicy
+              : (initialData.workingHoursPolicy as any)?.id) ||
+            "",
+          location:
+            (initialData as any).locationId ||
+            (typeof (initialData as any).location === "string"
+              ? (initialData as any).location
+              : (initialData as any).location?.id) ||
+            (initialData as any).branchId ||
+            (typeof (initialData as any).branch === "string"
+              ? (initialData as any).branch
+              : (initialData as any).branch?.id) ||
+            "",
+          leavesPolicy:
+            (initialData as any).leavesPolicyId ||
+            (typeof initialData.leavesPolicy === "string"
+              ? initialData.leavesPolicy
+              : (initialData.leavesPolicy as any)?.id) ||
+            "",
+          allocation:
+            (initialData as any).allocationId ||
+            (typeof (initialData as any).allocation === "string"
+              ? (initialData as any).allocation
+              : (initialData as any).allocation?.id) ||
+            (initialData as any).allocationId ||
+            "",
+          socialSecurityInstitutionId:
+            (initialData as any).socialSecurityInstitutionId || "",
+          allowRemoteAttendance: initialData.allowRemoteAttendance || false,
+          currentAddress: initialData.currentAddress ?? "",
+          permanentAddress: initialData.permanentAddress ?? "",
+          bankName: initialData.bankName || "",
+          accountNumber: initialData.accountNumber || "",
+          accountTitle: initialData.accountTitle || "",
+          equipmentAssignments: (initialData as any).equipmentAssignments
+            ? (initialData as any).equipmentAssignments.map((ea: any) => ({
+                equipmentId: ea.equipment?.id || ea.equipmentId || "",
+                productId: ea.productId || "",
+                assignedDate: ea.assignedDate
+                  ? new Date(ea.assignedDate).toISOString()
+                  : new Date().toISOString(),
+                notes: ea.notes || "",
+              }))
+            : [],
+          avatarUrl: (initialData as any).avatarUrl || "",
+          eobiDocumentUrl: (initialData as any).eobiDocumentUrl || "",
+          qualifications:
+            (initialData as any).qualifications &&
+            Array.isArray((initialData as any).qualifications) &&
+            (initialData as any).qualifications.length > 0
+              ? (initialData as any).qualifications.map((q: any) => ({
+                  qualification: q.qualificationId || q.qualification || "",
+                  instituteId: q.instituteId || "",
+                  stateId: q.stateId || "",
+                  cityId: q.cityId || "",
+                  year: q.year?.toString() || "",
+                  grade: q.grade || "",
+                  documentUrl: q.documentUrl || "",
+                }))
+              : [
+                  {
+                    qualification: "",
+                    instituteId: "",
+                    stateId: "",
+                    cityId: "",
+                    year: "",
+                    grade: "",
+                    documentUrl: "",
+                  },
+                ],
+          socialSecurityRegistrations:
+            (initialData as any).socialSecurityRegistrations &&
+            Array.isArray((initialData as any).socialSecurityRegistrations)
+              ? (initialData as any).socialSecurityRegistrations.map(
+                  (reg: any) => ({
+                    institutionId: reg.institutionId || "",
+                    registrationNumber: reg.registrationNumber || "",
+                    cardNumber: reg.cardNumber || "",
+                    registrationDate: reg.registrationDate
+                      ? new Date(reg.registrationDate)
+                          .toISOString()
+                          .split("T")[0]
+                      : "",
+                    baseSalary: reg.baseSalary?.toString() || "",
+                    monthlyContribution:
+                      reg.monthlyContribution?.toString() || "",
+                    status: reg.status || "active",
+                  }),
+                )
+              : [],
+        }
+      : {
+          employeeId: "",
+          employeeName: "",
+          fatherHusbandName: "",
+          department: "",
+          subDepartment: "",
+          employeeGrade: "",
+          attendanceId: "",
+          designation: "",
+          maritalStatus: "",
+          employmentStatus: "",
+          probationExpiryDate: "",
+          cnicNumber: "",
+          cnicExpiryDate: "",
+          lifetimeCnic: false,
+          joiningDate: "",
+          dateOfBirth: "",
+          nationality: "Pakistani",
+          gender: "",
+          contactNumber: "",
+          emergencyContactNumber: "",
+          emergencyContactPersonName: "",
+          personalEmail: "",
+          officialEmail: "",
+          country: "Pakistan",
+          state: "",
+          city: "",
+          employeeSalary: "",
+          eobi: false,
+          eobiId: "",
+          eobiCode: "",
+          eobiNumber: "",
+          providentFund: false,
+          overtimeApplicable: false,
+          daysOff: "",
+          reportingManager: "",
+          workingHoursPolicy: "",
+          location: "",
+          leavesPolicy: "",
+          allocation: "",
+          socialSecurityInstitutionId: "",
+          allowRemoteAttendance: false,
+          currentAddress: "",
+          permanentAddress: "",
+          bankName: "",
+          accountNumber: "",
+          accountTitle: "",
+          equipmentAssignments: [],
+          avatarUrl: "",
+          eobiDocumentUrl: "",
+          qualifications: [
+            {
+              qualification: "",
+              instituteId: "",
+              stateId: "",
+              cityId: "",
+              year: "",
+              grade: "",
+              documentUrl: "",
+            },
+          ],
+          socialSecurityRegistrations: [],
+        },
     mode: "onChange",
     reValidateMode: "onBlur",
   });
@@ -605,11 +646,15 @@ export function EmployeeForm({
   const avatarUrl = watch("avatarUrl");
 
   // Local state for dynamic dropdowns
-  const [subDepartments, setSubDepartments] = useState<SubDepartment[]>(initialSubDepartments);
+  const [subDepartments, setSubDepartments] = useState<SubDepartment[]>(
+    initialSubDepartments,
+  );
   const [cities, setCities] = useState<City[]>(initialCities);
   const [loadingSubDepartments, setLoadingSubDepartments] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
-  const [employees, setEmployees] = useState<{ id: string; employeeName: string; employeeId: string }[]>([]);
+  const [employees, setEmployees] = useState<
+    { id: string; employeeName: string; employeeId: string }[]
+  >([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
 
   // Fetch employees for reporting manager dropdown
@@ -619,11 +664,13 @@ export function EmployeeForm({
         setLoadingEmployees(true);
         const result = await getEmployees();
         if (result.status && result.data) {
-          setEmployees(result.data.map(emp => ({
-            id: emp.id,
-            employeeName: emp.employeeName,
-            employeeId: emp.employeeId
-          })));
+          setEmployees(
+            result.data.map((emp) => ({
+              id: emp.id,
+              employeeName: emp.employeeName,
+              employeeId: emp.employeeId,
+            })),
+          );
         }
       } catch (error) {
         // Error fetching employees
@@ -644,7 +691,6 @@ export function EmployeeForm({
   ];
   const genders = ["Male", "Female", "Other"];
 
-
   const defaultBanks = [
     "HBL",
     "UBL",
@@ -657,10 +703,13 @@ export function EmployeeForm({
 
   const bankList = useMemo(() => {
     // Use passed banks data if available, otherwise use defaults
-    let list = banks && banks.length > 0 
-      ? banks.map((b: any) => typeof b === 'string' ? b : b.name || b.bankName)
-      : defaultBanks;
-    
+    let list =
+      banks && banks.length > 0
+        ? banks.map((b: any) =>
+            typeof b === "string" ? b : b.name || b.bankName,
+          )
+        : defaultBanks;
+
     // Add existing bank from initialData if not already in list
     if (initialData?.bankName && !list.includes(initialData.bankName)) {
       list = [...list, initialData.bankName];
@@ -671,12 +720,12 @@ export function EmployeeForm({
 
   // Profile pic and documents state
   const [profilePicPreview, setProfilePicPreview] = useState<string | null>(
-    (initialData as any)?.avatarUrl || null
+    (initialData as any)?.avatarUrl || null,
   );
 
   // Sync profilePicPreview with avatarUrl form value
   useEffect(() => {
-    if (avatarUrl && avatarUrl.trim() !== '') {
+    if (avatarUrl && avatarUrl.trim() !== "") {
       setProfilePicPreview(avatarUrl);
     }
   }, [avatarUrl]);
@@ -716,16 +765,22 @@ export function EmployeeForm({
       initialDocumentUrls.eobi = (initialData as any).eobiDocumentUrl;
     }
     // Add all other document URLs from documentUrls JSON field
-    if ((initialData as any)?.documentUrls && typeof (initialData as any).documentUrls === 'object') {
+    if (
+      (initialData as any)?.documentUrls &&
+      typeof (initialData as any).documentUrls === "object"
+    ) {
       const existingDocs = (initialData as any).documentUrls;
       Object.keys(existingDocs).forEach((key) => {
-        if (existingDocs[key] && typeof existingDocs[key] === 'string') {
+        if (existingDocs[key] && typeof existingDocs[key] === "string") {
           initialDocumentUrls[key] = existingDocs[key];
         }
       });
     }
     // Add qualification documents to documentUrls object (same pattern)
-    if ((initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+    if (
+      (initialData as any)?.qualifications &&
+      Array.isArray((initialData as any).qualifications)
+    ) {
       (initialData as any).qualifications.forEach((q: any, index: number) => {
         if (q.documentUrl) {
           const qualKey = `qualification_${index}`;
@@ -734,22 +789,34 @@ export function EmployeeForm({
       });
     }
   }
-  const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>(initialDocumentUrls);
+  const [documentUrls, setDocumentUrls] = useState<{ [key: string]: string }>(
+    initialDocumentUrls,
+  );
 
   // Qualification document URLs - keyed by qualification index
   const initialQualificationDocumentUrls: Record<number, string> = {};
-  if (mode === "edit" && (initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+  if (
+    mode === "edit" &&
+    (initialData as any)?.qualifications &&
+    Array.isArray((initialData as any).qualifications)
+  ) {
     (initialData as any).qualifications.forEach((q: any, index: number) => {
       if (q.documentUrl) {
         initialQualificationDocumentUrls[index] = q.documentUrl;
       }
     });
   }
-  const [qualificationDocumentUrls, setQualificationDocumentUrls] = useState<Record<number, string>>(initialQualificationDocumentUrls);
+  const [qualificationDocumentUrls, setQualificationDocumentUrls] = useState<
+    Record<number, string>
+  >(initialQualificationDocumentUrls);
 
   // Update qualificationDocumentUrls when initialData changes
   useEffect(() => {
-    if (mode === "edit" && (initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+    if (
+      mode === "edit" &&
+      (initialData as any)?.qualifications &&
+      Array.isArray((initialData as any).qualifications)
+    ) {
       const updatedUrls: Record<number, string> = {};
       (initialData as any).qualifications.forEach((q: any, index: number) => {
         if (q.documentUrl) {
@@ -774,17 +841,23 @@ export function EmployeeForm({
       }
 
       // Add all other document URLs from documentUrls JSON field
-      if ((initialData as any)?.documentUrls && typeof (initialData as any).documentUrls === 'object') {
+      if (
+        (initialData as any)?.documentUrls &&
+        typeof (initialData as any).documentUrls === "object"
+      ) {
         const existingDocs = (initialData as any).documentUrls;
         Object.keys(existingDocs).forEach((key) => {
-          if (existingDocs[key] && typeof existingDocs[key] === 'string') {
+          if (existingDocs[key] && typeof existingDocs[key] === "string") {
             updatedUrls[key] = existingDocs[key];
           }
         });
       }
 
       // Add qualification documents to documentUrls object (same pattern)
-      if ((initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+      if (
+        (initialData as any)?.qualifications &&
+        Array.isArray((initialData as any).qualifications)
+      ) {
         (initialData as any).qualifications.forEach((q: any, index: number) => {
           if (q.documentUrl) {
             const qualKey = `qualification_${index}`;
@@ -800,11 +873,20 @@ export function EmployeeForm({
         }));
       }
     }
-  }, [mode, (initialData as any)?.eobiDocumentUrl, (initialData as any)?.documentUrls, (initialData as any)?.qualifications]);
+  }, [
+    mode,
+    (initialData as any)?.eobiDocumentUrl,
+    (initialData as any)?.documentUrls,
+    (initialData as any)?.qualifications,
+  ]);
 
   // Update qualificationDocumentUrls when initialData changes
   useEffect(() => {
-    if (mode === "edit" && (initialData as any)?.qualifications && Array.isArray((initialData as any).qualifications)) {
+    if (
+      mode === "edit" &&
+      (initialData as any)?.qualifications &&
+      Array.isArray((initialData as any).qualifications)
+    ) {
       const updatedUrls: Record<number, string> = {};
       (initialData as any).qualifications.forEach((q: any, index: number) => {
         if (q.documentUrl) {
@@ -828,7 +910,9 @@ export function EmployeeForm({
   const [step, setStep] = useState(0);
 
   // Countries state
-  const [countries, setCountries] = useState<{ id: string; name: string }[]>([]);
+  const [countries, setCountries] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [loadingCountries, setLoadingCountries] = useState(false);
 
   // Fetch countries
@@ -838,7 +922,7 @@ export function EmployeeForm({
         setLoadingCountries(true);
         const result = await getCountries();
         if (result.status && result.data) {
-          setCountries(result.data.map(c => ({ id: c.id, name: c.name })));
+          setCountries(result.data.map((c) => ({ id: c.id, name: c.name })));
         }
       } catch (error) {
         // Error fetching countries
@@ -859,7 +943,7 @@ export function EmployeeForm({
     } else {
       return `${digits.slice(0, 5)}-${digits.slice(5, 12)}-${digits.slice(
         12,
-        13
+        13,
       )}`;
     }
   };
@@ -867,9 +951,10 @@ export function EmployeeForm({
   // Initialize sub-departments when editing with initialData
   useEffect(() => {
     if (mode === "edit" && initialData?.department && departments.length > 0) {
-      const deptId = typeof initialData.department === 'string'
-        ? initialData.department
-        : (initialData.department as any)?.id;
+      const deptId =
+        typeof initialData.department === "string"
+          ? initialData.department
+          : (initialData.department as any)?.id;
       if (deptId) {
         const selected = departments.find((d) => d.id === deptId);
         if (selected?.subDepartments) {
@@ -894,22 +979,33 @@ export function EmployeeForm({
 
   // Auto-select default working hours policy and leaves policy
   useEffect(() => {
-    if (mode === "create" && !initialData && workingHoursPolicies.length > 0 && leavesPolicies.length > 0) {
+    if (
+      mode === "create" &&
+      !initialData &&
+      workingHoursPolicies.length > 0 &&
+      leavesPolicies.length > 0
+    ) {
       // Find default working hours policy
-      const defaultWorkingHoursPolicy = workingHoursPolicies.find(p => p.isDefault);
+      const defaultWorkingHoursPolicy = workingHoursPolicies.find(
+        (p) => p.isDefault,
+      );
       if (defaultWorkingHoursPolicy) {
         const currentValue = watch("workingHoursPolicy");
         if (!currentValue) {
-          setValue("workingHoursPolicy", defaultWorkingHoursPolicy.id, { shouldValidate: false });
+          setValue("workingHoursPolicy", defaultWorkingHoursPolicy.id, {
+            shouldValidate: false,
+          });
         }
       }
 
       // Find default leaves policy
-      const defaultLeavesPolicy = leavesPolicies.find(p => p.isDefault);
+      const defaultLeavesPolicy = leavesPolicies.find((p) => p.isDefault);
       if (defaultLeavesPolicy) {
         const currentValue = watch("leavesPolicy");
         if (!currentValue) {
-          setValue("leavesPolicy", defaultLeavesPolicy.id, { shouldValidate: false });
+          setValue("leavesPolicy", defaultLeavesPolicy.id, {
+            shouldValidate: false,
+          });
         }
       }
     }
@@ -919,9 +1015,10 @@ export function EmployeeForm({
   // Initialize cities when editing with initialData
   useEffect(() => {
     if (mode === "edit" && initialData?.province && states.length > 0) {
-      const stateId = typeof initialData.province === 'string'
-        ? initialData.province
-        : (initialData.province as any)?.id;
+      const stateId =
+        typeof initialData.province === "string"
+          ? initialData.province
+          : (initialData.province as any)?.id;
       if (stateId) {
         const fetchCities = async () => {
           try {
@@ -971,7 +1068,9 @@ export function EmployeeForm({
   }, [state, setValue]);
 
   // Handle profile pic upload
-  const handleProfilePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfilePicChange = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const src = URL.createObjectURL(file);
@@ -979,7 +1078,8 @@ export function EmployeeForm({
     setCropDialogOpen(true);
   };
 
-  const onCropComplete = (_: any, areaPixels: any) => setCroppedAreaPixels(areaPixels);
+  const onCropComplete = (_: any, areaPixels: any) =>
+    setCroppedAreaPixels(areaPixels);
 
   async function getCroppedBlob(imageSrc: string, area: any): Promise<Blob> {
     const image: HTMLImageElement = await new Promise((resolve, reject) => {
@@ -988,10 +1088,10 @@ export function EmployeeForm({
       img.onerror = reject;
       img.src = imageSrc;
     });
-    const canvas = document.createElement('canvas');
+    const canvas = document.createElement("canvas");
     canvas.width = area.width;
     canvas.height = area.height;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext("2d")!;
     ctx.drawImage(
       image,
       area.x,
@@ -1001,9 +1101,11 @@ export function EmployeeForm({
       0,
       0,
       area.width,
-      area.height
+      area.height,
     );
-    return await new Promise((resolve) => canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.9));
+    return await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.9),
+    );
   }
 
   const handleCropDialogClose = (open: boolean) => {
@@ -1021,7 +1123,7 @@ export function EmployeeForm({
     if (!cropSrc || !croppedAreaPixels) return;
     try {
       const blob = await getCroppedBlob(cropSrc, croppedAreaPixels);
-      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      const file = new File([blob], "avatar.jpg", { type: "image/jpeg" });
       const reader = new FileReader();
       reader.onloadend = () => setProfilePicPreview(reader.result as string);
       reader.readAsDataURL(file);
@@ -1038,7 +1140,6 @@ export function EmployeeForm({
     }
   };
 
-
   const handleFileChange = async (key: string, file: File | null) => {
     setDocuments((prev) => ({ ...prev, [key]: file }));
     if (file) {
@@ -1053,7 +1154,6 @@ export function EmployeeForm({
         if (key.startsWith("qualification_")) {
           const index = parseInt(key.replace("qualification_", ""));
           if (!isNaN(index)) {
-
             // Also update qualificationDocumentUrls for quick access
             setQualificationDocumentUrls((prev) => ({
               ...prev,
@@ -1149,10 +1249,10 @@ export function EmployeeForm({
       ];
 
       const results = await Promise.all(
-        fields.map(field => trigger(field as keyof EmployeeFormData))
+        fields.map((field) => trigger(field as keyof EmployeeFormData)),
       );
 
-      return results.every(result => result);
+      return results.every((result) => result);
     }
 
     if (currentStep === 1) {
@@ -1168,9 +1268,9 @@ export function EmployeeForm({
     if (currentStep === 3) {
       const fields = ["bankName", "accountNumber", "accountTitle"];
       const results = await Promise.all(
-        fields.map(field => trigger(field as keyof EmployeeFormData))
+        fields.map((field) => trigger(field as keyof EmployeeFormData)),
       );
-      return results.every(result => result);
+      return results.every((result) => result);
     }
 
     return true;
@@ -1198,23 +1298,30 @@ export function EmployeeForm({
         if (mode === "create") {
           // Prepare employee data - use latest watched values for qualifications
           // Same pattern as Equipments & Documents section
-          const qualificationsToSubmit = latestQualifications && Array.isArray(latestQualifications) && latestQualifications.length > 0
-            ? latestQualifications.map((q: any, index: number) => {
-              // Get document URL from documentUrls object (same pattern as other documents)
-              const qualKey = `qualification_${index}`;
-              const docUrl = documentUrls[qualKey] || q.documentUrl || qualificationDocumentUrls[index] || undefined;
-              return {
-                qualification: q.qualification || "",
-                instituteId: q.instituteId || undefined,
-                countryId: q.countryId || undefined,
-                stateId: q.stateId || undefined,
-                cityId: q.cityId || undefined,
-                year: q.year ? String(q.year) : undefined,
-                grade: q.grade || undefined,
-                documentUrl: docUrl,
-              };
-            })
-            : undefined;
+          const qualificationsToSubmit =
+            latestQualifications &&
+            Array.isArray(latestQualifications) &&
+            latestQualifications.length > 0
+              ? latestQualifications.map((q: any, index: number) => {
+                  // Get document URL from documentUrls object (same pattern as other documents)
+                  const qualKey = `qualification_${index}`;
+                  const docUrl =
+                    documentUrls[qualKey] ||
+                    q.documentUrl ||
+                    qualificationDocumentUrls[index] ||
+                    undefined;
+                  return {
+                    qualification: q.qualification || "",
+                    instituteId: q.instituteId || undefined,
+                    countryId: q.countryId || undefined,
+                    stateId: q.stateId || undefined,
+                    cityId: q.cityId || undefined,
+                    year: q.year ? String(q.year) : undefined,
+                    grade: q.grade || undefined,
+                    documentUrl: docUrl,
+                  };
+                })
+              : undefined;
 
           const employeeData = {
             employeeId: data.employeeId,
@@ -1263,25 +1370,36 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
-            socialSecurityInstitutionId: data.socialSecurityInstitutionId || undefined,
+            socialSecurityInstitutionId:
+              data.socialSecurityInstitutionId || undefined,
             equipmentAssignments: data.equipmentAssignments,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
-            documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
+            documentUrls:
+              Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
             qualifications: qualificationsToSubmit,
-            socialSecurityRegistrations: data.socialSecurityRegistrations && Array.isArray(data.socialSecurityRegistrations) && data.socialSecurityRegistrations.length > 0
-              ? data.socialSecurityRegistrations.map((reg: any) => ({
-                institutionId: reg.institutionId,
-                registrationNumber: reg.registrationNumber || undefined,
-                cardNumber: reg.cardNumber || undefined,
-                registrationDate: reg.registrationDate || undefined,
-                expiryDate: reg.expiryDate || undefined,
-                contributionRate: reg.contributionRate ? parseFloat(String(reg.contributionRate)) : undefined,
-                baseSalary: reg.baseSalary ? parseFloat(String(reg.baseSalary)) : undefined,
-                monthlyContribution: reg.monthlyContribution ? parseFloat(String(reg.monthlyContribution)) : undefined,
-                status: reg.status || "active",
-              }))
-              : undefined,
+            socialSecurityRegistrations:
+              data.socialSecurityRegistrations &&
+              Array.isArray(data.socialSecurityRegistrations) &&
+              data.socialSecurityRegistrations.length > 0
+                ? data.socialSecurityRegistrations.map((reg: any) => ({
+                    institutionId: reg.institutionId,
+                    registrationNumber: reg.registrationNumber || undefined,
+                    cardNumber: reg.cardNumber || undefined,
+                    registrationDate: reg.registrationDate || undefined,
+                    expiryDate: reg.expiryDate || undefined,
+                    contributionRate: reg.contributionRate
+                      ? parseFloat(String(reg.contributionRate))
+                      : undefined,
+                    baseSalary: reg.baseSalary
+                      ? parseFloat(String(reg.baseSalary))
+                      : undefined,
+                    monthlyContribution: reg.monthlyContribution
+                      ? parseFloat(String(reg.monthlyContribution))
+                      : undefined,
+                    status: reg.status || "active",
+                  }))
+                : undefined,
           };
 
           const result = await createEmployee(employeeData);
@@ -1318,7 +1436,8 @@ export function EmployeeForm({
             gender: data.gender,
             contactNumber: data.contactNumber,
             emergencyContactNumber: data.emergencyContactNumber || undefined,
-            emergencyContactPersonName: data.emergencyContactPersonName || undefined,
+            emergencyContactPersonName:
+              data.emergencyContactPersonName || undefined,
             personalEmail: data.personalEmail || undefined,
             officialEmail: data.officialEmail || undefined,
             country: data.country,
@@ -1343,11 +1462,13 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
-            socialSecurityInstitutionId: data.socialSecurityInstitutionId || undefined,
+            socialSecurityInstitutionId:
+              data.socialSecurityInstitutionId || undefined,
             equipmentAssignments: data.equipmentAssignments,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
-            documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
+            documentUrls:
+              Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
           };
 
           await onRejoinSubmit(rejoinData);
@@ -1355,23 +1476,30 @@ export function EmployeeForm({
           // Get latest form values including qualification document URLs
           // Same pattern as Equipments & Documents section
           const latestQualifications = watch("qualifications");
-          const qualificationsToSubmit = latestQualifications && Array.isArray(latestQualifications) && latestQualifications.length > 0
-            ? latestQualifications.map((q: any, index: number) => {
-              // Get document URL from documentUrls object (same pattern as other documents)
-              const qualKey = `qualification_${index}`;
-              const docUrl = documentUrls[qualKey] || q.documentUrl || qualificationDocumentUrls[index] || undefined;
-              return {
-                qualification: q.qualification || "",
-                instituteId: q.instituteId || undefined,
-                countryId: q.countryId || undefined,
-                stateId: q.stateId || undefined,
-                cityId: q.cityId || undefined,
-                year: q.year ? String(q.year) : undefined,
-                grade: q.grade || undefined,
-                documentUrl: docUrl,
-              };
-            })
-            : undefined;
+          const qualificationsToSubmit =
+            latestQualifications &&
+            Array.isArray(latestQualifications) &&
+            latestQualifications.length > 0
+              ? latestQualifications.map((q: any, index: number) => {
+                  // Get document URL from documentUrls object (same pattern as other documents)
+                  const qualKey = `qualification_${index}`;
+                  const docUrl =
+                    documentUrls[qualKey] ||
+                    q.documentUrl ||
+                    qualificationDocumentUrls[index] ||
+                    undefined;
+                  return {
+                    qualification: q.qualification || "",
+                    instituteId: q.instituteId || undefined,
+                    countryId: q.countryId || undefined,
+                    stateId: q.stateId || undefined,
+                    cityId: q.cityId || undefined,
+                    year: q.year ? String(q.year) : undefined,
+                    grade: q.grade || undefined,
+                    documentUrl: docUrl,
+                  };
+                })
+              : undefined;
 
           const employeeData = {
             employeeId: data.employeeId,
@@ -1420,28 +1548,42 @@ export function EmployeeForm({
             bankName: data.bankName || "",
             accountNumber: data.accountNumber || "",
             accountTitle: data.accountTitle || "",
-            socialSecurityInstitutionId: data.socialSecurityInstitutionId || undefined,
+            socialSecurityInstitutionId:
+              data.socialSecurityInstitutionId || undefined,
             equipmentAssignments: data.equipmentAssignments,
             avatarUrl: data.avatarUrl || undefined,
             eobiDocumentUrl: data.eobiDocumentUrl || undefined,
-            documentUrls: Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
+            documentUrls:
+              Object.keys(documentUrls).length > 0 ? documentUrls : undefined,
             qualifications: qualificationsToSubmit,
-            socialSecurityRegistrations: data.socialSecurityRegistrations && Array.isArray(data.socialSecurityRegistrations) && data.socialSecurityRegistrations.length > 0
-              ? data.socialSecurityRegistrations.map((reg: any) => ({
-                institutionId: reg.institutionId,
-                registrationNumber: reg.registrationNumber || undefined,
-                cardNumber: reg.cardNumber || undefined,
-                registrationDate: reg.registrationDate || undefined,
-                expiryDate: reg.expiryDate || undefined,
-                contributionRate: reg.contributionRate ? parseFloat(String(reg.contributionRate)) : undefined,
-                baseSalary: reg.baseSalary ? parseFloat(String(reg.baseSalary)) : undefined,
-                monthlyContribution: reg.monthlyContribution ? parseFloat(String(reg.monthlyContribution)) : undefined,
-                status: reg.status || "active",
-              }))
-              : [],
+            socialSecurityRegistrations:
+              data.socialSecurityRegistrations &&
+              Array.isArray(data.socialSecurityRegistrations) &&
+              data.socialSecurityRegistrations.length > 0
+                ? data.socialSecurityRegistrations.map((reg: any) => ({
+                    institutionId: reg.institutionId,
+                    registrationNumber: reg.registrationNumber || undefined,
+                    cardNumber: reg.cardNumber || undefined,
+                    registrationDate: reg.registrationDate || undefined,
+                    expiryDate: reg.expiryDate || undefined,
+                    contributionRate: reg.contributionRate
+                      ? parseFloat(String(reg.contributionRate))
+                      : undefined,
+                    baseSalary: reg.baseSalary
+                      ? parseFloat(String(reg.baseSalary))
+                      : undefined,
+                    monthlyContribution: reg.monthlyContribution
+                      ? parseFloat(String(reg.monthlyContribution))
+                      : undefined,
+                    status: reg.status || "active",
+                  }))
+                : [],
           };
 
-          const result = await updateEmployee(initialData.id, employeeData as any);
+          const result = await updateEmployee(
+            initialData.id,
+            employeeData as any,
+          );
 
           if (result.status) {
             toast.success(result.message || "Employee updated successfully");
@@ -1454,11 +1596,12 @@ export function EmployeeForm({
           }
         }
       } catch (error) {
-        const errorMessage = error instanceof Error
-          ? error.message
-          : mode === "create"
-            ? "Failed to create employee. Please check console for details."
-            : "Failed to update employee. Please check console for details.";
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : mode === "create"
+              ? "Failed to create employee. Please check console for details."
+              : "Failed to update employee. Please check console for details.";
         toast.error(errorMessage);
       }
     });
@@ -1467,16 +1610,13 @@ export function EmployeeForm({
   return (
     <FormProvider {...form}>
       <div className="max-w-6xl mx-auto pb-10">
-
         <div className="rounded-2xl bg-card shadow-sm p-6">
           <form
-            onSubmit={handleSubmit(
-              onSubmit,
-              (errors) => {
-                console.log(errors)
-                toast.error("Please fix all validation errors before submitting");
-              }
-            )}
+            onSubmit={handleSubmit(onSubmit, (errors) => {
+              console.log(errors);
+              toast.error("Please fix all validation errors before submitting");
+              toast.error(JSON.stringify(errors));
+            })}
             className="space-y-6"
           >
             <div className="flex flex-wrap items-center gap-3">
@@ -1486,12 +1626,13 @@ export function EmployeeForm({
                 return (
                   <div
                     key={label}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${isActive
-                      ? "bg-primary/15 text-primary ring-1 ring-primary/40"
-                      : isDone
-                        ? "bg-muted text-foreground ring-1 ring-border"
-                        : "bg-muted text-muted-foreground ring-1 ring-border"
-                      }`}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-full text-sm transition-colors ${
+                      isActive
+                        ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                        : isDone
+                          ? "bg-muted text-foreground ring-1 ring-border"
+                          : "bg-muted text-muted-foreground ring-1 ring-border"
+                    }`}
                   >
                     <span className="h-6 w-6 rounded-full bg-background border flex items-center justify-center">
                       {idx + 1}
@@ -1515,7 +1656,9 @@ export function EmployeeForm({
                     <div className="flex flex-col items-center gap-6">
                       <div
                         className="relative cursor-pointer group"
-                        onClick={() => document.getElementById("profile-pic-input")?.click()}
+                        onClick={() =>
+                          document.getElementById("profile-pic-input")?.click()
+                        }
                       >
                         {profilePicPreview ? (
                           <img
@@ -1548,7 +1691,10 @@ export function EmployeeForm({
                         disabled={isPending}
                       />
                     </div>
-                    <Dialog open={cropDialogOpen} onOpenChange={handleCropDialogClose}>
+                    <Dialog
+                      open={cropDialogOpen}
+                      onOpenChange={handleCropDialogClose}
+                    >
                       <DialogContent className="sm:max-w-[480px]">
                         <DialogHeader>
                           <DialogTitle>Crop Profile Picture</DialogTitle>
@@ -1568,7 +1714,12 @@ export function EmployeeForm({
                         </div>
                         <DialogFooter>
                           <div className="flex w-full justify-end gap-2">
-                            <Button variant="outline" onClick={() => handleCropDialogClose(false)}>Cancel</Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleCropDialogClose(false)}
+                            >
+                              Cancel
+                            </Button>
                             <Button onClick={confirmCropAndUpload}>Save</Button>
                           </div>
                         </DialogFooter>
@@ -1577,14 +1728,15 @@ export function EmployeeForm({
                   </CardContent>
                 </Card>
 
-
                 {/* Basic Information */}
                 <Card className="border-0 shadow-none bg-muted/50">
                   <CardHeader>
                     <CardTitle className="text-lg font-semibold">
                       Basic Information
                     </CardTitle>
-                    <CardDescription>Enter employee&apos;s basic details</CardDescription>
+                    <CardDescription>
+                      Enter employee&apos;s basic details
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <BasicInfoSection
@@ -1618,7 +1770,11 @@ export function EmployeeForm({
                       documentUrls={documentUrls}
                       mode={mode}
                     />
-                    <DateSection form={form} isPending={isPending} errors={errors} />
+                    <DateSection
+                      form={form}
+                      isPending={isPending}
+                      errors={errors}
+                    />
                   </CardContent>
                 </Card>
               </>
@@ -1639,10 +1795,20 @@ export function EmployeeForm({
                       form={form}
                       isPending={isPending}
                       loadingData={loadingData}
-                      qualifications={(qualifications || []).map(q => ({ id: q.id, name: q.name }))}
-                      institutes={(institutes || []).map(i => ({ id: i.id, name: i.name }))}
-                      states={states.map(s => ({ id: s.id, name: s.name }))}
-                      cities={cities.map(c => ({ id: c.id, name: c.name, stateId: (c as any).stateId }))}
+                      qualifications={(qualifications || []).map((q) => ({
+                        id: q.id,
+                        name: q.name,
+                      }))}
+                      institutes={(institutes || []).map((i) => ({
+                        id: i.id,
+                        name: i.name,
+                      }))}
+                      states={states.map((s) => ({ id: s.id, name: s.name }))}
+                      cities={cities.map((c) => ({
+                        id: c.id,
+                        name: c.name,
+                        stateId: (c as any).stateId,
+                      }))}
                       errors={errors}
                       onQualificationAdded={onQualificationAdded}
                       onInstituteAdded={onInstituteAdded}
@@ -1719,7 +1885,9 @@ export function EmployeeForm({
                         )}
                       />
                       {errors.bankName && (
-                        <p className="text-xs text-red-500">{errors.bankName.message}</p>
+                        <p className="text-xs text-red-500">
+                          {errors.bankName.message}
+                        </p>
                       )}
                     </div>
 
@@ -1730,7 +1898,9 @@ export function EmployeeForm({
                         disabled={isPending}
                       />
                       {errors.accountNumber && (
-                        <p className="text-xs text-red-500">{errors.accountNumber.message}</p>
+                        <p className="text-xs text-red-500">
+                          {errors.accountNumber.message}
+                        </p>
                       )}
                     </div>
 
@@ -1741,7 +1911,9 @@ export function EmployeeForm({
                         disabled={isPending}
                       />
                       {errors.accountTitle && (
-                        <p className="text-xs text-red-500">{errors.accountTitle.message}</p>
+                        <p className="text-xs text-red-500">
+                          {errors.accountTitle.message}
+                        </p>
                       )}
                     </div>
 
@@ -1752,10 +1924,12 @@ export function EmployeeForm({
                         control={control}
                         render={({ field }) => (
                           <Autocomplete
-                            options={socialSecurityInstitutions.map((i: any) => ({
-                              value: i.id,
-                              label: i.name,
-                            }))}
+                            options={socialSecurityInstitutions.map(
+                              (i: any) => ({
+                                value: i.id,
+                                label: i.name,
+                              }),
+                            )}
                             value={field.value}
                             onValueChange={field.onChange}
                             placeholder="Select Institution"
@@ -1772,7 +1946,8 @@ export function EmployeeForm({
                   <CardHeader>
                     <CardTitle>Social Security Registration</CardTitle>
                     <CardDescription>
-                      Register employee with SESSI, PESSE, IESSI or other social security institutions
+                      Register employee with SESSI, PESSE, IESSI or other social
+                      security institutions
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1785,7 +1960,6 @@ export function EmployeeForm({
                     />
                   </CardContent>
                 </Card>
-
               </>
             )}
 
@@ -1809,13 +1983,17 @@ export function EmployeeForm({
                       <Label className="text-center">Upload CV</Label>
                       <FileUpload
                         id="cv"
-                        onChange={(files) => handleFileChange("cv", files?.[0] || null)}
+                        onChange={(files) =>
+                          handleFileChange("cv", files?.[0] || null)
+                        }
                         existingFileUrl={documentUrls.cv}
                       />
                     </div>
 
                     <div className="flex flex-col items-center">
-                      <Label className="text-center">Upload Passport Size Photos (2)</Label>
+                      <Label className="text-center">
+                        Upload Passport Size Photos (2)
+                      </Label>
                       <FileUpload
                         id="passportPhotos"
                         onChange={(files) =>
@@ -1829,46 +2007,65 @@ export function EmployeeForm({
                       <Label className="text-center">Upload CNIC</Label>
                       <FileUpload
                         id="cnic"
-                        onChange={(files) => handleFileChange("cnic", files?.[0] || null)}
+                        onChange={(files) =>
+                          handleFileChange("cnic", files?.[0] || null)
+                        }
                         existingFileUrl={documentUrls.cnic}
                       />
                     </div>
 
                     <div className="flex flex-col items-center">
-                      <Label className="text-center">Clearance Letter (if any)</Label>
+                      <Label className="text-center">
+                        Clearance Letter (if any)
+                      </Label>
                       <FileUpload
                         id="clearanceLetter"
                         onChange={(files) =>
-                          handleFileChange("clearanceLetter", files?.[0] || null)
+                          handleFileChange(
+                            "clearanceLetter",
+                            files?.[0] || null,
+                          )
                         }
                         existingFileUrl={documentUrls.clearanceLetter}
                       />
                     </div>
 
                     <div className="flex flex-col items-center">
-                      <Label className="text-center">Fit & Proper Criteria Form</Label>
+                      <Label className="text-center">
+                        Fit & Proper Criteria Form
+                      </Label>
                       <FileUpload
                         id="fitProperCriteria"
                         onChange={(files) =>
-                          handleFileChange("fitProperCriteria", files?.[0] || null)
+                          handleFileChange(
+                            "fitProperCriteria",
+                            files?.[0] || null,
+                          )
                         }
                         existingFileUrl={documentUrls.fitProperCriteria}
                       />
                     </div>
 
                     <div className="flex flex-col items-center">
-                      <Label className="text-center">Affirmation – Company Service Rules</Label>
+                      <Label className="text-center">
+                        Affirmation – Company Service Rules
+                      </Label>
                       <FileUpload
                         id="serviceRulesAffirmation"
                         onChange={(files) =>
-                          handleFileChange("serviceRulesAffirmation", files?.[0] || null)
+                          handleFileChange(
+                            "serviceRulesAffirmation",
+                            files?.[0] || null,
+                          )
                         }
                         existingFileUrl={documentUrls.serviceRulesAffirmation}
                       />
                     </div>
 
                     <div className="flex flex-col items-center">
-                      <Label className="text-center">Affirmation – VIS Code of Conduct 2019</Label>
+                      <Label className="text-center">
+                        Affirmation – VIS Code of Conduct 2019
+                      </Label>
                       <FileUpload
                         id="codeOfConduct"
                         onChange={(files) =>
@@ -1879,16 +2076,22 @@ export function EmployeeForm({
                     </div>
 
                     <div className="flex flex-col items-center">
-                      <Label className="text-center">Upload Non-Disclosure Agreement (NDA)</Label>
+                      <Label className="text-center">
+                        Upload Non-Disclosure Agreement (NDA)
+                      </Label>
                       <FileUpload
                         id="nda"
-                        onChange={(files) => handleFileChange("nda", files?.[0] || null)}
+                        onChange={(files) =>
+                          handleFileChange("nda", files?.[0] || null)
+                        }
                         existingFileUrl={documentUrls.nda}
                       />
                     </div>
 
                     <div className="flex flex-col items-center">
-                      <Label className="text-center">Information Secrecy / Confidentiality Form</Label>
+                      <Label className="text-center">
+                        Information Secrecy / Confidentiality Form
+                      </Label>
                       <FileUpload
                         id="secrecyForm"
                         onChange={(files) =>
@@ -1899,11 +2102,16 @@ export function EmployeeForm({
                     </div>
 
                     <div className="flex flex-col items-center">
-                      <Label className="text-center">Investment Disclosure Form</Label>
+                      <Label className="text-center">
+                        Investment Disclosure Form
+                      </Label>
                       <FileUpload
                         id="investmentDisclosure"
                         onChange={(files) =>
-                          handleFileChange("investmentDisclosure", files?.[0] || null)
+                          handleFileChange(
+                            "investmentDisclosure",
+                            files?.[0] || null,
+                          )
                         }
                         existingFileUrl={documentUrls.investmentDisclosure}
                       />
@@ -1931,12 +2139,10 @@ export function EmployeeForm({
                 </Button>
               )}
               {step === stepLabels.length - 1 && (
-                <Button
-                  type="submit"
-                  disabled={isPending}
-                  className="flex-1"
-                >
-                  {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                <Button type="submit" disabled={isPending} className="flex-1">
+                  {isPending && (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  )}
                   {mode === "create" ? "Create Employee" : "Update Employee"}
                 </Button>
               )}
