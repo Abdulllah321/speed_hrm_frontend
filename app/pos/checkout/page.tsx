@@ -45,7 +45,7 @@ export interface AppliedCoupon {
     id: string; code: string; discountType: string;
     discountValue: number; discountAmount: number; description?: string;
 }
-export interface Tender { method: string; amount: number; cardLast4?: string; slipNo?: string; voucherId?: string; }
+export interface Tender { method: string; amount: number; cardLast4?: string; slipNo?: string; voucherId?: string; voucherFaceValue?: number; }
 export interface Customer { id: string; name: string; code: string; contactNo?: string; address?: string; }
 export type DiscountMode = "none" | "promo" | "coupon" | "alliance" | "manual";
 
@@ -591,7 +591,13 @@ export default function CheckoutPage() {
         }
         const amount = Math.min(tenderAmount, validatedVoucher.faceValue);
         setAppliedVouchers(prev => [...prev, { voucherId: validatedVoucher.id, code: validatedVoucher.code, amount }]);
-        setTenders(prev => [...prev, { method: "voucher", amount, slipNo: validatedVoucher.code, voucherId: validatedVoucher.id }]);
+        setTenders(prev => [...prev, { 
+            method: "voucher", 
+            amount, 
+            slipNo: validatedVoucher.code, 
+            voucherId: validatedVoucher.id,
+            voucherFaceValue: validatedVoucher.faceValue
+        }]);
         setVoucherCode("");
         setValidatedVoucher(null);
         setTenderAmount(0);
