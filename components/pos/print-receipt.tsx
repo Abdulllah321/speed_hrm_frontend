@@ -64,6 +64,7 @@ interface Tender {
   amount: number;
   cardLast4?: string;
   slipNo?: string;
+  voucherFaceValue?: number;
 }
 
 interface PrintReceiptProps {
@@ -396,7 +397,7 @@ export function PrintReceipt({
   const fbrPosFee = Number(order?.fbrPosFee ?? 0) || 1; // Default to 1 if not set
   const finalGrandTotal = isSavedOrder ? grandTotal : grandTotal + fbrPosFee;
   const changeAmount = Number(order?.changeAmount ?? 0);
-  const totalPaid = tenders.reduce((s, t) => s + t.amount, 0);
+  const totalPaid = tenders.reduce((s, t) => s + (t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount), 0);
 
   // Alliance distribution for display - proportional to item value
   const calculateProportionalDiscount = (
@@ -1065,7 +1066,11 @@ function ReceiptBody({
                     : ` (${t.slipNo})`
                   : ""}
               </span>
-              <span className="font-semibold">{fmt(t.amount)}</span>
+              <span className="font-semibold">
+                {t.method === "voucher" && t.voucherFaceValue
+                  ? fmt(t.voucherFaceValue)
+                  : fmt(t.amount)}
+              </span>
             </div>
           ))}
           {totalPaid > 0 && totalPaid !== finalGrandTotal && (
@@ -1437,7 +1442,9 @@ function A4InvoiceBody({
                         {t.cardLast4 ? ` •••• ${t.cardLast4}` : ""}
                         {t.slipNo ? ` (${t.slipNo})` : ""}
                       </span>
-                      <span className="font-bold text-zinc-800">Rs. {fmt(t.amount)}</span>
+                      <span className="font-bold text-zinc-800">
+                        Rs. {t.method === "voucher" && t.voucherFaceValue ? fmt(t.voucherFaceValue) : fmt(t.amount)}
+                      </span>
                     </div>
                   ))}
                   {changeAmount > 0 && (
