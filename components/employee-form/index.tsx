@@ -1485,6 +1485,7 @@ export function EmployeeForm({
             onSubmit={handleSubmit(
               onSubmit,
               (errors) => {
+                console.log(errors)
                 toast.error("Please fix all validation errors before submitting");
               }
             )}
