@@ -299,7 +299,7 @@ const employeeFormSchema = z.object({
 
   allocation: z
     .string()
-    .min(1, "Allocation is required"),
+    .optional(),
   socialSecurityInstitutionId: z.string().optional(),
 
   allowRemoteAttendance: z
@@ -321,23 +321,11 @@ const employeeFormSchema = z.object({
 
   accountNumber: z
     .string()
-    .optional()
-    .refine(
-      (val) => !val || accountNumberRegex.test(val),
-      "Account Number must be between 7-26 digits"
-    ),
+    .optional(),
 
   accountTitle: z
     .string()
-    .optional()
-    .refine(
-      (val) => !val || val.length >= 3,
-      "Account Title must be at least 3 characters"
-    )
-    .refine(
-      (val) => !val || val.length <= 100,
-      "Account Title must not exceed 100 characters"
-    ),
+    .optional(),
 
   avatarUrl: z.string().optional(),
   eobiDocumentUrl: z.string().optional(),
@@ -346,7 +334,7 @@ const employeeFormSchema = z.object({
   socialSecurityRegistrations: z
     .array(
       z.object({
-        institutionId: z.string().min(1, "Institution is required"),
+        institutionId: z.string().optional(),
         registrationNumber: z.string().optional(),
         cardNumber: z.string().optional(),
         registrationDate: z.string().optional(),

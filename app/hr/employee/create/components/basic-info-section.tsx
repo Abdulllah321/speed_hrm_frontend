@@ -92,7 +92,7 @@ export function BasicInfoSection({ form, isPending, loadingData, departments, su
         {errors?.fatherHusbandName && <p className="text-xs text-red-500">{errors.fatherHusbandName.message}</p>}
       </div>
       <div className="space-y-2">
-        <Label>Allocation <span className="text-destructive">*</span></Label>
+        <Label>Allocation</Label>
         <Controller name="allocation" control={control} render={({ field }) => (
           <Autocomplete
             options={allocations.map(a => ({ value: a.id, label: a.name }))}
