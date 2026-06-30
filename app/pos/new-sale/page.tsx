@@ -124,7 +124,16 @@ export default function NewSalePage() {
         }
         setIsHolding(true);
         try {
+            let holdExpiresAt: string | undefined = undefined;
+            if (holdUntilTime) {
+                const [h, m] = holdUntilTime.split(':').map(Number);
+                const target = new Date();
+                target.setHours(h, m, 0, 0);
+                holdExpiresAt = target.toISOString();
+            }
+
             const payload = {
+                holdExpiresAt,
                 items: cartItems.map(item => ({
                     itemId: item.id,
                     quantity: item.quantity,

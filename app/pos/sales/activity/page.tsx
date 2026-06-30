@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -33,9 +33,6 @@ function fmtDate(dateStr?: string | null): string {
     return d.toLocaleDateString("en-PK", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-// Custom month names fallback for standard JS locale
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
 function fmtTime(dateStr?: string | null): string {
     if (!dateStr) return "";
     const d = new Date(dateStr);
@@ -56,15 +53,6 @@ const ACTIVITY_CONFIG: Record<string, { label: string; color: string; icon: any 
     return: { label: "Return Slip", color: "bg-rose-500/10 text-rose-700 border-rose-300 dark:bg-rose-950/20 dark:text-rose-400", icon: RotateCcw },
     refund: { label: "Cash Refund", color: "bg-purple-500/10 text-purple-700 border-purple-300 dark:bg-purple-950/20 dark:text-purple-400", icon: Banknote },
     claim: { label: "Claim Request", color: "bg-amber-500/10 text-amber-700 border-amber-300 dark:bg-amber-950/20 dark:text-amber-400", icon: AlertCircle },
-};
-
-const ORDER_STATUS_COLORS: Record<string, string> = {
-    completed: "bg-emerald-500/10 text-emerald-700 border-emerald-300 dark:text-emerald-400",
-    voided: "bg-destructive/10 text-destructive border-destructive/30",
-    partially_returned: "bg-blue-500/10 text-blue-700 border-blue-300 dark:text-blue-400",
-    returned: "bg-rose-500/10 text-rose-700 border-rose-300 dark:text-rose-400",
-    refunded: "bg-purple-500/10 text-purple-700 border-purple-300 dark:text-purple-400",
-    exchanged: "bg-cyan-500/10 text-cyan-700 border-cyan-300 dark:text-cyan-400",
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -106,7 +94,7 @@ export default function SalesActivityPage() {
         staleTime: 10_000,
     });
 
-    const orders = data?.data ?? [];
+    const orders = data?.data ?? []; // this is a flat list of activities
     const totalRows = data?.meta?.total ?? 0;
     const totalPages = data?.meta?.totalPages ?? 0;
 
@@ -175,7 +163,7 @@ export default function SalesActivityPage() {
                         <History className="h-6 w-6 text-primary" /> Sales Activity Log
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        Trace and audit the entire life cycle of POS orders, returns, cash refunds, and claims.
+                        Trace and audit individual transaction actions (sales, returns, cash refunds, claims) sorted by activity date.
                     </p>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2 shrink-0">
@@ -206,7 +194,7 @@ export default function SalesActivityPage() {
                         <DateRangePicker
                             range={dateRange}
                             onUpdate={({ range }) => { setDateRange(range); handleFilterChange(); }}
-                            placeholder="Filter by activity date"
+                            placeholder="Filter by activity date (defaults to last 30 days)"
                             className="w-full"
                         />
                     </div>
@@ -262,271 +250,230 @@ export default function SalesActivityPage() {
                     <Info className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                     <h3 className="text-base font-semibold">No Activities Found</h3>
                     <p className="text-sm text-muted-foreground max-w-sm mx-auto mt-1">
-                        We couldn't find any activities matching your search filters. Try clearing filters or refining your terms.
+                        We couldn't find any activities matching your search filters and selected date range.
                     </p>
                 </div>
             ) : (
-                <div className="space-y-6">
-                    {/* Orders Loop */}
-                    {orders.map((order: any) => (
-                        <div key={order.id} className="bg-card border rounded-xl shadow-sm overflow-hidden hover:border-muted-foreground/30 transition-all duration-200">
-                            {/* Card Header: Order Overview */}
-                            <div className="bg-muted/30 border-b p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-mono text-base font-bold text-foreground">{order.orderNumber}</span>
-                                        <Badge variant="outline" className={cn("capitalize text-[10px] px-1.5 py-0 h-5", ORDER_STATUS_COLORS[order.status] ?? "")}>
-                                            {order.status.replace(/_/g, " ")}
-                                        </Badge>
+                <div className="space-y-4">
+                    {/* Flat Activities Loop */}
+                    {orders.map((act: any) => {
+                        const cfg = ACTIVITY_CONFIG[act.type] || { label: "Activity", color: "bg-muted text-muted-foreground", icon: Info };
+                        const Icon = cfg.icon;
+
+                        return (
+                            <div key={act.id} className={cn(
+                                "bg-card border rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-200 border-l-4",
+                                act.type === "sale" ? "border-l-emerald-500" :
+                                act.type === "return" ? "border-l-rose-500" :
+                                act.type === "refund" ? "border-l-purple-500" :
+                                "border-l-amber-500"
+                            )}>
+                                {/* Card Header: Activity Summary */}
+                                <div className="bg-muted/30 border-b p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className={cn("font-bold text-xs uppercase px-2 py-0.5", cfg.color)}>
+                                                {cfg.label}
+                                            </Badge>
+                                            <span className="font-mono text-sm font-bold text-foreground">
+                                                #{act.number}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{fmtDate(act.date)} at {fmtTime(act.date)}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                        <Calendar className="h-3 w-3" />
-                                        <span>{fmtDate(order.createdAt)} at {fmtTime(order.createdAt)}</span>
+
+                                    <div className="space-y-0.5">
+                                        <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                                            <User className="h-3 w-3" /> Customer Details
+                                        </div>
+                                        <div className="text-sm font-semibold truncate">
+                                            {act.customer?.name || "Walk-in Customer"}
+                                        </div>
+                                        {act.customer?.contactNo && (
+                                            <div className="text-xs font-mono text-muted-foreground">{act.customer.contactNo}</div>
+                                        )}
                                     </div>
-                                </div>
 
-                                <div className="space-y-0.5">
-                                    <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                                        <User className="h-3 w-3" /> Customer Details
+                                    <div className="space-y-0.5">
+                                        <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+                                            <MapPin className="h-3 w-3" /> Location / Terminal
+                                        </div>
+                                        <div className="text-xs text-muted-foreground font-semibold truncate text-foreground">
+                                            Store Location ID: {act.locationId || "N/A"}
+                                        </div>
+                                        <div className="text-[10px] font-mono text-muted-foreground">
+                                            POS ID: {act.posId || "N/A"}
+                                        </div>
                                     </div>
-                                    <div className="text-sm font-semibold truncate">
-                                        {order.customer?.name || "Walk-in Customer"}
-                                    </div>
-                                    {order.customer?.phone && (
-                                        <div className="text-xs font-mono text-muted-foreground">{order.customer.phone}</div>
-                                    )}
-                                </div>
 
-                                <div className="space-y-0.5">
-                                    <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                                        <MapPin className="h-3 w-3" /> Location / Terminal
-                                    </div>
-                                    <div className="text-xs text-muted-foreground font-semibold truncate text-foreground">
-                                        Store Location ID: {order.locationId || "N/A"}
-                                    </div>
-                                    <div className="text-[10px] font-mono text-muted-foreground">
-                                        POS ID: {order.posId || order.terminalId || "N/A"}
-                                    </div>
-                                </div>
-
-                                <div className="text-left md:text-right space-y-0.5">
-                                    <div className="text-xs text-muted-foreground font-medium">Grand Total</div>
-                                    <div className="text-lg font-bold text-primary">
-                                        Rs. {formatCurrency(Number(order.grandTotal))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Card Body: Timeline & Activities Hierarchy */}
-                            <div className="p-6">
-                                <div className="relative pl-6 md:pl-8 border-l-2 border-muted space-y-8">
-                                    {order.activities?.map((act: any, actIndex: number) => {
-                                        const cfg = ACTIVITY_CONFIG[act.type] || { label: "Activity", color: "bg-muted text-muted-foreground", icon: Info };
-                                        const Icon = cfg.icon;
-
-                                        return (
-                                            <div key={act.id} className="relative group">
-                                                {/* Timeline Circle Node */}
-                                                <div className={cn(
-                                                    "absolute -left-[35px] md:-left-[43px] top-0 rounded-full border-2 bg-background p-1.5 shadow-sm group-hover:scale-110 transition-transform duration-200 z-10",
-                                                    act.type === "sale" ? "border-emerald-500 text-emerald-500" :
-                                                    act.type === "return" ? "border-rose-500 text-rose-500" :
-                                                    act.type === "refund" ? "border-purple-500 text-purple-500" :
-                                                    "border-amber-500 text-amber-500"
-                                                )}>
-                                                    <Icon className="h-4.5 w-4.5" />
-                                                </div>
-
-                                                <div className="space-y-3">
-                                                    {/* Activity Header */}
-                                                    <div className="flex flex-wrap items-center justify-between gap-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant="outline" className={cn("font-bold text-xs uppercase px-2 py-0.5", cfg.color)}>
-                                                                {cfg.label}
-                                                            </Badge>
-                                                            <span className="font-mono text-sm font-semibold text-muted-foreground">
-                                                                #{act.number}
-                                                            </span>
-                                                            {act.status && (
-                                                                <Badge variant="secondary" className="capitalize text-[10px]">
-                                                                    {act.status.toLowerCase()}
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-xs text-muted-foreground font-medium">
-                                                                {fmtDate(act.date)} at {fmtTime(act.date)}
-                                                            </span>
-                                                            
-                                                            {/* Activity Print Receipt Icon */}
-                                                            {canPrint && (
-                                                                <div className="flex items-center gap-1">
-                                                                    <Button
-                                                                        variant="ghost"
-                                                                        size="icon"
-                                                                        className="h-8 w-8 text-primary hover:bg-primary/10 rounded-full"
-                                                                        title={`Print ${cfg.label}`}
-                                                                        onClick={() => {
-                                                                            if (act.type === "sale") {
-                                                                                openSalePrint(order.id);
-                                                                            } else if (act.type === "return") {
-                                                                                openReturnPrint(order, "return");
-                                                                            } else if (act.type === "refund") {
-                                                                                openReturnPrint(order, "refund");
-                                                                            } else if (act.type === "claim") {
-                                                                                openClaimPrint(act, order.orderNumber);
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        <Printer className="h-4 w-4" />
-                                                                    </Button>
-
-                                                                    {act.type === "sale" && order.isGiftReceipt && (
-                                                                        <Button
-                                                                            variant="ghost"
-                                                                            size="icon"
-                                                                            className="h-8 w-8 text-pink-600 hover:bg-pink-50 rounded-full"
-                                                                            title="Print Gift Receipt"
-                                                                            onClick={() => openSalePrint(order.id, true)}
-                                                                        >
-                                                                            <GiftIcon className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Activity Details / Nested Box */}
-                                                    <div className="bg-muted/20 border rounded-lg p-4 space-y-3">
-                                                        {/* Items Table */}
-                                                        {act.items && act.items.length > 0 && (
-                                                            <div className="overflow-x-auto">
-                                                                <table className="w-full text-xs text-left">
-                                                                    <thead>
-                                                                        <tr className="border-b text-muted-foreground pb-2">
-                                                                            <th className="font-semibold pb-1.5">SKU / Item</th>
-                                                                            <th className="font-semibold pb-1.5 text-center">Attributes</th>
-                                                                            <th className="font-semibold pb-1.5 text-center">
-                                                                                {act.type === "claim" ? "Claim / Appr Qty" : "Qty"}
-                                                                            </th>
-                                                                            <th className="font-semibold pb-1.5 text-right">Price</th>
-                                                                            <th className="font-semibold pb-1.5 text-right">Total</th>
-                                                                            {act.type === "claim" && <th className="font-semibold pb-1.5 text-center">Status</th>}
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {act.items.map((it: any, itIdx: number) => (
-                                                                            <tr key={itIdx} className="border-b last:border-0 border-muted/30">
-                                                                                <td className="py-2 font-medium">
-                                                                                    <div className="font-semibold text-foreground">{it.description}</div>
-                                                                                    <div className="text-[10px] text-muted-foreground font-mono">{it.sku}</div>
-                                                                                </td>
-                                                                                <td className="py-2 text-center text-muted-foreground">
-                                                                                    {it.size || it.color ? `${it.size || "-"} / ${it.color || "-"}` : "—"}
-                                                                                </td>
-                                                                                <td className="py-2 text-center font-semibold">
-                                                                                    {act.type === "claim" ? (
-                                                                                        <span>{it.quantity} <ArrowRight className="inline h-2.5 w-2.5 text-muted-foreground mx-0.5" /> {it.approvedQty ?? 0}</span>
-                                                                                    ) : (
-                                                                                        it.quantity
-                                                                                    )}
-                                                                                </td>
-                                                                                <td className="py-2 text-right font-mono text-muted-foreground">
-                                                                                    Rs. {formatCurrency(it.price)}
-                                                                                </td>
-                                                                                <td className="py-2 text-right font-mono font-semibold">
-                                                                                    Rs. {formatCurrency(act.type === "claim" ? (it.approvedAmount ?? it.lineTotal) : it.lineTotal)}
-                                                                                </td>
-                                                                                {act.type === "claim" && (
-                                                                                    <td className="py-2 text-center">
-                                                                                        <Badge variant="outline" className={cn(
-                                                                                            "text-[9px] uppercase px-1.5 py-0 h-4 font-mono",
-                                                                                            it.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-700 border-emerald-300" :
-                                                                                            it.status === "REJECTED" ? "bg-rose-500/10 text-rose-700 border-rose-300" :
-                                                                                            "bg-amber-500/10 text-amber-700 border-amber-300"
-                                                                                        )}>
-                                                                                            {it.status || "Pending"}
-                                                                                        </Badge>
-                                                                                    </td>
-                                                                                )}
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                        )}
-
-                                                        {/* Summary Values / Notes / Vouchers */}
-                                                        <div className="flex flex-wrap gap-4 items-center justify-between pt-2 border-t border-muted/50 text-xs">
-                                                            <div className="flex flex-wrap gap-2.5 items-center">
-                                                                {/* Tenders Displayed (for Sale) */}
-                                                                {act.tenders && act.tenders.length > 0 && (
-                                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                                        <span className="text-muted-foreground">Payment Tenders:</span>
-                                                                        {act.tenders.map((tend: any, tIdx: number) => {
-                                                                            const TendIcon = TENDER_ICONS[tend.method] || Banknote;
-                                                                            return (
-                                                                                <Badge key={tIdx} variant="secondary" className="gap-1 font-mono text-[10px] capitalize">
-                                                                                    <TendIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
-                                                                                    {tend.method.replace("_", " ")}
-                                                                                    {tend.slipNo && <span className="text-[9px] text-muted-foreground ml-0.5">#{tend.slipNo}</span>}
-                                                                                    <span className="font-semibold text-foreground ml-1">Rs.{formatCurrency(tend.amount)}</span>
-                                                                                </Badge>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Issued Vouchers Highlight Box */}
-                                                                {act.issuedVouchers && act.issuedVouchers.length > 0 && (
-                                                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                                                        <span className="text-rose-600 dark:text-rose-400 font-semibold">Issued Voucher:</span>
-                                                                        {act.issuedVouchers.map((v: any, vIdx: number) => (
-                                                                            <div key={vIdx} className="inline-flex items-center gap-1.5 bg-rose-500/10 border border-rose-200 dark:border-rose-950 text-rose-700 dark:text-rose-300 rounded px-2 py-0.5 font-mono text-[10px] font-semibold">
-                                                                                <Ticket className="h-3 w-3" />
-                                                                                <span>{v.code}</span>
-                                                                                <span className="text-muted-foreground border-l pl-1.5">Rs.{formatCurrency(v.faceValue)}</span>
-                                                                                {v.expiresAt && (
-                                                                                    <span className="text-muted-foreground border-l pl-1.5 text-[9px]">Expires {fmtDate(v.expiresAt)}</span>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Notes */}
-                                                                {act.reasonNotes && (
-                                                                    <div className="text-muted-foreground truncate">
-                                                                        <span className="font-semibold">Reason:</span> {act.reasonNotes}
-                                                                    </div>
-                                                                )}
-                                                                {act.reviewNotes && (
-                                                                    <div className="text-muted-foreground truncate">
-                                                                        <span className="font-semibold">Reviewer Notes:</span> {act.reviewNotes}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="font-semibold font-mono text-sm text-foreground">
-                                                                {act.type === "claim" ? "Claim Total:" : act.type === "return" ? "Returned Value:" : act.type === "refund" ? "Refund Amount:" : "Sale Amount:"} Rs. {formatCurrency(act.approvedAmount ?? act.amount)}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                    <div className="flex justify-between md:justify-end items-center gap-4">
+                                        <div className="text-left md:text-right space-y-0.5">
+                                            <div className="text-xs text-muted-foreground font-medium">
+                                                {act.type === "claim" ? "Claim Total" : act.type === "return" ? "Returned Value" : act.type === "refund" ? "Refund Amount" : "Sale Amount"}
                                             </div>
-                                        );
-                                    })}
+                                            <div className="text-base font-bold text-foreground font-mono">
+                                                Rs. {formatCurrency(act.approvedAmount ?? act.amount)}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Print Action */}
+                                        {canPrint && (
+                                            <div className="flex items-center gap-1">
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-9 w-9 text-primary hover:bg-primary/10 rounded-full shrink-0"
+                                                    title={`Print ${cfg.label}`}
+                                                    onClick={() => {
+                                                        if (act.type === "sale") {
+                                                            openSalePrint(act.orderId);
+                                                        } else if (act.type === "return") {
+                                                            openReturnPrint({ id: act.orderId, orderNumber: act.orderNumber, grandTotal: act.amount }, "return");
+                                                        } else if (act.type === "refund") {
+                                                            openReturnPrint({ id: act.orderId, orderNumber: act.orderNumber, grandTotal: act.amount }, "refund");
+                                                        } else if (act.type === "claim") {
+                                                            openClaimPrint(act, act.orderNumber);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Printer className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Card Body: Items and Voucher Trace */}
+                                <div className="p-4 space-y-3">
+                                    {/* Link to Parent Order */}
+                                    {act.type !== "sale" && (
+                                        <div className="text-xs text-muted-foreground">
+                                            Original Order: <span className="font-mono font-semibold text-foreground">#{act.orderNumber}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Items Table */}
+                                    {act.items && act.items.length > 0 && (
+                                        <div className="overflow-x-auto border rounded-lg bg-muted/10">
+                                            <table className="w-full text-xs text-left">
+                                                <thead>
+                                                    <tr className="bg-muted/40 border-b text-muted-foreground">
+                                                        <th className="font-semibold p-2">SKU / Item</th>
+                                                        <th className="font-semibold p-2 text-center">Attributes</th>
+                                                        <th className="font-semibold p-2 text-center">
+                                                            {act.type === "claim" ? "Claim / Appr Qty" : "Qty"}
+                                                        </th>
+                                                        <th className="font-semibold p-2 text-right">Price</th>
+                                                        <th className="font-semibold p-2 text-right">Total</th>
+                                                        {act.type === "claim" && <th className="font-semibold p-2 text-center">Status</th>}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {act.items.map((it: any, itIdx: number) => (
+                                                        <tr key={itIdx} className="border-b last:border-0 border-muted/20 hover:bg-muted/5 transition-colors">
+                                                            <td className="p-2 font-medium">
+                                                                <div className="font-semibold text-foreground text-sm">{it.description}</div>
+                                                                <div className="text-[10px] text-muted-foreground font-mono">{it.sku}</div>
+                                                            </td>
+                                                            <td className="p-2 text-center text-muted-foreground">
+                                                                {it.size || it.color ? `${it.size || "-"} / ${it.color || "-"}` : "—"}
+                                                            </td>
+                                                            <td className="p-2 text-center font-semibold">
+                                                                {act.type === "claim" ? (
+                                                                    <span>{it.quantity} <ArrowRight className="inline h-2.5 w-2.5 text-muted-foreground mx-0.5" /> {it.approvedQty ?? 0}</span>
+                                                                ) : (
+                                                                    it.quantity
+                                                                )}
+                                                            </td>
+                                                            <td className="p-2 text-right font-mono text-muted-foreground">
+                                                                Rs. {formatCurrency(it.price)}
+                                                            </td>
+                                                            <td className="p-2 text-right font-mono font-semibold">
+                                                                Rs. {formatCurrency(act.type === "claim" ? (it.approvedAmount ?? it.lineTotal) : it.lineTotal)}
+                                                            </td>
+                                                            {act.type === "claim" && (
+                                                                <td className="p-2 text-center">
+                                                                    <Badge variant="outline" className={cn(
+                                                                        "text-[9px] uppercase px-1.5 py-0 h-4 font-mono",
+                                                                        it.status === "APPROVED" ? "bg-emerald-500/10 text-emerald-700 border-emerald-300" :
+                                                                        it.status === "REJECTED" ? "bg-rose-500/10 text-rose-700 border-rose-300" :
+                                                                        "bg-amber-500/10 text-amber-700 border-amber-300"
+                                                                    )}>
+                                                                        {it.status || "Pending"}
+                                                                    </Badge>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+
+                                    {/* Vouchers and Tenders Info */}
+                                    <div className="flex flex-wrap gap-4 items-center justify-between pt-2 text-xs">
+                                        <div className="flex flex-wrap gap-2.5 items-center">
+                                            {/* Tenders Displayed (for Sale) */}
+                                            {act.tenders && act.tenders.length > 0 && (
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-muted-foreground">Payment Tenders:</span>
+                                                    {act.tenders.map((tend: any, tIdx: number) => {
+                                                        const TendIcon = TENDER_ICONS[tend.method] || Banknote;
+                                                        return (
+                                                            <Badge key={tIdx} variant="secondary" className="gap-1 font-mono text-[10px] capitalize">
+                                                                    <TendIcon className="h-2.5 w-2.5 shrink-0 text-muted-foreground" />
+                                                                    {tend.method.replace("_", " ")}
+                                                                    {tend.slipNo && <span className="text-[9px] text-muted-foreground ml-0.5">#{tend.slipNo}</span>}
+                                                                    <span className="font-semibold text-foreground ml-1">Rs.{formatCurrency(tend.amount)}</span>
+                                                            </Badge>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* Issued Vouchers Highlight Box */}
+                                            {act.issuedVouchers && act.issuedVouchers.length > 0 && (
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-rose-600 dark:text-rose-400 font-semibold">Issued Voucher:</span>
+                                                    {act.issuedVouchers.map((v: any, vIdx: number) => (
+                                                        <div key={vIdx} className="inline-flex items-center gap-1.5 bg-rose-500/10 border border-rose-200 dark:border-rose-950 text-rose-700 dark:text-rose-300 rounded px-2 py-0.5 font-mono text-[10px] font-semibold">
+                                                            <Ticket className="h-3 w-3" />
+                                                            <span>{v.code}</span>
+                                                            <span className="text-muted-foreground border-l pl-1.5">Rs.{formatCurrency(v.faceValue)}</span>
+                                                            {v.expiresAt && (
+                                                                <span className="text-muted-foreground border-l pl-1.5 text-[9px]">Expires {fmtDate(v.expiresAt)}</span>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Notes */}
+                                            {act.reasonNotes && (
+                                                <div className="text-muted-foreground truncate">
+                                                    <span className="font-semibold">Reason:</span> {act.reasonNotes}
+                                                </div>
+                                            )}
+                                            {act.reviewNotes && (
+                                                <div className="text-muted-foreground truncate">
+                                                    <span className="font-semibold">Reviewer Notes:</span> {act.reviewNotes}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
 
                     {/* Pagination Controls */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t pt-4">
                         <div className="text-xs sm:text-sm text-muted-foreground font-medium">
                             Showing page <span className="font-bold text-foreground">{currentPage}</span> of{" "}
-                            <span className="font-bold text-foreground">{totalPages}</span> ({totalRows} total orders)
+                            <span className="font-bold text-foreground">{totalPages}</span> ({totalRows} total activities)
                         </div>
                         <div className="flex items-center gap-2">
                             <Button

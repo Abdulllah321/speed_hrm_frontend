@@ -45,7 +45,7 @@ export function ManagerVerificationDialog({
 
     useEffect(() => {
         if (open) {
-            setEmailOrId(user?.email || "");
+            setEmailOrId(user?.email || user?.employee?.employeeId|| "");
             setPassword("");
             setNote("");
         }
@@ -98,9 +98,8 @@ export function ManagerVerificationDialog({
                             id="mgr-login"
                             type="text"
                             value={emailOrId}
-                            onChange={(e) => setEmailOrId(e.target.value)}
-                            placeholder="manager@company.com or employee-ID"
-                            disabled={isPending}
+                            readOnly
+                            disabled
                         />
                     </div>
                     <div className="space-y-2">

@@ -1647,17 +1647,17 @@ export const menuData: MenuItem[] = [
         permissions: ["pos.inventory.receipt.view"],
       },
       {
-        title: "Receiving",
+        title: "Warehouse Receiving",
         href: "/pos/inventory/receiving",
         permissions: ["pos.inventory.receiving.view"],
       },
       {
-        title: "Inbound Transfers",
+        title: "Outlet Stock In",
         href: "/pos/inventory/inbound",
         permissions: ["pos.inventory.inbound.view"],
       },
       {
-        title: "Outbound Transfers",
+        title: "Outlet Stock out",
         href: "/pos/inventory/outbound",
         permissions: ["pos.inventory.outbound.view"],
       },
