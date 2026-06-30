@@ -34,9 +34,10 @@ export async function getReturnTransferRequests(locationId: string) {
     }
 }
 
-export async function getOutboundTransferRequests(locationId: string) {
+export async function getOutboundTransferRequests(locationId: string, status?: string) {
     try {
-        const response = await authFetch(`/transfer-request/outbound-requests?locationId=${locationId}`);
+        const query = status ? `&status=${status}` : '';
+        const response = await authFetch(`/transfer-request/outbound-requests?locationId=${locationId}${query}`);
         return response.data ?? { status: false, data: [] };
     } catch (error) {
         console.error("Get outbound transfer requests error:", error);
@@ -44,9 +45,10 @@ export async function getOutboundTransferRequests(locationId: string) {
     }
 }
 
-export async function getInboundTransferRequests(locationId: string) {
+export async function getInboundTransferRequests(locationId: string, status?: string) {
     try {
-        const response = await authFetch(`/transfer-request/inbound-requests?locationId=${locationId}`);
+        const query = status ? `&status=${status}` : '';
+        const response = await authFetch(`/transfer-request/inbound-requests?locationId=${locationId}${query}`);
         return response.data ?? { status: false, data: [] };
     } catch (error) {
         console.error("Get inbound transfer requests error:", error);
@@ -123,11 +125,11 @@ export async function acceptTransferRequest(id: string, userId?: string) {
     }
 }
 
-export async function approveSourceTransferRequest(id: string, userId?: string) {
+export async function approveSourceTransferRequest(id: string, userId?: string, items?: { itemId: string; quantity: number }[]) {
     try {
         const response = await authFetch(`/transfer-request/${id}/approve-source`, {
             method: "POST",
-            body: JSON.stringify({ userId }),
+            body: JSON.stringify({ userId, items }),
         });
         revalidatePath("/erp/inventory/transactions/stock-transfer");
         return response.data ?? { status: false, message: "Failed to approve source" };
