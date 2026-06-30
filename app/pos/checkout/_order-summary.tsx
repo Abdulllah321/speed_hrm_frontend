@@ -97,17 +97,17 @@ export function OrderSummary({
                 <span className="font-semibold text-sm">Order Summary</span>
             </div>
 
-            {/* Cashier Selection */}
+            {/* Salesman Selection */}
             <div className="px-4 py-4 border-b space-y-3 bg-muted/5">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <UserRound className="h-3 w-3" /> Cashier / Employee
+                    <UserRound className="h-3 w-3" /> Salesman
                 </Label>
                 <Select value={selectedCashierId} onValueChange={onCashierChange}>
                     <SelectTrigger 
                         id="cashier-select-trigger"
                         className="w-full bg-muted/20 border-none h-10 px-3 font-medium"
                     >
-                        <SelectValue placeholder={isLoadingCashiers ? "Loading cashiers..." : "Select Cashier"} />
+                        <SelectValue placeholder={isLoadingCashiers ? "Loading salesmen..." : "Select Salesman"} />
                     </SelectTrigger>
                     <SelectContent>
                         {isLoadingCashiers ? (
@@ -116,7 +116,7 @@ export function OrderSummary({
                             </div>
                         ) : cashiers.length === 0 ? (
                             <div className="p-4 text-center text-xs text-muted-foreground">
-                                No cashiers found for this location
+                                No salesmen found for this location
                             </div>
                         ) : (
                             cashiers.map((c) => (

@@ -1393,7 +1393,7 @@ export default function CheckoutPage() {
                         <p className="font-bold text-[10px] uppercase tracking-wider text-primary mb-1.5 text-left">Navigation & Customer</p>
                         <div className="space-y-1.5 font-medium">
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Search/Select Customer</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">F6</kbd></div>
-                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Select Cashier</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + A</kbd></div>
+                            <div className="flex justify-between items-center"><span className="text-muted-foreground">Select Salesman</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + A</kbd></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Add New Customer</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Alt + N</kbd></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground">Go Back to Cart</span><kbd className="px-1.5 py-0.5 bg-muted border rounded text-[10px] font-mono">Esc</kbd></div>
                         </div>

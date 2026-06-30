@@ -1289,7 +1289,7 @@ function A4InvoiceBody({
             </div>
             <div className="text-[10px] text-zinc-500 space-y-0.5 pt-1">
               <p><span className="font-semibold text-zinc-700">Date:</span> {fmtDate(order?.createdAt)}</p>
-              {cashierName && <p><span className="font-semibold text-zinc-700">Cashier:</span> {cashierName}</p>}
+              {cashierName && <p><span className="font-semibold text-zinc-700">Salesman:</span> {cashierName}</p>}
               {terminalName && <p><span className="font-semibold text-zinc-700">Terminal:</span> {terminalName}</p>}
             </div>
           </div>
