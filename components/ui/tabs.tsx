@@ -171,7 +171,7 @@ function Tabs({
   )
 }
 
-interface TabsListProps extends React.ComponentProps<typeof TabsPrimitive.List>, VariantProps<typeof tabsListVariants> { }
+interface TabsListProps extends Omit<React.ComponentProps<typeof TabsPrimitive.List>, "color">, VariantProps<typeof tabsListVariants> { }
 
 function TabsList({
   className,
@@ -260,8 +260,8 @@ function TabsList({
             transition: 'left 400ms cubic-bezier(0.34, 1.56, 0.64, 1), width 400ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 300ms ease',
             willChange: 'left, width',
             // CSS variable for glow color
-            '--indicator-glow': color === 'primary' ? '59, 130, 246' : color === 'success' ? '16, 185, 129' : color === 'warning' ? '245, 158, 11' : color === 'danger' ? '239, 68, 68' : '0, 0, 0',
-          } as React.CSSProperties}
+            ['--indicator-glow' as any]: color === 'primary' ? '59, 130, 246' : color === 'success' ? '16, 185, 129' : color === 'warning' ? '245, 158, 11' : color === 'danger' ? '239, 68, 68' : '0, 0, 0',
+          }}
         />
       )}
       {children}
@@ -269,7 +269,7 @@ function TabsList({
   )
 }
 
-interface TabsTriggerProps extends React.ComponentProps<typeof TabsPrimitive.Trigger>, VariantProps<typeof tabsTriggerVariants> { }
+interface TabsTriggerProps extends Omit<React.ComponentProps<typeof TabsPrimitive.Trigger>, "color">, VariantProps<typeof tabsTriggerVariants> { }
 
 function TabsTrigger({
   className,
