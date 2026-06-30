@@ -489,6 +489,7 @@ export default function PosVouchersPage() {
                                         <TableHead>Code</TableHead>
                                         <TableHead>Type</TableHead>
                                         <TableHead>Description</TableHead>
+                                        <TableHead>Issued From</TableHead>
                                         <TableHead className="text-right">Value</TableHead>
                                         <TableHead>Expires</TableHead>
                                         <TableHead>Issued</TableHead>
@@ -521,6 +522,16 @@ export default function PosVouchersPage() {
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground max-w-40 truncate">
                                                     {v.description ? v.description : v.companyName ? `${v.companyName}${v.companyGlCode ? ` (${v.companyGlCode})` : ""}` : "—"}
+                                                </TableCell>
+                                                <TableCell className="text-sm">
+                                                    {v.issuedByLocation ? (
+                                                        <div className="space-y-0.5">
+                                                            <div className="font-semibold text-foreground truncate max-w-40">{v.issuedByLocation.name}</div>
+                                                            <div className="text-[10px] text-muted-foreground font-mono">{v.issuedByLocation.code}</div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground italic text-xs">Global</span>
+                                                    )}
                                                 </TableCell>
                                                  <TableCell className="text-right font-mono">
                                                      <div className="font-semibold">{formatCurrency(Number(v.faceValue))}</div>

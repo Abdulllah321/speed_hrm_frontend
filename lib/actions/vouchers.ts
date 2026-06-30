@@ -36,6 +36,11 @@ export interface Voucher {
         returnNumber?: string | null;
         refundNumber?: string | null;
     } | null;
+    issuedByLocation?: {
+        id: string;
+        name: string;
+        code: string;
+    } | null;
 }
 
 export interface MerchantConfig {
