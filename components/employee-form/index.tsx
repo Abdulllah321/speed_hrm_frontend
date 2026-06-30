@@ -232,14 +232,7 @@ const employeeFormSchema = z.object({
       (value) => !value || value.trim() === "" || value.trim().length > 0,
       "EOBI Code is required if provided",
     ),
-  eobiNumber: z
-    .string()
-    .optional()
-    .refine(
-      (value) =>
-        !value || value.trim() === "" || /^\d{7,10}$/.test(value.trim()),
-      "EOBI Number must be 7-10 digits",
-    ),
+  eobiNumber: z.string().optional(),
 
   providentFund: z.boolean().default(false),
 
