@@ -1588,6 +1588,11 @@ export const menuData: MenuItem[] = [
         permissions: ["pos.sales.history.view"],
       },
       {
+        title: "Sales Activity",
+        href: "/pos/sales/activity",
+        permissions: ["pos.sales.history.view"],
+      },
+      {
         title: "Hold Orders",
         href: "/pos/holds",
         permissions: ["pos.hold.view"],

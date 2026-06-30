@@ -24,7 +24,8 @@ import {
     ShoppingCart,
     Inbox,
     RefreshCw,
-    Folder
+    Folder,
+    Settings
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
@@ -40,7 +41,16 @@ export default function PosStockActivityReportPage() {
         to: endOfMonth(new Date()),
     });
 
-    const [summaryOnly, setSummaryOnly] = useState(false);
+    const [groupingLevels, setGroupingLevels] = useState({
+        brand: true,
+        division: true,
+        category: true,
+        gender: true,
+        silhouette: true,
+        article: true,
+        variant: false,
+    });
+
     const [reportData, setReportData] = useState<any[]>([]);
     const [isPending, startTransition] = useTransition();
     const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
@@ -55,6 +65,8 @@ export default function PosStockActivityReportPage() {
     const [pdfExportState, setPdfExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
     const [pdfExportProgress, setPdfExportProgress] = useState<number>(0);
 
+    const summaryOnly = !groupingLevels.variant;
+
     const fetchReport = useCallback(() => {
         if (!locationId || !dateRange.from || !dateRange.to) return;
         startTransition(async () => {
@@ -63,6 +75,13 @@ export default function PosStockActivityReportPage() {
                 startDate: dateRange.from?.toISOString(),
                 endDate: dateRange.to?.toISOString(),
                 summaryOnly,
+                showBrand: groupingLevels.brand,
+                showDivision: groupingLevels.division,
+                showCategory: groupingLevels.category,
+                showGender: groupingLevels.gender,
+                showSilhouette: groupingLevels.silhouette,
+                showArticle: groupingLevels.article,
+                showVariant: groupingLevels.variant,
             });
             if (result && result.status !== false) {
                 setReportData(result.data || result);
@@ -70,11 +89,11 @@ export default function PosStockActivityReportPage() {
                 toast.error("Failed to load report data");
             }
         });
-    }, [locationId, dateRange, summaryOnly]);
+    }, [locationId, dateRange, groupingLevels, summaryOnly]);
 
     useEffect(() => {
         fetchReport();
-    }, [locationId, summaryOnly]);
+    }, [locationId, groupingLevels]);
 
     // Poll Excel Export Job Status
     useEffect(() => {
@@ -188,6 +207,13 @@ export default function PosStockActivityReportPage() {
                 endDate: dateRange.to.toISOString(),
                 format: "xlsx",
                 summaryOnly,
+                showBrand: groupingLevels.brand,
+                showDivision: groupingLevels.division,
+                showCategory: groupingLevels.category,
+                showGender: groupingLevels.gender,
+                showSilhouette: groupingLevels.silhouette,
+                showArticle: groupingLevels.article,
+                showVariant: groupingLevels.variant,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -254,6 +280,13 @@ export default function PosStockActivityReportPage() {
                 endDate: dateRange.to.toISOString(),
                 format: "pdf",
                 summaryOnly,
+                showBrand: groupingLevels.brand,
+                showDivision: groupingLevels.division,
+                showCategory: groupingLevels.category,
+                showGender: groupingLevels.gender,
+                showSilhouette: groupingLevels.silhouette,
+                showArticle: groupingLevels.article,
+                showVariant: groupingLevels.variant,
             });
 
             if (res && res.status && res.data?.jobId) {
@@ -293,80 +326,117 @@ export default function PosStockActivityReportPage() {
             balance: 0,
         };
 
-        for (const d of reportData) {
-            t.bf += d.totals.bf;
-            t.fromWarehouse += d.totals.fromWarehouse;
-            t.fromOutlet += d.totals.fromOutlet;
-            t.totalTrfIn += d.totals.totalTrfIn;
-            t.toWarehouse += d.totals.toWarehouse;
-            t.toOutlet += d.totals.toOutlet;
-            t.totalTrfOut += d.totals.totalTrfOut;
-            t.exchg += d.totals.exchg;
-            t.refund += d.totals.refund;
-            t.claim += d.totals.claim;
-            t.sales += d.totals.sales;
-            t.adj += d.totals.adj;
-            t.availableStock += d.totals.availableStock;
-            t.transit += d.totals.transit;
-            t.balance += d.totals.balance;
-
-            // Recurse to count total articles
-            d.brands.forEach((br: any) => {
-                br.genders.forEach((g: any) => {
-                    g.categories.forEach((cat: any) => {
-                        t.totalArticles += cat.articles.length;
-                    });
-                });
-            });
+        for (const node of reportData) {
+            if (!node || !node.totals) continue;
+            t.bf += node.totals.bf;
+            t.fromWarehouse += node.totals.fromWarehouse;
+            t.fromOutlet += node.totals.fromOutlet;
+            t.totalTrfIn += node.totals.totalTrfIn;
+            t.toWarehouse += node.totals.toWarehouse;
+            t.toOutlet += node.totals.toOutlet;
+            t.totalTrfOut += node.totals.totalTrfOut;
+            t.exchg += node.totals.exchg;
+            t.refund += node.totals.refund;
+            t.claim += node.totals.claim;
+            t.sales += node.totals.sales;
+            t.adj += node.totals.adj;
+            t.availableStock += node.totals.availableStock;
+            t.transit += node.totals.transit;
+            t.balance += node.totals.balance;
         }
+
+        const countArticles = (node: any) => {
+            if (!node) return;
+            if (node.level === 'article') {
+                t.totalArticles += 1;
+            }
+            if (node.children && node.children.length > 0) {
+                for (const child of node.children) {
+                    countArticles(child);
+                }
+            }
+        };
+
+        for (const node of reportData) {
+            countArticles(node);
+        }
+
         return t;
     }, [reportData]);
 
     // Flatten nested tree for TanStack Virtual list virtualization
     const flatRows = useMemo(() => {
         const rows: any[] = [];
-        for (const d of reportData) {
-            rows.push({ id: `div-${d.division}`, type: 'division', label: `DIVISION: ${d.division.toUpperCase()}`, totals: d.totals });
-            for (const b of d.brands) {
-                rows.push({ id: `brand-${d.division}-${b.brand}`, type: 'brand', label: `BRAND: ${b.brand.toUpperCase()}`, totals: b.totals });
-                for (const g of b.genders) {
-                    rows.push({ id: `gender-${d.division}-${b.brand}-${g.gender}`, type: 'gender', label: `GENDER: ${g.gender.toUpperCase()}`, totals: g.totals });
-                    for (const c of g.categories) {
-                        rows.push({ id: `cat-${d.division}-${b.brand}-${g.gender}-${c.category}`, type: 'category', label: `CATEGORY: ${c.category.toUpperCase()}`, totals: c.totals });
-                        for (const a of c.articles) {
-                            rows.push({ id: `art-${a.sku}`, type: 'article', label: `${a.articleName}`, sku: a.sku, totals: a.totals });
-                            if (!summaryOnly) {
-                                for (const v of a.variants) {
-                                    rows.push({
-                                        id: `var-${a.sku}-${v.color}-${v.size}`,
-                                        type: 'variant',
-                                        color: v.color,
-                                        size: v.size,
-                                        bf: v.bf,
-                                        fromWarehouse: v.fromWarehouse,
-                                        fromOutlet: v.fromOutlet,
-                                        totalTrfIn: v.totalTrfIn,
-                                        toWarehouse: v.toWarehouse,
-                                        toOutlet: v.toOutlet,
-                                        totalTrfOut: v.totalTrfOut,
-                                        exchg: v.exchg,
-                                        refund: v.refund,
-                                        claim: v.claim,
-                                        sales: v.sales,
-                                        adj: v.adj,
-                                        availableStock: v.availableStock,
-                                        transit: v.transit,
-                                        balance: v.balance,
-                                    });
-                                }
-                            }
-                        }
-                    }
+        
+        const visit = (node: any, path: string = "") => {
+            if (!node) return;
+            const currentPath = path ? `${path}-${node.level}-${node.value}` : `${node.level}-${node.value}`;
+            
+            if (node.level === 'article') {
+                rows.push({
+                    id: `art-${node.sku}`,
+                    type: 'article',
+                    label: node.articleName,
+                    sku: node.sku,
+                    totals: node.totals,
+                });
+            } else if (node.level === 'variant') {
+                rows.push({
+                    id: `var-${currentPath}`,
+                    type: 'variant',
+                    color: node.color,
+                    size: node.size,
+                    bf: node.totals.bf,
+                    fromWarehouse: node.totals.fromWarehouse,
+                    fromOutlet: node.totals.fromOutlet,
+                    totalTrfIn: node.totals.totalTrfIn,
+                    toWarehouse: node.totals.toWarehouse,
+                    toOutlet: node.totals.toOutlet,
+                    totalTrfOut: node.totals.totalTrfOut,
+                    exchg: node.totals.exchg,
+                    refund: node.totals.refund,
+                    claim: node.totals.claim,
+                    sales: node.totals.sales,
+                    adj: node.totals.adj,
+                    availableStock: node.totals.availableStock,
+                    transit: node.totals.transit,
+                    balance: node.totals.balance,
+                });
+            } else {
+                rows.push({
+                    id: `${node.level}-${currentPath}`,
+                    type: node.level,
+                    label: `${node.value.toUpperCase()}`,
+                    totals: node.totals,
+                });
+            }
+            
+            if (node.children && node.children.length > 0) {
+                for (const child of node.children) {
+                    visit(child, currentPath);
                 }
             }
+        };
+
+        for (const rootNode of reportData) {
+            visit(rootNode);
         }
+        
         return rows;
-    }, [reportData, summaryOnly]);
+    }, [reportData]);
+
+    const handleToggleLevel = (level: keyof typeof groupingLevels, checked: boolean) => {
+        setGroupingLevels(prev => {
+            const next = { ...prev, [level]: checked };
+            if (level === 'division' && checked) {
+                next.brand = true;
+            }
+            if (level === 'brand' && !checked) {
+                next.division = false;
+            }
+            return next;
+        });
+    };
 
     // Setup TanStack Virtualizer
     const parentRef = useRef<HTMLDivElement>(null);
@@ -505,24 +575,134 @@ export default function PosStockActivityReportPage() {
                     >
                         Apply / Refresh
                     </Button>
-
-                    <div className="flex items-center gap-2 border-l pl-4 ml-2">
-                        <input
-                            type="checkbox"
-                            id="summaryOnlyToggle"
-                            checked={summaryOnly}
-                            onChange={(e) => setSummaryOnly(e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
-                        />
-                        <label htmlFor="summaryOnlyToggle" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none">
-                            Summary Only (Hide Sizes)
-                        </label>
-                    </div>
                 </div>
 
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold">
                     <Folder className="h-4 w-4 text-primary" />
                     <span>{COMPANY_NAME} &bull; Virtualized High-Performance Scroll</span>
+                </div>
+            </div>
+
+            {/* Report Hierarchy Configuration */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-xs space-y-4 no-print">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <Settings className="h-4 w-4 text-primary" />
+                            Report Hierarchy Configuration
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Customize the nesting structure. Check the levels you want to group and report by (Brand and Division are root levels).
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4 pt-2">
+                    {/* Brand Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-brand"
+                            checked={groupingLevels.brand}
+                            onChange={(e) => handleToggleLevel('brand', e.target.checked)}
+                            disabled={groupingLevels.division}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer disabled:opacity-50"
+                        />
+                        <label htmlFor="group-brand" className={cn("text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5", groupingLevels.division && "opacity-60 cursor-not-allowed")}>
+                            <Layers className="h-3.5 w-3.5 text-indigo-500" />
+                            Brand
+                        </label>
+                    </div>
+
+                    {/* Division Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-division"
+                            checked={groupingLevels.division}
+                            onChange={(e) => handleToggleLevel('division', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-division" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Folder className="h-3.5 w-3.5 text-blue-500" />
+                            Division
+                        </label>
+                    </div>
+
+                    {/* Category Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-category"
+                            checked={groupingLevels.category}
+                            onChange={(e) => handleToggleLevel('category', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-category" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <ShoppingCart className="h-3.5 w-3.5 text-emerald-500" />
+                            Category
+                        </label>
+                    </div>
+
+                    {/* Gender Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-gender"
+                            checked={groupingLevels.gender}
+                            onChange={(e) => handleToggleLevel('gender', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-gender" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Store className="h-3.5 w-3.5 text-rose-500" />
+                            Gender
+                        </label>
+                    </div>
+
+                    {/* Silhouette Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-silhouette"
+                            checked={groupingLevels.silhouette}
+                            onChange={(e) => handleToggleLevel('silhouette', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-silhouette" className="text-xs font-bold text-slate-750 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <TrendingUp className="h-3.5 w-3.5 text-amber-500" />
+                            Silhouette
+                        </label>
+                    </div>
+
+                    {/* Article Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-article"
+                            checked={groupingLevels.article}
+                            onChange={(e) => handleToggleLevel('article', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-article" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Inbox className="h-3.5 w-3.5 text-cyan-500" />
+                            Article
+                        </label>
+                    </div>
+
+                    {/* Variant Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-variant"
+                            checked={groupingLevels.variant}
+                            onChange={(e) => handleToggleLevel('variant', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-variant" className="text-xs font-bold text-slate-750 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Printer className="h-3.5 w-3.5 text-fuchsia-500" />
+                            Variant (Sizes)
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -663,158 +843,76 @@ export default function PosStockActivityReportPage() {
                                         <td colSpan={18} style={{ height: `${paddingTop}px` }} />
                                     </tr>
                                 )}
-                                {virtualItems.map((virtualRow) => {
+                                 {virtualItems.map((virtualRow) => {
                                     const row = flatRows[virtualRow.index];
                                     
-                                    if (row.type === 'division') {
-                                        return (
-                                            <tr key={row.id} className="bg-slate-900 text-slate-100 font-black border-b h-[40px]">
-                                                <td colSpan={3} className="p-3 border-r text-sm">
-                                                    {row.label}
-                                                </td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.bf)}</td>
-                                                <td className="p-3 text-right bg-emerald-500/5">{formatVal(row.totals.fromWarehouse)}</td>
-                                                <td className="p-3 text-right bg-emerald-500/5">{formatVal(row.totals.fromOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-400 font-black">{formatVal(row.totals.totalTrfIn)}</td>
-                                                <td className="p-3 text-right bg-rose-500/5">{formatVal(row.totals.toWarehouse)}</td>
-                                                <td className="p-3 text-right bg-rose-500/5">{formatVal(row.totals.toOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-rose-500/10 text-rose-400 font-black">{formatVal(row.totals.totalTrfOut)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.exchg)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.refund)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.claim)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.sales)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.adj)}</td>
-                                                <td className="p-3 border-r text-right bg-blue-500/5 text-blue-400 font-black">{formatVal(row.totals.availableStock)}</td>
-                                                <td className="p-3 border-r text-right text-amber-400 font-black">{formatVal(row.totals.transit)}</td>
-                                                <td className="p-3 text-right bg-slate-500/5 font-black">{formatVal(row.totals.balance)}</td>
-                                            </tr>
-                                        );
-                                    }
+                                    const LEVEL_UI_STYLES: Record<string, { className: string; indentClass: string }> = {
+                                        brand: { className: "bg-slate-900 text-slate-100 font-black border-b h-[40px]", indentClass: "pl-3 text-slate-100" },
+                                        division: { className: "bg-slate-800 text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
+                                        category: { className: "bg-slate-700 text-white font-bold border-b h-[40px]", indentClass: "pl-9 text-white" },
+                                        gender: { className: "bg-slate-600 text-white font-semibold border-b h-[40px]", indentClass: "pl-12 text-white" },
+                                        silhouette: { className: "bg-slate-500 text-slate-100 font-medium border-b h-[40px]", indentClass: "pl-16 text-slate-105" },
+                                        article: { className: "bg-slate-100/25 dark:bg-slate-900/15 font-semibold text-slate-800 dark:text-slate-200 border-b h-[45px]", indentClass: "pl-20" },
+                                        variant: { className: "hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]", indentClass: "pl-24" },
+                                    };
 
-                                    if (row.type === 'brand') {
-                                        return (
-                                            <tr key={row.id} className="bg-slate-750 text-white font-extrabold border-b h-[40px]">
-                                                <td colSpan={3} className="p-3 pl-6 border-r text-xs">
-                                                    &nbsp;&nbsp;{row.label}
-                                                </td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.bf)}</td>
-                                                <td className="p-3 text-right bg-emerald-500/5">{formatVal(row.totals.fromWarehouse)}</td>
-                                                <td className="p-3 text-right bg-emerald-500/5">{formatVal(row.totals.fromOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-400 font-extrabold">{formatVal(row.totals.totalTrfIn)}</td>
-                                                <td className="p-3 text-right bg-rose-500/5">{formatVal(row.totals.toWarehouse)}</td>
-                                                <td className="p-3 text-right bg-rose-500/5">{formatVal(row.totals.toOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-rose-500/10 text-rose-400 font-extrabold">{formatVal(row.totals.totalTrfOut)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.exchg)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.refund)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.claim)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.sales)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.adj)}</td>
-                                                <td className="p-3 border-r text-right bg-blue-500/5 text-blue-400 font-extrabold">{formatVal(row.totals.availableStock)}</td>
-                                                <td className="p-3 border-r text-right text-amber-400 font-extrabold">{formatVal(row.totals.transit)}</td>
-                                                <td className="p-3 text-right bg-slate-500/5 font-extrabold">{formatVal(row.totals.balance)}</td>
-                                            </tr>
-                                        );
-                                    }
+                                    const style = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.brand;
+                                    
+                                    const isArticle = row.type === 'article';
+                                    const isVariant = row.type === 'variant';
+                                    const totals = row.totals || {
+                                        bf: row.bf, fromWarehouse: row.fromWarehouse, fromOutlet: row.fromOutlet, totalTrfIn: row.totalTrfIn,
+                                        toWarehouse: row.toWarehouse, toOutlet: row.toOutlet, totalTrfOut: row.totalTrfOut, exchg: row.exchg,
+                                        refund: row.refund, claim: row.claim, sales: row.sales, adj: row.adj, availableStock: row.availableStock,
+                                        transit: row.transit, balance: row.balance
+                                    };
 
-                                    if (row.type === 'gender') {
-                                        return (
-                                            <tr key={row.id} className="bg-slate-600 text-white font-bold border-b h-[40px]">
-                                                <td colSpan={3} className="p-3 pl-10 border-r text-[11px]">
-                                                    &nbsp;&nbsp;&nbsp;&nbsp;{row.label}
-                                                </td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.bf)}</td>
-                                                <td className="p-3 text-right bg-emerald-500/5">{formatVal(row.totals.fromWarehouse)}</td>
-                                                <td className="p-3 text-right bg-emerald-500/5">{formatVal(row.totals.fromOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-300 font-semibold">{formatVal(row.totals.totalTrfIn)}</td>
-                                                <td className="p-3 text-right bg-rose-500/5">{formatVal(row.totals.toWarehouse)}</td>
-                                                <td className="p-3 text-right bg-rose-500/5">{formatVal(row.totals.toOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-rose-500/10 text-rose-300 font-semibold">{formatVal(row.totals.totalTrfOut)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.exchg)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.refund)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.claim)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.sales)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.adj)}</td>
-                                                <td className="p-3 border-r text-right bg-blue-500/5 text-blue-300 font-semibold">{formatVal(row.totals.availableStock)}</td>
-                                                <td className="p-3 border-r text-right text-amber-300 font-semibold">{formatVal(row.totals.transit)}</td>
-                                                <td className="p-3 text-right bg-slate-500/5 font-semibold">{formatVal(row.totals.balance)}</td>
-                                            </tr>
-                                        );
-                                    }
-
-                                    if (row.type === 'category') {
-                                        return (
-                                            <tr key={row.id} className="bg-slate-400 text-slate-900 font-semibold border-b h-[40px]">
-                                                <td colSpan={3} className="p-3 pl-14 border-r text-[10px]">
-                                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{row.label}
-                                                </td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.bf)}</td>
-                                                <td className="p-3 text-right bg-emerald-500/5">{formatVal(row.totals.fromWarehouse)}</td>
-                                                <td className="p-3 text-right bg-emerald-500/5">{formatVal(row.totals.fromOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-800">{formatVal(row.totals.totalTrfIn)}</td>
-                                                <td className="p-3 text-right bg-rose-500/5">{formatVal(row.totals.toWarehouse)}</td>
-                                                <td className="p-3 text-right bg-rose-500/5">{formatVal(row.totals.toOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-rose-500/10 text-rose-800">{formatVal(row.totals.totalTrfOut)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.exchg)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.refund)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.claim)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.sales)}</td>
-                                                <td className="p-3 border-r text-right">{formatVal(row.totals.adj)}</td>
-                                                <td className="p-3 border-r text-right bg-blue-500/5 text-blue-800">{formatVal(row.totals.availableStock)}</td>
-                                                <td className="p-3 border-r text-right text-amber-800">{formatVal(row.totals.transit)}</td>
-                                                <td className="p-3 text-right bg-slate-500/5">{formatVal(row.totals.balance)}</td>
-                                            </tr>
-                                        );
-                                    }
-
-                                    if (row.type === 'article') {
-                                        return (
-                                            <tr key={row.id} className="bg-slate-100/25 dark:bg-slate-900/15 font-semibold text-slate-800 dark:text-slate-200 border-b h-[45px]">
-                                                <td className="p-3 pl-20 border-r flex flex-col font-bold">
+                                    return (
+                                        <tr key={row.id} className={style.className}>
+                                            {isArticle ? (
+                                                <td className={cn("p-3 border-r flex flex-col font-bold justify-center", style.indentClass)}>
                                                     <span className="text-[10px] text-primary">SKU: {row.sku}</span>
                                                     <span className="text-slate-700 dark:text-slate-350">{row.label}</span>
                                                 </td>
-                                                <td className="p-3 border-r text-center text-[10px] font-bold text-muted-foreground uppercase bg-slate-50/20">All Colors</td>
-                                                <td className="p-3 border-r text-center text-[10px] font-bold text-muted-foreground uppercase bg-slate-50/20">All Sizes</td>
-                                                <td className="p-3 border-r text-right text-slate-700 font-bold">{formatVal(row.totals.bf)}</td>
-                                                <td className="p-3 text-right text-slate-600 bg-emerald-500/5">{formatVal(row.totals.fromWarehouse)}</td>
-                                                <td className="p-3 text-right text-slate-600 bg-emerald-500/5">{formatVal(row.totals.fromOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-emerald-500/10 text-emerald-700 font-bold">{formatVal(row.totals.totalTrfIn)}</td>
-                                                <td className="p-3 text-right text-slate-600 bg-rose-500/5">{formatVal(row.totals.toWarehouse)}</td>
-                                                <td className="p-3 text-right text-slate-600 bg-rose-500/5">{formatVal(row.totals.toOutlet)}</td>
-                                                <td className="p-3 border-r text-right bg-rose-500/10 text-rose-700 font-bold">{formatVal(row.totals.totalTrfOut)}</td>
-                                                <td className="p-3 border-r text-right text-slate-600">{formatVal(row.totals.exchg)}</td>
-                                                <td className="p-3 border-r text-right text-slate-600">{formatVal(row.totals.refund)}</td>
-                                                <td className="p-3 border-r text-right text-slate-600">{formatVal(row.totals.claim)}</td>
-                                                <td className="p-3 border-r text-right text-slate-600">{formatVal(row.totals.sales)}</td>
-                                                <td className="p-3 border-r text-right text-slate-600">{formatVal(row.totals.adj)}</td>
-                                                <td className="p-3 border-r text-right bg-blue-500/5 text-blue-700 font-bold">{formatVal(row.totals.availableStock)}</td>
-                                                <td className="p-3 border-r text-right text-amber-700 font-bold">{formatVal(row.totals.transit)}</td>
-                                                <td className="p-3 text-right bg-slate-500/5 text-slate-800 dark:text-slate-100 font-black">{formatVal(row.totals.balance)}</td>
-                                            </tr>
-                                        );
-                                    }
+                                            ) : isVariant ? (
+                                                <td className={cn("p-3 border-r text-muted-foreground italic", style.indentClass)}>
+                                                    &mdash; Variant Item
+                                                </td>
+                                            ) : (
+                                                <td colSpan={3} className={cn("p-3 border-r text-xs font-bold", style.indentClass)}>
+                                                    {row.label}
+                                                </td>
+                                            )}
 
-                                    // Variant Row
-                                    return (
-                                        <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]">
-                                            <td className="p-3 border-r pl-24 text-muted-foreground italic">&mdash; Variant Item</td>
-                                            <td className="p-3 border-r text-center font-semibold text-slate-700 dark:text-slate-300">{row.color}</td>
-                                            <td className="p-3 border-r text-center font-semibold text-slate-700 dark:text-slate-300">{row.size}</td>
-                                            <td className="p-3 border-r text-right font-medium">{formatVal(row.bf)}</td>
-                                            <td className="p-3 text-right">{formatVal(row.fromWarehouse)}</td>
-                                            <td className="p-3 text-right">{formatVal(row.fromOutlet)}</td>
-                                            <td className="p-3 border-r text-right bg-emerald-500/5 font-semibold text-emerald-600">{formatVal(row.totalTrfIn)}</td>
-                                            <td className="p-3 text-right">{formatVal(row.toWarehouse)}</td>
-                                            <td className="p-3 text-right">{formatVal(row.toOutlet)}</td>
-                                            <td className="p-3 border-r text-right bg-rose-500/5 font-semibold text-rose-600">{formatVal(row.totalTrfOut)}</td>
-                                            <td className="p-3 border-r text-right">{formatVal(row.exchg)}</td>
-                                            <td className="p-3 border-r text-right">{formatVal(row.refund)}</td>
-                                            <td className="p-3 border-r text-right">{formatVal(row.claim)}</td>
-                                            <td className="p-3 border-r text-right">{formatVal(row.sales)}</td>
-                                            <td className="p-3 border-r text-right">{formatVal(row.adj)}</td>
-                                            <td className="p-3 border-r text-right bg-blue-500/5 font-medium text-blue-600">{formatVal(row.availableStock)}</td>
-                                            <td className="p-3 border-r text-right font-medium text-amber-600">{formatVal(row.transit)}</td>
-                                            <td className="p-3 text-right bg-slate-500/5 font-medium text-slate-700 dark:text-slate-300">{formatVal(row.balance)}</td>
+                                            {isArticle && (
+                                                <>
+                                                    <td className="p-3 border-r text-center text-[10px] font-bold text-muted-foreground uppercase bg-slate-50/20">All Colors</td>
+                                                    <td className="p-3 border-r text-center text-[10px] font-bold text-muted-foreground uppercase bg-slate-50/20">All Sizes</td>
+                                                </>
+                                            )}
+
+                                            {isVariant && (
+                                                <>
+                                                    <td className="p-3 border-r text-center font-semibold text-slate-700 dark:text-slate-300">{row.color}</td>
+                                                    <td className="p-3 border-r text-center font-semibold text-slate-700 dark:text-slate-350">{row.size}</td>
+                                                </>
+                                            )}
+
+                                            <td className="p-3 border-r text-right font-medium">{formatVal(totals.bf)}</td>
+                                            <td className="p-3 text-right">{formatVal(totals.fromWarehouse)}</td>
+                                            <td className="p-3 text-right">{formatVal(totals.fromOutlet)}</td>
+                                            <td className="p-3 border-r text-right bg-emerald-500/5 font-semibold text-emerald-600">{formatVal(totals.totalTrfIn)}</td>
+                                            <td className="p-3 text-right">{formatVal(totals.toWarehouse)}</td>
+                                            <td className="p-3 text-right">{formatVal(totals.toOutlet)}</td>
+                                            <td className="p-3 border-r text-right bg-rose-500/5 font-semibold text-rose-600">{formatVal(totals.totalTrfOut)}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(totals.exchg)}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(totals.refund)}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(totals.claim)}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(totals.sales)}</td>
+                                            <td className="p-3 border-r text-right">{formatVal(totals.adj)}</td>
+                                            <td className="p-3 border-r text-right bg-blue-500/5 font-medium text-blue-600">{formatVal(totals.availableStock)}</td>
+                                            <td className="p-3 border-r text-right font-medium text-amber-600">{formatVal(totals.transit)}</td>
+                                            <td className="p-3 text-right bg-slate-500/5 font-medium text-slate-700 dark:text-slate-300">{formatVal(totals.balance)}</td>
                                         </tr>
                                     );
                                 })}

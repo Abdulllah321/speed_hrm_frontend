@@ -75,6 +75,13 @@ export async function getStockActivityReport(filters: {
     startDate?: string;
     endDate?: string;
     summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
 }) {
     try {
         const queryParams = new URLSearchParams();
@@ -82,6 +89,13 @@ export async function getStockActivityReport(filters: {
         if (filters.startDate) queryParams.append("startDate", filters.startDate);
         if (filters.endDate) queryParams.append("endDate", filters.endDate);
         if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
+        if (filters.showBrand !== undefined) queryParams.append("showBrand", String(filters.showBrand));
+        if (filters.showDivision !== undefined) queryParams.append("showDivision", String(filters.showDivision));
+        if (filters.showCategory !== undefined) queryParams.append("showCategory", String(filters.showCategory));
+        if (filters.showGender !== undefined) queryParams.append("showGender", String(filters.showGender));
+        if (filters.showSilhouette !== undefined) queryParams.append("showSilhouette", String(filters.showSilhouette));
+        if (filters.showArticle !== undefined) queryParams.append("showArticle", String(filters.showArticle));
+        if (filters.showVariant !== undefined) queryParams.append("showVariant", String(filters.showVariant));
 
         const queryString = queryParams.toString();
         const url = `/stock-ledger/activity-report${queryString ? `?${queryString}` : ""}`;
@@ -100,6 +114,13 @@ export async function queueStockActivityReportExport(filters: {
     endDate?: string;
     format: "xlsx" | "pdf";
     summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
 }): Promise<{ status: boolean; data?: { jobId: string }; message?: string }> {
     try {
         const url = `/stock-ledger/activity-report/export/queue`;
@@ -112,6 +133,13 @@ export async function queueStockActivityReportExport(filters: {
                 endDate: filters.endDate,
                 format: filters.format,
                 summaryOnly: !!filters.summaryOnly,
+                showBrand: filters.showBrand,
+                showDivision: filters.showDivision,
+                showCategory: filters.showCategory,
+                showGender: filters.showGender,
+                showSilhouette: filters.showSilhouette,
+                showArticle: filters.showArticle,
+                showVariant: filters.showVariant,
             }),
         });
         return response.data ?? { status: false, message: "No response from server" };

@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { ChartOfAccountSelect } from "@/components/ui/chart-of-account-select";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
@@ -73,8 +74,6 @@ export function GeneralLedgerSummaryClient({
   const [searchQuery, setSearchQuery] = React.useState("");
   const [fromAccountId, setFromAccountId] = React.useState<string | null>(null);
   const [toAccountId, setToAccountId] = React.useState<string | null>(null);
-  const [toSearch, setToSearch] = React.useState("");
-  const [showToDropdown, setShowToDropdown] = React.useState(false);
 
   // Keyboard navigation on list
   const [focusedIndex, setFocusedIndex] = React.useState<number>(-1);
@@ -113,6 +112,14 @@ export function GeneralLedgerSummaryClient({
     );
   }, [subAccounts, searchQuery]);
 
+  // Autocomplete options mapped from sub-accounts list
+  const autocompleteOptions = React.useMemo(() => {
+    return subAccounts.map((sa) => ({
+      value: sa.id,
+      label: `${sa.code} — ${sa.name}`,
+    }));
+  }, [subAccounts]);
+
   // Reset/select all sub-accounts on parent account selection
   React.useEffect(() => {
     if (subAccounts.length > 0) {
@@ -127,7 +134,6 @@ export function GeneralLedgerSummaryClient({
     setToSerial("");
     setFromAccountId(null);
     setToAccountId(null);
-    setToSearch("");
   }, [subAccounts]);
 
   const toggleSelectAllFiltered = () => {
@@ -221,7 +227,7 @@ export function GeneralLedgerSummaryClient({
       if (fromIdx !== -1 && toIdx !== -1) {
         const min = Math.min(fromIdx, toIdx);
         const max = Math.max(fromIdx, toIdx);
-        const newSelected = new Set(selectedIds);
+        const newSelected = new Set<string>(); // INSTANTLY DESELECT PREVIOUS
         subAccounts.forEach((sa, idx) => {
           if (idx >= min && idx <= max) {
             newSelected.add(sa.id);
@@ -253,15 +259,15 @@ export function GeneralLedgerSummaryClient({
     }
     const min = Math.min(fromVal, toVal);
     const max = Math.max(fromVal, toVal);
-    const newSelected = new Set(selectedIds);
-    subAccounts.forEach((sa, idx) => {
-      const serial = idx + 1;
-      if (serial >= min && serial <= max) {
-        newSelected.add(sa.id);
-      }
-    });
-    setSelectedIds(newSelected);
-    toast.success(`Selected sub-accounts from serial #${min} to #${max}`);
+    const fromSa = subAccounts[min - 1];
+    const toSa = subAccounts[max - 1];
+    if (fromSa && toSa) {
+      setFromAccountId(fromSa.id);
+      setToAccountId(toSa.id);
+      toast.success(`Selected sub-accounts from serial #${min} to #${max}`);
+    } else {
+      toast.error("Invalid serial range.");
+    }
   };
 
   const loadLedgerSummary = () => {
@@ -430,7 +436,6 @@ export function GeneralLedgerSummaryClient({
                             onClick={() => {
                               setFromAccountId(null);
                               setToAccountId(null);
-                              setToSearch("");
                             }}
                             className="text-[9px] text-rose-500 font-bold hover:underline"
                           >
@@ -439,72 +444,30 @@ export function GeneralLedgerSummaryClient({
                         )}
                       </div>
 
-                      {/* From Account Display (marked from the list) */}
+                      {/* From Account Autocomplete */}
                       <div className="space-y-1">
-                        <Label className="text-[9px] font-semibold text-muted-foreground">From Account (Set by list click or `[` key)</Label>
-                        <div className="h-8 border rounded px-2 bg-background flex items-center justify-between text-xs">
-                          <span className="truncate font-medium text-foreground max-w-[200px]">
-                            {fromAccountId
-                              ? subAccounts.find((sa) => sa.id === fromAccountId)?.name || "Selected"
-                              : "Not selected"}
-                          </span>
-                          {fromAccountId && (
-                            <span className="text-[8px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-1 rounded font-bold uppercase tracking-wider shrink-0 scale-90">
-                              Start
-                            </span>
-                          )}
-                        </div>
+                        <Label className="text-[9px] font-semibold text-muted-foreground">From Account</Label>
+                        <Autocomplete
+                          options={autocompleteOptions}
+                          value={fromAccountId || ""}
+                          onValueChange={(val) => setFromAccountId(val || null)}
+                          placeholder="Select From Sub-account..."
+                          searchPlaceholder="Search by code or title..."
+                          className="h-8 text-xs font-medium bg-background"
+                        />
                       </div>
 
-                      {/* To Account searchable combobox / input */}
-                      <div className="space-y-1 relative">
-                        <Label className="text-[9px] font-semibold text-muted-foreground">To Account (Search & Select)</Label>
-                        <Input
-                          placeholder="Type to search To-Account..."
-                          value={toSearch}
-                          onChange={(e) => {
-                            setToSearch(e.target.value);
-                            setShowToDropdown(true);
-                          }}
-                          onFocus={() => setShowToDropdown(true)}
-                          onBlur={() => setTimeout(() => setShowToDropdown(false), 200)}
-                          className="h-8 text-xs font-medium"
+                      {/* To Account Autocomplete */}
+                      <div className="space-y-1">
+                        <Label className="text-[9px] font-semibold text-muted-foreground">To Account</Label>
+                        <Autocomplete
+                          options={autocompleteOptions}
+                          value={toAccountId || ""}
+                          onValueChange={(val) => setToAccountId(val || null)}
+                          placeholder="Select To Sub-account..."
+                          searchPlaceholder="Search by code or title..."
+                          className="h-8 text-xs font-medium bg-background"
                         />
-
-                        {showToDropdown && (
-                          <div className="absolute z-50 left-0 right-0 mt-1 max-h-[160px] overflow-y-auto border bg-popover text-popover-foreground rounded-md shadow-lg divide-y text-xs">
-                            {subAccounts
-                              .filter(
-                                (sa) =>
-                                  sa.code.toLowerCase().includes(toSearch.toLowerCase()) ||
-                                  sa.name.toLowerCase().includes(toSearch.toLowerCase())
-                              )
-                              .slice(0, 15)
-                              .map((sa) => (
-                                <div
-                                  key={sa.id}
-                                  onMouseDown={() => {
-                                    setToAccountId(sa.id);
-                                    setToSearch(sa.name);
-                                    setShowToDropdown(false);
-                                  }}
-                                  className="px-2.5 py-1.5 hover:bg-accent hover:text-accent-foreground cursor-pointer font-medium truncate flex justify-between"
-                                >
-                                  <span className="truncate">{sa.name}</span>
-                                  <span className="font-mono text-[9px] text-muted-foreground ml-2 shrink-0">{sa.code}</span>
-                                </div>
-                              ))}
-                            {subAccounts.filter(
-                              (sa) =>
-                                sa.code.toLowerCase().includes(toSearch.toLowerCase()) ||
-                                sa.name.toLowerCase().includes(toSearch.toLowerCase())
-                            ).length === 0 && (
-                              <div className="px-2.5 py-1.5 text-muted-foreground text-center">
-                                No accounts found
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
 
                       {/* Serial Selection Range boxes */}
