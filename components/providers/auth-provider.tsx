@@ -524,7 +524,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         normalized === "super_admin" ||
         normalized === "admin" ||
         normalized === "super admin" ||
-        normalized === "super-admin"
+        normalized === "super-admin" ||
+        normalized === "sys_admin" ||
+        normalized === "sys admin" ||
+        normalized === "system_admin" ||
+        normalized === "system admin" ||
+        normalized === "ao" ||
+        normalized === "ao sys admin" ||
+        normalized === "admin officer"
       );
     }
 

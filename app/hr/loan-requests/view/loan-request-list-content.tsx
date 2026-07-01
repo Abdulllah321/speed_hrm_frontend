@@ -15,9 +15,9 @@ interface LoanRequestListContentProps {
 
 export function LoanRequestListContent({ initialData = [], canSearch = true }: LoanRequestListContentProps) {
   const data: LoanRequestRow[] = initialData;
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
 
-  const columns = getColumns(isAdmin());
+  const columns = getColumns(isAdmin(), hasPermission);
 
   const handlePrint = () => {
     if (data.length === 0) {

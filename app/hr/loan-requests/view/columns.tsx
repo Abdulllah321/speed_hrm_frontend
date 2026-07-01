@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/form";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { MoreHorizontal, CheckCircle2, XCircle, Edit2, Trash2, Eye, Printer, Loader2 } from "lucide-react";
+import { MoreHorizontal, CheckCircle2, XCircle, Edit2, Trash2, Eye, Printer, Loader2, Banknote } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
@@ -140,8 +140,12 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [loanTypes, setLoanTypes] = useState<LoanType[]>([]);
   const [loadingLoanTypes, setLoadingLoanTypes] = useState(false);
-  const { user } = useAuth();
+  const { user, hasPermission, isAdmin } = useAuth();
   const record = row.original;
+
+  const canApprove = isAdmin() || hasPermission("hr.loan-request.approve");
+  const canEdit = isAdmin() || hasPermission("hr.loan-request.update");
+  const canDelete = isAdmin() || hasPermission("hr.loan-request.delete");
 
   // Check if current user created this request
   const isCreatedByCurrentUser = record.createdById === user?.id;
@@ -223,6 +227,18 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
         router.refresh();
       } else {
         toast.error(result.message || "Failed to approve loan request");
+      }
+    });
+  };
+
+  const handleDisburse = async () => {
+    startTransition(async () => {
+      const result = await updateLoanRequest(record.id, { status: "disbursed" });
+      if (result.status) {
+        toast.success("Loan request disbursed successfully");
+        router.refresh();
+      } else {
+        toast.error(result.message || "Failed to disburse loan request");
       }
     });
   };
@@ -573,7 +589,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
             <>
               <DropdownMenuItem
                 onClick={handleApprove}
-                disabled={isPending || isCreatedByCurrentUser}
+                disabled={isPending || !canApprove || (isCreatedByCurrentUser && !isAdmin())}
                 className="text-green-600 focus:text-green-600"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -581,7 +597,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => setRejectDialog(true)}
-                disabled={isPending || isCreatedByCurrentUser}
+                disabled={isPending || !canApprove || (isCreatedByCurrentUser && !isAdmin())}
                 className="text-destructive focus:text-destructive"
               >
                 <XCircle className="h-4 w-4 mr-2" />
@@ -591,10 +607,21 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
             </>
           )}
 
-          {isApproved && (
+          {isApproved && record.status === "Approved" && (
+            <DropdownMenuItem
+              onClick={handleDisburse}
+              disabled={isPending || !canApprove}
+              className="text-blue-600 focus:text-blue-600"
+            >
+              <Banknote className="h-4 w-4 mr-2" />
+              Disburse Loan
+            </DropdownMenuItem>
+          )}
+
+          {isApproved && record.status !== "Approved" && (
             <DropdownMenuItem disabled className="text-muted-foreground">
               <CheckCircle2 className="h-4 w-4 mr-2" />
-              Already Approved
+              Disbursed ({record.status})
             </DropdownMenuItem>
           )}
 
@@ -615,7 +642,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
 
           <DropdownMenuItem
             onClick={() => setEditDialog(true)}
-            disabled={isPending || isApproved}
+            disabled={isPending || isApproved || !canEdit}
           >
             <Edit2 className="h-4 w-4 mr-2" />
             Edit
@@ -649,7 +676,7 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
 
           <DropdownMenuItem
             onClick={() => setDeleteDialog(true)}
-            disabled={isPending}
+            disabled={isPending || !canDelete}
             className="text-destructive focus:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -1129,7 +1156,10 @@ function RowActions({ row }: { row: { original: LoanRequestRow } }) {
   );
 }
 
-export const getColumns = (isAdmin: boolean): ColumnDef<LoanRequestRow>[] => {
+export const getColumns = (
+  isAdmin: boolean,
+  hasPermission?: (permission: string) => boolean
+): ColumnDef<LoanRequestRow>[] => {
   const baseColumns: ColumnDef<LoanRequestRow>[] = [
     {
       accessorKey: "sNo",
@@ -1324,7 +1354,13 @@ export const getColumns = (isAdmin: boolean): ColumnDef<LoanRequestRow>[] => {
     },
   ];
 
-  if (isAdmin) {
+  const showActions = isAdmin || (hasPermission && (
+    hasPermission("hr.loan-request.approve") ||
+    hasPermission("hr.loan-request.update") ||
+    hasPermission("hr.loan-request.delete")
+  ));
+
+  if (showActions) {
     baseColumns.push({
       id: "actions",
       cell: ({ row }) => <RowActions row={row} />,
