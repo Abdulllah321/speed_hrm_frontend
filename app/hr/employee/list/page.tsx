@@ -24,8 +24,10 @@ import {
   deleteEmployee,
   updateEmployee,
   queueEmployeesExport,
+  getEmployeeExportStatus,
   type Employee,
 } from "@/lib/actions/employee";
+import { cn, getApiBaseUrl } from "@/lib/utils";
 import { getDepartments, type Department } from "@/lib/actions/department";
 import { getDesignations, type Designation } from "@/lib/actions/designation";
 import DataTable from "@/components/common/data-table";
@@ -58,7 +60,9 @@ export default function EmployeeListPage() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [bulkUploadId, setBulkUploadId] = useState<string | null>(null);
   const [impersonatePendingId, setImpersonatePendingId] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
+  const [exportJobId, setExportJobId] = useState<string | null>(null);
+  const [exportProgress, setExportProgress] = useState<number>(0);
 
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [deletingEmployee, setDeletingEmployee] = useState<Employee | null>(null);
@@ -71,6 +75,54 @@ export default function EmployeeListPage() {
     const savedId = sessionStorage.getItem("employee_upload_id");
     if (savedId) setBulkUploadId(savedId);
   }, []);
+
+  // Poll Employee Export Job Status
+  useEffect(() => {
+    if (exportState !== "queueing" && exportState !== "processing") return;
+    if (!exportJobId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await getEmployeeExportStatus(exportJobId);
+        if (res && res.status) {
+          const { state, progress } = res.data || {};
+          setExportProgress(progress || 0);
+
+          if (state === "completed") {
+            setExportState("completed");
+            toast.success("Employee Export processed successfully! Ready to download.");
+            clearInterval(interval);
+          } else if (state === "failed") {
+            setExportState("failed");
+            toast.error("Background employee export processing failed.");
+            clearInterval(interval);
+          } else {
+            setExportState("processing");
+          }
+        }
+      } catch (err) {
+        console.error("Error polling export status:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [exportState, exportJobId]);
+
+  const getExportButtonText = () => {
+    switch (exportState) {
+      case "queueing":
+        return "Queueing...";
+      case "processing":
+        return `Generating ${exportProgress}%`;
+      case "completed":
+        return "Download Excel";
+      case "failed":
+        return "Retry Export";
+      case "idle":
+      default:
+        return "Export";
+    }
+  };
 
   const handleUploadIdChange = (id: string | null) => {
     setBulkUploadId(id);
@@ -318,21 +370,33 @@ export default function EmployeeListPage() {
   };
 
   const handleExport = async () => {
-    if (isExporting) return;
-    setIsExporting(true);
+    if (exportState === "completed" && exportJobId) {
+      const base = getApiBaseUrl();
+      const url = `${base}/employees/export/${exportJobId}/download`;
+      window.open(url, "_blank");
+      
+      // Reset
+      setExportState("idle");
+      setExportJobId(null);
+      setExportProgress(0);
+      return;
+    }
+
+    setExportState("queueing");
     try {
       const result = await queueEmployeesExport();
-      if (result.status) {
-        toast.success("Export queued — you'll get a notification when your file is ready.", {
-          duration: 6000,
-        });
+      if (result.status && result.data?.jobId) {
+        setExportJobId(result.data.jobId);
+        setExportState("processing");
+        setExportProgress(5);
+        toast.info("Background employee export queued.");
       } else {
+        setExportState("failed");
         toast.error(result.message || "Failed to queue export");
       }
     } catch {
+      setExportState("failed");
       toast.error("Export failed. Please try again.");
-    } finally {
-      setIsExporting(false);
     }
   };
 
@@ -346,17 +410,22 @@ export default function EmployeeListPage() {
           </div>
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
+              variant={exportState === "completed" ? "default" : "outline"}
               onClick={handleExport}
-              disabled={isExporting || employees.length === 0}
-              className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              disabled={(exportState === "queueing" || exportState === "processing") || employees.length === 0}
+              className={cn(
+                "font-semibold transition-all",
+                exportState === "completed"
+                  ? "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 border-none"
+                  : "border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+              )}
             >
-              {isExporting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              {exportState === "queueing" || exportState === "processing" ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-emerald-600" />
               ) : (
                 <Download className="h-4 w-4 mr-2" />
               )}
-              {isExporting ? "Queuing…" : "Export"}
+              {getExportButtonText()}
             </Button>
             <Link href="/hr/employee/create" transitionTypes={["nav-forward"]}>
               <Button>

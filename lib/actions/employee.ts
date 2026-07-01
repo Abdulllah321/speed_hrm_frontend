@@ -642,3 +642,18 @@ export async function queueEmployeesExport(
     return { status: false, message: 'Failed to connect to server' };
   }
 }
+
+export async function getEmployeeExportStatus(
+  jobId: string,
+): Promise<{ status: boolean; data?: { state: string; progress: number }; message?: string }> {
+  try {
+    const res = await authFetch(`/employees/export/${jobId}/status`, {
+      method: 'GET',
+    });
+    return res.data ?? { status: false, message: 'No response from server' };
+  } catch (error) {
+    console.error('Get employee export status error:', error);
+    return { status: false, message: 'Failed to connect to server' };
+  }
+}
+
