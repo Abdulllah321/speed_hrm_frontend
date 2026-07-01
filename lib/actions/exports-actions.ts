@@ -108,3 +108,43 @@ export async function deleteExport(id: string) {
     return { status: false, message: "Failed to connect to server" };
   }
 }
+
+export async function bulkDeleteExports(ids: string[]) {
+  try {
+    const response = await authFetch("/export-history/bulk", {
+      method: "DELETE",
+      body: { ids },
+    });
+    return response.data ?? { status: false, message: "No response from server" };
+  } catch (error) {
+    console.error("Bulk delete exports error:", error);
+    return { status: false, message: "Failed to connect to server" };
+  }
+}
+
+export async function bulkMoveExports(ids: string[], folderId: string | null) {
+  try {
+    const response = await authFetch("/export-history/bulk/move", {
+      method: "PATCH",
+      body: { ids, folderId },
+    });
+    return response.data ?? { status: false, message: "No response from server" };
+  } catch (error) {
+    console.error("Bulk move exports error:", error);
+    return { status: false, message: "Failed to connect to server" };
+  }
+}
+
+export async function bulkRenameExports(ids: string[], baseName: string) {
+  try {
+    const response = await authFetch("/export-history/bulk/rename", {
+      method: "PATCH",
+      body: { ids, baseName },
+    });
+    return response.data ?? { status: false, message: "No response from server" };
+  } catch (error) {
+    console.error("Bulk rename exports error:", error);
+    return { status: false, message: "Failed to connect to server" };
+  }
+}
+
