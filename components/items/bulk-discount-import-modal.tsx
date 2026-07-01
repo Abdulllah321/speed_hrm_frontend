@@ -95,7 +95,7 @@ interface Props {
 
 // ─── Helper: parse file → rows ────────────────────────────────────────────────
 
-function parseFile(file: File): Promise<ParsedRow[]> {
+function parseFile(file: File, campaignDiscountType: 'percent' | 'fixed'): Promise<ParsedRow[]> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -122,13 +122,22 @@ function parseFile(file: File): Promise<ParsedRow[]> {
 
                     const identifier = idKey ? String(raw[idKey]).trim() : '';
                     const discountValRaw = discKey ? String(raw[discKey]).trim() : '';
-                    const discountValue = discountValRaw ? parseFloat(discountValRaw) : undefined;
+                    let discountValue = discountValRaw ? parseFloat(discountValRaw) : undefined;
+
+                    if (discountValue !== undefined && !isNaN(discountValue)) {
+                        // Check if it's a decimal percentage (e.g. 0.15 representing 15% in Excel)
+                        if (campaignDiscountType === 'percent' && discountValue > 0 && discountValue < 1) {
+                            discountValue = discountValue * 100;
+                        }
+                    } else {
+                        discountValue = undefined;
+                    }
 
                     if (identifier) {
                         rows.push({
                             rowIndex: idx + 2, // 1-based + header row
                             identifier,
-                            discountValue: (discountValue !== undefined && !isNaN(discountValue)) ? discountValue : undefined,
+                            discountValue,
                         });
                     }
                 });
@@ -185,7 +194,7 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
 
         let parsed: ParsedRow[];
         try {
-            parsed = await parseFile(file);
+            parsed = await parseFile(file, campaignDiscountType);
         } catch {
             toast.error('Failed to parse file. Check the format.');
             return;

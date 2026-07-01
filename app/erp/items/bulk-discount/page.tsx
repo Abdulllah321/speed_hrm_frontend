@@ -106,9 +106,26 @@ function formatPKR(n: number) {
     return n.toLocaleString('en-US', { style: 'currency', currency: 'PKR', minimumFractionDigits: 0 });
 }
 
-function effectivePrice(item: ItemRow, campaign: Campaign): number {
+function effectivePrice(
+    item: ItemRow,
+    campaign: Campaign,
+    overrides?: Map<string, { discountRate?: number; discountAmount?: number }>,
+): number {
     if (campaign.clearMode) return item.unitPrice;
     const base = item.unitPrice;
+
+    // Check override first
+    const ov = overrides?.get(item.id);
+    if (ov) {
+        const isPercent = campaign.discountType === 'percent';
+        const ovVal = isPercent ? (ov.discountRate ?? ov.discountAmount) : (ov.discountAmount ?? ov.discountRate);
+        if (ovVal !== undefined) {
+            return isPercent
+                ? Math.max(0, base - base * (ovVal / 100))
+                : Math.max(0, base - ovVal);
+        }
+    }
+
     const val = parseFloat(campaign.discountValue) || 0;
     return campaign.discountType === 'percent'
         ? Math.max(0, base - base * (val / 100))
@@ -126,7 +143,12 @@ function discountLabel(campaign: Campaign, val: number): string {
 
 // ── CSV export ────────────────────────────────────────────────────────────────
 
-function exportToCSV(items: ItemRow[], campaign: Campaign, discountVal: number) {
+function exportToCSV(
+    items: ItemRow[],
+    campaign: Campaign,
+    discountVal: number,
+    overrides?: Map<string, { discountRate?: number; discountAmount?: number }>,
+) {
     const headers = ['Item ID', 'SKU', 'Description', 'Brand', 'Category', 'Unit Price', 'Current Discount %', 'Current Discount Amt', 'After Discount Price'];
     const rows = items.map(item => [
         item.itemId,
@@ -137,7 +159,7 @@ function exportToCSV(items: ItemRow[], campaign: Campaign, discountVal: number) 
         item.unitPrice,
         item.discountRate ?? 0,
         item.discountAmount ?? 0,
-        campaign.clearMode ? item.unitPrice : effectivePrice(item, campaign),
+        campaign.clearMode ? item.unitPrice : effectivePrice(item, campaign, overrides),
     ]);
 
     const csvContent = [headers, ...rows]
@@ -671,7 +693,19 @@ export default function BulkDiscountPage() {
         setConfirmOpen(false);
         try {
             const overrideList: BulkDiscountItemOverride[] = [];
-            overrides.forEach((val, id) => { if (selectedIds.has(id)) overrideList.push({ id, ...val }); });
+            overrides.forEach((val, id) => {
+                if (selectedIds.has(id)) {
+                    const isPercent = campaign.discountType === 'percent';
+                    const discVal = val.discountRate ?? val.discountAmount;
+                    if (discVal !== undefined) {
+                        overrideList.push({
+                            id,
+                            discountRate: isPercent ? discVal : undefined,
+                            discountAmount: !isPercent ? discVal : undefined,
+                        });
+                    }
+                }
+            });
 
             const payload = {
                 campaignName: campaign.name,
@@ -1169,7 +1203,7 @@ export default function BulkDiscountPage() {
                                                 ) : (
                                                     allItems.map(item => {
                                                         const selected = selectedIds.has(item.id);
-                                                        const after = effectivePrice(item, campaign);
+                                                        const after = effectivePrice(item, campaign, overrides);
                                                         const conflict = hasActiveDiscount(item);
                                                         return (
                                                             <TableRow key={item.id}
@@ -1327,7 +1361,7 @@ export default function BulkDiscountPage() {
                                                     {/* Export CSV */}
                                                     {selectedItems.length > 0 && !selectAllPages && (
                                                         <Button variant="outline" size="sm" className="w-full gap-1.5 text-muted-foreground"
-                                                            onClick={() => exportToCSV(selectedItems, campaign, discountVal)}>
+                                                            onClick={() => exportToCSV(selectedItems, campaign, discountVal, overrides)}>
                                                             <Download className="h-3.5 w-3.5" />
                                                             Export {selectedItems.length} items to CSV
                                                         </Button>
