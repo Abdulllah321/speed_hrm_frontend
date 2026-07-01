@@ -8,7 +8,8 @@ import { Plus, Upload, Loader2, Eye, Edit, Trash2, Sparkles, Filter, X, ChevronR
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { deleteItem, getItems, queueItemsExport } from "@/lib/actions/items";
+import { deleteItem, getItems, queueItemsExport, getItemsExportStatus } from "@/lib/actions/items";
+import { format } from "date-fns";
 import { BulkUploadModal } from "@/components/items/bulk-upload-modal";
 import { ItemUpdateBulkUploadModal } from "@/components/items/item-update-bulk-upload-modal";
 import { useUploadProgress } from "@/hooks/use-upload-progress";
@@ -28,7 +29,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from "@/com
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, getApiBaseUrl } from "@/lib/utils";
 import { brandApi, categoryApi, silhouetteApi, genderApi } from "@/lib/api";
 import { BarcodePrintModal } from "@/components/items/barcode-print-modal";
 import { ScanBarcode } from "lucide-react";
@@ -362,7 +363,10 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
     const [isBulkUpdateOpen, setIsBulkUpdateOpen] = useState(false);
     const [activeUpdateUploadId, setActiveUpdateUploadId] = useState<string | null>(null);
     const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
-    const [isExporting, setIsExporting] = useState(false);
+    const [exportState, setExportState] = useState<"idle" | "queueing" | "processing" | "completed" | "failed">("idle");
+    const [exportJobId, setExportJobId] = useState<string | null>(null);
+    const [exportProgress, setExportProgress] = useState<number>(0);
+    const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
     // ── Filter state ───────────────────────────────────────────────────────
     const [brands, setBrands] = useState<any[]>([]);
@@ -425,6 +429,54 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
 
     const { data: uploadProgress } = useUploadProgress(activeUploadId);
     const { data: updateProgress } = useUploadProgress(activeUpdateUploadId, 'item-update');
+
+    // Poll Items Export Job Status
+    useEffect(() => {
+        if (exportState !== "queueing" && exportState !== "processing") return;
+        if (!exportJobId) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const res = await getItemsExportStatus(exportJobId);
+                if (res && res.status) {
+                    const { state, progress } = res.data || {};
+                    setExportProgress(progress || 0);
+
+                    if (state === "completed") {
+                        setExportState("completed");
+                        toast.success("Items Export processed successfully! Ready to download.");
+                        clearInterval(interval);
+                    } else if (state === "failed") {
+                        setExportState("failed");
+                        toast.error("Background items export processing failed.");
+                        clearInterval(interval);
+                    } else {
+                        setExportState("processing");
+                    }
+                }
+            } catch (err) {
+                console.error("Error polling export status:", err);
+            }
+        }, 2000);
+
+        return () => clearInterval(interval);
+    }, [exportState, exportJobId]);
+
+    const getExportButtonText = () => {
+        switch (exportState) {
+            case "queueing":
+                return "Queueing...";
+            case "processing":
+                return `Generating ${exportProgress}%`;
+            case "completed":
+                return "Download Excel";
+            case "failed":
+                return "Retry Export";
+            case "idle":
+            default:
+                return "Export";
+        }
+    };
 
     // Note: don't auto-clear on error — a transient network failure shouldn't
     // wipe the active upload ID. The user can manually dismiss via the modal.
@@ -526,8 +578,42 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
 
     // ── Export handler ─────────────────────────────────────────────────────
     const handleExport = useCallback(async () => {
-        if (isExporting) return;
-        setIsExporting(true);
+        if (exportState === "completed" && exportJobId) {
+            const base = getApiBaseUrl();
+            const url = `${base}/finance/items/export/${exportJobId}/download`;
+            const filename = `items-export-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+            
+            setDownloadingFile(filename);
+            try {
+                const response = await fetch(url, { credentials: "include" });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const objectUrl = URL.createObjectURL(blob);
+                    const anchor = document.createElement("a");
+                    anchor.href = objectUrl;
+                    anchor.download = filename;
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    document.body.removeChild(anchor);
+                    URL.revokeObjectURL(objectUrl);
+                    
+                    // Reset
+                    setExportState("idle");
+                    setExportJobId(null);
+                    setExportProgress(0);
+                } else {
+                    toast.error("Download failed. The file may have expired.");
+                }
+            } catch (err) {
+                console.error(err);
+                toast.error("Failed to connect to the server.");
+            } finally {
+                setDownloadingFile(null);
+            }
+            return;
+        }
+
+        setExportState("queueing");
         try {
             const result = await queueItemsExport(
                 search || undefined,
@@ -540,19 +626,20 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     genderIds: appliedFilters.genderIds.length ? appliedFilters.genderIds : undefined,
                 },
             );
-            if (result.status) {
-                toast.success("Export queued — you'll get a notification when your file is ready to download.", {
-                    duration: 6000,
-                });
+            if (result.status && result.data?.jobId) {
+                setExportJobId(result.data.jobId);
+                setExportState("processing");
+                setExportProgress(5);
+                toast.info("Background items export queued.");
             } else {
+                setExportState("failed");
                 toast.error(result.message || "Failed to queue export");
             }
         } catch (err: any) {
+            setExportState("failed");
             toast.error(err?.message || "Export failed. Please try again.");
-        } finally {
-            setIsExporting(false);
         }
-    }, [isExporting, search, sortColumn, sortDir, appliedFilters]);
+    }, [exportState, exportJobId, search, sortColumn, sortDir, appliedFilters]);
 
     // ── Filter slot (injected into DataTable toolbar) ──────────────────────
     const filterSlot = (
@@ -679,17 +766,22 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Button
-                                variant="outline"
+                                variant={exportState === "completed" ? "default" : "outline"}
                                 onClick={handleExport}
-                                disabled={isExporting || meta.total === 0}
-                                className="border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-                            >
-                                {isExporting ? (
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                    <Download className="mr-2 h-4 w-4" />
+                                disabled={(exportState === "queueing" || exportState === "processing") || meta.total === 0}
+                                className={cn(
+                                    "gap-2 font-semibold transition-all",
+                                    exportState === "completed"
+                                        ? "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700 border-none"
+                                        : "border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
                                 )}
-                                {isExporting ? "Exporting…" : "Export"}
+                            >
+                                {exportState === "queueing" || exportState === "processing" ? (
+                                    <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+                                ) : (
+                                    <Download className="h-4 w-4" />
+                                )}
+                                {getExportButtonText()}
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -806,6 +898,23 @@ export function ItemList({ initialItems, initialMeta }: ItemListProps) {
                 onOpenChange={setIsBarcodeModalOpen}
                 items={items}
             />
+
+            {/* Downloader Fixed Overlay Screen */}
+            {downloadingFile && (
+                <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center pointer-events-auto">
+                    <div className="bg-background border rounded-xl p-6 max-w-sm w-full mx-4 shadow-xl flex flex-col items-center gap-4 text-center">
+                        <div className="relative h-12 w-12 flex items-center justify-center">
+                            <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                        </div>
+                        <div className="space-y-1">
+                            <h4 className="font-bold text-sm text-foreground">Preparing Download</h4>
+                            <p className="text-xs text-muted-foreground break-all max-w-[280px]">
+                                Downloading {downloadingFile}... Please wait.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </Card>
     );
 }

@@ -359,3 +359,18 @@ export async function queueItemsExport(
         return { status: false, message: "Failed to connect to server" };
     }
 }
+
+export async function getItemsExportStatus(
+    jobId: string,
+): Promise<{ status: boolean; data?: { state: string; progress: number }; message?: string }> {
+    try {
+        const response = await authFetch(`/finance/items/export/${jobId}/status`, {
+            method: "GET",
+        });
+        return response.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("Get export status error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
