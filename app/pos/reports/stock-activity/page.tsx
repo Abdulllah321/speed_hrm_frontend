@@ -166,35 +166,12 @@ export default function PosStockActivityReportPage() {
         if (exportState === "completed" && exportJobId) {
             const base = getApiBaseUrl();
             const url = `${base}/stock-ledger/activity-report/export/${exportJobId}/download`;
-            const filename = `stock-activity-report-${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+            window.open(url, "_blank");
             
-            setDownloadingFile(filename);
-            try {
-                const response = await fetch(url, { credentials: "include" });
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const objectUrl = URL.createObjectURL(blob);
-                    const anchor = document.createElement("a");
-                    anchor.href = objectUrl;
-                    anchor.download = filename;
-                    document.body.appendChild(anchor);
-                    anchor.click();
-                    document.body.removeChild(anchor);
-                    URL.revokeObjectURL(objectUrl);
-                    
-                    // Reset
-                    setExportState("idle");
-                    setExportJobId(null);
-                    setExportProgress(0);
-                } else {
-                    toast.error("Download failed. The file may have expired.");
-                }
-            } catch (err) {
-                console.error(err);
-                toast.error("Failed to connect to the server.");
-            } finally {
-                setDownloadingFile(null);
-            }
+            // Reset
+            setExportState("idle");
+            setExportJobId(null);
+            setExportProgress(0);
             return;
         }
 
@@ -239,35 +216,12 @@ export default function PosStockActivityReportPage() {
         if (pdfExportState === "completed" && pdfJobId) {
             const base = getApiBaseUrl();
             const url = `${base}/stock-ledger/activity-report/export/${pdfJobId}/download`;
-            const filename = `stock-activity-report-${format(new Date(), "yyyy-MM-dd")}.pdf`;
+            window.open(url, "_blank");
             
-            setDownloadingFile(filename);
-            try {
-                const response = await fetch(url, { credentials: "include" });
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const objectUrl = URL.createObjectURL(blob);
-                    const anchor = document.createElement("a");
-                    anchor.href = objectUrl;
-                    anchor.download = filename;
-                    document.body.appendChild(anchor);
-                    anchor.click();
-                    document.body.removeChild(anchor);
-                    URL.revokeObjectURL(objectUrl);
-                    
-                    // Reset
-                    setPdfExportState("idle");
-                    setPdfJobId(null);
-                    setPdfExportProgress(0);
-                } else {
-                    toast.error("Download failed. The file may have expired.");
-                }
-            } catch (err) {
-                console.error(err);
-                toast.error("Failed to connect to the server.");
-            } finally {
-                setDownloadingFile(null);
-            }
+            // Reset
+            setPdfExportState("idle");
+            setPdfJobId(null);
+            setPdfExportProgress(0);
             return;
         }
 
