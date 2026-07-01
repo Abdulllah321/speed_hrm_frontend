@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User as UserIcon, Settings, LogOut, Shield, History, Key, UserPlus, ChevronRight } from "lucide-react";
+import { User as UserIcon, Settings, LogOut, Shield, History, Key, UserPlus, ChevronRight, Download } from "lucide-react";
 import { createNavigationHandler } from "@/lib/navigation";
 import { getAvailableProfilesClient, User as AuthUser } from "@/lib/client-auth";
 import { useEffect, useState, useRef } from "react";
@@ -142,6 +142,10 @@ export function HeaderUserMenu() {
           <DropdownMenuItem onClick={() => navigate("/hr/settings/sessions")}>
             <History className="mr-2 h-4 w-4" />
             Active Sessions
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate("/erp/exports")}>
+            <Download className="mr-2 h-4 w-4" />
+            Export History
           </DropdownMenuItem>
         </DropdownMenuGroup>
         {isAdmin && (
