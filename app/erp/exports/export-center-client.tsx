@@ -61,7 +61,15 @@ import {
   Loader2,
   FolderOpen,
   X,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronDown,
+  ChevronUp,
+  Calendar,
+  Layers
 } from "lucide-react";
 import { toast } from "sonner";
 import { getApiBaseUrl, cn } from "@/lib/utils";
@@ -97,18 +105,32 @@ interface ExportHistory {
   } | null;
 }
 
+interface ExportMeta {
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 interface ExportCenterClientProps {
   initialFolders: ExportFolder[];
   initialExports: ExportHistory[];
+  initialMeta: ExportMeta;
 }
 
 export default function ExportCenterClient({
   initialFolders,
   initialExports,
+  initialMeta,
 }: ExportCenterClientProps) {
   const { user } = useAuth();
   const [folders, setFolders] = useState<ExportFolder[]>(initialFolders);
   const [exportsList, setExportsList] = useState<ExportHistory[]>(initialExports);
+  const [meta, setMeta] = useState<ExportMeta>(initialMeta);
+  const [currentPage, setCurrentPage] = useState(initialMeta.page);
+  const [pageSize, setPageSize] = useState(initialMeta.limit);
+  const [groupBy, setGroupBy] = useState<"none" | "date" | "activity">("none");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [selectedFolderId, setSelectedFolderId] = useState<string>("all");
   const [isFavoriteOnly, setIsFavoriteOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,7 +169,7 @@ export default function ExportCenterClient({
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = useState(false);
 
   // Fetch / Refresh data
-  const fetchData = async () => {
+  const fetchData = async (targetPage = currentPage, targetLimit = pageSize) => {
     setLoading(true);
     try {
       const foldersRes = await getFolders();
@@ -159,9 +181,16 @@ export default function ExportCenterClient({
         folderId: selectedFolderId === "all" ? undefined : (selectedFolderId === "root" ? null : selectedFolderId),
         isFavorite: isFavoriteOnly ? true : undefined,
         search: searchQuery || undefined,
+        page: targetPage,
+        limit: targetLimit,
       });
-      if (exportsRes.status) {
+      if (exportsRes.status && exportsRes.data) {
         setExportsList(exportsRes.data);
+        if (exportsRes.meta) {
+          setMeta(exportsRes.meta);
+          setCurrentPage(exportsRes.meta.page);
+          setPageSize(exportsRes.meta.limit);
+        }
       }
     } catch (e) {
       toast.error("Failed to load exports data");
@@ -171,14 +200,235 @@ export default function ExportCenterClient({
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(1, pageSize);
     // Clear selection on filter changes
     setSelectedIds([]);
   }, [selectedFolderId, isFavoriteOnly]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    fetchData();
+    fetchData(1, pageSize);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    fetchData(newPage, pageSize);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    fetchData(1, newSize);
+  };
+
+  const getGroupedExports = () => {
+    if (groupBy === "none") {
+      return { "All Exports": exportsList };
+    }
+
+    if (groupBy === "date") {
+      const groups: Record<string, ExportHistory[]> = {
+        "Today": [],
+        "Yesterday": [],
+        "This Week": [],
+        "This Month": [],
+        "Older": []
+      };
+
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const yesterdayStart = todayStart - 24 * 60 * 60 * 1000;
+      const thisWeekStart = todayStart - 7 * 24 * 60 * 60 * 1000;
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+
+      exportsList.forEach(exp => {
+        const createdTime = new Date(exp.createdAt).getTime();
+        if (createdTime >= todayStart) {
+          groups["Today"].push(exp);
+        } else if (createdTime >= yesterdayStart) {
+          groups["Yesterday"].push(exp);
+        } else if (createdTime >= thisWeekStart) {
+          groups["This Week"].push(exp);
+        } else if (createdTime >= thisMonthStart) {
+          groups["This Month"].push(exp);
+        } else {
+          groups["Older"].push(exp);
+        }
+      });
+
+      const result: Record<string, ExportHistory[]> = {};
+      Object.entries(groups).forEach(([key, list]) => {
+        if (list.length > 0) {
+          result[key] = list;
+        }
+      });
+      return result;
+    }
+
+    if (groupBy === "activity") {
+      const groups: Record<string, ExportHistory[]> = {};
+      exportsList.forEach(exp => {
+        const activityName = exp.moduleName
+          ? exp.moduleName.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())
+          : "General";
+        if (!groups[activityName]) {
+          groups[activityName] = [];
+        }
+        groups[activityName].push(exp);
+      });
+      return groups;
+    }
+
+    return { "All Exports": exportsList };
+  };
+
+  const groupedExports = getGroupedExports();
+  const toggleGroupCollapse = (groupKey: string) => {
+    setCollapsedGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
+
+  const renderExportRow = (exp: ExportHistory) => {
+    const isExcel = exp.fileName.endsWith(".xlsx");
+    const isPdf = exp.fileName.endsWith(".pdf");
+
+    return (
+      <TableRow
+        key={exp.id}
+        className={cn(
+          "hover:bg-muted/10 group",
+          selectedIds.includes(exp.id) && "bg-blue-50/40 dark:bg-blue-950/10"
+        )}
+      >
+        {/* Row Checkbox */}
+        <TableCell className="pl-4 py-3">
+          <Checkbox
+            checked={selectedIds.includes(exp.id)}
+            onCheckedChange={() => handleSelectRow(exp.id)}
+          />
+        </TableCell>
+
+        {/* Star Toggle */}
+        <TableCell className="py-3">
+          <button
+            onClick={() => handleToggleFavorite(exp)}
+            className="text-muted-foreground hover:text-amber-500 transition-colors"
+          >
+            <Star className={cn("h-4.5 w-4.5", exp.isFavorite ? "fill-amber-400 text-amber-400" : "opacity-30")} />
+          </button>
+        </TableCell>
+
+        {/* File Name */}
+        <TableCell className="font-medium max-w-[250px] truncate">
+          <div className="flex items-center gap-2">
+            {isExcel ? (
+              <FileSpreadsheet className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
+            ) : isPdf ? (
+              <FileText className="h-4.5 w-4.5 text-rose-500 shrink-0" />
+            ) : (
+              <FileText className="h-4.5 w-4.5 text-slate-400 shrink-0" />
+            )}
+            <button
+              onClick={() => handlePreview(exp)}
+              className="truncate block font-medium hover:underline text-left hover:text-blue-600 dark:hover:text-blue-400"
+              title="Click to view file in new tab"
+            >
+              {exp.fileName}
+            </button>
+          </div>
+          <span className="text-[10px] text-muted-foreground block font-normal ml-6.5 mt-0.5">
+            {exp.moduleName.replace(/_/g, " ")}
+          </span>
+        </TableCell>
+
+        {/* Folder */}
+        <TableCell>
+          {exp.folder ? (
+            <Badge variant="outline" className="bg-amber-50/50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/50 gap-1 font-normal py-0.5 px-2">
+              <Folder className="h-3 w-3 fill-amber-500/10" />
+              {exp.folder.name}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground text-xs italic font-normal">Root</span>
+          )}
+        </TableCell>
+
+        {/* Size */}
+        <TableCell className="text-xs text-muted-foreground">
+          {formatBytes(exp.fileSize)}
+        </TableCell>
+
+        {/* Downloads */}
+        <TableCell className="text-xs text-muted-foreground">
+          {exp.downloadCount} downloads
+        </TableCell>
+
+        {/* Date */}
+        <TableCell className="text-xs text-muted-foreground">
+          {new Date(exp.createdAt).toLocaleDateString(undefined, {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          })}
+        </TableCell>
+
+        {/* Actions */}
+        <TableCell className="text-right pr-4">
+          <div className="flex justify-end gap-1.5">
+            <Button
+              onClick={() => handlePreview(exp)}
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+              title="Review file in a new tab"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+
+            <Button
+              onClick={() => handleDownload(exp)}
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+              title="Download file"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="icon" variant="ghost" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>File Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => {
+                  setExportToRename(exp);
+                  setRenameExportName(exp.fileName);
+                  setIsRenameExportOpen(true);
+                }} className="gap-2">
+                  <Edit className="h-4 w-4" /> Rename Export
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setExportToMove(exp);
+                  setTargetFolderId(exp.folderId || "root");
+                  setIsMoveExportOpen(true);
+                }} className="gap-2">
+                  <Move className="h-4 w-4" /> Move to Folder
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleDeleteExport(exp.id)} className="text-destructive focus:text-destructive gap-2">
+                  <Trash2 className="h-4 w-4" /> Delete File
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </TableCell>
+      </TableRow>
+    );
   };
 
   // Selection helpers
@@ -377,7 +627,7 @@ export default function ExportCenterClient({
 
     if (exp.fileName.endsWith(".pdf")) {
       // Direct open in new tab natively
-      const url = `${apiBase}/export-history/${exp.id}/download?inline=true&token=${token}`;
+      const url = `${apiBase}/export-history/${exp.id}/download?inline=true`;
       window.open(url, "_blank");
     } else if (exp.fileName.endsWith(".xlsx")) {
       // Direct open in Google Docs Viewer
@@ -549,22 +799,54 @@ export default function ExportCenterClient({
               />
             </form>
 
-            <div className="flex w-full md:w-auto items-center justify-end gap-2">
-              <Button
-                variant={isFavoriteOnly ? "default" : "outline"}
-                onClick={() => setIsFavoriteOnly(!isFavoriteOnly)}
-                className={cn(
-                  "gap-2 w-full md:w-auto",
-                  isFavoriteOnly && "bg-amber-500 hover:bg-amber-600 text-white border-amber-500"
-                )}
-              >
-                <Star className={cn("h-4 w-4", isFavoriteOnly && "fill-current")} />
-                {isFavoriteOnly ? "Showing Starred" : "Filter Starred"}
-              </Button>
-              <Button onClick={fetchData} variant="outline" className="w-full md:w-auto gap-2">
-                <RefreshCw className={cn("h-4.5 w-4.5", loading && "animate-spin")} />
-                Refresh
-              </Button>
+            <div className="flex flex-col sm:flex-row w-full md:w-auto items-stretch sm:items-center justify-end gap-2.5">
+              {/* Group By Toggle Bar */}
+              <div className="flex items-center gap-1 bg-muted/60 dark:bg-muted/30 p-1 rounded-lg border border-border">
+                <Button
+                  size="sm"
+                  variant={groupBy === "none" ? "secondary" : "ghost"}
+                  onClick={() => setGroupBy("none")}
+                  className={cn("h-8 px-3 text-xs gap-1.5", groupBy === "none" && "bg-background shadow-xs font-semibold")}
+                >
+                  No Group
+                </Button>
+                <Button
+                  size="sm"
+                  variant={groupBy === "date" ? "secondary" : "ghost"}
+                  onClick={() => setGroupBy("date")}
+                  className={cn("h-8 px-3 text-xs gap-1.5", groupBy === "date" && "bg-background shadow-xs font-semibold")}
+                >
+                  <Calendar className="h-3.5 w-3.5 text-indigo-500" />
+                  Date
+                </Button>
+                <Button
+                  size="sm"
+                  variant={groupBy === "activity" ? "secondary" : "ghost"}
+                  onClick={() => setGroupBy("activity")}
+                  className={cn("h-8 px-3 text-xs gap-1.5", groupBy === "activity" && "bg-background shadow-xs font-semibold")}
+                >
+                  <Layers className="h-3.5 w-3.5 text-emerald-500" />
+                  Activity
+                </Button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={isFavoriteOnly ? "default" : "outline"}
+                  onClick={() => setIsFavoriteOnly(!isFavoriteOnly)}
+                  className={cn(
+                    "gap-2 h-9 text-xs w-full sm:w-auto",
+                    isFavoriteOnly && "bg-amber-500 hover:bg-amber-600 text-white border-amber-500"
+                  )}
+                >
+                  <Star className={cn("h-3.5 w-3.5", isFavoriteOnly && "fill-current")} />
+                  {isFavoriteOnly ? "Showing Starred" : "Filter Starred"}
+                </Button>
+                <Button onClick={() => fetchData(currentPage, pageSize)} variant="outline" className="h-9 text-xs w-full sm:w-auto gap-2">
+                  <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -641,7 +923,7 @@ export default function ExportCenterClient({
                     Generate new reports under the modules or create custom folders to organize exports.
                   </p>
                 </div>
-              ) : (
+              ) : groupBy === "none" ? (
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
@@ -661,153 +943,190 @@ export default function ExportCenterClient({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {exportsList.map(exp => {
-                      const isExcel = exp.fileName.endsWith(".xlsx");
-                      const isPdf = exp.fileName.endsWith(".pdf");
-
-                      return (
-                        <TableRow
-                          key={exp.id}
-                          className={cn(
-                            "hover:bg-muted/10 group",
-                            selectedIds.includes(exp.id) && "bg-blue-50/40 dark:bg-blue-950/10"
-                          )}
-                        >
-                          {/* Row Checkbox */}
-                          <TableCell className="pl-4 py-3">
-                            <Checkbox
-                              checked={selectedIds.includes(exp.id)}
-                              onCheckedChange={() => handleSelectRow(exp.id)}
-                            />
-                          </TableCell>
-
-                          {/* Star Toggle */}
-                          <TableCell className="py-3">
-                            <button
-                              onClick={() => handleToggleFavorite(exp)}
-                              className="text-muted-foreground hover:text-amber-500 transition-colors"
-                            >
-                              <Star className={cn("h-4.5 w-4.5", exp.isFavorite ? "fill-amber-400 text-amber-400" : "opacity-30")} />
-                            </button>
-                          </TableCell>
-
-                          {/* File Name */}
-                          <TableCell className="font-medium max-w-[250px] truncate">
-                            <div className="flex items-center gap-2">
-                              {isExcel ? (
-                                <FileSpreadsheet className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
-                              ) : isPdf ? (
-                                <FileText className="h-4.5 w-4.5 text-rose-500 shrink-0" />
-                              ) : (
-                                <FileText className="h-4.5 w-4.5 text-slate-400 shrink-0" />
-                              )}
-                              <button
-                                onClick={() => handlePreview(exp)}
-                                className="truncate block font-medium hover:underline text-left hover:text-blue-600 dark:hover:text-blue-400"
-                                title="Click to view file in new tab"
-                              >
-                                {exp.fileName}
-                              </button>
-                            </div>
-                            <span className="text-[10px] text-muted-foreground block font-normal ml-6.5 mt-0.5">
-                              {exp.moduleName.replace(/_/g, " ")}
-                            </span>
-                          </TableCell>
-
-                          {/* Folder */}
-                          <TableCell>
-                            {exp.folder ? (
-                              <Badge variant="outline" className="bg-amber-50/50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/50 gap-1 font-normal py-0.5 px-2">
-                                <Folder className="h-3 w-3 fill-amber-500/10" />
-                                {exp.folder.name}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground text-xs italic font-normal">Root</span>
-                            )}
-                          </TableCell>
-
-                          {/* Size */}
-                          <TableCell className="text-xs text-muted-foreground">
-                            {formatBytes(exp.fileSize)}
-                          </TableCell>
-
-                          {/* Downloads */}
-                          <TableCell className="text-xs text-muted-foreground">
-                            {exp.downloadCount} downloads
-                          </TableCell>
-
-                          {/* Date */}
-                          <TableCell className="text-xs text-muted-foreground">
-                            {new Date(exp.createdAt).toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })}
-                          </TableCell>
-
-                          {/* Actions */}
-                          <TableCell className="text-right pr-4">
-                            <div className="flex justify-end gap-1.5">
-                              <Button
-                                onClick={() => handlePreview(exp)}
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                                title="Review file in a new tab"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
-
-                              <Button
-                                onClick={() => handleDownload(exp)}
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
-                                title="Download file"
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button size="icon" variant="ghost" className="h-8 w-8">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>File Actions</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => {
-                                    setExportToRename(exp);
-                                    setRenameExportName(exp.fileName);
-                                    setIsRenameExportOpen(true);
-                                  }} className="gap-2">
-                                    <Edit className="h-4 w-4" /> Rename Export
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => {
-                                    setExportToMove(exp);
-                                    setTargetFolderId(exp.folderId || "root");
-                                    setIsMoveExportOpen(true);
-                                  }} className="gap-2">
-                                    <Move className="h-4 w-4" /> Move to Folder
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleDeleteExport(exp.id)} className="text-destructive focus:text-destructive gap-2">
-                                    <Trash2 className="h-4 w-4" /> Delete File
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
+                    {exportsList.map(exp => renderExportRow(exp))}
                   </TableBody>
                 </Table>
+              ) : (
+                <div className="divide-y divide-border">
+                  {Object.entries(groupedExports).map(([groupName, list]) => {
+                    const isCollapsed = !!collapsedGroups[groupName];
+                    const allSelected = list.every(item => selectedIds.includes(item.id));
+
+                    return (
+                      <div key={groupName} className="flex flex-col">
+                        <button
+                          onClick={() => toggleGroupCollapse(groupName)}
+                          className="w-full flex items-center justify-between p-3.5 bg-muted/10 hover:bg-muted/20 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center justify-center bg-muted/60 dark:bg-muted/20 p-1.5 rounded-lg">
+                              {groupBy === "date" ? (
+                                <Calendar className="h-4 w-4 text-indigo-500" />
+                              ) : (
+                                <Layers className="h-4 w-4 text-emerald-500" />
+                              )}
+                            </span>
+                            <span className="font-semibold text-sm text-foreground flex items-center gap-2">
+                              {groupName}
+                              <Badge variant="secondary" className="px-2 py-0 font-normal text-xs rounded-full bg-muted text-muted-foreground border-0">
+                                {list.length} {list.length === 1 ? "file" : "files"}
+                              </Badge>
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {/* Group bulk select */}
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              className="mr-2"
+                            >
+                              <Checkbox
+                                checked={allSelected}
+                                onCheckedChange={(checked) => {
+                                  const ids = list.map(item => item.id);
+                                  if (checked) {
+                                    setSelectedIds(prev => Array.from(new Set([...prev, ...ids])));
+                                  } else {
+                                    setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
+                                  }
+                                }}
+                              />
+                            </span>
+                            {isCollapsed ? (
+                              <ChevronDown className="h-4.5 w-4.5 text-muted-foreground transition-transform duration-200" />
+                            ) : (
+                              <ChevronUp className="h-4.5 w-4.5 text-muted-foreground transition-transform duration-200" />
+                            )}
+                          </div>
+                        </button>
+                        {!isCollapsed && (
+                          <div className="overflow-x-auto border-t border-border/60">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="bg-muted/5">
+                                  <TableHead className="w-[40px] pl-4">
+                                    <Checkbox
+                                      checked={allSelected}
+                                      onCheckedChange={(checked) => {
+                                        const ids = list.map(item => item.id);
+                                        if (checked) {
+                                          setSelectedIds(prev => Array.from(new Set([...prev, ...ids])));
+                                        } else {
+                                          setSelectedIds(prev => prev.filter(id => !ids.includes(id)));
+                                        }
+                                      }}
+                                    />
+                                  </TableHead>
+                                  <TableHead className="w-[30px]"></TableHead>
+                                  <TableHead>File Name</TableHead>
+                                  <TableHead>Folder</TableHead>
+                                  <TableHead>Size</TableHead>
+                                  <TableHead>Downloads</TableHead>
+                                  <TableHead>Generated At</TableHead>
+                                  <TableHead className="w-[80px] text-right pr-4">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {list.map(exp => renderExportRow(exp))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </CardContent>
+
+            {/* Pagination Controls */}
+            {meta.totalCount > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-border bg-muted/10">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <span>Show</span>
+                    <select
+                      value={pageSize}
+                      onChange={e => handlePageSizeChange(parseInt(e.target.value, 10))}
+                      className="rounded-md border border-input bg-background px-2 py-1 text-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {[5, 10, 20, 50].map(size => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
+                    <span>records</span>
+                  </div>
+                  <span>
+                    Showing <span className="font-semibold text-foreground">{meta.totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span> to{" "}
+                    <span className="font-semibold text-foreground">{Math.min(currentPage * pageSize, meta.totalCount)}</span> of{" "}
+                    <span className="font-semibold text-foreground">{meta.totalCount}</span> exports
+                  </span>
+                </div>
+
+                {meta.totalPages > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronsLeft className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+
+                    {/* Generate page numbers dynamically */}
+                    {Array.from({ length: meta.totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === meta.totalPages || Math.abs(p - currentPage) <= 1)
+                      .map((p, idx, arr) => {
+                        const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
+                        return (
+                          <React.Fragment key={p}>
+                            {showEllipsis && <span className="text-muted-foreground px-1 text-xs">...</span>}
+                            <Button
+                              variant={currentPage === p ? "default" : "outline"}
+                              size="sm"
+                              className={cn("h-8 w-8 text-xs", currentPage === p && "bg-primary text-primary-foreground font-semibold")}
+                              onClick={() => handlePageChange(p)}
+                            >
+                              {p}
+                            </Button>
+                          </React.Fragment>
+                        );
+                      })}
+
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === meta.totalPages}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handlePageChange(meta.totalPages)}
+                      disabled={currentPage === meta.totalPages}
+                    >
+                      <ChevronsRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </div>
       </div>

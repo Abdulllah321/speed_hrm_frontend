@@ -54,6 +54,8 @@ export async function getExports(filters?: {
   isFavorite?: boolean;
   search?: string;
   moduleName?: string;
+  page?: number;
+  limit?: number;
 }) {
   try {
     const queryParams = new URLSearchParams();
@@ -70,6 +72,12 @@ export async function getExports(filters?: {
     }
     if (filters?.moduleName) {
       queryParams.append("moduleName", filters.moduleName);
+    }
+    if (filters?.page !== undefined) {
+      queryParams.append("page", String(filters.page));
+    }
+    if (filters?.limit !== undefined) {
+      queryParams.append("limit", String(filters.limit));
     }
 
     const queryString = queryParams.toString();
