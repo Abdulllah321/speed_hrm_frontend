@@ -235,7 +235,7 @@ export function GeneratePayrollClient({
 
         // Attendance is omitted here since it's already deducted from gross
         const totalDed = row.totalDeductions + row.taxDeduction + row.loanDeduction + row.advanceSalaryDeduction + row.providentFundDeduction;
-        row.netSalary = row.grossSalary - totalDed;
+        row.netSalary = row.grossSalary - totalDed + (row.loanDisbursement || 0);
 
         setPreviewData(updatedData);
     };
@@ -268,7 +268,7 @@ export function GeneratePayrollClient({
                 row.advanceSalaryDeduction + 
                 row.providentFundDeduction;
             
-            row.netSalary = row.grossSalary - totalDed;
+            row.netSalary = row.grossSalary - totalDed + (row.loanDisbursement || 0);
             
             setPreviewData(updatedData);
         }
@@ -617,6 +617,14 @@ export function GeneratePayrollClient({
                                                                 <div className="flex justify-between items-center gap-2">
                                                                     <span className="font-bold shrink-0">Leave Encashment:</span>
                                                                     <span className="text-right">{Math.round(Number(row.leaveEncashmentAmount || 0)).toLocaleString()}</span>
+                                                                </div>
+                                                            )}
+                                                            {Number(row.loanDisbursement || 0) > 0 && (
+                                                                <div className="flex justify-between items-center gap-2 text-blue-600 font-semibold">
+                                                                    <span className="shrink-0">Loan Disbursed (+):</span>
+                                                                    <span className="text-right">
+                                                                        {Math.round(Number(row.loanDisbursement || 0)).toLocaleString()}
+                                                                    </span>
                                                                 </div>
                                                             )}
                                                             <div className="border-t border-gray-200 mt-1 pt-1 font-bold bg-gray-50 flex justify-between items-center gap-2">
