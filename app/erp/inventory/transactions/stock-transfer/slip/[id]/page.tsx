@@ -4,10 +4,11 @@ import { use, useEffect, useState } from 'react';
 import { getTransferRequests, updateTransferRequestStatus } from '@/lib/actions/transfer-request';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Printer, ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, ShieldAlert } from 'lucide-react';
+import { Printer, ArrowLeft, Loader2, CheckCircle2, AlertCircle, XCircle, ShieldAlert, Clock, ThumbsUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/providers/auth-provider';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 // ── Hierarchy Types (same as SRN slip) ───────────────────────────────────────
 interface GroupedProduct {
@@ -190,33 +191,128 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
         </Button>
       </div>
 
-      {/* Approval Status Card (hidden on print) */}
+      {/* Visual Approval Stepper (hidden on print) */}
       {!loading && transfer && (
-        <div className="print:hidden bg-white border-2 border-border p-5 shadow-md max-w-4xl mx-auto rounded-md mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm uppercase tracking-wider text-muted-foreground">Status:</span>
-                <span className={`font-black text-xs uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
-                  transfer.status === 'PENDING_CHECKER' ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                  transfer.status === 'PENDING_AUTHORIZER' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                  transfer.status === 'PENDING' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
-                  transfer.status === 'REJECTED' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                  'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                }`}>
-                  {transfer.status.replace('_', ' ')}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground font-medium mt-1">
-                {transfer.status === 'PENDING_CHECKER' && "This request needs to be checked and approved by a Checker."}
-                {transfer.status === 'PENDING_AUTHORIZER' && "This request is checked and is now awaiting final Authorization."}
-                {transfer.status === 'PENDING' && "This request is fully authorized and pending dispatch/receipt."}
-                {transfer.status === 'REJECTED' && "This request has been rejected and cancelled."}
-                {transfer.status === 'COMPLETED' && "This stock transfer is complete."}
-              </p>
-            </div>
+        <div className="print:hidden max-w-4xl mx-auto mb-6">
+          <Card className="bg-gradient-to-r from-slate-900/90 to-slate-950/95 text-white border-slate-800 shadow-xl overflow-hidden relative backdrop-blur-md">
+            <div className="absolute inset-0 bg-grid-white/[0.02] bg-[size:20px_20px]" />
+            <CardHeader className="relative pb-2">
+              <CardTitle className="text-lg font-medium text-slate-300">Approval Workflow Progress</CardTitle>
+            </CardHeader>
+            <CardContent className="relative py-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative">
+                {/* Connector Line (Only for larger screens) */}
+                <div className="hidden md:block absolute left-[16.6%] right-[16.6%] top-[24px] h-0.5 bg-slate-800 z-0" />
+                
+                {/* Step 1: Prepared */}
+                <div className="flex items-start md:flex-col gap-4 md:text-center w-full md:w-1/3 z-10">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full border-2 bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20 md:mx-auto animate-none">
+                    <CheckCircle2 className="h-6 w-6" />
+                  </div>
+                  <div className="flex flex-col md:items-center">
+                    <span className="font-semibold text-slate-100 text-sm">1. Prepared (Maker)</span>
+                    <span className="text-xs text-slate-400 mt-0.5">{transfer.creatorName || 'Prepared'}</span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">{formatDate(transfer.createdAt)}</span>
+                  </div>
+                </div>
 
-            <div className="flex items-center gap-3">
+                {/* Step 2: Checked */}
+                <div className="flex items-start md:flex-col gap-4 md:text-center w-full md:w-1/3 z-10">
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 md:mx-auto transition-all duration-300 ${
+                    transfer.status === 'PENDING_CHECKER'
+                      ? 'bg-amber-500 border-amber-400 text-white animate-pulse shadow-lg shadow-amber-500/20'
+                      : transfer.status === 'REJECTED' && !transfer.checkedById
+                      ? 'bg-rose-500 border-rose-400 text-white shadow-lg shadow-rose-500/20'
+                      : (transfer.checkedById || transfer.status === 'PENDING_AUTHORIZER' || transfer.status === 'PENDING' || transfer.status === 'COMPLETED')
+                      ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20'
+                      : 'bg-slate-900 border-slate-700 text-slate-500'
+                  }`}>
+                    {(transfer.checkedById || transfer.status === 'PENDING_AUTHORIZER' || transfer.status === 'PENDING' || transfer.status === 'COMPLETED') ? (
+                      <CheckCircle2 className="h-6 w-6" />
+                    ) : transfer.status === 'PENDING_CHECKER' ? (
+                      <Clock className="h-6 w-6" />
+                    ) : transfer.status === 'REJECTED' && !transfer.checkedById ? (
+                      <XCircle className="h-6 w-6" />
+                    ) : (
+                      <div className="h-2.5 w-2.5 rounded-full bg-slate-700" />
+                    )}
+                  </div>
+                  <div className="flex flex-col md:items-center">
+                    <span className="font-semibold text-slate-100 text-sm">2. Checked (Checker)</span>
+                    {(transfer.checkedById || transfer.status === 'PENDING_AUTHORIZER' || transfer.status === 'PENDING' || transfer.status === 'COMPLETED') ? (
+                      <>
+                        <span className="text-xs text-slate-400 mt-0.5">{transfer.checkerName || 'Checked'}</span>
+                        <span className="text-[10px] text-slate-500 mt-0.5">{transfer.checkedAt ? formatDate(transfer.checkedAt) : ''}</span>
+                      </>
+                    ) : transfer.status === 'PENDING_CHECKER' ? (
+                      <span className="text-xs text-amber-400 font-medium animate-pulse mt-0.5">Awaiting Verification</span>
+                    ) : (
+                      <span className="text-xs text-slate-500 mt-0.5">Pending</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Step 3: Authorized */}
+                <div className="flex items-start md:flex-col gap-4 md:text-center w-full md:w-1/3 z-10">
+                  <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 md:mx-auto transition-all duration-300 ${
+                    (transfer.status === 'PENDING' || transfer.status === 'COMPLETED')
+                      ? 'bg-emerald-500 border-emerald-400 text-white shadow-lg shadow-emerald-500/20'
+                      : transfer.status === 'PENDING_AUTHORIZER'
+                      ? 'bg-blue-500 border-blue-400 text-white animate-pulse shadow-lg shadow-blue-500/20'
+                      : transfer.status === 'REJECTED' && transfer.checkedById
+                      ? 'bg-rose-500 border-rose-400 text-white shadow-lg shadow-rose-500/20'
+                      : 'bg-slate-900 border-slate-700 text-slate-500'
+                  }`}>
+                    {(transfer.status === 'PENDING' || transfer.status === 'COMPLETED') ? (
+                      <CheckCircle2 className="h-6 w-6" />
+                    ) : transfer.status === 'PENDING_AUTHORIZER' ? (
+                      <Clock className="h-6 w-6" />
+                    ) : transfer.status === 'REJECTED' && transfer.checkedById ? (
+                      <XCircle className="h-6 w-6" />
+                    ) : (
+                      <div className="h-2.5 w-2.5 rounded-full bg-slate-700" />
+                    )}
+                  </div>
+                  <div className="flex flex-col md:items-center">
+                    <span className="font-semibold text-slate-100 text-sm">3. Approved (Authorizer)</span>
+                    {(transfer.authorizedById || transfer.status === 'PENDING' || transfer.status === 'COMPLETED') ? (
+                      <>
+                        <span className="text-xs text-slate-400 mt-0.5">{transfer.authorizerName || 'Authorized'}</span>
+                        <span className="text-[10px] text-slate-500 mt-0.5">{transfer.authorizedAt ? formatDate(transfer.authorizedAt) : ''}</span>
+                      </>
+                    ) : transfer.status === 'PENDING_AUTHORIZER' ? (
+                      <span className="text-xs text-blue-400 font-medium animate-pulse mt-0.5">Awaiting Authorization</span>
+                    ) : transfer.status === 'REJECTED' && transfer.checkedById ? (
+                      <span className="text-xs text-rose-400 font-medium mt-0.5">Rejected</span>
+                    ) : (
+                      <span className="text-xs text-slate-500 mt-0.5">Pending</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Pending Approval Action Card (only shown when PENDING_CHECKER or PENDING_AUTHORIZER) */}
+      {!loading && transfer && (transfer.status === 'PENDING_CHECKER' || transfer.status === 'PENDING_AUTHORIZER') && (
+        <div className="print:hidden max-w-4xl mx-auto mb-6">
+          <div className="bg-blue-50/50 border border-blue-200 p-6 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-2 text-blue-700 font-bold mb-3">
+              <ThumbsUp className="h-5 w-5 text-blue-600" />
+              <span className="text-base font-semibold">Pending Approval Action Required</span>
+            </div>
+            
+            <p className="text-sm text-slate-600 mb-6">
+              {transfer.status === 'PENDING_CHECKER' ? (
+                <>This Stock Transfer request is currently in <span className="font-semibold text-slate-900">Pending Checker Verification</span>. As an authorized user, you can either approve/verify this transfer to forward it to the next step, or reject it.</>
+              ) : (
+                <>This Stock Transfer request is currently in <span className="font-semibold text-slate-900">Pending Authorizer Approval</span>. As an authorized user, you can either approve/authorize this transfer, or reject it.</>
+              )}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
               {transfer.status === 'PENDING_CHECKER' && (
                 <>
                   {!canCheck && (
@@ -226,22 +322,21 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                     </div>
                   )}
                   <Button
-                    variant="destructive"
-                    size="sm"
-                    className="font-bold shadow-sm"
-                    disabled={submitting || !canCheck}
-                    onClick={() => handleStatusUpdate('REJECTED')}
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-sm"
-                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-full"
                     disabled={submitting || !canCheck}
                     onClick={() => handleStatusUpdate('PENDING_AUTHORIZER')}
                   >
-                    {submitting ? <Loader2 className="h-4.5 w-4.5 animate-spin mr-2" /> : <CheckCircle2 className="h-4.5 w-4.5 mr-2" />}
-                    Mark Checked &amp; Approve
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                    Verify &amp; Forward
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="font-bold px-5 py-2.5 rounded-full"
+                    disabled={submitting || !canCheck}
+                    onClick={() => handleStatusUpdate('REJECTED')}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Reject Stock Transfer
                   </Button>
                 </>
               )}
@@ -255,25 +350,49 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
                     </div>
                   )}
                   <Button
-                    variant="destructive"
-                    size="sm"
-                    className="font-bold shadow-sm"
-                    disabled={submitting || !canAuthorize}
-                    onClick={() => handleStatusUpdate('REJECTED')}
-                  >
-                    Reject
-                  </Button>
-                  <Button
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm"
-                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-full"
                     disabled={submitting || !canAuthorize}
                     onClick={() => handleStatusUpdate('PENDING')}
                   >
-                    {submitting ? <Loader2 className="h-4.5 w-4.5 animate-spin mr-2" /> : <CheckCircle2 className="h-4.5 w-4.5 mr-2" />}
-                    Authorize &amp; Approve
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                    Authorize &amp; Release
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="font-bold px-5 py-2.5 rounded-full"
+                    disabled={submitting || !canAuthorize}
+                    onClick={() => handleStatusUpdate('REJECTED')}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Reject Stock Transfer
                   </Button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approval Status Card (hidden on print, shown only for non-actionable statuses) */}
+      {!loading && transfer && transfer.status !== 'PENDING_CHECKER' && transfer.status !== 'PENDING_AUTHORIZER' && (
+        <div className="print:hidden bg-white border border-slate-200 p-5 shadow-sm max-w-4xl mx-auto rounded-2xl mb-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm uppercase tracking-wider text-muted-foreground">STATUS:</span>
+                <span className={`font-black text-xs uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
+                  transfer.status === 'PENDING' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+                  transfer.status === 'REJECTED' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                  'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                }`}>
+                  {transfer.status.replace('_', ' ')}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground font-medium mt-1">
+                {transfer.status === 'PENDING' && "This request is fully authorized and pending dispatch/receipt."}
+                {transfer.status === 'REJECTED' && "This request has been rejected and cancelled."}
+                {transfer.status === 'COMPLETED' && "This stock transfer is complete."}
+              </p>
             </div>
           </div>
         </div>
@@ -451,27 +570,47 @@ export default function TransferSlipPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* Signatures — same as SRN */}
-        <div className="grid grid-cols-4 gap-8 mt-24 pt-8 border-t border-dashed border-gray-300 text-center text-[11px] font-bold uppercase tracking-wider text-gray-700">
-          <div>
-            <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-            <p>Prepared By (Warehouse)</p>
-            <p className="text-[9px] text-gray-400 font-normal mt-0.5">Sign &amp; Date</p>
+        {/* Signatures */}
+        <div className="grid grid-cols-4 gap-3 mt-24">
+          <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+            <span className="text-[9px] sm:text-[10px] font-bold text-center border-b border-black w-full pb-1">PREPARED BY (MAKER)</span>
+            {transfer.creatorName ? (
+              <div className="text-center">
+                <p className="text-[11px] font-semibold">{transfer.creatorName}</p>
+                <p className="text-[9px] text-gray-600">{formatDate(transfer.createdAt)}</p>
+              </div>
+            ) : (
+              <span className="text-[10px] text-gray-400 italic">Pending Preparation</span>
+            )}
           </div>
-          <div>
-            <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-            <p>Checked By (Checker)</p>
-            <p className="text-[9px] text-gray-400 font-normal mt-0.5">Sign &amp; Date</p>
+          <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+            <span className="text-[9px] sm:text-[10px] font-bold text-center border-b border-black w-full pb-1">CHECKED BY (CHECKER)</span>
+            {transfer.checkerName ? (
+              <div className="text-center">
+                <p className="text-[11px] font-semibold">{transfer.checkerName}</p>
+                <p className="text-[9px] text-gray-600">{transfer.checkedAt ? formatDate(transfer.checkedAt) : ''}</p>
+              </div>
+            ) : (
+              <span className="text-[10px] text-gray-400 italic">Pending Verification</span>
+            )}
           </div>
-          <div>
-            <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-            <p>Authorized By</p>
-            <p className="text-[9px] text-gray-400 font-normal mt-0.5">Sign &amp; Date</p>
+          <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+            <span className="text-[9px] sm:text-[10px] font-bold text-center border-b border-black w-full pb-1">APPROVED BY (AUTHORIZER)</span>
+            {transfer.authorizerName ? (
+              <div className="text-center">
+                <p className="text-[11px] font-semibold">{transfer.authorizerName}</p>
+                <p className="text-[9px] text-gray-600">{transfer.authorizedAt ? formatDate(transfer.authorizedAt) : ''}</p>
+              </div>
+            ) : (
+              <span className="text-[10px] text-gray-400 italic">Pending Approval</span>
+            )}
           </div>
-          <div>
-            <div className="border-b border-gray-400 w-3/4 mx-auto mb-2"></div>
-            <p>Received By (Outlet Manager)</p>
-            <p className="text-[9px] text-gray-400 font-normal mt-0.5">Sign &amp; Date</p>
+          <div className="border border-black h-24 p-2 flex flex-col justify-between items-center bg-white text-black">
+            <span className="text-[9px] sm:text-[10px] font-bold text-center border-b border-black w-full pb-1">RECEIVED BY</span>
+            <div className="text-center">
+              <div className="border-b border-gray-400 w-16 mx-auto mb-1"></div>
+              <p className="text-[9px] text-gray-400 italic">Sign &amp; Date</p>
+            </div>
           </div>
         </div>
 

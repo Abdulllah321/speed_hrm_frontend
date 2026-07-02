@@ -189,7 +189,144 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
-        // Calculate totals for specific items
+        // Helper functions
+        const isHouseRentHead = (name: string) => {
+            const lower = name.toLowerCase();
+            return lower.includes("house rent") || lower === "hra";
+        };
+
+        const isUtilityHead = (name: string) => {
+            return name.toLowerCase().includes("utility");
+        };
+
+        const getBasicSalary = (row: any) => {
+            const basicObj = (row.salaryBreakup || []).find((b: any) => 
+                b.name.toLowerCase().includes("basic")
+            );
+            return basicObj ? Number(basicObj.amount || 0) : 0;
+        };
+
+        const getHouseRentAmount = (row: any) => {
+            const hrObj = (row.salaryBreakup || []).find((b: any) => isHouseRentHead(b.name)) 
+                || (row.allowanceBreakup || []).find((a: any) => isHouseRentHead(a.name));
+            return hrObj ? Number(hrObj.amount || 0) : 0;
+        };
+
+        const getUtilityAmount = (row: any) => {
+            const utObj = (row.salaryBreakup || []).find((b: any) => isUtilityHead(b.name)) 
+                || (row.allowanceBreakup || []).find((a: any) => isUtilityHead(a.name));
+            return utObj ? Number(utObj.amount || 0) : 0;
+        };
+
+        const getAllowanceAmount = (row: any, head: string) => {
+            if (head === "Overtime") return Number(row.overtimeAmount || 0);
+            if (head === "Leave Encashment") return Number(row.leaveEncashmentAmount || 0);
+            if (head === "Loan Disbursed") return Number(row.loanDisbursement || 0);
+            
+            // Check in bonusBreakup first to prioritize specific named bonuses
+            const hasBonusBreakup = row.bonusBreakup && row.bonusBreakup.length > 0;
+            if (hasBonusBreakup) {
+                const bon = row.bonusBreakup.find((b: any) => (b.name || "Bonus") === head);
+                if (bon) return Number(bon.amount || 0);
+            } else if (head === "Bonus") {
+                return Number(row.bonusAmount || 0);
+            }
+            
+            const sal = (row.salaryBreakup || []).find((b: any) => b.name === head);
+            if (sal) return Number(sal.amount || 0);
+            
+            const allow = (row.allowanceBreakup || []).find((a: any) => a.name === head);
+            if (allow) return Number(allow.amount || 0);
+
+            return 0;
+        };
+
+        const getDeductionAmount = (row: any, head: string) => {
+            const ded = (row.deductionBreakup || []).find((d: any) => d.name === head);
+            return ded ? Number(ded.amount || 0) : 0;
+        };
+
+        // Collect dynamic headers
+        const allowanceHeads = new Set<string>();
+        const deductionHeads = new Set<string>();
+
+        let hasHouseRent = false;
+        let hasUtility = false;
+
+        data.forEach(row => {
+            (row.salaryBreakup || []).forEach(b => {
+                if (b.name.toLowerCase().includes("basic")) return;
+                if (isHouseRentHead(b.name)) {
+                    hasHouseRent = true;
+                    return;
+                }
+                if (isUtilityHead(b.name)) {
+                    hasUtility = true;
+                    return;
+                }
+                allowanceHeads.add(b.name);
+            });
+            (row.allowanceBreakup || []).forEach(a => {
+                if (isHouseRentHead(a.name)) {
+                    hasHouseRent = true;
+                    return;
+                }
+                if (isUtilityHead(a.name)) {
+                    hasUtility = true;
+                    return;
+                }
+                allowanceHeads.add(a.name);
+            });
+            if (Number(row.overtimeAmount || 0) > 0) allowanceHeads.add("Overtime");
+            
+            // Deduplicate: If specific bonus breakup is available, use it; otherwise fall back to generic "Bonus"
+            if (row.bonusBreakup && row.bonusBreakup.length > 0) {
+                row.bonusBreakup.forEach(b => {
+                    if (isHouseRentHead(b.name || "Bonus")) {
+                        hasHouseRent = true;
+                        return;
+                    }
+                    if (isUtilityHead(b.name || "Bonus")) {
+                        hasUtility = true;
+                        return;
+                    }
+                    allowanceHeads.add(b.name || "Bonus");
+                });
+            } else if (Number(row.bonusAmount || 0) > 0) {
+                allowanceHeads.add("Bonus");
+            }
+            
+            if (Number(row.leaveEncashmentAmount || 0) > 0) allowanceHeads.add("Leave Encashment");
+            if (Number(row.loanDisbursement || 0) > 0) allowanceHeads.add("Loan Disbursed");
+
+            (row.deductionBreakup || []).forEach(d => deductionHeads.add(d.name));
+        });
+
+        const sortedAllowanceHeads = Array.from(allowanceHeads).sort();
+        const sortedDeductionHeads = Array.from(deductionHeads).sort();
+
+        // Calculate totals for specific items and column-wise totals
+        const columnTotals: { [key: string]: number } = {
+            basicSalary: 0,
+            houseRent: 0,
+            utility: 0,
+            grossSalary: 0,
+            pf: 0,
+            tax: 0,
+            loan: 0,
+            advance: 0,
+            attendance: 0,
+            totalDeductions: 0,
+            netSalary: 0,
+        };
+
+        sortedAllowanceHeads.forEach(head => {
+            columnTotals[`allow_${head}`] = 0;
+        });
+        sortedDeductionHeads.forEach(head => {
+            columnTotals[`ded_${head}`] = 0;
+        });
+
         let basicSalaryTotal = 0;
         let utilityTotal = 0;
         let houseRentTotal = 0;
@@ -197,33 +334,44 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
         let taxTotal = 0;
 
         data.forEach(row => {
-            // Basic Salary
-            const basicObj = (row.salaryBreakup || []).find((b: any) => 
-                b.name.toLowerCase().includes("basic")
-            );
-            if (basicObj) basicSalaryTotal += Number(basicObj.amount || 0);
+            const basic = getBasicSalary(row);
+            columnTotals.basicSalary += basic;
+            basicSalaryTotal += basic;
 
-            // Utility
-            const utilityObj = (row.salaryBreakup || []).find((b: any) => 
-                b.name.toLowerCase().includes("utility")
-            ) || (row.allowanceBreakup || []).find((a: any) => 
-                a.name.toLowerCase().includes("utility")
-            );
-            if (utilityObj) utilityTotal += Number(utilityObj.amount || 0);
+            const houseRent = getHouseRentAmount(row);
+            columnTotals.houseRent += houseRent;
+            houseRentTotal += houseRent;
 
-            // House Rent
-            const hrObj = (row.salaryBreakup || []).find((b: any) => 
-                b.name.toLowerCase().includes("house rent") || b.name.toLowerCase() === "hra"
-            ) || (row.allowanceBreakup || []).find((a: any) => 
-                a.name.toLowerCase().includes("house rent") || a.name.toLowerCase() === "hra"
-            );
-            if (hrObj) houseRentTotal += Number(hrObj.amount || 0);
+            const utility = getUtilityAmount(row);
+            columnTotals.utility += utility;
+            utilityTotal += utility;
 
-            // PF
+            sortedAllowanceHeads.forEach(head => {
+                const amt = getAllowanceAmount(row, head);
+                columnTotals[`allow_${head}`] += amt;
+            });
+
+            columnTotals.grossSalary += Number(row.grossSalary || 0);
+            columnTotals.pf += Number(row.providentFundDeduction || 0);
             pfTotal += Number(row.providentFundDeduction || 0);
-
-            // Tax
+            columnTotals.tax += Number(row.taxDeduction || 0);
             taxTotal += Number(row.taxDeduction || 0);
+            columnTotals.loan += Number(row.loanDeduction || 0);
+            columnTotals.advance += Number(row.advanceSalaryDeduction || 0);
+            columnTotals.attendance += Number(row.attendanceDeduction || 0);
+
+            sortedDeductionHeads.forEach(head => {
+                columnTotals[`ded_${head}`] += getDeductionAmount(row, head);
+            });
+
+            const deductionBreakupTotal = (row.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
+            const totalDed = Number(row.attendanceDeduction || 0) +
+                Number(row.loanDeduction || 0) + Number(row.advanceSalaryDeduction || 0) +
+                Number(row.providentFundDeduction || 0) +
+                Number(row.taxDeduction || 0) + deductionBreakupTotal;
+
+            columnTotals.totalDeductions += totalDed;
+            columnTotals.netSalary += Number(row.netSalary || 0);
         });
 
         const selectedLocationName = filters.locationId === "all" 
@@ -247,28 +395,29 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
         <head>
           <title>Payroll Report - ${filters.monthYear}</title>
           <style>
-            body { font-family: Arial, sans-serif; font-size: 9px; margin: 10px; }
-            h2 { text-align: center; font-size: 14px; margin-bottom: 5px; }
-            h3 { text-align: center; font-size: 11px; margin-bottom: 5px; }
-            h4 { text-align: center; font-size: 10px; margin-bottom: 10px; }
-            .header-info { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 8px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { border: 1px solid #ccc; padding: 4px; text-align: left; vertical-align: top; font-size: 8px; }
-            th { background-color: #4f46e5; color: white; font-weight: bold; }
+            @page { size: A4 portrait; margin: 4mm; }
+            body { font-family: Arial, sans-serif; font-size: 7px; margin: 0; padding: 0; color: #111; width: 100%; }
+            h2 { text-align: center; font-size: 11px; margin: 0 0 2px 0; font-weight: bold; }
+            h3 { text-align: center; font-size: 8.5px; margin: 0 0 2px 0; font-weight: normal; }
+            h4 { text-align: center; font-size: 7.5px; margin: 0 0 4px 0; font-weight: normal; color: #444; }
+            .header-info { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 6.5px; color: #555; }
+            table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+            th, td { border: 1px solid #444; padding: 4px 2px; text-align: left; vertical-align: middle; font-size: 5.5px; }
+            th { background-color: #1e293b; color: white; font-weight: bold; text-align: center; font-size: 5.5px; text-transform: uppercase; }
             .text-right { text-align: right; }
+            .text-center { text-align: center; }
             .font-bold { font-weight: bold; }
-            .bg-gray { background-color: #f3f4f6; }
-            .bg-green { background-color: #dcfce7; }
-            .section-header { background-color: #e5e7eb; font-weight: bold; }
-            .breakup-item { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 2px 0; }
-            .breakup-label { font-weight: 500; }
-            .breakup-value { text-align: right; }
-            .total-row { background-color: #fef3c7; font-weight: bold; }
-            .net-salary { color: #16a34a; font-weight: bold; font-size: 10px; }
-            .deduction { color: #dc2626; }
+            .bg-gray { background-color: #f1f5f9 !important; }
+            .bg-green { background-color: #dcfce7 !important; }
+            .no-wrap { white-space: nowrap; }
+            .total-row { background-color: #fef3c7 !important; font-weight: bold; }
+            .net-salary { color: #15803d; font-weight: bold; }
+            .deduction { color: #b91c1c; }
             @media print {
-              body { margin: 0; }
-              @page { size: A4 portrait; margin: 8mm; }
+              body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+              }
             }
           </style>
         </head>
@@ -278,117 +427,137 @@ export function ReportContent({ initialDepartments, initialLocations }: ReportCo
             <span>Payroll Report - ${filters.monthYear}</span>
           </div>
           
-          <div style="text-align: center; margin-bottom: 15px;">
-            <h2 style="margin: 0; font-size: 15px; font-weight: bold; text-transform: uppercase;">SPEED (PRIVATE) LIMITED</h2>
-            <h3 style="margin: 5px 0 0 0; font-size: 12px; font-weight: normal;">Salary Sheet for the Month of ${formattedMonthYear}</h3>
-            ${selectedLocationName ? `<h4 style="margin: 3px 0 0 0; font-size: 10px; font-weight: normal; color: #555;"><b>Location:</b> ${selectedLocationName}</h4>` : ''}
+          <div style="text-align: center; margin-bottom: 10px;">
+            <h2 style="margin: 0; font-size: 14px; font-weight: bold; text-transform: uppercase;">SPEED (PRIVATE) LIMITED</h2>
+            <h3 style="margin: 3px 0 0 0; font-size: 11px; font-weight: normal;">Salary Sheet for the Month of ${formattedMonthYear}</h3>
+            ${selectedLocationName ? `<h4 style="margin: 2px 0 0 0; font-size: 9px; font-weight: normal; color: #555;"><b>Location:</b> ${selectedLocationName}</h4>` : ''}
           </div>
 
           <table>
             <thead>
               <tr>
-                <th style="width: 5%">S.No</th>
-                <th style="width: 25%">Employee</th>
-                <th style="width: 35%">Salary/Allowances</th>
-                <th style="width: 20%">Deductions</th>
-                <th style="width: 15%">Net Salary</th>
+                <th style="width: 3%">S.No</th>
+                <th style="width: 16%">Employee Name</th>
+                <th style="width: 7%">Basic Salary</th>
+                ${hasHouseRent ? `<th style="width: 7%">House Rent</th>` : ''}
+                ${hasUtility ? `<th style="width: 7%">Utility</th>` : ''}
+                <th style="width: 7%">Total Salary</th>
+                ${sortedAllowanceHeads.map(head => `<th>${head}</th>`).join('')}
+                <th style="width: 7%">Gross Salary</th>
+                <th style="width: 5%">PF</th>
+                <th style="width: 5%">Tax</th>
+                <th style="width: 5%">Loan</th>
+                <th style="width: 5%">Advance</th>
+                <th style="width: 5%">Attendance</th>
+                ${sortedDeductionHeads.map(head => `<th>${head}</th>`).join('')}
+                <th style="width: 7%">Total Ded.</th>
+                <th style="width: 7%">Net Salary</th>
               </tr>
             </thead>
             <tbody>
               ${data.map((row, i) => {
-            const salaryBreakup = row.salaryBreakup || [];
-            const allowanceBreakup = row.allowanceBreakup || [];
-            const deductionBreakup = row.deductionBreakup || [];
-            const deductionBreakupTotal = deductionBreakup.reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
-            const totalGross = Number(row.grossSalary || 0);
-            const totalDed = Number(row.attendanceDeduction || 0) +
-                Number(row.loanDeduction || 0) + Number(row.advanceSalaryDeduction || 0) +
-                Number(row.providentFundDeduction || 0) +
-                Number(row.taxDeduction || 0) + deductionBreakupTotal;
+                  const basic = getBasicSalary(row);
+                  const houseRent = getHouseRentAmount(row);
+                  const utility = getUtilityAmount(row);
+                  const deductionBreakupTotal = (row.deductionBreakup || []).reduce((sum: number, d: any) => sum + Number(d.amount || 0), 0);
+                  const totalDed = Number(row.attendanceDeduction || 0) +
+                      Number(row.loanDeduction || 0) + Number(row.advanceSalaryDeduction || 0) +
+                      Number(row.providentFundDeduction || 0) +
+                      Number(row.taxDeduction || 0) + deductionBreakupTotal;
 
-            return `
-                <tr>
-                  <td>${i + 1}</td>
-                  <td><b>(${row.employee.employeeId}) ${row.employee.employeeName}</b></td>
-                  <td>
-                    ${salaryBreakup.map((b: any) => `<div class="breakup-item"><span class="breakup-label">${b.name}:</span><span class="breakup-value">${Math.round(Number(b.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')}
-                    ${allowanceBreakup.map((a: any) => `<div class="breakup-item"><span class="breakup-label">${a.name}:</span><span class="breakup-value">${Math.round(Number(a.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')}
-                    ${Number(row.overtimeAmount || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Overtime:</span><span class="breakup-value">${Math.round(Number(row.overtimeAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : ''}
-                    ${row.bonusBreakup && row.bonusBreakup.length > 0 ?
-                      row.bonusBreakup.map((b: any) => `<div class="breakup-item"><span class="breakup-label">${b.name || 'Bonus'}:</span><span class="breakup-value">${Math.round(Number(b.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')
-                      : (Number(row.bonusAmount || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Bonus:</span><span class="breakup-value">${Math.round(Number(row.bonusAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : '')}
-                    ${Number(row.leaveEncashmentAmount || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Leave Encashment:</span><span class="breakup-value">${Math.round(Number(row.leaveEncashmentAmount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : ''}
-                    <div class="total-row breakup-item" style="margin-top: 4px; border-top: 2px solid #333; padding: 2px 0;">
-                      <span class="breakup-label">Gross:</span>
-                      <span class="breakup-value">${Math.round(totalGross).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="breakup-item"><span class="breakup-label">PF:</span><span class="breakup-value">${Math.round(Number(row.providentFundDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>
-                    <div class="breakup-item"><span class="breakup-label">Advance:</span><span class="breakup-value">${Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>
-                    <div class="breakup-item"><span class="breakup-label">Loan:</span><span class="breakup-value">${Math.round(Number(row.loanDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>
-                    ${Number(row.taxDeduction || 0) > 0 ? `<div class="breakup-item"><span class="breakup-label">Tax:</span><span class="breakup-value">${Math.round(Number(row.taxDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>` : ''}
-                    ${deductionBreakup.map((d: any) => `<div class="breakup-item"><span class="breakup-label">${d.name}:</span><span class="breakup-value">${Math.round(Number(d.amount || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>`).join('')}
-                    <div class="breakup-item"><span class="breakup-label">Attendance:</span><span class="breakup-value">${Math.round(Number(row.attendanceDeduction || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span></div>
-                    <div class="total-row deduction breakup-item" style="margin-top: 4px; border-top: 1px solid #999; padding: 2px 0;">
-                      <span class="breakup-label">Total:</span>
-                      <span class="breakup-value">${Math.round(totalDed).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
-                    </div>
-                  </td>
-                  <td class="net-salary text-right">${Math.round(Number(row.netSalary || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
-                </tr>
-              `}).join('')}
-              <tr class="font-bold bg-green">
+                  return `
+                    <tr>
+                      <td class="text-center">${i + 1}</td>
+                      <td class="no-wrap"><b>${row.employee?.employeeName || ''}</b></td>
+                      <td class="text-right">${Math.round(basic).toLocaleString()}</td>
+                      ${hasHouseRent ? `<td class="text-right">${houseRent > 0 ? Math.round(houseRent).toLocaleString() : '0'}</td>` : ''}
+                      ${hasUtility ? `<td class="text-right">${utility > 0 ? Math.round(utility).toLocaleString() : '0'}</td>` : ''}
+                      <td class="text-right font-bold bg-gray">${Math.round(basic + houseRent + utility).toLocaleString()}</td>
+                      ${sortedAllowanceHeads.map(head => {
+                          const amt = getAllowanceAmount(row, head);
+                          return `<td class="text-right">${amt > 0 ? Math.round(amt).toLocaleString() : '0'}</td>`;
+                      }).join('')}
+                      <td class="text-right font-bold bg-gray">${Math.round(Number(row.grossSalary || 0)).toLocaleString()}</td>
+                      <td class="text-right">${Number(row.providentFundDeduction || 0) > 0 ? Math.round(Number(row.providentFundDeduction || 0)).toLocaleString() : '0'}</td>
+                      <td class="text-right">${Number(row.taxDeduction || 0) > 0 ? Math.round(Number(row.taxDeduction || 0)).toLocaleString() : '0'}</td>
+                      <td class="text-right">${Number(row.loanDeduction || 0) > 0 ? Math.round(Number(row.loanDeduction || 0)).toLocaleString() : '0'}</td>
+                      <td class="text-right">${Number(row.advanceSalaryDeduction || 0) > 0 ? Math.round(Number(row.advanceSalaryDeduction || 0)).toLocaleString() : '0'}</td>
+                      <td class="text-right">${Number(row.attendanceDeduction || 0) > 0 ? Math.round(Number(row.attendanceDeduction || 0)).toLocaleString() : '0'}</td>
+                      ${sortedDeductionHeads.map(head => {
+                          const amt = getDeductionAmount(row, head);
+                          return `<td class="text-right">${amt > 0 ? Math.round(amt).toLocaleString() : '0'}</td>`;
+                      }).join('')}
+                      <td class="text-right font-bold bg-gray deduction">${Math.round(totalDed).toLocaleString()}</td>
+                      <td class="text-right font-bold bg-green net-salary">${Math.round(Number(row.netSalary || 0)).toLocaleString()}</td>
+                    </tr>
+                  `;
+              }).join('')}
+              <tr class="font-bold total-row">
                 <td colspan="2" class="text-right"><b>Grand Total:</b></td>
-                <td class="text-right"><b>${Math.round(totals.grossSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
-                <td class="text-right"><b>${Math.round(totals.totalDeductions).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
-                <td class="net-salary text-right"><b>${Math.round(totals.netSalary).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</b></td>
+                <td class="text-right"><b>${Math.round(columnTotals.basicSalary).toLocaleString()}</b></td>
+                ${hasHouseRent ? `<td class="text-right"><b>${Math.round(columnTotals.houseRent).toLocaleString()}</b></td>` : ''}
+                ${hasUtility ? `<td class="text-right"><b>${Math.round(columnTotals.utility).toLocaleString()}</b></td>` : ''}
+                <td class="text-right"><b>${Math.round(columnTotals.basicSalary + columnTotals.houseRent + columnTotals.utility).toLocaleString()}</b></td>
+                ${sortedAllowanceHeads.map(head => `
+                  <td class="text-right"><b>${Math.round(columnTotals[`allow_${head}`]).toLocaleString()}</b></td>
+                `).join('')}
+                <td class="text-right"><b>${Math.round(columnTotals.grossSalary).toLocaleString()}</b></td>
+                <td class="text-right"><b>${Math.round(columnTotals.pf).toLocaleString()}</b></td>
+                <td class="text-right"><b>${Math.round(columnTotals.tax).toLocaleString()}</b></td>
+                <td class="text-right"><b>${Math.round(columnTotals.loan).toLocaleString()}</b></td>
+                <td class="text-right"><b>${Math.round(columnTotals.advance).toLocaleString()}</b></td>
+                <td class="text-right"><b>${Math.round(columnTotals.attendance).toLocaleString()}</b></td>
+                ${sortedDeductionHeads.map(head => `
+                  <td class="text-right"><b>${Math.round(columnTotals[`ded_${head}`]).toLocaleString()}</b></td>
+                `).join('')}
+                <td class="text-right deduction"><b>${Math.round(columnTotals.totalDeductions).toLocaleString()}</b></td>
+                <td class="text-right net-salary"><b>${Math.round(columnTotals.netSalary).toLocaleString()}</b></td>
               </tr>
             </tbody>
           </table>
 
-          <div style="margin-top: 20px; display: flex; justify-content: flex-end; page-break-inside: avoid;">
-            <div class="summary-box" style="width: 250px; border: 1px solid #ccc; padding: 10px; background-color: #f9fafb;">
-              <h3 style="margin-top: 0; margin-bottom: 8px; font-size: 11px; border-bottom: 1px solid #ddd; padding-bottom: 4px; text-align: left;">Grand Summary</h3>
-              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+          <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: flex-start; page-break-inside: avoid;">
+            <div class="summary-box" style="width: 140px; border: 1px solid #ccc; padding: 5px; background-color: #f9fafb;">
+              <h3 style="margin-top: 0; margin-bottom: 4px; font-size: 8px; border-bottom: 1px solid #ddd; padding-bottom: 2px; text-align: left; font-weight: bold;">Grand Summary</h3>
+              <div style="display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 2px;">
                 <span><b>Basic Salary:</b></span>
                 <span>${Math.round(basicSalaryTotal).toLocaleString()}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 2px;">
                 <span><b>House Rent:</b></span>
                 <span>${Math.round(houseRentTotal).toLocaleString()}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 2px;">
                 <span><b>Utility:</b></span>
                 <span>${Math.round(utilityTotal).toLocaleString()}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 2px;">
                 <span><b>PF:</b></span>
                 <span>${Math.round(pfTotal).toLocaleString()}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 7px; margin-bottom: 2px;">
                 <span><b>Tax:</b></span>
                 <span>${Math.round(taxTotal).toLocaleString()}</span>
               </div>
-              <div style="display: flex; justify-content: space-between; font-size: 9px; margin-top: 8px; border-top: 2px solid #333; padding-top: 4px; font-weight: bold;">
+              <div style="display: flex; justify-content: space-between; font-size: 7px; margin-top: 4px; border-top: 1.5px solid #333; padding-top: 2px; font-weight: bold;">
                 <span>Total:</span>
                 <span>${Math.round(basicSalaryTotal + houseRentTotal + utilityTotal + pfTotal + taxTotal).toLocaleString()}</span>
               </div>
             </div>
-          </div>
 
-          <div style="margin-top: 60px; display: flex; justify-content: space-between; font-size: 10px; padding: 0 20px; page-break-inside: avoid;">
-            <div style="text-align: center; width: 180px;">
-              <div style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
-              <b>Prepared By</b>
-            </div>
-            <div style="text-align: center; width: 180px;">
-              <div style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
-              <b>Checked By</b>
-            </div>
-            <div style="text-align: center; width: 180px;">
-              <div style="border-top: 1px solid #000; margin-bottom: 5px;"></div>
-              <b>Approved By</b>
+            <div style="display: flex; justify-content: space-between; width: 68%; font-size: 7px; margin-top: 25px; padding-right: 5px;">
+              <div style="text-align: center; width: 100px;">
+                <div style="border-top: 1px solid #000; margin-bottom: 4px;"></div>
+                <b>Prepared By</b>
+              </div>
+              <div style="text-align: center; width: 100px;">
+                <div style="border-top: 1px solid #000; margin-bottom: 4px;"></div>
+                <b>Checked By</b>
+              </div>
+              <div style="text-align: center; width: 100px;">
+                <div style="border-top: 1px solid #000; margin-bottom: 4px;"></div>
+                <b>Approved By</b>
+              </div>
             </div>
           </div>
         </body>
