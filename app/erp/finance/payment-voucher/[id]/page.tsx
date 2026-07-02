@@ -3,11 +3,21 @@
 import { useState, useEffect, use } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { getPaymentVoucher, updatePaymentVoucherStatus, PaymentVoucher } from "@/lib/actions/payment-voucher";
+import { getPaymentVoucher, updatePaymentVoucherStatus, updatePaymentVoucherCpr, PaymentVoucher } from "@/lib/actions/payment-voucher";
 import { PaymentVoucherPrint, numberToWords } from "../components/payment-voucher-print";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Printer,
   ArrowLeft,
@@ -21,6 +31,7 @@ import {
   Clock,
   XCircle,
   Receipt,
+  FileEdit,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -53,6 +64,10 @@ export default function PaymentVoucherDetailPage({
   const [actionPending, setActionPending] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  // CPR states
+  const [isCprModalOpen, setIsCprModalOpen] = useState(false);
+  const [cprValues, setCprValues] = useState<{ [key: string]: string }>({});
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -75,10 +90,50 @@ export default function PaymentVoucherDetailPage({
     }
   };
 
+  const handleUpdateCpr = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!voucher) return;
+
+    try {
+      setActionPending(true);
+      const detailsPayload = Object.entries(cprValues).map(([id, cprNo]) => ({
+        id,
+        cprNo: cprNo.trim() || null,
+      }));
+
+      const res = await updatePaymentVoucherCpr(voucher.id, detailsPayload);
+      if (res.status) {
+        toast.success("CPR numbers updated successfully");
+        setIsCprModalOpen(false);
+        setVoucher((prev) => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            details: prev.details.map(d => ({
+              ...d,
+              cprNo: cprValues[d.id] || null,
+            })),
+          };
+        });
+      } else {
+        toast.error(res.message || "Failed to update CPR numbers");
+      }
+    } catch {
+      toast.error("An unexpected error occurred");
+    } finally {
+      setActionPending(false);
+    }
+  };
+
   useEffect(() => {
     getPaymentVoucher(id).then((res) => {
       if (res.status && res.data) {
         setVoucher(res.data);
+        const values: { [key: string]: string } = {};
+        res.data.details.forEach((d) => {
+          values[d.id] = d.cprNo || "";
+        });
+        setCprValues(values);
       } else {
         toast.error(res.message || "Failed to load voucher");
       }
@@ -201,6 +256,12 @@ export default function PaymentVoucherDetailPage({
               <Printer className="h-4 w-4 mr-2" />
               Print Voucher
             </Button>
+            {voucher.status === "approved" && (
+              <Button onClick={() => setIsCprModalOpen(true)} size="sm" variant="outline">
+                <FileEdit className="h-4 w-4 mr-2" />
+                Update CPR Numbers
+              </Button>
+            )}
             {voucher.status === "pending" && (
               <>
                 <Button variant="outline" size="sm" asChild>
@@ -377,7 +438,7 @@ export default function PaymentVoucherDetailPage({
                       )}
 
                       {/* ── Ref# line ── */}
-                      {(d.refBillNo || d.taxType || voucher.refBillNo || voucher.taxType) && (
+                      {(d.refBillNo || d.taxType || d.cprNo || voucher.refBillNo || voucher.taxType) && (
                         <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                           <span className="font-bold text-foreground/70">Ref#</span>
                           {(d.taxType ?? voucher.taxType) && (
@@ -387,6 +448,11 @@ export default function PaymentVoucherDetailPage({
                           )}
                           {(d.refBillNo || voucher.refBillNo) && (
                             <span className="font-mono">{d.refBillNo || voucher.refBillNo}</span>
+                          )}
+                          {d.cprNo && (
+                            <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                              CPR: {d.cprNo}
+                            </span>
                           )}
                         </div>
                       )}
@@ -428,6 +494,26 @@ export default function PaymentVoucherDetailPage({
                             </span>
                           )}
                           <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
+                        </div>
+                      )}
+
+                      {/* ── Ref# line ── */}
+                      {(d.refBillNo || d.taxType || d.cprNo) && (
+                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                          <span className="font-bold text-foreground/70">Ref#</span>
+                          {d.taxType && (
+                            <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                              {d.taxType}
+                            </span>
+                          )}
+                          {d.refBillNo && (
+                            <span className="font-mono">{d.refBillNo}</span>
+                          )}
+                          {d.cprNo && (
+                            <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                              CPR: {d.cprNo}
+                            </span>
+                          )}
                         </div>
                       )}
                     </td>
@@ -549,6 +635,58 @@ export default function PaymentVoucherDetailPage({
         </div>,
         document.body
       )}
+
+      <Dialog open={isCprModalOpen} onOpenChange={setIsCprModalOpen}>
+        <DialogContent className="max-w-md">
+          <form onSubmit={handleUpdateCpr}>
+            <DialogHeader>
+              <DialogTitle>Update CPR Numbers</DialogTitle>
+              <DialogDescription>
+                Enter the FBR CPR (Computerized Payment Receipt) numbers for each detail row of this Payment Voucher.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4 max-h-[300px] overflow-y-auto pr-2">
+              {voucher.details.map((d) => (
+                <div key={d.id} className="space-y-1.5 border-b pb-3 last:border-0 last:pb-0">
+                  <div className="flex justify-between items-baseline text-xs text-muted-foreground">
+                    <span className="font-semibold uppercase truncate max-w-[250px]">
+                      {d.accountCode ? `${d.accountCode} - ` : ""}{d.accountName}
+                    </span>
+                    <span className="font-mono">
+                      {Number(d.debit) > 0 ? `Dr: ${fmt(Number(d.debit))}` : `Cr: ${fmt(Number(d.credit))}`}
+                    </span>
+                  </div>
+                  {d.tagAccountName && (
+                    <div className="text-[10px] text-muted-foreground pl-2 border-l">
+                      Tag: {d.tagAccountName}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor={`cpr-${d.id}`} className="text-xs shrink-0 w-16">CPR No</Label>
+                    <Input
+                      id={`cpr-${d.id}`}
+                      placeholder="e.g. CPR2026..."
+                      value={cprValues[d.id] || ""}
+                      onChange={(e) => setCprValues(prev => ({ ...prev, [d.id]: e.target.value }))}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsCprModalOpen(false)} disabled={actionPending}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={actionPending} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                {actionPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

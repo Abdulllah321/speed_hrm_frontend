@@ -17,6 +17,7 @@ export interface PaymentVoucherDetail {
     refBillNo?: string;
     refBillNo2?: string;
     taxType?: string;
+    cprNo?: string | null;
 }
 
 export interface PaymentVoucher {
@@ -403,6 +404,32 @@ export async function queuePaymentVouchersExport(opts?: {
         return { status: true, jobId: result?.data?.jobId };
     } catch (error: any) {
         return { status: false, message: error.message || 'An unexpected error occurred' };
+    }
+}
+
+export async function updatePaymentVoucherCpr(id: string, details: { id: string; cprNo?: string | null }[]) {
+    try {
+        const response = await authFetch(`/finance/payment-vouchers/${id}/cpr`, {
+            method: "PATCH",
+            body: JSON.stringify({ details }),
+        });
+
+        if (!response.ok) {
+            const errorData = response.data || {};
+            return {
+                status: false,
+                message: errorData.message || `Failed to update CPR numbers: ${response.statusText || response.status}`
+            };
+        }
+
+        revalidatePath("/finance/payment-voucher/list");
+        revalidatePath(`/erp/finance/payment-voucher/${id}`);
+        revalidatePath("/erp/finance/payment-voucher/list");
+
+        return { status: true, message: "CPR numbers updated successfully" };
+    } catch (error: any) {
+        console.error("Error updating payment voucher CPR numbers:", error);
+        return { status: false, message: error.message || "An unexpected error occurred" };
     }
 }
 

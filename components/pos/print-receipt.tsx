@@ -394,7 +394,13 @@ export function PrintReceipt({
     ? Number(order.grandTotal)
     : valueForSales + totalTax;
 
-  const fbrPosFee = Number(order?.fbrPosFee ?? 0) || 1; // Default to 1 if not set
+  const hasFbrInfo = !!(
+    (user?.terminal?.location?.fbrEnabled &&
+      (user?.terminal?.location?.fbrNtn || settings.receiptNTN)) ||
+    order?.fbrInvoiceNumber
+  );
+
+  const fbrPosFee = hasFbrInfo ? (Number(order?.fbrPosFee ?? 0) || 1) : 0;
   const finalGrandTotal = isSavedOrder ? grandTotal : grandTotal + fbrPosFee;
   const changeAmount = Number(order?.changeAmount ?? 0);
   const totalPaid = tenders.reduce((s, t) => s + (t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount), 0);
@@ -455,6 +461,7 @@ export function PrintReceipt({
     suppressItemDiscounts,
     suppressLabel,
     creditVouchers,
+    hasFbrInfo,
   };
 
   return (
@@ -686,6 +693,7 @@ interface ReceiptBodyProps {
     faceValue: number;
     expiresAt: Date | null;
   }[];
+  hasFbrInfo?: boolean;
 }
 
 function ReceiptBody({
@@ -716,6 +724,7 @@ function ReceiptBody({
   suppressItemDiscounts,
   suppressLabel = "Alliance Disc",
   creditVouchers,
+  hasFbrInfo,
 }: ReceiptBodyProps) {
   const isSavedOrder = !!(order && order.id);
 
@@ -1027,7 +1036,9 @@ function ReceiptBody({
             <span>Total Value Including Sales Tax</span>
             <span>{fmt(Math.round(finalGrandTotal - fbrPosFee))}</span>
           </div>
-          <Row label="FBR POS Fee" value={fmt(Math.round(fbrPosFee))} />
+          {hasFbrInfo && fbrPosFee > 0 && (
+            <Row label="FBR POS Fee" value={fmt(Math.round(fbrPosFee))} />
+          )}
           <div
             className="rpt-flex flex justify-between font-black text-sm border-t pt-0.5 mt-0.5"
             style={{
@@ -1123,10 +1134,10 @@ function ReceiptBody({
         </>
       )}
 
-      <Separator />
+      {hasFbrInfo && <Separator />}
 
       {/* ── FBR Logo + QR ── */}
-      {!isGiftReceipt && (
+      {!isGiftReceipt && hasFbrInfo && (
         <>
           <p
             className="flex-1 text-[10px] text-center leading-snug"
@@ -1231,6 +1242,7 @@ function A4InvoiceBody({
   suppressItemDiscounts,
   suppressLabel = "Alliance Disc",
   creditVouchers,
+  hasFbrInfo,
 }: ReceiptBodyProps) {
   const isSavedOrder = !!(order && order.id);
 
@@ -1457,33 +1469,35 @@ function A4InvoiceBody({
               </div>
 
               {/* FBR integration info */}
-              <div className="flex gap-4 items-center bg-zinc-50 border border-zinc-200 rounded-lg p-3">
-                <div className="shrink-0 bg-white p-1 rounded border border-zinc-200">
-                  <Image
-                    src={
-                      typeof window !== "undefined"
-                        ? `${window.location.origin}/fbr_logo.png`
-                        : "/fbr_logo.png"
-                    }
-                    alt="FBR Logo"
-                    width={50}
-                    height={50}
-                    className="object-contain"
-                    unoptimized
-                  />
-                </div>
-                <div className="space-y-1 flex-1">
-                  <p className="text-[10px] text-zinc-600 leading-snug">
-                    This receipt is verified by FBR POS Invoicing System. Verify via FBR Tax Asaan App or SMS at <strong>9966</strong>.
-                  </p>
-                  <div className="flex items-center gap-1 text-[9px] text-zinc-400">
-                    <span>Scan verified QR to check invoicing status</span>
+              {hasFbrInfo && (
+                <div className="flex gap-4 items-center bg-zinc-50 border border-zinc-200 rounded-lg p-3">
+                  <div className="shrink-0 bg-white p-1 rounded border border-zinc-200">
+                    <Image
+                      src={
+                        typeof window !== "undefined"
+                          ? `${window.location.origin}/fbr_logo.png`
+                          : "/fbr_logo.png"
+                      }
+                      alt="FBR Logo"
+                      width={50}
+                      height={50}
+                      className="object-contain"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <p className="text-[10px] text-zinc-600 leading-snug">
+                      This receipt is verified by FBR POS Invoicing System. Verify via FBR Tax Asaan App or SMS at <strong>9966</strong>.
+                    </p>
+                    <div className="flex items-center gap-1 text-[9px] text-zinc-400">
+                      <span>Scan verified QR to check invoicing status</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 bg-white p-1 rounded border border-zinc-200">
+                    <QRCodeSVG value={fbrVerifyUrl} size={48} level="M" />
                   </div>
                 </div>
-                <div className="shrink-0 bg-white p-1 rounded border border-zinc-200">
-                  <QRCodeSVG value={fbrVerifyUrl} size={48} level="M" />
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Right Column: Pricing Aggregations */}
@@ -1512,10 +1526,12 @@ function A4InvoiceBody({
                 </div>
               )}
 
-              <div className="flex justify-between text-zinc-550 py-0.5 text-[10px]">
-                <span>FBR POS Service Charge</span>
-                <span className="font-mono">{fmt(Math.round(fbrPosFee))}</span>
-              </div>
+              {hasFbrInfo && fbrPosFee > 0 && (
+                <div className="flex justify-between text-zinc-550 py-0.5 text-[10px]">
+                  <span>FBR POS Service Charge</span>
+                  <span className="font-mono">{fmt(Math.round(fbrPosFee))}</span>
+                </div>
+              )}
 
               <div className="flex justify-between items-center text-zinc-900 pt-3 mt-2 border-t-2 border-zinc-800">
                 <span className="font-black text-sm uppercase">Grand Total (Incl. Tax)</span>

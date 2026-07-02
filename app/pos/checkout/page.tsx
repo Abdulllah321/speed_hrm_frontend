@@ -356,7 +356,10 @@ export default function CheckoutPage() {
         return acc + (Math.round(afterDiscount * (i.taxPercent / 100) * 100) / 100);
     }, 0);
 
-    const grandTotalBeforeManual = Math.round(subtotal - itemDiscounts + defaultItemTax + FBR_POS_FEE);
+    const hasFbrInfo = !!(user?.terminal?.location?.fbrEnabled && user?.terminal?.location?.fbrNtn);
+    const activeFbrFee = hasFbrInfo ? FBR_POS_FEE : 0;
+
+    const grandTotalBeforeManual = Math.round(subtotal - itemDiscounts + defaultItemTax + activeFbrFee);
 
     let orderDiscount = 0;
     let finalItemDiscounts = itemDiscounts;
@@ -448,7 +451,7 @@ export default function CheckoutPage() {
     }
 
     // Grand total includes FBR POS Fee
-    const grandTotal = Math.round(Math.max(0, subtotal - totalDiscount + itemTax) + FBR_POS_FEE);
+    const grandTotal = Math.round(Math.max(0, subtotal - totalDiscount + itemTax) + activeFbrFee);
     const totalPaid = tenders.reduce((a, t) => a + t.amount, 0);
     const balanceDue = Math.max(0, grandTotal - totalPaid);
     const changeAmount = Math.max(0, totalPaid - grandTotal);
@@ -1209,7 +1212,7 @@ export default function CheckoutPage() {
                             selectedAlliance={selectedAlliance}
                             orderDiscount={orderDiscount}
                             itemTax={itemTax}
-                            fbrPosFee={FBR_POS_FEE}
+                            fbrPosFee={activeFbrFee}
                             grandTotal={grandTotal}
                             fmtCurrency={fmtCurrency}
                         />
@@ -1280,7 +1283,7 @@ export default function CheckoutPage() {
                         taxAmount: itemTax,
                         globalDiscountAmount: orderDiscount,
                         grandTotal,
-                        fbrPosFee: FBR_POS_FEE,
+                        fbrPosFee: activeFbrFee,
                         changeAmount,
                         isGiftReceipt: false,
                         promo: selectedPromo ? { code: selectedPromo.code } : undefined,
@@ -1302,7 +1305,7 @@ export default function CheckoutPage() {
             {/* Sale completed — show receipt */}
             {completedOrder && !showGiftReceiptAfterSales && (
                 <PrintReceipt
-                    order={{ ...completedOrder, fbrPosFee: FBR_POS_FEE, isGiftReceipt: false }}
+                    order={{ ...completedOrder, fbrPosFee: activeFbrFee, isGiftReceipt: false }}
                     cartItems={cartItems}
                     tenders={tenders}
                     discountMode={discountMode}
@@ -1325,7 +1328,7 @@ export default function CheckoutPage() {
             {/* Gift receipt */}
             {completedOrder && showGiftReceiptAfterSales && (
                 <PrintReceipt
-                    order={{ ...completedOrder, fbrPosFee: FBR_POS_FEE, isGiftReceipt: true }}
+                    order={{ ...completedOrder, fbrPosFee: activeFbrFee, isGiftReceipt: true }}
                     cartItems={cartItems}
                     tenders={tenders}
                     discountMode={discountMode}
