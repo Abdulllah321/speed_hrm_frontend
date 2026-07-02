@@ -27,7 +27,8 @@ import {
     RefreshCw,
     Folder,
     Settings,
-    Users
+    Users,
+    Percent
 } from "lucide-react";
 import { toast } from "sonner";
 import { startOfMonth, endOfMonth, format } from "date-fns";
@@ -44,12 +45,18 @@ export default function NetSalesSummaryReportPage() {
     });
 
     const [groupingLevels, setGroupingLevels] = useState({
-        brand: true,
-        division: true,
-        category: true,
-        gender: true,
-        silhouette: true,
-        article: true,
+        salesperson: true,
+        year: false,
+        month: false,
+        day: false,
+        document: false,
+        brand: false,
+        division: false,
+        salesTax: false,
+        category: false,
+        gender: false,
+        silhouette: false,
+        article: false,
         variant: false,
     });
 
@@ -97,8 +104,14 @@ export default function NetSalesSummaryReportPage() {
                 endDate: dateRange.to?.toISOString(),
                 cashierUserId: cashierUserId === "all" ? undefined : cashierUserId,
                 summaryOnly,
+                showSalesperson: groupingLevels.salesperson,
+                showYear: groupingLevels.year,
+                showMonth: groupingLevels.month,
+                showDay: groupingLevels.day,
+                showDocument: groupingLevels.document,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
+                showSalesTax: groupingLevels.salesTax,
                 showCategory: groupingLevels.category,
                 showGender: groupingLevels.gender,
                 showSilhouette: groupingLevels.silhouette,
@@ -204,8 +217,14 @@ export default function NetSalesSummaryReportPage() {
                 cashierUserId: cashierUserId === "all" ? undefined : cashierUserId,
                 format: "xlsx",
                 summaryOnly,
+                showSalesperson: groupingLevels.salesperson,
+                showYear: groupingLevels.year,
+                showMonth: groupingLevels.month,
+                showDay: groupingLevels.day,
+                showDocument: groupingLevels.document,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
+                showSalesTax: groupingLevels.salesTax,
                 showCategory: groupingLevels.category,
                 showGender: groupingLevels.gender,
                 showSilhouette: groupingLevels.silhouette,
@@ -252,8 +271,14 @@ export default function NetSalesSummaryReportPage() {
                 cashierUserId: cashierUserId === "all" ? undefined : cashierUserId,
                 format: "pdf",
                 summaryOnly,
+                showSalesperson: groupingLevels.salesperson,
+                showYear: groupingLevels.year,
+                showMonth: groupingLevels.month,
+                showDay: groupingLevels.day,
+                showDocument: groupingLevels.document,
                 showBrand: groupingLevels.brand,
                 showDivision: groupingLevels.division,
+                showSalesTax: groupingLevels.salesTax,
                 showCategory: groupingLevels.category,
                 showGender: groupingLevels.gender,
                 showSilhouette: groupingLevels.silhouette,
@@ -371,14 +396,7 @@ export default function NetSalesSummaryReportPage() {
 
     const handleToggleLevel = (level: keyof typeof groupingLevels, checked: boolean) => {
         setGroupingLevels(prev => {
-            const next = { ...prev, [level]: checked };
-            if (level === 'division' && checked) {
-                next.brand = true;
-            }
-            if (level === 'brand' && !checked) {
-                next.division = false;
-            }
-            return next;
+            return { ...prev, [level]: checked };
         });
     };
 
@@ -548,12 +566,87 @@ export default function NetSalesSummaryReportPage() {
                             Report Hierarchy Configuration
                         </h3>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                            Customize the nesting structure. Check the levels you want to group and report by (Brand and Division are root levels).
+                            Customize the nesting structure. Check the levels you want to group and report by.
                         </p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-4 pt-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4 pt-2">
+                    {/* Salesperson Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-salesperson"
+                            checked={groupingLevels.salesperson}
+                            onChange={(e) => handleToggleLevel('salesperson', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-salesperson" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Users className="h-3.5 w-3.5 text-indigo-500" />
+                            Salesperson
+                        </label>
+                    </div>
+
+                    {/* Year Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-year"
+                            checked={groupingLevels.year}
+                            onChange={(e) => handleToggleLevel('year', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-year" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                            Year
+                        </label>
+                    </div>
+
+                    {/* Month Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-month"
+                            checked={groupingLevels.month}
+                            onChange={(e) => handleToggleLevel('month', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-month" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-emerald-500" />
+                            Month
+                        </label>
+                    </div>
+
+                    {/* Day Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-day"
+                            checked={groupingLevels.day}
+                            onChange={(e) => handleToggleLevel('day', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-day" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-rose-500" />
+                            Day
+                        </label>
+                    </div>
+
+                    {/* Document Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-document"
+                            checked={groupingLevels.document}
+                            onChange={(e) => handleToggleLevel('document', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-document" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Inbox className="h-3.5 w-3.5 text-amber-500" />
+                            Document Info
+                        </label>
+                    </div>
+
                     {/* Brand Checkbox */}
                     <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                         <input
@@ -561,10 +654,9 @@ export default function NetSalesSummaryReportPage() {
                             id="group-brand"
                             checked={groupingLevels.brand}
                             onChange={(e) => handleToggleLevel('brand', e.target.checked)}
-                            disabled={groupingLevels.division}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer disabled:opacity-50"
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
                         />
-                        <label htmlFor="group-brand" className={cn("text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5", groupingLevels.division && "opacity-60 cursor-not-allowed")}>
+                        <label htmlFor="group-brand" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
                             <Layers className="h-3.5 w-3.5 text-indigo-500" />
                             Brand
                         </label>
@@ -582,6 +674,21 @@ export default function NetSalesSummaryReportPage() {
                         <label htmlFor="group-division" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
                             <Folder className="h-3.5 w-3.5 text-blue-500" />
                             Division
+                        </label>
+                    </div>
+
+                    {/* Sales Tax Checkbox */}
+                    <div className="flex items-center gap-2.5 p-3 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                        <input
+                            type="checkbox"
+                            id="group-salesTax"
+                            checked={groupingLevels.salesTax}
+                            onChange={(e) => handleToggleLevel('salesTax', e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary cursor-pointer"
+                        />
+                        <label htmlFor="group-salesTax" className="text-xs font-bold text-slate-700 dark:text-slate-350 cursor-pointer select-none flex items-center gap-1.5">
+                            <Percent className="h-3.5 w-3.5 text-indigo-500" />
+                            Sales Tax
                         </label>
                     </div>
 
@@ -662,6 +769,7 @@ export default function NetSalesSummaryReportPage() {
                 </div>
             </div>
 
+
             {/* Warning banner for large data sets */}
             {grandTotals.totalArticles > 500 && !summaryOnly && (
                 <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-500/30 text-amber-800 dark:text-amber-300 p-4 rounded-xl flex items-start gap-3 no-print">
@@ -732,7 +840,7 @@ export default function NetSalesSummaryReportPage() {
                 <table className="w-full text-left border-collapse min-w-[1400px]">
                     <thead>
                         <tr className="bg-slate-800 text-slate-100 border-b border-border/80 text-[10px] uppercase font-bold sticky top-0 z-10 shadow-sm">
-                            <th className="p-3 w-[300px] border-r bg-slate-800">GPC / Category / Product</th>
+                            <th className="p-3 w-[300px] border-r bg-slate-800">Year | Month | Day | Document Type & # / Product</th>
                             <th className="p-3 w-[100px] border-r text-center bg-slate-800">Size</th>
                             <th className="p-3 w-[80px] border-r text-right bg-slate-800">Qty</th>
                             <th className="p-3 w-[130px] border-r text-right bg-slate-800">Retail Price</th>
@@ -772,13 +880,19 @@ export default function NetSalesSummaryReportPage() {
                                     const row = flatRows[virtualRow.index];
                                     
                                     const LEVEL_UI_STYLES: Record<string, { className: string; indentClass: string }> = {
-                                        brand: { className: "bg-slate-900 text-slate-100 font-black border-b h-[40px]", indentClass: "pl-3 text-slate-100" },
-                                        division: { className: "bg-slate-800 text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
-                                        category: { className: "bg-slate-700 text-white font-bold border-b h-[40px]", indentClass: "pl-9 text-white" },
-                                        gender: { className: "bg-slate-600 text-white font-semibold border-b h-[40px]", indentClass: "pl-12 text-white" },
-                                        silhouette: { className: "bg-slate-500 text-slate-100 font-medium border-b h-[40px]", indentClass: "pl-16 text-slate-105" },
-                                        article: { className: "bg-slate-100/25 dark:bg-slate-900/15 font-semibold text-slate-800 dark:text-slate-200 border-b h-[45px]", indentClass: "pl-20" },
-                                        variant: { className: "hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]", indentClass: "pl-24" },
+                                        salesperson: { className: "bg-[#1a2f4c] text-white font-black border-b h-[40px]", indentClass: "pl-3 text-white" },
+                                        year: { className: "bg-[#1e3a5f] text-white font-extrabold border-b h-[40px]", indentClass: "pl-6 text-white" },
+                                        month: { className: "bg-[#2a4d7c] text-white font-extrabold border-b h-[40px]", indentClass: "pl-9 text-white" },
+                                        day: { className: "bg-[#365f97] text-white font-bold border-b h-[40px]", indentClass: "pl-12 text-white" },
+                                        document: { className: "bg-[#4271b0] text-white font-bold border-b h-[40px]", indentClass: "pl-16 text-white" },
+                                        brand: { className: "bg-[#4a5568] text-white font-semibold border-b h-[40px]", indentClass: "pl-20 text-white" },
+                                        division: { className: "bg-[#718096] text-white font-semibold border-b h-[40px]", indentClass: "pl-24 text-white" },
+                                        salesTax: { className: "bg-[#319795] text-white font-bold border-b h-[40px]", indentClass: "pl-28 text-white" },
+                                        category: { className: "bg-[#a0aec0] text-slate-900 font-medium border-b h-[40px]", indentClass: "pl-32 text-slate-900" },
+                                        gender: { className: "bg-[#cbd5e0] text-slate-900 font-medium border-b h-[40px]", indentClass: "pl-36 text-slate-900" },
+                                        silhouette: { className: "bg-[#e2e8f0] text-slate-800 font-medium border-b h-[40px]", indentClass: "pl-40 text-slate-800" },
+                                        article: { className: "bg-slate-100/25 dark:bg-slate-900/15 font-semibold text-slate-800 dark:text-slate-200 border-b h-[45px]", indentClass: "pl-44" },
+                                        variant: { className: "hover:bg-slate-50 dark:hover:bg-slate-900/35 text-slate-600 dark:text-slate-400 bg-background transition-colors h-[36px]", indentClass: "pl-48" },
                                     };
 
                                     const style = LEVEL_UI_STYLES[row.type] || LEVEL_UI_STYLES.brand;
