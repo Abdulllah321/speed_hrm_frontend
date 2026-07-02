@@ -124,3 +124,89 @@ export async function listSalesActivities(params?: {
     }
 }
 
+export async function getSalespersons(locationId: string) {
+    try {
+        const res = await authFetch(`/pos-sales/cashiers?locationId=${locationId}`, { method: "GET" });
+        return res.data;
+    } catch (error) {
+        console.error("getSalespersons error:", error);
+        return { status: false, data: [], message: "Failed to fetch cashiers" };
+    }
+}
+
+export async function getNetSalesSummaryReport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        queryParams.append("locationId", filters.locationId);
+        if (filters.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters.cashierUserId) queryParams.append("cashierUserId", filters.cashierUserId);
+        if (filters.summaryOnly) queryParams.append("summaryOnly", "true");
+        if (filters.showBrand !== undefined) queryParams.append("showBrand", String(filters.showBrand));
+        if (filters.showDivision !== undefined) queryParams.append("showDivision", String(filters.showDivision));
+        if (filters.showCategory !== undefined) queryParams.append("showCategory", String(filters.showCategory));
+        if (filters.showGender !== undefined) queryParams.append("showGender", String(filters.showGender));
+        if (filters.showSilhouette !== undefined) queryParams.append("showSilhouette", String(filters.showSilhouette));
+        if (filters.showArticle !== undefined) queryParams.append("showArticle", String(filters.showArticle));
+        if (filters.showVariant !== undefined) queryParams.append("showVariant", String(filters.showVariant));
+
+        const res = await authFetch(`/pos-sales/reports/net-sales-summary?${queryParams.toString()}`, { method: "GET" });
+        return res.data;
+    } catch (error) {
+        console.error("getNetSalesSummaryReport error:", error);
+        return { status: false, data: [], message: "Failed to fetch Net Sales Summary" };
+    }
+}
+
+export async function queueNetSalesSummaryReportExport(filters: {
+    locationId: string;
+    startDate?: string;
+    endDate?: string;
+    cashierUserId?: string;
+    format: "xlsx" | "pdf";
+    summaryOnly?: boolean;
+    showBrand?: boolean;
+    showDivision?: boolean;
+    showCategory?: boolean;
+    showGender?: boolean;
+    showSilhouette?: boolean;
+    showArticle?: boolean;
+    showVariant?: boolean;
+}) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/net-sales-summary/export/queue`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(filters),
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("queueNetSalesSummaryReportExport error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+export async function getNetSalesSummaryReportExportStatus(jobId: string) {
+    try {
+        const res = await authFetch(`/pos-sales/reports/net-sales-summary/export/${jobId}/status`, { method: "GET" });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("getNetSalesSummaryReportExportStatus error:", error);
+        return { status: false, message: "Failed to connect to server" };
+    }
+}
+
+
