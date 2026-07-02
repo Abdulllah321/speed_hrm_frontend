@@ -814,15 +814,23 @@ export default function NetSalesSummaryReportPage() {
                                                 <td className="p-3 border-r text-center font-semibold text-slate-700 dark:text-slate-350">{row.size}</td>
                                             )}
 
-                                            <td className="p-3 border-r text-right font-medium">{formatQty(totals.qty)}</td>
-                                            <td className="p-3 border-r text-right font-medium">Rs. {formatVal(avgRetail)}</td>
-                                            <td className="p-3 text-right bg-emerald-500/5 text-slate-800 dark:text-slate-205 font-medium">Rs. {formatVal(totals.totalPriceWost)}</td>
-                                            <td className="p-3 text-right bg-rose-500/5 text-rose-600 font-medium">Rs. {formatVal(totals.discountAmount)}</td>
-                                            <td className="p-3 border-r text-right font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/5">Rs. {formatVal(totals.valueExclTax)}</td>
-                                            <td className="p-3 text-right">Rs. {formatVal(totals.salesTaxAmount)}</td>
-                                            <td className="p-3 text-right">Rs. {formatVal(totals.additionalSalesTaxAmount)}</td>
-                                            <td className="p-3 border-r text-right bg-emerald-500/5 text-emerald-600 font-semibold">Rs. {formatVal(totals.totalTax)}</td>
-                                            <td className="p-3 text-right bg-slate-500/5 font-bold text-slate-800 dark:text-slate-100">Rs. {formatVal(totals.valueInclTax)}</td>
+                                            {/* Numeric Cells */}
+                                            {(() => {
+                                                const isDetailRow = isArticle || isVariant;
+                                                return (
+                                                    <>
+                                                        <td className="p-3 border-r text-right font-medium">{formatQty(totals.qty)}</td>
+                                                        <td className="p-3 border-r text-right font-medium">Rs. {formatVal(avgRetail)}</td>
+                                                        <td className={cn("p-3 text-right bg-emerald-500/5 font-medium", isDetailRow ? "text-slate-800 dark:text-slate-200" : "")}>Rs. {formatVal(totals.totalPriceWost)}</td>
+                                                        <td className={cn("p-3 text-right bg-rose-500/5 font-medium", isDetailRow ? "text-rose-600 dark:text-rose-400" : "")}>Rs. {formatVal(totals.discountAmount)}</td>
+                                                        <td className={cn("p-3 border-r text-right font-semibold bg-blue-500/5", isDetailRow ? "text-blue-600 dark:text-blue-400" : "")}>Rs. {formatVal(totals.valueExclTax)}</td>
+                                                        <td className="p-3 text-right">Rs. {formatVal(totals.salesTaxAmount)}</td>
+                                                        <td className="p-3 text-right">Rs. {formatVal(totals.additionalSalesTaxAmount)}</td>
+                                                        <td className={cn("p-3 border-r text-right bg-emerald-500/5 font-semibold", isDetailRow ? "text-emerald-600 dark:text-emerald-400" : "")}>Rs. {formatVal(totals.totalTax)}</td>
+                                                        <td className={cn("p-3 text-right bg-slate-500/5 font-bold", isDetailRow ? "text-slate-800 dark:text-slate-100" : "")}>Rs. {formatVal(totals.valueInclTax)}</td>
+                                                    </>
+                                                );
+                                            })()}
                                         </tr>
                                     );
                                 })}
