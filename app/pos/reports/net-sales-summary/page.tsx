@@ -802,7 +802,7 @@ export default function NetSalesSummaryReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Net Value (WOST)</p>
-                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">Rs. {formatVal(grandTotals.totalPriceWost)}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-slate-800 dark:text-slate-100">{formatVal(grandTotals.totalPriceWost)}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-slate-100 dark:bg-slate-800 text-slate-600">
                             <Inbox className="h-5 w-5" />
@@ -814,7 +814,7 @@ export default function NetSalesSummaryReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Total Discount</p>
-                            <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-455">Rs. {formatVal(grandTotals.discountAmount)}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-rose-600 dark:text-rose-455">{formatVal(grandTotals.discountAmount)}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-rose-50 dark:bg-rose-955/20 text-rose-600">
                             <ArrowDownRight className="h-5 w-5" />
@@ -826,7 +826,7 @@ export default function NetSalesSummaryReportPage() {
                     <CardContent className="p-4 flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wide">Net Value (Incl. Tax)</p>
-                            <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">Rs. {formatVal(grandTotals.valueInclTax)}</h3>
+                            <h3 className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">{formatVal(grandTotals.valueInclTax)}</h3>
                         </div>
                         <div className="rounded-lg p-2 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600">
                             <ArrowUpRight className="h-5 w-5" />
@@ -934,14 +934,14 @@ export default function NetSalesSummaryReportPage() {
                                                 return (
                                                     <>
                                                         <td className="p-3 border-r text-right font-medium">{formatQty(totals.qty)}</td>
-                                                        <td className="p-3 border-r text-right font-medium">Rs. {formatVal(avgRetail)}</td>
-                                                        <td className={cn("p-3 text-right bg-emerald-500/5 font-medium", isDetailRow ? "text-slate-800 dark:text-slate-200" : "")}>Rs. {formatVal(totals.totalPriceWost)}</td>
-                                                        <td className={cn("p-3 text-right bg-rose-500/5 font-medium", isDetailRow ? "text-rose-600 dark:text-rose-400" : "")}>Rs. {formatVal(totals.discountAmount)}</td>
-                                                        <td className={cn("p-3 border-r text-right font-semibold bg-blue-500/5", isDetailRow ? "text-blue-600 dark:text-blue-400" : "")}>Rs. {formatVal(totals.valueExclTax)}</td>
-                                                        <td className="p-3 text-right">Rs. {formatVal(totals.salesTaxAmount)}</td>
-                                                        <td className="p-3 text-right">Rs. {formatVal(totals.additionalSalesTaxAmount)}</td>
-                                                        <td className={cn("p-3 border-r text-right bg-emerald-500/5 font-semibold", isDetailRow ? "text-emerald-600 dark:text-emerald-400" : "")}>Rs. {formatVal(totals.totalTax)}</td>
-                                                        <td className={cn("p-3 text-right bg-slate-500/5 font-bold", isDetailRow ? "text-slate-800 dark:text-slate-100" : "")}>Rs. {formatVal(totals.valueInclTax)}</td>
+                                                        <td className="p-3 border-r text-right font-medium">{formatVal(totals.totalRetailValue)}</td>
+                                                        <td className={cn("p-3 text-right bg-emerald-500/5 font-medium", isDetailRow ? "text-slate-800 dark:text-slate-200" : "")}>{formatVal(totals.totalPriceWost)}</td>
+                                                        <td className={cn("p-3 text-right bg-rose-500/5 font-medium", isDetailRow ? "text-rose-600 dark:text-rose-400" : "")}>{formatVal(totals.discountAmount)}</td>
+                                                        <td className={cn("p-3 border-r text-right font-semibold bg-blue-500/5", isDetailRow ? "text-blue-600 dark:text-blue-400" : "")}>{formatVal(totals.valueExclTax)}</td>
+                                                        <td className="p-3 text-right">{formatVal(totals.salesTaxAmount)}</td>
+                                                        <td className="p-3 text-right">{formatVal(totals.additionalSalesTaxAmount)}</td>
+                                                        <td className={cn("p-3 border-r text-right bg-emerald-500/5 font-semibold", isDetailRow ? "text-emerald-600 dark:text-emerald-400" : "")}>{formatVal(totals.totalTax)}</td>
+                                                        <td className={cn("p-3 text-right bg-slate-500/5 font-bold", isDetailRow ? "text-slate-800 dark:text-slate-100" : "")}>{formatVal(totals.valueInclTax)}</td>
                                                     </>
                                                 );
                                             })()}
@@ -965,14 +965,14 @@ export default function NetSalesSummaryReportPage() {
                                     GRAND TOTALS
                                 </td>
                                 <td className="p-3 border-r text-right font-black bg-slate-800">{formatQty(grandTotals.qty)}</td>
-                                <td className="p-3 border-r text-right font-black bg-slate-800">Rs. {formatVal(grandTotals.qty > 0 ? (grandTotals.totalRetailValue / grandTotals.qty) : 0)}</td>
-                                <td className="p-3 text-right font-bold bg-emerald-700/30 text-emerald-200">Rs. {formatVal(grandTotals.totalPriceWost)}</td>
-                                <td className="p-3 text-right font-bold bg-rose-700/30 text-rose-200">Rs. {formatVal(grandTotals.discountAmount)}</td>
-                                <td className="p-3 border-r text-right font-black bg-blue-600/35 text-blue-300">Rs. {formatVal(grandTotals.valueExclTax)}</td>
-                                <td className="p-3 text-right font-bold bg-slate-700/30">Rs. {formatVal(grandTotals.salesTaxAmount)}</td>
-                                <td className="p-3 text-right font-bold bg-slate-700/30">Rs. {formatVal(grandTotals.additionalSalesTaxAmount)}</td>
-                                <td className="p-3 border-r text-right font-black bg-emerald-600/35 text-emerald-400">Rs. {formatVal(grandTotals.totalTax)}</td>
-                                <td className="p-3 text-right font-black bg-slate-900 text-white">Rs. {formatVal(grandTotals.valueInclTax)}</td>
+                                <td className="p-3 border-r text-right font-black bg-slate-800">{formatVal(grandTotals.totalRetailValue)}</td>
+                                <td className="p-3 text-right font-bold bg-emerald-700/30 text-emerald-200">{formatVal(grandTotals.totalPriceWost)}</td>
+                                <td className="p-3 text-right font-bold bg-rose-700/30 text-rose-200">{formatVal(grandTotals.discountAmount)}</td>
+                                <td className="p-3 border-r text-right font-black bg-blue-600/35 text-blue-300">{formatVal(grandTotals.valueExclTax)}</td>
+                                <td className="p-3 text-right font-bold bg-slate-700/30">{formatVal(grandTotals.salesTaxAmount)}</td>
+                                <td className="p-3 text-right font-bold bg-slate-700/30">{formatVal(grandTotals.additionalSalesTaxAmount)}</td>
+                                <td className="p-3 border-r text-right font-black bg-emerald-600/35 text-emerald-400">{formatVal(grandTotals.totalTax)}</td>
+                                <td className="p-3 text-right font-black bg-slate-900 text-white">{formatVal(grandTotals.valueInclTax)}</td>
                             </tr>
                         </tfoot>
                     )}
