@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Autocomplete } from "@/components/ui/autocomplete";
@@ -61,6 +62,11 @@ export function JournalVoucherList({
     const [localDrafts, setLocalDrafts] = useState<LocalDraft[]>([]);
     const [printingVoucher, setPrintingVoucher] = useState<JournalVoucher | null>(null);
     const [isExporting, setIsExporting] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleExport = async () => {
         setIsExporting(true);
@@ -417,26 +423,33 @@ export function JournalVoucherList({
             </Card>
 
             {/* Hidden Print Section */}
-            {printingVoucher && (
+            {mounted && typeof window !== "undefined" && printingVoucher && createPortal(
                 <>
                     <style dangerouslySetInnerHTML={{ __html: `
                         @media print {
-                            body {
-                                visibility: hidden !important;
+                            html, body {
+                                height: auto !important;
+                                overflow: visible !important;
                                 background: white !important;
+                                color: black !important;
+                            }
+                            body > *:not(#jv-print-section) {
+                                display: none !important;
                             }
                             #jv-print-section, #jv-print-section * {
                                 visibility: visible !important;
                             }
                             #jv-print-section {
-                                position: absolute !important;
+                                display: block !important;
+                                position: relative !important;
                                 left: 0 !important;
                                 top: 0 !important;
                                 width: 100% !important;
                                 margin: 0 !important;
                                 padding: 0 !important;
                                 background: white !important;
-                                z-index: 9999 !important;
+                                color: black !important;
+                                z-index: 99999 !important;
                             }
                             tr {
                                 page-break-inside: avoid !important;
@@ -451,13 +464,22 @@ export function JournalVoucherList({
                                 margin: 10mm !important;
                                 size: A4 portrait !important;
                             }
-                            header, nav, footer, aside, .print\\:hidden { display: none !important; }
                         }
                     `}} />
-                    <div id="jv-print-section" className="hidden print:block">
+                    <div 
+                        id="jv-print-section" 
+                        style={{
+                            position: "fixed",
+                            left: "-9999px",
+                            top: 0,
+                            pointerEvents: "none",
+                        }}
+                        aria-hidden="true"
+                    >
                         <JournalVoucherPrint voucher={printingVoucher} />
                     </div>
-                </>
+                </>,
+                document.body
             )}
         </div>
     );
