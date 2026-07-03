@@ -154,7 +154,7 @@ export default function LandedCostReportPage() {
         const excise = Number(item.exciseChargesAmount || 0);
         
         const itemDuty = cd + rd + acd + st + ast + it;
-        const totalDuty = itemDuty + excise;
+        const totalDuty = itemDuty;
 
         const misFreight = Number(item.misFreightPKR || 0);
         const misDoThc = Number(item.misDoThcPKR || 0);
@@ -385,7 +385,7 @@ export default function LandedCostReportPage() {
                     <div>
                         <p className="text-slate-400 dark:text-slate-500 text-[10px] font-bold uppercase tracking-wider">Duties & Taxes</p>
                         <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">{formatCurrency(totals.totalDuty)}</h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-[10px] mt-0.5">Incl. Customs, ST, IT & Excise</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-[10px] mt-0.5">Incl. Customs, ST & IT</p>
                     </div>
                 </div>
 
@@ -590,8 +590,8 @@ export default function LandedCostReportPage() {
                                         <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">AST</th>
                                         <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">vIT</th>
                                         <th className="px-2 text-right bg-amber-50/70 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300">IT</th>
-                                        <th className="px-2 text-right bg-orange-100/90 dark:bg-orange-955/50 text-orange-955 dark:text-orange-300 font-bold">Excise</th>
-                                        <th className="px-2 text-right bg-amber-100 dark:bg-amber-900 font-bold border-r border-amber-300 dark:border-amber-950 text-amber-955 dark:text-amber-100">Total Duty</th>
+                                        <th className="px-2 text-right bg-amber-100 dark:bg-amber-900 font-bold text-amber-955 dark:text-amber-100">Total Duty</th>
+                                        <th className="px-2 text-right bg-orange-100/90 dark:bg-orange-955/50 text-orange-955 dark:text-orange-300 font-bold border-r border-amber-300 dark:border-amber-950">Excise</th>
 
                                         {/* Freight (MIS) */}
                                         <th className="px-2 text-right bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-300 border-r border-purple-300 dark:border-purple-800">Freight (MIS)</th>
@@ -620,7 +620,7 @@ export default function LandedCostReportPage() {
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
                             {filteredItems.map((item: any, idx: number) => {
                                 const itemDuty = Number(item.customsDutyAmount || 0) + Number(item.regulatoryDutyAmount || 0) + Number(item.additionalCustomsDutyAmount || 0) + Number(item.salesTaxAmount || 0) + Number(item.additionalSalesTaxAmount || 0) + Number(item.incomeTaxAmount || 0);
-                                const totalDutyInclExcise = itemDuty + Number(item.exciseChargesAmount || 0);
+                                const totalDutyInclExcise = itemDuty;
 
                                 return (
                                     <tr key={idx} className="divide-x divide-slate-100 dark:divide-slate-800 hover:bg-indigo-50/15 dark:hover:bg-indigo-950/20 even:bg-slate-50/30 dark:even:bg-slate-900/15 transition-colors">
@@ -664,12 +664,12 @@ export default function LandedCostReportPage() {
                                                     {(Number(item.assessableValue) + Number(item.customsDutyAmount || 0) + Number(item.regulatoryDutyAmount || 0) + Number(item.additionalCustomsDutyAmount || 0) + Number(item.salesTaxAmount || 0) + Number(item.additionalSalesTaxAmount || 0)).toLocaleString()}
                                                 </td>
                                                 <td className="px-2 py-1.5 text-right bg-amber-50/10 dark:bg-amber-950/5">{Number(item.incomeTaxAmount || 0).toLocaleString()}</td>
-                                                {/* Excise Charges Amount */}
-                                                <td className="px-2 py-1.5 text-right bg-orange-50 dark:bg-orange-955/30 font-semibold text-orange-900 dark:text-orange-300">{Number(item.exciseChargesAmount || 0).toLocaleString()}</td>
                                                 {/* Total Duty */}
-                                                <td className="px-2 py-1.5 text-right bg-amber-50 dark:bg-amber-950/20 font-bold border-r border-amber-300 dark:border-amber-900 text-amber-900 dark:text-amber-300">
+                                                <td className="px-2 py-1.5 text-right bg-amber-50 dark:bg-amber-950/20 font-bold text-amber-900 dark:text-amber-300">
                                                     {formatCurrency(totalDutyInclExcise)}
                                                 </td>
+                                                {/* Excise Charges Amount */}
+                                                <td className="px-2 py-1.5 text-right bg-orange-50 dark:bg-orange-955/30 font-semibold text-orange-900 dark:text-orange-300 border-r border-amber-300 dark:border-amber-900">{Number(item.exciseChargesAmount || 0).toLocaleString()}</td>
 
                                                 {/* Freight (MIS) */}
                                                 <td className="px-2 py-1.5 text-right bg-purple-50/20 dark:bg-purple-950/10 font-bold border-r border-purple-300 dark:border-purple-800 text-purple-900 dark:text-purple-300">{formatCurrency(item.misFreightPKR || 0)}</td>
@@ -731,9 +731,10 @@ export default function LandedCostReportPage() {
                                              {(totals.av + totals.cd + totals.rd + totals.acd + totals.st + totals.ast).toLocaleString()}
                                          </td>
                                          <td className="px-2 py-2 text-right bg-amber-100/70 dark:bg-amber-950/60 text-amber-955 dark:text-amber-200 font-black">{Number(totals.it).toLocaleString()}</td>
+                                         {/* Total Duty Total */}
+                                         <td className="px-2 py-2 text-right bg-amber-200 dark:bg-amber-900 text-amber-955 dark:text-amber-100 font-black">{formatCurrency(totals.totalDuty)}</td>
                                          {/* Excise Charges Amount Total */}
-                                         <td className="px-2 py-2 text-right bg-orange-100 dark:bg-orange-950/50 text-orange-955 dark:text-orange-200 font-black">{Number(totals.excise).toLocaleString()}</td>
-                                         <td className="px-2 py-2 text-right bg-amber-200 dark:bg-amber-900 text-amber-955 dark:text-amber-100 font-black border-r border-amber-300 dark:border-amber-950">{formatCurrency(totals.totalDuty)}</td>
+                                         <td className="px-2 py-2 text-right bg-orange-100 dark:bg-orange-955/50 text-orange-955 dark:text-orange-200 font-black border-r border-amber-300 dark:border-amber-950">{Number(totals.excise).toLocaleString()}</td>
 
                                          {/* Freight MIS Total */}
                                          <td className="px-2 py-2 text-right bg-purple-100 dark:bg-purple-950/50 text-purple-955 dark:text-purple-200 font-black border-r border-purple-300 dark:border-purple-800">{formatCurrency(totals.misFreight)}</td>

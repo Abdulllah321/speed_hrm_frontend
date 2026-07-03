@@ -151,6 +151,64 @@ export default function LandedCostSetupPage() {
     console.log('GRNs state updated:', grns);
   }, [grns]);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && grnId) {
+      const draftData = {
+        grnId,
+        supplierId,
+        lcNo,
+        blNo,
+        blDate,
+        gdNo,
+        countryOfOrigin,
+        season,
+        category,
+        shippingInvoiceNo,
+        invoiceDate,
+        currency,
+        exchangeRate,
+        totalFreight,
+        totalInvoiceValue,
+        freightUSD,
+        freightPKR,
+        freightInvNo,
+        freightDate,
+        doThcCharges,
+        doThcPoNo,
+        doThcDate,
+        bankCharges,
+        mInsuranceCharges,
+        mInsurancePolicyNo,
+        clgFwdCharges,
+        clgFwdBillNo,
+        globalExciseRate,
+        items: items.map(i => ({
+          itemId: i.itemId,
+          itemName: i.itemName,
+          sku: i.sku,
+          description: i.description,
+          hsCodeId: i.hsCodeId,
+          qty: i.qty,
+          unitFob: i.unitFob,
+          customsDutyRate: i.customsDutyRate,
+          regulatoryDutyRate: i.regulatoryDutyRate,
+          additionalCustomsDutyRate: i.additionalCustomsDutyRate,
+          salesTaxRate: i.salesTaxRate,
+          additionalSalesTaxRate: i.additionalSalesTaxRate,
+          incomeTaxRate: i.incomeTaxRate,
+          exciseChargesRate: i.exciseChargesRate,
+        }))
+      };
+      localStorage.setItem(`landed_cost_draft_${grnId}`, JSON.stringify(draftData));
+    }
+  }, [
+    grnId, supplierId, lcNo, blNo, blDate, gdNo, countryOfOrigin, season, category,
+    shippingInvoiceNo, invoiceDate, currency, exchangeRate, totalFreight, totalInvoiceValue,
+    freightUSD, freightPKR, freightInvNo, freightDate, doThcCharges, doThcPoNo, doThcDate,
+    bankCharges, mInsuranceCharges, mInsurancePolicyNo, clgFwdCharges, clgFwdBillNo,
+    globalExciseRate, items
+  ]);
+
   const fetchInitialData = async () => {
     try {
       const [grnsRes, ctRes] = await Promise.all([
@@ -239,6 +297,116 @@ export default function LandedCostSetupPage() {
     // }
 
     setLoading(true);
+    const savedDraft = typeof window !== 'undefined' ? localStorage.getItem(`landed_cost_draft_${id}`) : null;
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        setLcNo(draft.lcNo || '');
+        setBlNo(draft.blNo || '');
+        setBlDate(draft.blDate || '');
+        setGdNo(draft.gdNo || '');
+        setCountryOfOrigin(draft.countryOfOrigin || '');
+        setSeason(draft.season || '');
+        setCategory(draft.category || '');
+        setShippingInvoiceNo(draft.shippingInvoiceNo || '');
+        setInvoiceDate(draft.invoiceDate || '');
+        setCurrency(draft.currency || (isLocal ? 'PKR' : 'USD'));
+        setExchangeRate(draft.exchangeRate || (isLocal ? 1 : 280));
+        setTotalFreight(draft.totalFreight || 0);
+        setTotalInvoiceValue(draft.totalInvoiceValue || 0);
+        setFreightUSD(draft.freightUSD || 0);
+        setFreightPKR(draft.freightPKR || 0);
+        setFreightInvNo(draft.freightInvNo || '');
+        setFreightDate(draft.freightDate || '');
+        setDoThcCharges(draft.doThcCharges || 0);
+        setDoThcPoNo(draft.doThcPoNo || '');
+        setDoThcDate(draft.doThcDate || '');
+        setBankCharges(draft.bankCharges || 0);
+        setMInsuranceCharges(draft.mInsuranceCharges || 0);
+        setMInsurancePolicyNo(draft.mInsurancePolicyNo || '');
+        setClgFwdCharges(draft.clgFwdCharges || 0);
+        setClgFwdBillNo(draft.clgFwdBillNo || '');
+        setGlobalExciseRate(draft.globalExciseRate || 0);
+        if (draft.supplierId) {
+          setSupplierId(draft.supplierId);
+        }
+
+        const grnItems = Array.isArray(grn.items) ? grn.items : [];
+        const restoredItems = draft.items.map((di: any) => {
+          const gi = grnItems.find((g: any) => String(g.itemId) === String(di.itemId));
+          const itemMaster = gi?.item;
+          return {
+            itemId: di.itemId,
+            itemName: di.itemName || itemMaster?.sku || di.sku || '',
+            sku: di.sku || itemMaster?.sku || '',
+            description: di.description || itemMaster?.description || '',
+            category: itemMaster?.category?.name || '',
+            hsCodeId: di.hsCodeId || itemMaster?.hsCode?.id || '',
+            qty: di.qty,
+            unitFob: di.unitFob,
+            invoiceForeign: di.qty * di.unitFob,
+            freightForeign: di.freightForeign || 0,
+            exchangeRate: draft.exchangeRate || 1,
+            invoicePKR: 0,
+            insuranceCharges: 0,
+            landingCharges: 0,
+            assessableValue: 0,
+            customsDutyRate: di.customsDutyRate || 0,
+            customsDutyAmount: 0,
+            regulatoryDutyRate: di.regulatoryDutyRate || 0,
+            regulatoryDutyAmount: 0,
+            additionalCustomsDutyRate: di.additionalCustomsDutyRate || 0,
+            additionalCustomsDutyAmount: 0,
+            salesTaxRate: di.salesTaxRate || 0,
+            salesTaxAmount: 0,
+            additionalSalesTaxRate: di.additionalSalesTaxRate || 0,
+            additionalSalesTaxAmount: 0,
+            incomeTaxRate: di.incomeTaxRate || 0,
+            incomeTaxAmount: 0,
+            otherChargesPKR: 0,
+            totalOtherCharges: 0,
+            unitCostPKR: 0,
+            totalCostPKR: 0,
+            dutyPaidValue: 0,
+            valueForSaleTax: 0,
+            valueForIncomeTax: 0,
+            totalDutyAmount: 0,
+            misFreightUSD: di.misFreightUSD || 0,
+            misFreightPKR: di.misFreightPKR || 0,
+            misDoThcPKR: di.misDoThcPKR || 0,
+            misBankPKR: di.misBankPKR || 0,
+            misInsurancePKR: di.misInsurancePKR || 0,
+            misClgFwdPKR: di.misClgFwdPKR || 0,
+            misFreightInvNo: di.misFreightInvNo || '',
+            misFreightDate: di.misFreightDate || '',
+            misDoThcPoNo: di.misDoThcPoNo || '',
+            misDoThcDate: di.misDoThcDate || '',
+            misInsurancePolicyNo: di.misInsurancePolicyNo || '',
+            misClgFwdBillNo: di.misClgFwdBillNo || '',
+            exciseChargesRate: di.exciseChargesRate || 0,
+            exciseChargesAmount: 0,
+            lcNo: draft.lcNo || '',
+            blNo: draft.blNo || '',
+            blDate: draft.blDate || '',
+            gdNo: draft.gdNo || '',
+            origin: draft.countryOfOrigin || '',
+            season: draft.season || '',
+            category: draft.category || '',
+            shippingInv: draft.shippingInvoiceNo || '',
+            invDate: draft.invoiceDate || '',
+          };
+        });
+
+        setItems(restoredItems);
+        toast.success('Draft loaded for this GRN!');
+        calculateTotals(restoredItems, draft.totalInvoiceValue);
+        setLoading(false);
+        return;
+      } catch (e) {
+        console.error('Failed to parse draft', e);
+      }
+    }
+
     try {
       // Auto-set supplier if PO is available in GRN
       if ((grn as any).purchaseOrder?.vendorId) {
@@ -731,6 +899,9 @@ console.log(res)
         return;
       }
 
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`landed_cost_draft_${grnId}`);
+      }
       toast.success('Landed Cost values posted successfully');
       const reportId = res.id || res.data?.id;
       if (reportId) router.push(`/erp/procurement/landed-cost/report/${reportId}`);
