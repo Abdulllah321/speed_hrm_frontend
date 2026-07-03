@@ -311,6 +311,7 @@ export default function NetSalesSummaryReportPage() {
             discountAmount: 0,
             valueExclTax: 0,
             salesTaxAmount: 0,
+            additionalSalesTaxAmount: 0,
             totalTax: 0,
             valueInclTax: 0,
         };
@@ -323,6 +324,7 @@ export default function NetSalesSummaryReportPage() {
             t.discountAmount += node.totals.discountAmount;
             t.valueExclTax += node.totals.valueExclTax;
             t.salesTaxAmount += node.totals.salesTaxAmount;
+            t.additionalSalesTaxAmount += node.totals.additionalSalesTaxAmount;
             t.totalTax += node.totals.totalTax;
             t.valueInclTax += node.totals.valueInclTax;
         }
@@ -846,6 +848,7 @@ export default function NetSalesSummaryReportPage() {
                             <th className="p-3 w-[130px] text-right bg-rose-900/10">Discount</th>
                             <th className="p-3 w-[160px] border-r text-right bg-slate-800 font-extrabold text-blue-300">Val Excl Tax</th>
                             <th className="p-3 w-[130px] text-right bg-slate-800">Sales Tax</th>
+                            <th className="p-3 w-[130px] text-right bg-slate-800">Add Tax</th>
                             <th className="p-3 w-[130px] border-r text-right bg-emerald-900/25 font-extrabold text-emerald-300">Total Tax</th>
                             <th className="p-3 w-[170px] text-right bg-slate-900 font-extrabold text-slate-105">Val Incl Tax</th>
                         </tr>
@@ -853,7 +856,7 @@ export default function NetSalesSummaryReportPage() {
                     <tbody className="divide-y text-xs">
                         {isPending ? (
                             <tr>
-                                <td colSpan={10} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={11} className="p-8 text-center text-muted-foreground font-medium">
                                     <div className="flex items-center justify-center gap-2">
                                         <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                         Re-arranging hierarchical sales data and computing summaries...
@@ -862,7 +865,7 @@ export default function NetSalesSummaryReportPage() {
                             </tr>
                         ) : flatRows.length === 0 ? (
                             <tr>
-                                <td colSpan={10} className="p-8 text-center text-muted-foreground font-medium">
+                                <td colSpan={11} className="p-8 text-center text-muted-foreground font-medium">
                                     No sales transactions found for this period.
                                 </td>
                             </tr>
@@ -870,7 +873,7 @@ export default function NetSalesSummaryReportPage() {
                             <>
                                 {paddingTop > 0 && (
                                     <tr>
-                                        <td colSpan={10} style={{ height: `${paddingTop}px` }} />
+                                        <td colSpan={11} style={{ height: `${paddingTop}px` }} />
                                     </tr>
                                 )}
                                  {virtualItems.map((virtualRow) => {
@@ -936,6 +939,7 @@ export default function NetSalesSummaryReportPage() {
                                                         <td className={cn("p-3 text-right bg-rose-500/5 font-medium", isDetailRow ? "text-rose-600 dark:text-rose-400" : "")}>Rs. {formatVal(totals.discountAmount)}</td>
                                                         <td className={cn("p-3 border-r text-right font-semibold bg-blue-500/5", isDetailRow ? "text-blue-600 dark:text-blue-400" : "")}>Rs. {formatVal(totals.valueExclTax)}</td>
                                                         <td className="p-3 text-right">Rs. {formatVal(totals.salesTaxAmount)}</td>
+                                                        <td className="p-3 text-right">Rs. {formatVal(totals.additionalSalesTaxAmount)}</td>
                                                         <td className={cn("p-3 border-r text-right bg-emerald-500/5 font-semibold", isDetailRow ? "text-emerald-600 dark:text-emerald-400" : "")}>Rs. {formatVal(totals.totalTax)}</td>
                                                         <td className={cn("p-3 text-right bg-slate-500/5 font-bold", isDetailRow ? "text-slate-800 dark:text-slate-100" : "")}>Rs. {formatVal(totals.valueInclTax)}</td>
                                                     </>
@@ -946,7 +950,7 @@ export default function NetSalesSummaryReportPage() {
                                 })}
                                 {paddingBottom > 0 && (
                                     <tr>
-                                        <td colSpan={10} style={{ height: `${paddingBottom}px` }} />
+                                        <td colSpan={11} style={{ height: `${paddingBottom}px` }} />
                                     </tr>
                                 )}
                             </>
@@ -966,6 +970,7 @@ export default function NetSalesSummaryReportPage() {
                                 <td className="p-3 text-right font-bold bg-rose-700/30 text-rose-200">Rs. {formatVal(grandTotals.discountAmount)}</td>
                                 <td className="p-3 border-r text-right font-black bg-blue-600/35 text-blue-300">Rs. {formatVal(grandTotals.valueExclTax)}</td>
                                 <td className="p-3 text-right font-bold bg-slate-700/30">Rs. {formatVal(grandTotals.salesTaxAmount)}</td>
+                                <td className="p-3 text-right font-bold bg-slate-700/30">Rs. {formatVal(grandTotals.additionalSalesTaxAmount)}</td>
                                 <td className="p-3 border-r text-right font-black bg-emerald-600/35 text-emerald-400">Rs. {formatVal(grandTotals.totalTax)}</td>
                                 <td className="p-3 text-right font-black bg-slate-900 text-white">Rs. {formatVal(grandTotals.valueInclTax)}</td>
                             </tr>
