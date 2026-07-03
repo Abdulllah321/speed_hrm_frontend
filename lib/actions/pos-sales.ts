@@ -227,4 +227,44 @@ export async function getNetSalesSummaryReportExportStatus(jobId: string) {
     }
 }
 
+export async function queuePosSalesActivityExport(filters?: {
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+    activityType?: string;
+    posId?: string;
+}) {
+    try {
+        const queryParams = new URLSearchParams();
+        if (filters?.search) queryParams.append("search", filters.search);
+        if (filters?.startDate) queryParams.append("startDate", filters.startDate);
+        if (filters?.endDate) queryParams.append("endDate", filters.endDate);
+        if (filters?.activityType && filters.activityType !== "all") {
+            queryParams.append("activityType", filters.activityType);
+        }
+        if (filters?.posId) queryParams.append("posId", filters.posId);
+
+        const res = await authFetch(`/pos-sales/activities/export?${queryParams.toString()}`, {
+            method: "POST",
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("queuePosSalesActivityExport error:", error);
+        return { status: false, message: "Failed to queue export" };
+    }
+}
+
+export async function getPosSalesActivityExportStatus(jobId: string) {
+    try {
+        const res = await authFetch(`/pos-sales/activities/export/${jobId}/status`, {
+            method: "GET",
+        });
+        return res.data ?? { status: false, message: "No response from server" };
+    } catch (error) {
+        console.error("getPosSalesActivityExportStatus error:", error);
+        return { status: false, message: "Failed to fetch export status" };
+    }
+}
+
+
 

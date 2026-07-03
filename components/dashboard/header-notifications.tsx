@@ -270,6 +270,27 @@ export function HeaderNotifications() {
       return;
     }
 
+    // pos-sales-activity-export.ready
+    if (n.actionType === "pos-sales-activity-export.ready" && n.actionPayload) {
+      try {
+        const payload = typeof n.actionPayload === "string"
+          ? JSON.parse(n.actionPayload)
+          : n.actionPayload;
+        const jobId = payload?.jobId;
+        if (jobId) {
+          const base = getApiBaseUrl();
+          await triggerDownload(
+            `${base}/pos-sales/activities/export/${jobId}/download`,
+            `pos-sales-activity-export-${new Date().toISOString().slice(0, 10)}.xlsx`,
+          );
+        }
+      } catch (e) {
+        console.error("POS Sales Activity export download failed:", e);
+      }
+      return;
+    }
+
+
     // chart-of-account-export.ready
     if (n.actionType === "chart-of-account-export.ready" && n.actionPayload) {
       try {
