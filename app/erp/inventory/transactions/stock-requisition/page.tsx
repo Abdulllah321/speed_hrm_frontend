@@ -44,6 +44,7 @@ import {
   Printer,
 } from 'lucide-react';
 import Link from 'next/link';
+import { SrnBulkUploadModal } from '@/components/inventory/srn-bulk-upload-modal';
 
 interface SRNItem {
   itemId: string;
@@ -64,6 +65,7 @@ export default function StockRequisitionPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState<boolean>(false);
 
   // Dropdown options
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -337,7 +339,7 @@ export default function StockRequisitionPage() {
       if (res.status) {
         toast.success('Stock Requisition Note approved and stock reserved!');
         setDetailSheetOpen(false);
-        loadRequisitions();
+        router.push('/erp/inventory/transactions/stock-requisition/pending');
       }
     } catch (error: any) {
       toast.error(error.message || 'Failed to approve requisition note');
@@ -394,8 +396,7 @@ export default function StockRequisitionPage() {
           setRequisitionItems([]);
           setRemarks('');
           setNotes('');
-          loadRequisitions();
-          setActiveTab('all');
+          router.push('/erp/inventory/transactions/stock-requisition/pending');
         }
       }
     } catch (error: any) {
@@ -503,6 +504,9 @@ export default function StockRequisitionPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" className="border-2 font-bold shadow-sm" onClick={() => setBulkUploadOpen(true)}>
+            <FileSpreadsheet className="h-4 w-4 mr-2 text-indigo-600" /> Bulk Upload
+          </Button>
           <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
             <Link href="/erp/inventory/transactions/stock-requisition/pending">
               <Package className="h-4 w-4 mr-2 text-indigo-600" /> Warehouse Pending List
@@ -1092,6 +1096,24 @@ export default function StockRequisitionPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      <SrnBulkUploadModal
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        onSuccess={() => {
+          router.push('/erp/inventory/transactions/stock-requisition/pending');
+        }}
+        warehouses={warehouses}
+        locations={locations}
+        brands={brands}
+        defaultWarehouseId={selectedWarehouseId}
+        defaultLocationId={destLocationId}
+        defaultBrandId={selectedBrandId}
+        defaultDocumentType={documentType}
+        defaultFinancialYear={financialYear}
+        defaultRemarks={remarks}
+        defaultNotes={notes}
+      />
     </div>
   );
 }
