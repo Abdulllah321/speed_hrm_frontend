@@ -46,23 +46,13 @@ export default function PosStockAdjustmentsPage() {
 
     const locationId = user?.terminal?.location?.id || (user as any)?.locationId;
 
-    const fetchWarehouseAndAdjustments = async () => {
+    const fetchAdjustments = async () => {
         if (!locationId) return;
         setIsLoading(true);
         try {
-            // First get the location details to retrieve warehouseId
-            const locRes = await getLocationById(locationId);
-            if (locRes.status && locRes.data?.warehouseId) {
-                const whId = locRes.data.warehouseId;
-                setWarehouseId(whId);
-                
-                // Then fetch stock adjustments for this warehouse
-                const res = await getStockAdjustments({ warehouseId: whId });
-                if (res.status !== false) {
-                    setAdjustments(res.data || []);
-                }
-            } else {
-                toast.error("This store location is not mapped to any warehouse.");
+            const res = await getStockAdjustments({ locationId });
+            if (res.status !== false) {
+                setAdjustments(res.data || []);
             }
         } catch (error) {
             console.error("Failed to load adjustments", error);
@@ -73,7 +63,7 @@ export default function PosStockAdjustmentsPage() {
     };
 
     useEffect(() => {
-        fetchWarehouseAndAdjustments();
+        fetchAdjustments();
     }, [locationId]);
 
     const handlePrint = (adj: Adjustment) => {
@@ -233,7 +223,7 @@ export default function PosStockAdjustmentsPage() {
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={fetchWarehouseAndAdjustments}
+                        onClick={fetchAdjustments}
                         className="gap-2 h-9 border-muted"
                     >
                         <RefreshCcw className="h-4 w-4" />

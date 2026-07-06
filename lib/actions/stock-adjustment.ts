@@ -54,6 +54,7 @@ export interface StockAdjustment {
 
 export async function getStockAdjustments(filters?: {
     warehouseId?: string;
+    locationId?: string;
     status?: string;
     page?: number;
     limit?: number;
@@ -62,6 +63,7 @@ export async function getStockAdjustments(filters?: {
     try {
         const queryParams = new URLSearchParams();
         if (filters?.warehouseId) queryParams.append("warehouseId", filters.warehouseId);
+        if (filters?.locationId) queryParams.append("locationId", filters.locationId);
         if (filters?.status) queryParams.append("status", filters.status);
         if (filters?.page) queryParams.append("page", String(filters.page));
         if (filters?.limit) queryParams.append("limit", String(filters.limit));
@@ -87,7 +89,7 @@ export async function getStockAdjustment(id: string): Promise<StockAdjustment | 
 }
 
 export async function createStockAdjustment(data: {
-    warehouseId: string;
+    warehouseId?: string;
     reason?: string;
     notes?: string;
     status?: string;
@@ -111,7 +113,7 @@ export async function createStockAdjustment(data: {
 export async function updateStockAdjustment(
     id: string,
     data: {
-        warehouseId: string;
+        warehouseId?: string;
         reason?: string;
         notes?: string;
         status?: string;
