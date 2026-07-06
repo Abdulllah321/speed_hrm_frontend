@@ -18,9 +18,6 @@ interface Props { locations: Location[] }
 
 const VOUCHER_TYPE_OPTIONS: { value: VoucherType; label: string }[] = [
     { value: "GIFT", label: "Gift Voucher" },
-    { value: "CREDIT", label: "Credit Voucher" },
-    { value: "CORPORATE", label: "Corporate Gift" },
-    { value: "OUTLET_GIFT", label: "Outlet Gift" },
 ];
 
 export function VoucherFormPage({ locations }: Props) {
