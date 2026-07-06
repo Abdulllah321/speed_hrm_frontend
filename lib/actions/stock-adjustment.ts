@@ -18,12 +18,22 @@ export interface StockAdjustmentItem {
         itemId: string;
         sku: string;
         description: string | null;
+        unitPrice?: number;
+        category?: { id: string; name: string; code: string } | null;
+        color?: { id: string; name: string; code: string } | null;
+        division?: { id: string; name: string; code: string } | null;
+        size?: { id: string; name: string; code: string } | null;
     };
     swapItem?: {
         id: string;
         itemId: string;
         sku: string;
         description: string | null;
+        unitPrice?: number;
+        category?: { id: string; name: string; code: string } | null;
+        color?: { id: string; name: string; code: string } | null;
+        division?: { id: string; name: string; code: string } | null;
+        size?: { id: string; name: string; code: string } | null;
     } | null;
     location?: {
         id: string;

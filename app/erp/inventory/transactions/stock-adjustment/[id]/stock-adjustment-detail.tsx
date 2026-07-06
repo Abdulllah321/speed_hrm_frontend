@@ -394,9 +394,15 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                                                     <span className="text-xs text-muted-foreground truncate max-w-60">
                                                         {item.item?.description || "No description"}
                                                     </span>
+                                                    <div className="flex gap-2 text-[10px] text-slate-500 font-semibold mt-0.5">
+                                                        {item.item?.color?.name && <span>Color: {item.item.color.name}</span>}
+                                                        {item.item?.size?.name && <span>Size: {item.item.size.name}</span>}
+                                                    </div>
                                                     {item.swapItem && (
                                                         <span className="text-[10px] mt-1 text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-300 border border-amber-200/50 px-1.5 py-0.5 rounded w-fit font-medium">
                                                             Swapped with: {item.swapItem.sku}
+                                                            {item.swapItem.color?.name && ` (${item.swapItem.color.name}`}
+                                                            {item.swapItem.size?.name && `, ${item.swapItem.size.name})`}
                                                         </span>
                                                     )}
                                                 </div>

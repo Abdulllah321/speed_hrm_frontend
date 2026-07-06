@@ -73,120 +73,286 @@ export default function PosStockAdjustmentsPage() {
             return;
         }
 
-        const dateStr = format(new Date(adj.createdAt), "dd MMM yyyy HH:mm");
+        const dateStr = format(new Date(adj.createdAt), "dd-MMM-yyyy");
         const refNo = adj.adjustmentNo || "N/A";
-        const typeStr = adj.adjustmentType === "SWAP" ? "Stock Swap Correction" : "Standard Count Correction";
-        const statusMeta = STATUS_META[adj.status] || { label: adj.status, color: "" };
+        const statusLabel = adj.status === "SUBMITTED" ? "Approved / Closed" : adj.status === "PENDING_APPROVAL" ? "Pending Approval" : adj.status;
+
+        // Group items hierarchically: Division -> Category -> Product (Description)
+        const groups: Record<string, {
+            name: string;
+            qty: number;
+            val: number;
+            categories: Record<string, {
+                name: string;
+                qty: number;
+                val: number;
+                products: Record<string, {
+                    name: string;
+                    qty: number;
+                    val: number;
+                    skus: Array<{
+                        sku: string;
+                        description: string;
+                        color: string;
+                        size: string;
+                        qty: number;
+                        rate: number;
+                        val: number;
+                    }>;
+                }>;
+            }>;
+        }> = {};
+
+        let overallQty = 0;
+        let overallVal = 0;
+        let divisionBrandName = "SPEED LIMIT"; // Fallback brand title
+
+        adj.items.forEach((item) => {
+            const divName = item.item?.division?.name || "General Division";
+            const catName = item.item?.category?.name || "General Category";
+            const prodName = item.item?.description || "General Product";
+
+            if (item.item?.division?.name) {
+                divisionBrandName = item.item.division.name.toUpperCase();
+            }
+
+            if (!groups[divName]) {
+                groups[divName] = { name: divName, qty: 0, val: 0, categories: {} };
+            }
+            if (!groups[divName].categories[catName]) {
+                groups[divName].categories[catName] = { name: catName, qty: 0, val: 0, products: {} };
+            }
+            if (!groups[divName].categories[catName].products[prodName]) {
+                groups[divName].categories[catName].products[prodName] = { name: prodName, qty: 0, val: 0, skus: [] };
+            }
+
+            const qty = Number(item.adjustedQty);
+            const rate = Number(item.rate);
+            const val = qty * rate;
+
+            overallQty += qty;
+            overallVal += val;
+
+            groups[divName].qty += qty;
+            groups[divName].val += val;
+            groups[divName].categories[catName].qty += qty;
+            groups[divName].categories[catName].val += val;
+            groups[divName].categories[catName].products[prodName].qty += qty;
+            groups[divName].categories[catName].products[prodName].val += val;
+
+            groups[divName].categories[catName].products[prodName].skus.push({
+                sku: item.item?.sku || item.itemId,
+                description: item.item?.description || "",
+                color: item.item?.color?.name || "N/A",
+                size: item.item?.size?.name || "N/A",
+                qty,
+                rate,
+                val,
+            });
+        });
+
+        // Generate table rows HTML
+        let tableRowsHtml = "";
+        Object.values(groups).forEach((div) => {
+            // Division row
+            tableRowsHtml += `
+                <tr class="division-row">
+                    <td class="font-bold text-left">${div.name}</td>
+                    <td></td>
+                    <td></td>
+                    <td class="text-right font-bold">${div.qty}</td>
+                    <td></td>
+                    <td class="text-right font-bold">${div.val.toLocaleString("en-PK")}</td>
+                </tr>
+            `;
+
+            Object.values(div.categories).forEach((cat) => {
+                // Category row
+                tableRowsHtml += `
+                    <tr class="category-row">
+                        <td class="font-bold text-left indent-1">${cat.name}</td>
+                        <td></td>
+                        <td></td>
+                        <td class="text-right">${cat.qty}</td>
+                        <td></td>
+                        <td class="text-right font-semibold">${cat.val.toLocaleString("en-PK")}</td>
+                    </tr>
+                `;
+
+                Object.values(cat.products).forEach((prod) => {
+                    // Product Article row
+                    tableRowsHtml += `
+                        <tr class="product-row">
+                            <td class="font-bold text-left indent-2">${prod.name}</td>
+                            <td></td>
+                            <td></td>
+                            <td class="text-right">${prod.qty}</td>
+                            <td></td>
+                            <td class="text-right font-semibold">${prod.val.toLocaleString("en-PK")}</td>
+                        </tr>
+                    `;
+
+                    prod.skus.forEach((sku) => {
+                        // SKU Row
+                        tableRowsHtml += `
+                            <tr class="sku-row">
+                                <td class="text-left indent-3"><span style="border-bottom: 1px dotted #999;">${sku.sku}</span> &nbsp;&nbsp;&nbsp;&nbsp; ${sku.description}</td>
+                                <td></td>
+                                <td></td>
+                                <td class="text-right">${sku.qty}</td>
+                                <td class="text-right">${sku.rate.toLocaleString("en-PK")}</td>
+                                <td class="text-right font-medium">${sku.val.toLocaleString("en-PK")}</td>
+                            </tr>
+                            <tr class="detail-row">
+                                <td></td>
+                                <td class="text-left">${sku.color}</td>
+                                <td class="text-left">${sku.size}</td>
+                                <td class="text-right">${sku.qty}</td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                        `;
+                    });
+                });
+            });
+        });
 
         win.document.write(`
-            <html><head><title>Adjustment Slip - ${refNo}</title>
+            <html><head><title>Adjustment Note - ${refNo}</title>
             <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; line-height: 1.4; padding: 40px; }
-                .header-container { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 16px; margin-bottom: 20px; }
-                .company-name { font-size: 24px; font-weight: 800; color: #1e3a8a; letter-spacing: 1px; }
-                .document-title { font-size: 14px; font-weight: 600; color: #4b5563; text-transform: uppercase; margin-top: 4px; }
-                .status-badge { padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; border: 1px solid; display: inline-block; }
+                body { font-family: Arial, sans-serif; color: #111; padding: 30px 40px; font-size: 11px; }
                 
-                .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 30px; background-color: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
-                .meta-item { display: flex; flex-direction: column; }
-                .meta-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
-                .meta-value { font-size: 13px; font-weight: 600; color: #1e293b; }
+                .header-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+                .company-title { font-size: 15px; font-weight: bold; }
+                .document-title { font-size: 16px; font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 3px; display: inline-block; margin-top: 5px; }
+                .brand-header { font-size: 20px; font-weight: bold; text-align: right; vertical-align: top; }
                 
-                table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                th { background-color: #f1f5f9; color: #475569; font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 10px 12px; border-bottom: 2px solid #cbd5e1; text-align: left; }
-                td { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #334155; }
+                .meta-table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 15px; }
+                .meta-table td { padding: 4px 0; font-size: 11px; vertical-align: top; }
+                .meta-label { font-weight: bold; width: 120px; }
+                .status-box { border: 1.5px solid #000; padding: 6px 20px; font-weight: bold; font-size: 13px; text-transform: uppercase; color: ${adj.status === "SUBMITTED" ? "green" : "red"}; float: right; margin-top: 10px; }
+                
+                table.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                table.data-table th { border-bottom: 2px solid #000; padding: 8px 6px; font-weight: bold; text-align: left; }
+                table.data-table td { padding: 6px; vertical-align: middle; border: none; }
+                
                 .text-right { text-align: right; }
+                .text-left { text-align: left; }
                 
-                .notes-section { background-color: #f8fafc; border-left: 4px solid #3b82f6; padding: 12px 16px; margin-bottom: 40px; border-radius: 0 8px 8px 0; }
-                .notes-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin-bottom: 4px; }
-                .notes-content { font-size: 12px; color: #334155; }
+                .indent-1 { padding-left: 20px !important; }
+                .indent-2 { padding-left: 40px !important; }
+                .indent-3 { padding-left: 60px !important; }
                 
-                .signature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; margin-top: 60px; }
-                .signature-box { border-top: 1px solid #94a3b8; text-align: center; padding-top: 8px; font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+                .division-row td { padding-top: 10px; font-size: 11px; }
+                .category-row td { font-size: 11px; }
+                .product-row td { font-size: 11px; }
+                .sku-row td { font-size: 11px; }
+                .detail-row td { color: #444; font-size: 10px; padding-bottom: 8px; border-bottom: 1px dotted #ccc; }
+                
+                .totals-section { border-top: 2px solid #000; margin-top: 10px; }
+                .totals-table { width: 100%; border-collapse: collapse; }
+                .totals-table td { padding: 8px; font-weight: bold; font-size: 12px; }
+                .double-underline { border-bottom: 3px double #000; }
+                
+                .remarks-section { margin-top: 25px; font-size: 11px; border-top: 1px solid #ccc; padding-top: 10px; }
+                .remarks-label { font-weight: bold; margin-bottom: 4px; }
+                
+                .signatures { width: 100%; margin-top: 80px; }
+                .signatures td { width: 50%; text-align: center; font-weight: bold; font-size: 10px; border-top: 1px solid #000; padding-top: 8px; }
             </style>
             </head>
             <body onload="window.print()">
-                <div class="header-container">
-                    <div>
-                        <div class="company-name">SPEED LIMIT POS</div>
-                        <div class="document-title">Stock Adjustment Request</div>
-                    </div>
-                    <div>
-                        <span class="status-badge" style="background-color: #dbeafe; color: #1e40af; border-color: #bfdbfe;">
-                            ${statusMeta.label}
-                        </span>
-                    </div>
-                </div>
+                <table class="header-table">
+                    <tr>
+                        <td>
+                            <div class="company-title">Speed (Private) Limited</div>
+                            <div class="document-title">Stock Adjustment Note</div>
+                        </td>
+                        <td class="brand-header">${divisionBrandName}</td>
+                    </tr>
+                </table>
                 
-                <div class="meta-grid">
-                    <div class="meta-item">
-                        <span class="meta-label">Adjustment No</span>
-                        <span class="meta-value">${refNo}</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Date Requested</span>
-                        <span class="meta-value">${dateStr}</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Adjustment Type</span>
-                        <span class="meta-value">${typeStr}</span>
-                    </div>
-                    <div class="meta-item">
-                        <span class="meta-label">Store Location</span>
-                        <span class="meta-value">${user?.terminal?.location?.name || "This Outlet"}</span>
-                    </div>
-                </div>
+                <table class="meta-table">
+                    <tr>
+                        <td style="width: 50%;">
+                            <table style="width: 100%;">
+                                <tr>
+                                    <td class="meta-label">Financial Year :</td>
+                                    <td>2,026</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Stock Adjusted At :</td>
+                                    <td>${user?.terminal?.location?.name || "Pedro-Dolmen Lahore"}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">S.A.N. No :</td>
+                                    <td style="font-weight: bold;">${refNo}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Employee :</td>
+                                    <td>${adj.createdById || "6"}</td>
+                                </tr>
+                                <tr>
+                                    <td class="meta-label">Remarks :</td>
+                                    <td>${adj.reason || "Stock Count"}</td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td style="width: 50%; vertical-align: top;">
+                            <div style="float: right; text-align: right;">
+                                <table style="width: 100%; margin-bottom: 10px;">
+                                    <tr>
+                                        <td class="meta-label" style="text-align: right; padding-right: 15px;">Date :</td>
+                                        <td>${dateStr}</td>
+                                    </tr>
+                                </table>
+                                <div class="status-box">${statusLabel}</div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
                 
-                <table>
+                <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Item Details</th>
-                            <th class="text-right">System Qty</th>
-                            <th class="text-right">Physical Count</th>
-                            <th class="text-right">Adjusted Qty</th>
+                            <th class="text-left" style="width: 40%;">GPC / Category / Product</th>
+                            <th class="text-left" style="width: 15%;">Color</th>
+                            <th class="text-left" style="width: 10%;">Size</th>
+                            <th class="text-right" style="width: 10%;">Quantity</th>
+                            <th class="text-right" style="width: 12%;">Selling Price (Rs.)</th>
+                            <th class="text-right" style="width: 13%;">Total Value (Rs.)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${adj.items.map(item => {
-                            const disc = Number(item.adjustedQty);
-                            const discText = disc > 0 ? `+${disc.toFixed(2)}` : disc.toFixed(2);
-                            return `
-                                <tr>
-                                    <td>
-                                        <strong>${item.item?.sku || item.itemId}</strong>
-                                        <div style="font-size: 10px; color: #666;">${item.item?.description || ""}</div>
-                                        ${item.swapItem ? `<div style="font-size: 10px; color: #d97706; margin-top: 2px;">Swapped with: ${item.swapItem.sku}</div>` : ""}
-                                    </td>
-                                    <td class="text-right">${Number(item.currentQty).toFixed(2)}</td>
-                                    <td class="text-right">${Number(item.physicalQty).toFixed(2)}</td>
-                                    <td class="text-right" style="font-weight: bold; color: ${disc === 0 ? '#555' : disc > 0 ? '#16a34a' : '#dc2626'}">
-                                        ${discText}
-                                    </td>
-                                </tr>
-                            `;
-                        }).join("")}
+                        ${tableRowsHtml}
                     </tbody>
                 </table>
                 
-                ${adj.reason ? `
-                    <div class="notes-section">
-                        <div class="notes-title">Reason / Remarks</div>
-                        <div class="notes-content">${adj.reason}</div>
-                    </div>
-                ` : ""}
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <tr>
+                        <td style="width: 40%;"></td>
+                        <td style="width: 15%;"></td>
+                        <td style="width: 10%;"></td>
+                        <td class="text-right double-underline" style="width: 10%; font-weight: bold; font-size: 11px; padding: 6px;">${overallQty}</td>
+                        <td style="width: 12%;"></td>
+                        <td class="text-right double-underline" style="font-weight: bold; font-size: 11px; padding: 6px; width: 13%;">${overallVal.toLocaleString("en-PK")}</td>
+                    </tr>
+                </table>
                 
                 ${adj.notes ? `
-                    <div class="notes-section" style="border-left-color: #64748b;">
-                        <div class="notes-title">Internal Notes</div>
-                        <div class="notes-content">${adj.notes}</div>
+                    <div class="remarks-section">
+                        <div class="remarks-label">Internal Instructions:</div>
+                        <div>${adj.notes}</div>
                     </div>
                 ` : ""}
                 
-                <div class="signature-grid">
-                    <div class="signature-box">Outlet Store Manager</div>
-                    <div class="signature-box">ERP Head Office Approval</div>
-                </div>
+                <table class="signatures">
+                    <tr>
+                        <td style="padding-right: 40px;">Outlet Store Manager</td>
+                        <td style="padding-left: 40px;">ERP Head Office Approval</td>
+                    </tr>
+                </table>
             </body>
             </html>
         `);

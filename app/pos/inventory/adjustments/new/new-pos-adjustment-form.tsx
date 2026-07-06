@@ -47,6 +47,8 @@ interface SelectedItem {
     currentQty: number;
     physicalQty: number;
     rate: number;
+    color?: string | null;
+    size?: string | null;
 }
 
 const REASONS = [
@@ -173,7 +175,9 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
             description: item.description,
             currentQty: Number(item.totalQuantity || 0),
             physicalQty: Number(item.totalQuantity || 0),
-            rate: Number(item.unitCost || item.unitPrice || 0),
+            rate: Number(item.unitPrice || 0),
+            color: item.color?.name || null,
+            size: item.size?.name || null,
         };
 
         setSelectedItems((prev) => [...prev, newItem]);
@@ -236,14 +240,14 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                 itemId: selectedOutItem.id,
                                 locationId: location.id,
                                 physicalQty: Math.max(0, currentOutQty - swapQty),
-                                rate: swapRate || Number(selectedOutItem.unitCost || selectedOutItem.unitPrice || 0),
+                                rate: swapRate || Number(selectedOutItem.unitPrice || 0),
                                 swapItemId: selectedInItem.id,
                             },
                             {
                                 itemId: selectedInItem.id,
                                 locationId: location.id,
                                 physicalQty: Number(selectedInItem.totalQuantity || 0) + swapQty,
-                                rate: swapRate || Number(selectedInItem.unitCost || selectedInItem.unitPrice || 0),
+                                rate: swapRate || Number(selectedInItem.unitPrice || 0),
                                 swapItemId: selectedOutItem.id,
                             }
                         ]
@@ -388,6 +392,10 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                                 <div>
                                                     <span className="font-mono font-bold text-sm block">{selectedOutItem.sku}</span>
                                                     <span className="text-xs text-muted-foreground block">{selectedOutItem.description}</span>
+                                                    <div className="flex gap-2 text-[10px] text-slate-500 font-semibold mt-1">
+                                                        {selectedOutItem.color?.name && <span>Color: {selectedOutItem.color.name}</span>}
+                                                        {selectedOutItem.size?.name && <span>Size: {selectedOutItem.size.name}</span>}
+                                                    </div>
                                                     <span className="text-[11px] font-semibold text-red-600 dark:text-red-400 mt-1 block">
                                                         System Stock: {Number(selectedOutItem.totalQuantity || 0).toFixed(2)}
                                                     </span>
@@ -428,12 +436,16 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                                                 onClick={() => {
                                                                     setSelectedOutItem(item);
                                                                     setSwapOutResults([]);
-                                                                    if (swapRate === 0) setSwapRate(Number(item.unitCost || item.unitPrice || 0));
+                                                                    if (swapRate === 0) setSwapRate(Number(item.unitPrice || 0));
                                                                 }}
                                                             >
                                                                 <span className="font-mono font-bold">{item.sku}</span>
                                                                 <div className="text-muted-foreground truncate">{item.description}</div>
-                                                                <div className="text-[10px] font-semibold text-slate-500 mt-0.5">Available Stock: {Number(item.totalQuantity || 0)}</div>
+                                                                <div className="flex gap-2 mt-0.5 text-[10px] font-semibold text-slate-500">
+                                                                    {item.color?.name && <span>Color: {item.color.name}</span>}
+                                                                    {item.size?.name && <span>Size: {item.size.name}</span>}
+                                                                    <span>Available Stock: {Number(item.totalQuantity || 0)}</span>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -454,6 +466,10 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                                 <div>
                                                     <span className="font-mono font-bold text-sm block">{selectedInItem.sku}</span>
                                                     <span className="text-xs text-muted-foreground block">{selectedInItem.description}</span>
+                                                    <div className="flex gap-2 text-[10px] text-slate-500 font-semibold mt-1">
+                                                        {selectedInItem.color?.name && <span>Color: {selectedInItem.color.name}</span>}
+                                                        {selectedInItem.size?.name && <span>Size: {selectedInItem.size.name}</span>}
+                                                    </div>
                                                     <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 mt-1 block">
                                                         System Stock: {Number(selectedInItem.totalQuantity || 0).toFixed(2)}
                                                     </span>
@@ -494,12 +510,16 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                                                 onClick={() => {
                                                                     setSelectedInItem(item);
                                                                     setSwapInResults([]);
-                                                                    if (swapRate === 0) setSwapRate(Number(item.unitCost || item.unitPrice || 0));
+                                                                    if (swapRate === 0) setSwapRate(Number(item.unitPrice || 0));
                                                                 }}
                                                             >
                                                                 <span className="font-mono font-bold">{item.sku}</span>
                                                                 <div className="text-muted-foreground truncate">{item.description}</div>
-                                                                <div className="text-[10px] font-semibold text-slate-500 mt-0.5">Available Stock: {Number(item.totalQuantity || 0)}</div>
+                                                                <div className="flex gap-2 mt-0.5 text-[10px] font-semibold text-slate-500">
+                                                                    {item.color?.name && <span>Color: {item.color.name}</span>}
+                                                                    {item.size?.name && <span>Size: {item.size.name}</span>}
+                                                                    <span>Available Stock: {Number(item.totalQuantity || 0)}</span>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -569,6 +589,10 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                                     <div className="flex flex-col gap-0.5">
                                                         <span className="font-mono font-bold text-sm">{item.sku}</span>
                                                         <span className="text-muted-foreground">{item.description}</span>
+                                                        <div className="flex gap-2 mt-0.5 text-[10px] font-semibold text-slate-500">
+                                                            {item.color?.name && <span>Color: {item.color.name}</span>}
+                                                            {item.size?.name && <span>Size: {item.size.name}</span>}
+                                                        </div>
                                                     </div>
                                                     <span className="text-slate-500 font-semibold">Stock: {Number(item.totalQuantity || 0)}</span>
                                                 </div>
@@ -600,6 +624,10 @@ export function NewPosAdjustmentForm({ warehouse, location }: NewPosAdjustmentFo
                                                                     <span className="text-[10px] text-muted-foreground truncate max-w-[150px]">
                                                                         {item.description}
                                                                     </span>
+                                                                    <div className="flex gap-2 text-[9px] text-slate-500 font-semibold mt-0.5">
+                                                                        {item.color && <span>Color: {item.color}</span>}
+                                                                        {item.size && <span>Size: {item.size}</span>}
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                             <td className="p-2.5 text-right text-muted-foreground">
