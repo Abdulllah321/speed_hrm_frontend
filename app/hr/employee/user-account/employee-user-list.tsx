@@ -41,6 +41,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface Row {
   employeeId: string;
@@ -114,7 +115,7 @@ export function EmployeeUserList({
     const diffDays = Math.floor(diffHours / 24);
     return `in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
   };
-
+  // const {} = useAuth();
   const roleName = (userRole || "").toLowerCase().trim();
   const isAdminRole =
     roleName === "admin" ||
