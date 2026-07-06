@@ -13,7 +13,8 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from "@/components/ui/select";
 import {
-    Search, Trash, Loader2, RefreshCw, AlertCircle, CheckCircle, Info, Repeat
+    Search, Trash, Loader2, RefreshCw, AlertCircle, CheckCircle, Info, Repeat,
+    ClipboardList
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {

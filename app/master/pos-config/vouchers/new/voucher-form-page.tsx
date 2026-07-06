@@ -13,11 +13,14 @@ import { issueVoucher, Voucher, VoucherType, getMerchants, MerchantConfig } from
 import { Location } from "@/lib/actions/location";
 import { LocationMultiSelect } from "../../_components/location-multi-select";
 import { formatCurrency } from "@/lib/utils";
+import { getCustomers } from "@/lib/actions/customer";
+import type { Customer } from "@/lib/actions/customer";
 
 interface Props { locations: Location[] }
 
 const VOUCHER_TYPE_OPTIONS: { value: VoucherType; label: string }[] = [
     { value: "GIFT", label: "Gift Voucher" },
+    { value: "CORPORATE", label: "Corporate Gift" },
 ];
 
 export function VoucherFormPage({ locations }: Props) {
@@ -28,9 +31,11 @@ export function VoucherFormPage({ locations }: Props) {
     const [discount, setDiscount] = useState<number | "">("");
     const [description, setDescription] = useState("");
     const [companyName, setCompanyName] = useState("");
+    const [companyGlCode, setCompanyGlCode] = useState("");
     const [expiresAt, setExpiresAt] = useState("");
     const [locationIds, setLocationIds] = useState<string[]>([]);
     const [issuedVoucher, setIssuedVoucher] = useState<Voucher | null>(null);
+    const [customers, setCustomers] = useState<Customer[]>([]);
 
     // ── Payment Mode state variables ──────────────────────────────
     const [paymentMode, setPaymentMode] = useState<"CASH" | "CARD">("CASH");
@@ -51,6 +56,10 @@ export function VoucherFormPage({ locations }: Props) {
             })
             .catch(() => toast.error("Failed to load merchant terminals"))
             .finally(() => setIsLoadingMerchants(false));
+
+        getCustomers().then(data => {
+            setCustomers(data);
+        });
     }, []);
 
     const goBack = () => {
@@ -79,13 +88,18 @@ export function VoucherFormPage({ locations }: Props) {
                 return;
             }
         }
+        if (voucherType === "CORPORATE" && !companyGlCode) {
+            toast.error("Please select a company/customer");
+            return;
+        }
         startTransition(async () => {
             const result = await issueVoucher({
                 voucherType,
                 faceValue: Number(faceValue),
                 discount: discount ? Number(discount) : 0,
                 description: description || undefined,
-                companyName: companyName || undefined,
+                companyName: voucherType === "CORPORATE" ? companyName || undefined : undefined,
+                companyGlCode: voucherType === "CORPORATE" ? companyGlCode || undefined : undefined,
                 expiresAt: expiresAt || undefined,
                 locationIds,
                 paymentMode: voucherType === "GIFT" ? paymentMode : undefined,
@@ -213,8 +227,35 @@ export function VoucherFormPage({ locations }: Props) {
 
                         {voucherType === "CORPORATE" && (
                             <div className="space-y-2">
-                                <Label>Company Name</Label>
-                                <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. Acme Corp" />
+                                <Label>Company / ERP Customer *</Label>
+                                <Select
+                                    value={companyGlCode}
+                                    onValueChange={(val) => {
+                                        setCompanyGlCode(val);
+                                        const cust = customers.find((c) => c.code === val);
+                                        if (cust) {
+                                            setCompanyName(cust.name);
+                                        } else {
+                                            setCompanyName("");
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select ERP customer..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {customers.length === 0 && (
+                                            <div className="p-2 text-center text-xs text-muted-foreground italic">
+                                                No ERP customers found
+                                            </div>
+                                        )}
+                                        {customers.map((c) => (
+                                            <SelectItem key={c.id} value={c.code}>
+                                                {c.name} ({c.code})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                         )}
 
