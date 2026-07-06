@@ -136,10 +136,17 @@ export async function updateStockAdjustment(
     }
 }
 
-export async function submitStockAdjustment(id: string) {
+export async function submitStockAdjustment(
+    id: string,
+    data?: {
+        items?: { itemId: string; physicalQty: number; rate?: number }[];
+        notes?: string;
+    },
+) {
     try {
         const response = await authFetch(`/stock-adjustments/${id}/submit`, {
             method: "POST",
+            body: data ? JSON.stringify(data) : undefined,
         });
         const result = response.data;
         revalidatePath("/erp/inventory/transactions/stock-adjustment");
@@ -151,10 +158,11 @@ export async function submitStockAdjustment(id: string) {
     }
 }
 
-export async function rejectStockAdjustment(id: string) {
+export async function rejectStockAdjustment(id: string, data?: { notes?: string }) {
     try {
         const response = await authFetch(`/stock-adjustments/${id}/reject`, {
             method: "POST",
+            body: data ? JSON.stringify(data) : undefined,
         });
         const result = response.data;
         revalidatePath("/erp/inventory/transactions/stock-adjustment");
