@@ -101,7 +101,16 @@ export function StockTransferHistoryList({ initialEntries }: StockTransferHistor
                         {initialEntries.map((transfer) => (
                             <TableRow key={transfer.id} className="hover:bg-muted/50 transition-colors">
                                 <TableCell className="font-mono font-bold text-sm">
-                                    {transfer.requestNo}
+                                    <div>{transfer.requestNo}</div>
+                                    {transfer.stockRequisition && (
+                                        <div className="mt-1">
+                                            <Button variant="link" className="p-0 h-auto text-[10px] text-indigo-600 font-bold flex items-center" asChild>
+                                                <Link href={`/erp/inventory/transactions/stock-requisition/slip/${transfer.stockRequisition.id}`} target="_blank">
+                                                    <Printer className="h-3 w-3 mr-1 inline" /> {transfer.stockRequisition.requisitionNo}
+                                                </Link>
+                                            </Button>
+                                        </div>
+                                    )}
                                 </TableCell>
                                 <TableCell className="text-sm">
                                     {format(new Date(transfer.createdAt), "dd MMM yyyy, HH:mm")}
@@ -128,19 +137,27 @@ export function StockTransferHistoryList({ initialEntries }: StockTransferHistor
                                 </TableCell>
                                 <TableCell className="text-center">
                                     <span className="text-lg font-black text-primary">
-                                        {Number(transfer.items[0]?.quantity || 0)}
+                                        {transfer.items.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0)}
                                     </span>
                                 </TableCell>
                                 <TableCell>
                                     {getStatusBadge(transfer.status)}
                                 </TableCell>
                                 <TableCell className="text-right">
-                                    <Button variant="outline" size="sm" asChild>
-                                        <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`}>
-                                            <Eye className="h-4 w-4 mr-2" />
-                                            View & Approve
-                                        </Link>
-                                    </Button>
+                                    <div className="flex justify-end gap-2">
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`}>
+                                                <Eye className="h-4 w-4 mr-1" />
+                                                View
+                                            </Link>
+                                        </Button>
+                                        <Button variant="outline" size="sm" asChild>
+                                            <Link href={`/erp/inventory/transactions/stock-transfer/slip/${transfer.id}`} target="_blank">
+                                                <Printer className="h-4 w-4 mr-1" />
+                                                Print
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}

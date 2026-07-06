@@ -1223,10 +1223,17 @@ export default function PurchaseInvoiceDetailPage() {
         </div>
 
         {/* Print View */}
-        <div
-          id="print-section"
-          className="hidden print:block min-h-screen bg-white p-0"
-        >
+        {mounted && typeof window !== "undefined" && createPortal(
+          <div
+            id="print-section"
+            style={{
+              position: "fixed",
+              left: "-9999px",
+              top: 0,
+              pointerEvents: "none",
+            }}
+            aria-hidden="true"
+          >
           <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-8 font-sans print:p-8 print:max-w-none box-border">
             {/* Header */}
             <div className="flex justify-between mb-6 gap-4 items-start">
@@ -1513,7 +1520,9 @@ export default function PurchaseInvoiceDetailPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
       </>
     </PermissionGuard>
   );

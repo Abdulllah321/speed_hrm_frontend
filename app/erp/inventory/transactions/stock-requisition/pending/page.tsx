@@ -208,8 +208,7 @@ export default function StockRequisitionPendingPage() {
                           size="sm"
                           className="bg-indigo-600 hover:bg-indigo-700 font-bold"
                           onClick={() => {
-                            openDetailSheet(req);
-                            setIsConverting(true);
+                            router.push(`/erp/inventory/transactions/stock-transfer?requisitionId=${req.id}`);
                           }}
                         >
                           <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Convert to STN
@@ -335,58 +334,38 @@ export default function StockRequisitionPendingPage() {
 
               {/* Action Footer */}
               <SheetFooter className="pt-4 border-t gap-2 sm:gap-0">
-                {isConverting ? (
-                  <div className="flex gap-2 w-full justify-end">
-                    <Button variant="outline" onClick={() => setIsConverting(false)}>
-                      Back to View
+                <div className="flex justify-between w-full">
+                  <div>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleCancelRequisition(selectedRequisition.id)}
+                    >
+                      Cancel Requisition
+                    </Button>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" asChild>
+                      <Link
+                        href={`/erp/inventory/transactions/stock-requisition/slip/${selectedRequisition.id}`}
+                        target="_blank"
+                      >
+                        <Printer className="h-4 w-4 mr-1.5" /> Print
+                      </Link>
+                    </Button>
+                    <Button variant="outline" onClick={() => setDetailSheetOpen(false)}>
+                      Close
                     </Button>
                     <Button
                       className="bg-indigo-600 hover:bg-indigo-700 font-bold"
-                      disabled={submitting}
-                      onClick={handleConvertToSTN}
+                      onClick={() => {
+                        setDetailSheetOpen(false);
+                        router.push(`/erp/inventory/transactions/stock-transfer?requisitionId=${selectedRequisition.id}`);
+                      }}
                     >
-                      {submitting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Converting...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-4 w-4 mr-2" /> Confirm & Issue STN
-                        </>
-                      )}
+                      <ArrowRightLeft className="h-4 w-4 mr-1.5" /> Convert to STN
                     </Button>
                   </div>
-                ) : (
-                  <div className="flex justify-between w-full">
-                    <div>
-                      <Button
-                        variant="destructive"
-                        onClick={() => handleCancelRequisition(selectedRequisition.id)}
-                      >
-                        Cancel Requisition
-                      </Button>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" asChild>
-                        <Link
-                          href={`/erp/inventory/transactions/stock-requisition/slip/${selectedRequisition.id}`}
-                          target="_blank"
-                        >
-                          <Printer className="h-4 w-4 mr-1.5" /> Print
-                        </Link>
-                      </Button>
-                      <Button variant="outline" onClick={() => setDetailSheetOpen(false)}>
-                        Close
-                      </Button>
-                      <Button
-                        className="bg-indigo-600 hover:bg-indigo-700 font-bold"
-                        onClick={() => setIsConverting(true)}
-                      >
-                        Convert to STN
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                </div>
               </SheetFooter>
             </div>
           )}
