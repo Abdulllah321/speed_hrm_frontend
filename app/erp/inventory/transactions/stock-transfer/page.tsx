@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { warehouseApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation } from '@/lib/api';
+import { warehouseApi, inventoryApi, locationApi, brandApi, categoryApi, silhouetteApi, genderApi, Warehouse, WarehouseLocation, stockRequisitionApi } from '@/lib/api';
 import { createTransferRequest, createReturnTransferRequest, createOutletToOutletTransferRequest } from '@/lib/actions/transfer-request';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw, Trash2, Plus, CheckCircle2, Info, Loader2, WarehouseIcon, ArrowDown, Filter, X, ChevronDown, ChevronRight, ScanBarcode, Volume2, VolumeX, Keyboard, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, Search, Package, Save, History, RotateCcw, Trash2, Plus, CheckCircle2, Info, Loader2, WarehouseIcon, ArrowDown, Filter, X, ChevronDown, ChevronRight, ScanBarcode, Volume2, VolumeX, Keyboard, Sparkles, Printer } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -23,8 +23,10 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/com
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 
-export default function StockTransferPage() {
+function StockTransferContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const requisitionId = searchParams.get('requisitionId');
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
     const [locations, setLocations] = useState<WarehouseLocation[]>([]);
     const [masterLocations, setMasterLocations] = useState<any[]>([]);
@@ -51,6 +53,11 @@ export default function StockTransferPage() {
     const [itemOptions, setItemOptions] = useState<AutocompleteOption[]>([]);
     const [searchLoading, setSearchLoading] = useState(false);
     const [globalNotes, setGlobalNotes] = useState('');
+    const [pendingRequisitions, setPendingRequisitions] = useState<any[]>([]);
+    const [loadingRequisitions, setLoadingRequisitions] = useState(false);
+    const [isRequisitionsSheetOpen, setIsRequisitionsSheetOpen] = useState(false);
+    const [activeRequisitionId, setActiveRequisitionId] = useState<string | null>(null);
+    const [activeRequisitionNo, setActiveRequisitionNo] = useState<string | null>(null);
 
     // Selection State
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -335,11 +342,106 @@ export default function StockTransferPage() {
         return () => window.removeEventListener('keydown', handleGlobalKeyDown);
     }, [globalScannerActive, selectedItems, autoIncrement, bulkQty, soundEnabled, selectedWarehouseId, transferMode, destLocationId, sourceLocationId, appliedFilters]);
 
+    const loadPendingRequisitions = async () => {
+        setLoadingRequisitions(true);
+        try {
+            const res = await stockRequisitionApi.getAll();
+            if (res.status) {
+                const pending = res.data.filter((req: any) => req.status === 'PENDING');
+                setPendingRequisitions(pending);
+            }
+        } catch (error) {
+            console.error('Failed to load pending requisitions', error);
+        } finally {
+            setLoadingRequisitions(false);
+        }
+    };
+
+    const loadRequisitionItems = async (requisition: any, warehouseId: string) => {
+        const toastId = toast.loading('Loading stock levels for requisition items...');
+        try {
+            const itemPromises = requisition.items.map(async (item: any) => {
+                const sku = item.item?.sku;
+                let availableStock = 0;
+                if (sku && warehouseId) {
+                    try {
+                        const res = await inventoryApi.search(sku, warehouseId);
+                        if (res.status && res.data && res.data.length > 0) {
+                            const matched = res.data.find((inv: any) => inv.id === item.itemId || inv.sku === sku);
+                            if (matched) {
+                                availableStock = typeof matched.totalQuantity === 'number' ? matched.totalQuantity : 0;
+                            } else {
+                                availableStock = typeof res.data[0].totalQuantity === 'number' ? res.data[0].totalQuantity : 0;
+                            }
+                        }
+                    } catch (e) {
+                        console.error(`Failed to load stock for ${sku}`, e);
+                    }
+                }
+                return {
+                    id: item.itemId,
+                    sku: item.item?.sku || '',
+                    description: item.item?.description || '',
+                    color: item.item?.color?.name,
+                    size: item.item?.size?.name,
+                    quantity: Number(item.quantity),
+                    notes: `From Requisition ${requisition.requisitionNo}`,
+                    availableStock: availableStock,
+                };
+            });
+
+            const items = await Promise.all(itemPromises);
+            setSelectedItems(items);
+            toast.success(`Loaded ${items.length} items from Requisition ${requisition.requisitionNo}`, { id: toastId });
+        } catch (error) {
+            toast.error('Failed to load requisition items', { id: toastId });
+        }
+    };
+
+    const handleSelectRequisition = async (req: any) => {
+        setIsRequisitionsSheetOpen(false);
+        setActiveRequisitionId(req.id);
+        setActiveRequisitionNo(req.requisitionNo);
+
+        setTransferMode('WAREHOUSE_TO_OUTLET');
+
+        const whId = req.fromWarehouseId || req.fromWarehouse?.id;
+        if (whId) {
+            setSelectedWarehouseId(whId);
+            const locId = req.toLocationId || req.toLocation?.id;
+            await loadLocations(whId, locId);
+        }
+
+        setGlobalNotes(`Converted from SRN ${req.requisitionNo}`);
+        await loadRequisitionItems(req, whId);
+    };
+
     useEffect(() => {
-        loadWarehouses();
-        loadMasterLocations();
-        loadFilterData();
-    }, []);
+        const init = async () => {
+            await loadWarehouses();
+            await loadMasterLocations();
+            await loadFilterData();
+            await loadPendingRequisitions();
+            
+            if (requisitionId) {
+                try {
+                    const res = await stockRequisitionApi.getById(requisitionId);
+                    if (res.status && res.data) {
+                        const req = res.data;
+                        if (req.status === 'PENDING') {
+                            await handleSelectRequisition(req);
+                        } else {
+                            toast.error(`Requisition is in ${req.status} status. Only PENDING requisitions can be converted.`);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load requisition from query parameter', error);
+                    toast.error('Failed to load requisition details');
+                }
+            }
+        };
+        init();
+    }, [requisitionId]);
 
     const loadMasterLocations = async () => {
         try {
@@ -373,7 +475,7 @@ export default function StockTransferPage() {
         try {
             const data = await warehouseApi.getAll();
             setWarehouses(data);
-            if (data.length > 0) {
+            if (data.length > 0 && !requisitionId) {
                 setSelectedWarehouseId(data[0].id);
                 loadLocations(data[0].id);
             }
@@ -384,7 +486,7 @@ export default function StockTransferPage() {
         }
     };
 
-    const loadLocations = async (whId: string) => {
+    const loadLocations = async (whId: string, overrideDestLocationId?: string) => {
         try {
             const wh = await warehouseApi.getById(whId);
             const locs = wh.locations || [];
@@ -395,7 +497,9 @@ export default function StockTransferPage() {
             const shopLocs = sortedLocs.filter(l => l.type === 'SHOP');
 
             if (mainLoc) setSourceLocationId(mainLoc.id);
-            if (shopLocs.length > 0) {
+            if (overrideDestLocationId) {
+                setDestLocationId(overrideDestLocationId);
+            } else if (shopLocs.length > 0) {
                 const firstShop = shopLocs.find(l => l.id !== mainLoc?.id) || shopLocs[0];
                 setDestLocationId(firstShop.id);
             }
@@ -519,34 +623,56 @@ export default function StockTransferPage() {
                 notes: item.notes
             }));
 
-            if (transferMode === 'WAREHOUSE_TO_OUTLET') {
-                await createTransferRequest({
-                    fromWarehouseId: selectedWarehouseId,
-                    toLocationId: destLocationId,
+            let stnId: string | undefined;
+
+            if (activeRequisitionId) {
+                const res = await stockRequisitionApi.convertToSTN(activeRequisitionId, {
                     items: itemsToTransfer,
                     notes: globalNotes
                 });
-                toast.success('Transfer request created! Awaiting shop acceptance.');
-            } else if (transferMode === 'OUTLET_TO_WAREHOUSE') {
-                await createReturnTransferRequest({
-                    fromLocationId: destLocationId,
-                    fromWarehouseId: selectedWarehouseId,
-                    items: itemsToTransfer,
-                    notes: globalNotes
-                });
-                toast.success('Return request created! Awaiting outlet manager approval.');
-            } else if (transferMode === 'OUTLET_TO_OUTLET') {
-                await createOutletToOutletTransferRequest({
-                    fromLocationId: sourceLocationId,
-                    toLocationId: destLocationId,
-                    items: itemsToTransfer,
-                    notes: globalNotes
-                });
-                toast.success('Outlet transfer request created! Awaiting dual approval.');
+                if (res.status) {
+                    toast.success('Requisition converted to Transfer Request successfully!');
+                    stnId = res.data?.id;
+                } else {
+                    throw new Error(res.message || 'Failed to convert requisition to STN');
+                }
+            } else {
+                if (transferMode === 'WAREHOUSE_TO_OUTLET') {
+                    const res = await createTransferRequest({
+                        fromWarehouseId: selectedWarehouseId,
+                        toLocationId: destLocationId,
+                        items: itemsToTransfer,
+                        notes: globalNotes
+                    });
+                    toast.success('Transfer request created! Awaiting shop acceptance.');
+                    stnId = (res as any)?.id;
+                } else if (transferMode === 'OUTLET_TO_WAREHOUSE') {
+                    await createReturnTransferRequest({
+                        fromLocationId: destLocationId,
+                        fromWarehouseId: selectedWarehouseId,
+                        items: itemsToTransfer,
+                        notes: globalNotes
+                    });
+                    toast.success('Return request created! Awaiting outlet manager approval.');
+                } else if (transferMode === 'OUTLET_TO_OUTLET') {
+                    await createOutletToOutletTransferRequest({
+                        fromLocationId: sourceLocationId,
+                        toLocationId: destLocationId,
+                        items: itemsToTransfer,
+                        notes: globalNotes
+                    });
+                    toast.success('Outlet transfer request created! Awaiting dual approval.');
+                }
             }
 
             setSelectedItems([]);
             setGlobalNotes('');
+            setActiveRequisitionId(null);
+            setActiveRequisitionNo(null);
+
+            if (stnId) {
+                router.push(`/erp/inventory/transactions/stock-transfer/slip/${stnId}`);
+            }
         } catch (error: any) {
             toast.error(error.message || 'Transfer failed');
         } finally {
@@ -622,6 +748,19 @@ export default function StockTransferPage() {
 
                     <Tooltip>
                         <TooltipTrigger asChild>
+                            <Button
+                                variant="outline"
+                                onClick={() => setIsRequisitionsSheetOpen(true)}
+                                className="border-2 font-bold shadow-sm border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                            >
+                                <ArrowRightLeft className="h-4 w-4 mr-2" /> Pending Requisitions
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Load items from a pending stock requisition</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                        <TooltipTrigger asChild>
                             <Button variant="outline" asChild className="border-2 font-bold shadow-sm">
                                 <Link href="/erp/inventory/transactions/stock-transfer/history" transitionTypes={["nav-forward"]}>
                                     <History className="h-4 w-4 mr-2" /> History
@@ -639,6 +778,27 @@ export default function StockTransferPage() {
                         <CardTitle className="text-lg">Transfer Context</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {activeRequisitionNo && (
+                            <div className="bg-indigo-50 border border-indigo-200 rounded-md p-3 mb-2 flex items-center justify-between text-xs text-indigo-800 animate-fade-in">
+                                <div className="flex items-center gap-1.5 font-semibold">
+                                    <Info className="h-4 w-4 text-indigo-650" />
+                                    <span>Active SRN: {activeRequisitionNo}</span>
+                                </div>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-5 w-5 hover:bg-indigo-100 text-indigo-605"
+                                    onClick={() => {
+                                        setActiveRequisitionId(null);
+                                        setActiveRequisitionNo(null);
+                                        setSelectedItems([]);
+                                        setGlobalNotes('');
+                                    }}
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            </div>
+                        )}
                         {transferMode === 'WAREHOUSE_TO_OUTLET' ? (
                             <>
                                 <div className="space-y-1 p-3 bg-primary/5 rounded-md border border-primary/10">
@@ -1369,7 +1529,97 @@ export default function StockTransferPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Pending Requisitions Sheet */}
+            <Sheet open={isRequisitionsSheetOpen} onOpenChange={setIsRequisitionsSheetOpen}>
+                <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
+                    <SheetHeader className="pb-4 border-b">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <SheetTitle className="text-xl font-bold text-indigo-950 flex items-center gap-2">
+                                    <ArrowRightLeft className="h-5 w-5 text-indigo-600" />
+                                    Pending Requisitions (SRN)
+                                </SheetTitle>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Select a pending outlet stock requisition to pre-populate this form.
+                                </p>
+                            </div>
+                            <Button variant="outline" size="sm" onClick={loadPendingRequisitions} disabled={loadingRequisitions}>
+                                {loadingRequisitions ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
+                            </Button>
+                        </div>
+                    </SheetHeader>
+
+                    <div className="py-4">
+                        {loadingRequisitions ? (
+                            <div className="flex justify-center items-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+                            </div>
+                        ) : pendingRequisitions.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground font-semibold">
+                                No pending stock requisitions at the moment.
+                            </div>
+                        ) : (
+                            <div className="border rounded-md overflow-hidden">
+                                <Table>
+                                    <TableHeader className="bg-gray-50/50">
+                                        <TableRow>
+                                            <TableHead className="font-bold">Requisition No</TableHead>
+                                            <TableHead className="font-bold">Date</TableHead>
+                                            <TableHead className="font-bold">From Warehouse</TableHead>
+                                            <TableHead className="font-bold">To Location</TableHead>
+                                            <TableHead className="text-right font-bold">Action</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {pendingRequisitions.map((req) => (
+                                            <TableRow key={req.id} className="hover:bg-amber-50/10 transition-colors">
+                                                <TableCell className="font-bold text-indigo-600">{req.requisitionNo}</TableCell>
+                                                <TableCell>{new Date(req.requisitionDate).toLocaleDateString()}</TableCell>
+                                                <TableCell className="font-medium text-xs">{req.fromWarehouse?.name}</TableCell>
+                                                <TableCell className="font-medium text-xs">{req.toLocation?.name}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            asChild
+                                                            className="font-bold text-xs"
+                                                        >
+                                                            <Link
+                                                                href={`/erp/inventory/transactions/stock-requisition/slip/${req.id}`}
+                                                                target="_blank"
+                                                            >
+                                                                 <Printer className="h-3.5 w-3.5 mr-1" /> Print
+                                                            </Link>
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-indigo-600 hover:bg-indigo-700 font-bold text-xs"
+                                                            onClick={() => handleSelectRequisition(req)}
+                                                        >
+                                                            Select
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
+                    </div>
+                </SheetContent>
+            </Sheet>
             </div>
         </PermissionGuard>
+    );
+}
+
+export default function StockTransferPage() {
+    return (
+        <Suspense fallback={<div className="p-6 text-center text-muted-foreground font-semibold">Loading Stock Transfer...</div>}>
+            <StockTransferContent />
+        </Suspense>
     );
 }
