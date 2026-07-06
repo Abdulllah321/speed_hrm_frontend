@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
     submitStockAdjustment,
+    rejectStockAdjustment,
     deleteStockAdjustment,
     StockAdjustment,
 } from "@/lib/actions/stock-adjustment";
@@ -39,9 +40,17 @@ const STATUS_META: Record<string, { label: string; badgeClass: string }> = {
         label: "Draft Document",
         badgeClass: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/30 dark:text-amber-300",
     },
+    PENDING_APPROVAL: {
+        label: "Pending Approval",
+        badgeClass: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/30 dark:text-blue-300",
+    },
     SUBMITTED: {
         label: "Posted / Submitted",
         badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-300",
+    },
+    REJECTED: {
+        label: "Rejected",
+        badgeClass: "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/30 dark:text-rose-300",
     },
     CANCELLED: {
         label: "Cancelled",
@@ -54,6 +63,7 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
     const [isPending, startTransition] = useTransition();
 
     const isDraft = adjustment.status === "DRAFT";
+    const isPendingApproval = adjustment.status === "PENDING_APPROVAL";
 
     // Handle Submit / Post
     const handleSubmit = () => {
@@ -65,6 +75,25 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                     router.refresh();
                 } else {
                     toast.error(result.message || "Failed to submit adjustment");
+                }
+            } catch (error: any) {
+                toast.error(error.message || "An error occurred");
+            }
+        });
+    };
+
+    // Handle Reject Request
+    const handleReject = () => {
+        if (!confirm("Are you sure you want to reject this adjustment request?")) return;
+
+        startTransition(async () => {
+            try {
+                const result = await rejectStockAdjustment(adjustment.id);
+                if (result.status !== false) {
+                    toast.success("Stock adjustment request rejected.");
+                    router.refresh();
+                } else {
+                    toast.error(result.message || "Failed to reject adjustment");
                 }
             } catch (error: any) {
                 toast.error(error.message || "An error occurred");
@@ -160,6 +189,34 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                         </Button>
                     </div>
                 )}
+
+                {isPendingApproval && (
+                    <div className="flex items-center gap-3">
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={handleReject}
+                            disabled={isPending}
+                            className="gap-2"
+                        >
+                            <Trash className="h-4 w-4" />
+                            Reject Request
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={isPending}
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                        >
+                            {isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <CheckCircle className="h-4 w-4" />
+                            )}
+                            Approve & Post Stock
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Warn user if draft */}
@@ -168,6 +225,15 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                     <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
                     <span>
                         This document is a <strong>Draft</strong>. Quantities below have not been adjusted in your stock records. Review and click "Submit / Post Stock" to apply these changes.
+                    </span>
+                </div>
+            )}
+
+            {isPendingApproval && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-md text-sm dark:bg-blue-950/20 dark:border-blue-900/50 dark:text-blue-400">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-blue-600" />
+                    <span>
+                        This document is <strong>Pending Approval</strong> from POS/Outlet. Quantities below have not been adjusted. Review and click "Approve & Post Stock" or "Reject Request".
                     </span>
                 </div>
             )}
@@ -276,6 +342,11 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                                                     <span className="text-xs text-muted-foreground truncate max-w-60">
                                                         {item.item?.description || "No description"}
                                                     </span>
+                                                    {item.swapItem && (
+                                                        <span className="text-[10px] mt-1 text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-300 border border-amber-200/50 px-1.5 py-0.5 rounded w-fit font-medium">
+                                                            Swapped with: {item.swapItem.sku}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="p-3">

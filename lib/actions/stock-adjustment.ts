@@ -12,12 +12,19 @@ export interface StockAdjustmentItem {
     physicalQty: number;
     adjustedQty: number;
     rate: number;
+    swapItemId: string | null;
     item: {
         id: string;
         itemId: string;
         sku: string;
         description: string | null;
     };
+    swapItem?: {
+        id: string;
+        itemId: string;
+        sku: string;
+        description: string | null;
+    } | null;
     location?: {
         id: string;
         name: string;
@@ -30,7 +37,8 @@ export interface StockAdjustment {
     adjustmentNo: string;
     warehouseId: string;
     adjustmentDate: string;
-    status: "DRAFT" | "SUBMITTED" | "CANCELLED";
+    status: "DRAFT" | "PENDING_APPROVAL" | "SUBMITTED" | "REJECTED" | "CANCELLED";
+    adjustmentType: "STANDARD" | "SWAP";
     reason: string | null;
     notes: string | null;
     createdById: string | null;
@@ -82,7 +90,9 @@ export async function createStockAdjustment(data: {
     warehouseId: string;
     reason?: string;
     notes?: string;
-    items: { itemId: string; locationId?: string; physicalQty: number; rate?: number }[];
+    status?: string;
+    adjustmentType?: string;
+    items: { itemId: string; locationId?: string; physicalQty: number; rate?: number; swapItemId?: string }[];
 }) {
     try {
         const response = await authFetch("/stock-adjustments", {
@@ -104,7 +114,9 @@ export async function updateStockAdjustment(
         warehouseId: string;
         reason?: string;
         notes?: string;
-        items: { itemId: string; locationId?: string; physicalQty: number; rate?: number }[];
+        status?: string;
+        adjustmentType?: string;
+        items: { itemId: string; locationId?: string; physicalQty: number; rate?: number; swapItemId?: string }[];
     },
 ) {
     try {
@@ -137,6 +149,21 @@ export async function submitStockAdjustment(id: string) {
     }
 }
 
+export async function rejectStockAdjustment(id: string) {
+    try {
+        const response = await authFetch(`/stock-adjustments/${id}/reject`, {
+            method: "POST",
+        });
+        const result = response.data;
+        revalidatePath("/erp/inventory/transactions/stock-adjustment");
+        revalidatePath(`/erp/inventory/transactions/stock-adjustment/${id}`);
+        return result;
+    } catch (error) {
+        console.error("Reject stock adjustment error:", error);
+        throw error;
+    }
+}
+
 export async function deleteStockAdjustment(id: string) {
     try {
         const response = await authFetch(`/stock-adjustments/${id}`, {
@@ -165,4 +192,3 @@ export async function searchInventoryItems(query: string, warehouseId?: string, 
         return { status: false, data: [] };
     }
 }
-
