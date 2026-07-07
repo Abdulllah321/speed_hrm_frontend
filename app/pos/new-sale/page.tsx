@@ -12,8 +12,7 @@ import {
     Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { PauseCircle, Clock, RotateCcw } from "lucide-react";
+import { PauseCircle, Clock, RotateCcw, X, Loader2 } from "lucide-react";
 import { HoldOrderModal } from "@/components/pos/hold-order-modal";
 import { usePosSettings } from "@/hooks/use-pos-settings";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -21,6 +20,7 @@ import { formatCurrency, cn } from "@/lib/utils";
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function computeLineItem(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     product: any,
     quantity: number,
     discountPercent: number,
@@ -83,9 +83,11 @@ export default function NewSalePage() {
     const canViewHolds = hasPermission('pos.hold.view');
     const canResumeHold = hasPermission('pos.hold.resume');
     const [searchQuery, setSearchQuery] = useState("");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isProcessing, setIsProcessing] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [focusedCartIndex, setFocusedCartIndex] = useState<number>(-1);
@@ -93,12 +95,15 @@ export default function NewSalePage() {
 
     // ─── Hold orders state ──────────────────────────────────────────
     const [showHoldOrders, setShowHoldOrders] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [holdOrders, setHoldOrders] = useState<any[]>([]);
     const [isLoadingHolds, setIsLoadingHolds] = useState(false);
     const [isHolding, setIsHolding] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [holdTimerTick, setHoldTimerTick] = useState(0);
     const [showHoldModal, setShowHoldModal] = useState(false);
     const [resumedHoldOrderId, setResumedHoldOrderId] = useState<string | null>(null);
+    const [cancellingHoldId, setCancellingHoldId] = useState<string | null>(null);
 
     // ─── Load hold orders ───────────────────────────────────────────
     const loadHoldOrders = useCallback(async () => {
@@ -114,6 +119,27 @@ export default function NewSalePage() {
             setIsLoadingHolds(false);
         }
     }, []);
+
+    // ─── Cancel a held order ─────────────────────────────────────────
+    const handleCancelHold = useCallback(async (orderId: string, orderNumber: string) => {
+        if (!confirm(`Are you sure you want to cancel hold order ${orderNumber}? Stock will be restored.`)) {
+            return;
+        }
+        setCancellingHoldId(orderId);
+        try {
+            const res = await authFetch(`/pos-sales/orders/${orderId}/cancel-hold`, { method: "POST" });
+            if (res.ok && res.data?.status) {
+                toast.success(res.data.message || "Hold order cancelled");
+                loadHoldOrders(); // Reload the list
+            } else {
+                toast.error(res.data?.message || "Failed to cancel hold order");
+            }
+        } catch {
+            toast.error("Failed to cancel hold order. Check connection.");
+        } finally {
+            setCancellingHoldId(null);
+        }
+    }, [loadHoldOrders]);
 
     // ─── Place current cart on hold ─────────────────────────────────
     const handleHold = useCallback(async (holdUntilTime?: string): Promise<void> => {
@@ -166,6 +192,7 @@ export default function NewSalePage() {
             const res = await authFetch(`/pos-sales/orders/${orderId}/resume`, { method: "POST" });
             if (res.ok && res.data?.status) {
                 const order = res.data.data;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const resumedItems: CartItem[] = order.items.map((oi: any) => ({
                     id: oi.itemId,
                     upc: oi.item?.barCode || oi.itemId || "-",
@@ -261,6 +288,7 @@ export default function NewSalePage() {
     }, [searchQuery, settings.defaultTaxPercent]);
 
     // ─── Select from Autocomplete ───────────────────────────────────
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleSelectProduct = useCallback((product: any) => {
         const defTax = parseFloat(settings.defaultTaxPercent) || 0;
         setCartItems((prev) => {
@@ -423,6 +451,11 @@ export default function NewSalePage() {
         if (searchParams.get("showHolds") === "1") {
             loadHoldOrders();
             setShowHoldOrders(true);
+            
+            // Clean up query param from URL to prevent reopening on reload
+            const url = new URL(window.location.href);
+            url.searchParams.delete("showHolds");
+            window.history.replaceState({}, "", url.pathname + url.search);
         }
     }, [searchParams, loadHoldOrders]);
 
@@ -686,8 +719,22 @@ export default function NewSalePage() {
                                     <div className="flex gap-2">
                                         <Button
                                             size="sm"
-                                            className="flex-1 h-8 text-xs"
-                                            disabled={!canResumeHold}
+                                            variant="destructive"
+                                            className="flex-1 h-8 text-xs font-bold"
+                                            disabled={cancellingHoldId === order.id}
+                                            onClick={() => handleCancelHold(order.id, order.orderNumber)}
+                                        >
+                                            {cancellingHoldId === order.id ? (
+                                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                            ) : (
+                                                <X className="h-3 w-3 mr-1" />
+                                            )}
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            className="flex-1 h-8 text-xs font-bold bg-violet-600 hover:bg-violet-700 text-white"
+                                            disabled={!canResumeHold || cancellingHoldId === order.id}
                                             onClick={() => handleResumeHold(order.id)}
                                         >
                                             <RotateCcw className="h-3 w-3 mr-1" />

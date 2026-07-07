@@ -239,6 +239,12 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [filterAccountId, setFilterAccountId] = useState<string>("");
+    const [filterSubAccountId, setFilterSubAccountId] = useState<string>("");
+
+    // Clear sub-account filter if parent account filter changes
+    useEffect(() => {
+        setFilterSubAccountId("");
+    }, [filterAccountId]);
 
     const selectedAccountIds = useMemo<string[]>(() => {
         return Array.from(new Set(watchDetails.map((d: any) => d.accountId as string).filter(Boolean)));
@@ -253,6 +259,26 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
             };
         });
     }, [selectedAccountIds, tree]);
+
+    const filterSubAccountOptions = useMemo(() => {
+        if (!filterAccountId || tree.length === 0) return [];
+        const node = findInTree(tree, filterAccountId);
+        const children = node?.children ?? [];
+        
+        const usedSubAccountIds = new Set(
+            watchDetails
+                .filter((d: any) => d.accountId === filterAccountId)
+                .map((d: any) => d.tagAccountId as string)
+                .filter(Boolean)
+        );
+
+        return children
+            .filter(child => usedSubAccountIds.has(child.id))
+            .map(child => ({
+                value: child.id,
+                label: `${child.code} - ${child.name}`
+            }));
+    }, [filterAccountId, watchDetails, tree]);
 
     // Derive child sub-accounts for active line entry
     const activeLineChildren = useMemo(() => {
@@ -1006,6 +1032,22 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const totalCredit = watchDetails.reduce((sum, detail) => sum + (Number(detail.credit) || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 
+    const visibleDetails = useMemo(() => {
+        return watchDetails.filter((detail: any) => {
+            const shouldHide = (filterAccountId && detail.accountId !== filterAccountId) ||
+                               (filterSubAccountId && detail.tagAccountId !== filterSubAccountId);
+            return !shouldHide;
+        });
+    }, [watchDetails, filterAccountId, filterSubAccountId]);
+
+    const displayedTotalDebit = useMemo(() => {
+        return visibleDetails.reduce((sum, d) => sum + (Number(d.debit) || 0), 0);
+    }, [visibleDetails]);
+
+    const displayedTotalCredit = useMemo(() => {
+        return visibleDetails.reduce((sum, d) => sum + (Number(d.credit) || 0), 0);
+    }, [visibleDetails]);
+
     return (
         <Card className="w-full">
             <CardHeader className="border-b flex flex-row items-center justify-between">
@@ -1705,26 +1747,47 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
                         {/* Filter Bar */}
                         {selectedAccountIds.length > 0 && (
-                            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg border border-dashed">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase">Filter by Account Head:</span>
-                                <div className="w-[300px]">
-                                    <Autocomplete
-                                        options={filterOptions}
-                                        value={filterAccountId}
-                                        onValueChange={setFilterAccountId}
-                                        placeholder="All Accounts"
-                                        searchPlaceholder="Search selected accounts..."
-                                    />
+                            <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/40 rounded-lg border border-dashed">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Filter by Account Head:</span>
+                                    <div className="w-[280px]">
+                                        <Autocomplete
+                                            options={filterOptions}
+                                            value={filterAccountId}
+                                            onValueChange={setFilterAccountId}
+                                            placeholder="All Accounts"
+                                            searchPlaceholder="Search selected accounts..."
+                                        />
+                                    </div>
                                 </div>
-                                {filterAccountId && (
+
+                                {filterAccountId && filterSubAccountOptions.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Sub-account:</span>
+                                        <div className="w-[280px]">
+                                            <Autocomplete
+                                                options={filterSubAccountOptions}
+                                                value={filterSubAccountId}
+                                                onValueChange={setFilterSubAccountId}
+                                                placeholder="All Sub-accounts"
+                                                searchPlaceholder="Search sub-accounts..."
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {(filterAccountId || filterSubAccountId) && (
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => setFilterAccountId("")}
+                                        onClick={() => {
+                                            setFilterAccountId("");
+                                            setFilterSubAccountId("");
+                                        }}
                                         className="text-xs text-destructive hover:bg-destructive/10 h-9 px-3"
                                     >
-                                        Clear Filter
+                                        Clear Filters
                                     </Button>
                                 )}
                             </div>
@@ -1753,7 +1816,8 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                     ) : (
                                         watchDetails.map((field, index) => {
                                             const detail = watchDetails[index] || {};
-                                            const shouldHide = filterAccountId && detail.accountId && detail.accountId !== filterAccountId;
+                                            const shouldHide = (filterAccountId && detail.accountId !== filterAccountId) ||
+                                                             (filterSubAccountId && detail.tagAccountId !== filterSubAccountId);
                                             if (shouldHide) return null;
 
                                             const accountNode = findInTree(tree, field.accountId);
@@ -1895,10 +1959,10 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                     <tr>
                                         <td colSpan={3} className="px-4 py-4 text-right pr-8 text-muted-foreground text-xs uppercase tracking-wider">Totals:</td>
                                         <td className="px-4 py-4 text-right text-base font-mono tabular-nums">
-                                            {totalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            {displayedTotalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                         <td className="px-4 py-4 text-right text-base font-mono tabular-nums">
-                                            {totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            {displayedTotalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                         <td className="px-4 py-4 text-center">
                                             {!isBalanced && totalDebit > 0 && (
