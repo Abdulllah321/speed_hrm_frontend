@@ -84,7 +84,7 @@ export default function NetSalesSummaryReportPage() {
         if (!locationId) return;
         async function fetchCashiers() {
             try {
-                const res = await getSalespersons(locationId);
+                const res = await getSalespersons(locationId as string);
                 if (res && res.status && Array.isArray(res.data)) {
                     setCashierList(res.data);
                 }
@@ -128,7 +128,7 @@ export default function NetSalesSummaryReportPage() {
 
     useEffect(() => {
         fetchReport();
-    }, [locationId, groupingLevels, cashierUserId]);
+    }, [locationId, groupingLevels, cashierUserId, dateRange]);
 
     // Poll Excel Export Job Status
     useEffect(() => {

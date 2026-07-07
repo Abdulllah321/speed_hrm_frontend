@@ -1536,4 +1536,17 @@ export const stockRequisitionApi = {
       method: 'POST',
       body: formData,
     }),
+  getReplenishmentCandidates: (filters: {
+    locationId: string;
+    fromWarehouseId: string;
+    startDate?: string;
+    endDate?: string;
+  }) => {
+    const params = new URLSearchParams();
+    params.append('locationId', filters.locationId);
+    params.append('fromWarehouseId', filters.fromWarehouseId);
+    if (filters.startDate) params.append('startDate', filters.startDate);
+    if (filters.endDate) params.append('endDate', filters.endDate);
+    return fetchApi<{ status: boolean; data: any[] }>(`/stock-requisition/replenishment-candidates?${params.toString()}`);
+  },
 };
