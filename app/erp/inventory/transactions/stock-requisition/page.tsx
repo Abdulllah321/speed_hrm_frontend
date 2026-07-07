@@ -14,6 +14,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Autocomplete } from '@/components/ui/autocomplete';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
   warehouseApi,
   locationApi,
   brandApi,
@@ -42,6 +50,10 @@ import {
   AlertTriangle,
   History,
   Printer,
+  RefreshCw,
+  Calendar,
+  Zap,
+  Calculator,
 } from 'lucide-react';
 import Link from 'next/link';
 import { SrnBulkUploadModal } from '@/components/inventory/srn-bulk-upload-modal';
@@ -96,6 +108,138 @@ export default function StockRequisitionPage() {
   const [isConverting, setIsConverting] = useState<boolean>(false);
   const [stnQuantities, setStnQuantities] = useState<Record<string, number>>({});
   const [editId, setEditId] = useState<string | null>(null);
+
+  // Replenishment Modal State
+  const [replenishModalOpen, setReplenishModalOpen] = useState<boolean>(false);
+  const [replenishStartDate, setReplenishStartDate] = useState<string>('');
+  const [replenishEndDate, setReplenishEndDate] = useState<string>('');
+  const [replenishLoading, setReplenishLoading] = useState<boolean>(false);
+  const [replenishCandidates, setReplenishCandidates] = useState<any[]>([]);
+  const [replenishSummary, setReplenishSummary] = useState<{
+    totalSoldItems: number;
+    replenishFully: number;
+    replenishPartially: number;
+    outOfStock: number;
+  }>({ totalSoldItems: 0, replenishFully: 0, replenishPartially: 0, outOfStock: 0 });
+
+  const openReplenishModal = () => {
+    if (!selectedWarehouseId) {
+      toast.error('Please select a Source Warehouse first.');
+      return;
+    }
+    if (!destLocationId) {
+      toast.error('Please select a Destination Outlet (Location) first.');
+      return;
+    }
+    
+    // Default to last 3 days
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 3);
+    
+    setReplenishStartDate(start.toISOString().split('T')[0]);
+    setReplenishEndDate(end.toISOString().split('T')[0]);
+    setReplenishCandidates([]);
+    setReplenishModalOpen(true);
+  };
+
+  const handleCalculateReplenishment = async () => {
+    if (!replenishStartDate || !replenishEndDate) {
+      toast.error('Please select both Start Date and End Date.');
+      return;
+    }
+    setReplenishLoading(true);
+    try {
+      const res = await stockRequisitionApi.getReplenishmentCandidates({
+        locationId: destLocationId,
+        fromWarehouseId: selectedWarehouseId,
+        startDate: replenishStartDate,
+        endDate: replenishEndDate,
+      });
+
+      if (res.status && Array.isArray(res.data)) {
+        setReplenishCandidates(res.data);
+        
+        // Calculate summaries
+        let fully = 0;
+        let partially = 0;
+        let oos = 0;
+        
+        res.data.forEach((item: any) => {
+          if (item.warehouseAvailableQty === 0) {
+            oos++;
+          } else if (item.warehouseAvailableQty >= item.soldQty) {
+            fully++;
+          } else {
+            partially++;
+          }
+        });
+        
+        setReplenishSummary({
+          totalSoldItems: res.data.length,
+          replenishFully: fully,
+          replenishPartially: partially,
+          outOfStock: oos,
+        });
+        
+        if (res.data.length === 0) {
+          toast.info('No sales found for the selected POS and date range.');
+        } else {
+          toast.success(`Found ${res.data.length} items sold.`);
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to fetch replenishment candidates');
+    } finally {
+      setReplenishLoading(false);
+    }
+  };
+
+  const handleApplyReplenishment = () => {
+    const toAdd = replenishCandidates.filter((item) => item.quantity > 0);
+    if (toAdd.length === 0) {
+      toast.warning('No items have available stock to replenish.');
+      return;
+    }
+    
+    setRequisitionItems((prev) => {
+      const merged = [...prev];
+      toAdd.forEach((newItem) => {
+        const idx = merged.findIndex((i) => i.itemId === newItem.itemId);
+        if (idx > -1) {
+          merged[idx].quantity = newItem.quantity;
+        } else {
+          merged.push({
+            itemId: newItem.itemId,
+            sku: newItem.sku,
+            description: newItem.description,
+            color: newItem.color,
+            size: newItem.size,
+            category: newItem.category,
+            gender: newItem.gender,
+            segment: newItem.segment,
+            unitPrice: newItem.unitPrice,
+            quantity: newItem.quantity,
+          });
+        }
+      });
+      return merged;
+    });
+    
+    setReplenishModalOpen(false);
+    toast.success(`Added ${toAdd.length} replenishment items to the requisition note.`);
+  };
+
+  const updateReplenishCandidateQty = (itemId: string, qty: number, maxQty: number) => {
+    if (qty < 0) return;
+    if (qty > maxQty) {
+      toast.warning(`Cannot request more than available warehouse stock (${maxQty})`);
+      return;
+    }
+    setReplenishCandidates((prev) =>
+      prev.map((item) => (item.itemId === itemId ? { ...item, quantity: qty } : item)),
+    );
+  };
 
   useEffect(() => {
     loadDropdownData();
@@ -754,6 +898,13 @@ export default function StockRequisitionPage() {
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
+                    className="border-amber-600 text-amber-700 bg-amber-50 hover:bg-amber-100 font-bold"
+                    onClick={openReplenishModal}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" /> Auto Replenish (Net Sales)
+                  </Button>
+                  <Button
+                    variant="outline"
                     className="border-indigo-600 text-indigo-600 hover:bg-indigo-50 font-bold"
                     disabled={requisitionItems.length === 0}
                     onClick={handlePrintPreview}
@@ -761,33 +912,7 @@ export default function StockRequisitionPage() {
                     <Printer className="h-4 w-4 mr-2" /> Print Preview
                   </Button>
 
-                  {/* File Upload Button */}
-                  <div className="relative">
-                    <input
-                      type="file"
-                      id="excel-file-input"
-                      className="hidden"
-                      accept=".xlsx,.xls,.csv"
-                      onChange={handleExcelUpload}
-                      disabled={uploading}
-                    />
-                    <Button
-                      variant="outline"
-                      className="border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-bold cursor-pointer"
-                      disabled={uploading}
-                      onClick={() => document.getElementById('excel-file-input')?.click()}
-                    >
-                      {uploading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" /> Bulk Excel Upload
-                        </>
-                      )}
-                    </Button>
-                  </div>
+
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
@@ -833,7 +958,7 @@ export default function StockRequisitionPage() {
                     <FileSpreadsheet className="h-10 w-10 text-indigo-300" />
                     <p className="font-semibold text-gray-600">Requisition List is empty</p>
                     <p className="text-xs max-w-md">
-                      Add items manually by searching above, or click <strong>Bulk Excel Upload</strong> to import quantities from Column I of the consolidated GRN sheet.
+                      Add items manually by searching above, or calculate replenishment from net sales summary.
                     </p>
                   </div>
                 ) : (
@@ -1114,6 +1239,186 @@ export default function StockRequisitionPage() {
         defaultRemarks={remarks}
         defaultNotes={notes}
       />
+
+      <Dialog open={replenishModalOpen} onOpenChange={setReplenishModalOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-amber-700 flex items-center gap-2">
+              <RefreshCw className="h-6 w-6" /> Auto Replenish Requisition
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Calculate replenishment for outlet <strong>{locations.find(l => l.id === destLocationId)?.name || 'Selected Outlet'}</strong> using net sales summary and reserve stock from warehouse <strong>{warehouses.find(w => w.id === selectedWarehouseId)?.name || 'Selected Warehouse'}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-gray-50 p-4 rounded-lg border my-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-gray-600">Sales Start Date</Label>
+              <div className="relative">
+                <Input
+                  type="date"
+                  value={replenishStartDate}
+                  onChange={(e) => setReplenishStartDate(e.target.value)}
+                  className="bg-white font-medium"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-bold text-gray-600">Sales End Date</Label>
+              <div className="relative">
+                <Input
+                  type="date"
+                  value={replenishEndDate}
+                  onChange={(e) => setReplenishEndDate(e.target.value)}
+                  className="bg-white font-medium"
+                />
+              </div>
+            </div>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 font-bold"
+              disabled={replenishLoading}
+              onClick={handleCalculateReplenishment}
+            >
+              {replenishLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Calculating...
+                </>
+              ) : (
+                <>
+                  <Calculator className="h-4 w-4 mr-2" /> Calculate Replenishment
+                </>
+              )}
+            </Button>
+          </div>
+
+          {replenishCandidates.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 my-2">
+              <Card className="p-3 bg-indigo-50/50 border-indigo-100">
+                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider block">Total Sold Items</span>
+                <span className="text-2xl font-extrabold text-indigo-900 mt-1 block">
+                  {replenishSummary.totalSoldItems}
+                </span>
+              </Card>
+              <Card className="p-3 bg-green-50/50 border-green-100">
+                <span className="text-xs font-bold text-green-700 uppercase tracking-wider block">Fully Available</span>
+                <span className="text-2xl font-extrabold text-green-900 mt-1 block">
+                  {replenishSummary.replenishFully}
+                </span>
+              </Card>
+              <Card className="p-3 bg-amber-50/50 border-amber-100">
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block">Partially Available</span>
+                <span className="text-2xl font-extrabold text-amber-900 mt-1 block">
+                  {replenishSummary.replenishPartially}
+                </span>
+              </Card>
+              <Card className="p-3 bg-rose-50/50 border-rose-100">
+                <span className="text-xs font-bold text-rose-700 uppercase tracking-wider block">Out of Stock</span>
+                <span className="text-2xl font-extrabold text-rose-900 mt-1 block">
+                  {replenishSummary.outOfStock}
+                </span>
+              </Card>
+            </div>
+          )}
+
+          <ScrollArea className="flex-1 border rounded-md my-2 overflow-y-auto max-h-[40vh]">
+            {replenishCandidates.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                <p className="font-semibold text-gray-600">No calculation data loaded</p>
+                <p className="text-xs max-w-sm mx-auto mt-1">
+                  Select your replenishment sales cycle date range and click <strong>Calculate Replenishment</strong>.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader className="bg-gray-100 sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="font-bold">SKU</TableHead>
+                    <TableHead className="font-bold">Description</TableHead>
+                    <TableHead className="font-bold">Size/Color</TableHead>
+                    <TableHead className="font-bold text-center">Sold Qty</TableHead>
+                    <TableHead className="font-bold text-center">WH Available</TableHead>
+                    <TableHead className="font-bold text-center w-[120px]">Replenish Qty</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {replenishCandidates.map((candidate) => {
+                    const isOos = candidate.warehouseAvailableQty === 0;
+                    const isShort = !isOos && candidate.warehouseAvailableQty < candidate.soldQty;
+
+                    return (
+                      <TableRow key={candidate.itemId} className={`hover:bg-gray-50/50 ${isOos ? 'bg-rose-50/10' : ''}`}>
+                        <TableCell className="font-bold text-gray-800">{candidate.sku}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">{candidate.description}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {candidate.color && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {candidate.color}
+                              </Badge>
+                            )}
+                            {candidate.size && (
+                              <Badge variant="outline" className="text-[10px]">
+                                {candidate.size}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-bold text-indigo-600">{candidate.soldQty}</TableCell>
+                        <TableCell className="text-center font-bold">
+                          {isOos ? (
+                            <Badge className="bg-rose-100 hover:bg-rose-100 text-rose-700 font-bold animate-pulse">
+                              OOS (0)
+                            </Badge>
+                          ) : isShort ? (
+                            <Badge className="bg-amber-100 hover:bg-amber-100 text-amber-700 font-bold">
+                              Short ({candidate.warehouseAvailableQty})
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-green-100 hover:bg-green-100 text-green-700 font-bold">
+                              Available ({candidate.warehouseAvailableQty})
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={candidate.warehouseAvailableQty}
+                            value={candidate.quantity}
+                            disabled={isOos}
+                            onChange={(e) =>
+                              updateReplenishCandidateQty(
+                                candidate.itemId,
+                                parseInt(e.target.value) || 0,
+                                candidate.warehouseAvailableQty,
+                              )
+                            }
+                            className="w-20 text-center font-bold mx-auto"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </ScrollArea>
+
+          <DialogFooter className="mt-4 border-t pt-4">
+            <Button variant="outline" onClick={() => setReplenishModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 font-bold"
+              disabled={replenishCandidates.length === 0 || replenishCandidates.every(c => c.quantity === 0)}
+              onClick={handleApplyReplenishment}
+            >
+              <Zap className="h-4 w-4 mr-2" /> Apply Replenishment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
