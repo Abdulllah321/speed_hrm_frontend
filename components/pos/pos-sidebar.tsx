@@ -42,7 +42,7 @@ const posMenuGroups = [
             { title: "New Sale", icon: ShoppingCart, href: "/pos" },
             { title: "Quick Sale", icon: Zap, href: "/pos/quick" },
             { title: "Current Orders", icon: Receipt, href: "/pos/orders" },
-            { title: "Hold Orders", icon: PauseCircle, href: "/pos/holds" },
+            // { title: "Hold Orders", icon: PauseCircle, href: "/pos/holds" },
             { title: "Returns & Exchanges", icon: RefreshCw, href: "/pos/sales/returns" },
             { title: "Customer Ladger", icon: BookOpen, href: "/pos/customer-ledger" },
             { title: "Cash Drawer", icon: Wallet, href: "/pos/terminal/drawer" },
@@ -168,7 +168,7 @@ export function PosSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                     <SidebarMenuItem>
-                        <SidebarMenuButton 
+                        <SidebarMenuButton
                             onClick={logout}
                             className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors pointer-events-auto cursor-pointer"
                         >
