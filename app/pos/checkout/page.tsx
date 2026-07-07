@@ -548,9 +548,19 @@ export default function CheckoutPage() {
         setVoucherError(null);
         try {
             const locationId = getCookie("pos_location_id") || "";
-            const res = await authFetch("/pos-config/vouchers/validate", {
+            const isAlliance = discountMode === "alliance" && selectedAlliance;
+            const url = isAlliance 
+                ? "/pos-config/vouchers/validate/alliances" 
+                : "/pos-config/vouchers/validate";
+            const res = await authFetch(url, {
                 method: "POST",
-                body: { code: trimmed, locationId, customerId: selectedCustomer?.id },
+                body: { 
+                    code: trimmed, 
+                    locationId, 
+                    customerId: selectedCustomer?.id,
+                    allianceId: selectedAlliance?.id,
+                    billAmount: grandTotal
+                },
             });
             if (res.ok && res.data?.status) {
                 setValidatedVoucher(res.data.data);
@@ -565,7 +575,7 @@ export default function CheckoutPage() {
         } finally {
             setVoucherValidating(false);
         }
-    }, [selectedCustomer, balanceDue]);
+    }, [selectedCustomer, balanceDue, discountMode, selectedAlliance, grandTotal]);
 
     const handleVoucherCodeChange = (value: string) => {
         const clean = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase();

@@ -102,18 +102,17 @@ export function PaymentPanel({
             </div>
             <div className="p-3 space-y-3">
                 {/* Tender type + amount */}
-                <div className="space-y-2">
+                 <div className="space-y-2">
                     <div>
                         <Label className="text-xs text-muted-foreground uppercase tracking-wide">
                             Tender Type
                             {discountMode === "alliance" && selectedAlliance && (
-                                <span className="ml-2 text-xs text-primary font-normal">(Card payment required for alliance)</span>
+                                <span className="ml-2 text-xs text-primary font-normal">(Card or Voucher payment required)</span>
                             )}
                         </Label>
                         <Select
                             value={tenderMethod}
                             onValueChange={onTenderMethodChange}
-                            disabled={!!(discountMode === "alliance" && selectedAlliance)}
                         >
                             <SelectTrigger className="mt-1">
                                 <SelectValue />
