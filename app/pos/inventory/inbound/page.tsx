@@ -214,9 +214,9 @@ export default function InboundRequestsPage() {
     };
 
     return (
-        <div className="flex flex-col h-full bg-background">
+        <div className="flex flex-col h-full">
             {/* Header */}
-            <header className="flex-none p-4 md:p-6 border-b bg-muted/20 backdrop-blur-xl sticky top-0 z-10">
+            <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-4 max-w-5xl mx-auto w-full">
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>
                         <ArrowLeft className="h-5 w-5" />

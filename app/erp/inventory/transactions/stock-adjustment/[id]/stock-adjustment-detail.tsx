@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useTransition, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
     Card,
@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
     submitStockAdjustment,
+    rejectStockAdjustment,
     deleteStockAdjustment,
     StockAdjustment,
 } from "@/lib/actions/stock-adjustment";
@@ -39,9 +40,17 @@ const STATUS_META: Record<string, { label: string; badgeClass: string }> = {
         label: "Draft Document",
         badgeClass: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/30 dark:text-amber-300",
     },
+    PENDING_APPROVAL: {
+        label: "Pending Approval",
+        badgeClass: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/30 dark:text-blue-300",
+    },
     SUBMITTED: {
         label: "Posted / Submitted",
         badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-300",
+    },
+    REJECTED: {
+        label: "Rejected",
+        badgeClass: "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/30 dark:text-rose-300",
     },
     CANCELLED: {
         label: "Cancelled",
@@ -54,17 +63,72 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
     const [isPending, startTransition] = useTransition();
 
     const isDraft = adjustment.status === "DRAFT";
+    const isPendingApproval = adjustment.status === "PENDING_APPROVAL";
+
+    const [managerNotes, setManagerNotes] = useState(adjustment.notes || "");
+    const [editableItems, setEditableItems] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (adjustment?.items) {
+            setEditableItems(
+                adjustment.items.map((item) => ({
+                    ...item,
+                    physicalQty: Number(item.physicalQty),
+                }))
+            );
+            setManagerNotes(adjustment.notes || "");
+        }
+    }, [adjustment]);
 
     // Handle Submit / Post
     const handleSubmit = () => {
+        const confirmMsg = isPendingApproval
+            ? "Are you sure you want to approve and post this stock adjustment? Stock counts will be updated."
+            : "Are you sure you want to post this stock adjustment?";
+
+        if (!confirm(confirmMsg)) return;
+
         startTransition(async () => {
             try {
-                const result = await submitStockAdjustment(adjustment.id);
+                const payload = isPendingApproval
+                    ? {
+                          notes: managerNotes || undefined,
+                          items: editableItems.map((item) => ({
+                              itemId: item.itemId,
+                              physicalQty: item.physicalQty,
+                              rate: Number(item.rate),
+                          })),
+                      }
+                    : undefined;
+
+                const result = await submitStockAdjustment(adjustment.id, payload);
                 if (result.status !== false) {
-                    toast.success("Stock adjustment posted successfully. Stock levels updated.");
+                    toast.success("Stock adjustment approved and posted successfully.");
                     router.refresh();
                 } else {
                     toast.error(result.message || "Failed to submit adjustment");
+                }
+            } catch (error: any) {
+                toast.error(error.message || "An error occurred");
+            }
+        });
+    };
+
+    // Handle Reject Request
+    const handleReject = () => {
+        if (!confirm("Are you sure you want to reject this adjustment request?")) return;
+
+        startTransition(async () => {
+            try {
+                const payload = {
+                    notes: managerNotes || undefined,
+                };
+                const result = await rejectStockAdjustment(adjustment.id, payload);
+                if (result.status !== false) {
+                    toast.success("Stock adjustment request rejected.");
+                    router.refresh();
+                } else {
+                    toast.error(result.message || "Failed to reject adjustment");
                 }
             } catch (error: any) {
                 toast.error(error.message || "An error occurred");
@@ -91,14 +155,14 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
         });
     };
 
-    // Calculate totals
-    const totalItems = adjustment.items.length;
-    const valueIncrease = adjustment.items.reduce((acc, item) => {
-        const diff = Number(item.adjustedQty);
+    // Calculate totals based on current state values
+    const totalItems = editableItems.length;
+    const valueIncrease = editableItems.reduce((acc, item) => {
+        const diff = item.physicalQty - Number(item.currentQty);
         return diff > 0 ? acc + diff * Number(item.rate) : acc;
     }, 0);
-    const valueDecrease = adjustment.items.reduce((acc, item) => {
-        const diff = Number(item.adjustedQty);
+    const valueDecrease = editableItems.reduce((acc, item) => {
+        const diff = item.physicalQty - Number(item.currentQty);
         return diff < 0 ? acc + Math.abs(diff) * Number(item.rate) : acc;
     }, 0);
     const netChange = valueIncrease - valueDecrease;
@@ -160,14 +224,51 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                         </Button>
                     </div>
                 )}
+
+                {isPendingApproval && (
+                    <div className="flex items-center gap-3">
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={handleReject}
+                            disabled={isPending}
+                            className="gap-2"
+                        >
+                            <Trash className="h-4 w-4" />
+                            Reject Request
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={isPending}
+                            className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                        >
+                            {isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <CheckCircle className="h-4 w-4" />
+                            )}
+                            Approve & Post Stock
+                        </Button>
+                    </div>
+                )}
             </div>
 
-            {/* Warn user if draft */}
+            {/* Alert banners */}
             {isDraft && (
                 <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-md text-sm dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-400">
                     <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
                     <span>
                         This document is a <strong>Draft</strong>. Quantities below have not been adjusted in your stock records. Review and click "Submit / Post Stock" to apply these changes.
+                    </span>
+                </div>
+            )}
+
+            {isPendingApproval && (
+                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 text-blue-800 rounded-md text-sm dark:bg-blue-950/20 dark:border-blue-900/50 dark:text-blue-400">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-blue-600" />
+                    <span>
+                        This document is <strong>Pending Approval</strong> from POS/Outlet. Review details, adjust quantities if necessary, and approve or reject with instructions.
                     </span>
                 </div>
             )}
@@ -199,11 +300,28 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                             </div>
                         )}
 
-                        {adjustment.notes && (
-                            <div>
-                                <span className="text-xs text-muted-foreground block">Notes / Remarks</span>
-                                <span className="text-sm font-medium">{adjustment.notes}</span>
+                        {isPendingApproval ? (
+                            <div className="space-y-1.5">
+                                <label htmlFor="manager-notes" className="text-xs font-bold text-slate-500 uppercase tracking-wider block">
+                                    Approval/Rejection Instruction Notes
+                                </label>
+                                <textarea
+                                    id="manager-notes"
+                                    rows={3}
+                                    className="w-full text-sm p-2 border border-slate-200 dark:border-slate-800 rounded-md bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-primary"
+                                    placeholder="Enter approval instructions, rejection reasons, or remarks here..."
+                                    value={managerNotes}
+                                    onChange={(e) => setManagerNotes(e.target.value)}
+                                    disabled={isPending}
+                                />
                             </div>
+                        ) : (
+                            adjustment.notes && (
+                                <div>
+                                    <span className="text-xs text-muted-foreground block">Notes / Remarks</span>
+                                    <span className="text-sm font-medium">{adjustment.notes}</span>
+                                </div>
+                            )
                         )}
                     </CardContent>
                 </Card>
@@ -264,8 +382,8 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-muted">
-                                {adjustment.items.map((item) => {
-                                    const discrepancy = Number(item.adjustedQty);
+                                {editableItems.map((item, idx) => {
+                                    const discrepancy = item.physicalQty - Number(item.currentQty);
                                     const lineCost = discrepancy * Number(item.rate);
 
                                     return (
@@ -276,6 +394,17 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                                                     <span className="text-xs text-muted-foreground truncate max-w-60">
                                                         {item.item?.description || "No description"}
                                                     </span>
+                                                    <div className="flex gap-2 text-[10px] text-slate-500 font-semibold mt-0.5">
+                                                        {item.item?.color?.name && <span>Color: {item.item.color.name}</span>}
+                                                        {item.item?.size?.name && <span>Size: {item.item.size.name}</span>}
+                                                    </div>
+                                                    {item.swapItem && (
+                                                        <span className="text-[10px] mt-1 text-amber-600 bg-amber-50 dark:bg-amber-950/20 dark:text-amber-300 border border-amber-200/50 px-1.5 py-0.5 rounded w-fit font-medium">
+                                                            Swapped with: {item.swapItem.sku}
+                                                            {item.swapItem.color?.name && ` (${item.swapItem.color.name}`}
+                                                            {item.swapItem.size?.name && `, ${item.swapItem.size.name})`}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="p-3">
@@ -291,7 +420,25 @@ export function StockAdjustmentDetail({ adjustment }: StockAdjustmentDetailProps
                                                 {Number(item.currentQty).toFixed(2)}
                                             </td>
                                             <td className="p-3 text-right tabular-nums font-semibold">
-                                                {Number(item.physicalQty).toFixed(2)}
+                                                {isPendingApproval ? (
+                                                    <input
+                                                        type="number"
+                                                        className="w-24 p-1 text-right text-xs font-bold border border-slate-200 dark:border-slate-800 rounded bg-white dark:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-primary ml-auto"
+                                                        value={item.physicalQty}
+                                                        onChange={(e) => {
+                                                            const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                                            setEditableItems((prev) => {
+                                                                const copy = [...prev];
+                                                                copy[idx] = { ...copy[idx], physicalQty: val };
+                                                                return copy;
+                                                            });
+                                                        }}
+                                                        disabled={isPending}
+                                                        min={0}
+                                                    />
+                                                ) : (
+                                                    Number(item.physicalQty).toFixed(2)
+                                                )}
                                             </td>
                                             <td className="p-3 text-right font-bold tabular-nums">
                                                 {discrepancy === 0 ? (

@@ -71,9 +71,9 @@ export default function StockReceivingPage() {
     };
 
     return (
-        <div className="flex flex-col h-full bg-background">
+        <div className="flex flex-col h-full">
             {/* Header */}
-            <header className="flex-none p-4 md:p-6 border-b bg-muted/20 backdrop-blur-xl sticky top-0 z-10">
+            <header className="flex-none p-4 md:p-6 border-b backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-4 max-w-5xl mx-auto w-full">
                     <Button variant="ghost" size="icon" onClick={() => router.back()}>
                         <ArrowLeft className="h-5 w-5" />
@@ -127,9 +127,15 @@ export default function StockReceivingPage() {
                                                 <div className="font-mono text-sm font-bold truncate">{request.requestNo}</div>
                                             </div>
                                             <div className="mt-4 md:mt-0">
-                                                <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 border-orange-200">
-                                                    <Clock className="h-3 w-3 mr-1" /> Pending
-                                                </Badge>
+                                                {request.status === 'APPROVED' ? (
+                                                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100/80 border-emerald-200">
+                                                        <CheckCircle2 className="h-3 w-3 mr-1" /> Approved
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge variant="secondary" className="bg-orange-100 text-orange-700 hover:bg-orange-100/80 border-orange-200">
+                                                        <Clock className="h-3 w-3 mr-1" /> Pending
+                                                    </Badge>
+                                                )}
                                             </div>
                                         </div>
 

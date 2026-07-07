@@ -21,10 +21,14 @@ import { Label } from "@/components/ui/label";
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Loader2, Info, Plus, XCircle, Gift, Calendar } from "lucide-react";
+import { 
+    Loader2, Info, Plus, XCircle, Gift, Calendar, 
+    RefreshCw, CreditCard, Building2, MapPin, Ticket, Copy 
+} from "lucide-react";
 import { toast } from "sonner";
-import { Voucher, voidVoucher, updateVoucherExpiry } from "@/lib/actions/vouchers";
-import { formatCurrency } from "@/lib/utils";
+import { Voucher, VoucherType, voidVoucher, updateVoucherExpiry } from "@/lib/actions/vouchers";
+import { cn, formatCurrency } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Props { vouchers: Voucher[] }
 
@@ -40,6 +44,46 @@ const formatForDateTimeLocal = (dateString?: string) => {
     return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 };
 
+const VOUCHER_TYPES: { value: VoucherType; label: string; icon: React.ElementType; color: string }[] = [
+    { value: "GIFT",        label: "Gift",        icon: Gift,      color: "text-emerald-600" },
+    { value: "EXCHANGE",    label: "Exchange",    icon: RefreshCw, color: "text-blue-600"    },
+    { value: "CREDIT",      label: "Credit",      icon: CreditCard,color: "text-violet-600"  },
+    { value: "CORPORATE",   label: "Corporate",   icon: Building2, color: "text-amber-600"   },
+    { value: "OUTLET_GIFT", label: "Outlet Gift", icon: MapPin,    color: "text-rose-600"    },
+    { value: "REFUND",      label: "Refund",      icon: Ticket,    color: "text-red-600"     },
+];
+
+const isClaimVoucher = (v: Voucher) => {
+    if (v.claims && v.claims.length > 0) return true;
+    if (v.description && /approved claim/i.test(v.description)) return true;
+    return false;
+};
+
+const CLAIM_TYPE_INFO = { value: "CLAIM" as any, label: "Claim", icon: Ticket, color: "text-purple-600" };
+
+function getVoucherDescription(v: Voucher) {
+    if (v.description) return v.description;
+    
+    if (v.voucherType === "CORPORATE" && (v.companyName || v.companyGlCode)) {
+        return `${v.companyName ?? ""}${v.companyGlCode ? ` (${v.companyGlCode})` : ""}`.trim();
+    }
+    
+    if (v.voucherType === "EXCHANGE" && v.sourceOrder) {
+        const ref = v.sourceOrder.returnNumber || v.sourceOrder.refundNumber || v.sourceOrder.orderNumber;
+        if (ref) return `Return Ref: ${ref}`;
+    }
+    
+    if (v.voucherType === "CREDIT" && v.customerId) {
+        return `Customer ID: ${v.customerId}`;
+    }
+    
+    if (v.claims && v.claims.length > 0) {
+        return `Claim: ${v.claims.map(c => c.claimNumber).join(", ")}`;
+    }
+    
+    return "—";
+}
+
 export function VouchersListPage({ vouchers }: Props) {
     const router = useRouter();
     const { hasPermission } = useAuth();
@@ -47,6 +91,18 @@ export function VouchersListPage({ vouchers }: Props) {
     const [voidId, setVoidId] = useState<string | null>(null);
     const [editExpiryVoucher, setEditExpiryVoucher] = useState<Voucher | null>(null);
     const [expiryValue, setExpiryValue] = useState<string>("");
+    const [activeTab, setActiveTab] = useState<string>("ALL");
+
+    const filtered = activeTab === "ALL"
+        ? vouchers
+        : activeTab === "CLAIM"
+        ? vouchers.filter(isClaimVoucher)
+        : vouchers.filter(v => {
+            if (activeTab === "EXCHANGE") {
+                return v.voucherType === "EXCHANGE" && !isClaimVoucher(v);
+            }
+            return v.voucherType === activeTab;
+        });
 
     const canCreate = hasPermission("pos.voucher.create");
     const canVoid = hasPermission("pos.voucher.void");
@@ -91,10 +147,32 @@ export function VouchersListPage({ vouchers }: Props) {
                 </AlertDescription>
             </Alert>
 
-            <div className="flex justify-end">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
+                    <TabsList className="w-full md:w-auto flex flex-wrap h-auto">
+                        <TabsTrigger value="ALL">All ({vouchers.length})</TabsTrigger>
+                        {VOUCHER_TYPES.map(({ value, label }) => {
+                            const count = vouchers.filter(v => {
+                                if (value === "EXCHANGE") {
+                                    return v.voucherType === "EXCHANGE" && !isClaimVoucher(v);
+                                }
+                                return v.voucherType === value;
+                            }).length;
+                            return (
+                                <TabsTrigger key={value} value={value}>
+                                    {label} ({count})
+                                </TabsTrigger>
+                            );
+                        })}
+                        <TabsTrigger value="CLAIM">
+                            Claim ({vouchers.filter(isClaimVoucher).length})
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+
                 {canCreate && (
                     <Button
-                        className="gap-2"
+                        className="gap-2 shrink-0 self-end md:self-auto"
                         onClick={() => {
                             startTransition(() => {
                                 addTransitionType("nav-forward");
@@ -122,26 +200,42 @@ export function VouchersListPage({ vouchers }: Props) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {vouchers.length === 0 ? (
+                        {filtered.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
-                                    No vouchers issued yet
+                                    No vouchers found
                                 </TableCell>
                             </TableRow>
-                        ) : vouchers.map((v) => {
+                        ) : filtered.map((v) => {
                             const isExpired = v.expiresAt ? new Date(v.expiresAt) < new Date() : false;
                             const statusLabel = !v.isActive ? "redeemed" : v.isRedeemed ? "Redeemed" : isExpired ? "Expired" : "Active";
                             const statusVariant = !v.isActive ? "secondary" : v.isRedeemed ? "default" : isExpired ? "outline" : "default";
+                            
+                            const isClaim = isClaimVoucher(v);
+                            const typeInfo = isClaim ? CLAIM_TYPE_INFO : VOUCHER_TYPES.find(t => t.value === v.voucherType);
+                            const Icon = typeInfo?.icon ?? Ticket;
+
                             return (
                                 <TableRow key={v.id}>
                                     <TableCell>
-                                        <span className="font-mono font-bold text-primary text-sm">{v.code}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-mono font-bold text-primary text-sm">{v.code}</span>
+                                            <button onClick={() => {
+                                                navigator.clipboard?.writeText(v.code);
+                                                toast.success(`Copied: ${v.code}`);
+                                            }} className="text-muted-foreground hover:text-foreground transition-colors" title="Copy code">
+                                                <Copy className="w-3 h-3" />
+                                            </button>
+                                        </div>
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant="outline" className="text-xs">{v.voucherType.replace("_", " ")}</Badge>
+                                        <span className={cn("flex items-center gap-1.5 text-xs font-medium", typeInfo?.color)}>
+                                            <Icon className="w-3.5 h-3.5" />
+                                            {typeInfo?.label}
+                                        </span>
                                     </TableCell>
-                                    <TableCell className="text-sm text-muted-foreground max-w-[160px] truncate">
-                                        {v.description || v.companyName || "—"}
+                                    <TableCell className="text-sm text-muted-foreground max-w-[160px] truncate" title={getVoucherDescription(v)}>
+                                        {getVoucherDescription(v)}
                                     </TableCell>
                                     <TableCell className="text-right font-mono">
                                         <div className="font-semibold">{formatCurrency(Number(v.faceValue))}</div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,14 +14,16 @@ import { PrintReturnReceipt } from "@/components/pos/print-return-receipt";
 import { PrintClaimReceipt } from "@/components/pos/print-claim-receipt";
 import { authFetch } from "@/lib/auth";
 import { useAuth } from "@/components/providers/auth-provider";
-import { formatCurrency } from "@/lib/utils";
-import { listSalesActivities } from "@/lib/actions/pos-sales";
+import { formatCurrency, getApiBaseUrl } from "@/lib/utils";
+import Cookies from "js-cookie";
+import { listSalesActivities, queuePosSalesActivityExport, getPosSalesActivityExportStatus } from "@/lib/actions/pos-sales";
 import {
     Loader2, Search, Calendar, RefreshCcw, Printer, RotateCcw,
     Banknote, CreditCard, Ticket, BookOpen, AlertCircle, CheckCircle2,
     XCircle, Info, ShoppingBag, Eye, ArrowRight, User, Building, MapPin,
-    ArrowUpDown, History, Receipt
+    ArrowUpDown, History, Receipt, FileSpreadsheet, Download
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -68,7 +70,79 @@ export default function SalesActivityPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 15;
 
+    // Export tracking state
+    const [exportState, setExportState] = useState<"idle" | "queueing" | "generating" | "ready" | "failed">("idle");
+    const [exportJobId, setExportJobId] = useState<string | null>(null);
+    const [exportProgress, setExportProgress] = useState(0);
+
+    // Polling hook for background export job status
+    useEffect(() => {
+        if (!exportJobId || (exportState !== "generating" && exportState !== "queueing")) return;
+
+        const intervalId = setInterval(async () => {
+            const res = await getPosSalesActivityExportStatus(exportJobId);
+            if (res.status && res.data) {
+                const { state, progress } = res.data;
+                setExportProgress(progress);
+                if (state === "completed") {
+                    setExportState("ready");
+                    clearInterval(intervalId);
+                    toast.success("Excel export is ready for download!");
+                } else if (state === "failed") {
+                    setExportState("failed");
+                    clearInterval(intervalId);
+                    toast.error("Excel export failed. Please try again.");
+                }
+            } else {
+                setExportState("failed");
+                clearInterval(intervalId);
+                toast.error("Failed to fetch export status.");
+            }
+        }, 2000);
+
+        return () => clearInterval(intervalId);
+    }, [exportJobId, exportState]);
+
+    const handleExport = async () => {
+        setExportState("queueing");
+        setExportProgress(0);
+        try {
+            const res = await queuePosSalesActivityExport({
+                search: search.trim() || undefined,
+                startDate: dateRange.from?.toISOString(),
+                endDate: dateRange.to?.toISOString(),
+                activityType: activityType === "all" ? undefined : activityType,
+            });
+
+            if (res.status && res.data?.jobId) {
+                setExportJobId(res.data.jobId);
+                setExportState("generating");
+                toast.info("Export started. Preparing file...");
+            } else {
+                setExportState("failed");
+                toast.error(res.message || "Failed to start export");
+            }
+        } catch (error) {
+            setExportState("failed");
+            toast.error("An error occurred while queueing export.");
+        }
+    };
+
+    const handleDownload = () => {
+        if (!exportJobId) return;
+        const apiBase = getApiBaseUrl();
+        const token = Cookies.get("accessToken");
+        const url = `${apiBase}/pos-sales/activities/export/${exportJobId}/download?token=${token}`;
+        window.open(url, "_blank");
+        
+        // Reset export state
+        setExportState("idle");
+        setExportJobId(null);
+        setExportProgress(0);
+    };
+
     // Printing state
+
     const [selectedOrder, setSelectedOrder] = useState<any>(null);
     const [selectedClaim, setSelectedClaim] = useState<any>(null);
     const [returnDetails, setReturnDetails] = useState<any>(null);
@@ -166,10 +240,59 @@ export default function SalesActivityPage() {
                         Trace and audit individual transaction actions (sales, returns, cash refunds, claims) sorted by activity date.
                     </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2 shrink-0">
-                    <RefreshCcw className="h-3.5 w-3.5" /> Refresh
-                </Button>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {/* Export Button */}
+                    <Button
+                        variant={exportState === "failed" ? "destructive" : "outline"}
+                        size="sm"
+                        onClick={
+                            exportState === "ready"
+                                ? handleDownload
+                                : exportState === "idle" || exportState === "failed"
+                                ? handleExport
+                                : undefined
+                        }
+                        disabled={exportState === "queueing" || exportState === "generating"}
+                        className="gap-2"
+                    >
+                        {exportState === "idle" && (
+                            <>
+                                <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" />
+                                Export Excel
+                            </>
+                        )}
+                        {exportState === "queueing" && (
+                            <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Queueing...
+                            </>
+                        )}
+                        {exportState === "generating" && (
+                            <>
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Generating {exportProgress}%
+                            </>
+                        )}
+                        {exportState === "ready" && (
+                            <>
+                                <Download className="h-3.5 w-3.5 text-emerald-600" />
+                                Download Excel
+                            </>
+                        )}
+                        {exportState === "failed" && (
+                            <>
+                                <RefreshCcw className="h-3.5 w-3.5" />
+                                Retry Export
+                            </>
+                        )}
+                    </Button>
+
+                    <Button variant="outline" size="sm" onClick={() => refetch()} className="gap-2">
+                        <RefreshCcw className="h-3.5 w-3.5" /> Refresh
+                    </Button>
+                </div>
             </div>
+
 
             {/* Filters panel */}
             <div className="bg-card border rounded-xl p-4 shadow-sm space-y-4">

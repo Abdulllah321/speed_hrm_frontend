@@ -131,8 +131,8 @@ export const columns: ColumnDef<StockLedgerEntry>[] = [
             const isInbound = qty >= 0;
             const locationName = row.original.location?.name;
 
-            // For POS Sale, Outlet Transfer In/Out — show only location, hide warehouse
-            const locationOnlyTypes = ["POS_SALE", "POS_RETURN", "OUTLET_TRANSFER_IN", "OUTLET_TRANSFER_OUT", "POS_CLAIM_APPROVED"];
+            // For POS Sale, Outlet Transfer In/Out, Stock Adjustment — show only location, hide warehouse
+            const locationOnlyTypes = ["POS_SALE", "POS_RETURN", "OUTLET_TRANSFER_IN", "OUTLET_TRANSFER_OUT", "POS_CLAIM_APPROVED", "STOCK_ADJUSTMENT"];
             const showLocationOnly = locationOnlyTypes.includes(refType) && locationName;
 
             if (showLocationOnly) {

@@ -32,9 +32,17 @@ const STATUS_META: Record<string, { label: string; badgeClass: string }> = {
         label: "Draft",
         badgeClass: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/30 dark:text-amber-300",
     },
+    PENDING_APPROVAL: {
+        label: "Pending Approval",
+        badgeClass: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/30 dark:text-blue-300",
+    },
     SUBMITTED: {
         label: "Submitted",
         badgeClass: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-300",
+    },
+    REJECTED: {
+        label: "Rejected",
+        badgeClass: "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/30 dark:text-rose-300",
     },
     CANCELLED: {
         label: "Cancelled",
@@ -199,7 +207,9 @@ export function StockAdjustmentList({ initialEntries, initialMeta }: StockAdjust
                     label: "Status",
                     options: [
                         { label: "Draft", value: "DRAFT" },
+                        { label: "Pending Approval", value: "PENDING_APPROVAL" },
                         { label: "Submitted", value: "SUBMITTED" },
+                        { label: "Rejected", value: "REJECTED" },
                         { label: "Cancelled", value: "CANCELLED" },
                     ],
                 },

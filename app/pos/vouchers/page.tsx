@@ -52,8 +52,8 @@ const VOUCHER_TYPES: { value: VoucherType; label: string; icon: React.ElementTyp
     { value: "REFUND",      label: "Refund",      icon: Ticket,    color: "text-red-600"     },
 ];
 
-// Types available for manual issuance (EXCHANGE and REFUND are system-only)
-const ISSUABLE_TYPES = VOUCHER_TYPES.filter(t => t.value !== "EXCHANGE" && t.value !== "REFUND");
+// Types available for manual issuance (Only GIFT vouchers can be manually issued)
+const ISSUABLE_TYPES = VOUCHER_TYPES.filter(t => t.value === "GIFT");
 
 const isClaimVoucher = (v: Voucher) => {
     if (v.claims && v.claims.length > 0) return true;

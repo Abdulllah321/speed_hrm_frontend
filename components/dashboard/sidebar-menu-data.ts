@@ -1671,6 +1671,11 @@ export const menuData: MenuItem[] = [
         href: "/pos/inventory/ledger",
         permissions: ["pos.inventory.view"],
       },
+      {
+        title: "Stock Adjustments",
+        href: "/pos/inventory/adjustments",
+        permissions: ["pos.inventory.view"],
+      },
     ],
   },
 
