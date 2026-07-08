@@ -190,6 +190,7 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
     const [file, setFile] = useState<File | null>(null);
     const [rows, setRows] = useState<RowResult[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [importedApiItems, setImportedApiItems] = useState<ItemRow[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const abortRef = useRef(false);
     const scrollBottomRef = useRef<HTMLDivElement>(null);
@@ -265,6 +266,8 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
         } catch (err) {
             console.error('Bulk search API error:', err);
         }
+
+        setImportedApiItems(apiItems);
 
         // Helper to find item by identifier - optimized with O(1) Map lookups
         const barcodeMap = new Map<string, ItemRow>();
@@ -372,14 +375,26 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
             return;
         }
 
-        const items: ImportedDiscountItem[] = matched.map((r) => ({
-            id: r.itemId!,
-            itemRow: r.itemRow!,
-            discountValue: r.discountValue,
-            discountType: r.discountType,
-        }));
+        const items: ImportedDiscountItem[] = [];
+        matched.forEach((r) => {
+            if (!r.itemRow) return;
+            const parentId = r.itemRow.itemId;
+            const siblings = importedApiItems.filter((i) => i.itemId === parentId);
+            siblings.forEach((sib) => {
+                items.push({
+                    id: sib.id,
+                    itemRow: sib,
+                    discountValue: r.discountValue,
+                    discountType: r.discountType,
+                });
+            });
+        });
 
-        onImportComplete(items);
+        // Deduplicate items by ID to prevent duplicates if multiple variants are in the uploaded file
+        const uniqueItemsMap = new Map<string, ImportedDiscountItem>();
+        items.forEach((i) => uniqueItemsMap.set(i.id, i));
+
+        onImportComplete(Array.from(uniqueItemsMap.values()));
         onOpenChange(false);
         reset();
     };

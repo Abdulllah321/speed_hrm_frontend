@@ -599,9 +599,27 @@ export default function BulkDiscountPage() {
     // ── Handlers ───────────────────────────────────────────────────────────
     const toggleItem = (id: string) => {
         setSelectAllPages(false);
+        const clickedItem = allItems.find(i => i.id === id) || importedItems.get(id);
+        if (!clickedItem) return;
+
+        const parentId = clickedItem.itemId;
+        const siblingIds: string[] = [];
+        
+        allItems.forEach(i => {
+            if (i.itemId === parentId) siblingIds.push(i.id);
+        });
+        importedItems.forEach((v, k) => {
+            if (v.itemId === parentId) siblingIds.push(k);
+        });
+
         setSelectedIds(prev => {
             const next = new Set(prev);
-            next.has(id) ? next.delete(id) : next.add(id);
+            const isAnySelected = siblingIds.some(sid => next.has(sid));
+            if (isAnySelected) {
+                siblingIds.forEach(sid => next.delete(sid));
+            } else {
+                siblingIds.forEach(sid => next.add(sid));
+            }
             return next;
         });
     };
