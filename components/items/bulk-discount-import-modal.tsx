@@ -311,30 +311,42 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
 
         if (isLargeFile) {
             // Bypass visual loop for performance: do it instantly
+            const expandedResults: RowResult[] = [];
             for (let i = 0; i < parsed.length; i++) {
                 const matchedItem = findItem(parsed[i].identifier);
                 if (matchedItem) {
-                    results[i] = {
-                        ...results[i],
-                        status: 'found',
-                        itemId: matchedItem.id,
-                        itemRow: matchedItem,
-                    };
+                    const parentId = matchedItem.itemId;
+                    const siblings = apiItems.filter(item => item.itemId === parentId);
+                    siblings.forEach(sib => {
+                        expandedResults.push({
+                            rowIndex: parsed[i].rowIndex,
+                            identifier: sib.sku || parsed[i].identifier,
+                            discountValue: parsed[i].discountValue,
+                            discountType: parsed[i].discountType,
+                            status: 'found',
+                            itemId: sib.id,
+                            itemRow: sib,
+                        });
+                    });
                 } else {
-                    results[i] = {
-                        ...results[i],
+                    expandedResults.push({
+                        rowIndex: parsed[i].rowIndex,
+                        identifier: parsed[i].identifier,
+                        discountValue: parsed[i].discountValue,
+                        discountType: parsed[i].discountType,
                         status: 'not_found',
                         reason: 'No matching Item ID, SKU, or Barcode found',
-                    };
+                    });
                 }
             }
-            setRows(results);
+            setRows(expandedResults);
             setCurrentIndex(parsed.length - 1);
         } else {
             // Simulate row-by-row lookups using cached data for visual progression
             for (let i = 0; i < parsed.length; i++) {
                 if (abortRef.current) break;
 
+                // Mark current row as searching
                 results[i] = { ...results[i], status: 'searching' };
                 setRows([...results]);
                 setCurrentIndex(i);
@@ -343,12 +355,25 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
                 const matchedItem = findItem(parsed[i].identifier);
 
                 if (matchedItem) {
-                    results[i] = {
-                        ...results[i],
+                    const parentId = matchedItem.itemId;
+                    const siblings = apiItems.filter(item => item.itemId === parentId);
+                    
+                    // Create expanded sibling RowResults
+                    const sibResults: RowResult[] = siblings.map(sib => ({
+                        rowIndex: parsed[i].rowIndex,
+                        identifier: sib.sku || parsed[i].identifier,
+                        discountValue: parsed[i].discountValue,
+                        discountType: parsed[i].discountType,
                         status: 'found',
-                        itemId: matchedItem.id,
-                        itemRow: matchedItem,
-                    };
+                        itemId: sib.id,
+                        itemRow: sib,
+                    }));
+
+                    // Replace row results[i] with the expanded sibling rows
+                    results.splice(i, 1, ...sibResults);
+                    // Adjust loop counter if we added extra rows
+                    const extraRowsCount = sibResults.length - 1;
+                    i += extraRowsCount;
                 } else {
                     results[i] = {
                         ...results[i],
