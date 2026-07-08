@@ -790,10 +790,28 @@ export default function BulkDiscountPage() {
             items.forEach(item => {
                 if (item.discountValue !== undefined) {
                     const rowType = item.discountType || campaign.discountType;
-                    const isPercent = rowType === 'percent';
+                    const unitPrice = item.itemRow.unitPrice || 0;
+                    
+                    let rate: number | undefined = undefined;
+                    let amount: number | undefined = undefined;
+
+                    if (campaign.discountType === 'percent') {
+                        if (rowType === 'percent') {
+                            rate = item.discountValue;
+                        } else {
+                            rate = unitPrice > 0 ? (item.discountValue / unitPrice) * 100 : 0;
+                        }
+                    } else {
+                        if (rowType === 'fixed') {
+                            amount = item.discountValue;
+                        } else {
+                            amount = unitPrice * (item.discountValue / 100);
+                        }
+                    }
+
                     next.set(item.id, {
-                        [isPercent ? 'discountRate' : 'discountAmount']: item.discountValue,
-                        [isPercent ? 'discountAmount' : 'discountRate']: undefined,
+                        discountRate: rate,
+                        discountAmount: amount,
                     });
                 }
             });
@@ -1454,7 +1472,9 @@ export default function BulkDiscountPage() {
                                                                                     </div>
                                                                                     {ovVal !== undefined && (
                                                                                         <span className="text-[10px] text-primary font-semibold">
-                                                                                            {isPercent ? `${ovVal}%` : `₨${ovVal}`}
+                                                                                            {isPercent 
+                                                                                                ? `${ovVal}% (₨${(item.unitPrice * (ovVal / 100)).toFixed(1)})` 
+                                                                                                : `₨${ovVal} (${(item.unitPrice > 0 ? (ovVal / item.unitPrice) * 100 : 0).toFixed(1)}%)`}
                                                                                         </span>
                                                                                     )}
                                                                                 </div>

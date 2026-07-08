@@ -119,37 +119,58 @@ function parseFile(file: File, campaignDiscountType: 'percent' | 'fixed'): Promi
                     const keys = Object.keys(raw);
                     // Match identifier (barcode, sku, itemid)
                     const idKey = keys.find((k) => 
-                        ['barcode', 'barcode', 'bar_code', 'bar code', 'sku', 'itemid', 'item_id', 'itemcode', 'item_code', 'code', 'item'].includes(normalise(k))
+                        ['barcode', 'bar_code', 'bar code', 'sku', 'itemid', 'item_id', 'itemcode', 'item_code', 'code', 'item'].includes(normalise(k))
                     );
-                    // Match discount override (discount, discountrate, discountamount, rate, amount)
-                    const discKey = keys.find((k) => 
-                        ['discount', 'discountrate', 'discount_rate', 'discountamount', 'discount_amount', 'rate', 'amount', 'disc', 'override'].includes(normalise(k))
+
+                    // Match discount keys specifically by column types
+                    const discountRateKey = keys.find((k) => 
+                        ['discountrate', 'discount_rate', 'newdiscountrate', 'newdiscount%', 'rate', '%'].includes(normalise(k))
+                    );
+                    const discountAmountKey = keys.find((k) => 
+                        ['discountamount', 'discount_amount', 'newdiscountamount', 'newdiscountamt', 'amount', 'amt', 'flat', 'fixed', 'pkr', '₨'].includes(normalise(k))
+                    );
+                    const genericDiscountKey = keys.find((k) => 
+                        ['discount', 'disc', 'override'].includes(normalise(k))
                     );
 
                     const identifier = idKey ? String(raw[idKey]).trim() : '';
-                    const discountValRaw = discKey ? String(raw[discKey]).trim() : '';
-                    let discountValue = discountValRaw ? parseFloat(discountValRaw) : undefined;
 
-                    // Match discount type (type, mode, discount_type)
+                    let discountValue: number | undefined = undefined;
+                    let discountType: 'percent' | 'fixed' | undefined = undefined;
+
+                    // Match explicit discount type column if present
                     const typeKey = keys.find((k) => 
                         ['discounttype', 'discount_type', 'type', 'mode', 'format'].includes(normalise(k))
                     );
                     const typeValRaw = typeKey ? String(raw[typeKey]).trim().toLowerCase() : '';
-                    
-                    let discountType: 'percent' | 'fixed' | undefined = undefined;
                     if (typeValRaw.startsWith('p') || typeValRaw.includes('%')) {
                         discountType = 'percent';
-                    } else if (typeValRaw.startsWith('f') || typeValRaw.startsWith('a') || typeValRaw.includes('pkr') || typeValRaw.includes('₨')) {
+                    } else if (typeValRaw.startsWith('f') || typeValRaw.startsWith('a') || typeValRaw.includes('pkr') || typeValRaw.includes('₨') || typeValRaw.includes('amt') || typeValRaw.includes('rs')) {
                         discountType = 'fixed';
                     }
 
-                    // If not explicitly set via type column, try to infer from the header name
-                    if (!discountType && discKey) {
-                        const nk = normalise(discKey);
-                        if (nk.includes('rate') || nk.includes('percent') || nk.includes('%')) {
-                            discountType = 'percent';
-                        } else if (nk.includes('amount') || nk.includes('flat') || nk.includes('fixed') || nk.includes('pkr') || nk.includes('₨') || nk.includes('value')) {
-                            discountType = 'fixed';
+                    // Extract values and types based on campaignDiscountType priority
+                    if (campaignDiscountType === 'percent') {
+                        if (discountRateKey && String(raw[discountRateKey]).trim()) {
+                            discountValue = parseFloat(String(raw[discountRateKey]).trim());
+                            if (!discountType) discountType = 'percent';
+                        } else if (discountAmountKey && String(raw[discountAmountKey]).trim()) {
+                            discountValue = parseFloat(String(raw[discountAmountKey]).trim());
+                            if (!discountType) discountType = 'fixed';
+                        } else if (genericDiscountKey && String(raw[genericDiscountKey]).trim()) {
+                            discountValue = parseFloat(String(raw[genericDiscountKey]).trim());
+                            if (!discountType) discountType = 'percent';
+                        }
+                    } else {
+                        if (discountAmountKey && String(raw[discountAmountKey]).trim()) {
+                            discountValue = parseFloat(String(raw[discountAmountKey]).trim());
+                            if (!discountType) discountType = 'fixed';
+                        } else if (discountRateKey && String(raw[discountRateKey]).trim()) {
+                            discountValue = parseFloat(String(raw[discountRateKey]).trim());
+                            if (!discountType) discountType = 'percent';
+                        } else if (genericDiscountKey && String(raw[genericDiscountKey]).trim()) {
+                            discountValue = parseFloat(String(raw[genericDiscountKey]).trim());
+                            if (!discountType) discountType = 'fixed';
                         }
                     }
 
