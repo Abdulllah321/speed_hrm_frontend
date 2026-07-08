@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 
 // ── UI ────────────────────────────────────────────────────────────────────────
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ interface ItemRow {
     id: string;
     itemId: string;
     sku: string;
+    barCode?: string | null;
     description: string | null;
     unitPrice: number;
     discountRate: number | null;
@@ -117,12 +119,11 @@ function effectivePrice(
     // Check override first
     const ov = overrides?.get(item.id);
     if (ov) {
-        const isPercent = campaign.discountType === 'percent';
-        const ovVal = isPercent ? (ov.discountRate ?? ov.discountAmount) : (ov.discountAmount ?? ov.discountRate);
-        if (ovVal !== undefined) {
-            return isPercent
-                ? Math.max(0, base - base * (ovVal / 100))
-                : Math.max(0, base - ovVal);
+        if (ov.discountRate !== undefined) {
+            return Math.max(0, base - base * (ov.discountRate / 100));
+        }
+        if (ov.discountAmount !== undefined) {
+            return Math.max(0, base - ov.discountAmount);
         }
     }
 
@@ -138,41 +139,99 @@ function hasActiveDiscount(item: ItemRow): boolean {
 
 function discountLabel(campaign: Campaign, val: number): string {
     if (campaign.clearMode) return 'Clear Discounts';
+    if (val === 0) return 'Custom/Different discounts per item';
     return campaign.discountType === 'percent' ? `${val}% off` : `PKR ${val.toLocaleString()} off`;
 }
 
-// ── CSV export ────────────────────────────────────────────────────────────────
+// ── Excel export ──────────────────────────────────────────────────────────────
 
-function exportToCSV(
+function exportToExcel(
     items: ItemRow[],
     campaign: Campaign,
     discountVal: number,
     overrides?: Map<string, { discountRate?: number; discountAmount?: number }>,
 ) {
-    const headers = ['Item ID', 'SKU', 'Description', 'Brand', 'Category', 'Unit Price', 'Current Discount %', 'Current Discount Amt', 'After Discount Price'];
-    const rows = items.map(item => [
-        item.itemId,
-        item.sku,
-        item.description ?? '',
-        item.brand?.name ?? '',
-        item.category?.name ?? '',
-        item.unitPrice,
-        item.discountRate ?? 0,
-        item.discountAmount ?? 0,
-        campaign.clearMode ? item.unitPrice : effectivePrice(item, campaign, overrides),
-    ]);
+    const headers = [
+        'Item ID', 
+        'SKU', 
+        'Description', 
+        'Brand', 
+        'Category', 
+        'Unit Price', 
+        'Current Discount %', 
+        'Current Discount Amt', 
+        'Current Discounted Price',
+        'New Discount %', 
+        'New Discount Amt', 
+        'New Price'
+    ];
 
-    const csvContent = [headers, ...rows]
-        .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-        .join('\n');
+    const rows = items.map(item => {
+        const currentDiscountRate = item.discountRate ?? 0;
+        const currentDiscountAmount = item.discountAmount ?? 0;
+        const currentDiscountedPrice = currentDiscountRate > 0 
+            ? Math.max(0, item.unitPrice - item.unitPrice * (currentDiscountRate / 100))
+            : Math.max(0, item.unitPrice - currentDiscountAmount);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${campaign.name.replace(/\s+/g, '_')}_items_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+        // Determine new discount rate/amount from override or campaign
+        const ov = overrides?.get(item.id);
+        let newDiscountRate = 0;
+        let newDiscountAmount = 0;
+
+        if (campaign.clearMode) {
+            // New discount is 0
+        } else if (ov) {
+            if (ov.discountRate !== undefined) {
+                newDiscountRate = ov.discountRate;
+            } else if (ov.discountAmount !== undefined) {
+                newDiscountAmount = ov.discountAmount;
+            }
+        } else {
+            if (campaign.discountType === 'percent') {
+                newDiscountRate = discountVal;
+            } else {
+                newDiscountAmount = discountVal;
+            }
+        }
+
+        const newPrice = campaign.clearMode ? item.unitPrice : effectivePrice(item, campaign, overrides);
+
+        return [
+            item.itemId,
+            item.sku,
+            item.description ?? '',
+            item.brand?.name ?? '',
+            item.category?.name ?? '',
+            item.unitPrice,
+            currentDiscountRate,
+            currentDiscountAmount,
+            currentDiscountedPrice,
+            newDiscountRate,
+            newDiscountAmount,
+            newPrice,
+        ];
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+
+    // Auto-fit columns
+    const maxLens = headers.map((h, i) => {
+        let max = h.length;
+        rows.forEach(row => {
+            const val = row[i];
+            if (val !== undefined && val !== null) {
+                max = Math.max(max, String(val).length);
+            }
+        });
+        return { wch: max + 2 };
+    });
+    ws['!cols'] = maxLens;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Campaign Items');
+    
+    const fileName = `${campaign.name.replace(/\s+/g, '_')}_items_${format(new Date(), 'yyyyMMdd_HHmm')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
 }
 
 // ─── Step Indicator ───────────────────────────────────────────────────────────
@@ -415,7 +474,7 @@ export default function BulkDiscountPage() {
     const activeFilterCount = appliedFilters.brandIds.length + appliedFilters.categoryIds.length +
         appliedFilters.silhouetteIds.length + appliedFilters.genderIds.length;
     const discountVal = parseFloat(campaign.discountValue) || 0;
-    const campaignValid = campaign.name.trim().length > 0 && (campaign.clearMode || discountVal > 0);
+    const campaignValid = campaign.name.trim().length > 0;
 
     // ── React Query: items (step 2) ────────────────────────────────────────
     const queryClient = useQueryClient();
@@ -568,7 +627,22 @@ export default function BulkDiscountPage() {
     const setOverride = (id: string, field: 'discountRate' | 'discountAmount', value: number | undefined) =>
         setOverrides(prev => {
             const next = new Map(prev);
-            next.set(id, { ...(next.get(id) ?? {}), [field]: value });
+            if (value === undefined) {
+                const current = next.get(id);
+                if (current) {
+                    const { [field]: _, ...rest } = current;
+                    if (rest.discountRate === undefined && rest.discountAmount === undefined) {
+                        next.delete(id);
+                    } else {
+                        next.set(id, rest);
+                    }
+                }
+            } else {
+                next.set(id, {
+                    [field]: value,
+                    [field === 'discountRate' ? 'discountAmount' : 'discountRate']: undefined,
+                });
+            }
             return next;
         });
 
@@ -674,10 +748,11 @@ export default function BulkDiscountPage() {
             const next = new Map(prev);
             items.forEach(item => {
                 if (item.discountValue !== undefined) {
-                    const isPercent = campaign.discountType === 'percent';
+                    const rowType = item.discountType || campaign.discountType;
+                    const isPercent = rowType === 'percent';
                     next.set(item.id, {
-                        ...(next.get(item.id) ?? {}),
                         [isPercent ? 'discountRate' : 'discountAmount']: item.discountValue,
+                        [isPercent ? 'discountAmount' : 'discountRate']: undefined,
                     });
                 }
             });
@@ -695,13 +770,15 @@ export default function BulkDiscountPage() {
             const overrideList: BulkDiscountItemOverride[] = [];
             overrides.forEach((val, id) => {
                 if (selectedIds.has(id)) {
-                    const isPercent = campaign.discountType === 'percent';
-                    const discVal = val.discountRate ?? val.discountAmount;
-                    if (discVal !== undefined) {
+                    if (val.discountRate !== undefined) {
                         overrideList.push({
                             id,
-                            discountRate: isPercent ? discVal : undefined,
-                            discountAmount: !isPercent ? discVal : undefined,
+                            discountRate: val.discountRate,
+                        });
+                    } else if (val.discountAmount !== undefined) {
+                        overrideList.push({
+                            id,
+                            discountAmount: val.discountAmount,
                         });
                     }
                 }
@@ -964,7 +1041,7 @@ export default function BulkDiscountPage() {
                                         <div className="space-y-2">
                                             <Label htmlFor="discount-value">
                                                 {campaign.discountType === 'percent' ? 'Discount Percentage' : 'Discount Amount (PKR)'}
-                                                <span className="text-destructive"> *</span>
+                                                <span className="text-muted-foreground font-normal text-xs"> (optional — leave blank/0 for custom per item)</span>
                                             </Label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
@@ -1290,27 +1367,46 @@ export default function BulkDiscountPage() {
                                                         ) : (
                                                             selectedItems.map(item => {
                                                                 const ov = overrides.get(item.id);
-                                                                const ovVal = campaign.discountType === 'percent' ? ov?.discountRate : ov?.discountAmount;
+                                                                const isPercent = ov?.discountRate !== undefined 
+                                                                    ? true 
+                                                                    : ov?.discountAmount !== undefined 
+                                                                        ? false 
+                                                                        : campaign.discountType === 'percent';
+                                                                const ovVal = isPercent ? ov?.discountRate : ov?.discountAmount;
                                                                 return (
                                                                     <div key={item.id} className="flex items-start gap-2 p-2 rounded-md bg-muted/40 group">
                                                                         <div className="flex-1 min-w-0">
                                                                             <p className="text-xs font-mono truncate">{item.sku}</p>
                                                                             <p className="text-[11px] text-muted-foreground truncate">{item.description ?? item.itemId}</p>
                                                                             {!campaign.clearMode && (
-                                                                                <div className="mt-1.5 flex items-center gap-1">
+                                                                                <div className="mt-1.5 flex items-center gap-1.5">
                                                                                     <span className="text-[10px] text-muted-foreground">Override:</span>
-                                                                                    <Input type="number" min={0}
-                                                                                        placeholder={campaign.discountValue || '—'}
-                                                                                        value={ovVal ?? ''}
-                                                                                        onChange={e => {
-                                                                                            const v = e.target.value === '' ? undefined : parseFloat(e.target.value);
-                                                                                            setOverride(item.id, campaign.discountType === 'percent' ? 'discountRate' : 'discountAmount', v);
-                                                                                        }}
-                                                                                        className="h-5 text-[10px] px-1.5 py-0 w-20"
-                                                                                        onClick={e => e.stopPropagation()} />
+                                                                                    <div className="relative flex items-center">
+                                                                                        <Input type="number" min={0}
+                                                                                            placeholder={campaign.discountValue || '—'}
+                                                                                            value={ovVal ?? ''}
+                                                                                            onChange={e => {
+                                                                                                const v = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                                                                                                setOverride(item.id, isPercent ? 'discountRate' : 'discountAmount', v);
+                                                                                            }}
+                                                                                            className="h-5 text-[10px] pl-1.5 pr-6 py-0 w-24 font-mono"
+                                                                                            onClick={e => e.stopPropagation()} />
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                const newIsPercent = !isPercent;
+                                                                                                setOverride(item.id, newIsPercent ? 'discountRate' : 'discountAmount', ovVal);
+                                                                                            }}
+                                                                                            className="absolute right-1 text-[9px] font-bold text-primary hover:bg-primary/10 rounded px-1 transition-colors h-4 flex items-center"
+                                                                                            title="Toggle between Percentage (%) and Fixed Amount (₨)"
+                                                                                        >
+                                                                                            {isPercent ? '%' : '₨'}
+                                                                                        </button>
+                                                                                    </div>
                                                                                     {ovVal !== undefined && (
                                                                                         <span className="text-[10px] text-primary font-semibold">
-                                                                                            {campaign.discountType === 'percent' ? `${ovVal}%` : `₨${ovVal}`}
+                                                                                            {isPercent ? `${ovVal}%` : `₨${ovVal}`}
                                                                                         </span>
                                                                                     )}
                                                                                 </div>
@@ -1358,12 +1454,12 @@ export default function BulkDiscountPage() {
                                                 </div>
 
                                                 <div className="space-y-2 pt-1">
-                                                    {/* Export CSV */}
+                                                    {/* Export Excel */}
                                                     {selectedItems.length > 0 && !selectAllPages && (
                                                         <Button variant="outline" size="sm" className="w-full gap-1.5 text-muted-foreground"
-                                                            onClick={() => exportToCSV(selectedItems, campaign, discountVal, overrides)}>
+                                                            onClick={() => exportToExcel(selectedItems, campaign, discountVal, overrides)}>
                                                             <Download className="h-3.5 w-3.5" />
-                                                            Export {selectedItems.length} items to CSV
+                                                            Export {selectedItems.length} items to Excel
                                                         </Button>
                                                     )}
                                                     <Button className="w-full" disabled={selectedIds.size === 0} onClick={() => setStep(3)}>

@@ -44,6 +44,7 @@ interface ItemRow {
     id: string;
     itemId: string;
     sku: string;
+    barCode?: string | null;
     description: string | null;
     unitPrice: number;
     discountRate: number | null;
@@ -64,12 +65,14 @@ interface ParsedRow {
     rowIndex: number;
     identifier: string; // SKU, Barcode, or Item ID
     discountValue?: number;
+    discountType?: 'percent' | 'fixed';
 }
 
 export interface ImportedDiscountItem {
     id: string;
     itemRow: ItemRow;
     discountValue?: number;
+    discountType?: 'percent' | 'fixed';
 }
 
 type RowStatus = 'pending' | 'searching' | 'found' | 'not_found' | 'error';
@@ -78,6 +81,7 @@ interface RowResult {
     rowIndex: number;
     identifier: string;
     discountValue?: number;
+    discountType?: 'percent' | 'fixed';
     status: RowStatus;
     itemId?: string;
     itemRow?: ItemRow;
@@ -124,9 +128,33 @@ function parseFile(file: File, campaignDiscountType: 'percent' | 'fixed'): Promi
                     const discountValRaw = discKey ? String(raw[discKey]).trim() : '';
                     let discountValue = discountValRaw ? parseFloat(discountValRaw) : undefined;
 
+                    // Match discount type (type, mode, discount_type)
+                    const typeKey = keys.find((k) => 
+                        ['discounttype', 'discount_type', 'type', 'mode', 'format'].includes(normalise(k))
+                    );
+                    const typeValRaw = typeKey ? String(raw[typeKey]).trim().toLowerCase() : '';
+                    
+                    let discountType: 'percent' | 'fixed' | undefined = undefined;
+                    if (typeValRaw.startsWith('p') || typeValRaw.includes('%')) {
+                        discountType = 'percent';
+                    } else if (typeValRaw.startsWith('f') || typeValRaw.startsWith('a') || typeValRaw.includes('pkr') || typeValRaw.includes('₨')) {
+                        discountType = 'fixed';
+                    }
+
+                    // If not explicitly set via type column, try to infer from the header name
+                    if (!discountType && discKey) {
+                        const nk = normalise(discKey);
+                        if (nk.includes('rate') || nk.includes('percent') || nk.includes('%')) {
+                            discountType = 'percent';
+                        } else if (nk.includes('amount') || nk.includes('flat') || nk.includes('fixed') || nk.includes('pkr') || nk.includes('₨') || nk.includes('value')) {
+                            discountType = 'fixed';
+                        }
+                    }
+
                     if (discountValue !== undefined && !isNaN(discountValue)) {
                         // Check if it's a decimal percentage (e.g. 0.15 representing 15% in Excel)
-                        if (campaignDiscountType === 'percent' && discountValue > 0 && discountValue < 1) {
+                        const activeType = discountType || campaignDiscountType;
+                        if (activeType === 'percent' && discountValue > 0 && discountValue < 1) {
                             discountValue = discountValue * 100;
                         }
                     } else {
@@ -138,6 +166,7 @@ function parseFile(file: File, campaignDiscountType: 'percent' | 'fixed'): Promi
                             rowIndex: idx + 2, // 1-based + header row
                             identifier,
                             discountValue,
+                            discountType,
                         });
                     }
                 });
@@ -210,6 +239,7 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
             rowIndex: r.rowIndex,
             identifier: r.identifier,
             discountValue: r.discountValue,
+            discountType: r.discountType,
             status: 'pending',
         }));
 
@@ -217,66 +247,100 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
         setCurrentIndex(0);
         setPhase('running');
 
-        // Step 1: Bulk fetch from API in single call
+        // Step 1: Bulk fetch from API in chunks of 1000
         const identifiers = Array.from(new Set(parsed.map((r) => r.identifier).filter(Boolean)));
         
         let apiItems: ItemRow[] = [];
+        const chunkSize = 1000;
         try {
-            const res = await bulkSearchItems(identifiers);
-            if (res.status && Array.isArray(res.data)) {
-                apiItems = res.data;
+            for (let i = 0; i < identifiers.length; i += chunkSize) {
+                const chunk = identifiers.slice(i, i + chunkSize);
+                const res = await bulkSearchItems(chunk);
+                if (res.status && Array.isArray(res.data)) {
+                    apiItems = apiItems.concat(res.data);
+                }
             }
         } catch (err) {
             console.error('Bulk search API error:', err);
         }
 
-        // Helper to find item by identifier
+        // Helper to find item by identifier - optimized with O(1) Map lookups
+        const barcodeMap = new Map<string, ItemRow>();
+        const skuMap = new Map<string, ItemRow>();
+        const itemIdMap = new Map<string, ItemRow>();
+
+        apiItems.forEach(item => {
+            if (item.barCode) barcodeMap.set(item.barCode.trim().toLowerCase(), item);
+            if (item.sku) skuMap.set(item.sku.trim().toLowerCase(), item);
+            if (item.itemId) itemIdMap.set(item.itemId.trim().toLowerCase(), item);
+        });
+
         const findItem = (idString: string): ItemRow | undefined => {
             const query = idString.trim().toLowerCase();
-            return apiItems.find((item) => 
-                (item.barCode && item.barCode.trim().toLowerCase() === query) ||
-                (item.sku && item.sku.trim().toLowerCase() === query) ||
-                (item.itemId && item.itemId.trim().toLowerCase() === query)
-            );
+            return barcodeMap.get(query) || skuMap.get(query) || itemIdMap.get(query);
         };
 
         const results: RowResult[] = [...initRows];
+        const isLargeFile = parsed.length > 200;
 
-        // Step 2: Simulate row-by-row lookups using cached data for visual progression
-        for (let i = 0; i < parsed.length; i++) {
-            if (abortRef.current) break;
-
-            results[i] = { ...results[i], status: 'searching' };
-            setRows([...results]);
-            setCurrentIndex(i);
-
-            // Fetch matched item from cached array
-            const matchedItem = findItem(parsed[i].identifier);
-
-            if (matchedItem) {
-                results[i] = {
-                    ...results[i],
-                    status: 'found',
-                    itemId: matchedItem.id,
-                    itemRow: matchedItem,
-                };
-            } else {
-                results[i] = {
-                    ...results[i],
-                    status: 'not_found',
-                    reason: 'No matching Item ID, SKU, or Barcode found',
-                };
+        if (isLargeFile) {
+            // Bypass visual loop for performance: do it instantly
+            for (let i = 0; i < parsed.length; i++) {
+                const matchedItem = findItem(parsed[i].identifier);
+                if (matchedItem) {
+                    results[i] = {
+                        ...results[i],
+                        status: 'found',
+                        itemId: matchedItem.id,
+                        itemRow: matchedItem,
+                    };
+                } else {
+                    results[i] = {
+                        ...results[i],
+                        status: 'not_found',
+                        reason: 'No matching Item ID, SKU, or Barcode found',
+                    };
+                }
             }
+            setRows(results);
+            setCurrentIndex(parsed.length - 1);
+        } else {
+            // Simulate row-by-row lookups using cached data for visual progression
+            for (let i = 0; i < parsed.length; i++) {
+                if (abortRef.current) break;
 
-            setRows([...results]);
+                results[i] = { ...results[i], status: 'searching' };
+                setRows([...results]);
+                setCurrentIndex(i);
 
-            // Scroll to bottom of list
-            setTimeout(() => {
-                scrollBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-            }, 30);
+                // Fetch matched item from cached array
+                const matchedItem = findItem(parsed[i].identifier);
 
-            // Quick delay for beautiful visual feedback, but very fast (e.g. 20ms)
-            await new Promise((res) => setTimeout(res, 20));
+                if (matchedItem) {
+                    results[i] = {
+                        ...results[i],
+                        status: 'found',
+                        itemId: matchedItem.id,
+                        itemRow: matchedItem,
+                    };
+                } else {
+                    results[i] = {
+                        ...results[i],
+                        status: 'not_found',
+                        reason: 'No matching Item ID, SKU, or Barcode found',
+                    };
+                }
+
+                setRows([...results]);
+
+                // Scroll to bottom of list
+                setTimeout(() => {
+                    scrollBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 30);
+
+                // Quick delay for beautiful visual feedback, but very fast (e.g. 20ms)
+                await new Promise((res) => setTimeout(res, 20));
+            }
         }
 
         setPhase('done');
@@ -310,6 +374,7 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
             id: r.itemId!,
             itemRow: r.itemRow!,
             discountValue: r.discountValue,
+            discountType: r.discountType,
         }));
 
         onImportComplete(items);
@@ -586,7 +651,7 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {rows.map((row, i) => (
+                                                {rows.slice(0, 100).map((row, i) => (
                                                     <TableRow
                                                         key={i}
                                                         className={cn(
@@ -601,7 +666,7 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
                                                         <TableCell className="font-mono text-xs font-semibold">{row.identifier}</TableCell>
                                                         <TableCell className="text-xs font-bold text-right">
                                                             {row.discountValue !== undefined ? (
-                                                                <span>{row.discountValue}{campaignDiscountType === 'percent' ? '%' : ' PKR'}</span>
+                                                                <span>{row.discountValue}{(row.discountType || campaignDiscountType) === 'percent' ? '%' : ' PKR'}</span>
                                                             ) : (
                                                                 <span className="text-muted-foreground">—</span>
                                                             )}
@@ -623,11 +688,16 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
                                                     </TableRow>
                                                 ))}
                                                 <tr>
-                                                    <td><div ref={scrollBottomRef} /></td>
+                                                    <td colSpan={6}><div ref={scrollBottomRef} /></td>
                                                 </tr>
                                             </TableBody>
                                         </Table>
                                     </ScrollArea>
+                                    {total > 100 && (
+                                        <div className="p-3 text-center text-xs text-muted-foreground bg-muted/20 border-t">
+                                            Showing first 100 rows. Remaining {total - 100} rows are processed and imported in the background.
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Done summary */}

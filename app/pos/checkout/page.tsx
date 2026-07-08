@@ -510,6 +510,10 @@ export default function CheckoutPage() {
                 toast.error("Card number (last 4 digits) is mandatory when Alliance is selected.");
                 return;
             }
+            if (!tenderSlip || !tenderSlip.trim()) {
+                toast.error("Auth ID / Approval Code is mandatory when Alliance is selected.");
+                return;
+            }
         }
 
         // Merchant required for card / bank_transfer payments
