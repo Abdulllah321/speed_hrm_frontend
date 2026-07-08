@@ -54,6 +54,8 @@ interface ItemRow {
     brand?: { name: string } | null;
     category?: { name: string } | null;
     division?: { name: string } | null;
+    size?: { name: string } | null;
+    color?: { name: string } | null;
     brandId?: string;
     categoryId?: string;
     silhouetteId?: string;
@@ -675,7 +677,10 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
                                                             {row.status === 'found' && row.itemRow ? (
                                                                 <div>
                                                                     <div className="font-bold text-foreground">{row.itemRow.sku}</div>
-                                                                    <div className="text-muted-foreground truncate max-w-[160px]">{row.itemRow.description}</div>
+                                                                    <div className="text-muted-foreground truncate max-w-[160px]">
+                                                                        {row.itemRow.description}
+                                                                        {(row.itemRow.size?.name || row.itemRow.color?.name) && ` (${[row.itemRow.size?.name, row.itemRow.color?.name].filter(Boolean).join(' / ')})`}
+                                                                    </div>
                                                                 </div>
                                                             ) : (
                                                                 <span className="text-muted-foreground">—</span>

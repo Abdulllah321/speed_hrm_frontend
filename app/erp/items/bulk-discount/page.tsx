@@ -68,6 +68,8 @@ interface ItemRow {
     brand?: { name: string } | null;
     category?: { name: string } | null;
     division?: { name: string } | null;
+    size?: { name: string } | null;
+    color?: { name: string } | null;
     brandId?: string;
     categoryId?: string;
     silhouetteId?: string;
@@ -157,6 +159,8 @@ function exportToExcel(
         'Description', 
         'Brand', 
         'Category', 
+        'Size',
+        'Color',
         'Unit Price', 
         'Current Discount %', 
         'Current Discount Amt', 
@@ -167,8 +171,17 @@ function exportToExcel(
     ];
 
     const rows = items.map(item => {
-        const currentDiscountRate = item.discountRate ?? 0;
-        const currentDiscountAmount = item.discountAmount ?? 0;
+        let currentDiscountRate = item.discountRate ?? 0;
+        let currentDiscountAmount = item.discountAmount ?? 0;
+
+        if (currentDiscountRate > 0 && currentDiscountAmount === 0) {
+            currentDiscountAmount = item.unitPrice * (currentDiscountRate / 100);
+        } else if (currentDiscountAmount > 0 && currentDiscountRate === 0) {
+            currentDiscountRate = item.unitPrice > 0 
+                ? (currentDiscountAmount / item.unitPrice) * 100 
+                : 0;
+        }
+
         const currentDiscountedPrice = currentDiscountRate > 0 
             ? Math.max(0, item.unitPrice - item.unitPrice * (currentDiscountRate / 100))
             : Math.max(0, item.unitPrice - currentDiscountAmount);
@@ -183,14 +196,22 @@ function exportToExcel(
         } else if (ov) {
             if (ov.discountRate !== undefined) {
                 newDiscountRate = ov.discountRate;
+                newDiscountAmount = item.unitPrice * (newDiscountRate / 100);
             } else if (ov.discountAmount !== undefined) {
                 newDiscountAmount = ov.discountAmount;
+                newDiscountRate = item.unitPrice > 0 
+                    ? (newDiscountAmount / item.unitPrice) * 100 
+                    : 0;
             }
         } else {
             if (campaign.discountType === 'percent') {
                 newDiscountRate = discountVal;
+                newDiscountAmount = item.unitPrice * (newDiscountRate / 100);
             } else {
                 newDiscountAmount = discountVal;
+                newDiscountRate = item.unitPrice > 0 
+                    ? (newDiscountAmount / item.unitPrice) * 100 
+                    : 0;
             }
         }
 
@@ -202,6 +223,8 @@ function exportToExcel(
             item.description ?? '',
             item.brand?.name ?? '',
             item.category?.name ?? '',
+            item.size?.name ?? '',
+            item.color?.name ?? '',
             item.unitPrice,
             currentDiscountRate,
             currentDiscountAmount,
@@ -1257,6 +1280,8 @@ export default function BulkDiscountPage() {
                                                     <TableHead>Description</TableHead>
                                                     <TableHead>Brand</TableHead>
                                                     <TableHead>Category</TableHead>
+                                                    <TableHead>Size</TableHead>
+                                                    <TableHead>Color</TableHead>
                                                     <TableHead className="text-right">Price</TableHead>
                                                     <TableHead className="text-right">Cur. Disc.</TableHead>
                                                     {!campaign.clearMode && <TableHead className="text-right">After</TableHead>}
@@ -1266,14 +1291,14 @@ export default function BulkDiscountPage() {
                                                 {itemsLoading ? (
                                                     Array.from({ length: 8 }).map((_, i) => (
                                                         <TableRow key={i}>
-                                                            {Array.from({ length: 8 }).map((_, j) => (
+                                                            {Array.from({ length: 11 }).map((_, j) => (
                                                                 <TableCell key={j}><div className="h-4 bg-muted animate-pulse rounded" /></TableCell>
                                                             ))}
                                                         </TableRow>
                                                     ))
                                                 ) : allItems.length === 0 ? (
                                                     <TableRow>
-                                                        <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                                                        <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
                                                             No items found. Try adjusting your search or filters.
                                                         </TableCell>
                                                     </TableRow>
@@ -1287,7 +1312,7 @@ export default function BulkDiscountPage() {
                                                                 className={cn('cursor-pointer transition-colors', selected && 'bg-primary/5 hover:bg-primary/8')}
                                                                 onClick={() => toggleItem(item.id)}>
                                                                 <TableCell className="pl-4" onClick={e => e.stopPropagation()}>
-                                                                    <Checkbox checked={selected} onCheckedChange={() => toggleItem(item.id)} aria-label={`Select ${item.sku}`} />
+                                                                    <Checkbox checked={checked => toggleItem(item.id)} checked={selected} onCheckedChange={() => toggleItem(item.id)} aria-label={`Select ${item.sku}`} />
                                                                 </TableCell>
                                                                 <TableCell><span className="font-mono text-xs">{item.itemId}</span></TableCell>
                                                                 <TableCell><span className="font-mono text-xs text-muted-foreground">{item.sku}</span></TableCell>
@@ -1296,6 +1321,8 @@ export default function BulkDiscountPage() {
                                                                 </TableCell>
                                                                 <TableCell><span className="text-sm">{item.brand?.name ?? '—'}</span></TableCell>
                                                                 <TableCell><span className="text-sm">{item.category?.name ?? '—'}</span></TableCell>
+                                                                <TableCell><span className="text-sm">{item.size?.name ?? '—'}</span></TableCell>
+                                                                <TableCell><span className="text-sm">{item.color?.name ?? '—'}</span></TableCell>
                                                                 <TableCell className="text-right font-mono text-sm">{formatPKR(item.unitPrice)}</TableCell>
                                                                 <TableCell className="text-right">
                                                                     {conflict ? (
@@ -1377,7 +1404,10 @@ export default function BulkDiscountPage() {
                                                                     <div key={item.id} className="flex items-start gap-2 p-2 rounded-md bg-muted/40 group">
                                                                         <div className="flex-1 min-w-0">
                                                                             <p className="text-xs font-mono truncate">{item.sku}</p>
-                                                                            <p className="text-[11px] text-muted-foreground truncate">{item.description ?? item.itemId}</p>
+                                                                            <p className="text-[11px] text-muted-foreground truncate">
+                                                                                {item.description ?? item.itemId}
+                                                                                {(item.size?.name || item.color?.name) && ` (${[item.size?.name, item.color?.name].filter(Boolean).join(' / ')})`}
+                                                                            </p>
                                                                             {!campaign.clearMode && (
                                                                                 <div className="mt-1.5 flex items-center gap-1.5">
                                                                                     <span className="text-[10px] text-muted-foreground">Override:</span>
