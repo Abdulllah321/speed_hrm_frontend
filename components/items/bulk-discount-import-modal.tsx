@@ -315,8 +315,8 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
             for (let i = 0; i < parsed.length; i++) {
                 const matchedItem = findItem(parsed[i].identifier);
                 if (matchedItem) {
-                    const parentId = matchedItem.itemId;
-                    const siblings = apiItems.filter(item => item.itemId === parentId);
+                    const parentSku = matchedItem.sku;
+                    const siblings = apiItems.filter(item => item.sku === parentSku);
                     siblings.forEach(sib => {
                         expandedResults.push({
                             rowIndex: parsed[i].rowIndex,
@@ -355,8 +355,8 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
                 const matchedItem = findItem(parsed[i].identifier);
 
                 if (matchedItem) {
-                    const parentId = matchedItem.itemId;
-                    const siblings = apiItems.filter(item => item.itemId === parentId);
+                    const parentSku = matchedItem.sku;
+                    const siblings = apiItems.filter(item => item.sku === parentSku);
                     
                     // Create expanded sibling RowResults
                     const sibResults: RowResult[] = siblings.map(sib => ({
@@ -424,8 +424,8 @@ export function BulkDiscountImportModal({ open, onOpenChange, campaignDiscountTy
         const items: ImportedDiscountItem[] = [];
         matched.forEach((r) => {
             if (!r.itemRow) return;
-            const parentId = r.itemRow.itemId;
-            const siblings = importedApiItems.filter((i) => i.itemId === parentId);
+            const parentSku = r.itemRow.sku;
+            const siblings = importedApiItems.filter((i) => i.sku === parentSku);
             siblings.forEach((sib) => {
                 items.push({
                     id: sib.id,

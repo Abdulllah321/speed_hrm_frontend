@@ -602,14 +602,14 @@ export default function BulkDiscountPage() {
         const clickedItem = allItems.find(i => i.id === id) || importedItems.get(id);
         if (!clickedItem) return;
 
-        const parentId = clickedItem.itemId;
+        const parentSku = clickedItem.sku;
         const siblingIds: string[] = [];
         
         allItems.forEach(i => {
-            if (i.itemId === parentId) siblingIds.push(i.id);
+            if (i.sku === parentSku) siblingIds.push(i.id);
         });
         importedItems.forEach((v, k) => {
-            if (v.itemId === parentId) siblingIds.push(k);
+            if (v.sku === parentSku) siblingIds.push(k);
         });
 
         setSelectedIds(prev => {
