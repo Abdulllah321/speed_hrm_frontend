@@ -96,7 +96,7 @@ export function RequestStockModal({
                     fromWarehouseId: fromLocation.location.warehouse.id,
                     toLocationId: toLocationId,
                     documentType: "Outlet Request",
-                    status: "DRAFT",
+                    status: "PENDING",
                     items: [
                         {
                             itemId: item.id,
