@@ -66,7 +66,7 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
       <div className="flex justify-between mb-1.5 gap-2 items-start">
         {/* Logo */}
         <div className="w-[20%] flex flex-col items-start justify-center">
-           <img src="/image.png" alt="Logo" className="w-14 sm:w-18 print:w-20 object-contain" />
+           <img src="/logo.png" alt="Logo" className="w-14 sm:w-18 print:w-20 object-contain" />
         </div>
 
         {/* Title */}
@@ -289,28 +289,31 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
         </div>
       </div>
 
-      {/* Remarks */}
-      <div className="mt-1 mb-1.5">
-        <div className="font-bold text-[10px] sm:text-[11px]">Remarks</div>
-        <p className="text-[9px] mt-px text-gray-700">{voucher.description}</p>
-      </div>
+      {/* Remarks + Signatures — kept together, never split across pages */}
+      <div style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+        {/* Remarks */}
+        <div className="mt-1 mb-1.5">
+          <div className="font-bold text-[10px] sm:text-[11px]">Remarks</div>
+          <p className="text-[9px] mt-px text-gray-700">{voucher.description}</p>
+        </div>
 
-      {/* Signatures */}
-      <div className="grid grid-cols-5 gap-2">
-        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
-          <span className="text-[9px] font-bold text-center">PREPARED BY</span>
-        </div>
-        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
-          <span className="text-[9px] font-bold text-center">CHECKED BY</span>
-        </div>
-        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
-          <span className="text-[9px] font-bold text-center">APPROVED BY</span>
-        </div>
-        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
-          <span className="text-[9px] font-bold text-center">CHIEF EXECUTIVE</span>
-        </div>
-        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
-          <span className="text-[9px] font-bold text-center">RECEIVED BY</span>
+        {/* Signatures */}
+        <div className="grid grid-cols-5 gap-2">
+          <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
+            <span className="text-[9px] font-bold text-center">PREPARED BY</span>
+          </div>
+          <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
+            <span className="text-[9px] font-bold text-center">CHECKED BY</span>
+          </div>
+          <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
+            <span className="text-[9px] font-bold text-center">APPROVED BY</span>
+          </div>
+          <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
+            <span className="text-[9px] font-bold text-center">CHIEF EXECUTIVE</span>
+          </div>
+          <div className="border border-black h-24 p-1 flex flex-col justify-start items-center">
+            <span className="text-[9px] font-bold text-center">RECEIVED BY</span>
+          </div>
         </div>
       </div>
 
