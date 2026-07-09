@@ -1014,17 +1014,6 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
     const totalDebit = watchDetails.reduce((sum, detail) => sum + (Number(detail.debit) || 0), 0);
     const totalCredit = watchDetails.reduce((sum, detail) => sum + (Number(detail.credit) || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
-    const [sortField, setSortField] = useState<string | null>(null);
-    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-
-    const handleSort = (field: string) => {
-        if (sortField === field) {
-            setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-        } else {
-            setSortField(field);
-            setSortOrder("asc");
-        }
-    };
 
     const visibleDetails = useMemo(() => {
         const query = rowSearchQuery.trim().toLowerCase();
