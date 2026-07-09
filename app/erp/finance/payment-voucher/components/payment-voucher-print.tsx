@@ -50,6 +50,12 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
           body {
             margin: 0.8cm;
           }
+          thead {
+            display: table-header-group;
+          }
+          tfoot {
+            display: none;
+          }
         }
       `}} />
       {/* Header */}
@@ -61,8 +67,12 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
         
         {/* Title */}
         <div className="w-[35%] flex flex-col justify-center">
-          <div className="bg-[#eef2f6] text-black w-full text-center py-1 text-base sm:text-lg font-bold  print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-            {isBank ? "Bank" : "Cash"} Payment Voucher
+          <div className="bg-[#eef2f6] text-black w-full text-center py-2 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+            <span className="text-xl sm:text-2xl font-extrabold underline decoration-2 underline-offset-2 tracking-wide">
+              {isBank ? "Bank" : "Cash"} Payment
+            </span>
+            <br />
+            <span className="text-xl sm:text-2xl font-extrabold tracking-wide">Voucher</span>
           </div>
         </div>
 
@@ -91,23 +101,23 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
         </div>
       </div>
 
-      {/* Table */}
-      <table className="w-full text-[10px] sm:text-[11px] mb-1.5 border-collapse table-fixed">
+      {/* Table — tfoot removed; thead will repeat on each page via CSS */}
+      <table className="w-full text-[10px] sm:text-[11px] border-collapse table-fixed">
         <thead>
           <tr className="border-y-2 border-black">
-            <th className="py-0.5 pr-1 text-left font-bold w-[40%]">Account Code/Description</th>
-            <th className="py-0.5 pr-1 text-left font-bold w-[30%]">Naration</th>
-            <th className="py-0.5 pr-1 text-right font-bold w-[15%]">Debit</th>
-            <th className="py-0.5 text-right font-bold w-[15%]">Credit</th>
+            <th className="py-1 pr-1 text-left font-bold w-[40%]">Account Code/Description</th>
+            <th className="py-1 pr-1 text-left font-bold w-[30%]">Naration</th>
+            <th className="py-1 pr-1 text-right font-bold w-[15%]">Debit</th>
+            <th className="py-1 text-right font-bold w-[15%]">Credit</th>
           </tr>
         </thead>
         <tbody>
           {debitRows.map((d, i) => (
-            <tr key={`dr-${i}`} className="border-b border-gray-300 align-top">
+            <tr key={`dr-${i}`} className="border-b border-gray-200 align-top">
               <td className="py-0.5 pr-1 overflow-hidden text-ellipsis">
                 <div className="flex gap-1.5 sm:gap-3">
-                  <span className="w-14 sm:w-20 shrink-0 font-medium">{d.accountCode}</span>
-                  <span className="uppercase font-medium">{d.accountName}</span>
+                  <span className="w-14 sm:w-20 shrink-0 font-bold">{d.accountCode}</span>
+                  <span className="uppercase font-bold">{d.accountName}</span>
                 </div>
                 {/* Tag Account */}
                 {(d.tagAccountCode || d.tagAccountName) && (
@@ -148,11 +158,11 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
           ))}
 
           {creditRows.map((d, i) => (
-            <tr key={`cr-${i}`} className="border-b border-gray-300 align-top">
+            <tr key={`cr-${i}`} className="border-b border-gray-200 align-top">
               <td className="py-0.5 pr-1 overflow-hidden text-ellipsis">
                 <div className="flex gap-1.5 sm:gap-3">
-                  <span className="w-14 sm:w-20 shrink-0 font-medium">{d.accountCode}</span>
-                  <span className="uppercase font-medium">{d.accountName}</span>
+                  <span className="w-14 sm:w-20 shrink-0 font-bold">{d.accountCode}</span>
+                  <span className="uppercase font-bold">{d.accountName}</span>
                 </div>
                 {(d.tagAccountCode || d.tagAccountName) && (
                    <div className="flex gap-1.5 sm:gap-3 mt-0.5">
@@ -193,11 +203,11 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
 
           {/* Fallback credit row */}
           {creditRows.length === 0 && voucher.creditAccountName && (
-            <tr className="border-b border-gray-300 align-top">
+            <tr className="border-b border-gray-200 align-top">
               <td className="py-0.5 pr-1 overflow-hidden text-ellipsis">
                 <div className="flex gap-1.5 sm:gap-3">
-                  <span className="w-14 sm:w-20 shrink-0 font-medium">{voucher.creditAccountCode}</span>
-                  <span className="uppercase font-medium">{voucher.creditAccountName}</span>
+                  <span className="w-14 sm:w-20 shrink-0 font-bold">{voucher.creditAccountCode}</span>
+                  <span className="uppercase font-bold">{voucher.creditAccountName}</span>
                 </div>
                 {/* Ref# */}
                 {(() => {
@@ -230,28 +240,31 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
             </tr>
           )}
         </tbody>
-        
-        <tfoot>
-          <tr>
-            <td colSpan={2} className="py-1 px-0 align-bottom border-b border-black">
-              <div className="flex gap-2 font-bold text-[10px] sm:text-[11px]">
-                <span className="whitespace-nowrap">In Words</span>
-                <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(totalDebit)}</span>
-              </div>
-            </td>
-            <td className="py-0.5 pr-1 text-right align-bottom border-b border-black">
-              <div className="ml-auto border-t border-black pb-0.5" style={{ borderBottom: '3px double black' }}>
-                <span className="tabular-nums text-[10px] sm:text-[11px] block pt-0.5 font-bold">{fmt(totalDebit)}</span>
-              </div>
-            </td>
-            <td className="py-0.5 px-0 text-right align-bottom border-b border-black">
-              <div className="ml-auto border-t border-black pb-0.5" style={{ borderBottom: '3px double black' }}>
-                <span className="tabular-nums text-[10px] sm:text-[11px] block pt-0.5 font-bold">{fmt(totalCredit)}</span>
-              </div>
-            </td>
-          </tr>
-        </tfoot>
       </table>
+
+      {/* Totals row — outside table so it only appears once at the very end */}
+      <div className="w-full border-t-2 border-black mt-0">
+        <div className="flex items-start">
+          <div className="flex-1 py-1 pr-2">
+            <div className="flex gap-2 font-bold text-[10px] sm:text-[11px]">
+              <span className="whitespace-nowrap">In Words</span>
+              <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(totalDebit)}</span>
+            </div>
+          </div>
+          {/* Debit total */}
+          <div className="w-[15%] py-0.5 pr-1 text-right">
+            <div className="border-t border-black pb-0.5" style={{ borderBottom: '3px double black' }}>
+              <span className="tabular-nums text-[10px] sm:text-[11px] block pt-0.5 font-bold">{fmt(totalDebit)}</span>
+            </div>
+          </div>
+          {/* Credit total */}
+          <div className="w-[15%] py-0.5 text-right">
+            <div className="border-t border-black pb-0.5" style={{ borderBottom: '3px double black' }}>
+              <span className="tabular-nums text-[10px] sm:text-[11px] block pt-0.5 font-bold">{fmt(totalCredit)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Remarks */}
       <div className="mt-1.5 mb-2">
@@ -261,19 +274,19 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
 
       {/* Signatures */}
       <div className="grid grid-cols-5 gap-2">
-        <div className="border border-black h-10 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">PREPARED BY</span>
         </div>
-        <div className="border border-black h-10 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">CHECKED BY</span>
         </div>
-        <div className="border border-black h-10 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">APPROVED BY</span>
         </div>
-        <div className="border border-black h-10 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">CHIEF EXECUTIVE</span>
         </div>
-        <div className="border border-black h-10 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">RECEIVED BY</span>
         </div>
       </div>
