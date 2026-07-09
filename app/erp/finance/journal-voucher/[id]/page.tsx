@@ -153,7 +153,7 @@ export default function JournalVoucherDetailPage({
   return (
     <>
       {/* ── Print styles ── */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           html, body {
             height: auto !important;
@@ -194,7 +194,7 @@ export default function JournalVoucherDetailPage({
             size: A4 portrait;
           }
         }
-      `}</style>
+      `}} />
 
       {/* ══════════════════════════════════════════════════════════════
           SCREEN VIEW
@@ -371,7 +371,7 @@ export default function JournalVoucherDetailPage({
                                   {d.tagAccountCode}
                                 </span>
                               )}
-                              <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
+                              <span className="text-xs text-foreground/80 uppercase">{d.tagAccountName}</span>
                             </div>
                           )}
 

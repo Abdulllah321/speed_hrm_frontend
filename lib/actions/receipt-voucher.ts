@@ -25,6 +25,7 @@ export interface ReceiptVoucher {
     rvNo: string;
     rvDate: string;
     refBillNo?: string;
+    refBillNo2?: string;
     billDate?: string;
     debitAccountId: string;
     debitAccountName?: string;

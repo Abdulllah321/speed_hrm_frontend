@@ -219,7 +219,7 @@ export default function PaymentVoucherDetailPage({
   return (
     <>
       {/* ── Print styles ── */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           html, body {
             height: auto !important;
@@ -260,7 +260,7 @@ export default function PaymentVoucherDetailPage({
             size: A4 portrait;
           }
         }
-      `}</style>
+      `}} />
 
       {/* ══════════════════════════════════════════════════════════════
           SCREEN VIEW
@@ -490,7 +490,7 @@ export default function PaymentVoucherDetailPage({
                                   {d.tagAccountCode}
                                 </span>
                               )}
-                              <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
+                              <span className="text-xs text-foreground/80 uppercase">{d.tagAccountName}</span>
                             </div>
                           )}
 

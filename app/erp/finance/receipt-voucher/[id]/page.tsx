@@ -156,7 +156,7 @@ export default function ReceiptVoucherDetailPage({
   return (
     <>
       {/* ── Print styles ── */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           html, body {
             height: auto !important;
@@ -197,7 +197,7 @@ export default function ReceiptVoucherDetailPage({
             size: A4 portrait;
           }
         }
-      `}</style>
+      `}} />
 
       {/* ══════════════════════════════════════════════════════════════
           SCREEN VIEW
@@ -421,7 +421,7 @@ export default function ReceiptVoucherDetailPage({
                                   {d.tagAccountCode}
                                 </span>
                               )}
-                              <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
+                              <span className="text-xs text-foreground/80 uppercase">{d.tagAccountName}</span>
                             </div>
                           )}
 

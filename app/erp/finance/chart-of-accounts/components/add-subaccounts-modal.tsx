@@ -39,7 +39,7 @@ import {
 } from "@/lib/actions/chart-of-account";
 import { getCustomers } from "@/lib/actions/customer";
 import { getLocations } from "@/lib/actions/location";
-import { getPayees, createPayee } from "@/lib/actions/payee";
+import { getPayees, createPayee, updatePayee, deletePayee } from "@/lib/actions/payee";
 import { getEmployees } from "@/lib/actions/employee";
 
 interface AddSubAccountsModalProps {
@@ -73,6 +73,12 @@ export function AddSubAccountsModal({
   // Form states for bulk creation
   const [bulkData, setBulkData] = React.useState("");
   const [creatingPayee, setCreatingPayee] = React.useState(false);
+
+  // Editing states for Payees
+  const [editingPayeeId, setEditingPayeeId] = React.useState<string | null>(null);
+  const [editingName, setEditingName] = React.useState("");
+  const [editingCode, setEditingCode] = React.useState("");
+  const [updatingPayeeId, setUpdatingPayeeId] = React.useState<string | null>(null);
 
   // Tab & search states
   type TabType = "suppliers" | "customers" | "locations" | "directors" | "employees" | "merchandise" | "salaries" | "taxes";
@@ -280,7 +286,7 @@ export function AddSubAccountsModal({
 
         if (!code || !name) continue;
 
-        const res = await createPayee(payeeType, { code, name });
+        const res = await createPayee(payeeType, { code: code.toUpperCase(), name: name.toUpperCase() });
         if (res.status) {
           successCount++;
         } else {
@@ -295,6 +301,67 @@ export function AddSubAccountsModal({
       toast.error("An error occurred during bulk create");
     } finally {
       setCreatingPayee(false);
+    }
+  };
+
+  const handleDeletePayee = async (payeeId: string) => {
+    let payeeType: 'director' | 'salary' | 'tax' | null = null;
+    if (activeTab === 'directors') payeeType = 'director';
+    if (activeTab === 'salaries') payeeType = 'salary';
+    if (activeTab === 'taxes') payeeType = 'tax';
+    if (!payeeType) return;
+
+    if (!confirm("Are you sure you want to delete this payee record?")) {
+      return;
+    }
+
+    try {
+      const res = await deletePayee(payeeType, payeeId);
+      if (res.status) {
+        toast.success("Record deleted successfully");
+        setSelected((prev) => {
+          const nextTabSet = new Set(prev[activeTab]);
+          nextTabSet.delete(payeeId);
+          return { ...prev, [activeTab]: nextTabSet };
+        });
+        await loadPayeeData(payeeType);
+      } else {
+        toast.error(res.message || "Failed to delete record");
+      }
+    } catch {
+      toast.error("An unexpected error occurred while deleting");
+    }
+  };
+
+  const handleUpdatePayee = async (payeeId: string) => {
+    let payeeType: 'director' | 'salary' | 'tax' | null = null;
+    if (activeTab === 'directors') payeeType = 'director';
+    if (activeTab === 'salaries') payeeType = 'salary';
+    if (activeTab === 'taxes') payeeType = 'tax';
+    if (!payeeType) return;
+
+    if (!editingCode.trim() || !editingName.trim()) {
+      toast.error("Code and Name are required");
+      return;
+    }
+
+    setUpdatingPayeeId(payeeId);
+    try {
+      const res = await updatePayee(payeeType, payeeId, {
+        code: editingCode.trim().toUpperCase(),
+        name: editingName.trim().toUpperCase()
+      });
+      if (res.status) {
+        toast.success("Record updated successfully");
+        setEditingPayeeId(null);
+        await loadPayeeData(payeeType);
+      } else {
+        toast.error(res.message || "Failed to update record");
+      }
+    } catch {
+      toast.error("An unexpected error occurred while updating");
+    } finally {
+      setUpdatingPayeeId(null);
     }
   };
 
@@ -330,8 +397,8 @@ export function AddSubAccountsModal({
         arr.forEach((item) => {
           if (selected[typeMap].has(item.id)) {
             itemsToCreate.push({
-              name: item.name || item.employeeName || "",
-              code: item[itemCodeKey] || "",
+              name: (item.name || item.employeeName || "").toUpperCase(),
+              code: (item[itemCodeKey] || "").toUpperCase(),
               type: typeStr,
               referenceId: item.id,
             });
@@ -520,26 +587,106 @@ export function AddSubAccountsModal({
                           filteredItems.map((item) => {
                             const itemName = item.name || item.employeeName;
                             const itemCode = item.code || item.employeeId;
+                            const isEditing = editingPayeeId === item.id;
                             
+                            if (isEditing) {
+                              return (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center gap-2 px-4 py-2 bg-muted/30"
+                                >
+                                  <Input
+                                    value={editingCode}
+                                    onChange={(e) => setEditingCode(e.target.value)}
+                                    placeholder="Code"
+                                    className="w-28 h-8 text-xs font-mono uppercase bg-background"
+                                    disabled={updatingPayeeId !== null}
+                                  />
+                                  <Input
+                                    value={editingName}
+                                    onChange={(e) => setEditingName(e.target.value)}
+                                    placeholder="Name"
+                                    className="flex-1 h-8 text-xs uppercase bg-background"
+                                    disabled={updatingPayeeId !== null}
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleUpdatePayee(item.id)}
+                                    disabled={updatingPayeeId !== null}
+                                    className="h-8 px-3 text-xs"
+                                  >
+                                    {updatingPayeeId === item.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      "Save"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setEditingPayeeId(null)}
+                                    disabled={updatingPayeeId !== null}
+                                    className="h-8 px-3 text-xs"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              );
+                            }
+
                             return (
                               <div
                                 key={item.id}
-                                className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors select-none"
+                                className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors select-none group"
                               >
-                                <Checkbox
-                                  id={`chk-${item.id}`}
-                                  checked={selected[activeTab].has(item.id)}
-                                  onCheckedChange={() => handleToggleSelect(item.id)}
-                                />
-                                <label
-                                  htmlFor={`chk-${item.id}`}
-                                  className="flex flex-1 items-center justify-between text-sm cursor-pointer"
-                                >
-                                  <span className="font-medium text-foreground">{itemName}</span>
-                                  <span className="font-mono text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
-                                    {itemCode || "No Code"}
-                                  </span>
-                                </label>
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <Checkbox
+                                    id={`chk-${item.id}`}
+                                    checked={selected[activeTab].has(item.id)}
+                                    onCheckedChange={() => handleToggleSelect(item.id)}
+                                  />
+                                  <label
+                                    htmlFor={`chk-${item.id}`}
+                                    className="flex flex-1 items-center justify-between text-sm cursor-pointer min-w-0 pr-2"
+                                  >
+                                    <span className="font-medium text-foreground truncate">{itemName}</span>
+                                    <span className="font-mono text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted shrink-0">
+                                      {itemCode || "No Code"}
+                                    </span>
+                                  </label>
+                                </div>
+                                {canCreate && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      title="Edit Record"
+                                      onClick={() => {
+                                        setEditingPayeeId(item.id);
+                                        setEditingName(itemName || "");
+                                        setEditingCode(itemCode || "");
+                                      }}
+                                      className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    >
+                                      <span className="sr-only">Edit</span>
+                                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 20.013a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                      </svg>
+                                    </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      title="Delete Record"
+                                      onClick={() => handleDeletePayee(item.id)}
+                                      className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                                    >
+                                      <span className="sr-only">Delete</span>
+                                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                      </svg>
+                                    </Button>
+                                  </div>
+                                )}
                               </div>
                             );
                           })

@@ -176,6 +176,11 @@ export function PaymentVoucherList({
                                             {Number(d.debit).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
                                         </span>
                                     </div>
+                                    {(d.tagAccountCode || d.tagAccountName) && (
+                                        <span className="block text-[9px] text-muted-foreground uppercase pl-2">
+                                            ↳ {d.tagAccountCode ? `${d.tagAccountCode} ` : ""}{d.tagAccountName}
+                                        </span>
+                                    )}
                                     {d.narration && (
                                         <span className="block text-[10px] text-muted-foreground italic pl-2">
                                             {d.narration}
@@ -197,6 +202,11 @@ export function PaymentVoucherList({
                                                 {Number(d.credit).toLocaleString("en-PK", { minimumFractionDigits: 2 })}
                                             </span>
                                         </div>
+                                        {(d.tagAccountCode || d.tagAccountName) && (
+                                            <span className="block text-[9px] text-muted-foreground uppercase pl-4">
+                                                ↳ {d.tagAccountCode ? `${d.tagAccountCode} ` : ""}{d.tagAccountName}
+                                            </span>
+                                        )}
                                         {d.narration && (
                                             <span className="block text-[10px] text-muted-foreground pl-2">
                                                 {d.narration}
@@ -456,43 +466,44 @@ export function PaymentVoucherList({
                 <>
                     <style dangerouslySetInnerHTML={{ __html: `
                         @media print {
-                            html, body {
-                                height: auto !important;
-                                overflow: visible !important;
-                                background: white !important;
-                                color: black !important;
-                            }
-                            body > *:not(#pv-print-section) {
-                                display: none !important;
-                            }
-                            #pv-print-section, #pv-print-section * {
-                                visibility: visible !important;
-                            }
-                            #pv-print-section {
-                                display: block !important;
-                                position: relative !important;
-                                left: 0 !important;
-                                top: 0 !important;
-                                width: 100% !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                background: white !important;
-                                color: black !important;
-                                z-index: 99999 !important;
-                            }
-                            tr {
-                                page-break-inside: avoid !important;
-                            }
-                            thead {
-                                display: table-header-group !important;
-                            }
-                            tfoot {
-                                display: table-footer-group !important;
-                            }
-                            @page {
-                                margin: 10mm !important;
-                                size: A4 portrait !important;
-                            }
+                          html, body {
+                            height: auto !important;
+                            overflow: visible !important;
+                            background: white !important;
+                            color: black !important;
+                          }
+                          body > *:not(#pv-print-section) {
+                            display: none !important;
+                          }
+                          #pv-print-section, #pv-print-section * {
+                            visibility: visible !important;
+                          }
+                          #pv-print-section {
+                            display: block !important;
+                            position: relative !important;
+                            left: 0 !important;
+                            top: 0 !important;
+                            width: 100% !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: white !important;
+                            color: black !important;
+                            z-index: 99999 !important;
+                          }
+                          tr {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                          }
+                          thead {
+                            display: table-header-group;
+                          }
+                          tfoot {
+                            display: table-footer-group;
+                          }
+                          @page {
+                            margin: 10mm;
+                            size: A4 portrait;
+                          }
                         }
                     `}} />
                     <div 

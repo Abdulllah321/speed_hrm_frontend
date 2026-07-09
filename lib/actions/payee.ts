@@ -40,3 +40,43 @@ export async function createPayee(type: 'director' | 'salary' | 'tax', data: { n
     return { status: false, message: `Failed to create ${type}` };
   }
 }
+
+export async function updatePayee(
+  type: 'director' | 'salary' | 'tax', 
+  id: string, 
+  data: { name: string; code: string }
+): Promise<{ status: boolean; data?: Payee; message?: string }> {
+  try {
+    const res = await authFetch(`/payees/${type}/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    
+    if (res.ok) {
+      return { status: true, data: res.data, message: `${type} updated successfully` };
+    }
+    return { status: false, message: res.data?.message || `Failed to update ${type}` };
+  } catch (error) {
+    console.error(`Failed to update ${type}:`, error);
+    return { status: false, message: `Failed to update ${type}` };
+  }
+}
+
+export async function deletePayee(
+  type: 'director' | 'salary' | 'tax', 
+  id: string
+): Promise<{ status: boolean; message?: string }> {
+  try {
+    const res = await authFetch(`/payees/${type}/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (res.ok) {
+      return { status: true, message: `${type} deleted successfully` };
+    }
+    return { status: false, message: res.data?.message || `Failed to delete ${type}` };
+  } catch (error) {
+    console.error(`Failed to delete ${type}:`, error);
+    return { status: false, message: `Failed to delete ${type}` };
+  }
+}
