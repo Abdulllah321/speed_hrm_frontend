@@ -41,14 +41,17 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
   const totalCredit = Number(voucher.creditAmount) || totalDebit;
 
   return (
-    <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-4 sm:p-6 font-sans print:p-0 print:max-w-none box-border text-[10px] sm:text-[11px]">
+    <div className="w-full max-w-[1000px] mx-auto bg-white text-black p-4 sm:p-6 font-sans print:p-0 print:max-w-none box-border text-[9px] sm:text-[10px]">
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page {
             margin: 0;
           }
+          @page :not(:first) {
+            margin-top: 1.5cm;
+          }
           body {
-            margin: 0.8cm;
+            margin: 0.7cm;
           }
           thead {
             display: table-header-group;
@@ -58,42 +61,43 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
           }
         }
       `}} />
+
       {/* Header */}
-      <div className="flex justify-between mb-2 gap-3 items-start">
+      <div className="flex justify-between mb-1.5 gap-2 items-start">
         {/* Logo */}
         <div className="w-[20%] flex flex-col items-start justify-center">
-           <img src="/image.png" alt="Logo" className="w-16 sm:w-20 print:w-24 object-contain" />
+           <img src="/image.png" alt="Logo" className="w-14 sm:w-18 print:w-20 object-contain" />
         </div>
-        
+
         {/* Title */}
         <div className="w-[35%] flex flex-col justify-center">
-          <div className="bg-[#eef2f6] text-black w-full text-center py-2 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
-            <span className="text-xl sm:text-2xl font-extrabold underline decoration-2 underline-offset-2 tracking-wide">
+          <div className="bg-[#eef2f6] text-black w-full text-center py-1.5 print:bg-[#eef2f6] [-webkit-print-color-adjust:exact] [color-adjust:exact]">
+            <span className="text-base sm:text-lg font-extrabold underline decoration-2 underline-offset-2 tracking-wide">
               {isBank ? "Bank" : "Cash"} Payment
             </span>
             <br />
-            <span className="text-xl sm:text-2xl font-extrabold tracking-wide">Voucher</span>
+            <span className="text-base sm:text-lg font-extrabold tracking-wide">Voucher</span>
           </div>
         </div>
 
         {/* Details Box */}
-        <div className="w-[45%] bg-[#f8fafc] text-[10px] sm:text-[11px] p-1.5 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
-           <div className="flex justify-between mb-1">
+        <div className="w-[45%] bg-[#f8fafc] text-[9px] sm:text-[10px] p-1 border border-gray-300 print:bg-[#f8fafc] [-webkit-print-color-adjust:exact] [color-adjust:exact] flex flex-col justify-center">
+           <div className="flex justify-between mb-0.5">
              <span className="font-bold">Voucher Number:</span>
              <span className="font-bold">{voucher.pvNo}</span>
            </div>
            <div className="flex justify-between">
-             <div className="flex gap-2">
+             <div className="flex gap-1.5">
                <span className="font-bold">Date:</span>
                <span>{voucher.pvDate ? format(new Date(voucher.pvDate), "dd/MM/yyyy") : ""}</span>
              </div>
-             <div className="flex gap-2">
+             <div className="flex gap-1.5">
                <span className="font-bold">Folio:</span>
                <span>{voucher.folio || voucher.id.replace(/-/g, "").slice(-5).toUpperCase()}</span>
              </div>
            </div>
            {isBank && (
-             <div className="flex gap-2 mt-1">
+             <div className="flex gap-1.5 mt-0.5">
                <span className="font-bold">Cheque #:</span>
                <span className="uppercase">{voucher.chequeNo || "—"}</span>
              </div>
@@ -101,123 +105,139 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
         </div>
       </div>
 
-      {/* Table — tfoot removed; thead will repeat on each page via CSS */}
-      <table className="w-full text-[10px] sm:text-[11px] border-collapse table-fixed">
+      {/* Table */}
+      <table className="w-full text-[9px] sm:text-[10px] border-collapse table-fixed">
         <thead>
           <tr className="border-y-2 border-black">
-            <th className="py-1 pr-1 text-left font-bold w-[40%]">Account Code/Description</th>
-            <th className="py-1 pr-1 text-left font-bold w-[30%]">Naration</th>
-            <th className="py-1 pr-1 text-right font-bold w-[15%]">Debit</th>
-            <th className="py-1 text-right font-bold w-[15%]">Credit</th>
+            <th className="py-0.5 pr-1 text-left font-bold w-[38%]">Account Code/Description</th>
+            <th className="py-0.5 pr-1 text-left font-bold w-[28%]">Naration</th>
+            <th className="py-0.5 pr-1 text-right font-bold w-[10%]">Taxable</th>
+            <th className="py-0.5 pr-1 text-right font-bold w-[12%]">Debit</th>
+            <th className="py-0.5 text-right font-bold w-[12%]">Credit</th>
           </tr>
         </thead>
         <tbody>
-          {debitRows.map((d, i) => (
-            <tr key={`dr-${i}`} className="border-b border-gray-200 align-top">
-              <td className="py-0.5 pr-1 overflow-hidden text-ellipsis">
-                <div className="flex gap-1.5 sm:gap-3">
-                  <span className="w-14 sm:w-20 shrink-0 font-bold">{d.accountCode}</span>
-                  <span className="uppercase font-bold">{d.accountName}</span>
-                </div>
-                {/* Tag Account */}
-                {(d.tagAccountCode || d.tagAccountName) && (
-                   <div className="flex gap-1.5 sm:gap-3 mt-0.5">
-                     <span className="w-14 sm:w-20 shrink-0 font-medium text-gray-700">{d.tagAccountCode}</span>
-                     <span className="uppercase text-gray-700">{d.tagAccountName}</span>
-                   </div>
-                )}
-                {/* Ref# */}
-                {(() => {
-                  const r1 = d.refBillNo || voucher.refBillNo;
-                  const r2 = d.refBillNo2 || (voucher as any).refBillNo2;
-                  const tType = d.taxType || voucher.taxType;
-                  if (!r1 && !r2 && !tType) return null;
-                  return (
-                    <div className="flex gap-1.5 sm:gap-3 mt-0.5 text-[9px] text-gray-700">
-                      <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
+          {debitRows.map((d, i) => {
+            const r1 = d.refBillNo || voucher.refBillNo;
+            const r2 = d.refBillNo2 || (voucher as any).refBillNo2;
+            const tType = d.taxType || voucher.taxType;
+            const taxableVal = (d as any).taxableValue;
+            return (
+              <tr key={`dr-${i}`} className="border-b border-gray-200 align-top">
+                <td className="py-px pr-1 overflow-hidden text-ellipsis">
+                  <div className="flex gap-1 sm:gap-2">
+                    <span className="w-12 sm:w-16 shrink-0 font-bold">{d.accountCode}</span>
+                    <span className="uppercase font-bold">{d.accountName}</span>
+                  </div>
+                  {/* Tag Account */}
+                  {(d.tagAccountCode || d.tagAccountName) && (
+                     <div className="flex gap-1 sm:gap-2 mt-px">
+                       <span className="w-12 sm:w-16 shrink-0 font-medium text-gray-700">{d.tagAccountCode}</span>
+                       <span className="uppercase text-gray-700">{d.tagAccountName}</span>
+                     </div>
+                  )}
+                  {/* Ref# / taxType / taxable */}
+                  {(r1 || r2 || tType || taxableVal) && (
+                    <div className="flex gap-1 sm:gap-2 mt-px text-[8px] text-gray-600">
+                      <span className="w-12 sm:w-16 shrink-0 font-bold whitespace-nowrap">
                         Ref# {tType ? tType : ""}
                       </span>
-                      <span className="uppercase">
+                      <span className="uppercase flex-1">
                         {r1 || ""}
                         {r1 && r2 ? " / " : ""}
                         {r2 || ""}
                       </span>
+                      {taxableVal && (
+                        <span className="font-semibold whitespace-nowrap">
+                          Txbl: {fmt(Number(taxableVal))}
+                        </span>
+                      )}
                     </div>
-                  );
-                })()}
-              </td>
-              <td className="py-0.5 pr-1 leading-tight text-gray-700">
-                {d.narration || voucher.description}
-              </td>
-              <td className="py-0.5 pr-1 text-right tabular-nums font-semibold">
-                {Number(d.debit) > 0 ? fmt(Number(d.debit)) : ""}
-              </td>
-              <td className="py-0.5 text-right tabular-nums">
-              </td>
-            </tr>
-          ))}
+                  )}
+                </td>
+                <td className="py-px pr-1 leading-tight text-gray-700">
+                  {d.narration || voucher.description}
+                </td>
+                <td className="py-px pr-1 text-right tabular-nums text-gray-600">
+                  {taxableVal ? fmt(Number(taxableVal)) : ""}
+                </td>
+                <td className="py-px pr-1 text-right tabular-nums font-semibold">
+                  {Number(d.debit) > 0 ? fmt(Number(d.debit)) : ""}
+                </td>
+                <td className="py-px text-right tabular-nums">
+                </td>
+              </tr>
+            );
+          })}
 
-          {creditRows.map((d, i) => (
-            <tr key={`cr-${i}`} className="border-b border-gray-200 align-top">
-              <td className="py-0.5 pr-1 overflow-hidden text-ellipsis">
-                <div className="flex gap-1.5 sm:gap-3">
-                  <span className="w-14 sm:w-20 shrink-0 font-bold">{d.accountCode}</span>
-                  <span className="uppercase font-bold">{d.accountName}</span>
-                </div>
-                {(d.tagAccountCode || d.tagAccountName) && (
-                   <div className="flex gap-1.5 sm:gap-3 mt-0.5">
-                     <span className="w-14 sm:w-20 shrink-0 font-medium text-gray-700">{d.tagAccountCode}</span>
-                     <span className="uppercase text-gray-700">{d.tagAccountName}</span>
-                   </div>
-                )}
-                {/* Ref# */}
-                {(() => {
-                  const r1 = d.refBillNo || voucher.refBillNo;
-                  const r2 = d.refBillNo2 || (voucher as any).refBillNo2;
-                  const tType = d.taxType || voucher.taxType;
-                  if (!r1 && !r2 && !tType) return null;
-                  return (
-                    <div className="flex gap-1.5 sm:gap-3 mt-0.5 text-[9px] text-gray-700">
-                      <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
+          {creditRows.map((d, i) => {
+            const r1 = d.refBillNo || voucher.refBillNo;
+            const r2 = d.refBillNo2 || (voucher as any).refBillNo2;
+            const tType = d.taxType || voucher.taxType;
+            const taxableVal = (d as any).taxableValue;
+            return (
+              <tr key={`cr-${i}`} className="border-b border-gray-200 align-top">
+                <td className="py-px pr-1 overflow-hidden text-ellipsis">
+                  <div className="flex gap-1 sm:gap-2">
+                    <span className="w-12 sm:w-16 shrink-0 font-bold">{d.accountCode}</span>
+                    <span className="uppercase font-bold">{d.accountName}</span>
+                  </div>
+                  {(d.tagAccountCode || d.tagAccountName) && (
+                     <div className="flex gap-1 sm:gap-2 mt-px">
+                       <span className="w-12 sm:w-16 shrink-0 font-medium text-gray-700">{d.tagAccountCode}</span>
+                       <span className="uppercase text-gray-700">{d.tagAccountName}</span>
+                     </div>
+                  )}
+                  {/* Ref# / taxType / taxable */}
+                  {(r1 || r2 || tType || taxableVal) && (
+                    <div className="flex gap-1 sm:gap-2 mt-px text-[8px] text-gray-600">
+                      <span className="w-12 sm:w-16 shrink-0 font-bold whitespace-nowrap">
                         Ref# {tType ? tType : ""}
                       </span>
-                      <span className="uppercase">
+                      <span className="uppercase flex-1">
                         {r1 || ""}
                         {r1 && r2 ? " / " : ""}
                         {r2 || ""}
                       </span>
+                      {taxableVal && (
+                        <span className="font-semibold whitespace-nowrap">
+                          Txbl: {fmt(Number(taxableVal))}
+                        </span>
+                      )}
                     </div>
-                  );
-                })()}
-              </td>
-              <td className="py-0.5 pr-1 leading-tight text-gray-700">
-                {d.narration || voucher.description}
-              </td>
-              <td className="py-0.5 pr-1 text-right tabular-nums">
-              </td>
-              <td className="py-0.5 text-right tabular-nums font-semibold">
-                {fmt(Number(d.credit))}
-              </td>
-            </tr>
-          ))}
+                  )}
+                </td>
+                <td className="py-px pr-1 leading-tight text-gray-700">
+                  {d.narration || voucher.description}
+                </td>
+                <td className="py-px pr-1 text-right tabular-nums text-gray-600">
+                  {taxableVal ? fmt(Number(taxableVal)) : ""}
+                </td>
+                <td className="py-px pr-1 text-right tabular-nums">
+                </td>
+                <td className="py-px text-right tabular-nums font-semibold">
+                  {fmt(Number(d.credit))}
+                </td>
+              </tr>
+            );
+          })}
 
           {/* Fallback credit row */}
           {creditRows.length === 0 && voucher.creditAccountName && (
             <tr className="border-b border-gray-200 align-top">
-              <td className="py-0.5 pr-1 overflow-hidden text-ellipsis">
-                <div className="flex gap-1.5 sm:gap-3">
-                  <span className="w-14 sm:w-20 shrink-0 font-bold">{voucher.creditAccountCode}</span>
+              <td className="py-px pr-1 overflow-hidden text-ellipsis">
+                <div className="flex gap-1 sm:gap-2">
+                  <span className="w-12 sm:w-16 shrink-0 font-bold">{voucher.creditAccountCode}</span>
                   <span className="uppercase font-bold">{voucher.creditAccountName}</span>
                 </div>
-                {/* Ref# */}
                 {(() => {
                   const r1 = voucher.refBillNo;
                   const r2 = (voucher as any).refBillNo2;
                   const tType = voucher.taxType;
                   if (!r1 && !r2 && !tType) return null;
                   return (
-                    <div className="flex gap-1.5 sm:gap-3 mt-0.5 text-[9px] text-gray-700">
-                      <span className="w-14 sm:w-20 shrink-0 font-bold whitespace-nowrap">
+                    <div className="flex gap-1 sm:gap-2 mt-px text-[8px] text-gray-600">
+                      <span className="w-12 sm:w-16 shrink-0 font-bold whitespace-nowrap">
                         Ref# {tType ? tType : ""}
                       </span>
                       <span className="uppercase">
@@ -229,12 +249,13 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
                   );
                 })()}
               </td>
-              <td className="py-0.5 pr-1 leading-tight text-gray-700">
+              <td className="py-px pr-1 leading-tight text-gray-700">
                 {voucher.description}
               </td>
-              <td className="py-0.5 pr-1 text-right tabular-nums">
+              <td className="py-px pr-1 text-right tabular-nums text-gray-600"></td>
+              <td className="py-px pr-1 text-right tabular-nums">
               </td>
-              <td className="py-0.5 text-right tabular-nums font-semibold">
+              <td className="py-px text-right tabular-nums font-semibold">
                 {fmt(totalCredit)}
               </td>
             </tr>
@@ -245,48 +266,50 @@ export function PaymentVoucherPrint({ voucher }: { voucher: PaymentVoucher }) {
       {/* Totals row — outside table so it only appears once at the very end */}
       <div className="w-full border-t-2 border-black mt-0">
         <div className="flex items-start">
-          <div className="flex-1 py-1 pr-2">
-            <div className="flex gap-2 font-bold text-[10px] sm:text-[11px]">
+          <div className="flex-1 py-0.5 pr-2">
+            <div className="flex gap-1.5 font-bold text-[9px] sm:text-[10px]">
               <span className="whitespace-nowrap">In Words</span>
               <span className="underline decoration-1 underline-offset-2 break-words">{numberToWords(totalDebit)}</span>
             </div>
           </div>
+          {/* Taxable total spacer */}
+          <div className="w-[10%]" />
           {/* Debit total */}
-          <div className="w-[15%] py-0.5 pr-1 text-right">
-            <div className="border-t border-black pb-0.5" style={{ borderBottom: '3px double black' }}>
-              <span className="tabular-nums text-[10px] sm:text-[11px] block pt-0.5 font-bold">{fmt(totalDebit)}</span>
+          <div className="w-[12%] py-px pr-1 text-right">
+            <div className="border-t border-black pb-px" style={{ borderBottom: '3px double black' }}>
+              <span className="tabular-nums text-[9px] sm:text-[10px] block pt-px font-bold">{fmt(totalDebit)}</span>
             </div>
           </div>
           {/* Credit total */}
-          <div className="w-[15%] py-0.5 text-right">
-            <div className="border-t border-black pb-0.5" style={{ borderBottom: '3px double black' }}>
-              <span className="tabular-nums text-[10px] sm:text-[11px] block pt-0.5 font-bold">{fmt(totalCredit)}</span>
+          <div className="w-[12%] py-px text-right">
+            <div className="border-t border-black pb-px" style={{ borderBottom: '3px double black' }}>
+              <span className="tabular-nums text-[9px] sm:text-[10px] block pt-px font-bold">{fmt(totalCredit)}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Remarks */}
-      <div className="mt-1.5 mb-2">
-        <div className="font-bold text-[11px] sm:text-[12px]">Remarks</div>
-        <p className="text-[10px] mt-0.5 text-gray-700">{voucher.description}</p>
+      <div className="mt-1 mb-1.5">
+        <div className="font-bold text-[10px] sm:text-[11px]">Remarks</div>
+        <p className="text-[9px] mt-px text-gray-700">{voucher.description}</p>
       </div>
 
       {/* Signatures */}
       <div className="grid grid-cols-5 gap-2">
-        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">PREPARED BY</span>
         </div>
-        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">CHECKED BY</span>
         </div>
-        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">APPROVED BY</span>
         </div>
-        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">CHIEF EXECUTIVE</span>
         </div>
-        <div className="border border-black h-16 p-1 flex flex-col justify-start items-center">
+        <div className="border border-black h-14 p-1 flex flex-col justify-start items-center">
           <span className="text-[9px] font-bold text-center">RECEIVED BY</span>
         </div>
       </div>
