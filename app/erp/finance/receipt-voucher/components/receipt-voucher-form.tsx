@@ -221,6 +221,10 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const [rowSearchQuery, setRowSearchQuery] = useState("");
     const [sortField, setSortField] = useState<"debit" | "credit" | null>(null);
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+    const [colFilterAccount, setColFilterAccount] = useState("");
+    const [colFilterNarration, setColFilterNarration] = useState("");
+    const [colFilterDebit, setColFilterDebit] = useState("");
+    const [colFilterCredit, setColFilterCredit] = useState("");
 
     const handleSort = (field: "debit" | "credit") => {
         if (sortField === field) {
@@ -617,7 +621,6 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             const matchesAccount = !filterAccountId || detail.accountId === filterAccountId;
             const matchesSubAccount = !filterSubAccountId || detail.tagAccountId === filterSubAccountId;
             if (!matchesAccount || !matchesSubAccount) return false;
-            if (!query) return true;
 
             const accountNode = findInTree(tree, detail.accountId);
             const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
@@ -628,6 +631,21 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             const refText1 = (detail.refBillNo || "").toLowerCase();
             const refText2 = (detail.refBillNo2 || "").toLowerCase();
 
+            // Column filters
+            if (colFilterAccount && !accountText.includes(colFilterAccount.toLowerCase()) && !tagText.includes(colFilterAccount.toLowerCase())) {
+                return false;
+            }
+            if (colFilterNarration && !narrationText.includes(colFilterNarration.toLowerCase()) && !refText1.includes(colFilterNarration.toLowerCase()) && !refText2.includes(colFilterNarration.toLowerCase())) {
+                return false;
+            }
+            if (colFilterDebit && !(Number(detail.debit) > 0 && String(detail.debit).includes(colFilterDebit))) {
+                return false;
+            }
+            if (colFilterCredit && !(Number(detail.credit) > 0 && String(detail.credit).includes(colFilterCredit))) {
+                return false;
+            }
+
+            if (!query) return true;
             return accountText.includes(query) ||
                    tagText.includes(query) ||
                    narrationText.includes(query) ||
@@ -644,7 +662,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
         }
 
         return filtered;
-    }, [watchDetails, filterAccountId, filterSubAccountId, rowSearchQuery, tree, sortField, sortOrder]);
+    }, [watchDetails, filterAccountId, filterSubAccountId, rowSearchQuery, tree, sortField, sortOrder, colFilterAccount, colFilterNarration, colFilterDebit, colFilterCredit]);
 
     const displayedTotalDebit = useMemo(() => {
         return visibleDetails.reduce((sum, d) => sum + (Number(d.debit) || 0), 0);
@@ -1431,7 +1449,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                     </div>
                                 </div>
 
-                                {(filterAccountId || filterSubAccountId || rowSearchQuery) && (
+                                {(filterAccountId || filterSubAccountId || rowSearchQuery || colFilterAccount || colFilterNarration || colFilterDebit || colFilterCredit) && (
                                     <Button
                                         type="button"
                                         variant="ghost"
@@ -1440,6 +1458,10 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                             setFilterAccountId("");
                                             setFilterSubAccountId("");
                                             setRowSearchQuery("");
+                                            setColFilterAccount("");
+                                            setColFilterNarration("");
+                                            setColFilterDebit("");
+                                            setColFilterCredit("");
                                         }}
                                         className="text-xs text-destructive hover:bg-destructive/10 h-9 px-3"
                                     >
@@ -1484,6 +1506,42 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                             </div>
                                         </th>
                                         <th className="px-4 py-3 text-center w-28 bg-muted/95 backdrop-blur-sm">Actions</th>
+                                    </tr>
+                                    <tr className="bg-muted/40 border-t border-border/60">
+                                        <th className="px-2 py-1 bg-muted/95 backdrop-blur-sm"></th>
+                                        <th className="px-2 py-1 bg-muted/95 backdrop-blur-sm">
+                                            <Input
+                                                placeholder="Filter account..."
+                                                value={colFilterAccount}
+                                                onChange={(e) => setColFilterAccount(e.target.value)}
+                                                className="h-7 text-xs bg-background border-muted-foreground/25 font-normal normal-case"
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1 bg-muted/95 backdrop-blur-sm">
+                                            <Input
+                                                placeholder="Filter narration/ref..."
+                                                value={colFilterNarration}
+                                                onChange={(e) => setColFilterNarration(e.target.value)}
+                                                className="h-7 text-xs bg-background border-muted-foreground/25 font-normal normal-case"
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1 bg-muted/95 backdrop-blur-sm">
+                                            <Input
+                                                placeholder="Filter debit..."
+                                                value={colFilterDebit}
+                                                onChange={(e) => setColFilterDebit(e.target.value)}
+                                                className="h-7 text-xs text-right bg-background border-muted-foreground/25 font-normal normal-case"
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1 bg-muted/95 backdrop-blur-sm">
+                                            <Input
+                                                placeholder="Filter credit..."
+                                                value={colFilterCredit}
+                                                onChange={(e) => setColFilterCredit(e.target.value)}
+                                                className="h-7 text-xs text-right bg-background border-muted-foreground/25 font-normal normal-case"
+                                            />
+                                        </th>
+                                        <th className="px-2 py-1 bg-muted/95 backdrop-blur-sm"></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">

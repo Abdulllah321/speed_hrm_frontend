@@ -102,6 +102,19 @@ export default function JournalVoucherDetailPage({
     }
   };
 
+  const sortedDetails = useMemo(() => {
+    if (!voucher) return [];
+    const list = [...voucher.details];
+    if (sortField) {
+      list.sort((a, b) => {
+        const valA = Number(a[sortField]) || 0;
+        const valB = Number(b[sortField]) || 0;
+        return sortOrder === "asc" ? valA - valB : valB - valA;
+      });
+    }
+    return list;
+  }, [voucher, sortField, sortOrder]);
+
   // ── Loading ──
   if (loading) {
     return (
@@ -136,19 +149,6 @@ export default function JournalVoucherDetailPage({
   const totalCredit = creditRows.reduce((s, c) => s + (Number(c.credit) || 0), 0);
   const statusCfg = STATUS_CONFIG[voucher.status] ?? STATUS_CONFIG.pending;
   const StatusIcon = statusCfg.icon;
-
-  const sortedDetails = useMemo(() => {
-    if (!voucher) return [];
-    const list = [...voucher.details];
-    if (sortField) {
-      list.sort((a, b) => {
-        const valA = Number(a[sortField]) || 0;
-        const valB = Number(b[sortField]) || 0;
-        return sortOrder === "asc" ? valA - valB : valB - valA;
-      });
-    }
-    return list;
-  }, [voucher, sortField, sortOrder]);
 
   return (
     <>

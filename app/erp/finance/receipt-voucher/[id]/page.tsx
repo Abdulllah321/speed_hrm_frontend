@@ -104,6 +104,19 @@ export default function ReceiptVoucherDetailPage({
     });
   }, [id]);
 
+  const sortedDetails = useMemo(() => {
+    if (!voucher) return [];
+    const list = [...voucher.details];
+    if (sortField) {
+      list.sort((a, b) => {
+        const valA = Number(a[sortField]) || 0;
+        const valB = Number(b[sortField]) || 0;
+        return sortOrder === "asc" ? valA - valB : valB - valA;
+      });
+    }
+    return list;
+  }, [voucher, sortField, sortOrder]);
+
   // ── Loading ──
   if (loading) {
     return (
@@ -139,19 +152,6 @@ export default function ReceiptVoucherDetailPage({
   const totalCredit = creditRows.reduce((s, d) => s + (Number(d.credit) || 0), 0) || totalDebit;
   const statusCfg = STATUS_CONFIG[voucher.status] ?? STATUS_CONFIG.pending;
   const StatusIcon = statusCfg.icon;
-
-  const sortedDetails = useMemo(() => {
-    if (!voucher) return [];
-    const list = [...voucher.details];
-    if (sortField) {
-      list.sort((a, b) => {
-        const valA = Number(a[sortField]) || 0;
-        const valB = Number(b[sortField]) || 0;
-        return sortOrder === "asc" ? valA - valB : valB - valA;
-      });
-    }
-    return list;
-  }, [voucher, sortField, sortOrder]);
 
   return (
     <>
