@@ -740,24 +740,33 @@ export const menuData: MenuItem[] = [
       },
       {
         title: "Reports",
+        permissions: ["erp.finance.general-ledger.read", "erp.finance.trial-balance.read", "erp.finance.balance-sheet.read", "erp.finance.profit-loss.read", "erp.finance.general-ledger-summary.read"],
         children: [
           {
             title: "General Ledger",
             href: "/erp/finance/reports/general-ledger",
+            permissions: ["erp.finance.general-ledger.read"]
           },
           {
             title: "General Ledger Summary",
             href: "/erp/finance/reports/general-ledger-summary",
+            permissions: ["erp.finance.general-ledger-summary.read"],
           },
           {
             title: "Trial Balance",
             href: "/erp/finance/reports/trial-balance",
+            permissions: ["erp.finance.trial-balance.read"]
           },
           {
             title: "Balance Sheet",
             href: "/erp/finance/reports/balance-sheet",
+            permissions: ["erp.finance.balance-sheet.read"]
           },
-          { title: "Profit & Loss", href: "/erp/finance/reports/profit-loss" },
+          { 
+            title: "Profit & Loss", 
+            href: "/erp/finance/reports/profit-loss",
+            permissions: ["erp.finance.profit-loss.read"]
+          },
         ],
       },
     ],

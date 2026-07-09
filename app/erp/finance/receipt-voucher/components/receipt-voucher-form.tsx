@@ -13,7 +13,7 @@ import { Autocomplete } from "@/components/ui/autocomplete";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Loader2, CreditCard, Wallet, Copy, Upload, Pencil } from "lucide-react";
+import { Plus, Trash2, Loader2, CreditCard, Wallet, Copy, Upload, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { VoucherImportModal } from "@/components/finance/voucher-import-modal";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -218,6 +218,22 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [filterAccountId, setFilterAccountId] = useState<string>("");
     const [filterSubAccountId, setFilterSubAccountId] = useState<string>("");
+    const [rowSearchQuery, setRowSearchQuery] = useState("");
+    const [sortField, setSortField] = useState<"debit" | "credit" | null>(null);
+    const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+    const handleSort = (field: "debit" | "credit") => {
+        if (sortField === field) {
+            if (sortOrder === "asc") {
+                setSortOrder("desc");
+            } else {
+                setSortField(null);
+            }
+        } else {
+            setSortField(field);
+            setSortOrder("asc");
+        }
+    };
 
     // Clear sub-account filter if parent account filter changes
     useEffect(() => {
@@ -239,23 +255,22 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     }, [selectedAccountIds, tree]);
 
     const filterSubAccountOptions = useMemo(() => {
-        if (!filterAccountId || tree.length === 0) return [];
-        const node = findInTree(tree, filterAccountId);
-        const children = node?.children ?? [];
+        if (tree.length === 0) return [];
         
-        const usedSubAccountIds = new Set(
+        const usedSubAccountIds = Array.from(new Set(
             watchDetails
-                .filter((d: any) => d.accountId === filterAccountId)
+                .filter((d: any) => !filterAccountId || d.accountId === filterAccountId)
                 .map((d: any) => d.tagAccountId as string)
                 .filter(Boolean)
-        );
+        ));
 
-        return children
-            .filter(child => usedSubAccountIds.has(child.id))
-            .map(child => ({
-                value: child.id,
-                label: `${child.code} - ${child.name}`
-            }));
+        return usedSubAccountIds.map(id => {
+            const node = findInTree(tree, id);
+            return {
+                value: id,
+                label: node ? `${node.code} - ${node.name}` : id
+            };
+        });
     }, [filterAccountId, watchDetails, tree]);
 
     // Derive child sub-accounts for active line entry
@@ -301,10 +316,32 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
         toast.success("Copied details from last row.");
     };
 
+    const handleCopyLastTagAccount = () => {
+        const details = form.getValues("details") || [];
+        const lastRowWithTag = [...details].reverse().find(d => d.tagAccountId);
+        if (!lastRowWithTag) {
+            toast.error("No previous rows with a Tag Sub-account found.");
+            return;
+        }
+        setEntryLine(prev => ({
+            ...prev,
+            tagAccountId: lastRowWithTag.tagAccountId,
+        }));
+        toast.success("Copied Tag Sub-account.");
+    };
+
     // Add or Update Line
     const handleAddOrUpdateLine = () => {
         if (!entryLine.accountId) {
             toast.error("Please select an Account Head.");
+            return;
+        }
+
+        // Validate that Tag Sub-account is selected if the account head has children
+        const nodes = getSharedTree().length > 0 ? getSharedTree() : tree;
+        const node = findInTree(nodes, entryLine.accountId);
+        if (node && (node.children?.length ?? 0) > 0 && !entryLine.tagAccountId) {
+            toast.error("Tag Sub-account is required for this account head.");
             return;
         }
 
@@ -325,6 +362,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             ...entryLine,
             debit: debitVal,
             credit: creditVal,
+            narration: entryLine.narration ? entryLine.narration.toUpperCase() : "",
         };
 
         if (editingIndex !== null) {
@@ -343,8 +381,8 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
             debit: 0,
             credit: 0,
             narration: prev.narration,
-            refBillNo: "",
-            refBillNo2: "",
+            refBillNo: prev.refBillNo,
+            refBillNo2: prev.refBillNo2,
             taxType: "",
         }));
 
@@ -382,12 +420,16 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
         document.getElementById(`entry-taxType-${activeOpt}`)?.focus();
     };
 
-    // Global listener for F4 key
+    // Global listener for F4 and Alt+C keys
     useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
             if (e.key === "F4") {
                 e.preventDefault();
                 handleCopyPrevious();
+            }
+            if (e.altKey && (e.key === "c" || e.key === "C")) {
+                e.preventDefault();
+                handleCopyLastTagAccount();
             }
         };
         window.addEventListener("keydown", handleGlobalKeyDown);
@@ -516,6 +558,9 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
     };
 
     const totalInvoiceReceipts = selectedInvoices.reduce((s, i) => s + (i.receivingNow || 0), 0);
+    const totalSelectedInvoicesAmount = selectedInvoices.reduce((s, i) => s + (i.grandTotal || 0), 0);
+    const totalSelectedInvoicesPaid = selectedInvoices.reduce((s, i) => s + (i.paidAmount || 0), 0);
+    const totalSelectedInvoicesBalance = selectedInvoices.reduce((s, i) => s + (i.balanceAmount || 0), 0);
 
     const duplicateRowToOpposite = (fromIndex: number) => {
         const fromRow = form.getValues(`details.${fromIndex}`);
@@ -553,117 +598,53 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
         }
     };
 
-    // Watch for changes in detail rows to auto-balance and calculate taxes
-    const watchDetailsString = watchDetails.map((d: any) => `${d.credit}-${d.accountId}-${d.tagAccountId}-${d.taxType}`).join(",");
-    useEffect(() => {
-        // Calculate total taxable amount (based on credits for RV where taxType is taxable)
-        const taxableAmount = watchDetails.reduce((sum: number, detail: any) => {
-            const isTaxableType = detail.taxType === "Taxable" || detail.taxType === "BTL" || detail.taxType === "REIMB";
-            return sum + (isTaxableType ? Math.round(Number(detail.credit) || 0) : 0);
-        }, 0);
 
-        let totalTaxAmount = 0;
-
-        const prevTaxableAmount = prevTaxableAmountRef.current;
-        const prevDetails = prevDetailsRef.current;
-        const taxableAmountChanged = taxableAmount !== prevTaxableAmount;
-
-        // Auto-calculate taxes for any recognized tax rows
-        if (tree.length > 0) {
-            watchDetails.forEach((detail: any, index: number) => {
-                const prev = prevDetails[index] || { accountId: "", tagAccountId: "" };
-                const triggerChanged = 
-                    detail.accountId !== prev.accountId || 
-                    detail.tagAccountId !== prev.tagAccountId ||
-                    taxableAmountChanged;
-
-                if (detail.accountId && detail.tagAccountId) {
-                    const accountNode = findInTree(tree, detail.accountId);
-                    const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
-
-                    if (accountNode?.code && tagNode?.code) {
-                        const isTaxAccount = calculateTaxForAccount(accountNode.code, tagNode.code, 100) !== null;
-                        if (isTaxAccount) {
-                            if (taxableAmount > 0) {
-                                const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, taxableAmount);
-                                if (calculatedTax !== null) {
-                                    const roundedTax = Math.round(calculatedTax);
-                                    if (triggerChanged) {
-                                        form.setValue(`details.${index}.debit`, roundedTax, { shouldValidate: true });
-                                        form.setValue(`details.${index}.credit`, 0, { shouldValidate: true });
-                                        totalTaxAmount += roundedTax;
-                                    } else {
-                                        // Use user's manual entry (subtracting any credit to get net debit impact)
-                                        totalTaxAmount += Math.round(Number(detail.debit) || 0) - Math.round(Number(detail.credit) || 0);
-                                    }
-                                }
-                            } else {
-                                const hasManualValue = (Number(detail.debit) || 0) > 0 || (Number(detail.credit) || 0) > 0;
-                                if (triggerChanged && !hasManualValue) {
-                                    form.setValue(`details.${index}.debit`, 0, { shouldValidate: true });
-                                } else {
-                                    totalTaxAmount += Math.round(Number(detail.debit) || 0) - Math.round(Number(detail.credit) || 0);
-                                }
-                            }
-                        }
-                    }
-                }
-
-            });
-        }
-
-        // ALWAYS sync the ref to current watchDetails, whether tree is loaded or not!
-        watchDetails.forEach((detail: any, index: number) => {
-            prevDetails[index] = {
-                accountId: detail.accountId || "",
-                tagAccountId: detail.tagAccountId || "",
-            };
-        });
-
-        // Clean up extra rows in the ref if any were deleted
-        if (prevDetailsRef.current.length > watchDetails.length) {
-            prevDetailsRef.current = prevDetailsRef.current.slice(0, watchDetails.length);
-        }
-        // Update the global taxable amount ref
-        prevTaxableAmountRef.current = taxableAmount;
-
-        // Find the first row with credit amount (customer row)
-        const customerRowIndex = watchDetails.findIndex((detail: any) => Math.round(Number(detail.credit) || 0) > 0);
-        
-        // Find the second row with account selected but no credit and no tag (bank/company row)
-        const bankRowIndex = watchDetails.findIndex((detail: any, index: number) => 
-            index !== customerRowIndex && 
-            detail.accountId && 
-            Math.round(Number(detail.credit) || 0) === 0 &&
-            !detail.tagAccountId
-        );
-        
-        // Auto-fill debit
-        if (customerRowIndex >= 0 && bankRowIndex >= 1) {
-            const customerCreditAmount = Math.round(Number(watchDetails[customerRowIndex].credit) || 0);
-            const currentBankDebit = Math.round(Number(watchDetails[bankRowIndex].debit) || 0);
-            
-            const expectedBankDebit = Math.round(Math.max(0, customerCreditAmount - totalTaxAmount));
-            
-            if (customerCreditAmount > 0 && currentBankDebit !== expectedBankDebit) {
-                // Auto-fill the debit amount in the bank row
-                form.setValue(`details.${bankRowIndex}.debit`, expectedBankDebit, { shouldValidate: true });
-                form.setValue(`details.${bankRowIndex}.credit`, 0, { shouldValidate: true });
-            }
-        }
-    }, [watchDetailsString, tree, form]);
 
     const totalDebit = watchDetails.reduce((sum: number, detail: any) => sum + (Number(detail.debit) || 0), 0);
     const totalCredit = watchDetails.reduce((sum: number, detail: any) => sum + (Number(detail.credit) || 0), 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
 
     const visibleDetails = useMemo(() => {
-        return watchDetails.filter((detail: any) => {
-            const shouldHide = (filterAccountId && detail.accountId !== filterAccountId) ||
-                               (filterSubAccountId && detail.tagAccountId !== filterSubAccountId);
-            return !shouldHide;
+        const query = rowSearchQuery.trim().toLowerCase();
+        
+        // Map details with originalIndex
+        const detailsWithIndex = watchDetails.map((d: any, originalIndex: number) => ({
+            ...d,
+            originalIndex
+        }));
+
+        const filtered = detailsWithIndex.filter((detail: any) => {
+            const matchesAccount = !filterAccountId || detail.accountId === filterAccountId;
+            const matchesSubAccount = !filterSubAccountId || detail.tagAccountId === filterSubAccountId;
+            if (!matchesAccount || !matchesSubAccount) return false;
+            if (!query) return true;
+
+            const accountNode = findInTree(tree, detail.accountId);
+            const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
+
+            const accountText = accountNode ? `${accountNode.code} ${accountNode.name}`.toLowerCase() : "";
+            const tagText = tagNode ? `${tagNode.code} ${tagNode.name}`.toLowerCase() : "";
+            const narrationText = (detail.narration || "").toLowerCase();
+            const refText1 = (detail.refBillNo || "").toLowerCase();
+            const refText2 = (detail.refBillNo2 || "").toLowerCase();
+
+            return accountText.includes(query) ||
+                   tagText.includes(query) ||
+                   narrationText.includes(query) ||
+                   refText1.includes(query) ||
+                   refText2.includes(query);
         });
-    }, [watchDetails, filterAccountId, filterSubAccountId]);
+
+        if (sortField) {
+            filtered.sort((a: any, b: any) => {
+                const valA = Number(a[sortField]) || 0;
+                const valB = Number(b[sortField]) || 0;
+                return sortOrder === "asc" ? valA - valB : valB - valA;
+            });
+        }
+
+        return filtered;
+    }, [watchDetails, filterAccountId, filterSubAccountId, rowSearchQuery, tree, sortField, sortOrder]);
 
     const displayedTotalDebit = useMemo(() => {
         return visibleDetails.reduce((sum, d) => sum + (Number(d.debit) || 0), 0);
@@ -806,6 +787,17 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
 
     const onSubmit: SubmitHandler<ReceiptVoucherFormValues> = async (values) => {
         try {
+            // Validate all detail lines have a Tag Sub-account if the account has children
+            const nodes = getSharedTree().length > 0 ? getSharedTree() : tree;
+            for (let i = 0; i < values.details.length; i++) {
+                const detail = values.details[i];
+                const node = findInTree(nodes, detail.accountId);
+                if (node && (node.children?.length ?? 0) > 0 && !detail.tagAccountId) {
+                    toast.error(`Line #${i + 1}: Tag Sub-account is required for account "${node.name}".`);
+                    return;
+                }
+            }
+
             setIsPending(true);
             
             console.log('Form submission started');
@@ -831,7 +823,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                         tagAccountId: detail.tagAccountId || undefined,
                         debit: Math.round(Number(detail.debit) || 0),
                         credit: Math.round(Number(detail.credit) || 0),
-                        narration: detail.narration || undefined,
+                        narration: detail.narration ? detail.narration.toUpperCase() : undefined,
                         refBillNo: detail.refBillNo || undefined,
                         refBillNo2: detail.refBillNo2 || undefined,
                         taxType: detail.taxType ?? "Taxable",
@@ -1084,8 +1076,17 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                             {selectedInvoices.length > 0 && (
                                                 <tfoot className="border-t border-border bg-muted/50 font-semibold text-sm">
                                                     <tr>
-                                                        <td colSpan={5} className="px-3 py-2 text-right text-muted-foreground">Total invoice receipts:</td>
-                                                        <td className={`px-3 py-2 text-right tabular-nums font-mono ${totalInvoiceReceipts > totalDebit + 0.01 ? "text-red-500" : "text-green-600"}`}>
+                                                        <td colSpan={2} className="px-3 py-2 text-right text-muted-foreground">Totals:</td>
+                                                        <td className="px-3 py-2 text-right tabular-nums font-mono">
+                                                            {totalSelectedInvoicesAmount.toLocaleString()}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-right tabular-nums font-mono text-muted-foreground">
+                                                            {totalSelectedInvoicesPaid.toLocaleString()}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-right tabular-nums font-mono text-red-500">
+                                                            {totalSelectedInvoicesBalance.toLocaleString()}
+                                                        </td>
+                                                        <td className={`px-3 py-2 text-right tabular-nums font-mono ${totalInvoiceReceipts > displayedTotalDebit + 0.01 ? "text-red-500" : "text-green-600"}`}>
                                                             {totalInvoiceReceipts.toLocaleString()}
                                                         </td>
                                                         <td />
@@ -1095,9 +1096,9 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                         </table>
                                     </div>
                                 )}
-                                {totalInvoiceReceipts > totalDebit + 0.01 && (
+                                {totalInvoiceReceipts > displayedTotalDebit + 0.01 && (
                                     <p className="text-xs text-red-500 font-medium">
-                                        ⚠ Invoice receipts ({totalInvoiceReceipts.toLocaleString()}) exceed voucher debit ({totalDebit.toLocaleString()}).
+                                        ⚠ Invoice receipts ({totalInvoiceReceipts.toLocaleString()}) exceed voucher debit ({displayedTotalDebit.toLocaleString()}).
                                     </p>
                                 )}
                             </div>
@@ -1276,7 +1277,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                         id="entry-narration"
                                         placeholder="Narration for this line..."
                                         value={entryLine.narration}
-                                        onChange={(e) => setEntryLine(prev => ({ ...prev, narration: e.target.value }))}
+                                        onChange={(e) => setEntryLine(prev => ({ ...prev, narration: e.target.value.toUpperCase() }))}
                                         onKeyDown={(e) => handleEntryKeyDown(e, "narration")}
                                         disabled={isPending}
                                         className="h-9 border-input bg-background"
@@ -1402,7 +1403,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                     </div>
                                 </div>
 
-                                {filterAccountId && filterSubAccountOptions.length > 0 && (
+                                {filterSubAccountOptions.length > 0 && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Sub-account:</span>
                                         <div className="w-[280px]">
@@ -1417,7 +1418,20 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                     </div>
                                 )}
 
-                                {(filterAccountId || filterSubAccountId) && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Search Rows:</span>
+                                    <div className="w-[220px]">
+                                        <Input
+                                            type="text"
+                                            placeholder="Search narration, ref, etc..."
+                                            value={rowSearchQuery}
+                                            onChange={(e) => setRowSearchQuery(e.target.value)}
+                                            className="h-9 bg-background border-input text-xs"
+                                        />
+                                    </div>
+                                </div>
+
+                                {(filterAccountId || filterSubAccountId || rowSearchQuery) && (
                                     <Button
                                         type="button"
                                         variant="ghost"
@@ -1425,6 +1439,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                         onClick={() => {
                                             setFilterAccountId("");
                                             setFilterSubAccountId("");
+                                            setRowSearchQuery("");
                                         }}
                                         className="text-xs text-destructive hover:bg-destructive/10 h-9 px-3"
                                     >
@@ -1435,16 +1450,40 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                         )}
 
                         {/* ── Transaction Lines List (Bottom Form) ── */}
-                        <div className="border rounded-xl overflow-hidden border-border bg-card">
-                            <table className="w-full text-sm">
-                                <thead className="bg-muted/60 text-muted-foreground border-b text-xs font-bold uppercase tracking-wider">
+                        <div className="border rounded-xl overflow-auto border-border bg-card max-h-[450px]">
+                            <table className="w-full text-sm border-collapse">
+                                <thead className="bg-muted text-muted-foreground border-b text-xs font-bold uppercase tracking-wider sticky top-0 z-10">
                                     <tr>
-                                        <th className="px-4 py-3 text-left w-12">#</th>
-                                        <th className="px-4 py-3 text-left">Account Head & Tag</th>
-                                        <th className="px-4 py-3 text-left">Narration & References</th>
-                                        <th className="px-4 py-3 text-right w-[150px]">Debit</th>
-                                        <th className="px-4 py-3 text-right w-[150px]">Credit</th>
-                                        <th className="px-4 py-3 text-center w-28">Actions</th>
+                                        <th className="px-4 py-3 text-left w-12 bg-muted/95 backdrop-blur-sm">#</th>
+                                        <th className="px-4 py-3 text-left bg-muted/95 backdrop-blur-sm">Account Head & Tag</th>
+                                        <th className="px-4 py-3 text-left bg-muted/95 backdrop-blur-sm">Narration & References</th>
+                                        <th 
+                                            className="px-4 py-3 text-right w-[150px] cursor-pointer hover:bg-muted select-none bg-muted/95 backdrop-blur-sm"
+                                            onClick={() => handleSort("debit")}
+                                        >
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span>Debit</span>
+                                                {sortField === "debit" ? (
+                                                    sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                                                ) : (
+                                                    <ArrowUpDown className="h-3 w-3 text-muted-foreground/30" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th 
+                                            className="px-4 py-3 text-right w-[150px] cursor-pointer hover:bg-muted select-none bg-muted/95 backdrop-blur-sm"
+                                            onClick={() => handleSort("credit")}
+                                        >
+                                            <div className="flex items-center justify-end gap-1">
+                                                <span>Credit</span>
+                                                {sortField === "credit" ? (
+                                                    sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                                                ) : (
+                                                    <ArrowUpDown className="h-3 w-3 text-muted-foreground/30" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="px-4 py-3 text-center w-28 bg-muted/95 backdrop-blur-sm">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border">
@@ -1455,21 +1494,16 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                             </td>
                                         </tr>
                                     ) : (
-                                        watchDetails.map((field, index) => {
-                                            const detail = watchDetails[index] || {};
-                                            const shouldHide = (filterAccountId && detail.accountId !== filterAccountId) ||
-                                                             (filterSubAccountId && detail.tagAccountId !== filterSubAccountId);
-                                            if (shouldHide) return null;
-
+                                        visibleDetails.map((field, index) => {
                                             const accountNode = findInTree(tree, field.accountId);
                                             const tagNode = accountNode?.children?.find(c => c.id === field.tagAccountId);
 
                                             return (
                                                 <tr
-                                                    key={index}
+                                                    key={field.originalIndex}
                                                     className={cn(
                                                         "hover:bg-muted/20 align-top transition-colors",
-                                                        editingIndex === index && "bg-blue-50/40 dark:bg-blue-950/15"
+                                                        editingIndex === field.originalIndex && "bg-blue-50/40 dark:bg-blue-950/15"
                                                     )}
                                                 >
                                                     <td className="px-4 py-3 font-medium text-muted-foreground">{index + 1}</td>
@@ -1526,7 +1560,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 onClick={() => {
-                                                                    setEditingIndex(index);
+                                                                    setEditingIndex(field.originalIndex);
                                                                     setEntryLine({
                                                                         accountId: field.accountId,
                                                                         tagAccountId: field.tagAccountId || "",
@@ -1551,7 +1585,7 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                                 type="button"
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                onClick={() => duplicateRowToOpposite(index)}
+                                                                onClick={() => duplicateRowToOpposite(field.originalIndex)}
                                                                 disabled={isPending}
                                                                 title="Duplicate row data and swap debit/credit"
                                                                 className="rounded-full hover:bg-blue-50 dark:hover:bg-blue-950/20 text-blue-600 h-8 w-8"
@@ -1563,8 +1597,8 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 onClick={() => {
-                                                                    remove(index);
-                                                                    if (editingIndex === index) {
+                                                                    remove(field.originalIndex);
+                                                                    if (editingIndex === field.originalIndex) {
                                                                         setEditingIndex(null);
                                                                         setEntryLine({
                                                                             accountId: "",
@@ -1591,16 +1625,16 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                                         })
                                     )}
                                 </tbody>
-                                <tfoot className="font-bold border-t border-border bg-muted/20 text-foreground">
+                                <tfoot className="font-bold border-t border-border bg-card text-foreground sticky bottom-0 z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
                                     <tr>
-                                        <td colSpan={3} className="px-4 py-4 text-right pr-8 text-muted-foreground text-xs uppercase tracking-wider">Totals:</td>
-                                        <td className="px-4 py-4 text-right text-base font-mono tabular-nums">
+                                        <td colSpan={3} className="px-4 py-4 text-right pr-8 text-muted-foreground text-xs uppercase tracking-wider bg-card">Totals:</td>
+                                        <td className="px-4 py-4 text-right text-base font-mono tabular-nums bg-card">
                                             {displayedTotalDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td className="px-4 py-4 text-right text-base font-mono tabular-nums">
+                                        <td className="px-4 py-4 text-right text-base font-mono tabular-nums bg-card">
                                             {displayedTotalCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td className="px-4 py-4 text-center">
+                                        <td className="px-4 py-4 text-center bg-card">
                                             {!isBalanced && totalDebit > 0 && (
                                                 <div
                                                     className="mx-auto w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"
