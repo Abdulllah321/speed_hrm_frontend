@@ -587,11 +587,11 @@ const handleDownloadPdf = async () => {
             )}
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 bg-muted/20 dark:bg-zinc-950/20 shadow-inner flex justify-center">
+          <div className="flex-1 overflow-auto px-4 py-4 bg-muted/20 dark:bg-zinc-950/20 shadow-inner flex justify-start md:justify-center">
             {isLoading ? (
               <ReceiptSkeleton />
             ) : (
-              <div className={layout === "thermal" ? "w-[320px] bg-white border shadow-md p-4 rounded-md h-fit" : "w-full max-w-[210mm] h-fit shadow-lg border rounded-sm overflow-hidden bg-white"}>
+              <div className={layout === "thermal" ? "w-[320px] bg-white border shadow-md p-4 rounded-md h-fit animate-in zoom-in-95 duration-150" : "w-[210mm] min-w-[210mm] h-fit shadow-lg border rounded-sm overflow-hidden bg-white animate-in zoom-in-95 duration-150"}>
                 {layout === "thermal" ? (
                   <ReceiptBody {...bodyProps} />
                 ) : (
