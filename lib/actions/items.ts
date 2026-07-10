@@ -37,6 +37,7 @@ function sanitizeItemData(data: any) {
     if (sanitized.case === "") sanitized.case = undefined;
     if (sanitized.band === "") sanitized.band = undefined;
     if (sanitized.movementType === "") sanitized.movementType = undefined;
+    if (sanitized.uniqueNo === "") sanitized.uniqueNo = undefined;
     if (sanitized.heelHeight === "") sanitized.heelHeight = undefined;
     if (sanitized.width === "") sanitized.width = undefined;
 

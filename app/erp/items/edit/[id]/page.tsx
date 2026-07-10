@@ -85,6 +85,7 @@ const itemFormSchema = z.object({
     case: z.string().nullable().optional(),
     band: z.string().nullable().optional(),
     movementType: z.string().nullable().optional(),
+    uniqueNo: z.string().nullable().optional(),
     heelHeight: z.string().nullable().optional(),
     width: z.string().nullable().optional(),
 });
@@ -168,6 +169,7 @@ export default function ItemEditPage() {
             case: "",
             band: "",
             movementType: "",
+            uniqueNo: "",
             heelHeight: "",
             width: "",
         },
@@ -262,6 +264,7 @@ export default function ItemEditPage() {
                         case: item.case || "",
                         band: item.band || "",
                         movementType: item.movementType || "",
+                        uniqueNo: item.uniqueNo || "",
                         heelHeight: item.heelHeight || "",
                         width: item.width || "",
                     });
@@ -325,7 +328,7 @@ export default function ItemEditPage() {
             case 2:
                 return ["unitPrice", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
             case 3:
-                return ["sizeId", "colorId", "silhouetteId", "case", "band", "movementType", "heelHeight", "width"];
+                return ["sizeId", "colorId", "silhouetteId", "case", "band", "movementType", "uniqueNo", "heelHeight", "width"];
             default:
                 return [];
         }
@@ -814,6 +817,17 @@ export default function ItemEditPage() {
                                             render={({ field }: { field: any }) => (
                                                 <FormItem>
                                                     <FormLabel>Movement Type</FormLabel>
+                                                    <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="uniqueNo"
+                                            render={({ field }: { field: any }) => (
+                                                <FormItem>
+                                                    <FormLabel>Unique No.</FormLabel>
                                                     <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>

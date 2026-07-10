@@ -103,6 +103,7 @@ const itemFormSchema = z.object({
     case: z.string().optional(),
     band: z.string().optional(),
     movementType: z.string().optional(),
+    uniqueNo: z.string().optional(),
     heelHeight: z.string().optional(),
     width: z.string().optional(),
 });
@@ -487,7 +488,7 @@ export default function ItemCreatePage() {
             case 2:
                 return ["unitPrice", "fob", "unitCost", "taxRate1", "taxRate2", "discountRate", "discountAmount", "discountStartDate", "discountEndDate"];
             case 3:
-                return ["sizeId", "colorId", "silhouetteId", "case", "band", "movementType", "heelHeight", "width"];
+                return ["sizeId", "colorId", "silhouetteId", "case", "band", "movementType", "uniqueNo", "heelHeight", "width"];
             default:
                 return [];
         }
@@ -1141,6 +1142,17 @@ export default function ItemCreatePage() {
                                                 render={({ field }: { field: any }) => (
                                                     <FormItem>
                                                         <FormLabel>Movement Type</FormLabel>
+                                                        <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="uniqueNo"
+                                                render={({ field }: { field: any }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Unique No.</FormLabel>
                                                         <FormControl><Input {...field} value={field.value ?? ""} /></FormControl>
                                                         <FormMessage />
                                                     </FormItem>
