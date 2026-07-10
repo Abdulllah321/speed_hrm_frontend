@@ -539,7 +539,7 @@ const handleDownloadPdf = async () => {
       <Dialog open onOpenChange={onClose}>
         <DialogContent className={cn(
           "h-[92vh] flex flex-col p-0 gap-0 transition-all duration-300",
-          layout === "thermal" ? "max-w-2xl w-full" : "max-w-5xl w-full"
+          layout === "thermal" ? "sm:max-w-2xl w-full" : "sm:max-w-5xl w-full"
         )}>
           <DialogHeader className="px-5 pt-4 pb-3 border-b shrink-0 flex flex-row items-center gap-4">
             <div className="flex items-center gap-2">
