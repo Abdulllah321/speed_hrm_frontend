@@ -1260,173 +1260,193 @@ function A4InvoiceBody({
   const customerPhone = order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
   const cnic = order?.customer?.cnic || order?.customerCnic || "";
 
-  const totalWostValue = items.reduce((sum, item) => {
-    const taxPct = item.taxPercent ?? 0;
-    const wostPerUnit = item.price / (1 + taxPct / 100);
-    return sum + wostPerUnit * item.quantity;
-  }, 0);
-
-  const calculateProportionalDiscount = (itemValue: number, totalValue: number, disc: number): number => {
-    if (totalValue === 0) return 0;
-    return Math.min(Math.round((disc * itemValue) / totalValue), itemValue);
+  const formatInvoiceDateTime = (dateStr?: string | null) => {
+    const d = dateStr ? new Date(dateStr) : new Date();
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${date} ${hours}:${minutes} ${ampm}`;
   };
 
   return (
-    <div className="font-sans text-[11px] text-black w-full max-w-[210mm] mx-auto p-8 bg-white">
-      {/* Masthead */}
-      <div className="text-center border-b-2 border-black pb-1 mb-1">
-        <h1 className="text-lg font-bold tracking-widest uppercase">{storeName}</h1>
-      </div>
-
-      {/* Header row */}
-      <div className="flex justify-between items-start border-b border-black pb-2 mb-3">
-        <div>
-          <h2 className="text-base font-bold tracking-[0.3em] uppercase">Sales Tax Invoice</h2>
-          {cashierName && <p className="text-xs mt-0.5">Sales By: {cashierName}</p>}
+    <div className="font-sans text-[11px] text-black w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] p-[15mm] bg-white flex flex-col justify-between">
+      {/* Top Section */}
+      <div>
+        {/* Masthead Header */}
+        <div className="text-center border-t-4 border-b border-black py-2 mb-2">
+          <h1 className="text-lg font-bold tracking-widest uppercase">
+            {storeName || "Point of Sales - Corporate"}
+          </h1>
+          <p className="text-[10px] text-zinc-700 mt-0.5">{storeAddress || "Corporate Office"}</p>
+          <p className="text-[10px] text-zinc-700">{storePhone || "021-35641339"}</p>
         </div>
 
-        <div className="text-right text-xs leading-tight">
-          {storeAddress && <p className="font-semibold">{storeAddress}</p>}
-          {storePhone && <p>{storePhone}</p>}
-          {hasFbrInfo && storeNTN && (
-            <p className="mt-1 font-bold">FBR POS ID {storeNTN}</p>
-          )}
-          <p className="mt-1">
-            STI No. <span className="font-bold">{order?.orderNumber ?? ""}</span>
-            {"   "}
-            {fmtDate(order?.createdAt)}
+        {/* Invoice Title & Meta details */}
+        <div className="flex justify-between items-start mb-4 text-xs">
+          <div>
+            <h2 className="text-base font-bold tracking-[0.2em] uppercase">Sales Tax Invoice</h2>
+            {cashierName && <p className="text-xs mt-0.5">Sales By: {cashierName}</p>}
+          </div>
+
+          <div className="text-right text-xs leading-tight">
+            {hasFbrInfo && storeNTN && <p className="font-bold">FBR POS ID {storeNTN}</p>}
+            <p className="mt-1">
+              STI No. <span className="font-bold">{order?.orderNumber ?? ""}</span>
+              {"   "}
+              <span className="ml-2 font-mono font-bold">{formatInvoiceDateTime(order?.createdAt)}</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Items table */}
+        <table className="w-full text-left text-[11px] border-collapse mb-2">
+          <thead>
+            <tr className="border-b border-t border-black text-[10px] font-bold uppercase">
+              <th className="py-2 px-1 w-[15%]">Code</th>
+              <th className="py-2 px-1 w-[38%]">Name</th>
+              {!isGiftReceipt && <th className="py-2 px-1 text-center w-[8%]">Size</th>}
+              <th className="py-2 px-1 text-center w-[7%]">Qty</th>
+              {!isGiftReceipt && (
+                <>
+                  <th className="py-2 px-1 text-right w-[10%]">Rate (Rs.)</th>
+                  <th className="py-2 px-1 text-right w-[11%]">Value (Rs.)</th>
+                  <th className="py-2 px-1 text-right w-[11%]">Total Value (Rs.)</th>
+                </>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((item: any, idx: number) => {
+              const taxPct = item.taxPercent ?? 0;
+              const retailPrice = item.price;
+              const wostPerUnit = retailPrice / (1 + taxPct / 100);
+              const totalWost = wostPerUnit * item.quantity;
+              const uniqueNo = item.sku || item.upc || "—";
+
+              return (
+                <tr key={item.id ?? idx} className="align-top">
+                  <td className="py-1.5 px-1 font-mono text-[10px]">{uniqueNo}</td>
+                  <td className="py-1.5 px-1">{item.name}</td>
+                  {!isGiftReceipt && <td className="py-1.5 px-1 text-center">{item.size || "—"}</td>}
+                  <td className="py-1.5 px-1 text-center">{item.quantity}</td>
+                  {!isGiftReceipt && (
+                    <>
+                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(retailPrice)}</td>
+                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(wostPerUnit)}</td>
+                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(totalWost)}</td>
+                    </>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <div className="border-t border-black mb-4" />
+
+        {/* Summary pricing block */}
+        {!isGiftReceipt ? (
+          <div className="flex justify-end mb-4">
+            <div className="w-[50%] max-w-[360px] text-xs space-y-1">
+              <Row label="SubTotal" value={fmtDec(subtotal)} />
+              {totalDiscount > 0 && (
+                <Row label={orderDiscountLabel} value={`(${fmtDec(totalDiscount)})`} negative />
+              )}
+              <Row label="Value Excluding Sales Tax" value={fmtDec(valueForSales)} />
+              {settings.receiptShowTax && <Row label="Sales Tax" value={fmtDec(totalTax)} />}
+              <Row label="Value Including Sales Tax" value={fmtDec(grandTotal)} />
+              {hasFbrInfo && fbrPosFee > 0 && (
+                <Row label="POS Services Fee Re." value={fmtDec(fbrPosFee)} />
+              )}
+              <div className="border-t border-black mt-1 pt-1">
+                <Row label="Net Total" value={`Rs. ${fmtDec(finalGrandTotal)}`} bold />
+              </div>
+              <div className="border-t border-dashed border-zinc-300 mt-2 pt-2 space-y-1">
+                {tenders.map((t, i) => (
+                  <Row
+                    key={i}
+                    label={t.method === "cash" ? "Cash" : t.method.replace(/_/g, " ")}
+                    value={fmtDec(t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount)}
+                  />
+                ))}
+                {changeAmount > 0 && <Row label="Change" value={fmtDec(changeAmount)} />}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-center py-4 text-xs text-gray-600 mb-4">
+            Price details omitted — Gift Receipt. Thank you for your purchase!
           </p>
-        </div>
+        )}
+
+        {creditVouchers && creditVouchers.length > 0 && (
+          <div className="border border-black rounded p-3 mb-4 text-[10px] max-w-sm">
+            <p className="font-bold uppercase mb-1">Credit Voucher Issued</p>
+            {creditVouchers.map((v, i) => (
+              <div key={i} className="flex justify-between font-mono py-0.5">
+                <span>{v.code}</span>
+                <span>Rs. {fmtDec(Number(v.faceValue))}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Items table */}
-      <table className="w-full text-left text-[11px] border-collapse mb-2">
-        <thead>
-          <tr className="border-b border-t border-black text-[10px] font-bold uppercase">
-            <th className="py-1.5 px-1 w-[14%]">Code</th>
-            <th className="py-1.5 px-1 w-[32%]">Name</th>
-            {!isGiftReceipt && <th className="py-1.5 px-1 w-[12%]">Size</th>}
-            <th className="py-1.5 px-1 text-center w-[8%]">Qty</th>
-            {!isGiftReceipt && (
-              <>
-                <th className="py-1.5 px-1 text-right w-[12%]">Rate (Rs.)</th>
-                <th className="py-1.5 px-1 text-right w-[12%]">Value (Rs.)</th>
-                <th className="py-1.5 px-1 text-right w-[12%]">Total Value (Rs.)</th>
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((item: any, idx: number) => {
-            const taxPct = item.taxPercent ?? 0;
-            const retailPrice = item.price;
-            const wostPerUnit = retailPrice / (1 + taxPct / 100);
-            const totalWost = wostPerUnit * item.quantity;
-            const uniqueNo = item.sku || item.upc || "—";
+      {/* Bottom Footer Section */}
+      <div className="mt-auto pt-6 border-t border-zinc-300">
+        <div className="flex justify-between items-end mb-6 text-xs">
+          <div className="w-[300px]">
+            <div className="border-b border-black pb-1">CNIC #: {cnic || ""}</div>
+          </div>
+          <div className="w-[180px] text-center border-t border-black pt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+            Authorized Signature
+          </div>
+        </div>
 
-            return (
-              <tr key={item.id ?? idx} className="align-top">
-                <td className="py-1 px-1 font-mono text-[10px]">{uniqueNo}</td>
-                <td className="py-1 px-1">{item.name}</td>
-                {!isGiftReceipt && <td className="py-1 px-1">{item.size || "—"}</td>}
-                <td className="py-1 px-1 text-center">{item.quantity}</td>
-                {!isGiftReceipt && (
-                  <>
-                    <td className="py-1 px-1 text-right font-mono">{fmtDec(retailPrice)}</td>
-                    <td className="py-1 px-1 text-right font-mono">{fmtDec(wostPerUnit)}</td>
-                    <td className="py-1 px-1 text-right font-mono">{fmtDec(totalWost)}</td>
-                  </>
-                )}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <div className="border-t border-black mb-4" />
-
-      {!isGiftReceipt ? (
-        <div className="flex justify-end mb-4">
-          <div className="w-[60%] max-w-[320px] text-xs space-y-0.5">
-            <Row label="SubTotal" value={fmt(Math.round(subtotal))} />
-            {totalDiscount > 0 && (
-              <Row label={orderDiscountLabel} value={`(${fmt(Math.round(totalDiscount))})`} negative />
-            )}
-            <Row label="Value Excluding Sales Tax" value={fmt(Math.round(valueForSales))} />
-            {settings.receiptShowTax && <Row label="Sales Tax" value={fmt(Math.round(totalTax))} />}
-            <Row label="Value Including Sales Tax" value={fmt(Math.round(grandTotal))} />
-            {hasFbrInfo && fbrPosFee > 0 && (
-              <Row label="POS Services Fee Re." value={fmt(Math.round(fbrPosFee))} />
-            )}
-            <div className="border-t border-black mt-1 pt-1">
-              <Row label="Net Total" value={fmt(Math.round(finalGrandTotal))} bold />
+        {hasFbrInfo && (
+          <>
+            <div className="border-t border-black pt-3 mb-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">FBR Invoice Number</p>
+              <p className="font-mono font-bold text-sm border-t border-b border-black py-1 px-8 inline-block bg-white min-w-[220px]">
+                {fbrInvoiceNumber || order?.fbrInvoiceNumber || "—"}
+              </p>
             </div>
-            <div className="pt-1">
-              {tenders.map((t, i) => (
-                <Row
-                  key={i}
-                  label={t.method === "cash" ? "Cash" : t.method.replace(/_/g, " ")}
-                  value={fmt(t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount)}
+
+            <div className="flex justify-between items-end">
+              <p className="text-[10px] text-zinc-600 max-w-[65%] leading-relaxed">
+                This Receipt / Invoice is verified by FBR POS Invoicing System. Verify this
+                invoice through FBR Tax Asaan Mobile App or SMS at <strong>9966</strong> and win
+                exciting prizes in draw.
+              </p>
+              <div className="flex items-center gap-3 shrink-0 bg-white p-2 rounded border border-zinc-200 shadow-sm">
+                <div className="w-[50px] h-[50px] flex items-center justify-center">
+                  <QRCodeSVG value={fbrVerifyUrl} size={50} level="M" />
+                </div>
+                <Image
+                  src={typeof window !== "undefined" ? `${window.location.origin}/fbr_logo.png` : "/fbr_logo.png"}
+                  alt="FBR POS Logo"
+                  width={56}
+                  height={56}
+                  unoptimized
+                  className="object-contain"
                 />
-              ))}
-              {changeAmount > 0 && <Row label="Change" value={fmt(changeAmount)} />}
+              </div>
             </div>
-          </div>
-        </div>
-      ) : (
-        <p className="text-center py-4 text-xs text-gray-600 mb-4">
-          Price details omitted — Gift Receipt. Thank you for your purchase!
-        </p>
-      )}
+          </>
+        )}
 
-      {creditVouchers && creditVouchers.length > 0 && (
-        <div className="border border-black rounded p-2 mb-4 text-[10px]">
-          <p className="font-bold uppercase mb-1">Credit Voucher Issued</p>
-          {creditVouchers.map((v, i) => (
-            <div key={i} className="flex justify-between font-mono">
-              <span>{v.code}</span>
-              <span>Rs. {fmt(Number(v.faceValue))}</span>
-            </div>
-          ))}
+        <div className="text-center text-[10px] text-zinc-500 mt-6 pt-3 border-t border-zinc-200">
+          <p className="font-bold tracking-wider">
+            {settings.receiptFooter || "*** THANK YOU FOR SHOPPING ***"}
+          </p>
+          <p className="text-[9px] text-zinc-400 font-mono mt-0.5">
+            Invoice Ref: {order?.orderNumber}
+          </p>
+          <p className="text-[9px] text-zinc-400">Software by Innovative Network</p>
         </div>
-      )}
-
-      {/* CNIC / signature */}
-      <div className="flex justify-between items-end mb-4 mt-8">
-        <div className="text-xs">CNIC #: {cnic || "________________________"}</div>
       </div>
-
-      {hasFbrInfo && (
-        <>
-          <div className="border-t border-black pt-2 mb-2 text-center">
-            <p className="text-xs font-bold uppercase tracking-wide mb-1">FBR Invoice Number</p>
-            <p className="font-mono font-bold text-sm border-t border-black inline-block pt-1 px-6">
-              {fbrInvoiceNumber || order?.fbrInvoiceNumber || "—"}
-            </p>
-          </div>
-
-          <div className="flex justify-between items-end">
-            <p className="text-[10px] max-w-[65%] leading-snug">
-              This Receipt / Invoice is verified by FBR POS Invoicing System. Verify this
-              invoice through FBR Tax Asaan Mobile App or SMS at <strong>9966</strong> and win
-              exciting prizes in draw.
-            </p>
-            <div className="flex items-center gap-2 shrink-0">
-              <QRCodeSVG value={fbrVerifyUrl} size={56} level="M" />
-              <Image
-                src={typeof window !== "undefined" ? `${window.location.origin}/fbr_logo.png` : "/fbr_logo.png"}
-                alt="FBR POS"
-                width={60}
-                height={60}
-                unoptimized
-              />
-            </div>
-          </div>
-        </>
-      )}
-
-      <p className="text-center text-[10px] text-gray-500 mt-4">
-        {settings.receiptFooter || "*** THANK YOU FOR SHOPPING ***"} · Powered By Innovative Network
-      </p>
     </div>
   );
 }
@@ -1443,9 +1463,9 @@ function Row({
   negative?: boolean;
 }) {
   return (
-    <div className={`flex justify-between capitalize ${bold ? "font-bold text-sm" : ""}`}>
-      <span>{label}</span>
-      <span className={`font-mono ${negative ? "text-red-600" : ""}`}>{value}</span>
+    <div className={`flex justify-between py-0.5 text-xs ${bold ? "font-bold text-sm pt-1" : ""}`}>
+      <span className="text-zinc-700">{label}</span>
+      <span className={`font-mono ${negative ? "text-red-650" : ""}`}>{value}</span>
     </div>
   );
 }
