@@ -96,6 +96,7 @@ export default function ReturnsPage() {
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [reasonCode, setReasonCode] = useState("DEFECTIVE");
     const [notes, setNotes] = useState("");
+    const [notesError, setNotesError] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showVerify, setShowVerify] = useState(false);
 
@@ -292,6 +293,8 @@ export default function ReturnsPage() {
         if (loadedOrders.length === 0) { toast.error("Add at least one order"); return; }
         if (selectedLines.length === 0) { toast.error("Select at least one item to return"); return; }
         if (mode === "exchange" && newLines.length === 0) { toast.error("Add new items for exchange"); return; }
+        if (!notes.trim()) { setNotesError(true); toast.error("Notes are required"); return; }
+        setNotesError(false);
 
         setIsSubmitting(true);
         try {
@@ -924,8 +927,22 @@ export default function ReturnsPage() {
                                         )}
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label className="text-xs text-muted-foreground">Notes (optional)</Label>
-                                        <Textarea placeholder="Additional notes..." value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="resize-none text-sm" />
+                                        <Label className={cn("text-xs font-medium", notesError ? "text-destructive" : "text-muted-foreground")}>
+                                            Notes <span className="text-destructive">*</span>
+                                        </Label>
+                                        <Textarea
+                                            placeholder="Reason for return / refund..."
+                                            value={notes}
+                                            onChange={e => { setNotes(e.target.value); if (e.target.value.trim()) setNotesError(false); }}
+                                            rows={2}
+                                            className={cn("resize-none text-sm", notesError && "border-destructive focus-visible:ring-destructive")}
+                                        />
+                                        {notesError && (
+                                            <p className="text-xs text-destructive flex items-center gap-1">
+                                                <AlertCircle className="h-3 w-3" />
+                                                Notes are required before processing
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="flex gap-3 pt-1">
                                         <Button variant="outline" className="flex-1" onClick={() => router.push("/pos/sales/history")}>Cancel</Button>
@@ -934,7 +951,7 @@ export default function ReturnsPage() {
                                                 mode === "exchange" ? "bg-blue-600 hover:bg-blue-700"
                                                     : mode === "claim" ? "bg-amber-600 hover:bg-amber-700"
                                                         : "bg-destructive hover:bg-destructive/90")}
-                                            onClick={(mode === "claim" || mode === "refund") ? () => setShowVerify(true) : () => handleSubmit()}
+                                            onClick={(mode === "claim" || mode === "refund") ? () => { if (!notes.trim()) { setNotesError(true); toast.error("Notes are required"); return; } setNotesError(false); setShowVerify(true); } : () => handleSubmit()}
                                             disabled={
                                                 isSubmitting ||
                                                 selectedLines.length === 0 ||

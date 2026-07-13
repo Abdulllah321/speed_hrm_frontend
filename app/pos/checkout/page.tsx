@@ -70,7 +70,7 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: {
     onSuccess: (customer: Customer) => void;
 }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({ name: "", contactNo: "", email: "" });
+    const [formData, setFormData] = useState({ name: "", contactNo: "", email: "", cnicNo: "" });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -83,7 +83,7 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: {
                 toast.success("Customer added successfully");
                 onSuccess(res.data.data);
                 onOpenChange(false);
-                setFormData({ name: "", contactNo: "", email: "" });
+                setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
             } else {
                 toast.error(res.data?.message || "Failed to add customer");
             }
@@ -127,6 +127,16 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: {
                             value={formData.email}
                             onChange={e => setFormData(d => ({ ...d, email: e.target.value }))}
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>CNIC</Label>
+                        <Input
+                            placeholder="e.g. 42201-1234567-1"
+                            value={formData.cnicNo}
+                            onChange={e => setFormData(d => ({ ...d, cnicNo: e.target.value }))}
+                            maxLength={15}
+                        />
+                        <p className="text-[11px] text-muted-foreground">Format: 42201-1234567-1</p>
                     </div>
                     <DialogFooter className="pt-2">
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>

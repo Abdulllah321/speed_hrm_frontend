@@ -10,11 +10,14 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Building2, MapPin, Package, ArrowRight, Loader2 } from "lucide-react";
+import { Building2, MapPin, Package, ArrowRight, Loader2, ArrowLeftRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { RequestStockModal } from "@/components/pos/inventory/request-stock-modal";
+import { DirectTransferModal } from "@/components/pos/inventory/direct-transfer-modal";
+import { useAuth } from "@/components/providers/auth-provider";
 import { inventoryApi } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils";
 
 interface StockLocation {
     id: string;
@@ -38,6 +41,7 @@ interface StockLocationDrawerProps {
         totalQuantity: number;
         size?: string;
         color?: string;
+        unitPrice?: number;
     } | null;
     isOpen: boolean;
     onClose: () => void;
@@ -48,10 +52,12 @@ export function StockLocationDrawer({
     isOpen,
     onClose,
 }: StockLocationDrawerProps) {
+    const { user } = useAuth();
     const [locations, setLocations] = useState<StockLocation[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<StockLocation | null>(null);
     const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+    const [isDirectModalOpen, setIsDirectModalOpen] = useState(false);
 
     useEffect(() => {
         if (isOpen && item) {
@@ -78,6 +84,9 @@ export function StockLocationDrawer({
         setSelectedLocation(loc);
         setIsRequestModalOpen(true);
     };
+
+    const currentLocationId = user?.terminal?.location?.id || user?.locationId;
+    const currentOutletStock = locations.find(loc => loc.location?.id === currentLocationId)?.quantity || 0;
 
     return (
         <>
@@ -109,12 +118,40 @@ export function StockLocationDrawer({
                     </SheetHeader>
 
                     <div className="flex-1 overflow-hidden flex flex-col">
-                        <div className="p-4 bg-primary/5 border-b border-border/50 flex items-center justify-between">
-                            <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">Total Available</span>
-                            <Badge variant="default" className="text-xs px-3 font-mono">
-                                {item?.totalQuantity} Units
-                            </Badge>
+                        <div className="p-4 bg-primary/5 border-b border-border/50 flex items-center justify-between gap-4">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">Price</span>
+                                <span className="text-sm font-bold text-foreground mt-0.5">
+                                    {item?.unitPrice !== undefined ? formatCurrency(item.unitPrice) : "—"}
+                                </span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">Total Available</span>
+                                <Badge variant="default" className="text-xs px-3 font-mono mt-0.5">
+                                    {item?.totalQuantity} Units
+                                </Badge>
+                            </div>
                         </div>
+
+                        {currentLocationId && (
+                            <div className="px-4 py-3 bg-emerald-50 dark:bg-emerald-950/20 border-b border-border/50 flex items-center justify-between gap-4">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-bold tracking-widest text-emerald-700 dark:text-emerald-400 uppercase">Your Stock</span>
+                                    <span className="text-sm font-bold text-foreground mt-0.5">
+                                        {currentOutletStock} Units
+                                    </span>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    disabled={currentOutletStock <= 0}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-1.5 shadow-sm"
+                                    onClick={() => setIsDirectModalOpen(true)}
+                                >
+                                    <ArrowLeftRight className="w-3.5 h-3.5" />
+                                    Transfer Out
+                                </Button>
+                            </div>
+                        )}
 
                         <ScrollArea className="flex-1">
                             <div className="p-4 flex flex-col gap-4">
@@ -180,6 +217,24 @@ export function StockLocationDrawer({
                     fromLocation={selectedLocation}
                     isOpen={isRequestModalOpen}
                     onClose={() => setIsRequestModalOpen(false)}
+                />
+            )}
+
+            {isDirectModalOpen && item && (
+                <DirectTransferModal
+                    item={{
+                        id: item.id,
+                        sku: item.sku,
+                        description: item.description,
+                        size: item.size,
+                        color: item.color,
+                    }}
+                    availableStock={currentOutletStock}
+                    isOpen={isDirectModalOpen}
+                    onClose={() => {
+                        setIsDirectModalOpen(false);
+                        fetchStockDetails();
+                    }}
                 />
             )}
         </>
