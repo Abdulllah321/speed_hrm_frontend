@@ -313,9 +313,9 @@ export function PaymentPanel({
                                     <Label className="text-xs text-muted-foreground">
                                         AUTH ID / Approval Code{discountMode === "alliance" && selectedAlliance && <span className="text-destructive font-bold ml-0.5">*</span>}
                                     </Label>
-                                    <Input className="mt-1 h-8 text-xs" placeholder="Slip or ref"
+                                    <Input className="mt-1 h-8 text-xs font-mono" maxLength={6} placeholder="6-digit Auth ID"
                                         value={tenderSlip}
-                                        onChange={(e) => onTenderSlipChange(e.target.value)} />
+                                        onChange={(e) => onTenderSlipChange(e.target.value.replace(/\D/g, ""))} />
                                 </div>
                             </div>
                         </div>
