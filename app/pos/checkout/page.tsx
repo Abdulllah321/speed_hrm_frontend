@@ -218,8 +218,9 @@ export default function CheckoutPage() {
     const [promoScopeAll, setPromoScopeAll] = useState(true);
     const [promoScopedItems, setPromoScopedItems] = useState<Set<string>>(new Set());
     const [showPromoScope, setShowPromoScope] = useState(false);
+
     const [selectedAlliance, setSelectedAlliance] = useState<AllianceConfig | null>(null);
-    const [allianceMeta, setAllianceMeta] = useState({ cardholderName: "", cardLast4: "", merchantSlip: "" });
+    const [allianceMeta, setAllianceMeta] = useState({ cardholderName: "", cardLast4: "", merchantSlip: "", binNumber: "" });
     const [couponInput, setCouponInput] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
     const [couponError, setCouponError] = useState("");
@@ -467,11 +468,12 @@ export default function CheckoutPage() {
     const changeAmount = Math.max(0, totalPaid - grandTotal);
 
     // ── Helpers ────────────────────────────────────────────────────────
+
     const clearDiscount = useCallback(() => {
         setDiscountMode("none");
         setSelectedPromo(null);
         setSelectedAlliance(null);
-        setAllianceMeta({ cardholderName: "", cardLast4: "", merchantSlip: "" });
+        setAllianceMeta({ cardholderName: "", cardLast4: "", merchantSlip: "", binNumber: "" });
         setAppliedCoupon(null);
         setCouponInput("");
         setCouponError("");
@@ -524,6 +526,10 @@ export default function CheckoutPage() {
                 toast.error("Auth ID / Approval Code is mandatory when Alliance is selected.");
                 return;
             }
+            if (selectedAlliance.binNumbers && selectedAlliance.binNumbers.length > 0 && !allianceMeta.binNumber) {
+                toast.error("Please select a BIN number for the Alliance discount.");
+                return;
+            }
         }
 
         // Merchant required for card / bank_transfer payments
@@ -538,12 +544,14 @@ export default function CheckoutPage() {
         }]);
         // When paying by card with an alliance selected, sync card details into allianceMeta
         if ((tenderMethod === "card" || tenderMethod === "bank_transfer") && discountMode === "alliance") {
-            setAllianceMeta({
+            setAllianceMeta(prev => ({
+                ...prev,
                 cardholderName: tenderCardholderName,
                 cardLast4: tenderCardLast4,
                 merchantSlip: tenderSlip,
-            });
+            }));
         }
+
         setTenderAmount(0);
         setTenderCardholderName("");
         setTenderCardLast4("");
@@ -692,6 +700,10 @@ export default function CheckoutPage() {
                 toast.error("Card number (last 4 digits) is mandatory for card payments when Alliance is selected.");
                 return;
             }
+            if (selectedAlliance.binNumbers && selectedAlliance.binNumbers.length > 0 && !allianceMeta.binNumber) {
+                toast.error("Please select a BIN number for the Alliance discount.");
+                return;
+            }
         }
 
         // Merchant required if any card / bank_transfer tender was added
@@ -738,8 +750,10 @@ export default function CheckoutPage() {
                     cardholderName: tenderCardholderName || allianceMeta.cardholderName,
                     cardLast4: tenderCardLast4 || allianceMeta.cardLast4,
                     merchantSlip: tenderSlip || allianceMeta.merchantSlip,
+                    binNumber: allianceMeta.binNumber || undefined,
                 };
             }
+
             if (discountMode === "manual" && orderDiscount > 0) {
                 if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
                 else body.globalDiscountAmount = orderDiscount;
@@ -783,6 +797,10 @@ export default function CheckoutPage() {
             const activeCardLast4 = tenderCardLast4 || allianceMeta.cardLast4;
             if (!activeCardLast4 || activeCardLast4.trim().length !== 4) {
                 toast.error("Card number (last 4 digits) is mandatory when Alliance is selected.");
+                return;
+            }
+            if (selectedAlliance.binNumbers && selectedAlliance.binNumbers.length > 0 && !allianceMeta.binNumber) {
+                toast.error("Please select a BIN number for the Alliance discount.");
                 return;
             }
         }
@@ -833,8 +851,10 @@ export default function CheckoutPage() {
                     cardholderName: tenderCardholderName || allianceMeta.cardholderName,
                     cardLast4: tenderCardLast4 || allianceMeta.cardLast4,
                     merchantSlip: tenderSlip || allianceMeta.merchantSlip,
+                    binNumber: allianceMeta.binNumber || undefined,
                 };
             }
+
             if (discountMode === "manual" && orderDiscount > 0) {
                 if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
                 else body.globalDiscountAmount = orderDiscount;
@@ -1240,7 +1260,6 @@ export default function CheckoutPage() {
                             grandTotal={grandTotal}
                             fmtCurrency={fmtCurrency}
                         />
-
                         {/* Payment */}
                         <PaymentPanel
                             tenders={tenders}
@@ -1262,6 +1281,8 @@ export default function CheckoutPage() {
                             validatedVoucher={validatedVoucher}
                             voucherError={voucherError}
                             voucherValidating={voucherValidating}
+                            allianceMeta={allianceMeta}
+                            onAllianceMetaChange={setAllianceMeta}
                             tenderAmountRef={tenderAmountRef}
                             onTenderMethodChange={setTenderMethod}
                             onTenderAmountChange={setTenderAmount}
@@ -1275,7 +1296,6 @@ export default function CheckoutPage() {
                             onVoucherValidate={validateVoucherCode}
                             fmtCurrency={fmtCurrency}
                         />
-
                         {/* Action buttons */}
                         <ActionButtons
                             isSubmitting={isSubmitting}
