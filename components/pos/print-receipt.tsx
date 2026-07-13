@@ -212,50 +212,60 @@ export function PrintReceipt({
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (isLoading) return;
-    setIsDownloading(true);
-    const toastId = toast.loading("Generating Invoice PDF...");
+const handleDownloadPdf = async () => {
+  if (isLoading) return;
+  setIsDownloading(true);
+  const toastId = toast.loading("Generating Invoice PDF...");
 
-    try {
-      // Give time for layout updates
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      if (reportRef.current) {
-        const dataUrl = await htmlToImage.toPng(reportRef.current, {
-          backgroundColor: "#ffffff",
-          pixelRatio: 2,
-          style: {
-            position: "relative",
-            left: "0",
-            top: "0",
-          },
-        });
-
-        const imgProps = new jsPDF().getImageProperties(dataUrl);
-        const pdfWidth = layout === "thermal" ? 80 : 210;
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-        const pdf = new jsPDF({
-          orientation: "portrait",
-          unit: "mm",
-          format: [pdfWidth, pdfHeight],
-        });
-
-        pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
-        const docName = order?.orderNumber || `invoice-${Date.now()}`;
-        pdf.save(`${docName}.pdf`);
-        toast.success("PDF downloaded successfully", { id: toastId });
-      } else {
-        toast.error("Failed to capture report content", { id: toastId });
-      }
-    } catch (error) {
-      console.error("PDF download error:", error);
-      toast.error("An error occurred while downloading the PDF", { id: toastId });
-    } finally {
-      setIsDownloading(false);
+  try {
+    const node = reportRef.current;
+    if (!node) {
+      toast.error("Failed to capture report content", { id: toastId });
+      return;
     }
-  };
+
+    // Wait for every <img> inside (e.g. FBR logo) to actually finish loading
+    const images = Array.from(node.querySelectorAll("img"));
+    await Promise.all(
+      images.map((img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise<void>((res) => {
+              img.onload = () => res();
+              img.onerror = () => res();
+            })
+      )
+    );
+
+    // Let the browser settle a couple of paint cycles before snapshotting
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+    const dataUrl = await htmlToImage.toPng(node, {
+      backgroundColor: "#ffffff",
+      pixelRatio: 2,
+      cacheBust: true,
+    });
+
+    const imgProps = new jsPDF().getImageProperties(dataUrl);
+    const pdfWidth = layout === "thermal" ? 80 : 210;
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: [pdfWidth, pdfHeight],
+    });
+
+    pdf.addImage(dataUrl, "PNG", 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${order?.orderNumber || `invoice-${Date.now()}`}.pdf`);
+    toast.success("PDF downloaded successfully", { id: toastId });
+  } catch (error) {
+    console.error("PDF download error:", error);
+    toast.error("An error occurred while downloading the PDF", { id: toastId });
+  } finally {
+    setIsDownloading(false);
+  }
+};
 
   // ── Store info ────────────────────────────────────────────────────
   const storeName =
@@ -529,7 +539,7 @@ export function PrintReceipt({
       <Dialog open onOpenChange={onClose}>
         <DialogContent className={cn(
           "h-[92vh] flex flex-col p-0 gap-0 transition-all duration-300",
-          layout === "thermal" ? "max-w-2xl w-full" : "max-w-5xl w-full"
+          layout === "thermal" ? "sm:max-w-2xl w-full" : "sm:max-w-5xl w-full"
         )}>
           <DialogHeader className="px-5 pt-4 pb-3 border-b shrink-0 flex flex-row items-center gap-4">
             <div className="flex items-center gap-2">
@@ -577,11 +587,11 @@ export function PrintReceipt({
             )}
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 bg-muted/20 dark:bg-zinc-950/20 shadow-inner flex justify-center">
+          <div className="flex-1 overflow-auto px-4 py-4 bg-muted/20 dark:bg-zinc-950/20 shadow-inner flex justify-start md:justify-center">
             {isLoading ? (
               <ReceiptSkeleton />
             ) : (
-              <div className={layout === "thermal" ? "w-[320px] bg-white border shadow-md p-4 rounded-md h-fit" : "w-full max-w-[210mm] h-fit shadow-lg border rounded-sm overflow-hidden bg-white"}>
+              <div className={layout === "thermal" ? "w-[320px] bg-white border shadow-md p-4 rounded-md h-fit animate-in zoom-in-95 duration-150" : "w-[210mm] min-w-[210mm] h-fit shadow-lg border rounded-sm overflow-hidden bg-white animate-in zoom-in-95 duration-150"}>
                 {layout === "thermal" ? (
                   <ReceiptBody {...bodyProps} />
                 ) : (
@@ -1236,197 +1246,97 @@ function A4InvoiceBody({
   changeAmount,
   totalPaid,
   tenders,
-  orderDiscountLabel,
+  orderDiscountLabel = "Promotional",
   fbrVerifyUrl,
   settings,
   suppressItemDiscounts,
-  suppressLabel = "Alliance Disc",
   creditVouchers,
   hasFbrInfo,
-}: ReceiptBodyProps) {
+  fbrInvoiceNumber,
+}: ReceiptBodyProps & { fbrInvoiceNumber?: string }) {
   const isSavedOrder = !!(order && order.id);
 
-  // Normalize customer details
   const customerName = order?.customer?.name || order?.customerName || "Walk-in Customer";
-  const customerPhone = order?.customer?.phone || order?.customerPhone || order?.customerMobile || "N/A";
-  const customerEmail = order?.customer?.email || order?.customerEmail || "";
-  const customerAddress = order?.customer?.address || order?.customerAddress || "";
+  const customerPhone = order?.customer?.phone || order?.customerPhone || order?.customerMobile || "";
+  const cnic = order?.customer?.cnic || order?.customerCnic || "";
 
-  // Calculate total WOST value for proportional discount
-  const totalWostValue = items.reduce((sum, item) => {
-    const taxPct = item.taxPercent ?? 0;
-    const taxDivisor = 1 + taxPct / 100;
-    const retailPrice = item.price;
-    const wostPerUnit = retailPrice / taxDivisor;
-    return sum + wostPerUnit * item.quantity;
-  }, 0);
-
-  const calculateProportionalDiscount = (
-    itemValue: number,
-    totalValue: number,
-    totalDiscount: number,
-  ): number => {
-    if (totalValue === 0) return 0;
-    const proportionalDisc = Math.round(
-      (totalDiscount * itemValue) / totalValue,
-    );
-    return Math.min(proportionalDisc, itemValue);
+  const formatInvoiceDateTime = (dateStr?: string | null) => {
+    const d = dateStr ? new Date(dateStr) : new Date();
+    const date = `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${date} ${hours}:${minutes} ${ampm}`;
   };
 
   return (
-    <div className="font-sans text-[11px] text-zinc-900 w-full max-w-[210mm] mx-auto p-10 bg-white flex flex-col justify-between min-h-[297mm]">
-      {/* Top Header Section */}
+    <div className="font-sans text-[11px] text-black w-[210mm] min-w-[210mm] max-w-[210mm] min-h-[297mm] p-[15mm] bg-white flex flex-col justify-between">
+      {/* Top Section */}
       <div>
-        <div className="flex justify-between items-start border-b-2 border-zinc-800 pb-5 mb-6">
-          <div className="space-y-1">
-            <h1 className="text-xl font-extrabold tracking-tight uppercase text-zinc-900">
-              {storeName}
-            </h1>
-            <p className="text-xs text-zinc-650 max-w-md leading-relaxed">
-              {storeAddress}
-            </p>
-            <div className="text-[10px] text-zinc-550 space-y-0.5 pt-1">
-              {storePhone && <p>Phone: {storePhone}</p>}
-              {storeNTN && <p>NTN: {storeNTN}</p>}
-              {storeSTRN && <p>STRN: {storeSTRN}</p>}
-            </div>
-          </div>
-          
-          <div className="text-right space-y-1.5">
-            <h2 className="text-lg font-black tracking-widest text-zinc-850 uppercase">
-              {isGiftReceipt ? "GIFT RECEIPT" : "TAX INVOICE"}
-            </h2>
-            <div className="text-xs font-mono bg-zinc-100 px-3 py-1 rounded text-zinc-800 font-bold inline-block border border-zinc-200">
-              #{order?.orderNumber ?? ""}
-            </div>
-            <div className="text-[10px] text-zinc-500 space-y-0.5 pt-1">
-              <p><span className="font-semibold text-zinc-700">Date:</span> {fmtDate(order?.createdAt)}</p>
-              {cashierName && <p><span className="font-semibold text-zinc-700">Salesman:</span> {cashierName}</p>}
-              {terminalName && <p><span className="font-semibold text-zinc-700">Terminal:</span> {terminalName}</p>}
-            </div>
-          </div>
+        {/* Masthead Header */}
+        <div className="text-center border-t-4 border-b border-black py-2 mb-2">
+          <h1 className="text-lg font-bold tracking-widest uppercase">
+            {storeName || "Point of Sales - Corporate"}
+          </h1>
+          <p className="text-[10px] text-zinc-700 mt-0.5">{storeAddress || "Corporate Office"}</p>
+          <p className="text-[10px] text-zinc-700">{storePhone || "021-35641339"}</p>
         </div>
 
-        {/* Customer Information Section */}
-        <div className="mb-6 bg-zinc-50 border border-zinc-200 rounded-lg p-4 grid grid-cols-2 gap-4">
+        {/* Invoice Title & Meta details */}
+        <div className="flex justify-between items-start mb-4 text-xs">
           <div>
-            <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-              Customer Details (Bill To)
-            </h3>
-            <p className="font-bold text-xs text-zinc-800">{customerName}</p>
-            {customerPhone && customerPhone !== "N/A" && (
-              <p className="text-zinc-650">Phone: {customerPhone}</p>
-            )}
-            {customerEmail && (
-              <p className="text-zinc-655">Email: {customerEmail}</p>
-            )}
+            <h2 className="text-base font-bold tracking-[0.2em] uppercase">Sales Tax Invoice</h2>
+            {cashierName && <p className="text-xs mt-0.5">Sales By: {cashierName}</p>}
           </div>
-          {customerAddress && (
-            <div>
-              <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                Billing Address
-              </h3>
-              <p className="text-zinc-650 leading-relaxed">{customerAddress}</p>
-            </div>
-          )}
+
+          <div className="text-right text-xs leading-tight">
+            {hasFbrInfo && storeNTN && <p className="font-bold">FBR POS ID {storeNTN}</p>}
+            <p className="mt-1">
+              STI No. <span className="font-bold">{order?.orderNumber ?? ""}</span>
+              {"   "}
+              <span className="ml-2 font-mono font-bold">{formatInvoiceDateTime(order?.createdAt)}</span>
+            </p>
+          </div>
         </div>
 
-        {/* Items Table */}
-        <table className="w-full text-left text-[11px] leading-normal border-collapse mb-8">
+        {/* Items table */}
+        <table className="w-full text-left text-[11px] border-collapse mb-2">
           <thead>
-            <tr className="border-b border-zinc-800 text-[10px] font-extrabold uppercase text-zinc-700 tracking-wider">
-              <th className="py-2.5 px-2 w-[5%]">S.No</th>
-              <th className="py-2.5 px-2 w-[40%]">Item Description</th>
-              <th className="py-2.5 px-2 text-center w-[8%]">Size</th>
-              <th className="py-2.5 px-2 text-center w-[8%]">Qty</th>
+            <tr className="border-b border-t border-black text-[10px] font-bold uppercase">
+              <th className="py-2 px-1 w-[15%]">Code</th>
+              <th className="py-2 px-1 w-[38%]">Name</th>
+              {!isGiftReceipt && <th className="py-2 px-1 text-center w-[8%]">Size</th>}
+              <th className="py-2 px-1 text-center w-[7%]">Qty</th>
               {!isGiftReceipt && (
                 <>
-                  <th className="py-2.5 px-2 text-right w-[11%]">Retail</th>
-                  <th className="py-2.5 px-2 text-right w-[11%]">WOST</th>
-                  <th className="py-2.5 px-2 text-right w-[11%]">Tax %</th>
-                  <th className="py-2.5 px-2 text-right w-[11%]">Total</th>
+                  <th className="py-2 px-1 text-right w-[10%]">Rate (Rs.)</th>
+                  <th className="py-2 px-1 text-right w-[11%]">Value (Rs.)</th>
+                  <th className="py-2 px-1 text-right w-[11%]">Total Value (Rs.)</th>
                 </>
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-200">
+          <tbody>
             {items.map((item: any, idx: number) => {
               const taxPct = item.taxPercent ?? 0;
-              const taxDivisor = 1 + taxPct / 100;
               const retailPrice = item.price;
-              const wostPerUnit = retailPrice / taxDivisor;
+              const wostPerUnit = retailPrice / (1 + taxPct / 100);
               const totalWost = wostPerUnit * item.quantity;
-
-              let displayDisc = 0;
-              let displayDiscPct = 0;
-              let amtAfterDisc = 0;
-              let tax = 0;
-              let valueIncludingTax = 0;
-
-              if (isSavedOrder) {
-                displayDisc = item.discountAmount ?? 0;
-                displayDiscPct = item.discountPercent ?? 0;
-                amtAfterDisc = totalWost - displayDisc;
-                tax = item.taxAmount ?? 0;
-                valueIncludingTax = item.lineTotal ?? amtAfterDisc + tax;
-              } else {
-                const itemDiscPct =
-                  item.overrideDiscountPercent ?? item.discountPercent ?? 0;
-                const rawDisc = totalWost * (itemDiscPct / 100);
-
-                let disc = suppressItemDiscounts ? 0 : rawDisc;
-                displayDisc = disc;
-                displayDiscPct = suppressItemDiscounts ? 0 : itemDiscPct;
-
-                if (suppressItemDiscounts) {
-                  displayDisc = calculateProportionalDiscount(
-                    totalWost,
-                    totalWostValue,
-                    orderDiscount,
-                  );
-                  displayDiscPct =
-                    totalWost > 0
-                      ? Math.round((displayDisc / totalWost) * 100 * 100) / 100
-                      : 0;
-                }
-
-                amtAfterDisc =
-                  totalWost - (suppressItemDiscounts ? displayDisc : disc);
-                tax = amtAfterDisc * (taxPct / 100);
-                valueIncludingTax = amtAfterDisc + tax;
-              }
-
               const uniqueNo = item.sku || item.upc || "—";
 
               return (
-                <tr key={item.id ?? idx} className="hover:bg-zinc-50/50">
-                  <td className="py-2 px-2 text-zinc-500 font-mono">{idx + 1}</td>
-                  <td className="py-2 px-2">
-                    <div className="font-bold text-zinc-800">{item.name}</div>
-                    <div className="text-[10px] text-zinc-500 font-mono">{uniqueNo}</div>
-                  </td>
-                  <td className="py-2 px-2 text-center text-zinc-700">{item.size || "—"}</td>
-                  <td className="py-2 px-2 text-center font-bold text-zinc-800">{item.quantity}</td>
+                <tr key={item.id ?? idx} className="align-top">
+                  <td className="py-1.5 px-1 font-mono text-[10px]">{uniqueNo}</td>
+                  <td className="py-1.5 px-1">{item.name}</td>
+                  {!isGiftReceipt && <td className="py-1.5 px-1 text-center">{item.size || "—"}</td>}
+                  <td className="py-1.5 px-1 text-center">{item.quantity}</td>
                   {!isGiftReceipt && (
                     <>
-                      <td className="py-2 px-2 text-right font-mono text-zinc-600">{fmtDec(retailPrice)}</td>
-                      <td className="py-2 px-2 text-right font-mono text-zinc-600">{fmtDec(wostPerUnit)}</td>
-                      <td className="py-2 px-2 text-right font-mono text-zinc-650">
-                        {taxPct}%
-                        {displayDisc > 0 && (
-                          <div className="text-[9px] text-green-600 font-medium">
-                            {displayDiscPct > 0 ? `-${displayDiscPct}%` : ""}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-2 px-2 text-right font-bold font-mono text-zinc-850">
-                        {fmtDec(valueIncludingTax)}
-                        {displayDisc > 0 && (
-                          <div className="text-[9px] text-green-600 font-normal">
-                            Disc: -{fmtDec(displayDisc)}
-                          </div>
-                        )}
-                      </td>
+                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(retailPrice)}</td>
+                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(wostPerUnit)}</td>
+                      <td className="py-1.5 px-1 text-right font-mono">{fmtDec(totalWost)}</td>
                     </>
                   )}
                 </tr>
@@ -1434,194 +1344,128 @@ function A4InvoiceBody({
             })}
           </tbody>
         </table>
-      </div>
+        <div className="border-t border-black mb-4" />
 
-      {/* Bottom Layout - Totals, Signatures, FBR */}
-      <div className="space-y-6">
+        {/* Summary pricing block */}
         {!isGiftReceipt ? (
-          <div className="grid grid-cols-2 gap-8 items-start border-t border-zinc-300 pt-5">
-            {/* Left Column: Payment, FBR POS QR Code */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                  Payment Methods
-                </h4>
-                <div className="divide-y divide-zinc-100 bg-zinc-50 rounded-lg p-3 border border-zinc-200 text-xs">
-                  {tenders.map((t, i) => (
-                    <div key={i} className="flex justify-between py-1.5 first:pt-0 last:pb-0">
-                      <span className="capitalize text-zinc-600 font-medium">
-                        {t.method.replace(/_/g, " ")}
-                        {t.cardLast4 ? ` •••• ${t.cardLast4}` : ""}
-                        {t.slipNo ? ` (${t.slipNo})` : ""}
-                      </span>
-                      <span className="font-bold text-zinc-800">
-                        Rs. {t.method === "voucher" && t.voucherFaceValue ? fmt(t.voucherFaceValue) : fmt(t.amount)}
-                      </span>
-                    </div>
-                  ))}
-                  {changeAmount > 0 && (
-                    <div className="flex justify-between py-1.5 text-zinc-850 font-bold border-t border-zinc-200 mt-1">
-                      <span>Change Returned</span>
-                      <span>Rs. {fmt(changeAmount)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* FBR integration info */}
-              {hasFbrInfo && (
-                <div className="flex gap-4 items-center bg-zinc-50 border border-zinc-200 rounded-lg p-3">
-                  <div className="shrink-0 bg-white p-1 rounded border border-zinc-200">
-                    <Image
-                      src={
-                        typeof window !== "undefined"
-                          ? `${window.location.origin}/fbr_logo.png`
-                          : "/fbr_logo.png"
-                      }
-                      alt="FBR Logo"
-                      width={50}
-                      height={50}
-                      className="object-contain"
-                      unoptimized
-                    />
-                  </div>
-                  <div className="space-y-1 flex-1">
-                    <p className="text-[10px] text-zinc-600 leading-snug">
-                      This receipt is verified by FBR POS Invoicing System. Verify via FBR Tax Asaan App or SMS at <strong>9966</strong>.
-                    </p>
-                    <div className="flex items-center gap-1 text-[9px] text-zinc-400">
-                      <span>Scan verified QR to check invoicing status</span>
-                    </div>
-                  </div>
-                  <div className="shrink-0 bg-white p-1 rounded border border-zinc-200">
-                    <QRCodeSVG value={fbrVerifyUrl} size={48} level="M" />
-                  </div>
-                </div>
+          <div className="flex justify-end mb-4">
+            <div className="w-[50%] max-w-[360px] text-xs space-y-1">
+              <Row label="SubTotal" value={fmtDec(subtotal)} />
+              {totalDiscount > 0 && (
+                <Row label={orderDiscountLabel} value={`(${fmtDec(totalDiscount)})`} negative />
               )}
-            </div>
-
-            {/* Right Column: Pricing Aggregations */}
-            <div className="space-y-1 bg-zinc-50/50 rounded-lg p-4 border border-zinc-200">
-              <div className="flex justify-between text-zinc-600 py-0.5">
-                <span>Subtotal (Excl. Sales Tax)</span>
-                <span className="font-mono font-semibold">{fmt(Math.round(subtotal))}</span>
-              </div>
-              
-              <div className="flex justify-between text-zinc-600 py-0.5">
-                <span>Total Invoice Discounts</span>
-                <span className="font-mono font-semibold text-green-600">
-                  {totalDiscount > 0 ? `-${fmt(Math.round(totalDiscount))}` : "—"}
-                </span>
-              </div>
-
-              <div className="flex justify-between text-zinc-600 py-0.5">
-                <span>Taxable Value for Sales</span>
-                <span className="font-mono font-semibold">{fmt(Math.round(valueForSales))}</span>
-              </div>
-
-              {settings.receiptShowTax && (
-                <div className="flex justify-between text-zinc-600 py-0.5 border-b border-zinc-200 pb-2 mb-2">
-                  <span>Sales Tax Total</span>
-                  <span className="font-mono font-semibold">{fmt(Math.round(totalTax))}</span>
-                </div>
-              )}
-
+              <Row label="Value Excluding Sales Tax" value={fmtDec(valueForSales)} />
+              {settings.receiptShowTax && <Row label="Sales Tax" value={fmtDec(totalTax)} />}
+              <Row label="Value Including Sales Tax" value={fmtDec(grandTotal)} />
               {hasFbrInfo && fbrPosFee > 0 && (
-                <div className="flex justify-between text-zinc-550 py-0.5 text-[10px]">
-                  <span>FBR POS Service Charge</span>
-                  <span className="font-mono">{fmt(Math.round(fbrPosFee))}</span>
-                </div>
+                <Row label="POS Services Fee Re." value={fmtDec(fbrPosFee)} />
               )}
-
-              <div className="flex justify-between items-center text-zinc-900 pt-3 mt-2 border-t-2 border-zinc-800">
-                <span className="font-black text-sm uppercase">Grand Total (Incl. Tax)</span>
-                <span className="font-mono font-black text-lg text-zinc-900 bg-zinc-100 px-3 py-1 rounded border border-zinc-250">
-                  Rs. {fmt(Math.round(finalGrandTotal))}
-                </span>
+              <div className="border-t border-black mt-1 pt-1">
+                <Row label="Net Total" value={`Rs. ${fmtDec(finalGrandTotal)}`} bold />
+              </div>
+              <div className="border-t border-dashed border-zinc-300 mt-2 pt-2 space-y-1">
+                {tenders.map((t, i) => (
+                  <Row
+                    key={i}
+                    label={t.method === "cash" ? "Cash" : t.method.replace(/_/g, " ")}
+                    value={fmtDec(t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount)}
+                  />
+                ))}
+                {changeAmount > 0 && <Row label="Change" value={fmtDec(changeAmount)} />}
               </div>
             </div>
           </div>
         ) : (
-          <div className="text-center py-6 border-t border-dashed border-zinc-300 text-zinc-500 text-xs">
-            Price details omitted — this is a Gift Receipt. Thank you for your purchase!
-          </div>
+          <p className="text-center py-4 text-xs text-gray-600 mb-4">
+            Price details omitted — Gift Receipt. Thank you for your purchase!
+          </p>
         )}
 
-        {/* Credit Vouchers Box */}
         {creditVouchers && creditVouchers.length > 0 && (
-          <div className="border-2 border-dashed border-emerald-500 rounded-lg p-4 bg-emerald-50/30 grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <h4 className="font-extrabold text-emerald-800 text-xs uppercase tracking-wide">
-                Credit Voucher Issued
-              </h4>
-              <p className="text-[10px] text-emerald-600 leading-snug">
-                An unused credit balance has been returned as a store voucher. Use this voucher code on your next purchase.
-              </p>
-            </div>
-            <div className="space-y-2">
-              {creditVouchers.map((voucher, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white border border-emerald-500 rounded p-2 flex justify-between items-center shadow-sm"
-                >
-                  <div>
-                    <span className="text-[10px] text-zinc-400 block font-mono">Code</span>
-                    <span className="font-mono font-black text-sm text-emerald-700 tracking-wider">{voucher.code}</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-[10px] text-zinc-400 block">Value</span>
-                    <span className="font-black text-sm text-zinc-900">Rs. {fmt(Number(voucher.faceValue))}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div className="border border-black rounded p-3 mb-4 text-[10px] max-w-sm">
+            <p className="font-bold uppercase mb-1">Credit Voucher Issued</p>
+            {creditVouchers.map((v, i) => (
+              <div key={i} className="flex justify-between font-mono py-0.5">
+                <span>{v.code}</span>
+                <span>Rs. {fmtDec(Number(v.faceValue))}</span>
+              </div>
+            ))}
           </div>
         )}
+      </div>
 
-        {/* Terms, Sign-off & Footer */}
-        <div className="border-t border-zinc-200 pt-5 space-y-6">
-          <div className="grid grid-cols-2 gap-10">
-            {/* Terms and Conditions */}
-            <div className="text-[9px] text-zinc-500 space-y-1">
-              <p className="font-bold text-zinc-700 uppercase tracking-wider mb-0.5">
-                Terms &amp; Conditions of Sale
-              </p>
-              <ul className="list-disc pl-3 space-y-0.5">
-                <li>Sales Tax Invoices must be presented for any queries or claims.</li>
-                <li>Exchange is allowed within 10 days of purchase only on unused items.</li>
-                <li>Items bought on sales and promotional campaigns are non-exchangeable.</li>
-                <li>Product returns and cash refunds are not available under any circumstances.</li>
-              </ul>
-            </div>
-
-            {/* Signature Blocks */}
-            <div className="grid grid-cols-2 gap-4 text-[10px] items-end pb-1">
-              <div className="text-center space-y-2">
-                <div className="border-b border-zinc-300 w-full h-8" />
-                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
-                  Customer Signature
-                </span>
-              </div>
-              <div className="text-center space-y-2">
-                <div className="border-b border-zinc-300 w-full h-8" />
-                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider block">
-                  Authorized Sign
-                </span>
-              </div>
-            </div>
+      {/* Bottom Footer Section */}
+      <div className="mt-auto pt-6 border-t border-zinc-300">
+        <div className="flex justify-between items-end mb-6 text-xs">
+          <div className="w-[300px]">
+            <div className="border-b border-black pb-1">CNIC #: {cnic || ""}</div>
           </div>
-
-          <div className="text-center text-[10px] text-zinc-500 border-t border-zinc-100 pt-3">
-            <p className="font-medium tracking-wide">
-              {settings.receiptFooter || "*** THANK YOU FOR SHOPPING ***"}
-            </p>
-            <p className="text-[9px] text-zinc-400 font-mono mt-0.5">
-              Invoice Ref: {order?.orderNumber}
-            </p>
-            <p className="text-[9px] text-zinc-400 pt-0.5">Software by Innovative Network</p>
+          <div className="w-[180px] text-center border-t border-black pt-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+            Authorized Signature
           </div>
         </div>
+
+        {hasFbrInfo && (
+          <>
+            <div className="border-t border-black pt-3 mb-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-1">FBR Invoice Number</p>
+              <p className="font-mono font-bold text-sm border-t border-b border-black py-1 px-8 inline-block bg-white min-w-[220px]">
+                {fbrInvoiceNumber || order?.fbrInvoiceNumber || "—"}
+              </p>
+            </div>
+
+            <div className="flex justify-between items-end">
+              <p className="text-[10px] text-zinc-600 max-w-[65%] leading-relaxed">
+                This Receipt / Invoice is verified by FBR POS Invoicing System. Verify this
+                invoice through FBR Tax Asaan Mobile App or SMS at <strong>9966</strong> and win
+                exciting prizes in draw.
+              </p>
+              <div className="flex items-center gap-3 shrink-0 bg-white p-2 rounded border border-zinc-200 shadow-sm">
+                <div className="w-[50px] h-[50px] flex items-center justify-center">
+                  <QRCodeSVG value={fbrVerifyUrl} size={50} level="M" />
+                </div>
+                <Image
+                  src={typeof window !== "undefined" ? `${window.location.origin}/fbr_logo.png` : "/fbr_logo.png"}
+                  alt="FBR POS Logo"
+                  width={56}
+                  height={56}
+                  unoptimized
+                  className="object-contain"
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="text-center text-[10px] text-zinc-500 mt-6 pt-3 border-t border-zinc-200">
+          <p className="font-bold tracking-wider">
+            {settings.receiptFooter || "*** THANK YOU FOR SHOPPING ***"}
+          </p>
+          <p className="text-[9px] text-zinc-400 font-mono mt-0.5">
+            Invoice Ref: {order?.orderNumber}
+          </p>
+          <p className="text-[9px] text-zinc-400">Software by Innovative Network</p>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  bold,
+  negative,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  negative?: boolean;
+}) {
+  return (
+    <div className={`flex justify-between py-0.5 text-xs ${bold ? "font-bold text-sm pt-1" : ""}`}>
+      <span className="text-zinc-700">{label}</span>
+      <span className={`font-mono ${negative ? "text-red-650" : ""}`}>{value}</span>
     </div>
   );
 }

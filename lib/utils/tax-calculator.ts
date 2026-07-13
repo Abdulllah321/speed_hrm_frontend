@@ -5,29 +5,37 @@ export function calculateTaxForAccount(
 ): number | null {
   if (taxableAmount <= 0) return 0;
 
-  // 12060001 with Tag T00001 (Income Tax Slabs)
+  // 12060001 with Tag T00001 (Income Tax Slabs — FY 2026-27, Finance Act 2026)
   if (accountCode === "12060001" && tagCode === "T00001") {
     let tax = 0;
 
     if (taxableAmount <= 600000) {
       tax = 0;
     } else if (taxableAmount <= 1200000) {
+      // 1% on amount exceeding Rs. 600,000
       tax = (taxableAmount - 600000) * 0.01;
     } else if (taxableAmount <= 2200000) {
+      // Rs. 6,000 + 11% on amount exceeding Rs. 1,200,000
       tax = 6000 + (taxableAmount - 1200000) * 0.11;
     } else if (taxableAmount <= 3200000) {
-      tax = 116000 + (taxableAmount - 2200000) * 0.23;
+      // Rs. 116,000 + 20% on amount exceeding Rs. 2,200,000
+      tax = 116000 + (taxableAmount - 2200000) * 0.20;
     } else if (taxableAmount <= 4100000) {
-      tax = 346000 + (taxableAmount - 3200000) * 0.30;
+      // Rs. 316,000 + 25% on amount exceeding Rs. 3,200,000
+      tax = 316000 + (taxableAmount - 3200000) * 0.25;
+    } else if (taxableAmount <= 5600000) {
+      // Rs. 541,000 + 29% on amount exceeding Rs. 4,100,000
+      tax = 541000 + (taxableAmount - 4100000) * 0.29;
+    } else if (taxableAmount <= 7000000) {
+      // Rs. 976,000 + 32% on amount exceeding Rs. 5,600,000
+      tax = 976000 + (taxableAmount - 5600000) * 0.32;
     } else {
-      tax = 616000 + (taxableAmount - 4100000) * 0.35;
+      // Rs. 1,424,800 + 35% on amount exceeding Rs. 7,000,000
+      tax = 1424800 + (taxableAmount - 7000000) * 0.35;
     }
 
-    // Surcharge of 9% if taxable income exceeds 10,000,000
-    if (taxableAmount > 10000000) {
-      // Assuming the 9% surcharge is applied to the calculated tax, standard practice in PK
-      tax = tax + (tax * 0.09);
-    }
+    // Note: 9% surcharge (previously on income > Rs. 10,000,000) has been abolished
+    // under Finance Act 2026 effective FY 2026-27.
 
     return Math.round(tax * 100) / 100; // Round to 2 decimal places
   }
@@ -39,7 +47,7 @@ export function calculateTaxForAccount(
   }
 
   // 12060003 - WHT Payable-Goods u/s 153(1)(a)
-
+  
   // T00003: 153(1)(a)/2-Goods (ATL) - 1%
   if (accountCode === "12060003" && tagCode === "T00003") {
     return Math.round(taxableAmount * 0.01 * 100) / 100;
@@ -72,24 +80,24 @@ export function calculateTaxForAccount(
 
   // 12060004 - WHT Payable-Services u/s 153(1)(b)
 
-  // T00008S / T00008: 153(1)(b)/29-Services (ATL) - 6%
+  // T00008S / T00008: 153(1)(b)/29-Services (ATL) - 7%
   if (accountCode === "12060004" && (tagCode === "T00008S" || tagCode === "T00008")) {
-    return Math.round(taxableAmount * 0.06 * 100) / 100;
+    return Math.round(taxableAmount * 0.07 * 100) / 100;
   }
 
-  // T00009: 153(1)(b)/29-Services (Non ATL) - 12%
+  // T00009: 153(1)(b)/29-Services (Non ATL) - 14%
   if (accountCode === "12060004" && tagCode === "T00009") {
-    return Math.round(taxableAmount * 0.12 * 100) / 100;
+    return Math.round(taxableAmount * 0.14 * 100) / 100;
   }
 
-  // T00010: 153(1)(b)/30-Services (ATL) - 15%
+  // T00010: 153(1)(b)/30-Services (ATL) - 14%
   if (accountCode === "12060004" && tagCode === "T00010") {
-    return Math.round(taxableAmount * 0.15 * 100) / 100;
+    return Math.round(taxableAmount * 0.14 * 100) / 100;
   }
 
-  // T00011: 153(1)(b)/30-Services (Non ATL) - 30%
+  // T00011: 153(1)(b)/30-Services (Non ATL) - 28%
   if (accountCode === "12060004" && tagCode === "T00011") {
-    return Math.round(taxableAmount * 0.30 * 100) / 100;
+    return Math.round(taxableAmount * 0.28 * 100) / 100;
   }
 
   // T00012: 153(1)(b)/26-Services (ATL) - IT/IT-enabled - 4%

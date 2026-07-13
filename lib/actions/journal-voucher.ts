@@ -25,6 +25,9 @@ export interface JournalVoucher {
     folio?: string | null;
     jvDate: string;
     description?: string;
+    refBillNo?: string;
+    refBillNo2?: string;
+    taxType?: string;
     details: JournalVoucherDetail[];
     status: "pending" | "approved" | "rejected";
     createdAt: string;

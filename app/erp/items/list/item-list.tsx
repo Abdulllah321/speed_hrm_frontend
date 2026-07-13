@@ -47,6 +47,7 @@ interface Item {
     brand?: { name: string } | null;
     category?: { name: string } | null;
     division?: { name: string } | null;
+    uniqueNo?: string | null;
 }
 
 // ─── Filter Sheet ─────────────────────────────────────────────────────────────
@@ -232,6 +233,11 @@ function useItemColumns(onDelete: (id: string) => void, canUpdate: boolean, canD
                     {row.original.description && (
                         <span className="text-xs text-muted-foreground truncate max-w-[220px]">
                             {row.original.description}
+                        </span>
+                    )}
+                    {row.original.uniqueNo && (
+                        <span className="text-xs text-blue-600 dark:text-blue-400 font-mono">
+                            Unique No: {row.original.uniqueNo}
                         </span>
                     )}
                 </div>

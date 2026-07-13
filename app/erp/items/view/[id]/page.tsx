@@ -156,6 +156,7 @@ export default async function ViewItemPage({ params }: PageProps) {
                 <InfoItem label="Case" value={item.case} />
                 <InfoItem label="Band" value={item.band} />
                 <InfoItem label="Movement Type" value={item.movementType} />
+                <InfoItem label="Unique No." value={item.uniqueNo} />
                 <InfoItem label="Heel Height" value={item.heelHeight} />
                 <InfoItem label="Width" value={item.width} />
             </InfoSection>

@@ -186,9 +186,9 @@ export function JournalVoucherList({
                                     <span className="uppercase text-gray-700 dark:text-gray-300 font-medium">
                                         {detail.accountCode ? `${detail.accountCode} - ` : ""}{detail.accountName || "Account"}
                                     </span>
-                                    {detail.tagAccountCode && (
-                                        <span className="text-[10px] text-muted-foreground ml-1.5 italic bg-muted px-1 py-0.2 rounded">
-                                            Tag: {detail.tagAccountCode}
+                                    {(detail.tagAccountCode || detail.tagAccountName) && (
+                                        <span className="block text-[9px] text-muted-foreground uppercase pl-5 mt-0.5">
+                                            ↳ {detail.tagAccountCode ? `${detail.tagAccountCode} ` : ""}{detail.tagAccountName}
                                         </span>
                                     )}
                                     {detail.narration && (
@@ -427,43 +427,44 @@ export function JournalVoucherList({
                 <>
                     <style dangerouslySetInnerHTML={{ __html: `
                         @media print {
-                            html, body {
-                                height: auto !important;
-                                overflow: visible !important;
-                                background: white !important;
-                                color: black !important;
-                            }
-                            body > *:not(#jv-print-section) {
-                                display: none !important;
-                            }
-                            #jv-print-section, #jv-print-section * {
-                                visibility: visible !important;
-                            }
-                            #jv-print-section {
-                                display: block !important;
-                                position: relative !important;
-                                left: 0 !important;
-                                top: 0 !important;
-                                width: 100% !important;
-                                margin: 0 !important;
-                                padding: 0 !important;
-                                background: white !important;
-                                color: black !important;
-                                z-index: 99999 !important;
-                            }
-                            tr {
-                                page-break-inside: avoid !important;
-                            }
-                            thead {
-                                display: table-header-group !important;
-                            }
-                            tfoot {
-                                display: table-footer-group !important;
-                            }
-                            @page {
-                                margin: 10mm !important;
-                                size: A4 portrait !important;
-                            }
+                          html, body {
+                            height: auto !important;
+                            overflow: visible !important;
+                            background: white !important;
+                            color: black !important;
+                          }
+                          body > *:not(#jv-print-section) {
+                            display: none !important;
+                          }
+                          #jv-print-section, #jv-print-section * {
+                            visibility: visible !important;
+                          }
+                          #jv-print-section {
+                            display: block !important;
+                            position: relative !important;
+                            left: 0 !important;
+                            top: 0 !important;
+                            width: 100% !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: white !important;
+                            color: black !important;
+                            z-index: 99999 !important;
+                          }
+                          tr {
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                          }
+                          thead {
+                            display: table-header-group;
+                          }
+                          tfoot {
+                            display: table-footer-group;
+                          }
+                          @page {
+                            margin: 10mm;
+                            size: A4 portrait;
+                          }
                         }
                     `}} />
                     <div 

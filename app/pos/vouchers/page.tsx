@@ -160,11 +160,14 @@ export default function PosVouchersPage() {
             if (showVoided) {
                 query.append("includeVoided", "true");
             }
+            if (currentLocationId) {
+                query.append("locationId", currentLocationId);
+            }
             const res = await authFetch(`/pos-config/vouchers?${query.toString()}`);
             if (res.ok && res.data?.status) setVouchers(res.data.data || []);
         } catch { toast.error("Failed to load vouchers"); }
         finally { setIsLoading(false); }
-    }, [showVoided]);
+    }, [showVoided, currentLocationId]);
 
     useEffect(() => {
         fetchVouchers();
@@ -526,7 +529,9 @@ export default function PosVouchersPage() {
                                                 <TableCell className="text-sm">
                                                     {v.issuedByLocation ? (
                                                         <div className="space-y-0.5">
-                                                            <div className="font-semibold text-foreground truncate max-w-40">{v.issuedByLocation.name}</div>
+                                                            <div className="font-semibold text-foreground truncate max-w-40" title={v.issuedByLocation.name}>
+                                                                {v.issuedByLocation.shortCode || v.issuedByLocation.name}
+                                                            </div>
                                                             <div className="text-[10px] text-muted-foreground font-mono">{v.issuedByLocation.code}</div>
                                                         </div>
                                                     ) : (

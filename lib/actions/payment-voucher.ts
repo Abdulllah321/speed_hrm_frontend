@@ -26,6 +26,7 @@ export interface PaymentVoucher {
     pvNo: string;
     pvDate: string; // ISO string from API
     refBillNo?: string;
+    refBillNo2?: string;
     billDate?: string; // ISO string
     creditAccountId: string;
     creditAccountCode?: string;

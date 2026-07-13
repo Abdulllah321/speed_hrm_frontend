@@ -104,6 +104,19 @@ export default function ReceiptVoucherDetailPage({
     });
   }, [id]);
 
+  const sortedDetails = useMemo(() => {
+    if (!voucher) return [];
+    const list = [...voucher.details];
+    if (sortField) {
+      list.sort((a, b) => {
+        const valA = Number(a[sortField]) || 0;
+        const valB = Number(b[sortField]) || 0;
+        return sortOrder === "asc" ? valA - valB : valB - valA;
+      });
+    }
+    return list;
+  }, [voucher, sortField, sortOrder]);
+
   // ── Loading ──
   if (loading) {
     return (
@@ -140,23 +153,10 @@ export default function ReceiptVoucherDetailPage({
   const statusCfg = STATUS_CONFIG[voucher.status] ?? STATUS_CONFIG.pending;
   const StatusIcon = statusCfg.icon;
 
-  const sortedDetails = useMemo(() => {
-    if (!voucher) return [];
-    const list = [...voucher.details];
-    if (sortField) {
-      list.sort((a, b) => {
-        const valA = Number(a[sortField]) || 0;
-        const valB = Number(b[sortField]) || 0;
-        return sortOrder === "asc" ? valA - valB : valB - valA;
-      });
-    }
-    return list;
-  }, [voucher, sortField, sortOrder]);
-
   return (
     <>
       {/* ── Print styles ── */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           html, body {
             height: auto !important;
@@ -197,7 +197,7 @@ export default function ReceiptVoucherDetailPage({
             size: A4 portrait;
           }
         }
-      `}</style>
+      `}} />
 
       {/* ══════════════════════════════════════════════════════════════
           SCREEN VIEW
@@ -421,7 +421,7 @@ export default function ReceiptVoucherDetailPage({
                                   {d.tagAccountCode}
                                 </span>
                               )}
-                              <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
+                              <span className="text-xs text-foreground/80 uppercase">{d.tagAccountName}</span>
                             </div>
                           )}
 

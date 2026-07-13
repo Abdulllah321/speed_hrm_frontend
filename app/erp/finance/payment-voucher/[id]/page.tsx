@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useMemo } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { getPaymentVoucher, updatePaymentVoucherStatus, updatePaymentVoucherCpr, PaymentVoucher } from "@/lib/actions/payment-voucher";
@@ -32,6 +32,10 @@ import {
   XCircle,
   Receipt,
   FileEdit,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -60,9 +64,26 @@ export default function PaymentVoucherDetailPage({
 }) {
   const { id } = use(params);
   const [voucher, setVoucher] = useState<PaymentVoucher | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [actionPending, setActionPending] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [sortField, setSortField] = useState<"debit" | "credit" | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: "debit" | "credit") => {
+    if (sortField === field) {
+      if (sortOrder === "asc") {
+        setSortOrder("desc");
+      } else {
+        setSortField(null);
+      }
+    } else {
+      setSortField(field);
+      setSortOrder("asc");
+    }
+  };
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // CPR states
   const [isCprModalOpen, setIsCprModalOpen] = useState(false);
@@ -125,6 +146,9 @@ export default function PaymentVoucherDetailPage({
     }
   };
 
+  const [loading, setLoading] = useState(true);
+  const [actionPending, setActionPending] = useState(false);
+
   useEffect(() => {
     getPaymentVoucher(id).then((res) => {
       if (res.status && res.data) {
@@ -140,6 +164,19 @@ export default function PaymentVoucherDetailPage({
       setLoading(false);
     });
   }, [id]);
+
+  const sortedDetails = useMemo(() => {
+    if (!voucher) return [];
+    const list = [...voucher.details];
+    if (sortField) {
+      list.sort((a, b) => {
+        const valA = Number(a[sortField]) || 0;
+        const valB = Number(b[sortField]) || 0;
+        return sortOrder === "asc" ? valA - valB : valB - valA;
+      });
+    }
+    return list;
+  }, [voucher, sortField, sortOrder]);
 
   // ── Loading ──
   if (loading) {
@@ -182,7 +219,7 @@ export default function PaymentVoucherDetailPage({
   return (
     <>
       {/* ── Print styles ── */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           html, body {
             height: auto !important;
@@ -223,7 +260,7 @@ export default function PaymentVoucherDetailPage({
             size: A4 portrait;
           }
         }
-      `}</style>
+      `}} />
 
       {/* ══════════════════════════════════════════════════════════════
           SCREEN VIEW
@@ -395,167 +432,254 @@ export default function PaymentVoucherDetailPage({
           <CardContent className="p-0 py-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-muted/60 border-b dark:border-border text-muted-foreground">
+                <tr className="bg-muted/60 border-b dark:border-border text-muted-foreground select-none">
                   <th className="px-4 py-2.5 text-left font-semibold text-[11px] uppercase tracking-wide w-[40%]">
-                    Account
+                    Account Head
                   </th>
                   <th className="px-4 py-2.5 text-left font-semibold text-[11px] uppercase tracking-wide">
                     Narration
                   </th>
-                  <th className="px-4 py-2.5 text-right font-semibold text-[11px] uppercase tracking-wide w-[14%]">
-                    Debit
+                  <th 
+                    className="px-4 py-2.5 text-right font-semibold text-[11px] uppercase tracking-wide w-[14%] cursor-pointer hover:bg-muted/80"
+                    onClick={() => handleSort("debit")}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Debit</span>
+                      {sortField === "debit" ? (
+                        sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 text-muted-foreground/30" />
+                      )}
+                    </div>
                   </th>
-                  <th className="px-4 py-2.5 text-right font-semibold text-[11px] uppercase tracking-wide w-[14%]">
-                    Credit
+                  <th 
+                    className="px-4 py-2.5 text-right font-semibold text-[11px] uppercase tracking-wide w-[14%] cursor-pointer hover:bg-muted/80"
+                    onClick={() => handleSort("credit")}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>Credit</span>
+                      {sortField === "credit" ? (
+                        sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                      ) : (
+                        <ArrowUpDown className="h-3 w-3 text-muted-foreground/30" />
+                      )}
+                    </div>
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y dark:divide-border">
-                {/* Debit rows */}
-                {debitRows.map((d, i) => (
-                  <tr key={`dr-${i}`} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 align-top">
-                      {/* ── Main account line ── */}
-                      <div className="flex items-baseline gap-2 font-medium">
-                        {d.accountCode && (
-                          <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
-                            {d.accountCode}
-                          </span>
-                        )}
-                        <span className="uppercase text-sm font-semibold">{d.accountName}</span>
-                      </div>
+                {sortField ? (
+                  sortedDetails.map((d, i) => {
+                    const isDebit = Number(d.debit) > 0;
+                    return (
+                      <tr key={d.id || i} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 align-top">
+                          <div className="flex items-baseline gap-2 font-medium">
+                            {d.accountCode && (
+                              <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
+                                {d.accountCode}
+                              </span>
+                            )}
+                            <span className="uppercase text-sm font-semibold">{d.accountName}</span>
+                          </div>
 
-                      {/* ── Tag account sub-line (indented) ── */}
-                      {(d.tagAccountCode || d.tagAccountName) && (
-                        <div className="flex items-baseline gap-2 mt-0.5 pl-3 border-l-2 border-muted ml-1">
-                          {d.tagAccountCode && (
-                            <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
-                              {d.tagAccountCode}
-                            </span>
+                          {(d.tagAccountCode || d.tagAccountName) && (
+                            <div className="flex items-baseline gap-2 mt-0.5 pl-3 border-l-2 border-muted ml-1">
+                              {d.tagAccountCode && (
+                                <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
+                                  {d.tagAccountCode}
+                                </span>
+                              )}
+                              <span className="text-xs text-foreground/80 uppercase">{d.tagAccountName}</span>
+                            </div>
                           )}
-                          <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
-                        </div>
-                      )}
 
-                      {/* ── Ref# line ── */}
-                      {(d.refBillNo || d.taxType || d.cprNo || voucher.refBillNo || voucher.taxType) && (
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <span className="font-bold text-foreground/70">Ref#</span>
-                          {(d.taxType ?? voucher.taxType) && (
-                            <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
-                              {d.taxType ?? voucher.taxType}
-                            </span>
+                          {(d.refBillNo || d.taxType || d.cprNo || voucher.refBillNo || voucher.taxType) && (
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span className="font-bold text-foreground/70">Ref#</span>
+                              {(d.taxType ?? voucher.taxType) && (
+                                <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                                  {d.taxType ?? voucher.taxType}
+                                </span>
+                              )}
+                              {(d.refBillNo || voucher.refBillNo) && (
+                                <span className="font-mono">{d.refBillNo || voucher.refBillNo}</span>
+                              )}
+                              {d.cprNo && (
+                                <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                                  CPR: {d.cprNo}
+                                </span>
+                              )}
+                            </div>
                           )}
-                          {(d.refBillNo || voucher.refBillNo) && (
-                            <span className="font-mono">{d.refBillNo || voucher.refBillNo}</span>
-                          )}
-                          {d.cprNo && (
-                            <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
-                              CPR: {d.cprNo}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 align-top text-muted-foreground text-xs leading-relaxed">
-                      {d.narration || voucher.description}
-                    </td>
-                    {/* Debit amount — bold blue */}
-                    <td className="px-4 py-3 text-right align-top font-mono font-bold tabular-nums text-blue-600 dark:text-blue-400">
-                      {Number(d.debit) > 0 ? fmt(Number(d.debit)) : "—"}
-                    </td>
-                    {/* Credit — dash */}
-                    <td className="px-4 py-3 text-right align-top font-mono tabular-nums text-muted-foreground/50">
-                      —
-                    </td>
-                  </tr>
-                ))}
+                        </td>
+                        <td className="px-4 py-3 align-top text-muted-foreground text-xs leading-relaxed">
+                          {d.narration || voucher.description}
+                        </td>
+                        <td className={cn(
+                          "px-4 py-3 text-right align-top font-mono tabular-nums",
+                          isDebit ? "font-bold text-blue-600 dark:text-blue-400" : "text-muted-foreground/50"
+                        )}>
+                          {isDebit ? fmt(Number(d.debit)) : "—"}
+                        </td>
+                        <td className={cn(
+                          "px-4 py-3 text-right align-top font-mono tabular-nums",
+                          !isDebit ? "font-bold text-green-600 dark:text-green-400" : "text-muted-foreground/50"
+                        )}>
+                          {!isDebit ? fmt(Number(d.credit)) : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <>
+                    {/* Debit rows */}
+                    {debitRows.map((d, i) => (
+                      <tr key={`dr-${i}`} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 align-top">
+                          {/* ── Main account line ── */}
+                          <div className="flex items-baseline gap-2 font-medium">
+                            {d.accountCode && (
+                              <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
+                                {d.accountCode}
+                              </span>
+                            )}
+                            <span className="uppercase text-sm font-semibold">{d.accountName}</span>
+                          </div>
 
-                {/* Credit rows */}
-                {creditRows.map((d, i) => (
-                  <tr key={`cr-${i}`} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 align-top">
-                      {/* ── Main account line ── */}
-                      <div className="flex items-baseline gap-2 font-medium">
-                        {d.accountCode && (
-                          <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
-                            {d.accountCode}
-                          </span>
-                        )}
-                        <span className="uppercase text-sm font-semibold">{d.accountName}</span>
-                      </div>
+                          {/* ── Tag account sub-line (indented) ── */}
+                          {(d.tagAccountCode || d.tagAccountName) && (
+                            <div className="flex items-baseline gap-2 mt-0.5 pl-3 border-l-2 border-muted ml-1">
+                              {d.tagAccountCode && (
+                                <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
+                                  {d.tagAccountCode}
+                                </span>
+                              )}
+                              <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
+                            </div>
+                          )}
 
-                      {/* ── Tag account sub-line (indented) ── */}
-                      {(d.tagAccountCode || d.tagAccountName) && (
-                        <div className="flex items-baseline gap-2 mt-0.5 pl-3 border-l-2 border-muted ml-1">
-                          {d.tagAccountCode && (
-                            <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
-                              {d.tagAccountCode}
-                            </span>
+                          {/* ── Ref# line ── */}
+                          {(d.refBillNo || d.taxType || d.cprNo || voucher.refBillNo || voucher.taxType) && (
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span className="font-bold text-foreground/70">Ref#</span>
+                              {(d.taxType ?? voucher.taxType) && (
+                                <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                                  {d.taxType ?? voucher.taxType}
+                                </span>
+                              )}
+                              {(d.refBillNo || voucher.refBillNo) && (
+                                <span className="font-mono">{d.refBillNo || voucher.refBillNo}</span>
+                              )}
+                              {d.cprNo && (
+                                <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                                  CPR: {d.cprNo}
+                                </span>
+                              )}
+                            </div>
                           )}
-                          <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
-                        </div>
-                      )}
+                        </td>
+                        <td className="px-4 py-3 align-top text-muted-foreground text-xs leading-relaxed">
+                          {d.narration || voucher.description}
+                        </td>
+                        {/* Debit amount — bold blue */}
+                        <td className="px-4 py-3 text-right align-top font-mono font-bold tabular-nums text-blue-600 dark:text-blue-400">
+                          {Number(d.debit) > 0 ? fmt(Number(d.debit)) : "—"}
+                        </td>
+                        {/* Credit — dash */}
+                        <td className="px-4 py-3 text-right align-top font-mono tabular-nums text-muted-foreground/50">
+                          —
+                        </td>
+                      </tr>
+                    ))}
 
-                      {/* ── Ref# line ── */}
-                      {(d.refBillNo || d.taxType || d.cprNo) && (
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <span className="font-bold text-foreground/70">Ref#</span>
-                          {d.taxType && (
-                            <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
-                              {d.taxType}
-                            </span>
-                          )}
-                          {d.refBillNo && (
-                            <span className="font-mono">{d.refBillNo}</span>
-                          )}
-                          {d.cprNo && (
-                            <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
-                              CPR: {d.cprNo}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 align-top text-muted-foreground text-xs leading-relaxed">
-                      {d.narration || voucher.description}
-                    </td>
-                    {/* Debit — dash */}
-                    <td className="px-4 py-3 text-right align-top font-mono tabular-nums text-muted-foreground/50">
-                      —
-                    </td>
-                    {/* Credit amount — bold green */}
-                    <td className="px-4 py-3 text-right align-top font-mono font-bold tabular-nums text-green-600 dark:text-green-400">
-                      {Number(d.credit) > 0 ? fmt(Number(d.credit)) : "—"}
-                    </td>
-                  </tr>
-                ))}
+                    {/* Credit rows */}
+                    {creditRows.map((d, i) => (
+                      <tr key={`cr-${i}`} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 align-top">
+                          {/* ── Main account line ── */}
+                          <div className="flex items-baseline gap-2 font-medium">
+                            {d.accountCode && (
+                              <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
+                                {d.accountCode}
+                              </span>
+                            )}
+                            <span className="uppercase text-sm font-semibold">{d.accountName}</span>
+                          </div>
 
-                {/* Fallback: no credit detail rows → show creditAccount from voucher header */}
-                {creditRows.length === 0 && voucher.creditAccountName && (
-                  <tr className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 align-top">
-                      <div className="flex items-baseline gap-2">
-                        {voucher.creditAccountCode && (
-                          <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
-                            {voucher.creditAccountCode}
-                          </span>
-                        )}
-                        <span className="uppercase text-sm font-semibold">{voucher.creditAccountName}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 align-top text-muted-foreground text-xs leading-relaxed">
-                      {voucher.description}
-                    </td>
-                    {/* Debit — dash */}
-                    <td className="px-4 py-3 text-right align-top font-mono tabular-nums text-muted-foreground/50">
-                      —
-                    </td>
-                    {/* Credit amount — bold green */}
-                    <td className="px-4 py-3 text-right align-top font-mono font-bold tabular-nums text-green-600 dark:text-green-400">
-                      {fmt(totalCredit)}
-                    </td>
-                  </tr>
+                          {/* ── Tag account sub-line (indented) ── */}
+                          {(d.tagAccountCode || d.tagAccountName) && (
+                            <div className="flex items-baseline gap-2 mt-0.5 pl-3 border-l-2 border-muted ml-1">
+                              {d.tagAccountCode && (
+                                <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
+                                  {d.tagAccountCode}
+                                </span>
+                              )}
+                              <span className="text-xs text-foreground/80">{d.tagAccountName}</span>
+                            </div>
+                          )}
+
+                          {/* ── Ref# line ── */}
+                          {(d.refBillNo || d.taxType || d.cprNo) && (
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span className="font-bold text-foreground/70">Ref#</span>
+                              {d.taxType && (
+                                <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                                  {d.taxType}
+                                </span>
+                              )}
+                              {d.refBillNo && (
+                                <span className="font-mono">{d.refBillNo}</span>
+                              )}
+                              {d.cprNo && (
+                                <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase">
+                                  CPR: {d.cprNo}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 align-top text-muted-foreground text-xs leading-relaxed">
+                          {d.narration || voucher.description}
+                        </td>
+                        {/* Debit — dash */}
+                        <td className="px-4 py-3 text-right align-top font-mono tabular-nums text-muted-foreground/50">
+                          —
+                        </td>
+                        {/* Credit amount — bold green */}
+                        <td className="px-4 py-3 text-right align-top font-mono font-bold tabular-nums text-green-600 dark:text-green-400">
+                          {Number(d.credit) > 0 ? fmt(Number(d.credit)) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+
+                    {/* Fallback: no credit detail rows → show creditAccount from voucher header */}
+                    {creditRows.length === 0 && voucher.creditAccountName && (
+                      <tr className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-3 align-top">
+                          <div className="flex items-baseline gap-2">
+                            {voucher.creditAccountCode && (
+                              <span className="font-mono text-xs font-bold text-muted-foreground shrink-0">
+                                {voucher.creditAccountCode}
+                              </span>
+                            )}
+                            <span className="uppercase text-sm font-semibold">{voucher.creditAccountName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 align-top text-muted-foreground text-xs leading-relaxed">
+                          {voucher.description}
+                        </td>
+                        {/* Debit — dash */}
+                        <td className="px-4 py-3 text-right align-top font-mono tabular-nums text-muted-foreground/50">
+                          —
+                        </td>
+                        {/* Credit amount — bold green */}
+                        <td className="px-4 py-3 text-right align-top font-mono font-bold tabular-nums text-green-600 dark:text-green-400">
+                          {fmt(totalCredit)}
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 )}
               </tbody>
 
