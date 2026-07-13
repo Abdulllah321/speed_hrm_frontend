@@ -377,7 +377,11 @@ export default function CheckoutPage() {
 
     if (discountMode === "alliance" && selectedAlliance) {
         let allianceDiscount = 0;
-        const allianceBase = subtotal;
+        const voucherAmount = appliedVouchers.reduce((acc, v) => acc + v.amount, 0);
+        const grandTotalBeforeAlliance = grandTotalBeforeManual;
+        const wostRatio = grandTotalBeforeAlliance > 0 ? subtotal / grandTotalBeforeAlliance : 1;
+        const allianceBase = Math.max(0, (grandTotalBeforeAlliance - voucherAmount) * wostRatio);
+
         if (selectedAlliance.maxDiscount) {
             allianceDiscount = Math.min(
                 allianceBase * (Number(selectedAlliance.discountPercent) / 100),
