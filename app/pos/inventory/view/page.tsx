@@ -11,6 +11,7 @@ import { posSalesApi } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/components/providers/auth-provider";
 import { PermissionGuard } from "@/components/auth/permission-guard";
+import { formatCurrency } from "@/lib/utils";
 
 interface InventoryItem {
     id: string;
@@ -100,8 +101,9 @@ export default function InventoryViewPage() {
             {/* Table Header */}
             {!isLoading && items.length > 0 && (
                 <div className="flex-none px-4 md:px-6 py-2 border-b bg-muted/10">
-                    <div className="grid grid-cols-[1fr_auto_auto] gap-4 items-center">
+                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Item</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right w-24">Price</span>
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-right w-24">Stock</span>
                         <span className="w-5" />
                     </div>
@@ -128,11 +130,11 @@ export default function InventoryViewPage() {
                     items.map((item) => (
                         <button
                             key={item.id}
-                            className="w-full flex items-center gap-4 px-4 md:px-6 py-3.5 hover:bg-muted/30 transition-colors text-left group"
+                            className="w-full grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center px-4 md:px-6 py-3.5 hover:bg-muted/30 transition-colors text-left group"
                             onClick={() => handleItemClick(item)}
                         >
                             {/* SKU + Name */}
-                            <div className="flex-1 min-w-0">
+                            <div className="min-w-0">
                                 <div className="flex items-center flex-wrap gap-2 mb-0.5">
                                     <span className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase bg-muted/60 px-1.5 py-0.5 rounded">
                                         {item.sku}
@@ -156,13 +158,18 @@ export default function InventoryViewPage() {
                                 </p>
                             </div>
 
+                            {/* Price */}
+                            <div className="w-24 text-right font-medium text-sm text-foreground">
+                                {item.unitPrice !== undefined ? formatCurrency(item.unitPrice) : "—"}
+                            </div>
+
                             {/* Stock qty */}
-                            <div className="flex-none w-24 text-right">
+                            <div className="w-24 text-right">
                                 <StockBadge qty={item.stockQty} />
                             </div>
 
                             {/* Arrow */}
-                            <ChevronRight className="h-4 w-4 text-muted-foreground/40 flex-none group-hover:text-primary transition-colors" />
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/40 justify-self-end group-hover:text-primary transition-colors" />
                         </button>
                     ))
                 )}
@@ -177,6 +184,7 @@ export default function InventoryViewPage() {
                     totalQuantity: selectedItem.stockQty,
                     size: selectedItem.size,
                     color: selectedItem.color,
+                    unitPrice: selectedItem.unitPrice,
                 } : null}
                 isOpen={isDrawerOpen}
                 onClose={() => setIsDrawerOpen(false)}

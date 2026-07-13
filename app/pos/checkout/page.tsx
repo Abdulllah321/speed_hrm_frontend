@@ -70,7 +70,7 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: {
     onSuccess: (customer: Customer) => void;
 }) {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [formData, setFormData] = useState({ name: "", contactNo: "", email: "" });
+    const [formData, setFormData] = useState({ name: "", contactNo: "", email: "", cnicNo: "" });
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -83,7 +83,7 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: {
                 toast.success("Customer added successfully");
                 onSuccess(res.data.data);
                 onOpenChange(false);
-                setFormData({ name: "", contactNo: "", email: "" });
+                setFormData({ name: "", contactNo: "", email: "", cnicNo: "" });
             } else {
                 toast.error(res.data?.message || "Failed to add customer");
             }
@@ -127,6 +127,16 @@ function AddCustomerModal({ open, onOpenChange, onSuccess }: {
                             value={formData.email}
                             onChange={e => setFormData(d => ({ ...d, email: e.target.value }))}
                         />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>CNIC</Label>
+                        <Input
+                            placeholder="e.g. 42201-1234567-1"
+                            value={formData.cnicNo}
+                            onChange={e => setFormData(d => ({ ...d, cnicNo: e.target.value }))}
+                            maxLength={15}
+                        />
+                        <p className="text-[11px] text-muted-foreground">Format: 42201-1234567-1</p>
                     </div>
                     <DialogFooter className="pt-2">
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting}>Cancel</Button>
@@ -208,8 +218,9 @@ export default function CheckoutPage() {
     const [promoScopeAll, setPromoScopeAll] = useState(true);
     const [promoScopedItems, setPromoScopedItems] = useState<Set<string>>(new Set());
     const [showPromoScope, setShowPromoScope] = useState(false);
+
     const [selectedAlliance, setSelectedAlliance] = useState<AllianceConfig | null>(null);
-    const [allianceMeta, setAllianceMeta] = useState({ cardholderName: "", cardLast4: "", merchantSlip: "" });
+    const [allianceMeta, setAllianceMeta] = useState({ cardholderName: "", cardLast4: "", merchantSlip: "", binNumber: "" });
     const [couponInput, setCouponInput] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
     const [couponError, setCouponError] = useState("");
@@ -457,11 +468,12 @@ export default function CheckoutPage() {
     const changeAmount = Math.max(0, totalPaid - grandTotal);
 
     // ── Helpers ────────────────────────────────────────────────────────
+
     const clearDiscount = useCallback(() => {
         setDiscountMode("none");
         setSelectedPromo(null);
         setSelectedAlliance(null);
-        setAllianceMeta({ cardholderName: "", cardLast4: "", merchantSlip: "" });
+        setAllianceMeta({ cardholderName: "", cardLast4: "", merchantSlip: "", binNumber: "" });
         setAppliedCoupon(null);
         setCouponInput("");
         setCouponError("");
@@ -510,8 +522,21 @@ export default function CheckoutPage() {
                 toast.error("Card number (last 4 digits) is mandatory when Alliance is selected.");
                 return;
             }
-            if (!tenderSlip || !tenderSlip.trim()) {
-                toast.error("Auth ID / Approval Code is mandatory when Alliance is selected.");
+            if (!tenderSlip || !tenderSlip.trim() || tenderSlip.trim().length !== 6 || !/^\d+$/.test(tenderSlip)) {
+                toast.error("Auth ID / Approval Code must be a 6-digit numeric code when Alliance is selected.");
+                return;
+            }
+            if (selectedAlliance.binNumbers && selectedAlliance.binNumbers.length > 0 && !allianceMeta.binNumber) {
+                toast.error("Please select a BIN number for the Alliance discount.");
+                return;
+            }
+        }
+
+        // General Auth ID validation for card / bank transfer if entered
+        if ((tenderMethod === "card" || tenderMethod === "bank_transfer") && tenderSlip) {
+            const trimmed = tenderSlip.trim();
+            if (trimmed.length !== 6 || !/^\d+$/.test(trimmed)) {
+                toast.error("Auth ID / Approval Code must be exactly a 6-digit numeric code.");
                 return;
             }
         }
@@ -521,6 +546,7 @@ export default function CheckoutPage() {
             toast.error("Please select a merchant / bank terminal before adding a card payment.");
             return;
         }
+
         setTenders(prev => [...prev, {
             method: tenderMethod, amount: tenderAmount,
             cardLast4: tenderCardLast4 || undefined,
@@ -528,12 +554,14 @@ export default function CheckoutPage() {
         }]);
         // When paying by card with an alliance selected, sync card details into allianceMeta
         if ((tenderMethod === "card" || tenderMethod === "bank_transfer") && discountMode === "alliance") {
-            setAllianceMeta({
+            setAllianceMeta(prev => ({
+                ...prev,
                 cardholderName: tenderCardholderName,
                 cardLast4: tenderCardLast4,
                 merchantSlip: tenderSlip,
-            });
+            }));
         }
+
         setTenderAmount(0);
         setTenderCardholderName("");
         setTenderCardLast4("");
@@ -661,7 +689,6 @@ export default function CheckoutPage() {
             toast.error("A customer must be selected to complete this sale.");
             return;
         }
-
         if (discountMode === "alliance" && selectedAlliance) {
             const hasCash = tenders.some(t => t.method === "cash");
             if (hasCash) {
@@ -673,6 +700,11 @@ export default function CheckoutPage() {
                 toast.error("Card number (last 4 digits) is mandatory when Alliance is selected.");
                 return;
             }
+            const activeSlip = tenderSlip || allianceMeta.merchantSlip;
+            if (!activeSlip || activeSlip.trim().length !== 6 || !/^\d+$/.test(activeSlip)) {
+                toast.error("Auth ID / Approval Code must be a 6-digit numeric code when Alliance is selected.");
+                return;
+            }
             const cardTender = tenders.find(t => t.method === "card");
             if (!cardTender) {
                 toast.error("Please add the card payment to the payment list.");
@@ -682,8 +714,15 @@ export default function CheckoutPage() {
                 toast.error("Card number (last 4 digits) is mandatory for card payments when Alliance is selected.");
                 return;
             }
+            if (!cardTender.slipNo || cardTender.slipNo.trim().length !== 6 || !/^\d+$/.test(cardTender.slipNo)) {
+                toast.error("Auth ID / Approval Code must be a 6-digit numeric code for card payments when Alliance is selected.");
+                return;
+            }
+            if (selectedAlliance.binNumbers && selectedAlliance.binNumbers.length > 0 && !allianceMeta.binNumber) {
+                toast.error("Please select a BIN number for the Alliance discount.");
+                return;
+            }
         }
-
         // Merchant required if any card / bank_transfer tender was added
         const hasCardTender = tenders.some(t => t.method === "card" || t.method === "bank_transfer");
         if (hasCardTender && !selectedMerchant) {
@@ -728,8 +767,10 @@ export default function CheckoutPage() {
                     cardholderName: tenderCardholderName || allianceMeta.cardholderName,
                     cardLast4: tenderCardLast4 || allianceMeta.cardLast4,
                     merchantSlip: tenderSlip || allianceMeta.merchantSlip,
+                    binNumber: allianceMeta.binNumber || undefined,
                 };
             }
+
             if (discountMode === "manual" && orderDiscount > 0) {
                 if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
                 else body.globalDiscountAmount = orderDiscount;
@@ -763,7 +804,6 @@ export default function CheckoutPage() {
             toast.error("Please select a customer for credit sale.");
             return;
         }
-
         if (discountMode === "alliance" && selectedAlliance) {
             const hasCash = tenders.some(t => t.method === "cash");
             if (hasCash) {
@@ -775,8 +815,16 @@ export default function CheckoutPage() {
                 toast.error("Card number (last 4 digits) is mandatory when Alliance is selected.");
                 return;
             }
+            const activeSlip = tenderSlip || allianceMeta.merchantSlip;
+            if (!activeSlip || activeSlip.trim().length !== 6 || !/^\d+$/.test(activeSlip)) {
+                toast.error("Auth ID / Approval Code must be a 6-digit numeric code when Alliance is selected.");
+                return;
+            }
+            if (selectedAlliance.binNumbers && selectedAlliance.binNumbers.length > 0 && !allianceMeta.binNumber) {
+                toast.error("Please select a BIN number for the Alliance discount.");
+                return;
+            }
         }
-
         // Merchant required if any card / bank_transfer tender was added
         const hasCardTenderCredit = tenders.some(t => t.method === "card" || t.method === "bank_transfer");
         if (hasCardTenderCredit && !selectedMerchant) {
@@ -823,8 +871,10 @@ export default function CheckoutPage() {
                     cardholderName: tenderCardholderName || allianceMeta.cardholderName,
                     cardLast4: tenderCardLast4 || allianceMeta.cardLast4,
                     merchantSlip: tenderSlip || allianceMeta.merchantSlip,
+                    binNumber: allianceMeta.binNumber || undefined,
                 };
             }
+
             if (discountMode === "manual" && orderDiscount > 0) {
                 if (manualDiscountType === "percent") body.globalDiscountPercent = manualDiscountValue;
                 else body.globalDiscountAmount = orderDiscount;
@@ -1230,7 +1280,6 @@ export default function CheckoutPage() {
                             grandTotal={grandTotal}
                             fmtCurrency={fmtCurrency}
                         />
-
                         {/* Payment */}
                         <PaymentPanel
                             tenders={tenders}
@@ -1252,6 +1301,8 @@ export default function CheckoutPage() {
                             validatedVoucher={validatedVoucher}
                             voucherError={voucherError}
                             voucherValidating={voucherValidating}
+                            allianceMeta={allianceMeta}
+                            onAllianceMetaChange={setAllianceMeta}
                             tenderAmountRef={tenderAmountRef}
                             onTenderMethodChange={setTenderMethod}
                             onTenderAmountChange={setTenderAmount}
@@ -1265,7 +1316,6 @@ export default function CheckoutPage() {
                             onVoucherValidate={validateVoucherCode}
                             fmtCurrency={fmtCurrency}
                         />
-
                         {/* Action buttons */}
                         <ActionButtons
                             isSubmitting={isSubmitting}

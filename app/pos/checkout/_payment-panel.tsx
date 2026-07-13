@@ -43,7 +43,6 @@ const TENDER_OPTIONS = [
     { value: "voucher", label: "Voucher (Alt+4)", icon: Ticket },
     { value: "credit_account", label: "Credit Account (Alt+5)", icon: BookOpen },
 ];
-
 interface PaymentPanelProps {
     tenders: Tender[];
     tenderMethod: string;
@@ -66,6 +65,9 @@ interface PaymentPanelProps {
     validatedVoucher: ValidatedVoucher | null;
     voucherError: string | null;
     voucherValidating: boolean;
+    // Alliance meta
+    allianceMeta: { cardholderName: string; cardLast4: string; merchantSlip: string; binNumber: string };
+    onAllianceMetaChange: (val: { cardholderName: string; cardLast4: string; merchantSlip: string; binNumber: string }) => void;
     // Refs
     tenderAmountRef: React.RefObject<HTMLInputElement | null>;
     // Handlers
@@ -87,6 +89,7 @@ export function PaymentPanel({
     balanceDue, changeAmount, discountMode, selectedAlliance, selectedCustomer,
     merchants, selectedMerchant, isLoadingMerchants, onMerchantChange,
     voucherCode, validatedVoucher, voucherError, voucherValidating,
+    allianceMeta, onAllianceMetaChange,
     tenderAmountRef,
     onTenderMethodChange, onTenderAmountChange,
     onTenderCardholderNameChange, onTenderCardLast4Change, onTenderSlipChange,
@@ -171,69 +174,119 @@ export function PaymentPanel({
                                 </div>
                             )}
 
-                            {/* ── Merchant selector ── */}
-                            <div>
-                                <Label className="text-xs text-muted-foreground uppercase tracking-wide">
-                                    Merchant / Bank Terminal
-                                    <span className="text-destructive ml-0.5">*</span>
-                                </Label>
-                                <Select
-                                    value={selectedMerchant?.id || ""}
-                                    onValueChange={(val) => {
-                                        if (!val) { onMerchantChange(null); return; }
-                                        const m = merchants.find(m => m.id === val);
-                                        onMerchantChange(m || null);
-                                    }}
-                                >
-                                    <SelectTrigger 
-                                        id="merchant-terminal-select"
-                                        className={cn(
-                                            "mt-1 h-9",
-                                            !selectedMerchant && "border-amber-400 focus:ring-amber-400"
-                                        )}
+                            {/* ── Merchant & BIN Selector ── */}
+                            <div className={cn(
+                                "grid gap-3",
+                                discountMode === "alliance" && selectedAlliance && selectedAlliance.binNumbers?.length > 0
+                                    ? "grid-cols-1 md:grid-cols-2"
+                                    : "grid-cols-1"
+                            )}>
+                                {/* ── Merchant selector ── */}
+                                <div>
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                                        Merchant / Bank Terminal
+                                        <span className="text-destructive ml-0.5">*</span>
+                                    </Label>
+                                    <Select
+                                        value={selectedMerchant?.id || ""}
+                                        onValueChange={(val) => {
+                                            if (!val) { onMerchantChange(null); return; }
+                                            const m = merchants.find(m => m.id === val);
+                                            onMerchantChange(m || null);
+                                        }}
                                     >
-                                        {isLoadingMerchants ? (
-                                            <span className="flex items-center gap-1.5 text-muted-foreground">
-                                                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading merchants...
-                                            </span>
-                                        ) : (
-                                            <SelectValue placeholder="Select merchant terminal..." />
+                                        <SelectTrigger 
+                                            id="merchant-terminal-select"
+                                            className={cn(
+                                                "mt-1 h-9",
+                                                !selectedMerchant && "border-amber-400 focus:ring-amber-400"
+                                            )}
+                                        >
+                                            {isLoadingMerchants ? (
+                                                <span className="flex items-center gap-1.5 text-muted-foreground">
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading merchants...
+                                                </span>
+                                            ) : (
+                                                <SelectValue placeholder="Select merchant terminal..." />
+                                            )}
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {merchants.length === 0 && !isLoadingMerchants && (
+                                                <div className="p-3 text-center text-xs text-muted-foreground italic">
+                                                    No merchants configured for this location
+                                                </div>
+                                            )}
+                                            {merchants.map((m) => (
+                                                <SelectItem key={m.id} value={m.id}>
+                                                    <div className="flex flex-col py-0.5">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-semibold text-sm">{m.bankName}</span>
+                                                            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 font-mono">
+                                                                #{m.merchantCode}
+                                                            </Badge>
+                                                        </div>
+                                                        <span className="text-[10px] text-muted-foreground">
+                                                            {m.description} · {(Number(m.commissionRate) * 100).toFixed(2)}% commission
+                                                        </span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {!selectedMerchant && merchants.length > 0 && (
+                                        <p className="text-[10px] text-amber-600 mt-1">Select bank terminal</p>
+                                    )}
+                                    {selectedMerchant && (
+                                        <div className="mt-1.5 flex items-center gap-3 rounded-md bg-muted/30 border px-2.5 py-1.5 text-xs">
+                                            <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                                <span className="font-medium">{selectedMerchant.bankName}</span>
+                                                <span className="text-muted-foreground ml-2 text-[10px]">{(Number(selectedMerchant.commissionRate) * 100).toFixed(1)}%</span>
+                                            </div>
+                                            <span className="font-mono text-muted-foreground text-[10px]">{selectedMerchant.tagId}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* ── BIN Number selector ── */}
+                                {discountMode === "alliance" && selectedAlliance && selectedAlliance.binNumbers?.length > 0 && (
+                                    <div>
+                                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">
+                                            Card BIN Number
+                                            <span className="text-destructive ml-0.5">*</span>
+                                        </Label>
+                                        <Select
+                                            value={allianceMeta?.binNumber || ""}
+                                            onValueChange={(val) => {
+                                                onAllianceMetaChange({
+                                                    ...allianceMeta,
+                                                    binNumber: val,
+                                                });
+                                            }}
+                                        >
+                                            <SelectTrigger className="mt-1 h-9">
+                                                <SelectValue placeholder="Select BIN..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {selectedAlliance.binNumbers.map((bin) => (
+                                                    <SelectItem key={bin} value={bin}>
+                                                        <span className="font-mono font-medium">{bin}</span>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {!allianceMeta?.binNumber && (
+                                            <p className="text-[10px] text-amber-600 mt-1">Select qualifying BIN number</p>
                                         )}
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {merchants.length === 0 && !isLoadingMerchants && (
-                                            <div className="p-3 text-center text-xs text-muted-foreground italic">
-                                                No merchants configured for this location
+                                        {allianceMeta?.binNumber && (
+                                            <div className="mt-1.5 flex items-center gap-3 rounded-md bg-muted/30 border px-2.5 py-1.5 text-xs">
+                                                <CreditCard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="font-medium">Selected BIN: </span>
+                                                    <span className="font-mono font-bold text-primary">{allianceMeta.binNumber}</span>
+                                                </div>
                                             </div>
                                         )}
-                                        {merchants.map((m) => (
-                                            <SelectItem key={m.id} value={m.id}>
-                                                <div className="flex flex-col py-0.5">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-semibold text-sm">{m.bankName}</span>
-                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 font-mono">
-                                                            #{m.merchantCode}
-                                                        </Badge>
-                                                    </div>
-                                                    <span className="text-[10px] text-muted-foreground">
-                                                        {m.description} · {(Number(m.commissionRate) * 100).toFixed(2)}% commission
-                                                    </span>
-                                                </div>
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                {!selectedMerchant && merchants.length > 0 && (
-                                    <p className="text-[10px] text-amber-600 mt-1">Select the bank terminal used for this card payment</p>
-                                )}
-                                {selectedMerchant && (
-                                    <div className="mt-1.5 flex items-center gap-3 rounded-md bg-muted/30 border px-2.5 py-1.5 text-xs">
-                                        <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                        <div className="flex-1 min-w-0">
-                                            <span className="font-medium">{selectedMerchant.bankName}</span>
-                                            <span className="text-muted-foreground ml-2">Commission: {(Number(selectedMerchant.commissionRate) * 100).toFixed(2)}%</span>
-                                        </div>
-                                        <span className="font-mono text-muted-foreground text-[10px]">{selectedMerchant.tagId}</span>
                                     </div>
                                 )}
                             </div>
@@ -260,9 +313,9 @@ export function PaymentPanel({
                                     <Label className="text-xs text-muted-foreground">
                                         AUTH ID / Approval Code{discountMode === "alliance" && selectedAlliance && <span className="text-destructive font-bold ml-0.5">*</span>}
                                     </Label>
-                                    <Input className="mt-1 h-8 text-xs" placeholder="Slip or ref"
+                                    <Input className="mt-1 h-8 text-xs font-mono" maxLength={6} placeholder="6-digit Auth ID"
                                         value={tenderSlip}
-                                        onChange={(e) => onTenderSlipChange(e.target.value)} />
+                                        onChange={(e) => onTenderSlipChange(e.target.value.replace(/\D/g, ""))} />
                                 </div>
                             </div>
                         </div>
