@@ -1,7 +1,7 @@
 "use client";
 
 import {
-    useState, useEffect, useCallback, useMemo,
+    useState, useEffect, useCallback, useMemo, useRef,
     useTransition, startTransition, addTransitionType,
 } from "react";
 import { useRouter } from "next/navigation";
@@ -21,7 +21,7 @@ import {
     Printer, Eye,
     PauseCircle, RotateCcw, Pencil, Plus, Trash2, Loader2,
     Banknote, CreditCard, Building2, Ticket, BookOpen,
-    AlertCircle, CheckCircle, XCircle, Upload,
+    AlertCircle, CheckCircle, CheckCircle2, XCircle, Upload,
 } from "lucide-react";
 import DataTable from "@/components/common/data-table";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
@@ -58,7 +58,14 @@ const TENDER_OPTIONS = [
     { value: "credit_account", label: "Credit Account", icon: BookOpen  },
 ];
 
-interface Tender { method: string; amount: number; cardLast4?: string; slipNo?: string; }
+interface Tender {
+    method: string;
+    amount: number;
+    cardLast4?: string;
+    slipNo?: string;
+    voucherId?: string;
+    voucherFaceValue?: number;
+}
 
 // ─── Update Tender Modal ──────────────────────────────────────────────────────
 
@@ -73,33 +80,150 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
     const [amount, setAmount]       = useState<number>(0);
     const [cardLast4, setCardLast4] = useState("");
     const [slipNo, setSlipNo]       = useState("");
+    const [cardholderName, setCardholderName] = useState("");
     const [isSaving, setIsSaving]   = useState(false);
 
+    // Dynamic order fetching
+    const [fullOrder, setFullOrder] = useState<any>(null);
+    const [isLoadingOrder, setIsLoadingOrder] = useState(false);
+
+    // Merchant (bank terminal) state
+    const [merchants, setMerchants] = useState<any[]>([]);
+    const [selectedMerchant, setSelectedMerchant] = useState<any>(null);
+    const [isLoadingMerchants, setIsLoadingMerchants] = useState(false);
+
+    // Voucher state (only for validating if ever needed, though we disable adding vouchers now)
+    const [voucherCode, setVoucherCode] = useState("");
+    const [validatedVoucher, setValidatedVoucher] = useState<any>(null);
+    const [voucherError, setVoucherError] = useState<string | null>(null);
+    const [voucherValidating, setVoucherValidating] = useState(false);
+    const voucherDebounceRef = useRef<any>(null);
+
+    // Fetch fresh order details on open
     useEffect(() => {
-        if (open && order) setTenders(order.tenders ?? []);
+        if (open && order) {
+            setIsLoadingOrder(true);
+            setTenders([]);
+            authFetch(`/pos-sales/orders/${order.id}`)
+                .then(res => {
+                    if (res.ok && res.data?.status) {
+                        const details = res.data.data;
+                        setFullOrder(details);
+                        setTenders(details.tenders ?? []);
+                        
+                        // Set merchant if it exists on order
+                        const existingMerchantId = details.merchantId || details.merchant?.id;
+                        if (existingMerchantId) {
+                            // Fetch merchant list first and then set
+                            authFetch(`/pos-config/merchants/for-location?locationId=${details.locationId}`)
+                                .then(merchRes => {
+                                    if (merchRes.ok && merchRes.data?.status) {
+                                        const list = merchRes.data.data || [];
+                                        setMerchants(list);
+                                        const existing = list.find((m: any) => m.id === existingMerchantId);
+                                        if (existing) setSelectedMerchant(existing);
+                                    }
+                                }).catch(() => {});
+                        }
+                    } else {
+                        toast.error("Failed to load order details");
+                    }
+                })
+                .catch(() => {
+                    toast.error("Failed to load order details");
+                })
+                .finally(() => {
+                    setIsLoadingOrder(false);
+                });
+
+            setMethod("cash");
+            setAmount(0);
+            setCardLast4("");
+            setSlipNo("");
+            setCardholderName("");
+            setVoucherCode("");
+            setValidatedVoucher(null);
+            setVoucherError(null);
+        } else {
+            setFullOrder(null);
+            setMerchants([]);
+            setSelectedMerchant(null);
+        }
     }, [open, order]);
 
-    const grandTotal   = Number(order?.grandTotal ?? 0);
+    // Fetch merchants for the location if not already loaded
+    useEffect(() => {
+        if (open && fullOrder?.locationId && merchants.length === 0) {
+            setIsLoadingMerchants(true);
+            authFetch(`/pos-config/merchants/for-location?locationId=${fullOrder.locationId}`)
+                .then(res => {
+                    if (res.ok && res.data?.status) {
+                        const list = res.data.data || [];
+                        setMerchants(list);
+                        if (list.length === 1) {
+                            setSelectedMerchant(list[0]);
+                        } else {
+                            const existingMerchantId = fullOrder.merchantId || fullOrder.merchant?.id;
+                            const existing = list.find((m: any) => m.id === existingMerchantId);
+                            if (existing) {
+                                setSelectedMerchant(existing);
+                            }
+                        }
+                    }
+                })
+                .catch(() => { })
+                .finally(() => setIsLoadingMerchants(false));
+        }
+    }, [open, fullOrder, merchants.length]);
+
+    const isAlliance = !!fullOrder?.allianceId;
+    const hasIssuedVouchers = !!fullOrder?.issuedVouchers && fullOrder.issuedVouchers.length > 0;
+
+    const grandTotal   = Number(fullOrder?.grandTotal ?? 0);
     const totalPaid    = tenders.reduce((s, t) => s + t.amount, 0);
     const balanceDue   = Math.max(0, grandTotal - totalPaid);
     const changeAmount = Math.max(0, totalPaid - grandTotal);
 
     const addTender = () => {
         if (!amount || amount <= 0) return;
+
+        // Prevent total tender from exceeding the invoice amount
+        if (amount > balanceDue) {
+            toast.error(`Tender amount exceeds the invoice total. Maximum allowed: Rs. ${fmtCurrency(balanceDue)}.`);
+            return;
+        }
+
+        // Merchant required for card / bank_transfer payments
+        if ((method === "card" || method === "bank_transfer") && !selectedMerchant && merchants.length > 0) {
+            toast.error("Please select a merchant / bank terminal before adding a card payment.");
+            return;
+        }
+
         setTenders(prev => [
             ...prev,
-            { method, amount, cardLast4: cardLast4 || undefined, slipNo: slipNo || undefined },
+            { 
+                method, 
+                amount, 
+                cardLast4: (method === "card" || method === "bank_transfer") ? cardLast4 || undefined : undefined, 
+                slipNo: (method === "card" || method === "bank_transfer") ? slipNo || undefined : undefined 
+            },
         ]);
-        setAmount(0); setCardLast4(""); setSlipNo("");
+        setAmount(0); 
+        setCardLast4(""); 
+        setSlipNo("");
     };
 
     const handleSave = async () => {
         if (tenders.length === 0) { toast.error("Add at least one tender"); return; }
         setIsSaving(true);
         try {
+            const hasCardTender = tenders.some(t => t.method === "card" || t.method === "bank_transfer");
             const res = await authFetch(`/pos-sales/orders/${order.id}/update-tender`, {
                 method: "POST",
-                body: { tenders },
+                body: { 
+                    tenders,
+                    merchantId: hasCardTender ? selectedMerchant?.id : undefined
+                },
             });
             if (res.ok && res.data?.status) {
                 toast.success("Tender updated successfully");
@@ -112,6 +236,9 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
         finally { setIsSaving(false); }
     };
 
+    // Voucher adding is completely disabled (never allow to change applied vouchers)
+    const filteredTenderOptions = TENDER_OPTIONS.filter(o => o.value !== "voucher");
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-md">
@@ -123,88 +250,284 @@ function UpdateTenderModal({ order, open, onOpenChange, onSuccess }: {
                 </DialogHeader>
 
                 <div className="space-y-4 py-2">
-                    <div className="flex justify-between text-sm bg-muted/40 rounded-lg px-3 py-2">
-                        <span className="text-muted-foreground">Order Total</span>
-                        <span className="font-bold">Rs. {fmtCurrency(grandTotal)}</span>
-                    </div>
-
-                    {tenders.length > 0 && (
-                        <div className="space-y-1.5">
-                            {tenders.map((t, i) => {
-                                const Icon = TENDER_OPTIONS.find(o => o.value === t.method)?.icon ?? Banknote;
-                                return (
-                                    <div key={i} className="flex items-center gap-2 rounded-lg bg-muted/30 px-3 py-2 text-sm">
-                                        <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                        <span className="capitalize flex-1">
-                                            {t.method.replace("_", " ")}
-                                            {t.cardLast4 && <span className="font-mono text-xs text-muted-foreground ml-1">••{t.cardLast4}</span>}
-                                            {t.slipNo    && <span className="font-mono text-xs text-muted-foreground ml-1">#{t.slipNo}</span>}
-                                        </span>
-                                        <span className="font-mono font-semibold">Rs. {fmtCurrency(t.amount)}</span>
-                                        <button
-                                            onClick={() => setTenders(prev => prev.filter((_, j) => j !== i))}
-                                            className="text-muted-foreground hover:text-destructive transition-colors ml-1"
-                                        >
-                                            <Trash2 className="h-3.5 w-3.5" />
-                                        </button>
-                                    </div>
-                                );
-                            })}
+                    {isLoadingOrder ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-sm text-muted-foreground gap-2">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            <span>Loading order details...</span>
                         </div>
-                    )}
-
-                    <div className="space-y-2 border rounded-lg p-3">
-                        <Label className="text-xs text-muted-foreground uppercase tracking-wide">Add Payment</Label>
-                        <div className="flex gap-2">
-                            <Select value={method} onValueChange={setMethod}>
-                                <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    {TENDER_OPTIONS.map(({ value, label }) => (
-                                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Input
-                                type="number" min={0} className="w-28 font-mono" placeholder="Amount"
-                                value={amount || ""}
-                                onChange={e => setAmount(parseFloat(e.target.value) || 0)}
-                                onKeyDown={e => e.key === "Enter" && addTender()}
-                            />
-                        </div>
-                        {(method === "card" || method === "bank_transfer" || method === "voucher") && (
-                            <div className="grid grid-cols-2 gap-2">
-                                {method !== "voucher" && (
-                                    <Input
-                                        className="h-8 text-xs font-mono" maxLength={4} placeholder="Card last 4"
-                                        value={cardLast4} onChange={e => setCardLast4(e.target.value.replace(/\D/, ""))}
-                                    />
-                                )}
-                                <Input
-                                    className={`h-8 text-xs ${method === "voucher" ? "col-span-2" : ""}`}
-                                    placeholder={method === "voucher" ? "Voucher number" : "Slip / Ref #"}
-                                    value={slipNo} onChange={e => setSlipNo(e.target.value)}
-                                />
+                    ) : (
+                        <>
+                            <div className="flex justify-between text-sm bg-muted/40 rounded-lg px-3 py-2">
+                                <span className="text-muted-foreground">Order Total</span>
+                                <span className="font-bold">Rs. {fmtCurrency(grandTotal)}</span>
                             </div>
-                        )}
-                        <Button size="sm" className="w-full gap-1.5" onClick={addTender} disabled={!amount || amount <= 0}>
-                            <Plus className="h-3.5 w-3.5" /> Add
-                        </Button>
-                    </div>
 
-                    <div className={cn(
-                        "flex justify-between rounded-lg px-3 py-2 text-sm font-semibold",
-                        balanceDue <= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive",
-                    )}>
-                        <span>{balanceDue <= 0 ? (changeAmount > 0 ? "Change" : "Fully Paid ✓") : "Balance Due"}</span>
-                        <span className="font-mono">
-                            Rs. {fmtCurrency(balanceDue <= 0 && changeAmount > 0 ? changeAmount : balanceDue)}
-                        </span>
-                    </div>
+                            {/* Warning / Notice Banners */}
+                            {hasIssuedVouchers && (
+                                <div className="flex items-start gap-2 rounded-lg border border-destructive bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
+                                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <span>Cannot update tender because a refund/exchange voucher has been issued from this order.</span>
+                                </div>
+                            )}
+
+                            {isAlliance && (
+                                <div className="flex items-start gap-2 rounded-lg border border-blue-300 bg-blue-50/60 dark:bg-blue-950/20 px-3 py-2.5 text-xs text-blue-700 dark:text-blue-300">
+                                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <span>Tenders cannot be modified for Alliance discount orders. You can only update the Merchant / Bank Terminal.</span>
+                                </div>
+                            )}
+
+                            {/* Tenders list */}
+                            {tenders.length > 0 && (
+                                <div className="space-y-1.5">
+                                    {tenders.map((t, i) => {
+                                        const Icon = TENDER_OPTIONS.find(o => o.value === t.method)?.icon ?? Banknote;
+                                        return (
+                                            <div key={i} className="flex items-center gap-2 rounded-lg bg-muted/30 px-3 py-2 text-sm">
+                                                <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                                <span className="capitalize flex-1 font-medium">
+                                                    {t.method.replace("_", " ")}
+                                                    {t.cardLast4 && <span className="font-mono text-xs text-muted-foreground ml-1.5">••{t.cardLast4}</span>}
+                                                    {t.slipNo    && <span className="font-mono text-xs text-muted-foreground ml-1.5">#{t.slipNo}</span>}
+                                                </span>
+                                                <span className="font-mono font-semibold">Rs. {fmtCurrency(t.amount)}</span>
+                                                {/* Never allow deleting voucher tenders, alliance tenders, or when order has issued vouchers */}
+                                                {t.method !== "voucher" && !isAlliance && !hasIssuedVouchers && (
+                                                    <button
+                                                        onClick={() => setTenders(prev => prev.filter((_, j) => j !== i))}
+                                                        className="text-muted-foreground hover:text-destructive transition-colors ml-1"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Alliance merchant terminal selector only (tenders are locked) */}
+                            {isAlliance && !hasIssuedVouchers && (
+                                <div className="space-y-3 border rounded-lg p-3 bg-blue-50/10">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Update Terminal</Label>
+                                    <div>
+                                        <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                            Merchant / Bank Terminal
+                                            <span className="text-destructive ml-0.5">*</span>
+                                        </Label>
+                                        <Select
+                                            value={selectedMerchant?.id || ""}
+                                            onValueChange={(val) => {
+                                                if (!val) { setSelectedMerchant(null); return; }
+                                                const m = merchants.find(m => m.id === val);
+                                                setSelectedMerchant(m || null);
+                                            }}
+                                        >
+                                            <SelectTrigger 
+                                                className={cn(
+                                                    "mt-1 h-9 text-xs",
+                                                    !selectedMerchant && "border-amber-400 focus:ring-amber-400"
+                                                )}
+                                            >
+                                                {isLoadingMerchants ? (
+                                                    <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                                                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading merchants...
+                                                    </span>
+                                                ) : (
+                                                    <SelectValue placeholder="Select merchant terminal..." />
+                                                )}
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {merchants.length === 0 && !isLoadingMerchants && (
+                                                    <div className="p-3 text-center text-xs text-muted-foreground italic">
+                                                        No merchants configured for this location
+                                                    </div>
+                                                )}
+                                                {merchants.map((m) => (
+                                                    <SelectItem key={m.id} value={m.id}>
+                                                        <div className="flex flex-col py-0.5">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-semibold text-xs">{m.bankName}</span>
+                                                                <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 font-mono">
+                                                                    #{m.merchantCode}
+                                                                </Badge>
+                                                            </div>
+                                                            <span className="text-[9px] text-muted-foreground">
+                                                                {m.description} · {(Number(m.commissionRate) * 100).toFixed(2)}% commission
+                                                            </span>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Add Payment Form (locked if alliance or has issued vouchers) */}
+                            {!isAlliance && !hasIssuedVouchers && (
+                                <div className="space-y-3 border rounded-lg p-3">
+                                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Add Payment</Label>
+                                    
+                                    <div className="flex gap-2">
+                                        <Select value={method} onValueChange={setMethod}>
+                                            <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {filteredTenderOptions.map(({ value, label, icon: Icon }) => (
+                                                    <SelectItem key={value} value={value}>
+                                                        <div className="flex items-center gap-2">
+                                                            <Icon className="h-3.5 w-3.5" /> {label}
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Input
+                                            type="number" min={0} className="w-28 font-mono" placeholder={`${fmtCurrency(balanceDue)}`}
+                                            value={amount || ""}
+                                            onChange={e => setAmount(parseFloat(e.target.value) || 0)}
+                                            onKeyDown={e => e.key === "Enter" && addTender()}
+                                        />
+                                    </div>
+
+                                    {/* Credit account notice */}
+                                    {method === "credit_account" && !fullOrder?.customerId && (
+                                        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 px-3 py-2 text-xs text-amber-700">
+                                            <BookOpen className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                            <span>No customer is linked to this order. Cannot post to Credit Account.</span>
+                                        </div>
+                                    )}
+                                    {method === "credit_account" && fullOrder?.customerId && (
+                                        <div className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-xs text-emerald-700">
+                                            <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                                            <span>Will be posted to <strong>{fullOrder.customer?.name || "linked customer"}</strong>'s Credit Account.</span>
+                                        </div>
+                                    )}
+
+                                    {/* Card / bank transfer extra fields */}
+                                    {(method === "card" || method === "bank_transfer") && (
+                                        <div className="space-y-2 pt-1">
+                                            {/* Merchant selector */}
+                                            <div>
+                                                <Label className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                                                    Merchant / Bank Terminal
+                                                    <span className="text-destructive ml-0.5">*</span>
+                                                </Label>
+                                                <Select
+                                                    value={selectedMerchant?.id || ""}
+                                                    onValueChange={(val) => {
+                                                        if (!val) { setSelectedMerchant(null); return; }
+                                                        const m = merchants.find(m => m.id === val);
+                                                        setSelectedMerchant(m || null);
+                                                    }}
+                                                >
+                                                    <SelectTrigger 
+                                                        className={cn(
+                                                            "mt-1 h-9 text-xs",
+                                                            !selectedMerchant && "border-amber-400 focus:ring-amber-400"
+                                                        )}
+                                                    >
+                                                        {isLoadingMerchants ? (
+                                                            <span className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                                                                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading merchants...
+                                                            </span>
+                                                        ) : (
+                                                            <SelectValue placeholder="Select merchant terminal..." />
+                                                        )}
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {merchants.length === 0 && !isLoadingMerchants && (
+                                                            <div className="p-3 text-center text-xs text-muted-foreground italic">
+                                                                No merchants configured for this location
+                                                            </div>
+                                                        )}
+                                                        {merchants.map((m) => (
+                                                            <SelectItem key={m.id} value={m.id}>
+                                                                <div className="flex flex-col py-0.5">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-semibold text-xs">{m.bankName}</span>
+                                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 font-mono">
+                                                                            #{m.merchantCode}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <span className="text-[9px] text-muted-foreground">
+                                                                        {m.description} · {(Number(m.commissionRate) * 100).toFixed(2)}% commission
+                                                                    </span>
+                                                                </div>
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                {!selectedMerchant && merchants.length > 0 && (
+                                                    <p className="text-[9px] text-amber-600 mt-0.5">Select the bank terminal used for this payment</p>
+                                                )}
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div className="col-span-2">
+                                                    <Label className="text-[10px] text-muted-foreground">Cardholder Name</Label>
+                                                    <Input
+                                                        className="mt-1 h-8 text-xs"
+                                                        placeholder="Name on card"
+                                                        value={cardholderName}
+                                                        onChange={(e) => setCardholderName(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-[10px] text-muted-foreground">Card # (last 4)</Label>
+                                                    <Input className="mt-1 h-8 text-xs font-mono" maxLength={4} placeholder="••••"
+                                                        value={cardLast4}
+                                                        onChange={(e) => setCardLast4(e.target.value.replace(/\D/, ""))} />
+                                                </div>
+                                                <div>
+                                                    <Label className="text-[10px] text-muted-foreground">AUTH ID / Approval Code</Label>
+                                                    <Input className="mt-1 h-8 text-xs" placeholder="Slip or ref"
+                                                        value={slipNo}
+                                                        onChange={(e) => setSlipNo(e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        size="sm"
+                                        className="w-full gap-1.5"
+                                        disabled={
+                                            ((method === "card" || method === "bank_transfer") && !selectedMerchant && merchants.length > 0) ||
+                                            (method === "credit_account" && !fullOrder?.customerId)
+                                        }
+                                        onClick={() => {
+                                            if (!amount || amount <= 0) {
+                                                setAmount(balanceDue);
+                                                return;
+                                            }
+                                            addTender();
+                                        }}
+                                    >
+                                        <Plus className="h-3.5 w-3.5" /> Add
+                                    </Button>
+                                </div>
+                            )}
+
+                            <div className={cn(
+                                "flex justify-between rounded-lg px-3 py-2 text-sm font-semibold",
+                                balanceDue <= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive",
+                            )}>
+                                <span>{balanceDue <= 0 ? (changeAmount > 0 ? "Change" : "Fully Paid ✓") : "Balance Due"}</span>
+                                <span className="font-mono">
+                                    Rs. {fmtCurrency(balanceDue <= 0 && changeAmount > 0 ? changeAmount : balanceDue)}
+                                </span>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <DialogFooter className="gap-2">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSaving}>Cancel</Button>
-                    <Button onClick={handleSave} disabled={isSaving || tenders.length === 0}>
+                    <Button 
+                        onClick={handleSave} 
+                        disabled={isSaving || tenders.length === 0 || isLoadingOrder || hasIssuedVouchers || ((method === "card" || method === "bank_transfer") && !selectedMerchant && merchants.length > 0)}
+                    >
                         {isSaving
                             ? <Loader2 className="h-4 w-4 animate-spin mr-2" />
                             : <Pencil className="h-4 w-4 mr-2" />}

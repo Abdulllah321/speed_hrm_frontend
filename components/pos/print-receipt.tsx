@@ -244,6 +244,11 @@ const handleDownloadPdf = async () => {
       backgroundColor: "#ffffff",
       pixelRatio: 2,
       cacheBust: true,
+      style: {
+        position: "relative",
+        left: "0",
+        top: "0",
+      },
     });
 
     const imgProps = new jsPDF().getImageProperties(dataUrl);
@@ -980,7 +985,7 @@ function ReceiptBody({
                 </span>
               </div>
             )}
-
+              <Separator />
             {!isGiftReceipt && (
               <div className="mt-1 space-y-0.5 text-[10px]">
                 {!suppressItemDiscounts && (
