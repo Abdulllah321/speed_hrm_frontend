@@ -330,11 +330,15 @@ export default function LandedCostSetupPage() {
         if (draft.supplierId) {
           setSupplierId(draft.supplierId);
         }
-
         const grnItems = Array.isArray(grn.items) ? grn.items : [];
         const restoredItems = draft.items.map((di: any) => {
           const gi = grnItems.find((g: any) => String(g.itemId) === String(di.itemId));
           const itemMaster = gi?.item;
+          const currentFob = itemMaster?.fob !== undefined && itemMaster?.fob !== null 
+            ? parseFloat(String(itemMaster.fob)) 
+            : (di.unitFob || 0);
+          const currentQty = gi ? parseFloat(String(gi.receivedQty || 0)) : (di.qty || 0);
+
           return {
             itemId: di.itemId,
             itemName: di.itemName || itemMaster?.sku || di.sku || '',
@@ -342,9 +346,9 @@ export default function LandedCostSetupPage() {
             description: di.description || itemMaster?.description || '',
             category: itemMaster?.category?.name || '',
             hsCodeId: di.hsCodeId || itemMaster?.hsCode?.id || '',
-            qty: di.qty,
-            unitFob: di.unitFob,
-            invoiceForeign: di.qty * di.unitFob,
+            qty: currentQty,
+            unitFob: currentFob,
+            invoiceForeign: currentQty * currentFob,
             freightForeign: di.freightForeign || 0,
             exchangeRate: draft.exchangeRate || 1,
             invoicePKR: 0,
