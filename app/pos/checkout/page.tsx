@@ -1004,7 +1004,7 @@ export default function CheckoutPage() {
       }
       if (discountMode === "coupon" && appliedCoupon)
         body.couponId = appliedCoupon.id;
-      if (discountMode === "alliance" && selectedAlliance) {
+      if ((discountMode === "alliance" || discountMode === "manual") && selectedAlliance) {
         body.allianceId = selectedAlliance.id;
         body.allianceMeta = {
           cardholderName: tenderCardholderName || allianceMeta.cardholderName,
@@ -1168,7 +1168,7 @@ export default function CheckoutPage() {
       }
       if (discountMode === "coupon" && appliedCoupon)
         body.couponId = appliedCoupon.id;
-      if (discountMode === "alliance" && selectedAlliance) {
+      if ((discountMode === "alliance" || discountMode === "manual") && selectedAlliance) {
         body.allianceId = selectedAlliance.id;
         body.allianceMeta = {
           cardholderName: tenderCardholderName || allianceMeta.cardholderName,
@@ -1594,6 +1594,14 @@ export default function CheckoutPage() {
             allianceSearchRef={allianceSearchRef}
             onAllianceSearch={setAllianceSearch}
             onSelectAlliance={(a) => {
+              if (a === null) {
+                setSelectedAlliance(null);
+                return;
+              }
+              if (discountMode === "manual") {
+                setSelectedAlliance(a);
+                return;
+              }
               if (tenders.some((t) => t.method === "cash")) {
                 toast.error(
                   "Alliance discount cannot be applied when cash payment is added.",

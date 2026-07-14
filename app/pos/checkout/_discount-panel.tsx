@@ -57,7 +57,7 @@ interface DiscountPanelProps {
     allianceDetailsRef: React.RefObject<HTMLDetailsElement | null>;
     allianceSearchRef: React.RefObject<HTMLInputElement | null>;
     onAllianceSearch: (val: string) => void;
-    onSelectAlliance: (a: AllianceConfig) => void;
+    onSelectAlliance: (a: AllianceConfig | null) => void;
     // Manual discount
     manualDiscountType: "percent" | "flat";
     manualDiscountValue: number;
@@ -526,6 +526,31 @@ export function DiscountPanel({
                                      Discount (WOST): −{fmtCurrency(orderDiscount)}
                                      {manualDiscountType === "flat" && ` (WST: −${fmtCurrency(manualDiscountValue)})`}
                                  </p>
+                             )}
+                             {discountMode === "manual" && (
+                                 <div className="space-y-1.5 pt-2 border-t border-dashed">
+                                     <Label className="text-[11px] text-muted-foreground">Attach Alliance / Bank Card (Optional, for reporting)</Label>
+                                     <select
+                                         value={selectedAlliance?.id || ""}
+                                         onChange={(e) => {
+                                             const id = e.target.value;
+                                             if (id) {
+                                                 const alliance = alliances.find((a) => a.id === id);
+                                                 if (alliance) onSelectAlliance(alliance);
+                                             } else {
+                                                 onSelectAlliance(null);
+                                             }
+                                         }}
+                                         className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                     >
+                                         <option value="">-- No Alliance Attached --</option>
+                                         {alliances.map((a) => (
+                                             <option key={a.id} value={a.id}>
+                                                 {a.partnerName} ({a.discountPercent}%)
+                                             </option>
+                                         ))}
+                                     </select>
+                                 </div>
                              )}
                         </div>
                     </details>
