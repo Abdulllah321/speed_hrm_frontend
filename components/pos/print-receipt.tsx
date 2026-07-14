@@ -57,6 +57,15 @@ function fmtDate(dateStr?: string | null): string {
   ].join("-");
 }
 
+function fmtTime(dateStr?: string | null): string {
+  const d = dateStr ? new Date(dateStr) : new Date();
+  const hours = d.getHours();
+  const minutes = d.getMinutes();
+  const ampm = hours >= 12 ? "pm" : "am";
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${String(minutes).padStart(2, "0")} ${ampm}`;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Tender {
@@ -831,7 +840,7 @@ function ReceiptBody({
       {/* ── Receipt meta ── */}
       <div className="space-y-0.5 text-[11px]">
         <Row label="Receipt No." value={order?.orderNumber ?? ""} bold />
-        <Row label="Date" value={fmtDate(order?.createdAt)} />
+        <Row label="Date" value={`${fmtDate(order?.createdAt)} ${fmtTime(order?.createdAt)}`} />
         {cashierName && <Row label="Sales By" value={cashierName} />}
         {terminalName && <Row label="Terminal" value={terminalName} />}
       </div>

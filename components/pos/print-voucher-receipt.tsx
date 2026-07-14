@@ -36,6 +36,15 @@ function fmtDate(dateStr?: string | null): string {
     ].join("-");
 }
 
+function fmtTime(dateStr?: string | null): string {
+    const d = dateStr ? new Date(dateStr) : new Date();
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? "pm" : "am";
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${String(minutes).padStart(2, "0")} ${ampm}`;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface PrintVoucherReceiptProps {
@@ -418,7 +427,7 @@ function VoucherReceiptBody({
 
             {/* ── Voucher Details ── */}
             <div className="space-y-0.5 text-[11px]">
-                <Row label="Issued On" value={fmtDate(voucher.createdAt)} />
+                <Row label="Issued On" value={`${fmtDate(voucher.createdAt)} ${fmtTime(voucher.createdAt)}`} />
                 <Row label="Expires On" value={voucher.expiresAt ? fmtDate(voucher.expiresAt) : "No Expiry"} />
                 
                 {/* Source return / sales invoice details */}

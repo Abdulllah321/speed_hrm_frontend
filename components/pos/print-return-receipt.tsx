@@ -41,6 +41,15 @@ function fmtDate(dateStr?: string | null): string {
     ].join("-");
 }
 
+function fmtTime(dateStr?: string | null): string {
+    const d = dateStr ? new Date(dateStr) : new Date();
+    const hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? "pm" : "am";
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${String(minutes).padStart(2, "0")} ${ampm}`;
+}
+
 function fmtExpiryDate(dateStr?: string | Date | null): string {
     if (!dateStr) return "";
     try {
@@ -373,7 +382,7 @@ function ReturnBody({
             {/* ── Receipt meta ── */}
             <div className="space-y-0.5 text-[11px]">
                 <Row label={isRefund ? "Refund Ref." : "Return Ref."}  value={returnRef} bold />
-                <Row label="Date"         value={fmtDate(returnedAt)} />
+                <Row label="Date"         value={`${fmtDate(returnedAt)} ${fmtTime(returnedAt)}`} />
                 {cashierName  && <Row label="Processed By" value={cashierName}  />}
                 {terminalName && <Row label="Terminal"     value={terminalName} />}
             </div>
