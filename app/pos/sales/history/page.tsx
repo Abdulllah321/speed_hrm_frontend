@@ -702,15 +702,13 @@ export default function SalesHistoryPage() {
                                 onClick={() => openPrintDialog(order, "sales")}>
                                 <Printer className="h-3.5 w-3.5" />
                             </Button>
-                            {/* Gift receipt button - only show if order was marked as gift receipt */}
-                            {order.isGiftReceipt && (
-                                <Button variant="ghost" size="icon"
-                                    className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
-                                    title="Print gift receipt (no prices)"
-                                    onClick={() => openPrintDialog(order, "gift")}>
-                                    <Printer className="h-3.5 w-3.5" />
-                                </Button>
-                            )}
+                            {/* Gift receipt button - always show on sales history */}
+                            <Button variant="ghost" size="icon"
+                                className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
+                                title="Print gift receipt (no prices)"
+                                onClick={() => openPrintDialog(order, "gift")}>
+                                <Printer className="h-3.5 w-3.5" />
+                            </Button>
                             {(order.hasReturn || order.status === 'returned' || order.status === 'partially_returned') && (
                                 <Button variant="ghost" size="icon"
                                     className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"

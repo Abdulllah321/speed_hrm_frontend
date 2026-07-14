@@ -293,7 +293,8 @@ export default function ReturnsPage() {
         if (loadedOrders.length === 0) { toast.error("Add at least one order"); return; }
         if (selectedLines.length === 0) { toast.error("Select at least one item to return"); return; }
         if (mode === "exchange" && newLines.length === 0) { toast.error("Add new items for exchange"); return; }
-        if (!notes.trim()) { setNotesError(true); toast.error("Notes are required"); return; }
+        const notesRequired = mode === "refund" || mode === "claim";
+        if (notesRequired && !notes.trim()) { setNotesError(true); toast.error("Notes are required"); return; }
         setNotesError(false);
 
         setIsSubmitting(true);
@@ -928,7 +929,7 @@ export default function ReturnsPage() {
                                     </div>
                                     <div className="space-y-1.5">
                                         <Label className={cn("text-xs font-medium", notesError ? "text-destructive" : "text-muted-foreground")}>
-                                            Notes <span className="text-destructive">*</span>
+                                            Notes {(mode === "refund" || mode === "claim") && <span className="text-destructive">*</span>}
                                         </Label>
                                         <Textarea
                                             placeholder="Reason for return / refund..."

@@ -512,14 +512,12 @@ export function SalesHistoryClient({ initialOrders, initialTotal, initialTotalPa
                                     onClick={() => openPrintDialog(order, "sales")}>
                                     <Printer className="h-3.5 w-3.5" />
                                 </Button>
-                                {order.isGiftReceipt && (
-                                    <Button variant="ghost" size="icon"
-                                        className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
-                                        title="Print gift receipt"
-                                        onClick={() => openPrintDialog(order, "gift")}>
-                                        <Printer className="h-3.5 w-3.5" />
-                                    </Button>
-                                )}
+                                <Button variant="ghost" size="icon"
+                                    className="h-8 w-8 rounded-full text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30"
+                                    title="Print gift receipt"
+                                    onClick={() => openPrintDialog(order, "gift")}>
+                                    <Printer className="h-3.5 w-3.5" />
+                                </Button>
                                 {(order.hasReturn || order.status === "returned" || order.status === "partially_returned") && (
                                     <Button variant="ghost" size="icon"
                                         className="h-8 w-8 rounded-full text-destructive hover:bg-destructive/5"
