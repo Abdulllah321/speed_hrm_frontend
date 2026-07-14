@@ -518,9 +518,15 @@ export default function CheckoutPage() {
       const cappedPct = Math.min(manualDiscountValue, 50);
       orderDiscount = Math.round(subtotal * (cappedPct / 100) * 100) / 100;
     } else {
-      // Flat amount capped at 50% of grand total before manual discount
+      // Flat amount (WST) capped at 50% of grand total before manual discount
       const maxFlat = Math.round(grandTotalBeforeManual * 0.5 * 100) / 100;
-      orderDiscount = Math.min(manualDiscountValue, maxFlat);
+      const cappedWstDiscount = Math.min(manualDiscountValue, maxFlat);
+      const totalWstPrice = cartItems.reduce((acc, i) => acc + i.price * i.quantity, 0);
+      if (totalWstPrice > 0) {
+        orderDiscount = Math.round(cappedWstDiscount * (subtotal / totalWstPrice) * 100) / 100;
+      } else {
+        orderDiscount = 0;
+      }
     }
     // Manual discount replaces item-level discounts
     finalItemDiscounts = 0;
@@ -1011,7 +1017,7 @@ export default function CheckoutPage() {
       if (discountMode === "manual" && orderDiscount > 0) {
         if (manualDiscountType === "percent")
           body.globalDiscountPercent = manualDiscountValue;
-        else body.globalDiscountAmount = orderDiscount;
+        else body.globalDiscountAmount = manualDiscountValue;
         body.manualDiscountNote = manualDiscountNote;
       }
       // Merchant (bank terminal) for card payments
@@ -1175,7 +1181,7 @@ export default function CheckoutPage() {
       if (discountMode === "manual" && orderDiscount > 0) {
         if (manualDiscountType === "percent")
           body.globalDiscountPercent = manualDiscountValue;
-        else body.globalDiscountAmount = orderDiscount;
+        else body.globalDiscountAmount = manualDiscountValue;
         body.manualDiscountNote = manualDiscountNote;
       }
       // Merchant (bank terminal) for card payments

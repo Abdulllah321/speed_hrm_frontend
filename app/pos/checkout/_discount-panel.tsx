@@ -141,7 +141,9 @@ export function DiscountPanel({
                             {discountMode === "alliance" && selectedAlliance?.partnerName}
                             {discountMode === "manual" && "Manual Discount"}
                         </span>
-                        <span className="text-muted-foreground ml-2 font-mono">−{fmtCurrency(orderDiscount)}</span>
+                        <span className="text-muted-foreground ml-2 font-mono">
+                            −{fmtCurrency(discountMode === "manual" && manualDiscountType === "flat" ? manualDiscountValue : orderDiscount)}
+                        </span>
                         {discountMode === "alliance" && finalItemDiscounts === 0 && itemDiscounts > 0 && (
                             <span className="text-xs text-muted-foreground ml-2">(replaces item discounts)</span>
                         )}
@@ -432,7 +434,9 @@ export function DiscountPanel({
                             <Wallet className="h-4 w-4 text-muted-foreground" />
                             <span className="font-semibold text-sm flex-1">Manual Discount</span>
                             {discountMode === "manual" && orderDiscount > 0 &&
-                                <Badge variant="secondary" className="text-xs">−{fmtCurrency(orderDiscount)}</Badge>}
+                                <Badge variant="secondary" className="text-xs">
+                                    −{fmtCurrency(manualDiscountType === "flat" ? manualDiscountValue : orderDiscount)}
+                                </Badge>}
                             {discountMode !== "none" && discountMode !== "manual" && (
                                 <Badge variant="outline" className="text-[10px]">Disabled</Badge>
                             )}
@@ -518,7 +522,10 @@ export function DiscountPanel({
                                  );
                              })()}
                              {discountMode === "manual" && orderDiscount > 0 && (
-                                 <p className="text-xs text-primary font-semibold">Discount: −{fmtCurrency(orderDiscount)}</p>
+                                 <p className="text-xs text-primary font-semibold">
+                                     Discount (WOST): −{fmtCurrency(orderDiscount)}
+                                     {manualDiscountType === "flat" && ` (WST: −${fmtCurrency(manualDiscountValue)})`}
+                                 </p>
                              )}
                         </div>
                     </details>
