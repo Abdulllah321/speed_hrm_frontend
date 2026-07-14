@@ -651,7 +651,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (discountMode === "alliance" && selectedAlliance) {
+    if ((discountMode === "alliance" || (discountMode === "manual" && selectedAlliance)) && selectedAlliance) {
       if (tenderMethod === "cash") {
         toast.error("Cash payment is not allowed when Alliance is selected.");
         return;
@@ -893,7 +893,7 @@ export default function CheckoutPage() {
       toast.error("A customer must be selected to complete this sale.");
       return;
     }
-    if (discountMode === "alliance" && selectedAlliance) {
+    if ((discountMode === "alliance" || (discountMode === "manual" && selectedAlliance)) && selectedAlliance) {
       const hasCash = tenders.some((t) => t.method === "cash");
       if (hasCash) {
         toast.error(
@@ -1075,7 +1075,7 @@ export default function CheckoutPage() {
       toast.error("Please select a customer for credit sale.");
       return;
     }
-    if (discountMode === "alliance" && selectedAlliance) {
+    if ((discountMode === "alliance" || (discountMode === "manual" && selectedAlliance)) && selectedAlliance) {
       const hasCash = tenders.some((t) => t.method === "cash");
       if (hasCash) {
         toast.error(

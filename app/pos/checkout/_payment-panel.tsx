@@ -109,7 +109,7 @@ export function PaymentPanel({
                     <div>
                         <Label className="text-xs text-muted-foreground uppercase tracking-wide">
                             Tender Type
-                            {discountMode === "alliance" && selectedAlliance && (
+                            {(discountMode === "alliance" || discountMode === "manual") && selectedAlliance && (
                                 <span className="ml-2 text-xs text-primary font-normal">(Card or Voucher payment required)</span>
                             )}
                         </Label>
@@ -163,24 +163,24 @@ export function PaymentPanel({
                     {/* Card / bank transfer extra fields */}
                     {(tenderMethod === "card" || tenderMethod === "bank_transfer") && (
                         <div className="space-y-2">
-                            {/* Alliance context banner */}
-                            {discountMode === "alliance" && selectedAlliance && (
-                                <div className="flex items-start gap-2 rounded-lg border border-blue-300/60 bg-blue-50/60 dark:bg-blue-950/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
-                                    <CreditCard className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                                    <span>
-                                        Card details below will be recorded for the{" "}
-                                        <strong>{selectedAlliance.partnerName}</strong> alliance discount on this order.
-                                    </span>
-                                </div>
-                            )}
+                             {/* Alliance context banner */}
+                             {(discountMode === "alliance" || discountMode === "manual") && selectedAlliance && (
+                                 <div className="flex items-start gap-2 rounded-lg border border-blue-300/60 bg-blue-50/60 dark:bg-blue-950/20 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+                                     <CreditCard className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                     <span>
+                                         Card details below will be recorded for the{" "}
+                                         <strong>{selectedAlliance.partnerName}</strong> alliance discount on this order.
+                                     </span>
+                                 </div>
+                             )}
 
-                            {/* ── Merchant & BIN Selector ── */}
-                            <div className={cn(
-                                "grid gap-3",
-                                discountMode === "alliance" && selectedAlliance && selectedAlliance.binNumbers?.length > 0
-                                    ? "grid-cols-1 md:grid-cols-2"
-                                    : "grid-cols-1"
-                            )}>
+                             {/* ── Merchant & BIN Selector ── */}
+                             <div className={cn(
+                                 "grid gap-3",
+                                 (discountMode === "alliance" || discountMode === "manual") && selectedAlliance && selectedAlliance.binNumbers?.length > 0
+                                     ? "grid-cols-1 md:grid-cols-2"
+                                     : "grid-cols-1"
+                             )}>
                                 {/* ── Merchant selector ── */}
                                 <div>
                                     <Label className="text-xs text-muted-foreground uppercase tracking-wide">
@@ -249,7 +249,7 @@ export function PaymentPanel({
                                 </div>
 
                                 {/* ── BIN Number selector ── */}
-                                {discountMode === "alliance" && selectedAlliance && selectedAlliance.binNumbers?.length > 0 && (
+                                {(discountMode === "alliance" || discountMode === "manual") && selectedAlliance && selectedAlliance.binNumbers?.length > 0 && (
                                     <div>
                                         <Label className="text-xs text-muted-foreground uppercase tracking-wide">
                                             Card BIN Number
@@ -303,7 +303,7 @@ export function PaymentPanel({
                                 </div>
                                 <div>
                                     <Label className="text-xs text-muted-foreground">
-                                        Card # (last 4){discountMode === "alliance" && selectedAlliance && <span className="text-destructive font-bold ml-0.5">*</span>}
+                                        Card # (last 4){(discountMode === "alliance" || discountMode === "manual") && selectedAlliance && <span className="text-destructive font-bold ml-0.5">*</span>}
                                     </Label>
                                     <Input className="mt-1 h-8 text-xs font-mono" maxLength={4} placeholder="••••"
                                         value={tenderCardLast4}
@@ -311,7 +311,7 @@ export function PaymentPanel({
                                 </div>
                                 <div>
                                     <Label className="text-xs text-muted-foreground">
-                                        AUTH ID / Approval Code{discountMode === "alliance" && selectedAlliance && <span className="text-destructive font-bold ml-0.5">*</span>}
+                                        AUTH ID / Approval Code{(discountMode === "alliance" || discountMode === "manual") && selectedAlliance && <span className="text-destructive font-bold ml-0.5">*</span>}
                                     </Label>
                                     <Input className="mt-1 h-8 text-xs font-mono" maxLength={6} placeholder="6-digit Auth ID"
                                         value={tenderSlip}

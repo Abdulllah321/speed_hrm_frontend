@@ -90,6 +90,7 @@ export function DiscountPanel({
 }: DiscountPanelProps) {
     const [activeAllianceIndex, setActiveAllianceIndex] = React.useState(-1);
     const [tempManualDiscountValue, setTempManualDiscountValue] = useState<string>("");
+    const [manualAllianceSearch, setManualAllianceSearch] = useState("");
 
     useEffect(() => {
         setTempManualDiscountValue(manualDiscountValue ? String(manualDiscountValue) : "");
@@ -100,6 +101,13 @@ export function DiscountPanel({
             a.partnerName.toLowerCase().includes(allianceSearch.toLowerCase()) ||
             a.code.toLowerCase().includes(allianceSearch.toLowerCase()) ||
             (allianceSearch.match(/^\d+/) && a.binNumbers.some((bin) => bin.startsWith(allianceSearch.trim())))
+    );
+
+    const filteredManualAlliances = alliances.filter(
+        (a) =>
+            a.partnerName.toLowerCase().includes(manualAllianceSearch.toLowerCase()) ||
+            a.code.toLowerCase().includes(manualAllianceSearch.toLowerCase()) ||
+            (manualAllianceSearch.match(/^\d+/) && a.binNumbers.some((bin) => bin.startsWith(manualAllianceSearch.trim())))
     );
 
     React.useEffect(() => {
@@ -528,28 +536,56 @@ export function DiscountPanel({
                                  </p>
                              )}
                              {discountMode === "manual" && (
-                                 <div className="space-y-1.5 pt-2 border-t border-dashed">
-                                     <Label className="text-[11px] text-muted-foreground">Attach Alliance / Bank Card (Optional, for reporting)</Label>
-                                     <select
-                                         value={selectedAlliance?.id || ""}
-                                         onChange={(e) => {
-                                             const id = e.target.value;
-                                             if (id) {
-                                                 const alliance = alliances.find((a) => a.id === id);
-                                                 if (alliance) onSelectAlliance(alliance);
-                                             } else {
-                                                 onSelectAlliance(null);
-                                             }
-                                         }}
-                                         className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                     >
-                                         <option value="">-- No Alliance Attached --</option>
-                                         {alliances.map((a) => (
-                                             <option key={a.id} value={a.id}>
-                                                 {a.partnerName} ({a.discountPercent}%)
-                                             </option>
-                                         ))}
-                                     </select>
+                                 <div className="space-y-2 pt-2 border-t border-dashed">
+                                     <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                         Attach Alliance / Bank Card (Optional, for reporting)
+                                     </Label>
+                                     <div className="relative">
+                                         <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                         <Input
+                                             className="pl-8 h-8 text-xs placeholder:text-[10px]"
+                                             placeholder="Search bank name, code, or BIN..."
+                                             value={manualAllianceSearch}
+                                             onChange={(e) => setManualAllianceSearch(e.target.value)}
+                                         />
+                                     </div>
+                                     <div className="max-h-[120px] overflow-y-auto border rounded-md p-1 bg-muted/20 space-y-1">
+                                         <button
+                                             type="button"
+                                             onClick={() => onSelectAlliance(null)}
+                                             className={cn(
+                                                 "w-full text-left rounded px-2.5 py-1.5 transition-all text-xs flex justify-between items-center",
+                                                 !selectedAlliance ? "bg-primary/10 text-primary font-semibold" : "hover:bg-muted text-muted-foreground"
+                                             )}
+                                         >
+                                             <span>-- No Alliance Attached --</span>
+                                             {!selectedAlliance && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+                                         </button>
+                                         {filteredManualAlliances.map((a) => {
+                                             const isSelected = selectedAlliance?.id === a.id;
+                                             return (
+                                                 <button
+                                                     type="button"
+                                                     key={a.id}
+                                                     onClick={() => onSelectAlliance(a)}
+                                                     className={cn(
+                                                         "w-full text-left rounded px-2.5 py-1.5 transition-all text-xs flex justify-between items-center",
+                                                         isSelected ? "bg-primary/10 text-primary font-semibold border-l-2 border-primary" : "hover:bg-muted"
+                                                     )}
+                                                 >
+                                                     <div className="flex flex-col min-w-0">
+                                                         <span className="truncate font-medium">{a.partnerName}</span>
+                                                         {a.binNumbers?.length > 0 && (
+                                                             <span className="text-[9px] text-muted-foreground font-mono mt-0.5 truncate">
+                                                                 BINs: {a.binNumbers.join(", ")}
+                                                             </span>
+                                                         )}
+                                                     </div>
+                                                     {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                                 </button>
+                                             );
+                                         })}
+                                     </div>
                                  </div>
                              )}
                         </div>
