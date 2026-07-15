@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import { ChartOfAccountSelect, getSharedTree } from "@/components/ui/chart-of-account-select";
+import { ChartOfAccountSelect, getSharedTree, fetchSharedTree } from "@/components/ui/chart-of-account-select";
 import { Plus, Trash2, Loader2, Tag, CheckIcon, ChevronDownIcon, Copy, Upload, Pencil, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { VoucherImportModal } from "@/components/finance/voucher-import-modal";
 import { Autocomplete } from "@/components/ui/autocomplete";
@@ -454,6 +454,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
 
     // Poll for the shared tree until it's available (it loads lazily on first open)
     useEffect(() => {
+        fetchSharedTree();
         const initial = getSharedTree();
         if (initial.length > 0) { setTree(initial); return; }
         const id = setInterval(() => {
@@ -463,18 +464,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
         return () => clearInterval(id);
     }, []);
 
-    // When accountId changes for a row, clear its tagAccountId
-    const prevAccountIds = useRef<Record<number, string>>({});
-    useEffect(() => {
-        watchDetails.forEach((detail, index) => {
-            const accountId = detail.accountId;
-            if (prevAccountIds.current[index] !== undefined &&
-                prevAccountIds.current[index] !== accountId) {
-                form.setValue(`details.${index}.tagAccountId`, "");
-            }
-            prevAccountIds.current[index] = accountId;
-        });
-    }, [watchDetails.map((d) => d.accountId).join(",")]);
+
 
     // Derive child accounts for each row from the cached tree
     const rowChildren = useMemo(() => {
@@ -639,23 +629,24 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                 if (initialData) {
                     router.push("/finance/journal-voucher/list");
                 } else {
+                    const currentDesc = form.getValues("description");
                     // Reset form for a new voucher
                     form.reset({
                         jvNo: `JV${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, "0")}${Math.floor(1000 + Math.random() * 9000)}`,
                         jvDate: new Date(),
-                        description: "",
+                        description: currentDesc || "",
                         details: [],
                     });
-                    setEntryLine({
+                    setEntryLine(prev => ({
                         accountId: "",
                         tagAccountId: "",
                         debit: 0,
                         credit: 0,
-                        narration: "",
-                        refBillNo: "",
-                        refBillNo2: "",
+                        narration: prev.narration,
+                        refBillNo: prev.refBillNo,
+                        refBillNo2: prev.refBillNo2,
                         taxType: "",
-                    });
+                    }));
                 }
             } else {
                 toast.error(result.message || (initialData ? "Failed to update Journal Voucher" : "Failed to create Journal Voucher"));
@@ -981,7 +972,7 @@ export function JournalVoucherForm({ initialData }: { initialData?: JournalVouch
                                         onChange={(e) => setEntryLine(prev => ({ ...prev, narration: e.target.value }))}
                                         onKeyDown={(e) => handleEntryKeyDown(e, "narration")}
                                         disabled={isPending}
-                                        className="h-9 border-input bg-background"
+                                        className="h-9 border-input bg-background uppercase"
                                     />
                                 </div>
 

@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createPaymentVoucher, updatePaymentVoucher, getPendingInvoicesBySupplier, getAllSuppliers, getVendorWithAccounts, getAdvancesBySupplier, getSupplierSummary, type PaymentVoucher } from "@/lib/actions/payment-voucher";
 import { ChartOfAccount } from "@/lib/actions/chart-of-account";
-import { ChartOfAccountSelect, getSharedTree } from "@/components/ui/chart-of-account-select";
+import { ChartOfAccountSelect, getSharedTree, fetchSharedTree } from "@/components/ui/chart-of-account-select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -476,6 +476,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
     // Poll for shared tree (loaded lazily by ChartOfAccountSelect on first open)
     useEffect(() => {
+        fetchSharedTree();
         const initial = getSharedTree();
         if (initial.length > 0) { setTree(initial); return; }
         const id = setInterval(() => {
@@ -485,20 +486,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
         return () => clearInterval(id);
     }, []);
 
-    // Clear tagAccountId when accountId changes for a row
-    const prevAccountIds = useRef<Record<number, string>>({});
-    
-    useEffect(() => {
-        watchDetails.forEach((detail, index) => {
-            const accountId = detail.accountId;
-            if (prevAccountIds.current[index] !== undefined && prevAccountIds.current[index] !== accountId) {
-                form.setValue(`details.${index}.tagAccountId`, "");
-            }
-            prevAccountIds.current[index] = accountId;
-        });
-    }, [watchDetails.map((d: any) => d.accountId).join(",")]);
 
-    const prevDetailsRef = useRef<Array<{ accountId: string; tagAccountId: string; taxableValue: number }>>([]);
 
     // Derive child accounts for each row from the cached tree
     function findInTree(nodes: ChartOfAccount[], id: string): ChartOfAccount | undefined {
@@ -947,24 +935,32 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                 if (initialData) {
                     router.push("/finance/payment-voucher/list");
                 } else {
+                    const currentRefBillNo = form.getValues("refBillNo");
+                    const currentChequeNo = form.getValues("chequeNo");
+                    const currentDesc = form.getValues("description");
+                    
                     form.reset({
                         type: voucherType || "bank",
                         isAdvance: false,
                         pvNo: "AUTO",
                         pvDate: new Date(),
+                        refBillNo: currentRefBillNo || "",
+                        chequeNo: currentChequeNo || "",
+                        description: currentDesc || "",
                         details: [],
                     });
-                    setEntryLine({
+                    
+                    setEntryLine(prev => ({
                         accountId: "",
                         tagAccountId: "",
                         debit: 0,
                         credit: 0,
-                        narration: "",
-                        refBillNo: "",
-                        refBillNo2: "",
+                        narration: prev.narration,
+                        refBillNo: prev.refBillNo,
+                        refBillNo2: prev.refBillNo2,
                         taxType: "",
                         taxableValue: 0,
-                    });
+                    }));
                     setSelectedInvoices([]);
                     setSelectedAdvances([]);
                 }
@@ -990,11 +986,11 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
 
     // Auto-calculate tax inside the editor inputs (before adding the line)
     useEffect(() => {
-        if (!entryLine.accountId || !entryLine.tagAccountId || tree.length === 0) return;
+        if (!entryLine.accountId || !entryLine.tagAccountId || tree.length === 0 || !entryLine.taxableValue) return;
         const accountNode = findInTree(tree, entryLine.accountId);
         const tagNode = accountNode?.children?.find(c => c.id === entryLine.tagAccountId);
         if (accountNode?.code && tagNode?.code) {
-            const baseAmount = taxableAmount || entryLine.taxableValue;
+            const baseAmount = entryLine.taxableValue;
             const calculatedTax = calculateTaxForAccount(accountNode.code, tagNode.code, baseAmount);
             if (calculatedTax !== null) {
                 const roundedTax = Math.round(calculatedTax);
@@ -1011,7 +1007,7 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                 });
             }
         }
-    }, [entryLine.accountId, entryLine.tagAccountId, entryLine.taxableValue, taxableAmount, tree]);
+    }, [entryLine.accountId, entryLine.tagAccountId, entryLine.taxableValue, tree]);
 
 
 
@@ -1659,10 +1655,10 @@ export function PaymentVoucherForm({ initialData }: { initialData?: any }) {
                                         id="entry-narration"
                                         placeholder="Narration for this line..."
                                         value={entryLine.narration}
-                                        onChange={(e) => setEntryLine(prev => ({ ...prev, narration: e.target.value.toUpperCase() }))}
+                                        onChange={(e) => setEntryLine(prev => ({ ...prev, narration: e.target.value }))}
                                         onKeyDown={(e) => handleEntryKeyDown(e, "narration")}
                                         disabled={isPending}
-                                        className="h-9 border-input bg-background"
+                                        className="h-9 border-input bg-background uppercase"
                                     />
                                 </div>
 

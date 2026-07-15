@@ -54,6 +54,11 @@ export function getSharedTree(): ChartOfAccount[] {
     return _cachedTree ?? [];
 }
 
+/** Pre-fetch or trigger the shared tree fetch immediately. */
+export async function fetchSharedTree(): Promise<ChartOfAccount[]> {
+    return fetchTree();
+}
+
 /** Invalidate the cached tree so that the next select fetch reloads the database. */
 export function invalidateCachedTree() {
     _cachedTree = null;
