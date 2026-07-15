@@ -197,7 +197,7 @@ export function SrnBulkUploadModal({
                         {data?.status && <Badge variant="outline" className="ml-2 capitalize">{data.status}</Badge>}
                     </DialogTitle>
                     <DialogDescription className="text-sm">
-                        Upload a CSV/Excel with <strong>BarCode</strong> or <strong>SKU</strong> column + <strong>Quantity</strong>.
+                        Upload a CSV/Excel with <strong>BarCode</strong> column + <strong>Quantity</strong>.
                         Items will be resolved from master data and stock will be reserved automatically.
                     </DialogDescription>
                 </DialogHeader>
@@ -300,7 +300,7 @@ export function SrnBulkUploadModal({
                                             </div>
                                             <div className="text-center space-y-1">
                                                 <p className="font-bold text-lg">Upload SRN items list</p>
-                                                <p className="text-sm text-muted-foreground">One row per item — <strong>BarCode</strong> or <strong>SKU</strong> + Quantity</p>
+                                                <p className="text-sm text-muted-foreground">One row per item — <strong>BarCode</strong> + Quantity</p>
                                             </div>
                                             <div className="flex gap-2">
                                                 {['.CSV', '.XLSX', '.XLS'].map(ext => <Badge key={ext} variant="outline">{ext}</Badge>)}
@@ -317,7 +317,7 @@ export function SrnBulkUploadModal({
                                         </div>
                                         <div>
                                             <p className="font-bold text-sm">Download Template</p>
-                                            <p className="text-xs text-muted-foreground">BarCode (or SKU), Quantity</p>
+                                            <p className="text-xs text-muted-foreground">BarCode, Quantity</p>
                                         </div>
                                     </div>
                                     <Button variant="secondary" size="sm" onClick={() => window.open(`${BASE()}/template/download`, '_blank')}>
