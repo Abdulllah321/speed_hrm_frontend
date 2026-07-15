@@ -945,6 +945,9 @@ function StockTransferContent() {
                         <div className="flex items-center gap-2">
                             <div className="flex items-center gap-2">
                                 <Badge variant="secondary">{selectedItems.length} Items Selected</Badge>
+                                <Badge variant="outline">
+                                    Total Qty: {selectedItems.reduce((total, item) => total + item.quantity, 0)}
+                                </Badge>
                             </div>
                             {/* Filter Sheet Trigger */}
                             <div className="flex items-center gap-2">
