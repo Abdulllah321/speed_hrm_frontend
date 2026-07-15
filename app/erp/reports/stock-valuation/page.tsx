@@ -85,7 +85,7 @@ export default function PosStockValuationReportPage() {
                 showVariant: groupingLevels.variant,
             });
             if (result && result.status !== false) {
-                setReportData(result.data || result);
+                setReportData(result.data?.root || (Array.isArray(result.data) ? result.data : []));
             } else {
                 toast.error("Failed to load valuation report data");
             }

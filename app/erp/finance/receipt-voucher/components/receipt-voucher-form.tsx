@@ -268,13 +268,20 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
                 .filter(Boolean)
         ));
 
-        return usedSubAccountIds.map(id => {
+        const uniqueOptionsMap = new Map<string, { value: string; label: string }>();
+        usedSubAccountIds.forEach(id => {
             const node = findInTree(tree, id);
-            return {
-                value: id,
-                label: node ? `${node.code} - ${node.name}` : id
-            };
+            const code = node?.code || id;
+            const label = node ? `${node.code} - ${node.name}` : id;
+            if (!uniqueOptionsMap.has(code)) {
+                uniqueOptionsMap.set(code, {
+                    value: code,
+                    label: label
+                });
+            }
         });
+
+        return Array.from(uniqueOptionsMap.values());
     }, [filterAccountId, watchDetails, tree]);
 
     // Derive child sub-accounts for active line entry
@@ -606,11 +613,11 @@ export function ReceiptVoucherForm({ initialData }: { initialData?: any }) {
 
         const filtered = detailsWithIndex.filter((detail: any) => {
             const matchesAccount = !filterAccountId || detail.accountId === filterAccountId;
-            const matchesSubAccount = !filterSubAccountId || detail.tagAccountId === filterSubAccountId;
-            if (!matchesAccount || !matchesSubAccount) return false;
-
             const accountNode = findInTree(tree, detail.accountId);
             const tagNode = accountNode?.children?.find(c => c.id === detail.tagAccountId);
+            const subAccountCode = tagNode?.code || detail.tagAccountId;
+            const matchesSubAccount = !filterSubAccountId || subAccountCode === filterSubAccountId;
+            if (!matchesAccount || !matchesSubAccount) return false;
 
             const accountText = accountNode ? `${accountNode.code} ${accountNode.name}`.toLowerCase() : "";
             const tagText = tagNode ? `${tagNode.code} ${tagNode.name}`.toLowerCase() : "";

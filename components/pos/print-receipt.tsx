@@ -948,6 +948,7 @@ function ReceiptBody({
           >
             <p className="font-bold text-[11px] leading-tight mb-0.5">
               {item.name}
+              {item.color && ` (Color: ${item.color})`}
             </p>
 
             {!isGiftReceipt ? (
@@ -1095,11 +1096,15 @@ function ReceiptBody({
               <span className="capitalize">
                 {t.method.replace(/_/g, " ")}
                 {t.cardLast4 ? ` ••••${t.cardLast4}` : ""}
-                {t.slipNo
-                  ? t.method === "voucher"
-                    ? ` #${t.slipNo}`
-                    : ` (${t.slipNo})`
-                  : ""}
+                {t.method === "card" || t.method === "bank_transfer"
+                  ? order?.merchant?.description || order?.merchant?.bankName
+                    ? ` (${order.merchant.description || order.merchant.bankName})`
+                    : t.slipNo ? ` (${t.slipNo})` : ""
+                  : t.slipNo
+                    ? t.method === "voucher"
+                      ? ` #${t.slipNo}`
+                      : ` (${t.slipNo})`
+                    : ""}
               </span>
               <span className="font-semibold">
                 {t.method === "voucher" && t.voucherFaceValue
@@ -1378,13 +1383,26 @@ function A4InvoiceBody({
                 <Row label="Net Total" value={`Rs. ${fmtDec(finalGrandTotal)}`} bold />
               </div>
               <div className="border-t border-dashed border-zinc-300 mt-2 pt-2 space-y-1">
-                {tenders.map((t, i) => (
-                  <Row
-                    key={i}
-                    label={t.method === "cash" ? "Cash" : t.method.replace(/_/g, " ")}
-                    value={fmtDec(t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount)}
-                  />
-                ))}
+                {tenders.map((t, i) => {
+                  let label = t.method === "cash" ? "Cash" : t.method.replace(/_/g, " ");
+                  if (t.method === "card" || t.method === "bank_transfer") {
+                    const cardSuffix = t.cardLast4 ? ` ••••${t.cardLast4}` : "";
+                    const merchantName = order?.merchant?.description || order?.merchant?.bankName;
+                    const merchantSuffix = merchantName
+                      ? ` (${merchantName})`
+                      : t.slipNo ? ` (${t.slipNo})` : "";
+                    label = `${label}${cardSuffix}${merchantSuffix}`;
+                  } else if (t.method === "voucher" && t.slipNo) {
+                    label = `${label} #${t.slipNo}`;
+                  }
+                  return (
+                    <Row
+                      key={i}
+                      label={label}
+                      value={fmtDec(t.method === "voucher" && t.voucherFaceValue ? t.voucherFaceValue : t.amount)}
+                    />
+                  );
+                })}
                 {changeAmount > 0 && <Row label="Change" value={fmtDec(changeAmount)} />}
               </div>
             </div>
